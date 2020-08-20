@@ -18,7 +18,7 @@ __all__ = [
     'ELU',
     'GELU',
     'Hardshrink',
-    'HardTanh',
+    'Hardtanh',
     'PReLU',
     'ReLU',
     'LeakyReLU',
@@ -57,16 +57,16 @@ class ELU(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
-        m = paddle.nn.ELU(0.2)
-        out = m(x) 
-        # [[-0.12642411  6.        ]
-        #  [ 1.          15.6      ]]
+            x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
+            m = paddle.nn.ELU(0.2)
+            out = m(x)
+            # [[-0.12642411  6.        ]
+            #  [ 1.          15.6      ]]
     """
 
     def __init__(self, alpha=1.0, name=None):
@@ -106,18 +106,18 @@ class GELU(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
-        
-        m = paddle.nn.GELU()
-        out = m(x) # [-0.158655 0.345731 0.841345 1.39979]
+            x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
+            
+            m = paddle.nn.GELU()
+            out = m(x) # [-0.158655 0.345731 0.841345 1.39979]
 
-        m = paddle.nn.GELU(True)
-        out = m(x) # [-0.158808 0.345714 0.841192 1.39957]
+            m = paddle.nn.GELU(True)
+            out = m(x) # [-0.158808 0.345714 0.841192 1.39957]
     """
 
     def __init__(self, approximate=False, name=None):
@@ -176,21 +176,21 @@ class Hardshrink(layers.Layer):
         return F.hardshrink(x, self._threshold, self._name)
 
 
-class HardTanh(layers.Layer):
+class Hardtanh(layers.Layer):
     """
-    HardTanh Activation
+    Hardtanh Activation
 
     .. math::
 
-        HardTanh(x)= \\begin{cases}
+        Hardtanh(x)= \\begin{cases}
                         max, \\text{if } x > max \\\\
                         min, \\text{if } x < min \\\\
                         x,  \\text{otherwise}
                       \\end{cases}
 
     Parameters:
-        min (float, optional): The value of min for HardTanh. Default is -1.
-        max (float, optional): The value of max for HardTanh. Default is 1.
+        min (float, optional): The value of min for Hardtanh. Default is -1.
+        max (float, optional): The value of max for Hardtanh. Default is 1.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
     
@@ -207,12 +207,12 @@ class HardTanh(layers.Layer):
         paddle.disable_static()
 
         x = paddle.to_tensor(np.array([-1.5, 0.3, 2.5]))
-        m = paddle.nn.HardTanh()
+        m = paddle.nn.Hardtanh()
         out = m(x) # # [-1., 0.3, 1.]
     """
 
     def __init__(self, min=-1.0, max=1.0, name=None):
-        super(HardTanh, self).__init__()
+        super(Hardtanh, self).__init__()
         self._min = min
         self._max = max
         self._name = name
@@ -383,26 +383,26 @@ class PReLU(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
-                           [ 3.0, -4.0,  5.0, -6.0],
-                           [-7.0, -8.0,  8.0,  9.0]],
-                          [[ 1.0, -2.0, -3.0,  4.0],
-                           [-5.0,  6.0,  7.0, -8.0],
-                           [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
-        x = paddle.to_tensor(data)
-        m = paddle.nn.PReLU(1, 0.25)
-        out = m(x)
-        # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
-        #    [ 3.  , -1.  ,  5.  , -1.5 ],
-        #    [-1.75, -2.  ,  8.  ,  9.  ]],
-        #   [[ 1.  , -0.5 , -0.75,  4.  ],
-        #    [-1.25,  6.  ,  7.  , -2.  ],
-        #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
+            data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
+                            [ 3.0, -4.0,  5.0, -6.0],
+                            [-7.0, -8.0,  8.0,  9.0]],
+                            [[ 1.0, -2.0, -3.0,  4.0],
+                            [-5.0,  6.0,  7.0, -8.0],
+                            [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
+            x = paddle.to_tensor(data)
+            m = paddle.nn.PReLU(1, 0.25)
+            out = m(x)
+            # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
+            #    [ 3.  , -1.  ,  5.  , -1.5 ],
+            #    [-1.75, -2.  ,  8.  ,  9.  ]],
+            #   [[ 1.  , -0.5 , -0.75,  4.  ],
+            #    [-1.25,  6.  ,  7.  , -2.  ],
+            #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
     """
 
     def __init__(self, num_parameters=1, init=0.25, weight_attr=None,
@@ -443,14 +443,14 @@ class ReLU(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
-        m = paddle.nn.ReLU()
-        out = m(x) # [0., 0., 1.]
+            x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+            m = paddle.nn.ReLU()
+            out = m(x) # [0., 0., 1.]
     """
 
     def __init__(self, name=None):
@@ -547,7 +547,7 @@ class LogSigmoid(layers.Layer):
     
     .. math::
 
-        LogSigmoid(x) = \\log \\frac{1}{1 + e^{-x}}
+        LogSigmoid(x) = log \\frac{1}{1 + e^{-x}}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, or float64.
@@ -561,14 +561,14 @@ class LogSigmoid(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
-        m = paddle.nn.LogSigmoid()
-        out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+            x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
+            m = paddle.nn.LogSigmoid()
+            out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 
     def __init__(self, name=None):
@@ -582,6 +582,8 @@ class LogSigmoid(layers.Layer):
 class Softmax(layers.Layer):
     """
     Softmax Activation.
+
+    This operator implements the softmax layer. The calculation process is as follows:
 
     1. The dimension :attr:`axis` of ``x`` will be permuted to the last.
 
@@ -608,43 +610,94 @@ class Softmax(layers.Layer):
 
         Softmax[i, j] = \\frac{\\exp(x[i, j])}{\\sum_j(exp(x[i, j])}
 
-    Parameters:
-        x (Tensor): The input multi-dimension Tensor with data type float32, float64.
-        axis (int, optional): The axis along which to perform softmax calculations.
-            It should be in range [-D, D), where D is the dimensions of ``x`` .
-            When ``axis`` < 0, it works the same way as :math:`axis + D` .
-            Default is -1.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-    
-    Shape:
-        - input: Tensor with any shape.
-        - output: Tensor with the same shape as input.
-    
-    Examples:
-        .. code-block:: python
+    Example:
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+    .. code-block:: text
 
-        paddle.disable_static()
-
-        x = np.array([[[2.0, 3.0, 4.0, 5.0],
+        Case 1:
+          Input:
+            x.shape = [2, 3, 4]
+            x.data = [[[2.0, 3.0, 4.0, 5.0],
                        [3.0, 4.0, 5.0, 6.0],
                        [7.0, 8.0, 8.0, 9.0]],
                       [[1.0, 2.0, 3.0, 4.0],
                        [5.0, 6.0, 7.0, 8.0],
-                       [6.0, 7.0, 8.0, 9.0]]], 'float32')
-        x = paddle.to_tensor(x)
-        m = paddle.nn.Softmax()
-        out = m(x)
-        # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-        #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-        #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
-        # [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-        #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-        #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+                       [6.0, 7.0, 8.0, 9.0]]]
+
+          Attrs:
+            axis = -1
+
+          Output:
+            out.shape = [2, 3, 4]
+            out.data = [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+                        [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+
+        Case 2:
+          Input:
+            x.shape = [2, 3, 4]
+            x.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+          Attrs:
+            axis = 1
+
+          Output:
+            out.shape = [2, 3, 4]
+            out.data = [[[0.00657326, 0.00657326, 0.01714783, 0.01714783],
+                         [0.01786798, 0.01786798, 0.04661262, 0.04661262],
+                         [0.97555875, 0.97555875, 0.93623955, 0.93623955]],
+                        [[0.00490169, 0.00490169, 0.00490169, 0.00490169],
+                         [0.26762315, 0.26762315, 0.26762315, 0.26762315],
+                         [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
+
+    Parameters:
+        axis (int, optional): The axis along which to perform log_softmax
+            calculations. It should be in range [-D, D), where D is the
+            dimensions of ``x`` . If ``axis`` < 0, it works the same way as
+            :math:`axis + D` . Default is -1.
+        dtype (str|np.dtype|core.VarDesc.VarType, optional): The desired data
+            type of the output tensor. If dtype is specified, ``x`` is casted
+            to ``dtype`` before the operation is performed. This is useful for 
+            preventing data type overflows. Supported dtype: float32, float64.
+            If ``dtype`` is None, the output Tensor has the same dtype as x.
+            Default is None.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            x = np.array([[[2.0, 3.0, 4.0, 5.0],
+                        [3.0, 4.0, 5.0, 6.0],
+                        [7.0, 8.0, 8.0, 9.0]],
+                        [[1.0, 2.0, 3.0, 4.0],
+                        [5.0, 6.0, 7.0, 8.0],
+                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Softmax()
+            out = m(x)
+            # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+            #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+            # [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
     """
 
     def __init__(self, axis=-1, name=None):
