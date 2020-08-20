@@ -87,10 +87,10 @@ template <typename T>
 class GatherV2OpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("X");
     const Tensor* index = ctx.Input<Tensor>("Index");
     const Tensor* axis = ctx.Input<Tensor>("Axis");
     Tensor* out = ctx.Output<Tensor>("Y");
+    const Tensor* input = ctx.Input<Tensor>("X");
 
     const auto& index_type = index->type();
     const auto& axis_type = axis->type();

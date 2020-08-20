@@ -26,12 +26,12 @@ using Tensor = framework::Tensor;
 template <typename T, typename U>
 __global__ void GatherGPUKernel(const T* input, const U* index, T* out,
                                 int outer_dim_size, int inner_dim_size,
-                                int index_dim_size, int input_index_dim_size,
-                                int size) {
+                                int out_index_dim_size,
+                                int input_index_dim_size, int size) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < size; idx += blockDim.x * gridDim.x) {
-    int inner_dim_index = idx / (outer_dim_size * index_dim_size);
-    int next_idx = idx % (outer_dim_size * index_dim_size);
+    int inner_dim_index = idx / (outer_dim_size * out_index_dim_size);
+    int next_idx = idx % (outer_dim_size * out_index_dim_size);
     int index_dim_index = next_idx / (outer_dim_size);
     int out_dim_index = next_idx % outer_dim_size;
     int input_index =
@@ -44,14 +44,16 @@ __global__ void GatherGPUKernel(const T* input, const U* index, T* out,
 template <typename T, typename U>
 __global__ void GatherGradGPUKernel(const T* input, const U* index, T* out,
                                     int outer_dim_size, int inner_dim_size,
-                                    int index_dim_size, int size) {
+                                    int input_index_dim_size,
+                                    int out_index_dim_size, int size) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < size; idx += blockDim.x * gridDim.x) {
-    int inner_dim_index = idx / (outer_dim_size * index_dim_size);
-    int out_dim_index = idx % outer_dim_size;
-    int input_dim_index = idx / outer_dim_size;
-    int out_index = inner_dim_index * (outer_dim_size * index_dim_size) +
-                    index[input_dim_index] * outer_dim_size + out_dim_index;
+    int inner_dim_index = idx / (outer_dim_size * input_index_dim_size);
+    int next_idx = idx % (outer_dim_size * input_index_dim_size);
+    int index_dim_index = next_idx / (outer_dim_size);
+    int out_dim_index = next_idx % outer_dim_size;
+    int out_index = inner_dim_index * (outer_dim_size * out_index_dim_size) +
+                    index[index_dim_index] * outer_dim_size + out_dim_index;
     paddle::platform::CudaAtomicAdd(out + out_index, *(input + idx));
   }
 }
@@ -116,7 +118,6 @@ void GatherV2GradCUDAFunction(const Tensor* input, const Tensor* index,
                               const Tensor* axis, Tensor* out,
                               const paddle::platform::Place& place,
                               const framework::ExecutionContext& ctx) {
-  auto* axis_data = axis->data<V>();
   auto* index_data = index->data<U>();
 
   int axis_size = axis->numel();
@@ -132,14 +133,7 @@ void GatherV2GradCUDAFunction(const Tensor* input, const Tensor* index,
   Tensor cpu_axis;
   framework::TensorCopy(*axis, platform::CPUPlace(), &cpu_axis);
   int axis_index = cpu_axis.data<V>()[0];
-  int index_dim_size = input_dim[axis_index];
-  PADDLE_ENFORCE_LE(
-      index_size, index_dim_size,
-      platform::errors::InvalidArgument(
-          "The size that index should be less equal than the dim size of "
-          "input,"
-          "but received index size:%d, the dim size of input %d.",
-          axis_size, index_dim_size));
+  int input_index_dim_size = input_dim[axis_index];
 
   int inner_dim_size = 1;
   int outer_dim_size = 1;
@@ -153,24 +147,26 @@ void GatherV2GradCUDAFunction(const Tensor* input, const Tensor* index,
 
   auto* out_data = out->mutable_data<T>(place);
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-  operators::math::set_constant(*dev_ctx, out, 0.0);
+  auto out_dim = out->dims();
+  int out_index_dim_size = out_dim[axis_index];
+  // operators::math::set_constant(*dev_ctx, out, 0.0);
 
   int threads = 512;
   int grid = (input_size + threads - 1) / threads;
   auto stream = ctx.cuda_device_context().stream();
   GatherGradGPUKernel<T, U><<<grid, threads, 0, stream>>>(
       input_data, index_data, out_data, outer_dim_size, inner_dim_size,
-      index_dim_size, input_size);
+      input_index_dim_size, out_index_dim_size, input_size);
 }
 
 template <typename DeviceContext, typename T>
 class GatherV2OpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("X");
     const Tensor* index = ctx.Input<Tensor>("Index");
     const Tensor* axis = ctx.Input<Tensor>("Axis");
     Tensor* out = ctx.Output<Tensor>("Y");
+    const Tensor* input = ctx.Input<Tensor>("X");
 
     const auto& index_type = index->type();
     const auto& axis_type = axis->type();
@@ -202,10 +198,10 @@ template <typename DeviceContext, typename T>
 class GatherV2GradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("X");
     const Tensor* index = ctx.Input<Tensor>("Index");
     const Tensor* axis = ctx.Input<Tensor>("Axis");
-    Tensor* out = ctx.Output<Tensor>("Y");
+    auto* out = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* input = ctx.Input<Tensor>(framework::GradVarName("Y"));
 
     const auto& index_type = index->type();
     const auto& axis_type = axis->type();
