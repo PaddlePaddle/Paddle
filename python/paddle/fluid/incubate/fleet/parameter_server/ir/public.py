@@ -33,6 +33,8 @@ from paddle.fluid.transpiler.details.program_utils import delete_ops
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
 STEP_COUNTER = "@PS_STEP_COUNTER@"
+LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
+
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
@@ -53,6 +55,17 @@ def _get_lr_ops(program):
                 int(OPT_OP_ROLE_ATTR_VALUE):
             lr_ops.append(op)
     return lr_ops
+
+
+def _has_global_step(lr_ops):
+    if len(lr_ops) > 0:
+        for idx, op in enumerate(lr_ops):
+            if op.type != 'increment':
+                continue
+            counter = op.input("X")[0]
+            if counter == LEARNING_RATE_DECAY_COUNTER:
+                return True
+    return False
 
 
 def is_sparse_op(op):
@@ -1211,7 +1224,7 @@ class CompileTimeStrategy(object):
 
                 is_distributed = True if param_name in distibuted_varnames else False
 
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False,
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
                                      True, is_distributed)
                 send_ctx[ctx.var_name()] = ctx
 

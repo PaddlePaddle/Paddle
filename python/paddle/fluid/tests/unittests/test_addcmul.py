@@ -118,17 +118,6 @@ class TestAddcmul(unittest.TestCase):
             out = paddle.addcmul(input, tensor1, tensor2)
             self.assertEqual(out.shape, input.shape)
 
-    def test_addcmul_has_out(self):
-        program = Program()
-        with program_guard(program):
-            input = fluid.data(name='in', shape=[4, 100], dtype='float32')
-            tensor1 = fluid.data(name='t1', shape=[100], dtype='float32')
-            tensor2 = fluid.data(name='t2', shape=[100], dtype='float32')
-            out = fluid.data(name='out', shape=[4, 100], dtype='float32')
-
-            out = paddle.addcmul(input, tensor1, tensor2, out=out)
-            self.assertEqual(out.shape, input.shape)
-
 
 class InvalidInputTest(unittest.TestCase):
     def test_error(self):

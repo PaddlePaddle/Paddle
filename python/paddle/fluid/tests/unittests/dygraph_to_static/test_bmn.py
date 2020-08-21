@@ -22,6 +22,8 @@ from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 
+from predictor_utils import PredictorTools
+
 SEED = 2020
 DATATYPE = 'float32'
 program_translator = ProgramTranslator()
@@ -692,13 +694,27 @@ class TestTrain(unittest.TestCase):
             video_data = np.array([item[0] for item in data]).astype(DATATYPE)
             static_pred_res = self.predict_static(video_data)
             dygraph_pred_res = self.predict_dygraph(video_data)
+            dygraph_jit_pred_res = self.predict_dygraph_jit(video_data)
+            predictor_pred_res = self.predict_analysis_inference(video_data)
 
-            for dy_res, st_res in zip(dygraph_pred_res, static_pred_res):
+            for dy_res, st_res, dy_jit_res, predictor_res in zip(
+                    dygraph_pred_res, static_pred_res, dygraph_jit_pred_res,
+                    predictor_pred_res):
                 self.assertTrue(
                     np.allclose(st_res, dy_res),
                     "dygraph_res: {},\n static_res: {}".format(
                         dy_res[~np.isclose(st_res, dy_res)],
                         st_res[~np.isclose(st_res, dy_res)]))
+                self.assertTrue(
+                    np.allclose(st_res, dy_jit_res),
+                    "dygraph_jit_res: {},\n static_res: {}".format(
+                        dy_jit_res[~np.isclose(st_res, dy_jit_res)],
+                        st_res[~np.isclose(st_res, dy_jit_res)]))
+                self.assertTrue(
+                    np.allclose(st_res, predictor_res),
+                    "dygraph_jit_res: {},\n static_res: {}".format(
+                        predictor_res[~np.isclose(st_res, predictor_res)],
+                        st_res[~np.isclose(st_res, predictor_res)]))
             break
 
     def predict_dygraph(self, data):
@@ -730,6 +746,22 @@ class TestTrain(unittest.TestCase):
                            fetch_list=fetch_targets)
 
         return pred_res
+
+    def predict_dygraph_jit(self, data):
+        with fluid.dygraph.guard(self.place):
+            bmn = fluid.dygraph.jit.load(self.args.infer_dir)
+            bmn.eval()
+
+            x = to_variable(data)
+            pred_res = bmn(x)
+            pred_res = [var.numpy() for var in pred_res]
+
+            return pred_res
+
+    def predict_analysis_inference(self, data):
+        output = PredictorTools(self.args.infer_dir, VARIABLE_FILENAME, [data])
+        out = output()
+        return out
 
 
 if __name__ == "__main__":

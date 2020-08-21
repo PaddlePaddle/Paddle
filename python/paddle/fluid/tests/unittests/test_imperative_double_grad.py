@@ -319,8 +319,13 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
             out = model_f(a)
 
-            dx=fluid.dygraph.grad(outputs=[out],inputs=[a],create_graph=True,retain_graph=True,  \
-                        only_inputs=True,allow_unused=False, backward_strategy=backward_strategy)
+            dx = fluid.dygraph.grad(
+                outputs=[out],
+                inputs=[a],
+                create_graph=False,
+                only_inputs=True,
+                allow_unused=False,
+                backward_strategy=backward_strategy)
 
             grad_1 = dx[0].numpy()
 
@@ -335,6 +340,24 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
             grad_2 = a.gradient()
 
         self.assertTrue(np.array_equal(grad_1, grad_2))
+
+
+class TestRaiseNoDoubleGradOp(TestCase):
+    def raise_no_grad_op(self):
+        with fluid.dygraph.guard():
+            x = fluid.layers.ones(shape=[2, 3, 2, 2], dtype='float32')
+            x.stop_gradient = False
+            y = paddle.fluid.layers.batch_norm(x)
+
+            dx = fluid.dygraph.grad(
+                outputs=[y], inputs=[x], create_graph=True,
+                retain_graph=True)[0]
+
+            loss = fluid.layers.reduce_mean(dx)
+            loss.backward()
+
+    def test_raise(self):
+        self.assertRaises(fluid.core.EnforceNotMet, self.raise_no_grad_op)
 
 
 if __name__ == '__main__':

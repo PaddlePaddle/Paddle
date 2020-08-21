@@ -28,6 +28,7 @@ import numpy as np
 
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
+from paddle.distributed.fleet.base.util_factory import fleet_util
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -161,28 +162,28 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         exe = fluid.Executor(fluid.CPUPlace())
         fleet.init_worker()
-        exe.run(fleet.startup_program)
-
+        exe.run(fluid.default_startup_program())
         batch_size = 4
         train_reader = paddle.batch(fake_ctr_reader(), batch_size=batch_size)
         self.reader.decorate_sample_list_generator(train_reader)
-
-        compiled_prog = fluid.compiler.CompiledProgram(
-            fleet.main_program).with_data_parallel(
-                loss_name=self.avg_cost.name,
-                build_strategy=self.strategy.get_build_strategy(),
-                exec_strategy=self.strategy.get_execute_strategy())
 
         for epoch_id in range(1):
             self.reader.start()
             try:
                 pass_start = time.time()
                 while True:
-                    loss_val = exe.run(program=compiled_prog,
+                    loss_val = exe.run(program=fluid.default_main_program(),
                                        fetch_list=[self.avg_cost.name])
                     loss_val = np.mean(loss_val)
-                    print("TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
-                                                                  loss_val))
+                    # TODO(randomly fail)
+                    #   reduce_output = fleet_util.all_reduce(
+                    #       np.array(loss_val), mode="sum")
+                    #   loss_all_trainer = fleet_util.all_gather(float(loss_val))
+                    #   loss_val = float(reduce_output) / len(loss_all_trainer)
+                    message = "TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
+                                                                      loss_val)
+                    fleet_util.print_on_rank(message, 0)
+
                 pass_time = time.time() - pass_start
             except fluid.core.EOFException:
                 self.reader.reset()
@@ -201,7 +202,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         exe = fluid.Executor(fluid.CPUPlace())
 
         fleet.init_worker()
-        exe.run(fleet.startup_program)
+        exe.run(fluid.default_startup_program())
 
         thread_num = 2
         batch_size = 128
@@ -210,7 +211,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             filelist.append(train_file_path)
 
         # config dataset
-        dataset = fluid.DatasetFactory().create_dataset()
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
         dataset.set_batch_size(batch_size)
         dataset.set_use_var(self.feeds)
         pipe_command = 'python ctr_dataset_reader.py'
@@ -223,7 +224,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             pass_start = time.time()
             dataset.set_filelist(filelist)
             exe.train_from_dataset(
-                program=fleet.main_program,
+                program=fluid.default_main_program(),
                 dataset=dataset,
                 fetch_list=[self.avg_cost],
                 fetch_info=["cost"],
