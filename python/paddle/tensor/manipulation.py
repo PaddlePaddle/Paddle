@@ -1136,6 +1136,7 @@ def reshape(x, shape, name=None):
     """
     return paddle.fluid.layers.reshape(x=x, shape=shape, name=name)
 
+
 def gather_nd(x, index, name=None):
     """
     **Gather Nd Layer**
@@ -1188,7 +1189,7 @@ def gather_nd(x, index, name=None):
                          = [23]
 
     Args:
-        x (Tensor): The input Tensor which it's data type should be float32, float64, int32, int64.
+        x (Tensor): The input Tensor which it's data type should be bool, float32, float64, int32, int64.
         index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
                         Its dtype should be int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.

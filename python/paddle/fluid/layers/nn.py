@@ -8266,7 +8266,7 @@ def gather_nd(input, index, name=None):
                          = [23]
 
     Args:
-        input (Tensor): The source input. Its dtype should be float32, float64, int32, int64.
+        input (Tensor): The source input. Its dtype should be bool, float32, float64, int32, int64.
         index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
                         Its dtype should be int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
@@ -8292,11 +8292,9 @@ def gather_nd(input, index, name=None):
     if in_dygraph_mode():
         return core.ops.gather_nd(input, index)
     check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64',  'int32', 'int64'],
+                             ['bool', 'float32', 'float64', 'int32', 'int64'],
                              'gather_np')
-    check_variable_and_dtype(index, 'index',
-                             ['int32', 'int64'],
-                             'gather_np')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather_np')
     helper = LayerHelper('gather_nd', **locals())
     dtype = helper.input_dtype()
     output = helper.create_variable_for_type_inference(dtype)
