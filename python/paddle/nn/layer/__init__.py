@@ -52,6 +52,8 @@ from .common import Embedding  #DEFINE_ALIAS
 from .common import Linear  #DEFINE_ALIAS
 from .common import Flatten  #DEFINE_ALIAS
 from .common import UpSample  #DEFINE_ALIAS
+from .pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
+from .pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
 from .conv import Conv2d  #DEFINE_ALIAS
 from .conv import Conv2DTranspose  #DEFINE_ALIAS
 from .conv import Conv3d  #DEFINE_ALIAS

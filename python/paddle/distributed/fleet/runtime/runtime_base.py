@@ -33,3 +33,9 @@ class RuntimeBase(object):
 
     def _stop_worker(self):
         pass
+
+    def _save_inference_model(self, *args, **kwargs):
+        pass
+
+    def _save_persistables(self, *args, **kwargs):
+        pass

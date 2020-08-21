@@ -34,6 +34,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu_info.h"
+#endif
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -165,6 +168,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #else
       auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
       platform::SetDeviceId(dev_id);
+#endif
+    } else if (platform::is_xpu_place(place)) {
+#ifndef PADDLE_WITH_XPU
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Cannot run operator on place %s", place));
+#else
+      auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+      platform::SetXPUDeviceId(dev_id);
 #endif
     }
 
@@ -1107,6 +1118,16 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
     VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
     expected_kernel_key.library_type_ = LibraryType::kPlain;
     expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  if (kernel_iter == kernels.end() &&
+      is_xpu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing XPU kernel: " << type_
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif

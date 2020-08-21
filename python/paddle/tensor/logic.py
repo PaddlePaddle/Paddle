@@ -95,9 +95,6 @@ def equal_all(x, y, name=None):
 @templatedoc()
 def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
-	:alias_main: paddle.allclose
-	:alias: paddle.allclose,paddle.tensor.allclose,paddle.tensor.logic.allclose
-
     ${comment}
 
     Args:
