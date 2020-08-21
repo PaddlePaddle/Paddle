@@ -287,7 +287,7 @@ class TestLayer(LayerTest):
         if core.is_compiled_with_cuda():
             with self.static_graph():
                 t = layers.data(name='t', shape=[-1, 3, 5, 5], dtype='float32')
-                my_sync_bn = nn.SyncBatchNorm(3)
+                my_sync_bn = paddle.nn.SyncBatchNorm(3)
                 ret = my_sync_bn(t)
                 static_ret = self.get_static_graph_result(
                     feed={'t': np.ones(

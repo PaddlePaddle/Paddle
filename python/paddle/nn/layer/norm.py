@@ -98,8 +98,9 @@ class SyncBatchNorm(layers.Layer):
         track_running_stats(bool, optional): Whether to compute global stats, which including running mean and 
              running variance. Default: True.
 
-    Returns:
-        None
+    Shapes:
+        input: Tensor that the dimension from 2 to 5.
+        output: Tensor with the same shape as input.
 
     Examples:
         .. code-block:: python
