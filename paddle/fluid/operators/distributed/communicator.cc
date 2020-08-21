@@ -449,7 +449,7 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   old_scope_.reset(new Scope());
   pserver_scope_.reset(new Scope());
 
-  Init();
+  InitParams();
 }
 
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
@@ -822,7 +822,7 @@ void GeoCommunicator::InitSparse() {
         paddle::platform::CPUDeviceContext());
 
     for (auto &id : ids) {
-      blas.VCOPY(dim1, global_value.data<float>() + k * width,
+      blas.VCOPY(dim1, global_value.data<float>() + id * dim1,
                  values[id][0]->data());
     }
   }

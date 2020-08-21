@@ -60,7 +60,7 @@ void RecvSparseLodTensor(const CommContext &rpc_ctx,
     // sparse param in recv_scope is LoDTensor
     rets.push_back(rpc_client->AsyncGetVarNoBarrier(
         rpc_ctx.epmap[i], cpu_ctx, *local_scope.get(), recv_var_name,
-        recv_var_name, recv_var_name));
+        recv_var_name));
 
     const auto *value = local_var->Get<framework::LoDTensor>().data<float>();
     tensors.push_back(value);
@@ -88,7 +88,7 @@ void RecvSparseLodTensor(const CommContext &rpc_ctx,
                     "recved var must has same dims with local var");
 
   auto *merged_t = merged_var->GetMutable<framework::LoDTensor>();
-  auto *merged_d = merged_t->mutable_data<float>(place)();
+  auto *merged_d = merged_t->mutable_data<float>(cpu_place);
 
   auto pserver_num = rpc_ctx.splited_varnames.size();
   for (int x = 0; x < height; ++x) {
@@ -220,9 +220,9 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
 
   if (rpc_ctx.is_sparse) {
     if (geo_records) {
-      RecvGeoSparseRecords()<T>(rpc_ctx, scope);
+      RecvGeoSparseRecords<T>(rpc_ctx, scope);
     } else {
-      RecvSparseLodTensor()<T>(rpc_ctx, scope);
+      RecvSparseLodTensor<T>(rpc_ctx, scope);
     }
   } else {
     RecvLodTensor<T>(rpc_ctx, scope);
