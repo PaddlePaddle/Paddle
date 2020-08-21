@@ -14,9 +14,12 @@
 
 from __future__ import print_function
 
+import sys
+import subprocess
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
@@ -470,6 +473,62 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
                 fluid.layers.uniform_random_batch_size_like(x2, 'int32')
 
             self.assertRaises(TypeError, test_dtype)
+
+
+class TestUniformAlias(unittest.TestCase):
+    def test_alias(self):
+        paddle.uniform([2, 3], min=-5.0, max=5.0)
+        paddle.tensor.uniform([2, 3], min=-5.0, max=5.0)
+        paddle.tensor.random.uniform([2, 3], min=-5.0, max=5.0)
+
+        def test_uniform_random():
+            paddle.tensor.random.uniform_random([2, 3], min=-5.0, max=5.0)
+
+        self.assertRaises(AttributeError, test_uniform_random)
+
+
+class TestUniformOpError(unittest.TestCase):
+    def test_errors(self):
+        main_prog = Program()
+        start_prog = Program()
+        with program_guard(main_prog, start_prog):
+
+            def test_Variable():
+                x1 = fluid.create_lod_tensor(
+                    np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace())
+                paddle.tensor.random.uniform(x1)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_Variable2():
+                x1 = np.zeros((4, 784))
+                paddle.tensor.random.uniform(x1)
+
+            self.assertRaises(TypeError, test_Variable2)
+
+            def test_dtype():
+                x2 = fluid.layers.data(
+                    name='x2', shape=[4, 784], dtype='float32')
+                paddle.tensor.random.uniform(x2, 'int32')
+
+            self.assertRaises(TypeError, test_dtype)
+
+            def test_out_dtype():
+                out = paddle.tensor.random.uniform(
+                    shape=[3, 4], dtype='float64')
+                self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+
+            test_out_dtype()
+
+
+class TestUniformDygraphMode(unittest.TestCase):
+    def test_check_output(self):
+        with fluid.dygraph.guard():
+            x = paddle.tensor.random.uniform(
+                [10], dtype="float32", min=0.0, max=1.0)
+            x_np = x.numpy()
+            for i in range(10):
+                self.assertTrue((x_np[i] > 0 and x_np[i] < 1.0))
 
 
 if __name__ == "__main__":
