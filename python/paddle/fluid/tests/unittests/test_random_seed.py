@@ -36,18 +36,18 @@ class TestGeneratorSeed(unittest.TestCase):
         fluid.enable_dygraph()
 
         gen = paddle.manual_seed(12312321111)
-
+        print(gen.initial_seed())
         x = fluid.layers.uniform_random([10], dtype="float32", min=0.0, max=1.0)
         st1 = gen.get_state()
-
+        print(st1)
         x1 = fluid.layers.uniform_random(
             [10], dtype="float32", min=0.0, max=1.0)
-
+        print(gen.initial_seed())
         gen.set_state(st1)
-
+        print(gen.get_state())
         x2 = fluid.layers.uniform_random(
             [10], dtype="float32", min=0.0, max=1.0)
-
+        print(gen.initial_seed())
         paddle.manual_seed(12312321111)
         x3 = fluid.layers.uniform_random(
             [10], dtype="float32", min=0.0, max=1.0)
@@ -64,12 +64,8 @@ class TestGeneratorSeed(unittest.TestCase):
 
         fluid.disable_dygraph()
 
-<<<<<<< 976fd4b093360e81d01c6aa4fc93397688c45a00
         gen = generator.Generator()
         gen.manual_seed(123123143)
-=======
-        gen = paddle.manual_seed(123123143)
->>>>>>> fix ci problem
 
         startup_program = fluid.Program()
         train_program = fluid.Program()
@@ -100,7 +96,6 @@ class TestGeneratorSeed(unittest.TestCase):
                 self.assertTrue(np.allclose(out1_res2, out2_res2))
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
-<<<<<<< 976fd4b093360e81d01c6aa4fc93397688c45a00
     def test_gen_dropout_dygraph(self):
         gen = generator.Generator()
 
@@ -280,14 +275,6 @@ class TestGeneratorSeed(unittest.TestCase):
         fluid.enable_dygraph()
 
         gen.manual_seed(12312321111)
-=======
-    def test_generator_randint_dygraph(self):
-        """Test Generator seed."""
-        gen = paddle.manual_seed(12312321111)
-
-        fluid.enable_dygraph()
-
->>>>>>> fix ci problem
         x = paddle.randint(low=1)
         st1 = gen.get_state()
         x1 = paddle.randint(low=1)
@@ -302,7 +289,6 @@ class TestGeneratorSeed(unittest.TestCase):
         if not core.is_compiled_with_cuda():
             self.assertTrue(np.allclose(x1_np, x2_np))
             self.assertTrue(np.allclose(x_np, x3_np))
-<<<<<<< 976fd4b093360e81d01c6aa4fc93397688c45a00
 
 
     def test_generator_ranint_static(self):
@@ -534,8 +520,6 @@ class TestGeneratorSeed(unittest.TestCase):
             self.assertTrue(np.allclose(out1_res1, out2_res1))
             self.assertTrue(np.allclose(out1_res2, out2_res2))
             self.assertTrue(not np.allclose(out1_res2, out1_res1))
-=======
->>>>>>> fix ci problem
 
 
 if __name__ == "__main__":

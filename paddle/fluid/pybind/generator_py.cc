@@ -57,7 +57,9 @@ void BindGenerator(py::module* m_ptr) {
       .def("random", &framework::Generator::Random64)
       .def("get_cpu_engine", &framework::Generator::GetCPUEngine,
            py::return_value_policy::move)
-      .def("set_cpu_engine", &framework::Generator::SetCPUEngine);
+      .def("set_cpu_engine", &framework::Generator::SetCPUEngine)
+      .def_property("_is_init_py", &framework::Generator::GetIsInitPy,
+                    &framework::Generator::SetIsInitPy);
   m.def("default_cpu_generator", &framework::DefaultCPUGenerator);
 }  // end Generator
 }  // end namespace pybind

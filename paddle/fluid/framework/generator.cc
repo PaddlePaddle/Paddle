@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/generator.h"
 
+#include <glog/logging.h>
+
 #include <deque>
 #include <memory>
 #include <unordered_map>
@@ -26,7 +28,6 @@ namespace framework {
 const std::shared_ptr<Generator>& DefaultCPUGenerator() {
   static auto default_cpu_generator =
       std::make_shared<Generator>(GetRandomSeed());
-  default_cpu_generator->is_init_py = true;
   return default_cpu_generator;
 }
 
@@ -78,6 +79,12 @@ uint64_t Generator::Random64() {
   std::lock_guard<std::mutex> lock(this->mutex);
   return this->state_->cpu_engine();
 }
+
+void Generator::SetIsInitPy(bool is_init_py) {
+  this->is_init_py_ = is_init_py;
+  VLOG(4) << "SetIsInitPy:" << this->is_init_py_;
+}
+bool Generator::GetIsInitPy() const { return this->is_init_py_; }
 
 }  // namespace framework
 }  // namespace paddle

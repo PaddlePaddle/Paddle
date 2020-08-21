@@ -158,7 +158,6 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
         res_1, res_2 = exe.run(main_program,
                                feed={"x": input},
                                fetch_list=[out_1, out_2])
-
         assert np.array_equal(res_1, res_2)
 
 

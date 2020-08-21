@@ -65,13 +65,8 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
     auto gen_ptr = framework::DefaultCPUGenerator();
-    if (gen_ptr->is_init_py) {
+    if (gen_ptr->GetIsInitPy()) {
       std::mt19937_64 &gen_engine = gen_ptr->GetCPUEngine();
-      // auto gen_engine = gen_ptr_->GetCPUEngine();
-      // std::uniform_real_distribution<T> dist(
-      //    static_cast<T>(ctx.Attr<float>("min")),
-      //    static_cast<T>(ctx.Attr<float>("max")));
-
       for (int64_t i = 0; i < size; ++i) {
         data[i] = dist(gen_engine);
       }
@@ -82,16 +77,10 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
         seed = std::random_device()();
       }
       engine.seed(seed);
-      // std::uniform_real_distribution<T> dist(
-      //    static_cast<T>(ctx.Attr<float>("min")),
-      //    static_cast<T>(ctx.Attr<float>("max")));
-      // int64_t size = tensor->numel();
       for (int64_t i = 0; i < size; ++i) {
         data[i] = dist(engine);
       }
     }
-    // std::mt19937_64 &engine = gen_ptr->GetCPUEngine();
-    // auto engine = gen_ptr_->GetCPUEngine();
 
     unsigned int diag_num =
         static_cast<unsigned int>(ctx.Attr<int>("diag_num"));

@@ -56,6 +56,7 @@ struct Generator {
     std::seed_seq seq({seed});
     default_gen_state_cpu.cpu_engine = std::mt19937_64(seq);
     this->state_ = std::make_shared<GeneratorState>(default_gen_state_cpu);
+    this->is_init_py_ = true;  // TODO(zhiqiu): remove it in future
   }
   explicit Generator(GeneratorState state_in)
       : state_{std::make_shared<GeneratorState>(state_in)} {}
@@ -70,7 +71,6 @@ struct Generator {
   uint64_t GetCurrentSeed();
   // random a seed and get
   uint64_t Seed();
-
   // set seed
   void SetCurrentSeed(uint64_t seed);
   // get cpu engine
@@ -80,7 +80,8 @@ struct Generator {
 
   uint64_t Random64();
 
-  bool is_init_py = false;
+  void SetIsInitPy(bool);
+  bool GetIsInitPy() const;
 
  private:
   std::shared_ptr<GeneratorState> state_;
@@ -88,6 +89,10 @@ struct Generator {
 
   Generator(const Generator& other, const std::lock_guard<std::mutex>&)
       : state_(std::make_shared<GeneratorState>(*(other.state_))) {}
+  // NOTE(zhiqiu): is_init_py_ is used to make generator be compatible with old
+  // seed, and it should be removed after all random-related operators and
+  // unittests upgrades to use generator.
+  bool is_init_py_ = false;
 };
 
 const std::shared_ptr<Generator>& DefaultCPUGenerator();
