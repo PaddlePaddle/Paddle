@@ -27,8 +27,6 @@
 #include <string>
 #include <utility>
 
-#include "paddle/fluid/framework/generator.h"
-
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -62,10 +60,13 @@ std::string GetIPCName() {
   handle += std::to_string(getpid());
 #endif
   handle += "_";
+  handle += std::to_string(rd());
+  /*
   handle +=
       framework::Generator::GetInstance()->is_init_py
           ? std::to_string(framework::Generator::GetInstance()->Random64())
           : std::to_string(rd());
+  */
   return std::move(handle);
 }
 
