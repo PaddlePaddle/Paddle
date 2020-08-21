@@ -49,8 +49,13 @@ cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src}
 cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)
 
 if(WITH_TESTING)
-  if (NOT APPLE)
+  if (NOT APPLE AND NOT WIN32)
     inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS paddle_fluid_shared
+                        ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
+    set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
+    set_tests_properties(test_api_impl PROPERTIES LABELS "RUN_TYPE=DIST")
+  elseif(WIN32)
+    inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS ${inference_deps}
                         ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
     set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
     set_tests_properties(test_api_impl PROPERTIES LABELS "RUN_TYPE=DIST")
@@ -62,7 +67,6 @@ if (NOT APPLE AND NOT WIN32)
   cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS paddle_fluid_shared
           ARGS --dirname=${WORD2VEC_MODEL_DIR})
 elseif (WIN32)
-  # TODO: Fix this unittest failed on Windows
   cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
           ARGS --dirname=${WORD2VEC_MODEL_DIR})
 endif()
