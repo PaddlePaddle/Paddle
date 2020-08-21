@@ -90,5 +90,3 @@ with fluid.dygraph.guard(place=place):
     else:
         assert (np.allclose(np.array([4, 5, 6]), out))
     print("scatter passed.")
-    paddle.distributed.barrier()
-    print("barrier passed.")

@@ -28,7 +28,6 @@ __all__ = [
     'reduce',
     'all_gather',
     'scatter',
-    'barrier',
     'ReduceOp',
     'init_process_group',
 ]
@@ -423,38 +422,3 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
             'root': src,
             'nranks': nranks,
         })
-
-
-def barrier(group=0):
-    """
-
-    Barrier among all participators in the group.
-
-    Args:
-        group (int): The id of the process group to work on.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-
-        paddle.disable_static()
-        place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-        with fluid.dygraph.guard(place=place):
-             paddle.distributed.init_process_group('nccl', 1000, 2, 1)
-             paddle.distributed.barrier()
-    """
-    op_type = 'barrier'
-    if not isinstance(group, int):
-        raise ValueError("The type of 'group' for barrier " "must be int.")
-    temp = paddle.fill_constant([1], dtype="int32", value="1")
-    helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [temp]},
-        outputs={'Out': [temp]},
-        attrs={'ring_id': group})
