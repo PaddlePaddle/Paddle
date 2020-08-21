@@ -816,11 +816,11 @@ def scatter(x, index, updates, overwrite=True, name=None):
         out = np.array([[3, 3], [6, 6], [1, 1]])
         out.shape # [3, 2]
 
-    **NOTICE**: When `overwrite` is True, `index` has repeated numbers and it runs on the GPU
-    device, the result of `scatter` can not meet expectations due to the asynchronous calculation.
+    **NOTICE**: The order in which updates are applied is nondeterministic, 
+    so the output will be nondeterministic if index contains duplicates.
 
     Args:
-        x (Tensor): The input N-D Tensor with rank>=1. Data type can be float32, float64.
+        x (Tensor): The input N-D Tensor with ndim>=1. Data type can be float32, float64.
         index (Tensor): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
         updates (Tensor): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
         overwrite (bool): The mode that updating the output when there are same indices. 
