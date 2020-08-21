@@ -90,7 +90,7 @@ void RecvSelectedRows(const CommContext &rpc_ctx,
     } else {
       std::transform(recv_t.rows().begin(), recv_t.rows().end(),
                      std::back_inserter(all_ids),
-                     [&](int64_t id) { return i * pserver_num + id; });
+                     [&](int64_t id) { return id * pserver_num + i; });
     }
   }
 
