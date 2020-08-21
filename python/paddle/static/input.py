@@ -87,6 +87,7 @@ def data(name, shape, dtype=None, lod_level=0):
         .. code-block:: python
 
           import numpy as np
+          import paddle.fluid as fluid
           import paddle
 
           # Creates a variable with fixed size [3, 2, 1]
