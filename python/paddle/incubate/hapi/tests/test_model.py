@@ -498,8 +498,7 @@ class TestModelFunction(unittest.TestCase):
             tensor_img = np.array(
                 np.random.random((1, 1, 28, 28)), dtype=np.float32)
             ori_results = model.test_batch(tensor_img)
-            model.save_inference_model(save_dir)
-            # paddle.enable_static if dynamic else None
+            model.save(save_dir)
             fluid.disable_dygraph() if dynamic else None
 
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
