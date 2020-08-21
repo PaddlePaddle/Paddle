@@ -402,48 +402,6 @@ class TestAdamOpBetaVariable(OpTest):
         self.check_output()
 
 
-class TestAdamOptimizerBetaVariable(unittest.TestCase):
-    def test_adam_optimizer(self):
-        def test_with_place(place, shape):
-            exe = fluid.Executor(place)
-
-            train_prog = fluid.Program()
-            startup = fluid.Program()
-            with fluid.program_guard(train_prog, startup):
-                with fluid.unique_name.guard():
-                    data = fluid.data(name="data", shape=shape)
-                    conv = fluid.layers.conv2d(data, 8, 3)
-                    loss = fluid.layers.reduce_mean(conv)
-
-                    beta1 = fluid.layers.create_global_var(
-                        shape=[1],
-                        value=0.85,
-                        dtype='float32',
-                        persistable=True)
-                    beta2 = fluid.layers.create_global_var(
-                        shape=[1],
-                        value=0.95,
-                        dtype='float32',
-                        persistable=True)
-                    opt = fluid.optimizer.Adam(
-                        learning_rate=1e-5, beta1=beta1, beta2=beta2)
-                    opt.minimize(loss)
-
-            exe.run(startup)
-            data_np = np.random.random(shape).astype('float32')
-            rets = exe.run(train_prog,
-                           feed={"data": data_np},
-                           fetch_list=[loss])
-            assert rets[0] is not None
-
-        shape = [2, 3, 8, 8]
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for place in places:
-            test_with_place(place, shape)
-
-
 class TestAdamOpV2(unittest.TestCase):
     def test_adam_op(self):
         place = fluid.CPUPlace()
