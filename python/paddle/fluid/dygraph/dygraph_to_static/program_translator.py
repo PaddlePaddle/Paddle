@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import gast
+import collections
 import logging
 import inspect
 import warnings
@@ -24,10 +25,17 @@ import warnings
 
 import gast
 import numpy as np
-from paddle.static import InputSpec
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
+from paddle.fluid.data_feeder import check_type
 from paddle.fluid.layers.utils import flatten
+from paddle.fluid.dygraph.base import param_guard
+from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static import DygraphToStaticAst
+from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
+from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import create_and_update_origin_info_map
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import update_op_callstack_with_origin_info
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func

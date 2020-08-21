@@ -17,6 +17,7 @@ import six
 import inspect
 import numpy as np
 import collections
+import paddle
 from paddle.fluid import core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.layers.utils import flatten
@@ -128,9 +129,9 @@ class FunctionSpec(object):
         else:
             for idx, input_var in enumerate(flatten(args)):
                 if isinstance(input_var, np.ndarray):
-                    input_var = InputSpec.from_numpy(input_var)
+                    input_var = paddle.static.InputSpec.from_numpy(input_var)
                 elif isinstance(input_var, core.VarBase):
-                    input_var = InputSpec.from_tensor(input_var)
+                    input_var = paddle.static.InputSpec.from_tensor(input_var)
 
                 input_with_spec.append(input_var)
 
@@ -152,7 +153,7 @@ class FunctionSpec(object):
         inputs = []
         block = main_program.global_block()
         for i, var_spec in enumerate(flat_input_spec):
-            if isinstance(var_spec, InputSpec):
+            if isinstance(var_spec, paddle.static.InputSpec):
                 feed_layer = block.create_var(
                     # TODO(Aurelius84): consider a more elegant way to name this
                     name=var_spec.name or "feed_%s" % i,
@@ -176,7 +177,7 @@ class FunctionSpec(object):
                 format(type_name(input_spec)))
         input_spec = tuple(input_spec)
         for spec in flatten(input_spec):
-            if not isinstance(spec, InputSpec):
+            if not isinstance(spec, paddle.static.InputSpec):
                 raise ValueError(
                     "The type(elem) from input_spec should be `InputSpec`, but received {}.".
                     format(type_name(spec)))
@@ -308,7 +309,7 @@ def convert_to_input_spec(inputs, input_spec):
             else:
                 input_with_spec[name] = input
         return input_with_spec
-    elif isinstance(input_spec, InputSpec):
+    elif isinstance(input_spec, paddle.static.InputSpec):
         return input_spec
     else:
         raise TypeError(

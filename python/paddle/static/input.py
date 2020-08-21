@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import six
 
 from ..fluid.data import data
 from ..fluid import core, Variable
+from ..fluid.framework import convert_np_dtype_to_dtype_
 
 __all__ = ['data', 'InputSpec']
 
@@ -45,7 +47,12 @@ class InputSpec(object):
     __slots__ = ['shape', 'dtype', 'name']
 
     def __init__(self, shape=None, dtype='float32', name=None):
-        self.shape = shape
+        # replace `None` in shape  with -1
+        self.shape = self._verify(shape)
+        # convert dtype into united represention
+        if dtype is not None:
+            if not isinstance(dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(dtype)
         self.dtype = dtype
         self.name = name
 
@@ -66,7 +73,7 @@ class InputSpec(object):
         else:
             raise ValueError(
                 "Input `tensor` should be a Tensor, but received {}.".format(
-                    type_name(tensor)))
+                    type(tensor).__name__))
 
     @classmethod
     def from_numpy(cls, ndarray, name=None):
@@ -87,10 +94,10 @@ class InputSpec(object):
             batch_size = batch_size[1]
         elif not isinstance(batch_size, six.integer_types):
             raise TypeError("type(batch_size) shall be `int`, but received {}.".
-                            format(type_name(batch_size)))
+                            format(type(batch_size).__name__))
 
         new_shape = [batch_size] + list(self.shape)
-        return InputSpec(new_shape, self.dtype, self.name)
+        return InputSpec(tuple(new_shape), self.dtype, self.name)
 
     def unbatch(self):
         """
@@ -100,13 +107,13 @@ class InputSpec(object):
             raise ValueError(
                 "Not support to unbatch a InputSpec when len(shape) == 0.")
 
-        return InputSpec(self.shape[1:], self.dtype, self.name)
+        return InputSpec(tuple(self.shape[1:]), self.dtype, self.name)
 
     def _verify(self, shape):
         if not isinstance(shape, (list, tuple)):
             raise TypeError(
                 "Type of `shape` in InputSpec should be one of (tuple, list), but received {}.".
-                format(type_name(shape)))
+                format(type(shape).__name__))
         if len(shape) == 0:
             raise ValueError(
                 "`shape` in InputSpec should contain at least 1 element, but received {}.".
@@ -117,14 +124,14 @@ class InputSpec(object):
                 if not isinstance(ele, six.integer_types):
                     raise ValueError(
                         "shape[{}] should be an `int`, but received `{}`:{}.".
-                        format(i, type_name(ele), ele))
+                        format(i, type(ele).__name__, ele))
             if ele is None or ele < -1:
                 shape[i] = -1
 
         return tuple(shape)
 
     def __hash__(self):
-        return hash((self.shape, self.dtype, self.name))
+        return hash((tuple(self.shape), self.dtype))
 
     def __eq__(self, other):
         return (type(self) is type(other) and all(

@@ -22,7 +22,8 @@ from paddle.fluid.framework import core, convert_np_dtype_to_dtype_
 class TestInputSpec(unittest.TestCase):
     def test_default(self):
         tensor_spec = InputSpec([3, 4])
-        self.assertEqual(tensor_spec.dtype, core.VarDesc.VarType.FP32)
+        self.assertEqual(tensor_spec.dtype,
+                         convert_np_dtype_to_dtype_('float32'))
         self.assertEqual(tensor_spec.name, None)
 
     def test_from_tensor(self):
@@ -99,7 +100,7 @@ class TestInputSpec(unittest.TestCase):
         tensor_spec_3 = InputSpec([10, 16], dtype='float32', name='x')
         self.assertFalse(tensor_spec_2 == tensor_spec_3)
 
-        self.assertTrue(hash(tensor_spec_1) == hash(tensor_spec_3))
+        self.assertFalse(hash(tensor_spec_1) == hash(tensor_spec_3))
 
 
 if __name__ == '__main__':

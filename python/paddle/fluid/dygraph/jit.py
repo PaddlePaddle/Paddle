@@ -19,7 +19,6 @@ import pickle
 import warnings
 
 import six
-from paddle.static import InputSpec
 from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
