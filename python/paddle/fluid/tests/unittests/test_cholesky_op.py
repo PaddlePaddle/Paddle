@@ -100,5 +100,45 @@ class TestDygraph(unittest.TestCase):
         out = paddle.cholesky(x, upper=False)
 
 
+class TestCholeskySingularAPI(unittest.TestCase):
+    def setUp(self):
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place, with_out=False):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+            result = paddle.cholesky(input)
+
+            input_np = np.zeros([4, 4]).astype("float64")
+
+            exe = fluid.Executor(place)
+            try:
+                fetches = exe.run(fluid.default_main_program(),
+                                  feed={"input": input_np},
+                                  fetch_list=[result])
+            except fluid.core.EnforceNotMet as ex:
+                print("The mat is singular")
+                pass
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                input_np = np.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                                     [[10, 11, 12], [13, 14, 15],
+                                      [16, 17, 18]]]).astype("float64")
+                input = fluid.dygraph.to_variable(input_np)
+                try:
+                    result = paddle.cholesky(input)
+                except fluid.core.EnforceNotMet as ex:
+                    print("The mat is singular")
+                    pass
+
+
 if __name__ == "__main__":
     unittest.main()

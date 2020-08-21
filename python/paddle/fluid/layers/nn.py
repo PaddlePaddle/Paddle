@@ -10336,6 +10336,7 @@ def expand_as(x, target_tensor, name=None):
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
+@deprecated(since='1.8.0', update_to="paddle.uniform")
 @templatedoc()
 def uniform_random_batch_size_like(input,
                                    shape,
@@ -10605,6 +10606,7 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     return out
 
 
+@deprecated(since='1.8.0', update_to="paddle.normal")
 @templatedoc()
 def gaussian_random_batch_size_like(input,
                                     shape,
