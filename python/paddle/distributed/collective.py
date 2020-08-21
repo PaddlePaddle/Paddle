@@ -255,6 +255,22 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0, async_op=False):
         None.
 
     Examples:
+        .. code-block:: python
+
+        import paddle
+
+        paddle.disable_static()
+        place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+        with fluid.dygraph.guard(place=place):
+             paddle.distributed.init_process_group('nccl', 1000, 2, 1)
+             if fluid.dygraph.ParallelEnv().local_rank == 0:
+                 np_data = np.array([[4, 5, 6], [4, 5, 6]])
+             else:
+                 np_data = np.array([[1, 2, 3], [1, 2, 3]])
+             data = paddle.to_tensor(np_data)
+             paddle.distributed.reduce(data, 0)
+             out = data.numpy()
+             # [[5, 7, 9], [5, 7, 9]]
     """
     op_type = 'c_reduce'
     check_variable_and_dtype(
@@ -297,6 +313,27 @@ def all_gather(tensor_list, tensor, group=0, async_op=False):
         None.
 
     Examples:
+        .. code-block:: python
+
+        import paddle
+
+        paddle.disable_static()
+        place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+        with fluid.dygraph.guard(place=place):
+             paddle.distributed.init_process_group('nccl', 1000, 2, 1)
+             tensor_list = []
+             if fluid.dygraph.ParallelEnv().local_rank == 0:
+                 np_data1 = np.array([[4, 5, 6], [4, 5, 6]])
+                 np_data2 = np.array([[4, 5, 6], [4, 5, 6]])
+                 data1 = paddle.to_tensor(np_data1)
+                 data2 = paddle.to_tensor(np_data2)
+                 paddle.distributed.all_gather(tensor_list, data1)
+             else:
+                 np_data1 = np.array([[1, 2, 3], [1, 2, 3]])
+                 np_data2 = np.array([[1, 2, 3], [1, 2, 3]])
+                 data1 = paddle.to_tensor(np_data1)
+                 data2 = paddle.to_tensor(np_data2)
+                 out = paddle.distributed.all_gather(tensor_list, data2)
     """
     op_type = 'c_allgather'
     if not isinstance(tensor_list, list):
@@ -347,6 +384,27 @@ def scatter(tensor, tensor_list=None, src=0, group=0, async_op=False):
         None.
 
     Examples:
+        .. code-block:: python
+
+        import paddle
+
+        paddle.disable_static()
+        place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+        with fluid.dygraph.guard(place=place):
+             paddle.distributed.init_process_group('nccl', 1000, 2, 1)
+             if fluid.dygraph.ParallelEnv().local_rank == 0:
+                 np_data1 = np.array([7, 8, 9])
+                 np_data2 = np.array([10, 11, 12])
+             else:
+                 np_data1 = np.array([1, 2, 3])
+                 np_data2 = np.array([4, 5, 6])
+             data1 = paddle.to_tensor(np_data1)
+             data2 = paddle.to_tensor(np_data2)
+             if fluid.dygraph.ParallelEnv().local_rank == 0:
+                 paddle.distributed.scatter(data1, src=1)
+             else:
+                 paddle.distributed.scatter(data1, tensor_list=[data1, data2], src=1)
+             out = data1.numpy()
     """
     op_type = 'c_scatter'
     global _default_group
@@ -400,6 +458,15 @@ def barrier(group=0, async_op=False):
         None.
 
     Examples:
+        .. code-block:: python
+
+        import paddle
+
+        paddle.disable_static()
+        place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+        with fluid.dygraph.guard(place=place):
+             paddle.distributed.init_process_group('nccl', 1000, 2, 1)
+             paddle.distributed.barrier()
     """
     op_type = 'barrier'
     if not isinstance(group, int):
