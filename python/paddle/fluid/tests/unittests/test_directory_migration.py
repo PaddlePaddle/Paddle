@@ -26,8 +26,8 @@ import paddle
 class TestDirectory(unittest.TestCase):
     def get_import_command(self, module):
         paths = module.split('.')
-        if len(paths) <= 1:
-            return module
+        if len(paths) == 1:
+            return 'import {}'.format(module)
         package = '.'.join(paths[:-1])
         func = paths[-1]
         cmd = 'from {} import {}'.format(package, func)
