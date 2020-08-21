@@ -78,6 +78,7 @@ class Fleet(object):
     def init(self, role_maker):
         self._role_maker = role_maker
         self.strategy_compiler = StrategyCompiler()
+        return None
 
     def is_first_worker(self):
         """

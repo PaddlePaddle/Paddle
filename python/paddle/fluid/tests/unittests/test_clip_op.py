@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from op_test import OpTest
@@ -107,6 +108,65 @@ class TestClipOpError(unittest.TestCase):
                 fluid.layers.clip(x=x2, min=-1.0, max=1.0)
 
             self.assertRaises(TypeError, test_dtype)
+
+
+class TestClipAPI(unittest.TestCase):
+    def test_clip(self):
+        data_shape = [1, 9, 9, 4]
+        data = np.random.random(data_shape).astype('float32')
+        images = fluid.data(name='image', shape=data_shape, dtype='float32')
+        min = fluid.data(name='min', shape=[1], dtype='float32')
+        max = fluid.data(name='max', shape=[1], dtype='float32')
+
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        out_1 = paddle.clip(images, min=min, max=max)
+        out_2 = paddle.clip(images, min=0.2, max=0.9)
+        out_3 = paddle.clip(images, min=0.3)
+        out_4 = paddle.clip(images, max=0.7)
+        out_5 = paddle.clip(images, min=min)
+        out_6 = paddle.clip(images, max=max)
+
+        res1, res2, res3, res4, res5, res6 = exe.run(
+            fluid.default_main_program(),
+            feed={
+                "image": data,
+                "min": np.array([0.2]).astype('float32'),
+                "max": np.array([0.8]).astype('float32')
+            },
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6])
+
+        self.assertTrue(np.allclose(res1, data.clip(0.2, 0.8)))
+        self.assertTrue(np.allclose(res2, data.clip(0.2, 0.9)))
+        self.assertTrue(np.allclose(res3, data.clip(min=0.3)))
+        self.assertTrue(np.allclose(res4, data.clip(max=0.7)))
+        self.assertTrue(np.allclose(res5, data.clip(min=0.2)))
+        self.assertTrue(np.allclose(res6, data.clip(max=0.8)))
+
+    def test_clip_dygraph(self):
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        paddle.disable_static(place)
+        data_shape = [1, 9, 9, 4]
+        data = np.random.random(data_shape).astype('float32')
+        images = paddle.to_variable(data, dtype='float32')
+
+        out_1 = paddle.clip(images, min=0.2, max=0.8)
+        out_2 = paddle.clip(images, min=0.2, max=0.9)
+
+        self.assertTrue(np.allclose(out_1.numpy(), data.clip(0.2, 0.8)))
+        self.assertTrue(np.allclose(out_2.numpy(), data.clip(0.2, 0.9)))
+
+    def test_errors(self):
+        paddle.enable_static()
+        x1 = fluid.data(name='x1', shape=[1], dtype="int16")
+        x2 = fluid.data(name='x2', shape=[1], dtype="int8")
+        x3 = fluid.data(name='x3', shape=[1], dtype="float32")
+        self.assertRaises(TypeError, paddle.clip, x=x1, min=0.2, max=0.8)
+        self.assertRaises(TypeError, paddle.clip, x=x2, min=0.2, max=0.8)
+        self.assertRaises(Exception, paddle.clip, x=x3)
 
 
 if __name__ == '__main__':

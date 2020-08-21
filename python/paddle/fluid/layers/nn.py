@@ -1189,6 +1189,7 @@ def chunk_eval(input,
             num_correct_chunks)
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.softmax")
 def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
     This operator implements the softmax layer. The calculation process is as follows:
@@ -8610,7 +8611,7 @@ def log(x, name=None):
     return out
 
 
-@templatedoc()
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.relu")
 def relu(x, name=None):
     """
     ${comment}
@@ -9269,7 +9270,7 @@ def pad2d(input,
     return out
 
 
-@templatedoc()
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.elu")
 def elu(x, alpha=1.0, name=None):
     """
     :alias_main: paddle.nn.functional.elu
@@ -9585,6 +9586,7 @@ def swish(x, beta=1.0, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.prelu")
 def prelu(x, mode, param_attr=None, name=None):
     """
     :api_attr: Static Graph
@@ -11183,6 +11185,7 @@ def rank(input):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.numel")
 def size(input):
     """
     **Size Layer**
@@ -11190,11 +11193,14 @@ def size(input):
     Returns the number of elements for a tensor, which is a int64 Tensor with shape [1].
 
     Args:
-        input (Variable): The input variable.
+        input (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
 
     Returns:
-        Variable: The number of elements for the input variable.
+        Tensor: The number of elements for the input Tensor.
 
+    Raises:
+        TypeError: ``input`` must be a Tensor and the data type of ``input`` must be one of bool, float16, float32, float64, int32, int64.
+    
     Examples:
         .. code-block:: python
 
@@ -11205,6 +11211,11 @@ def size(input):
             rank = layers.size(input) # 300
     """
 
+    if in_dygraph_mode():
+        return core.ops.size(x)
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        "size")
     helper = LayerHelper('size', **locals())
     out = helper.create_variable_for_type_inference(dtype='int64')
     helper.append_op(type='size', inputs={'Input': input}, outputs={'Out': out})
@@ -12195,8 +12206,6 @@ def logical_not(x, out=None, name=None):
 @templatedoc()
 def clip(x, min, max, name=None):
     """
-    :alias_main: paddle.nn.clip
-	:alias: paddle.nn.clip,paddle.nn.clip.clip
 	:old_api: paddle.fluid.layers.clip
 
     ${comment}
