@@ -607,6 +607,24 @@ class DistributedStrategy(object):
 
     @property
     def lars(self):
+        """
+        Set lars configurations. lars is used to deal with the convergence problems when the global 
+        batch size is larger than 8k.'epsilon' argument is used to avoid potential devision-by-zero 
+        when compute the local lr; 'exclude_from_weight_decay' is a list of name strings of layers which
+        will be exclude from weight decay in lars formula.
+
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.lars = True
+            strategy.lars_configs = {
+                        "lars_coeff": 0.01,
+                        "lars_weight_decay": 0.0005,
+                        "epsilon": 0,
+                        "exclude_from_weight_decay": ['batch_norm', '.b_0']
+                    }
+        """
         return self.strategy.lars
 
     @lars.setter
@@ -627,6 +645,21 @@ class DistributedStrategy(object):
 
     @property
     def lamb(self):
+        """
+        Set lamb configurations. lamb is used to deal with the convergence problems for large 
+        batch size training. 'exclude_from_weight_decay' is a list of name strings of layers which
+        will be exclude from weight decay in lamb formula.
+
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.lamb = True
+            strategy.lamb_configs = {
+                    'lamb_weight_decay': 0.01,
+                    'exclude_from_weight_decay': [],
+                }
+        """
         return self.strategy.lamb
 
     @lamb.setter
