@@ -155,6 +155,10 @@ from .norm import l2_normalize  #DEFINE_ALIAS
 from .norm import lrn  #DEFINE_ALIAS
 from .norm import normalize  #DEFINE_ALIAS
 # from .norm import spectral_norm        #DEFINE_ALIAS
+from .pooling import max_pool1d  #DEFINE_ALIAS
+from .pooling import avg_pool1d  #DEFINE_ALIAS
+from .pooling import adaptive_max_pool1d  #DEFINE_ALIAS
+from .pooling import adaptive_avg_pool1d  #DEFINE_ALIAS
 from .pooling import pool2d  #DEFINE_ALIAS
 from .pooling import pool3d  #DEFINE_ALIAS
 from .pooling import adaptive_pool2d  #DEFINE_ALIAS
