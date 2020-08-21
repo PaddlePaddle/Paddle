@@ -214,7 +214,8 @@ def conv1d(x,
           # [[[133. 238.]
           #   [160. 211.]]]
     """
-    if get_cudnn_version() > 7630:
+    cudnn_version = get_cudnn_version()
+    if cudnn_version is not None and cudnn_version >= 7630:
         use_cudnn = True
     else:
         use_cudnn = False
