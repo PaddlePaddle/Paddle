@@ -721,12 +721,6 @@ class DataNormGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Means", this->Output("Means"));
 
     op->SetAttrMap(this->Attrs());
-    if (this->Attrs().find("slot_dim") == this->Attrs().end()) {
-      op->SetAttr("slot_dim", -1);
-    }
-    if (this->Attrs().find("enable_scale_and_shift") == this->Attrs().end()) {
-      op->SetAttr("enable_scale_and_shift", false);
-    }
 
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("BatchSize"),
