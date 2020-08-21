@@ -164,6 +164,8 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(temporal_shift, ops::TemporalShiftOpCUDAKernel<float>,
                         ops::TemporalShiftOpCUDAKernel<double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(temporal_shift_grad,
                         ops::TemporalShiftGradOpCUDAKernel<float>,
                         ops::TemporalShiftGradOpCUDAKernel<double>);
+#endif

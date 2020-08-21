@@ -344,6 +344,8 @@ REGISTER_OPERATOR(affine_channel_grad, ops::AffineChannelOpGrad,
 
 REGISTER_OP_CPU_KERNEL(affine_channel, ops::AffineChannelKernel<CPU, float>,
                        ops::AffineChannelKernel<CPU, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(affine_channel_grad,
                        ops::AffineChannelGradKernel<CPU, float>,
                        ops::AffineChannelGradKernel<CPU, double>);
+#endif

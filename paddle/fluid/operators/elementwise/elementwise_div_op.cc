@@ -131,6 +131,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     elementwise_div_grad,
     ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -148,3 +149,4 @@ REGISTER_OP_CPU_KERNEL(
                                         int>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int64_t>);
+#endif

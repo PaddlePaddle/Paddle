@@ -18,7 +18,9 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     maxout, ops::MaxOutKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MaxOutKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     maxout_grad,
     ops::MaxOutGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MaxOutGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

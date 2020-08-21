@@ -185,8 +185,10 @@ REGISTER_OP_CPU_KERNEL(sequence_scatter, ops::SequenceScatterOpKernel<float>,
                        ops::SequenceScatterOpKernel<double>,
                        ops::SequenceScatterOpKernel<int>,
                        ops::SequenceScatterOpKernel<int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(sequence_scatter_grad,
                        ops::SequenceScatterGradientOpKernel<float>,
                        ops::SequenceScatterGradientOpKernel<double>,
                        ops::SequenceScatterGradientOpKernel<int>,
                        ops::SequenceScatterGradientOpKernel<int64_t>);
+#endif

@@ -19,15 +19,19 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     pool2d, ops::PoolKernel<paddle::platform::CUDADeviceContext, float>,
     ops::PoolKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     pool2d_grad,
     ops::PoolGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::PoolGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif
 
 REGISTER_OP_CUDA_KERNEL(
     pool3d, ops::PoolKernel<paddle::platform::CUDADeviceContext, float>,
     ops::PoolKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     pool3d_grad,
     ops::PoolGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::PoolGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

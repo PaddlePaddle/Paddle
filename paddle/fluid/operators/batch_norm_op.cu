@@ -849,7 +849,9 @@ REGISTER_OP_CUDA_KERNEL(
     batch_norm, ops::BatchNormKernel<plat::CUDADeviceContext, float>,
     ops::BatchNormKernel<plat::CUDADeviceContext, double>,
     ops::BatchNormKernel<plat::CUDADeviceContext, plat::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     batch_norm_grad, ops::BatchNormGradKernel<plat::CUDADeviceContext, float>,
     ops::BatchNormGradKernel<plat::CUDADeviceContext, double>,
     ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::float16>);
+#endif

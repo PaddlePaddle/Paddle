@@ -309,6 +309,8 @@ REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
 REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy,
                        ops::SoftmaxWithCrossEntropyKernel<float>,
                        ops::SoftmaxWithCrossEntropyKernel<double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy_grad,
                        ops::SoftmaxWithCrossEntropyGradKernel<float>,
                        ops::SoftmaxWithCrossEntropyGradKernel<double>);
+#endif

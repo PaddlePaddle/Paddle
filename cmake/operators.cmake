@@ -42,7 +42,9 @@ function(op_library TARGET)
             list(APPEND hip_cu_srcs ${TARGET}.hip.cu)
         endif()
         string(REPLACE "_op" "_cudnn_op" CUDNN_FILE "${TARGET}")
+        message(${CMAKE_CURRENT_SOURCE_DIR}/${CUDNN_FILE}.cu.cc)
         if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${CUDNN_FILE}.cu.cc)
+            message("&&&&&&&&&&&&&&")
             list(APPEND cudnn_cu_cc_srcs ${CUDNN_FILE}.cu.cc)
         endif()
         if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${CUDNN_FILE}.cu)
@@ -124,18 +126,25 @@ function(op_library TARGET)
         endif()
     endforeach()
 
+    message("000123" ${TARGET})
+
     # The registration of USE_OP, please refer to paddle/fluid/framework/op_registry.h.
     # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
     # And for detail pybind information, please see generated paddle/pybind/pybind.h.
     file(READ ${TARGET}.cc TARGET_CONTENT)
     string(REGEX MATCH "REGISTER_OPERATOR\\(.*REGISTER_OPERATOR\\(" multi_register "${TARGET_CONTENT}")
     string(REGEX MATCH "REGISTER_OPERATOR\\([a-z0-9_]*," one_register "${multi_register}")
+    message("multi register: " ${multi_register})
+    message("one register: " ${one_register})
     if (one_register STREQUAL "")
         string(REPLACE "_op" "" TARGET "${TARGET}")
     else ()
         string(REPLACE "REGISTER_OPERATOR(" "" TARGET "${one_register}")
         string(REPLACE "," "" TARGET "${TARGET}")
+        string(REPLACE "_grad" "" TARGET "${TARGET}")
     endif()
+    
+    message("00123" ${TARGET})
 
     # pybind USE_NO_KERNEL_OP
     # HACK: if REGISTER_OP_CPU_KERNEL presents the operator must have kernel
@@ -145,6 +154,7 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
         set(pybind_flag 1)
     endif()
+    message("0123" ${TARGET})
 
     # pybind USE_CPU_ONLY_OP
     list(LENGTH cu_srcs cu_srcs_len)
@@ -158,12 +168,15 @@ function(op_library TARGET)
         set(pybind_flag 1)
     endif()
 
+    message("123" ${TARGET})
     # pybind USE_OP_DEVICE_KERNEL for CUDNN
     list(LENGTH cudnn_cu_cc_srcs cudnn_cu_cc_srcs_len)
     if (WITH_GPU AND ${cudnn_cu_cc_srcs_len} GREATER 0)
       if(${TARGET} STREQUAL "activation")
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(relu, CUDNN);\n")
       else()
+        message("**************************")
+        message(${TARGET})
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
       endif()
     endif()
@@ -233,6 +246,7 @@ function(register_operators)
     list(LENGTH register_operators_DEPS register_operators_DEPS_len)
 
     foreach(src ${OPS})
+        message("!!!!!!!!!!!!" ${src})
         list(FIND register_operators_EXCLUDES ${src} _index)
         if (${_index} EQUAL -1)
             if (${register_operators_DEPS_len} GREATER 0)

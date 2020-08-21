@@ -95,10 +95,12 @@ REGISTER_OP_CUDA_KERNEL(
     sync_batch_norm, ops::SyncBatchNormKernel<plat::CUDADeviceContext, float>,
     ops::SyncBatchNormKernel<plat::CUDADeviceContext, double>,
     ops::SyncBatchNormKernel<plat::CUDADeviceContext, plat::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     sync_batch_norm_grad,
     ops::SyncBatchNormGradKernel<plat::CUDADeviceContext, float>,
     ops::SyncBatchNormGradKernel<plat::CUDADeviceContext, double>,
     ops::SyncBatchNormGradKernel<plat::CUDADeviceContext, plat::float16>);
+#endif
 
 // clang-format on

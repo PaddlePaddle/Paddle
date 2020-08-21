@@ -220,7 +220,9 @@ REGISTER_OP_CPU_KERNEL(
     tree_conv, ops::TreeConvKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TreeConvKernel<paddle::platform::CPUDeviceContext, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     tree_conv_grad,
     ops::TreeConvGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TreeConvGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

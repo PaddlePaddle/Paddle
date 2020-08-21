@@ -23,6 +23,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::MinFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
                       ops::MinFunctor>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     reduce_min_grad, ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
                                            float, ops::MaxOrMinGradFunctor>,
@@ -32,3 +33,4 @@ REGISTER_OP_CPU_KERNEL(
                           ops::MaxOrMinGradFunctor>,
     ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int64_t,
                           ops::MaxOrMinGradFunctor>);
+#endif

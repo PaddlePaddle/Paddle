@@ -201,7 +201,9 @@ REGISTER_OP_CUDA_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
                         ops::LookupTableCUDAKernel<double>,
                         ops::LookupTableCUDAKernel<plat::float16>,
                         ops::LookupTableCUDAKernel<int8_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(lookup_table_grad,
                         ops::LookupTableGradCUDAKernel<float>,
                         ops::LookupTableGradCUDAKernel<double>,
                         ops::LookupTableGradCUDAKernel<plat::float16>);
+#endif

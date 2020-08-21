@@ -277,6 +277,5 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
 #if CUDNN_VERSION >= 7100
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(conv2d_inception_fusion,
-                        ops::CUDNNConvInceptionFusionOpKernel<float>,
-                        ops::CUDNNConvInceptionFusionOpKernel<double>);
+                        ops::CUDNNConvInceptionFusionOpKernel<float>);
 #endif

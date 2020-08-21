@@ -20,6 +20,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(mul, ops::MulKernel<plat::CUDADeviceContext, float>,
                         ops::MulKernel<plat::CUDADeviceContext, double>,
                         ops::MulKernel<plat::CUDADeviceContext, plat::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     mul_grad, ops::MulGradKernel<plat::CUDADeviceContext, float>,
     ops::MulGradKernel<plat::CUDADeviceContext, double>,
@@ -28,3 +29,4 @@ REGISTER_OP_CUDA_KERNEL(
     mul_grad_grad,
     ops::MulDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MulDoubleGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

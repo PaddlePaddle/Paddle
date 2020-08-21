@@ -366,7 +366,9 @@ REGISTER_OP_CUDA_KERNEL(
     group_norm,
     ops::GroupNormKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GroupNormKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     group_norm_grad,
     ops::GroupNormGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GroupNormGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

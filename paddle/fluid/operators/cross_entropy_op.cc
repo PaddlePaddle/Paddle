@@ -407,9 +407,11 @@ REGISTER_OPERATOR(cross_entropy, ops::CrossEntropyOpBase,
 REGISTER_OPERATOR(cross_entropy_grad, ops::CrossEntropyGradientOp);
 REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<CPUCtx, float>,
                        ops::CrossEntropyOpKernel<CPUCtx, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(cross_entropy_grad,
                        ops::CrossEntropyGradientOpKernel<CPUCtx, float>,
                        ops::CrossEntropyGradientOpKernel<CPUCtx, double>);
+#endif
 
 REGISTER_OPERATOR(cross_entropy2, ops::CrossEntropyOp2,
                   ops::CrossEntropyOpMaker2, ops::CrossEntropyOpInferVarType,
@@ -419,6 +421,8 @@ REGISTER_OPERATOR(cross_entropy_grad2, ops::CrossEntropyGradientOp2);
 REGISTER_OP_CPU_KERNEL(cross_entropy2,
                        ops::CrossEntropyOpKernel2<CPUCtx, float>,
                        ops::CrossEntropyOpKernel2<CPUCtx, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(cross_entropy_grad2,
                        ops::CrossEntropyGradientOpKernel2<CPUCtx, float>,
                        ops::CrossEntropyGradientOpKernel2<CPUCtx, double>);
+#endif

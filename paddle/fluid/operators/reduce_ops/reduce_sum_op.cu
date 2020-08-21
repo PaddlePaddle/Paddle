@@ -73,3 +73,15 @@ class ReduceSumKernel : public framework::OpKernel<T> {
 REGISTER_OP_CUDA_KERNEL(reduce_sum, ops::ReduceSumKernel<float>,
                         ops::ReduceSumKernel<double>, ops::ReduceSumKernel<int>,
                         ops::ReduceSumKernel<int64_t>);
+
+template <typename T>
+using CUDAReduceSumGradKernel =
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, T,
+                          ops::SumGradFunctor, true>;
+
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
+REGISTER_OP_CUDA_KERNEL(reduce_sum_grad, CUDAReduceSumGradKernel<float>,
+                        CUDAReduceSumGradKernel<double>,
+                        CUDAReduceSumGradKernel<int>,
+                        CUDAReduceSumGradKernel<int64_t>);
+#endif

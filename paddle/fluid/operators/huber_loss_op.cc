@@ -146,7 +146,9 @@ REGISTER_OPERATOR(huber_loss_grad, ops::HuberLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     huber_loss, ops::HuberLossKernel<paddle::platform::CPUDeviceContext, float>,
     ops::HuberLossKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     huber_loss_grad,
     ops::HuberLossGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::HuberLossGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

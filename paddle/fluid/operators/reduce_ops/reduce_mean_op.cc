@@ -114,7 +114,9 @@ using CPUReduceMeanGradKernel =
     ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, T,
                           ops::MeanGradFunctor, true>;
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(reduce_mean_grad, CPUReduceMeanGradKernel<float>,
                        CPUReduceMeanGradKernel<double>,
                        CPUReduceMeanGradKernel<int>,
                        CPUReduceMeanGradKernel<int64_t>);
+#endif

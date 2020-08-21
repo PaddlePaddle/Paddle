@@ -347,6 +347,8 @@ REGISTER_OPERATOR(row_conv, ops::RowConvOp, ops::RowConvOpMaker,
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
 REGISTER_OP_CPU_KERNEL(
     row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     row_conv_grad,
     ops::RowConvGradKernel<paddle::platform::CPUDeviceContext, float>);
+#endif

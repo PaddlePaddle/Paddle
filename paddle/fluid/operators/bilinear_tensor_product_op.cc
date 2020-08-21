@@ -218,9 +218,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::BilinearTensorProductKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BilinearTensorProductKernel<paddle::platform::CPUDeviceContext,
                                      double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     bilinear_tensor_product_grad,
     ops::BilinearTensorProductGradKernel<paddle::platform::CPUDeviceContext,
                                          float>,
     ops::BilinearTensorProductGradKernel<paddle::platform::CPUDeviceContext,
                                          double>);
+#endif

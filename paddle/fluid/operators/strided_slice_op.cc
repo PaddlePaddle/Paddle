@@ -324,9 +324,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, float>,
     ops::StridedSliceKernel<paddle::platform::CPUDeviceContext, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     strided_slice_grad,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

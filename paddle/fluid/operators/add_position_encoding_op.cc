@@ -117,7 +117,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::AddPositionEncodingKernel<plt::CPUDeviceContext, float>,
     ops::AddPositionEncodingKernel<plt::CPUDeviceContext, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     add_position_encoding_grad,
     ops::AddPositionEncodingGradKernel<plt::CPUDeviceContext, float>,
     ops::AddPositionEncodingGradKernel<plt::CPUDeviceContext, double>);
+#endif

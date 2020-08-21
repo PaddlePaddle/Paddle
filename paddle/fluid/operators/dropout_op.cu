@@ -174,7 +174,9 @@ REGISTER_OP_CUDA_KERNEL(
     dropout, ops::GPUDropoutKernel<plat::CUDADeviceContext, float>,
     ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16>,
     ops::GPUDropoutKernel<plat::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     dropout_grad, ops::DropoutGradKernel<plat::CUDADeviceContext, float>,
     ops::DropoutGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::DropoutGradKernel<plat::CUDADeviceContext, double>);
+#endif

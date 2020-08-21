@@ -159,6 +159,8 @@ REGISTER_OPERATOR(fsp_grad, ops::FSPOpGrad);
 REGISTER_OP_CPU_KERNEL(
     fsp, ops::FSPOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FSPOpKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     fsp_grad, ops::FSPGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FSPGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

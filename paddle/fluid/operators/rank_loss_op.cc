@@ -214,6 +214,8 @@ REGISTER_OPERATOR(rank_loss, ops::RankLossOp, ops::RankLossOpMaker,
 REGISTER_OPERATOR(rank_loss_grad, ops::RankLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     rank_loss, ops::RankLossKernel<paddle::platform::CPUDeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     rank_loss_grad,
     ops::RankLossGradKernel<paddle::platform::CPUDeviceContext, float>);
+#endif

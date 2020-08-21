@@ -242,8 +242,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::LoDResetKernel<paddle::platform::CPUPlace, double>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, int>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     lod_reset_grad, ops::LoDResetGradKernel<paddle::platform::CPUPlace, float>,
     ops::LoDResetGradKernel<paddle::platform::CPUPlace, double>,
     ops::LoDResetGradKernel<paddle::platform::CPUPlace, int>,
     ops::LoDResetGradKernel<paddle::platform::CPUPlace, int64_t>);
+#endif

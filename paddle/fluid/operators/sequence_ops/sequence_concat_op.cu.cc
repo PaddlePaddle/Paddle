@@ -23,6 +23,8 @@ template <typename T>
 using GradKernel =
     paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
                                            T>;
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(sequence_concat_grad, GradKernel<float>,
                         GradKernel<double>, GradKernel<int>,
                         GradKernel<int64_t>);
+#endif

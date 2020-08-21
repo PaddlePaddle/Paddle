@@ -188,6 +188,8 @@ REGISTER_OPERATOR(prelu_grad, ops::PReluGradOp);
 REGISTER_OP_CPU_KERNEL(
     prelu, ops::PReluKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PReluKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     prelu_grad, ops::PReluGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PReluGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

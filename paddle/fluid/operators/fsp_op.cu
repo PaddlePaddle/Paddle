@@ -19,6 +19,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(fsp, ops::FSPOpKernel<plat::CUDADeviceContext, float>,
                         ops::FSPOpKernel<plat::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(fsp_grad,
                         ops::FSPGradOpKernel<plat::CUDADeviceContext, float>,
                         ops::FSPGradOpKernel<plat::CUDADeviceContext, double>);
+#endif

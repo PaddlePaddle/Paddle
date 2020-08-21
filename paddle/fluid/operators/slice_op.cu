@@ -158,6 +158,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SliceKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext, plat::float16>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     slice_grad,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -165,3 +166,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+#endif

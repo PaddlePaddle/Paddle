@@ -123,7 +123,9 @@ REGISTER_OPERATOR(inverse_grad, ops::InverseGradOp);
 REGISTER_OP_CPU_KERNEL(
     inverse, ops::InverseKernel<paddle::platform::CPUDeviceContext, float>,
     ops::InverseKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     inverse_grad,
     ops::InverseGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::InverseGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

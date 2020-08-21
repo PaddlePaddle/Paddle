@@ -22,9 +22,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext, float>,
     ops::StridedSliceKernel<paddle::platform::CUDADeviceContext, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     strided_slice_grad,
     ops::StridedSliceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::StridedSliceGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

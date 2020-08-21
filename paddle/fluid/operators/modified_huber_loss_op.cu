@@ -74,5 +74,7 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     modified_huber_loss,
     ops::ModifiedHuberLossKernel<paddle::platform::CUDADeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(modified_huber_loss_grad,
                         ops::ModifiedHuberLossGradGPUKernel<float>);
+#endif

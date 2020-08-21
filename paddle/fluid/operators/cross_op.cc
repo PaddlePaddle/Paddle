@@ -162,8 +162,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::CrossKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CrossKernel<paddle::platform::CPUDeviceContext, int>,
     ops::CrossKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     cross_grad, ops::CrossGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CrossGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CrossGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::CrossGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#endif

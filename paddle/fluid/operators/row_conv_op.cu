@@ -452,6 +452,8 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     row_conv, ops::RowConvKernel<paddle::platform::CUDADeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     row_conv_grad,
     ops::RowConvGradKernel<paddle::platform::CUDADeviceContext, float>);
+#endif

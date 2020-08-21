@@ -189,7 +189,9 @@ REGISTER_OPERATOR(unfold_grad, ops::UnfoldGradOp,
 REGISTER_OP_CPU_KERNEL(
     unfold, ops::UnfoldOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::UnfoldOpKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     unfold_grad,
     ops::UnfoldGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::UnfoldGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

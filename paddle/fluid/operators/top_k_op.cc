@@ -144,6 +144,8 @@ REGISTER_OP_CPU_KERNEL(top_k,
                        ops::TopkKernel<paddle::platform::CPUPlace, float>,
                        ops::TopkKernel<paddle::platform::CPUPlace, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(top_k_grad,
                        ops::TopkGradKernel<paddle::platform::CPUPlace, float>,
                        ops::TopkGradKernel<paddle::platform::CPUPlace, double>);
+#endif

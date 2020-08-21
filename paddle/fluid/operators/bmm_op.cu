@@ -19,9 +19,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::BmmKernel<paddle::platform::CUDADeviceContext,
                    paddle::platform::float16>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     bmm_grad, ops::BmmGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::BmmGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::BmmGradKernel<paddle::platform::CUDADeviceContext,
                        paddle::platform::float16>);
+#endif
 #endif

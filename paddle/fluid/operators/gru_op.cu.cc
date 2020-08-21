@@ -109,6 +109,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     gru, ops::GRUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GRUKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     gru_grad, ops::GRUGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GRUGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

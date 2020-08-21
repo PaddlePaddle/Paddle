@@ -21,7 +21,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::PadKernel<paddle::platform::CUDADeviceContext, int>,
     ops::PadKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::PadKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     pad_grad, ops::PadGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::PadGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::PadGradKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+#endif

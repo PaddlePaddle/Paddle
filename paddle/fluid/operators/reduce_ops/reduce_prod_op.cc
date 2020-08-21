@@ -24,6 +24,7 @@ REGISTER_OP_CPU_KERNEL(reduce_prod,
                                          int, ops::ProdFunctor>,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                                          int64_t, ops::ProdFunctor>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(reduce_prod_grad,
                        ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
                                              float, ops::ProdGradFunctor>,
@@ -33,3 +34,4 @@ REGISTER_OP_CPU_KERNEL(reduce_prod_grad,
                                              int, ops::ProdGradFunctor>,
                        ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
                                              int64_t, ops::ProdGradFunctor>);
+#endif

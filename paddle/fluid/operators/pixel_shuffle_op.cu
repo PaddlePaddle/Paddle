@@ -20,7 +20,9 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     pixel_shuffle, ops::PixelShuffleOpKernel<plat::CUDADeviceContext, float>,
     ops::PixelShuffleOpKernel<plat::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     pixel_shuffle_grad,
     ops::PixelShuffleGradOpKernel<plat::CUDADeviceContext, float>,
     ops::PixelShuffleGradOpKernel<plat::CUDADeviceContext, double>);
+#endif

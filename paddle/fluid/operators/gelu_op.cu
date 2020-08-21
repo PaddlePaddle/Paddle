@@ -21,8 +21,10 @@ REGISTER_OP_CUDA_KERNEL(
     ops::GeluKernel<paddle::platform::CUDADeviceContext, double>,
     ops::GeluKernel<paddle::platform::CUDADeviceContext,
                     paddle::platform::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     gelu_grad, ops::GeluGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GeluGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::GeluGradKernel<paddle::platform::CUDADeviceContext,
                         paddle::platform::float16>);
+#endif

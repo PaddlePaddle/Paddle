@@ -192,7 +192,9 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     prelu, ops::CUDAPReluKernel<paddle::platform::CUDADeviceContext, float>,
     ops::CUDAPReluKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     prelu_grad,
     ops::CUDAPReluGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::CUDAPReluGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

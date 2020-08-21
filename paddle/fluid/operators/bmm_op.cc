@@ -160,6 +160,8 @@ REGISTER_OPERATOR(bmm_grad, ops::BmmOpGrad);
 REGISTER_OP_CPU_KERNEL(
     bmm, ops::BmmKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BmmKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     bmm_grad, ops::BmmGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BmmGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

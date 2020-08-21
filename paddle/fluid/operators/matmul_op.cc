@@ -654,10 +654,12 @@ REGISTER_OPERATOR(matmul_grad, ops::MatMulOpGrad);
 REGISTER_OP_CPU_KERNEL(
     matmul, ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     matmul_grad,
     ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL(
@@ -665,10 +667,12 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MatMulKernel<paddle::platform::CUDADeviceContext, double>,
     ops::MatMulKernel<paddle::platform::CUDADeviceContext,
                       paddle::platform::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     matmul_grad,
     ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MatMulGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::MatMulGradKernel<paddle::platform::CUDADeviceContext,
                           paddle::platform::float16>);
+#endif
 #endif

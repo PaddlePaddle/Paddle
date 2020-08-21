@@ -106,7 +106,9 @@ REGISTER_OP_CUDA_KERNEL(
     label_smooth,
     ops::LabelSmoothGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LabelSmoothGPUKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     label_smooth_grad,
     ops::LabelSmoothGradGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LabelSmoothGradGPUKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

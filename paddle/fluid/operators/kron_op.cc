@@ -157,6 +157,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::KronKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
 REGISTER_OPERATOR(kron_grad, ops::KronGradOp);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     kron_grad, ops::KronGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::KronGradKernel<paddle::platform::CPUDeviceContext, double>,
@@ -164,3 +165,4 @@ REGISTER_OP_CPU_KERNEL(
                         paddle::platform::float16>,
     ops::KronGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::KronGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#endif

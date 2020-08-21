@@ -180,6 +180,8 @@ REGISTER_OPERATOR(run_program_grad, ops::RunProgramGradOp);
 REGISTER_OP_CPU_KERNEL(
     run_program,
     ops::RunProgramOpKernel<paddle::platform::CPUDeviceContext, float>)
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     run_program_grad,
     ops::RunProgramGradOpKernel<paddle::platform::CPUDeviceContext, float>)
+#endif

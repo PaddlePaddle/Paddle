@@ -197,6 +197,8 @@ REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
 REGISTER_OP_CPU_KERNEL(fused_embedding_seq_pool,
                        ops::FusedEmbeddingSeqPoolKernel<float>,
                        ops::FusedEmbeddingSeqPoolKernel<double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(fused_embedding_seq_pool_grad,
                        ops::FusedEmbeddingSeqPoolGradKernel<float>,
                        ops::FusedEmbeddingSeqPoolGradKernel<double>);
+#endif

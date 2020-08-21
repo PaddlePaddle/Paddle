@@ -338,15 +338,19 @@ REGISTER_OP_KERNEL(pool2d, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNOpKernel<float>,
                    ops::PoolCUDNNOpKernel<double>,
                    ops::PoolCUDNNOpKernel<plat::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_KERNEL(pool2d_grad, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNGradOpKernel<float>,
                    ops::PoolCUDNNGradOpKernel<double>,
                    ops::PoolCUDNNGradOpKernel<plat::float16>);
+#endif
 
 REGISTER_OP_KERNEL(pool3d, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNOpKernel<float>,
                    ops::PoolCUDNNOpKernel<double>,
                    ops::PoolCUDNNOpKernel<plat::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_KERNEL(pool3d_grad, CUDNN, plat::CUDAPlace,
                    ops::PoolCUDNNGradOpKernel<float>,
                    ops::PoolCUDNNGradOpKernel<double>);
+#endif

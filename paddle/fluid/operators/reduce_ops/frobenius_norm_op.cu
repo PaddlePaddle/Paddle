@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+// #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
 #include "paddle/fluid/operators/reduce_ops/frobenius_norm_op.h"
 
 template <typename T>
@@ -28,5 +28,7 @@ using CUDAFrobeniusNormGradKernel =
     ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, T,
                           ops::FrobeniusNormGradFunctor>;
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(frobenius_norm_grad, CUDAFrobeniusNormGradKernel<float>,
                         CUDAFrobeniusNormGradKernel<double>);
+#endif

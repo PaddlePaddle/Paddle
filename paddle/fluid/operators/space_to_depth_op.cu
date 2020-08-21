@@ -24,9 +24,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SpaceToDepthKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SpaceToDepthKernel<paddle::platform::CUDADeviceContext, int64_t>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     space_to_depth_grad,
     ops::SpaceToDepthGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SpaceToDepthGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SpaceToDepthGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SpaceToDepthGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

@@ -22,12 +22,14 @@ REGISTER_OP_CUDA_KERNEL(
                                 int>,
     ops::MaxPoolWithIndexKernel<paddle::platform::CUDADeviceContext, double,
                                 int>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     max_pool2d_with_index_grad,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CUDADeviceContext, float,
                                     int>,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CUDADeviceContext, double,
                                     int>);
+#endif
 
 REGISTER_OP_CUDA_KERNEL(
     max_pool3d_with_index,
@@ -35,9 +37,11 @@ REGISTER_OP_CUDA_KERNEL(
                                 int>,
     ops::MaxPoolWithIndexKernel<paddle::platform::CUDADeviceContext, double,
                                 int>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     max_pool3d_with_index_grad,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CUDADeviceContext, float,
                                     int>,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CUDADeviceContext, double,
                                     int>);
+#endif

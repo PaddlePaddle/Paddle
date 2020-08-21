@@ -20,9 +20,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CrossKernel<paddle::platform::CUDADeviceContext, double>,
     ops::CrossKernel<paddle::platform::CUDADeviceContext, int>,
     ops::CrossKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     cross_grad,
     ops::CrossGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::CrossGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::CrossGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::CrossGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

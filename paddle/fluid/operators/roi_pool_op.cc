@@ -218,8 +218,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, int>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     roi_pool_grad,
     ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, int>);
+#endif

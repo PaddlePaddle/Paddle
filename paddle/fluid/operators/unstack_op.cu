@@ -24,9 +24,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::UnStackKernel<plat::CUDADeviceContext, int64_t>,
     ops::UnStackKernel<plat::CUDADeviceContext, plat::float16>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     unstack_grad, ops::UnStackGradKernel<plat::CUDADeviceContext, float>,
     ops::UnStackGradKernel<plat::CUDADeviceContext, double>,
     ops::UnStackGradKernel<plat::CUDADeviceContext, int>,
     ops::UnStackGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::UnStackGradKernel<plat::CUDADeviceContext, plat::float16>);
+#endif

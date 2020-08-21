@@ -191,5 +191,7 @@ template struct LRNGradFunctor<platform::CUDADeviceContext, double>;
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     lrn, ops::LRNKernel<paddle::platform::CUDADeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     lrn_grad, ops::LRNGradKernel<paddle::platform::CUDADeviceContext, float>);
+#endif

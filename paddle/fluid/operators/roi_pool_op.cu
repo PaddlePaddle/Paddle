@@ -283,7 +283,9 @@ REGISTER_OP_CUDA_KERNEL(
     roi_pool,
     ops::GPUROIPoolOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GPUROIPoolOpKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     roi_pool_grad,
     ops::GPUROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GPUROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

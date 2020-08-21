@@ -19,7 +19,9 @@ REGISTER_OP_CUDA_KERNEL(
     sequence_conv,
     ops::SequenceConvKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SequenceConvKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     sequence_conv_grad,
     ops::SequenceConvGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SequenceConvGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

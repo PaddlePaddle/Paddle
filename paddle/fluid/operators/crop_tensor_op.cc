@@ -313,9 +313,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::CropTensorKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CropTensorKernel<paddle::platform::CPUDeviceContext, int>,
     ops::CropTensorKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     crop_tensor_grad,
     ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#endif

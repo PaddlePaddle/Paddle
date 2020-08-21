@@ -180,5 +180,7 @@ using CUDA = paddle::platform::CUDADeviceContext;
 
 REGISTER_OP_CUDA_KERNEL(p_norm, ops::PnormCUDAKernel<CUDA, float>,
                         ops::PnormCUDAKernel<CUDA, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(p_norm_grad, ops::PnormGradCUDAKernel<CUDA, float>,
                         ops::PnormGradCUDAKernel<CUDA, double>);
+#endif

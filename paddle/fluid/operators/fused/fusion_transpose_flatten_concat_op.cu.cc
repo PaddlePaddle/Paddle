@@ -115,5 +115,4 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(fusion_transpose_flatten_concat,
-                        ops::TransposeFlattenConcatFusionKernel<float>,
-                        ops::TransposeFlattenConcatFusionKernel<double>);
+                        ops::TransposeFlattenConcatFusionKernel<float>);

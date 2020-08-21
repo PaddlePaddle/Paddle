@@ -78,7 +78,9 @@ REGISTER_OP_KERNEL(softmax, CUDNN, plat::CUDAPlace,
                    ops::SoftmaxCUDNNKernel<float>,
                    ops::SoftmaxCUDNNKernel<double>,
                    ops::SoftmaxCUDNNKernel<plat::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_KERNEL(softmax_grad, CUDNN, plat::CUDAPlace,
                    ops::SoftmaxGradCUDNNKernel<float>,
                    ops::SoftmaxGradCUDNNKernel<double>,
                    ops::SoftmaxGradCUDNNKernel<plat::float16>);
+#endif

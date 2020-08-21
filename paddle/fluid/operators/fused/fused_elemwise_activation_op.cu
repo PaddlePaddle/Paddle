@@ -24,6 +24,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FusedElemwiseActivationKernel<paddle::platform::CUDADeviceContext,
                                        paddle::platform::float16>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     fused_elemwise_activation_grad,
     ops::FusedElemwiseActivationGradKernel<paddle::platform::CUDADeviceContext,
@@ -32,3 +33,4 @@ REGISTER_OP_CUDA_KERNEL(
                                            double>,
     ops::FusedElemwiseActivationGradKernel<paddle::platform::CUDADeviceContext,
                                            paddle::platform::float16>);
+#endif

@@ -153,8 +153,10 @@ REGISTER_OP_CPU_KERNEL(filter_by_instag, ops::FilterByInstagKernel<float>,
                        ops::FilterByInstagKernel<int32_t>,
                        ops::FilterByInstagKernel<int64_t>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(filter_by_instag_grad,
                        ops::FilterByInstagGradKernel<float>,
                        ops::FilterByInstagGradKernel<double>,
                        ops::FilterByInstagGradKernel<int32_t>,
                        ops::FilterByInstagGradKernel<int64_t>);
+#endif

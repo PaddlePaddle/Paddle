@@ -17,6 +17,8 @@ limitations under the License. */
 REGISTER_OP_CUDA_KERNEL(rank_loss,
                         paddle::operators::RankLossKernel<
                             paddle::platform::CUDADeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(rank_loss_grad,
                         paddle::operators::RankLossGradKernel<
                             paddle::platform::CUDADeviceContext, float>);
+#endif

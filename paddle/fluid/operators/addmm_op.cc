@@ -231,6 +231,8 @@ REGISTER_OP_CPU_KERNEL(
     addmm, ops::AddMMKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AddMMKernel<paddle::platform::CPUDeviceContext, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     addmm_grad, ops::AddMMGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AddMMGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

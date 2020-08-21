@@ -16,7 +16,9 @@ REGISTER_OP_CUDA_KERNEL(
     spectral_norm,
     ops::SpectralNormKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SpectralNormKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     spectral_norm_grad,
     ops::SpectralNormGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SpectralNormGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

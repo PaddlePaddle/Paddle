@@ -362,8 +362,10 @@ REGISTER_OP_CPU_KERNEL(
     linear_chain_crf,
     ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf_grad,
     ops::LinearChainCRFGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LinearChainCRFGradOpKernel<paddle::platform::CPUDeviceContext,
                                     double>);
+#endif

@@ -175,9 +175,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, double>,
     ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, int>,
     ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     multiplex_grad,
     ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, double>,
     ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, int>,
     ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#endif

@@ -149,9 +149,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::MeshgridKernel<paddle::platform::CPUDeviceContext, int>,
     ops::MeshgridKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     meshgrid_grad,
     ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::MeshgridGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

@@ -87,6 +87,8 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(inplace_abn,
                         ops::InplaceABNKernel<plat::CUDADeviceContext, float>,
                         ops::InplaceABNKernel<plat::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     inplace_abn_grad, ops::InplaceABNGradKernel<plat::CUDADeviceContext, float>,
     ops::InplaceABNGradKernel<plat::CUDADeviceContext, double>);
+#endif

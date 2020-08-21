@@ -21,6 +21,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     sequence_reshape_grad,
     ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -28,3 +29,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext,
                                    int64_t>,
     ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext, int>);
+#endif

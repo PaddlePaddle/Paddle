@@ -384,9 +384,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::FusedElemwiseActivationKernel<paddle::platform::CPUDeviceContext,
                                        double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     fused_elemwise_activation_grad,
     ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
                                            float>,
     ops::FusedElemwiseActivationGradKernel<paddle::platform::CPUDeviceContext,
                                            double>);
+#endif

@@ -844,7 +844,9 @@ REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
 REGISTER_OP_CPU_KERNEL(
     batch_norm, ops::BatchNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BatchNormKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     batch_norm_grad,
     ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BatchNormGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

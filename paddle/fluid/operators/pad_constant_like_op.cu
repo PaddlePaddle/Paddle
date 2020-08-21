@@ -20,6 +20,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::PadConstantLikeKernel<paddle::platform::CUDADeviceContext, double>,
     ops::PadConstantLikeKernel<paddle::platform::CUDADeviceContext, int>,
     ops::PadConstantLikeKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     pad_constant_like_grad,
     ops::PadConstantLikeGradKernel<paddle::platform::CUDADeviceContext, int>,
@@ -28,3 +29,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::PadConstantLikeGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::PadConstantLikeGradKernel<paddle::platform::CUDADeviceContext,
                                    double>);
+#endif

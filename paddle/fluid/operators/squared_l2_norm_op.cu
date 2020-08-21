@@ -17,6 +17,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     squared_l2_norm,
     ops::SquaredL2NormKernel<paddle::platform::CUDADeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     squared_l2_norm_grad,
     ops::SquaredL2NormGradKernel<paddle::platform::CUDADeviceContext, float>);
+#endif

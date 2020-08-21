@@ -404,7 +404,9 @@ REGISTER_OP_CUDA_KERNEL(
     roi_align,
     ops::GPUROIAlignOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GPUROIAlignOpKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     roi_align_grad,
     ops::GPUROIAlignGradOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GPUROIAlignGradOpKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

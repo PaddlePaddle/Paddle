@@ -170,5 +170,7 @@ REGISTER_OPERATOR(cvm_grad, ops::CVMGradientOp,
 
 REGISTER_OP_CPU_KERNEL(cvm, ops::CVMOpKernel<float>, ops::CVMOpKernel<double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(cvm_grad, ops::CVMGradOpKernel<float>,
                        ops::CVMGradOpKernel<double>);
+#endif

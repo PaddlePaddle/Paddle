@@ -191,9 +191,11 @@ REGISTER_OP_CPU_KERNEL(scatter_nd_add, ops::ScatterNdAddOpKernel<float>,
                        ops::ScatterNdAddOpKernel<int>,
                        ops::ScatterNdAddOpKernel<uint8_t>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(scatter_nd_add_grad,
                        ops::ScatterNdAddGradientOpKernel<float>,
                        ops::ScatterNdAddGradientOpKernel<double>,
                        ops::ScatterNdAddGradientOpKernel<int64_t>,
                        ops::ScatterNdAddGradientOpKernel<int>,
                        ops::ScatterNdAddGradientOpKernel<uint8_t>);
+#endif

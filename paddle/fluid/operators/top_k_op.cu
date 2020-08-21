@@ -609,6 +609,7 @@ REGISTER_OP_CUDA_KERNEL(
     paddle::operators::TopkOpCUDAKernel<paddle::platform::CUDADeviceContext,
                                         paddle::platform::float16>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     top_k_grad,
     paddle::operators::TopkOpGradCUDAKernel<paddle::platform::CUDADeviceContext,
@@ -621,3 +622,4 @@ REGISTER_OP_CUDA_KERNEL(
                                             int64_t>,
     paddle::operators::TopkOpGradCUDAKernel<paddle::platform::CUDADeviceContext,
                                             paddle::platform::float16>);
+#endif

@@ -201,8 +201,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::PartialConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::PartialConcatKernel<paddle::platform::CPUDeviceContext, int>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(partial_concat_grad,
                        ops::PartialConcatGradientOpKernel<float>,
                        ops::PartialConcatGradientOpKernel<int>,
                        ops::PartialConcatGradientOpKernel<double>,
                        ops::PartialConcatGradientOpKernel<int64_t>);
+#endif

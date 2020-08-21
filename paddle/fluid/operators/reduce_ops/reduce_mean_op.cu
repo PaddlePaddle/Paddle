@@ -69,3 +69,15 @@ REGISTER_OP_CUDA_KERNEL(reduce_mean, ops::ReduceMeanKernel<float>,
                         ops::ReduceMeanKernel<double>,
                         ops::ReduceMeanKernel<int>,
                         ops::ReduceMeanKernel<int64_t>);
+
+template <typename T>
+using CUDAReduceMeanGradKernel =
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, T,
+                          ops::MeanGradFunctor, true>;
+
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
+REGISTER_OP_CUDA_KERNEL(reduce_mean_grad, CUDAReduceMeanGradKernel<float>,
+                        CUDAReduceMeanGradKernel<double>,
+                        CUDAReduceMeanGradKernel<int>,
+                        CUDAReduceMeanGradKernel<int64_t>);
+#endif

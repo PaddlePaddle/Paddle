@@ -256,7 +256,9 @@ REGISTER_OP_CPU_KERNEL(
     affine_grid,
     ops::AffineGridOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AffineGridOpKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     affine_grid_grad,
     ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

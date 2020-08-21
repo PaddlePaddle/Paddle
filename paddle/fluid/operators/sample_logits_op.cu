@@ -259,6 +259,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(sample_logits, ops::SampleLogitsCUDAKernel<float>,
                         ops::SampleLogitsCUDAKernel<double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(sample_logits_grad,
                         ops::SampleLogitsGradCUDAKernel<float>,
                         ops::SampleLogitsGradCUDAKernel<double>);
+#endif

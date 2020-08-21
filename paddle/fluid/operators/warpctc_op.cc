@@ -198,6 +198,8 @@ REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp,
                   ops::WarpCTCGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     warpctc_grad,
     ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, float>);
+#endif

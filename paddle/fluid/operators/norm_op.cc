@@ -105,5 +105,7 @@ REGISTER_OPERATOR(norm, ops::NormOp, ops::NormOpMaker,
 REGISTER_OPERATOR(norm_grad, ops::NormOpGrad);
 REGISTER_OP_CPU_KERNEL(norm, ops::NormKernel<CPU, float>,
                        ops::NormKernel<CPU, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(norm_grad, ops::NormGradKernel<CPU, float>,
                        ops::NormGradKernel<CPU, double>);
+#endif

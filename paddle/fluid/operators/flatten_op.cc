@@ -272,6 +272,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::FlattenKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FlattenKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::FlattenKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     flatten_grad,
     ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -279,12 +280,14 @@ REGISTER_OP_CPU_KERNEL(
     ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::FlattenGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#endif
 REGISTER_OP_CPU_KERNEL(
     flatten2, ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, float>,
     ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, double>,
     ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int>,
     ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::Flatten2Kernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     flatten2_grad,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -292,3 +295,4 @@ REGISTER_OP_CPU_KERNEL(
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::Flatten2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#endif

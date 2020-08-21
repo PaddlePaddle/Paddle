@@ -21,9 +21,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MeshgridKernel<paddle::platform::CUDADeviceContext, int>,
     ops::MeshgridKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::MeshgridKernel<paddle::platform::CUDADeviceContext, bool>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     meshgrid_grad,
     ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::MeshgridGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

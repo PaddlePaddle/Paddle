@@ -125,6 +125,8 @@ REGISTER_OPERATOR(lstm_unit_grad, ops::LstmUnitGradOp);
 REGISTER_OP_CPU_KERNEL(lstm_unit,
                        ops::LstmUnitKernel<paddle::platform::CPUPlace, float>,
                        ops::LstmUnitKernel<paddle::platform::CPUPlace, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     lstm_unit_grad, ops::LstmUnitGradKernel<paddle::platform::CPUPlace, float>,
     ops::LstmUnitGradKernel<paddle::platform::CPUPlace, double>);
+#endif

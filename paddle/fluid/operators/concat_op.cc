@@ -209,9 +209,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>);
+#endif

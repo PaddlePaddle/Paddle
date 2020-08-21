@@ -251,7 +251,9 @@ REGISTER_OP_CPU_KERNEL(
     sequence_conv,
     ops::SequenceConvKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceConvKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     sequence_conv_grad,
     ops::SequenceConvGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceConvGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

@@ -305,10 +305,12 @@ REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad);
 REGISTER_OP_CPU_KERNEL(
     transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     transpose_grad,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif
 
 REGISTER_OPERATOR(transpose2, ops::Transpose2Op, ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
@@ -320,9 +322,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     transpose2_grad,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

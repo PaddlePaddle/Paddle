@@ -95,9 +95,11 @@ REGISTER_OP_CUDA_KERNEL(scatter_nd_add,
                         ops::ScatterNdAddOpCUDAKernel<CUDA, int>,
                         ops::ScatterNdAddOpCUDAKernel<CUDA, plat::float16>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(scatter_nd_add_grad,
                         ops::ScatterNdAddGradOpCUDAKernel<CUDA, float>,
                         ops::ScatterNdAddGradOpCUDAKernel<CUDA, double>,
                         ops::ScatterNdAddGradOpCUDAKernel<CUDA, int64_t>,
                         ops::ScatterNdAddGradOpCUDAKernel<CUDA, int>,
                         ops::ScatterNdAddGradOpCUDAKernel<CUDA, plat::float16>);
+#endif

@@ -673,5 +673,7 @@ REGISTER_OPERATOR(roi_perspective_transform_grad,
                   ops::ROIPerspectiveTransformGradOp);
 REGISTER_OP_CPU_KERNEL(roi_perspective_transform,
                        ops::CPUROIPerspectiveTransformOpKernel<float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(roi_perspective_transform_grad,
                        ops::CPUROIPerspectiveTransformGradOpKernel<float>);
+#endif

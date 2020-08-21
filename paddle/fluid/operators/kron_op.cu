@@ -24,6 +24,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::KronKernel<paddle::platform::CUDADeviceContext, int>,
     ops::KronKernel<paddle::platform::CUDADeviceContext, int64_t>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     kron_grad, ops::KronGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::KronGradKernel<paddle::platform::CUDADeviceContext, double>,
@@ -31,3 +32,4 @@ REGISTER_OP_CUDA_KERNEL(
                         paddle::platform::float16>,
     ops::KronGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::KronGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

@@ -124,6 +124,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     sequence_expand_as_grad,
     ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -132,3 +133,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext,
                                     int64_t>);
+#endif

@@ -93,7 +93,9 @@ using CPUReduceSumGradKernel =
     ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, T,
                              ops::SumGradFunctor, true>;
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(reduce_sum_grad, CPUReduceSumGradKernel<float>,
                        CPUReduceSumGradKernel<double>,
                        CPUReduceSumGradKernel<int>,
                        CPUReduceSumGradKernel<int64_t>);
+#endif

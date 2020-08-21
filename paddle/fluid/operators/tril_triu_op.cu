@@ -22,9 +22,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TrilTriuOpKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TrilTriuOpKernel<paddle::platform::CUDADeviceContext, int>,
     ops::TrilTriuOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     tril_triu_grad,
     ops::TrilTriuGradOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TrilTriuGradOpKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TrilTriuGradOpKernel<paddle::platform::CUDADeviceContext, int>,
     ops::TrilTriuGradOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

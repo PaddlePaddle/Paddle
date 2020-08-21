@@ -156,7 +156,9 @@ REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp,
 REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>,
                        ops::ScatterOpKernel<double>, ops::ScatterOpKernel<int>,
                        ops::ScatterOpKernel<int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>,
                        ops::ScatterGradientOpKernel<double>,
                        ops::ScatterGradientOpKernel<int>,
                        ops::ScatterGradientOpKernel<int64_t>);
+#endif

@@ -180,7 +180,9 @@ REGISTER_OPERATOR(kldiv_loss_grad, ops::KLDivLossOpGrad,
 REGISTER_OP_CPU_KERNEL(
     kldiv_loss, ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, float>,
     ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     kldiv_loss_grad,
     ops::KLDivLossGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::KLDivLossGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

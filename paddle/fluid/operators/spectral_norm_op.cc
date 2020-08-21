@@ -246,7 +246,9 @@ REGISTER_OP_CPU_KERNEL(
     spectral_norm,
     ops::SpectralNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SpectralNormKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     spectral_norm_grad,
     ops::SpectralNormGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SpectralNormGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

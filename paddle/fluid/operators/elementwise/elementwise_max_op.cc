@@ -78,9 +78,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     elementwise_max_grad,
     ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#endif

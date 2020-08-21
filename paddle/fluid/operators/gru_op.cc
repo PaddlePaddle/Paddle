@@ -470,6 +470,8 @@ REGISTER_OPERATOR(gru_grad, ops::GRUGradOp,
                   ops::GRUGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(gru, ops::GRUCPUKernel<float>,
                        ops::GRUCPUKernel<double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     gru_grad, ops::GRUGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GRUGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

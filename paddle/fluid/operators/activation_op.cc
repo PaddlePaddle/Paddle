@@ -951,6 +951,7 @@ REGISTER_OPERATOR(
 
 REGISTER_ACTIVATION_CPU_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     relu_grad_grad,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
@@ -959,6 +960,7 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::ReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
                                     ops::ReluGradGradFunctor<plat::float16>>);
+#endif
 /* ========================================================================== */
 
 /* ======================== leaky relu register  ============================ */
@@ -981,6 +983,7 @@ REGISTER_OPERATOR(
 
 REGISTER_ACTIVATION_CPU_KERNEL(leaky_relu, LeakyRelu, LeakyReluFunctor,
                                LeakyReluGradFunctor);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     leaky_relu_grad_grad,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
@@ -989,6 +992,7 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::LeakyReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<
         plat::CPUDeviceContext, ops::LeakyReluGradGradFunctor<plat::float16>>);
+#endif
 /* ========================================================================== */
 
 /* ========================    elu  register     ============================ */
@@ -1009,6 +1013,7 @@ REGISTER_OPERATOR(
     ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(elu, ELU, ELUFunctor, ELUGradFunctor);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     elu_grad_grad, ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
                                             ops::ELUGradGradFunctor<float>>,
@@ -1016,6 +1021,7 @@ REGISTER_OP_CPU_KERNEL(
                              ops::ELUGradGradFunctor<double>>,
     ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
                              ops::ELUGradGradFunctor<plat::float16>>);
+#endif
 
 /* ========================================================================== */
 
@@ -1037,6 +1043,7 @@ REGISTER_OPERATOR(
     ops::ActivationDoubleGradOpInplaceInferer);
 
 REGISTER_ACTIVATION_CPU_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     sqrt_grad_grad, ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
                                               ops::SqrtGradGradFunctor<float>>,
@@ -1044,6 +1051,7 @@ REGISTER_OP_CPU_KERNEL(
                               ops::SqrtGradGradFunctor<double>>,
     ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
                               ops::SqrtGradGradFunctor<plat::float16>>);
+#endif
 /* ========================================================================== */
 
 /* ==========================   square register  ============================ */
@@ -1073,6 +1081,7 @@ REGISTER_OP_CPU_KERNEL(square,
                                              ops::SquareFunctor<int>>,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
                                              ops::SquareFunctor<int64_t>>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     square_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                                            ops::SquareGradFunctor<float>>,
@@ -1095,6 +1104,7 @@ REGISTER_OP_CPU_KERNEL(
                                 ops::SquareGradGradFunctor<int>>,
     ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
                                 ops::SquareGradGradFunctor<int64_t>>);
+#endif
 /* ========================================================================== */
 
 /* ==========================   pow register  ============================ */
@@ -1113,12 +1123,14 @@ REGISTER_OP_CPU_KERNEL(
     ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<double>>,
     ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<int>>,
     ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<int64_t>>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     pow_grad,
     ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<float>>,
     ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<double>>,
     ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<int>>,
     ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<int64_t>>);
+#endif
 /* ========================================================================== */
 
 /* ==========================   exp register  ============================ */
@@ -1142,6 +1154,7 @@ REGISTER_OP_CPU_KERNEL(exp,
                                              ops::ExpFunctor<int>>,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
                                              ops::ExpFunctor<int64_t>>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     exp_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                                         ops::ExpGradFunctor<float>>,
@@ -1151,6 +1164,7 @@ REGISTER_OP_CPU_KERNEL(
                               ops::ExpGradFunctor<int>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                               ops::ExpGradFunctor<int64_t>>);
+#endif
 /* ========================================================================== */
 
 /* ==========================   abs register  ============================ */
@@ -1174,6 +1188,7 @@ REGISTER_OP_CPU_KERNEL(abs,
                                              ops::AbsFunctor<int>>,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
                                              ops::AbsFunctor<int64_t>>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     abs_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                                         ops::AbsGradFunctor<float>>,
@@ -1183,4 +1198,5 @@ REGISTER_OP_CPU_KERNEL(
                               ops::AbsGradFunctor<int>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                               ops::AbsGradFunctor<int64_t>>);
+#endif
 /* ========================================================================== */

@@ -21,6 +21,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     elementwise_max_grad,
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -28,3 +29,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext,
                                   int64_t>);
+#endif

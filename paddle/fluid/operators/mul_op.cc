@@ -318,6 +318,7 @@ REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulKernel<paddle::platform::CPUDeviceContext, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulGradKernel<paddle::platform::CPUDeviceContext, double>);
@@ -326,3 +327,4 @@ REGISTER_OP_CPU_KERNEL(
     mul_grad_grad,
     ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MulDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

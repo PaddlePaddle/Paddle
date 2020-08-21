@@ -156,5 +156,4 @@ REGISTER_OPERATOR(fusion_seqpool_concat, ops::FusionSeqPoolConcatOp,
                   ops::FusionSeqPoolConcatOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fusion_seqpool_concat,
-                       ops::FusionSeqPoolConcatKernel<float>,
-                       ops::FusionSeqPoolConcatKernel<double>);
+                       ops::FusionSeqPoolConcatKernel<float>);

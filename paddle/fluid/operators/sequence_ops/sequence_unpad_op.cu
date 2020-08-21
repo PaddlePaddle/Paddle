@@ -21,6 +21,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SequenceUnpadOpKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SequenceUnpadOpKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SequenceUnpadOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     sequence_unpad_grad,
     ops::SequenceUnpadGradOpKernel<paddle::platform::CUDADeviceContext, float>,
@@ -28,3 +29,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SequenceUnpadGradOpKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SequenceUnpadGradOpKernel<paddle::platform::CUDADeviceContext,
                                    int64_t>);
+#endif

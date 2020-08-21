@@ -200,6 +200,8 @@ REGISTER_OP_CUDA_KERNEL(rank_attention,
                         ops::RankAttentionCUDAKernel<GPUCtx, float>,
                         ops::RankAttentionCUDAKernel<GPUCtx, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(rank_attention_grad,
                         ops::RankAttentionGradOpCUDAKernel<GPUCtx, float>,
                         ops::RankAttentionGradOpCUDAKernel<GPUCtx, double>);
+#endif

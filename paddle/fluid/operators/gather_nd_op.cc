@@ -186,8 +186,10 @@ REGISTER_OP_CPU_KERNEL(gather_nd, ops::GatherNdOpKernel<float>,
                        ops::GatherNdOpKernel<int>, ops::GatherNdOpKernel<bool>,
                        ops::GatherNdOpKernel<uint8_t>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(gather_nd_grad, ops::GatherNdGradOpKernel<float>,
                        ops::GatherNdGradOpKernel<double>,
                        ops::GatherNdGradOpKernel<int64_t>,
                        ops::GatherNdGradOpKernel<int>,
                        ops::GatherNdGradOpKernel<uint8_t>);
+#endif

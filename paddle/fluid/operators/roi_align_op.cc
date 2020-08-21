@@ -226,8 +226,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, int>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     roi_align_grad,
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, int>);
+#endif

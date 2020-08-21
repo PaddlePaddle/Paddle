@@ -17,6 +17,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     smooth_l1_loss,
     ops::SmoothL1LossKernel<paddle::platform::CUDADeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     smooth_l1_loss_grad,
     ops::SmoothL1LossGradKernel<paddle::platform::CUDADeviceContext, float>);
+#endif

@@ -161,7 +161,9 @@ REGISTER_OPERATOR(bce_loss_grad, ops::BCELossGradOp,
 REGISTER_OP_CPU_KERNEL(
     bce_loss, ops::BCELossOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BCELossOpKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     bce_loss_grad,
     ops::BCELossGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BCELossGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

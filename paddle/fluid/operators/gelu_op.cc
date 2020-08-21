@@ -157,6 +157,8 @@ REGISTER_OPERATOR(gelu_grad, ops::GeluGradOp);
 REGISTER_OP_CPU_KERNEL(
     gelu, ops::GeluKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GeluKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     gelu_grad, ops::GeluGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GeluGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

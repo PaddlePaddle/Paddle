@@ -21,9 +21,11 @@ REGISTER_OP_CUDA_KERNEL(
                                      float>,
     ops::BilinearTensorProductKernel<paddle::platform::CUDADeviceContext,
                                      double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     bilinear_tensor_product_grad,
     ops::BilinearTensorProductGradKernel<paddle::platform::CUDADeviceContext,
                                          float>,
     ops::BilinearTensorProductGradKernel<paddle::platform::CUDADeviceContext,
                                          double>);
+#endif

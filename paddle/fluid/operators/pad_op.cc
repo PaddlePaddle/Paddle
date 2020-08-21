@@ -156,6 +156,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::PadKernel<paddle::platform::CPUDeviceContext, double>,
     ops::PadKernel<paddle::platform::CPUDeviceContext, int>,
     ops::PadKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PadGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

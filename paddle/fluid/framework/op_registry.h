@@ -254,7 +254,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
     __op_kernel_registrar_##op_type##_##library_type##_##customized_name##__   \
         .Touch();                                                              \
     return 0;                                                                  \
-  }
+  } \
+  UNUSED static int __op_kernel_registrar_##op_type##_##library_type##_##customized_name##__touch_var /* NOLINT */ \
+= TouchOpKernelRegistrar_##op_type##_##library_type##_##customized_name();
 
 #define REGISTER_OP_KERNEL(op_type, library_type, place_class, ...)   \
   REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(                                \

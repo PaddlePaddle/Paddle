@@ -108,9 +108,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TrilTriuOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     tril_triu_grad,
     ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TrilTriuGradOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#endif

@@ -697,6 +697,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     instance_norm, ops::InstanceNormKernel<plat::CUDADeviceContext, float>,
     ops::InstanceNormKernel<plat::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     instance_norm_grad,
     ops::InstanceNormGradKernel<plat::CUDADeviceContext, float>,
@@ -707,3 +708,4 @@ REGISTER_OP_CUDA_KERNEL(
                                       float>,
     ops::InstanceNormDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                       double>);
+#endif

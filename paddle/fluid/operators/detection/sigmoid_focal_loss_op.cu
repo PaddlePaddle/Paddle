@@ -173,9 +173,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::GPUSigmoidFocalLossKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GPUSigmoidFocalLossKernel<paddle::platform::CUDADeviceContext,
                                    double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     sigmoid_focal_loss_grad,
     ops::GPUSigmoidFocalLossGradKernel<paddle::platform::CUDADeviceContext,
                                        float>,
     ops::GPUSigmoidFocalLossGradKernel<paddle::platform::CUDADeviceContext,
                                        double>);
+#endif

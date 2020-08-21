@@ -121,7 +121,9 @@ REGISTER_OPERATOR(maxout_grad, ops::MaxOutOpGrad);
 REGISTER_OP_CPU_KERNEL(
     maxout, ops::MaxOutKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MaxOutKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     maxout_grad,
     ops::MaxOutGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MaxOutGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

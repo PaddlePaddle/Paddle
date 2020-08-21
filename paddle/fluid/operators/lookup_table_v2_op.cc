@@ -193,6 +193,8 @@ REGISTER_OPERATOR(lookup_table_v2_grad, ops::LookupTableV2OpGrad,
 
 REGISTER_OP_CPU_KERNEL(lookup_table_v2, ops::LookupTableV2Kernel<float>,
                        ops::LookupTableV2Kernel<double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(lookup_table_v2_grad,
                        ops::LookupTableV2GradKernel<float>,
                        ops::LookupTableV2GradKernel<double>);
+#endif

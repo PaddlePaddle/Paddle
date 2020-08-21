@@ -193,6 +193,8 @@ using GPUCtx = paddle::platform::CUDADeviceContext;
 REGISTER_OP_CUDA_KERNEL(batch_fc, ops::BatchFCCUDAKernel<GPUCtx, float>,
                         ops::BatchFCCUDAKernel<GPUCtx, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(batch_fc_grad,
                         ops::BatchFCGradOpCUDAKernel<GPUCtx, float>,
                         ops::BatchFCGradOpCUDAKernel<GPUCtx, double>);
+#endif

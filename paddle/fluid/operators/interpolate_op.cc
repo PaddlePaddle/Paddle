@@ -615,18 +615,24 @@ REGISTER_OPERATOR(bicubic_interp_grad, ops::InterpolateOpGrad,
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(bilinear_interp_grad, ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>);
+#endif
 REGISTER_OP_CPU_KERNEL(nearest_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(nearest_interp_grad, ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>);
+#endif
 REGISTER_OP_CPU_KERNEL(trilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(trilinear_interp_grad, ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>);
+#endif
 REGISTER_OPERATOR(linear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
                   ops::InterpolateGradMaker<paddle::framework::OpDesc>,
                   ops::InterpolateGradMaker<paddle::imperative::OpBase>);
@@ -635,9 +641,13 @@ REGISTER_OPERATOR(linear_interp_grad, ops::InterpolateOpGrad,
 REGISTER_OP_CPU_KERNEL(linear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(linear_interp_grad, ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>);
+#endif
 REGISTER_OP_CPU_KERNEL(bicubic_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(bicubic_interp_grad, ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>);
+#endif

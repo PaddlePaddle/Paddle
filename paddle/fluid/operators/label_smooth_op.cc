@@ -143,7 +143,9 @@ REGISTER_OP_CPU_KERNEL(
     label_smooth,
     ops::LabelSmoothKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LabelSmoothKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     label_smooth_grad,
     ops::LabelSmoothGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LabelSmoothGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

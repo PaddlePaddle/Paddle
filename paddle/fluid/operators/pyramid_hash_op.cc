@@ -526,6 +526,8 @@ REGISTER_OPERATOR(pyramid_hash_grad, ops::PyramidHashOpGrad);
 REGISTER_OP_CPU_KERNEL(
     pyramid_hash, ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, float>,
     ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, int8_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     pyramid_hash_grad,
     ops::CPUPyramidHashOPGradKernel<plt::CPUDeviceContext, float>);
+#endif

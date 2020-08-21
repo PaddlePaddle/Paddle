@@ -23,6 +23,8 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     run_program,
     ops::RunProgramOpKernel<paddle::platform::CUDADeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     run_program_grad,
     ops::RunProgramGradOpKernel<paddle::platform::CUDADeviceContext, float>);
+#endif

@@ -190,6 +190,8 @@ using CUDA = paddle::platform::CUDADeviceContext;
 REGISTER_OP_CUDA_KERNEL(affine_channel,
                         ops::AffineChannelCUDAKernel<CUDA, float>,
                         ops::AffineChannelCUDAKernel<CUDA, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(affine_channel_grad,
                         ops::AffineChannelGradCUDAKernel<CUDA, float>,
                         ops::AffineChannelGradCUDAKernel<CUDA, double>);
+#endif

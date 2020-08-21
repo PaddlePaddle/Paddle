@@ -749,5 +749,7 @@ using CUDA = paddle::platform::CUDADeviceContext;
 
 REGISTER_OP_CUDA_KERNEL(deformable_conv,
                         ops::DeformableConvCUDAKernel<CUDA, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(deformable_conv_grad,
                         ops::DeformableConvGradCUDAKernel<CUDA, float>);
+#endif

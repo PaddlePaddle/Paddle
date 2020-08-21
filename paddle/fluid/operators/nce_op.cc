@@ -320,6 +320,8 @@ REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference,
                   ops::NCEGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(nce_grad,
                        ops::NCEGradKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEGradKernel<paddle::platform::CPUPlace, double>);
+#endif

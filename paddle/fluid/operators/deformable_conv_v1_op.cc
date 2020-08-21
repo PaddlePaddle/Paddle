@@ -308,5 +308,7 @@ REGISTER_OPERATOR(deformable_conv_v1_grad, ops::DeformableConvV1GradOp);
 
 REGISTER_OP_CPU_KERNEL(deformable_conv_v1,
                        ops::DeformableConvV1CPUKernel<float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(deformable_conv_v1_grad,
                        ops::DeformableConvV1GradCPUKernel<float>);
+#endif

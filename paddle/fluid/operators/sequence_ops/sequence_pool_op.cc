@@ -181,6 +181,8 @@ REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
 REGISTER_OP_CPU_KERNEL(
     sequence_pool,
     ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     sequence_pool_grad,
     ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, float>);
+#endif

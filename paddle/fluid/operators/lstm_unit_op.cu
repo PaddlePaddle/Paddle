@@ -173,5 +173,7 @@ class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(lstm_unit, ops::LstmUnitOpCUDAKernel<float>,
                         ops::LstmUnitOpCUDAKernel<double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(lstm_unit_grad, ops::LstmUnitGradOpCUDAKernel<float>,
                         ops::LstmUnitGradOpCUDAKernel<double>);
+#endif

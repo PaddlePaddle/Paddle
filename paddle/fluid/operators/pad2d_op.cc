@@ -671,5 +671,7 @@ REGISTER_OPERATOR(pad2d_grad, ops::Pad2dOpGrad,
 REGISTER_OP_CPU_KERNEL(pad2d, ops::Pad2dCPUKernel<float>,
                        ops::Pad2dCPUKernel<double>, ops::Pad2dCPUKernel<int>,
                        ops::Pad2dCPUKernel<int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(pad2d_grad, ops::Pad2dGradCPUKernel<float>,
                        ops::Pad2dGradCPUKernel<double>);
+#endif

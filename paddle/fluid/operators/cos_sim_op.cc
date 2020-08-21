@@ -230,6 +230,8 @@ REGISTER_OPERATOR(cos_sim, ops::CosSimOp, ops::CosSimOpMaker,
 REGISTER_OPERATOR(cos_sim_grad, ops::CosSimOpGrad);
 REGISTER_OP_CPU_KERNEL(
     cos_sim, ops::CosSimKernel<paddle::platform::CPUDeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     cos_sim_grad,
     ops::CosSimGradKernel<paddle::platform::CPUDeviceContext, float>);
+#endif

@@ -127,7 +127,9 @@ REGISTER_OP_CUDA_KERNEL(
     bce_loss,
     ops::BCELossCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::BCELossCUDAKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     bce_loss_grad,
     ops::BCELossGradCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::BCELossGradCUDAKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

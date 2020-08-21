@@ -102,9 +102,11 @@ REGISTER_OP_CUDA_KERNEL(
     mean, ops::MeanCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MeanCUDAKernel<paddle::platform::CUDADeviceContext, double>,
     ops::MeanCUDAKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     mean_grad,
     ops::MeanCUDAGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MeanCUDAGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::MeanCUDAGradKernel<paddle::platform::CUDADeviceContext,
                             plat::float16>);
+#endif

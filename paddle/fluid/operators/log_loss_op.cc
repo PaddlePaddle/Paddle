@@ -151,6 +151,8 @@ REGISTER_OPERATOR(log_loss, ops::LogLossOp, ops::LogLossOpMaker<float>,
 REGISTER_OPERATOR(log_loss_grad, ops::LogLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     log_loss, ops::LogLossKernel<paddle::platform::CPUDeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     log_loss_grad,
     ops::LogLossGradKernel<paddle::platform::CPUDeviceContext, float>);
+#endif

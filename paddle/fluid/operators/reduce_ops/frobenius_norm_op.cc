@@ -61,5 +61,7 @@ using CPUFrobeniusNormGradKernel =
     ops::FrobeniusNormGradKernel<paddle::platform::CPUDeviceContext, T,
                                  ops::FrobeniusNormGradFunctor>;
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(frobenius_norm_grad, CPUFrobeniusNormGradKernel<float>,
                        CPUFrobeniusNormGradKernel<double>);
+#endif

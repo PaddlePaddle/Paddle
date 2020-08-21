@@ -22,6 +22,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, int>,
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::FlattenKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     flatten_grad,
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -29,12 +30,14 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::FlattenGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif
 REGISTER_OP_CUDA_KERNEL(
     flatten2, ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, float>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, double>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::Flatten2Kernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     flatten2_grad,
     ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -42,3 +45,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::Flatten2GradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

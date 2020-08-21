@@ -465,8 +465,10 @@ REGISTER_OP_CPU_KERNEL(var_conv_2d,
                        ops::CPUVarConv2dOPKernel<plt::CPUDeviceContext, float>);
 //     ops::CPUVarConv2dOPKernel<plt::CPUDeviceContext,
 //                                       double>
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     var_conv_2d_grad,
     ops::CPUVarConv2dOPGradKernel<plt::CPUDeviceContext, float>);
+#endif
 //     ops::CPUVarConv2dOPGradKernel<plt::CPUDeviceContext,
 //                                           double>

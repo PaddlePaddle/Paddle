@@ -94,6 +94,8 @@ REGISTER_OPERATOR(squared_l2_norm_grad, ops::SquaredL2NormGradOp);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_norm,
     ops::SquaredL2NormKernel<paddle::platform::CPUDeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     squared_l2_norm_grad,
     ops::SquaredL2NormGradKernel<paddle::platform::CPUDeviceContext, float>);
+#endif

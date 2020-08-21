@@ -184,5 +184,7 @@ REGISTER_OPERATOR(temporal_shift, ops::TemporalShiftOp,
 REGISTER_OPERATOR(temporal_shift_grad, ops::TemporalShiftOpGrad);
 REGISTER_OP_CPU_KERNEL(temporal_shift, ops::TemporalShiftKernel<float>,
                        ops::TemporalShiftKernel<double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(temporal_shift_grad, ops::TemporalShiftGradKernel<float>,
                        ops::TemporalShiftGradKernel<double>);
+#endif

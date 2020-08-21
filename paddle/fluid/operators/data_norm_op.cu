@@ -218,7 +218,9 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     data_norm, ops::DataNormKernel<paddle::platform::CUDADeviceContext, float>,
     ops::DataNormKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     data_norm_grad,
     ops::DataNormGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::DataNormGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

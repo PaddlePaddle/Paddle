@@ -400,8 +400,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::SliceKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     slice_grad, ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

@@ -20,7 +20,9 @@ REGISTER_OP_CUDA_KERNEL(
     unfold, ops::UnfoldOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::UnfoldOpKernel<paddle::platform::CUDADeviceContext, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     unfold_grad,
     ops::UnfoldGradOpKernel<paddle::platform::CUDADeviceContext, float>,
     ops::UnfoldGradOpKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

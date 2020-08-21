@@ -239,6 +239,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::PadConstantLikeKernel<paddle::platform::CPUDeviceContext, double>,
     ops::PadConstantLikeKernel<paddle::platform::CPUDeviceContext, int>,
     ops::PadConstantLikeKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     pad_constant_like_grad,
     ops::PadConstantLikeGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -246,3 +247,4 @@ REGISTER_OP_CPU_KERNEL(
     ops::PadConstantLikeGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::PadConstantLikeGradKernel<paddle::platform::CPUDeviceContext,
                                    int64_t>);
+#endif

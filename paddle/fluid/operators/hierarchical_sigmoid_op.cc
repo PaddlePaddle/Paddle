@@ -276,9 +276,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext,
                                      double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     hierarchical_sigmoid_grad,
     ops::HierarchicalSigmoidGradOpKernel<paddle::platform::CPUDeviceContext,
                                          float>,
     ops::HierarchicalSigmoidGradOpKernel<paddle::platform::CPUDeviceContext,
                                          double>);
+#endif

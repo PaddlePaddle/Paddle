@@ -374,11 +374,11 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     fused_batch_norm_act,
     ops::FusedBatchNormActKernel<plat::CUDADeviceContext, float>,
-    ops::FusedBatchNormActKernel<plat::CUDADeviceContext, double>,
     ops::FusedBatchNormActKernel<plat::CUDADeviceContext, plat::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     fused_batch_norm_act_grad,
     ops::FusedBatchNormActGradKernel<plat::CUDADeviceContext, float>,
-    ops::FusedBatchNormActGradKernel<plat::CUDADeviceContext, double>,
     ops::FusedBatchNormActGradKernel<plat::CUDADeviceContext, plat::float16>);
+#endif
 #endif

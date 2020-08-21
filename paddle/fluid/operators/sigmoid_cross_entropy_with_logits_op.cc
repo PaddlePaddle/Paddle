@@ -217,8 +217,10 @@ REGISTER_OP_CPU_KERNEL(
                                              float>,
     ops::SigmoidCrossEntropyWithLogitsKernel<paddle::platform::CPUDeviceContext,
                                              double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
                        ops::SigmoidCrossEntropyWithLogitsGradKernel<
                            paddle::platform::CPUDeviceContext, float>,
                        ops::SigmoidCrossEntropyWithLogitsGradKernel<
                            paddle::platform::CPUDeviceContext, double>);
+#endif

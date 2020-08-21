@@ -37,6 +37,7 @@ FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CUDA_KERNEL);
 REGISTER_ACTIVATION_CUDA_KERNEL(leaky_relu, LeakyRelu, LeakyReluFunctor,
                                 LeakyReluGradFunctor);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     leaky_relu_grad_grad,
     ops::ActivationDoubleGradKernel<plat::CUDADeviceContext,
@@ -45,11 +46,13 @@ REGISTER_OP_CUDA_KERNEL(
                                     ops::LeakyReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<
         plat::CUDADeviceContext, ops::LeakyReluGradGradFunctor<plat::float16>>);
+#endif
 /* ========================================================================== */
 
 /* ======================== elu register  ============================ */
 REGISTER_ACTIVATION_CUDA_KERNEL(elu, ELU, ELUFunctor, ELUGradFunctor);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     elu_grad_grad, ops::ELUDoubleGradKernel<plat::CUDADeviceContext,
                                             ops::ELUGradGradFunctor<float>>,
@@ -57,11 +60,13 @@ REGISTER_OP_CUDA_KERNEL(
                              ops::ELUGradGradFunctor<double>>,
     ops::ELUDoubleGradKernel<plat::CUDADeviceContext,
                              ops::ELUGradGradFunctor<plat::float16>>);
+#endif
 /* ========================================================================== */
 
 /* ===========================    relu register  ============================ */
 REGISTER_ACTIVATION_CUDA_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     relu_grad_grad,
     ops::ActivationDoubleGradKernel<paddle::platform::CUDADeviceContext,
@@ -70,11 +75,13 @@ REGISTER_OP_CUDA_KERNEL(
                                     ops::ReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<plat::CUDADeviceContext,
                                     ops::ReluGradGradFunctor<plat::float16>>);
+#endif
 /* ========================================================================== */
 
 /* ===========================   sqrt register  ============================= */
 REGISTER_ACTIVATION_CUDA_KERNEL(sqrt, Sqrt, SqrtFunctor, SqrtGradFunctor);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     sqrt_grad_grad,
     ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
@@ -83,6 +90,7 @@ REGISTER_OP_CUDA_KERNEL(
                               ops::SqrtGradGradFunctor<double>>,
     ops::SqrtDoubleGradKernel<paddle::platform::CUDADeviceContext,
                               ops::SqrtGradGradFunctor<plat::float16>>);
+#endif
 /* ========================================================================== */
 
 /* ===========================  square register  ============================ */
@@ -94,6 +102,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ActivationKernel<plat::CUDADeviceContext, ops::SquareFunctor<int64_t>>,
     ops::ActivationKernel<plat::CUDADeviceContext,
                           ops::SquareFunctor<plat::float16>>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     square_grad, ops::ActivationGradKernel<plat::CUDADeviceContext,
                                            ops::SquareGradFunctor<float>>,
@@ -118,6 +127,7 @@ REGISTER_OP_CUDA_KERNEL(
                                 ops::SquareGradGradFunctor<int>>,
     ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                 ops::SquareGradGradFunctor<int64_t>>);
+#endif
 /* ========================================================================== */
 
 /* ==========================   pow register  ============================ */
@@ -128,6 +138,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::PowKernel<plat::CUDADeviceContext, ops::PowFunctor<int>>,
     ops::PowKernel<plat::CUDADeviceContext, ops::PowFunctor<int64_t>>,
     ops::PowKernel<plat::CUDADeviceContext, ops::PowFunctor<plat::float16>>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     pow_grad,
     ops::PowGradKernel<plat::CUDADeviceContext, ops::PowGradFunctor<float>>,
@@ -136,6 +147,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::PowGradKernel<plat::CUDADeviceContext, ops::PowGradFunctor<int64_t>>,
     ops::PowGradKernel<plat::CUDADeviceContext,
                        ops::PowGradFunctor<plat::float16>>);
+#endif
 /* ========================================================================== */
 
 /* ==========================   exp register  ============================ */
@@ -147,6 +159,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ActivationKernel<plat::CUDADeviceContext, ops::ExpFunctor<int64_t>>,
     ops::ActivationKernel<plat::CUDADeviceContext,
                           ops::ExpFunctor<plat::float16>>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     exp_grad, ops::ActivationGradKernel<plat::CUDADeviceContext,
                                         ops::ExpGradFunctor<float>>,
@@ -158,6 +171,7 @@ REGISTER_OP_CUDA_KERNEL(
                               ops::ExpGradFunctor<int64_t>>,
     ops::ActivationGradKernel<plat::CUDADeviceContext,
                               ops::ExpGradFunctor<plat::float16>>);
+#endif
 /* ========================================================================== */
 
 /* ==========================   exp register  ============================ */
@@ -169,6 +183,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ActivationKernel<plat::CUDADeviceContext, ops::AbsFunctor<int64_t>>,
     ops::ActivationKernel<plat::CUDADeviceContext,
                           ops::AbsFunctor<plat::float16>>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     abs_grad, ops::ActivationGradKernel<plat::CUDADeviceContext,
                                         ops::AbsGradFunctor<float>>,
@@ -180,4 +195,5 @@ REGISTER_OP_CUDA_KERNEL(
                               ops::AbsGradFunctor<int64_t>>,
     ops::ActivationGradKernel<plat::CUDADeviceContext,
                               ops::AbsGradFunctor<plat::float16>>);
+#endif
 /* ========================================================================== */

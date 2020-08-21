@@ -21,9 +21,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::LoDResetKernel<paddle::platform::CUDADeviceContext, double>,
     ops::LoDResetKernel<paddle::platform::CUDADeviceContext, int>,
     ops::LoDResetKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     lod_reset_grad,
     ops::LoDResetGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LoDResetGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::LoDResetGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::LoDResetGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

@@ -543,6 +543,8 @@ using CUDA = paddle::platform::CUDADeviceContext;
 REGISTER_OP_CUDA_KERNEL(deformable_psroi_pooling,
                         ops::DeformablePSROIPoolCUDAKernel<CUDA, float>,
                         ops::DeformablePSROIPoolCUDAKernel<CUDA, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(deformable_psroi_pooling_grad,
                         ops::DeformablePSROIPoolGradCUDAKernel<CUDA, float>,
                         ops::DeformablePSROIPoolGradCUDAKernel<CUDA, double>);
+#endif

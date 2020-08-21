@@ -591,7 +591,9 @@ REGISTER_OP_CUDA_KERNEL(
     layer_norm,
     ops::LayerNormKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LayerNormKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     layer_norm_grad,
     ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

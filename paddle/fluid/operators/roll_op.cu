@@ -20,8 +20,10 @@ REGISTER_OP_CUDA_KERNEL(
     ops::RollKernel<paddle::platform::CUDADeviceContext, double>,
     ops::RollKernel<paddle::platform::CUDADeviceContext, int>,
     ops::RollKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     roll_grad, ops::RollGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::RollGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::RollGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::RollGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

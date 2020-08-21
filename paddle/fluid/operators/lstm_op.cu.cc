@@ -18,6 +18,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     lstm, ops::LSTMKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LSTMKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     lstm_grad, ops::LSTMGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LSTMGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

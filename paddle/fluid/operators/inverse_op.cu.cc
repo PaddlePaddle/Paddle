@@ -19,7 +19,9 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     inverse, ops::InverseKernel<paddle::platform::CUDADeviceContext, float>,
     ops::InverseKernel<paddle::platform::CUDADeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     inverse_grad,
     ops::InverseGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::InverseGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

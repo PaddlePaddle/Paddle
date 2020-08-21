@@ -146,7 +146,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::PixelShuffleOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PixelShuffleOpKernel<paddle::platform::CPUDeviceContext, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     pixel_shuffle_grad,
     ops::PixelShuffleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PixelShuffleGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

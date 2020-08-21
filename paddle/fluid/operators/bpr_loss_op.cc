@@ -174,6 +174,8 @@ REGISTER_OPERATOR(bpr_loss, ops::BprLossOp, ops::BprLossOpMaker,
 REGISTER_OPERATOR(bpr_loss_grad, ops::BprLossGradientOp);
 REGISTER_OP_CPU_KERNEL(bpr_loss, ops::BprLossOpKernel<CPUCtx, float>,
                        ops::BprLossOpKernel<CPUCtx, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(bpr_loss_grad,
                        ops::BprLossGradientOpKernel<CPUCtx, float>,
                        ops::BprLossGradientOpKernel<CPUCtx, double>);
+#endif

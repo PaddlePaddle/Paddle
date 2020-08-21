@@ -103,9 +103,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::MultiplexGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::MultiplexGPUKernel<paddle::platform::CUDADeviceContext, int>,
     ops::MultiplexGPUKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     multiplex_grad,
     ops::MultiplexGradGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MultiplexGradGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::MultiplexGradGPUKernel<paddle::platform::CUDADeviceContext, int>,
     ops::MultiplexGradGPUKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#endif

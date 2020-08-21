@@ -120,8 +120,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::ShuffleChannelOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ShuffleChannelOpKernel<paddle::platform::CPUDeviceContext, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     shuffle_channel_grad,
     ops::ShuffleChannelGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ShuffleChannelGradOpKernel<paddle::platform::CPUDeviceContext,
                                     double>);
+#endif

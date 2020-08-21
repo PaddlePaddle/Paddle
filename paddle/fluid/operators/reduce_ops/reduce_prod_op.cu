@@ -23,3 +23,15 @@ REGISTER_OP_CUDA_KERNEL(reduce_prod,
                                           int, ops::ProdFunctor>,
                         ops::ReduceKernel<paddle::platform::CUDADeviceContext,
                                           int64_t, ops::ProdFunctor>);
+
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
+REGISTER_OP_CUDA_KERNEL(
+    reduce_prod_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
+                                            float, ops::ProdGradFunctor>,
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,
+                          ops::ProdGradFunctor>,
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int,
+                          ops::ProdGradFunctor>,
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int64_t,
+                          ops::ProdGradFunctor>);
+#endif

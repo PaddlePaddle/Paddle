@@ -269,9 +269,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     sequence_pad_grad,
     ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SequencePadGradOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#endif

@@ -147,6 +147,8 @@ REGISTER_OPERATOR(center_loss_grad, ops::CenterLossGradOp,
 REGISTER_OP_CPU_KERNEL(center_loss, ops::CenterLossKernel<CPUCtx, float>,
                        ops::CenterLossKernel<CPUCtx, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(center_loss_grad,
                        ops::CenterLossGradKernel<CPUCtx, float>,
                        ops::CenterLossGradKernel<CPUCtx, double>);
+#endif

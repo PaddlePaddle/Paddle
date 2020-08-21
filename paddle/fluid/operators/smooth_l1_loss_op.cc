@@ -213,6 +213,8 @@ REGISTER_OPERATOR(smooth_l1_loss_grad, ops::SmoothL1LossGradOp);
 REGISTER_OP_CPU_KERNEL(
     smooth_l1_loss,
     ops::SmoothL1LossKernel<paddle::platform::CPUDeviceContext, float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     smooth_l1_loss_grad,
     ops::SmoothL1LossGradKernel<paddle::platform::CPUDeviceContext, float>);
+#endif

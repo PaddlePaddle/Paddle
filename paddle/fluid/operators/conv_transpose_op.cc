@@ -490,11 +490,13 @@ REGISTER_OP_CPU_KERNEL(
     conv2d_transpose,
     ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     conv2d_transpose_grad,
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
                                      double>);
+#endif
 
 // conv3d_transpose
 REGISTER_OPERATOR(conv3d_transpose, ops::ConvTransposeOp,
@@ -507,11 +509,13 @@ REGISTER_OP_CPU_KERNEL(
     conv3d_transpose,
     ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     conv3d_transpose_grad,
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
                                      double>);
+#endif
 
 // depthwise conv2d_transpose
 REGISTER_OPERATOR(depthwise_conv2d_transpose, ops::ConvTransposeOp,
@@ -524,8 +528,10 @@ REGISTER_OP_CPU_KERNEL(
     depthwise_conv2d_transpose,
     ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvTransposeKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     depthwise_conv2d_transpose_grad,
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
                                      double>);
+#endif

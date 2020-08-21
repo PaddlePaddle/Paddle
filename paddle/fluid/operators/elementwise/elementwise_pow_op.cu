@@ -18,6 +18,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwisePowKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwisePowKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwisePowKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     elementwise_pow_grad,
     ops::ElementwisePowGradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -25,3 +26,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwisePowGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwisePowGradKernel<paddle::platform::CUDADeviceContext,
                                   int64_t>);
+#endif

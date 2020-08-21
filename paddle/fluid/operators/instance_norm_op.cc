@@ -666,6 +666,7 @@ REGISTER_OP_CPU_KERNEL(
     instance_norm,
     ops::InstanceNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::InstanceNormKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     instance_norm_grad,
     ops::InstanceNormGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -676,3 +677,4 @@ REGISTER_OP_CPU_KERNEL(
                                       float>,
     ops::InstanceNormDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                       double>);
+#endif

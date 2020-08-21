@@ -23,3 +23,15 @@ REGISTER_OP_CUDA_KERNEL(reduce_max,
                                           int, ops::MaxFunctor>,
                         ops::ReduceKernel<paddle::platform::CUDADeviceContext,
                                           int64_t, ops::MaxFunctor>);
+
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
+REGISTER_OP_CUDA_KERNEL(
+    reduce_max_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
+                                           float, ops::MaxOrMinGradFunctor>,
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,
+                          ops::MaxOrMinGradFunctor>,
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int,
+                          ops::MaxOrMinGradFunctor>,
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int64_t,
+                          ops::MaxOrMinGradFunctor>);
+#endif

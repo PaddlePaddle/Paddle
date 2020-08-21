@@ -114,6 +114,8 @@ REGISTER_OPERATOR(dist_grad, ops::DistOpGrad);
 REGISTER_OP_CPU_KERNEL(
     dist, ops::DistKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DistKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     dist_grad, ops::DistGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DistGradKernel<paddle::platform::CPUDeviceContext, double>)
+#endif

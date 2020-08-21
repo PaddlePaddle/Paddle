@@ -107,6 +107,8 @@ namespace plat = paddle::platform;
 REGISTER_OP_KERNEL(affine_grid, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNAffineGridOpKernel<float>,
                    paddle::operators::CUDNNAffineGridOpKernel<double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_KERNEL(affine_grid_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNAffineGridGradOpKernel<float>,
                    paddle::operators::CUDNNAffineGridGradOpKernel<double>);
+#endif

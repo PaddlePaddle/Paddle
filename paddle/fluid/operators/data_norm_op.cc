@@ -747,7 +747,9 @@ REGISTER_OPERATOR(data_norm_grad, ops::DataNormGradOp);
 REGISTER_OP_CPU_KERNEL(
     data_norm, ops::DataNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DataNormKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     data_norm_grad,
     ops::DataNormGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::DataNormGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

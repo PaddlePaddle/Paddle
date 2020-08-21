@@ -724,12 +724,14 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
                             plat::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     transpose_grad,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
                                 plat::float16>);
+#endif
 
 REGISTER_OP_CUDA_KERNEL(
     transpose2,
@@ -739,6 +741,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
                             plat::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     transpose2_grad,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, int32_t>,
@@ -747,3 +750,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
                                 plat::float16>);
+#endif

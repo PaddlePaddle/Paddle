@@ -96,6 +96,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::float16>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(
     elementwise_add_grad,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, float>,
@@ -111,3 +112,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext,
                                         plat::float16>);
+#endif

@@ -78,9 +78,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseMinKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseMinKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseMinKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     elementwise_min_grad,
     ops::ElementwiseMinGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseMinGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseMinGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ElementwiseMinGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#endif

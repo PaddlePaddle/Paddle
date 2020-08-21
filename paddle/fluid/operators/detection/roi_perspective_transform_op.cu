@@ -508,5 +508,7 @@ class CUDAROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(roi_perspective_transform,
                         ops::CUDAROIPerspectiveTransformOpKernel<float>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CUDA_KERNEL(roi_perspective_transform_grad,
                         ops::CUDAROIPerspectiveTransformGradOpKernel<float>);
+#endif

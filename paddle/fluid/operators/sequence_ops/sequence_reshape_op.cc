@@ -142,9 +142,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::SequenceReshapeKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SequenceReshapeKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SequenceReshapeKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     sequence_reshape_grad,
     ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, int>);
+#endif

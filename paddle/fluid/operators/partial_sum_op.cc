@@ -199,7 +199,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::PartialSumKernel<paddle::platform::CPUDeviceContext, double>,
     ops::PartialSumKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(partial_sum_grad, ops::PartialSumGradientOpKernel<float>,
                        ops::PartialSumGradientOpKernel<int>,
                        ops::PartialSumGradientOpKernel<double>,
                        ops::PartialSumGradientOpKernel<int64_t>);
+#endif

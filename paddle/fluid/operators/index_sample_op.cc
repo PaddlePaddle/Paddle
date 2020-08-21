@@ -147,9 +147,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, double>,
     ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, int>,
     ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     index_sample_grad,
     ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+#endif

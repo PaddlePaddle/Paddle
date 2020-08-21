@@ -219,7 +219,9 @@ REGISTER_OP_CPU_KERNEL(
     grid_sampler,
     ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     grid_sampler_grad,
     ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

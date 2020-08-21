@@ -769,14 +769,17 @@ REGISTER_OP_CPU_KERNEL(
     ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
 
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     depthwise_conv2d_grad,
     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif
 
 REGISTER_OP_CPU_KERNEL(
     conv2d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     conv2d_grad,
     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -785,10 +788,12 @@ REGISTER_OP_CPU_KERNEL(
     conv2d_grad_grad,
     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif
 
 REGISTER_OP_CPU_KERNEL(
     conv3d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     conv3d_grad,
     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -797,3 +802,4 @@ REGISTER_OP_CPU_KERNEL(
     conv3d_grad_grad,
     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

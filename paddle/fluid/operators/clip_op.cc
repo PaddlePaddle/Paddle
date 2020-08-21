@@ -119,6 +119,8 @@ REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad, ops::ClipGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     clip, ops::ClipKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ClipKernel<paddle::platform::CPUDeviceContext, double>);
+#ifndef PADDLE_INFERENCE_WITH_NO_PYTHON
 REGISTER_OP_CPU_KERNEL(
     clip_grad, ops::ClipGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ClipGradKernel<paddle::platform::CPUDeviceContext, double>);
+#endif
