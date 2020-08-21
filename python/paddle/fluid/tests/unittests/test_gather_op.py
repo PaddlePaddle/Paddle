@@ -246,5 +246,57 @@ class API_TestDygraphGather(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestGathertError(unittest.TestCase):
+    def test_error1(self):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+
+            shape = [8, 9, 6]
+            x = paddle.data(shape=shape, dtype='int8', name='x')
+            axis = paddle.data(shape=[1], dtype='float32', name='axis')
+            index = paddle.data(shape=shape, dtype='int32', name='index')
+            index_float = paddle.data(
+                shape=shape, dtype='float32', name='index_float')
+
+            def test_x_type():
+                paddle.gather(x, index)
+
+            self.assertRaises(TypeError, test_x_type)
+
+            def test_index_type():
+                paddle.gather(x, index_float)
+
+            self.assertRaises(TypeError, test_index_type)
+
+            def test_axis_dtype():
+                paddle.gather(x, index, axis=1.11)
+
+            self.assertRaises(TypeError, test_axis_dtype)
+
+            def test_axis_dtype():
+                paddle.gather(x, index, axis=axis)
+
+            self.assertRaises(TypeError, test_axis_dtype)
+
+    def test_error2(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+
+            shape = [8, 9, 6]
+            x = fluid.data(shape=shape, dtype='int8', name='x')
+            index = fluid.data(shape=shape, dtype='int32', name='mask')
+            index_float = fluid.data(
+                shape=shape, dtype='float32', name='index_float')
+
+            def test_x_type():
+                paddle.fluid.layers.gather(x, index)
+
+            self.assertRaises(TypeError, test_x_type)
+
+            def test_index_type():
+                paddle.fluid.layers.gather(x, index_float)
+
+            self.assertRaises(TypeError, test_index_type)
+
+
 if __name__ == "__main__":
     unittest.main()
