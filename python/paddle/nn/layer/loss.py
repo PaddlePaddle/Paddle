@@ -21,7 +21,6 @@ from .. import functional as F
 from paddle.fluid.framework import core, in_dygraph_mode, _varbase_creator
 
 __all__ = [
-    #       'NCELoss',
     'CrossEntropyLoss',
     'MSELoss',
     'L1Loss',
@@ -119,7 +118,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
                 print(output.numpy())
     """
 
-    def __init__(self, weight=None, reduction='mean', ignore_index=-100):
+    def __init__(self, weight=None, ignore_index=-100, reduction='mean'):
         super(CrossEntropyLoss, self).__init__()
         self.weight = weight
         self.reduction = reduction
@@ -137,18 +136,12 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
                 " 'none', but received %s, which is not allowed." %
                 self.reduction)
 
-        log_softmax = paddle.nn.LogSoftmax()
-        log_softmax_out = log_softmax(input)
-        if self.weight is not None and not isinstance(self.weight,
-                                                      fluid.framework.Variable):
-            raise ValueError(
-                "The weight' is not a Variable, please convert to Variable.")
-        nll_loss = paddle.nn.loss.NLLLoss(
+        return paddle.nn.functional.cross_entropy(
+            input,
+            label,
             weight=self.weight,
-            reduction=self.reduction,
-            ignore_index=self.ignore_index)
-
-        return nll_loss(log_softmax_out, label)
+            ignore_index=self.ignore_index,
+            reduction=self.reduction)
 
 
 class MSELoss(fluid.dygraph.layers.Layer):
