@@ -151,7 +151,7 @@ class GaussianInitializer : public Initializer {
     return framework::Generator::GetInstance()->is_init_py
                ? dist_(framework::Generator::GetInstance()->GetCPUEngine())
                : dist_(random_engine_);
-    return dist_(random_engine_);
+    // return dist_(random_engine_);
   }
 
  private:
