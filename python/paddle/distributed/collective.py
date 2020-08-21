@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
@@ -35,10 +33,9 @@ __all__ = [
     'init_process_group',
 ]
 
-_default_backend = None
-
 
 class ReduceOp:
+    """Reduce Operation"""
     SUM = 0
     MAX = 1
     MIN = 2
@@ -46,29 +43,27 @@ class ReduceOp:
 
 
 class Group():
+    """The abstract representation of group."""
+
     def __init__(self, rank, rank_num):
         self.rank = rank
         self.nranks = rank_num
 
 
 _default_group = Group(0, 1)
+_default_backend = None
 
 
-def init_process_group(backend,
-                       timeout,
-                       rank_num,
-                       rank,
-                       store=None,
-                       group_name=''):
+def init_process_group(backend, rank_num, rank, timeout=999999, group_name=''):
     """
 
     Initialize the default distributed environment.
 
     Args:
         backend (str): The backend to use, one of 'nccl' or 'gloo'.
-        rank_num (int): Number of processes in the distributed process group.
+        rank_num (int): Number of processes in the group.
         rank (int): Rank of the current process starting from 0.
-        timeout (int): 
+        timeout (int): Timeout in seconds for gloo only. 
         group_name (str): Name of the group.
 
     Returns:
@@ -78,11 +73,8 @@ def init_process_group(backend,
         .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
-        place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-
-        with fluid.dygraph.guard(place=place):
-            paddle.distributed.init_process_group('nccl', 100, 2, 1)
+        place = paddle.fluid.CUDAPlace(0)
+        paddle.distributed.init_process_group('nccl', 2, 1)
     """
     global _default_backend
     if not backend in ['nccl', 'gloo']:
@@ -121,7 +113,7 @@ def init_process_group(backend,
         raise ValueError("Unknow backend: %s" % backend)
 
 
-def broadcast(tensor, src, group=0, async_op=False):
+def broadcast(tensor, src, group=0):
     """
 
     Broadcast a tensor from the source to all others.
@@ -131,7 +123,6 @@ def broadcast(tensor, src, group=0, async_op=False):
             should be float16, float32, float64, int32 or int64.
         src (int): The source rank.
         group (int): The process group to work on. It is Optional.
-        async_op (bool): Whether the op is sync or async. It is Optional.
 
     Returns:
         None.
@@ -161,8 +152,6 @@ def broadcast(tensor, src, group=0, async_op=False):
     if not isinstance(src, int) or not isinstance(group, int):
         raise ValueError("Both the type of 'src' and 'group' for broadcast "
                          "should be int.")
-    if not isinstance(async_op, bool):
-        raise ValueError("The type of 'async_op' for broadcast should be bool.")
 
     helper = LayerHelper(op_type, **locals())
     helper.append_op(
@@ -172,11 +161,10 @@ def broadcast(tensor, src, group=0, async_op=False):
         attrs={
             'root': src,
             'ring_id': group,
-            'use_calc_stream': False if async_op else True
         })
 
 
-def all_reduce(tensor, op=ReduceOp.SUM, group=0, async_op=False):
+def all_reduce(tensor, op=ReduceOp.SUM, group=0):
     """
 
     Reduce a tensor over all ranks so that all get the result.
@@ -186,7 +174,6 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0, async_op=False):
             should be float16, float32, float64, int32 or int64.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used.
         group (int): Optional. The process group to work on.
-        async_op (bool): Optional. Whether the op is sync or async.
 
     Returns:
         None.
@@ -195,6 +182,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0, async_op=False):
         .. code-block:: python
 
         import paddle
+        import paddle.fluid as fluid
         from paddle.distributed import ReduceOp
 
         paddle.disable_static()
@@ -226,20 +214,15 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0, async_op=False):
         op_type = 'c_allreduce_prod'
     if not isinstance(group, int):
         raise ValueError("The type of 'group' for all_reduce should be int.")
-    if not isinstance(async_op, bool):
-        raise ValueError("The type of 'async_op' for broadcast should be bool.")
     helper = LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
         inputs={'X': [tensor]},
         outputs={'Out': [tensor]},
-        attrs={
-            'ring_id': group,
-            'use_calc_stream': False if async_op else True
-        })
+        attrs={'ring_id': group, })
 
 
-def reduce(tensor, dst, op=ReduceOp.SUM, group=0, async_op=False):
+def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
     """
 
     Reduce a tensor to the destination from all others.
@@ -250,7 +233,6 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0, async_op=False):
         dst (int): The destination rank id.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used.
         group (int): The id of the process group to work on.
-        async_op (bool): Whether the op is sync or async.
 
     Returns:
         None.
@@ -259,6 +241,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0, async_op=False):
         .. code-block:: python
 
         import paddle
+        import paddle.fluid as fluid
 
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
@@ -292,8 +275,6 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0, async_op=False):
     if not isinstance(dst, int) or not isinstance(group, int):
         raise ValueError("Both the type of 'dst' and 'group' for reduce "
                          "should be int.")
-    if not isinstance(async_op, bool):
-        raise ValueError("The type of 'async_op' for reduce should be bool.")
     helper = LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
@@ -302,11 +283,10 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0, async_op=False):
         attrs={
             'ring_id': group,
             'root_id': dst,
-            'use_calc_stream': False if async_op else True
         })
 
 
-def all_gather(tensor_list, tensor, group=0, async_op=False):
+def all_gather(tensor_list, tensor, group=0):
     """
 
     Gather tensors from all participators and all get the result.
@@ -317,7 +297,6 @@ def all_gather(tensor_list, tensor, group=0, async_op=False):
         tensor (Tensor): The Tensor to send. Its data type
             should be float16, float32, float64, int32 or int64.
         group (int): The id of the process group to work on.
-        async_op (bool): Whether the op is sync or async.
 
     Returns:
         None.
@@ -326,6 +305,7 @@ def all_gather(tensor_list, tensor, group=0, async_op=False):
         .. code-block:: python
 
         import paddle
+        import paddle.fluid as fluid
 
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
@@ -358,25 +338,19 @@ def all_gather(tensor_list, tensor, group=0, async_op=False):
         'all_reduce')
     if not isinstance(group, int):
         raise ValueError("The type of 'group' for all_gather " "should be int.")
-    if not isinstance(async_op, bool):
-        raise ValueError(
-            "The type of 'async_op' for all_gather should be bool.")
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
     helper.append_op(
         type=op_type,
         inputs={'X': [tensor]},
         outputs={'Out': [out]},
-        attrs={
-            'ring_id': group,
-            'use_calc_stream': False if async_op else True,
-            'nranks': _default_group.nranks
-        })
+        attrs={'ring_id': group,
+               'nranks': _default_group.nranks})
 
     tensor_list.extend(paddle.split(out, _default_group.nranks, 0))
 
 
-def scatter(tensor, tensor_list=None, src=0, group=0, async_op=False):
+def scatter(tensor, tensor_list=None, src=0, group=0):
     """
 
     Scatter a tensor to all participators.
@@ -388,7 +362,6 @@ def scatter(tensor, tensor_list=None, src=0, group=0, async_op=False):
             should be float16, float32, float64, int32 or int64.
         src (int): The source rank id.
         group (int): The id of the process group to work on.
-        async_op (bool): Whether the op is sync or async.
 
     Returns:
         None.
@@ -397,6 +370,7 @@ def scatter(tensor, tensor_list=None, src=0, group=0, async_op=False):
         .. code-block:: python
 
         import paddle
+        import paddle.fluid as fluid
 
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
@@ -434,9 +408,6 @@ def scatter(tensor, tensor_list=None, src=0, group=0, async_op=False):
     if not isinstance(group, int) or not isinstance(src, int):
         raise ValueError("Both the type of 'src' and 'group' for scatter "
                          "should be int.")
-    if not isinstance(async_op, bool):
-        raise ValueError(
-            "The type of 'async_op' for all_gather should be bool.")
     helper = LayerHelper(op_type, **locals())
     if rank != src:
         tensor_list = []
@@ -451,18 +422,16 @@ def scatter(tensor, tensor_list=None, src=0, group=0, async_op=False):
             'ring_id': group,
             'root': src,
             'nranks': nranks,
-            'use_calc_stream': False if async_op else True
         })
 
 
-def barrier(group=0, async_op=False):
+def barrier(group=0):
     """
 
     Barrier among all participators in the group.
 
     Args:
         group (int): The id of the process group to work on.
-        async_op (bool): Whether the op is sync or async.
 
     Returns:
         None.
@@ -471,6 +440,7 @@ def barrier(group=0, async_op=False):
         .. code-block:: python
 
         import paddle
+        import paddle.fluid as fluid
 
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
@@ -481,9 +451,6 @@ def barrier(group=0, async_op=False):
     op_type = 'barrier'
     if not isinstance(group, int):
         raise ValueError("The type of 'group' for barrier " "must be int.")
-    if not isinstance(async_op, bool):
-        raise ValueError(
-            "The type of 'async_op' for all_gather should be bool.")
     temp = paddle.fill_constant([1], dtype="int32", value="1")
     helper = LayerHelper(op_type, **locals())
     helper.append_op(

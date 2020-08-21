@@ -23,14 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_GLOO)
-#include <gloo/barrier.h>
-#include <gloo/rendezvous/context.h>
-#include <gloo/rendezvous/file_store.h>
-#include <gloo/rendezvous/http_store.h>
-#include <gloo/rendezvous/prefix_store.h>
-#include <gloo/rendezvous/store.h>
 #include <gloo/scatter.h>
-#include <gloo/transport/tcp/device.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -47,11 +40,13 @@ class CScatterOpCPUKernel : public framework::OpKernel<T> {
     auto root_id = ctx.Attr<int>("root");
 
     int64_t send_numel = in->numel();
-    T* send_buff = const_cast<T*>(in->data<T>());
-    T* recv_buff = out->data<T>();
-    auto place = ctx.GetPlace();
+    auto out_dims = in->dims();
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     auto nranks = gloo->Size();
+    out_dims[0] = out_dims[0] / nranks;
+    auto place = ctx.GetPlace();
+    T* send_buff = const_cast<T*>(in->data<T>());
+    T* recv_buff = out->mutable_data<T>(out_dims, place);
     send_numel /= nranks;
     std::vector<T*> ptrs(nranks);
     for (int i = 0; i < nranks; i++) {

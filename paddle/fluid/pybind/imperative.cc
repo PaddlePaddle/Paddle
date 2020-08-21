@@ -988,7 +988,8 @@ void BindImperative(py::module *m_ptr) {
                     [](imperative::ParallelStrategy &self,
                        const std::string &ep) { self.current_endpoint_ = ep; });
 
-  // define parallel context for gloo
+// define parallel context for gloo
+#if defined(PADDLE_WITH_GLOO)
   py::class_<imperative::GlooParallelStrategy> gloo_parallel_strategy(
       m, "GlooParallelStrategy", "");
   gloo_parallel_strategy.def(py::init())
@@ -1048,6 +1049,7 @@ void BindImperative(py::module *m_ptr) {
                     },
                     [](imperative::GlooParallelStrategy &self,
                        const std::string &fs_ugi) { self.fs_ugi = fs_ugi; });
+#endif
 
   m.def(
       "dygraph_partial_grad",
@@ -1081,7 +1083,6 @@ void BindImperative(py::module *m_ptr) {
 #if defined(PADDLE_WITH_GLOO)
   py::class_<imperative::GlooParallelContext> gloo_ctx(m,
                                                        "GlooParallelContext");
-
   gloo_ctx.def(py::init<const imperative::GlooParallelStrategy &>())
       .def("init", [](imperative::GlooParallelContext &self) { self.Init(); });
 #endif
