@@ -111,6 +111,7 @@ from .layer.loss import NLLLoss  #DEFINE_ALIAS
 from .layer.loss import BCELoss  #DEFINE_ALIAS
 from .layer.loss import KLDivLoss  #DEFINE_ALIAS
 from .layer.loss import MarginRankingLoss  #DEFINE_ALIAS
+from .layer.loss import CTCLoss  #DEFINE_ALIAS
 from .layer.loss import SmoothL1Loss  #DEFINE_ALIAS
 from .layer.norm import BatchNorm  #DEFINE_ALIAS
 from .layer.norm import SyncBatchNorm  #DEFINE_ALIAS
