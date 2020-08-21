@@ -37,7 +37,10 @@ inline std::string LibraryTypeToString(const LibraryType& library_type) {
     case LibraryType::kCUDNN:
       return "CUDNN";
     default:
-      PADDLE_THROW("unknown LibraryType %d", static_cast<int>(library_type));
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unknown LibraryType code (%d), only supports library type include "
+          "PLAIN(0), MKLDNN(1), CUDNN(2).",
+          static_cast<int>(library_type)));
   }
 }
 
@@ -56,10 +59,15 @@ inline LibraryType StringToLibraryType(const char* ctype) {
     // CPU, CUDA, PLAIN are same library type.
   } else if (s == std::string("CPU")) {
     return LibraryType::kPlain;
+  } else if (s == std::string("XPU")) {
+    return LibraryType::kPlain;
   } else if (s == std::string("CUDA")) {
     return LibraryType::kPlain;
   } else {
-    PADDLE_THROW("Unknown LibraryType %s", s.c_str());
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unknown LibraryType string (%s), only support library type string "
+        "include PLAIN, MKLDNN, CUDNN, CPU and CUDA.",
+        s.c_str()));
   }
 }
 

@@ -18,7 +18,7 @@ import random
 import tempfile
 import shutil
 
-from paddle.incubate.hapi.model import Input
+from paddle.incubate.hapi.model import Model, Input
 from paddle.incubate.hapi.vision.models import LeNet
 from paddle.incubate.hapi.callbacks import config_callbacks
 
@@ -36,9 +36,9 @@ class TestCallbacks(unittest.TestCase):
         freq = 2
         eval_steps = 20
 
-        lenet = LeNet()
-        inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
-        lenet.prepare(inputs=inputs)
+        inputs = [Input([None, 1, 28, 28], 'float32', 'image')]
+        lenet = Model(LeNet(), inputs)
+        lenet.prepare()
 
         cbks = config_callbacks(
             model=lenet,

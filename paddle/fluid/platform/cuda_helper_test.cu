@@ -25,13 +25,14 @@
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
+#include "paddle/fluid/platform/cuda_helper.h"
+
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 using paddle::platform::float16;
 
 template <typename T>
 __global__ void AddKernel(const T* data_a, T* data_b, size_t num) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, num) {
     paddle::platform::CudaAtomicAdd(&data_b[i], data_a[i]);
   }
 }
@@ -191,10 +192,7 @@ __forceinline__ __device__ T BlockReduce(T val) {
 template <typename T>
 __global__ void DeviceReduceSum(T* in, T* out, size_t N) {
   T sum(0);
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    sum += in[i];
-  }
+  CUDA_KERNEL_LOOP(i, N) { sum += in[i]; }
   sum = BlockReduce<T>(sum);
   __syncthreads();
   if (threadIdx.x == 0) out[blockIdx.x] = sum;

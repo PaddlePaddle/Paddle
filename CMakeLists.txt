@@ -28,7 +28,10 @@ include(generic)            # simplify cmake module
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDA QUIET)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
-
+option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN"        OFF)
+if (WITH_GPU  AND WITH_XPU)
+    message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
+endif()
 # cmake 3.12, 3.13, 3.14 will append gcc link options to nvcc, and nvcc doesn't recognize them.
 if(WITH_GPU AND (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.12) AND (${CMAKE_VERSION} VERSION_LESS 3.15))
     message(FATAL_ERROR "cmake ${CMAKE_VERSION} is not supported when WITH_GPU=ON because of bug https://cmake.org/pipermail/cmake/2018-September/068195.html. "
@@ -79,7 +82,6 @@ find_package(Threads REQUIRED)
 include(simd)
 
 ################################ Exposed Configurations #######################################
-option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
@@ -169,6 +171,9 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
+# lite subgraph compilation depends on CUDNN_ROOT,
+# so include(cudnn) needs to be in front of include(third_party/lite)
+include(cudnn)              # set cudnn libraries, must before configure
 include(third_party)        # download, build, install third_party
 
 if(WITH_DISTRIBUTE)
@@ -188,7 +193,6 @@ if(NOT WIN32)
 endif()
 
 include(flags)              # set paddle compile flags
-include(cudnn)              # set cudnn libraries, must before configure
 
 if(WITH_GPU)
     include(cuda)
@@ -217,6 +221,9 @@ endif(WITH_AMD_GPU)
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+    set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_ARM=ON" FORCE)
+    set(WITH_MKL OFF CACHE STRING "Disable MKL when compiling WITH_ARM=ON." FORCE)
+    set(WITH_GPU OFF CACHE STRING "Disable GPU when compiling WITH_ARM=ON." FORCE)
     add_definitions(-DPADDLE_WITH_ARM)
 endif()
 

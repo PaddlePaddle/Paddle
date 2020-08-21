@@ -17,7 +17,6 @@ from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 
-from ...model import Model
 from ...download import get_weights_path_from_url
 
 __all__ = ['MobileNetV1', 'mobilenet_v1']
@@ -103,7 +102,7 @@ class DepthwiseSeparable(fluid.dygraph.Layer):
         return y
 
 
-class MobileNetV1(Model):
+class MobileNetV1(fluid.dygraph.Layer):
     """MobileNetV1 model from
     `"MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications" <https://arxiv.org/abs/1704.04861>`_.
 
@@ -276,7 +275,8 @@ def _mobilenet(arch, pretrained=False, **kwargs):
                                                 model_urls[arch][1])
         assert weight_path.endswith(
             '.pdparams'), "suffix of weight must be .pdparams"
-        model.load(weight_path)
+        param, _ = fluid.load_dygraph(weight_path)
+        model.load_dict(param)
 
     return model
 

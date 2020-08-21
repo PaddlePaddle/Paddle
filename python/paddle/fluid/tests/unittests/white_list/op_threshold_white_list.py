@@ -40,7 +40,9 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'teacher_student_sigmoid_loss', \
     'unpool', \
     'yolov3_loss', \
-    'inverse'
+    'inverse', \
+    'bilateral_slice',\
+    'cudnn_lstm'
 ]
 
 NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST = ['bilinear_interp']

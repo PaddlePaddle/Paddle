@@ -19,18 +19,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
-__global__ void LinspaceKernel(T start, T step, int64_t size, T* out) {
-  CUDA_1D_KERNEL_LOOP(index, size) { out[index] = start + step * index; }
+__global__ void LinspaceKernel(T start, double step, int64_t size, T* out) {
+  CUDA_KERNEL_LOOP(index, size) {
+    out[index] = static_cast<T>(start + step * index);
+  }
 }
 
 template <typename T>
 __global__ void LinspaceSpecialKernel(T start, T* out) {
-  out[0] = start;
+  out[0] = static_cast<T>(start);
 }
 
 template <typename T>
@@ -55,9 +53,9 @@ class CUDALinspaceKernel : public framework::OpKernel<T> {
     out->Resize(framework::make_ddim({num}));
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
-    T step = 0;
+    double step = 0;
     if (num != 1) {
-      step = (stop - start) / (num - 1);
+      step = (static_cast<double>(stop - start)) / (num - 1);
     }
 
     auto stream = context.cuda_device_context().stream();
@@ -72,4 +70,6 @@ class CUDALinspaceKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(linspace, ops::CUDALinspaceKernel<float>,
+                        ops::CUDALinspaceKernel<int32_t>,
+                        ops::CUDALinspaceKernel<int64_t>,
                         ops::CUDALinspaceKernel<double>);

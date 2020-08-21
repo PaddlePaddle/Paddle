@@ -63,7 +63,6 @@
         "Compressor",
         "Compressor.config",
         "Compressor.run",
-        "run_check",
         "HDFSClient.upload",
         "HDFSClient.download",
         "HDFSClient.is_exist",
@@ -108,6 +107,11 @@
         "Metric.accumulate",
         "Metric.name",
         "Metric.add_metric_op",
+        "Accuracy.reset",
+        "Accuracy.update",
+        "Accuracy.accumulate",
+        "Accuracy.name",
+        "Accuracy.add_metric_op",
         "Callback.set_params",
         "Callback.on_train_begin",
         "Callback.on_train_end",
@@ -122,7 +126,8 @@
         "Callback.on_eval_batch_begin",
         "Callback.on_eval_batch_end",
         "Callback.on_test_batch_begin",
-        "Callback.on_test_batch_end"
+        "Callback.on_test_batch_end",
+        "Model.prepare"
     ],
     "wlist_no_op_pass":[
         "gelu",

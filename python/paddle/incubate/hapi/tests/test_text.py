@@ -23,7 +23,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Linear, Layer
 from paddle.fluid.layers import BeamSearchDecoder
-from paddle.incubate.hapi.model import Model, Input, set_device
+from paddle.incubate.hapi import Model, Input, set_device
 from paddle.incubate.hapi.text import *
 
 
@@ -36,7 +36,7 @@ class ModuleApiTest(unittest.TestCase):
         np.random.seed(cls._random_seed)
         random.seed(cls._random_seed)
 
-        cls.model_cls = type(cls.__name__ + "Model", (Model, ), {
+        cls.model_cls = type(cls.__name__ + "Model", (Layer, ), {
             "__init__": cls.model_init_wrapper(cls.model_init),
             "forward": cls.model_forward
         })
@@ -49,7 +49,7 @@ class ModuleApiTest(unittest.TestCase):
     @staticmethod
     def model_init_wrapper(func):
         def __impl__(self, *args, **kwargs):
-            Model.__init__(self)
+            Layer.__init__(self)
             func(self, *args, **kwargs)
 
         return __impl__
@@ -89,9 +89,10 @@ class ModuleApiTest(unittest.TestCase):
             fluid.disable_dygraph()
         fluid.default_main_program().random_seed = self._random_seed
         fluid.default_startup_program().random_seed = self._random_seed
-        model = self.model_cls(**self.attrs) if isinstance(
+        layer = self.model_cls(**self.attrs) if isinstance(
             self.attrs, dict) else self.model_cls(*self.attrs)
-        model.prepare(inputs=self.make_inputs(), device=place)
+        model = Model(layer, inputs=self.make_inputs())
+        model.prepare()
         if self.param_states:
             model.load(self.param_states, optim_state=None)
         return model.test_batch(self.inputs)
@@ -141,10 +142,7 @@ class TestBasicLSTM(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -170,10 +168,7 @@ class TestBasicGRU(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -224,11 +219,8 @@ class TestBeamSearch(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, self.inputs[0].shape[-1]], "float32",
-                name="init_hidden"),
-            Input(
-                [None, self.inputs[1].shape[-1]], "float32", name="init_cell"),
+            Input([None, self.inputs[0].shape[-1]], "float32", "init_hidden"),
+            Input([None, self.inputs[1].shape[-1]], "float32", "init_cell"),
         ]
         return inputs
 
@@ -280,14 +272,10 @@ class TestTransformerEncoder(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[0].shape[-1]],
-                "float32",
-                name="enc_input"),
-            Input(
-                [None, self.inputs[1].shape[1], None, None],
-                "float32",
-                name="attn_bias"),
+            Input([None, None, self.inputs[0].shape[-1]], "float32",
+                  "enc_input"),
+            Input([None, self.inputs[1].shape[1], None, None], "float32",
+                  "attn_bias"),
         ]
         return inputs
 
@@ -348,22 +336,14 @@ class TestTransformerDecoder(TestTransformerEncoder):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[0].shape[-1]],
-                "float32",
-                name="dec_input"),
-            Input(
-                [None, None, self.inputs[0].shape[-1]],
-                "float32",
-                name="enc_output"),
-            Input(
-                [None, self.inputs[-1].shape[1], None, None],
-                "float32",
-                name="self_attn_bias"),
-            Input(
-                [None, self.inputs[-1].shape[1], None, None],
-                "float32",
-                name="cross_attn_bias"),
+            Input([None, None, self.inputs[0].shape[-1]], "float32",
+                  "dec_input"),
+            Input([None, None, self.inputs[0].shape[-1]], "float32",
+                  "enc_output"),
+            Input([None, self.inputs[-1].shape[1], None, None], "float32",
+                  "self_attn_bias"),
+            Input([None, self.inputs[-1].shape[1], None, None], "float32",
+                  "cross_attn_bias"),
         ]
         return inputs
 
@@ -451,14 +431,10 @@ class TestTransformerBeamSearchDecoder(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[0].shape[-1]],
-                "float32",
-                name="enc_output"),
-            Input(
-                [None, self.inputs[1].shape[1], None, None],
-                "float32",
-                name="trg_src_attn_bias"),
+            Input([None, None, self.inputs[0].shape[-1]], "float32",
+                  "enc_output"),
+            Input([None, self.inputs[1].shape[1], None, None], "float32",
+                  "trg_src_attn_bias"),
         ]
         return inputs
 
@@ -497,12 +473,9 @@ class TestSequenceTagging(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None], "int64", name="word"),
-            Input(
-                [None], "int64", name="lengths"),
-            Input(
-                [None, None], "int64", name="target"),
+            Input([None, None], "int64", "word"),
+            Input([None], "int64", "lengths"),
+            Input([None, None], "int64", "target"),
         ]
         return inputs
 
@@ -544,10 +517,7 @@ class TestStackedRNN(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -573,10 +543,7 @@ class TestLSTM(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -612,10 +579,7 @@ class TestBiLSTM(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -645,10 +609,7 @@ class TestGRU(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -684,10 +645,7 @@ class TestBiGRU(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, None, self.inputs[-1].shape[-1]],
-                "float32",
-                name="input"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -722,9 +680,7 @@ class TestCNNEncoder(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input(
-                [None, self.inputs[-1].shape[1], None], "float32",
-                name="input"),
+            Input([None, self.inputs[-1].shape[1], None], "float32", "input"),
         ]
         return inputs
 

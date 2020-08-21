@@ -1804,7 +1804,7 @@ class DynamicDecode(Layer):
             from paddle.fluid.layers import BeamSearchDecoder
             from paddle.incubate.hapi.text import StackedLSTMCell, DynamicDecode
 
-            paddle.enable_dygraph()
+            paddle.disable_static()
 
             vocab_size, d_model, = 100, 32
             encoder_output = paddle.rand((2, 4, d_model))
@@ -2278,7 +2278,7 @@ class TransformerCell(RNNCell):
             from paddle.incubate.hapi.text import TransformerBeamSearchDecoder
             from paddle.incubate.hapi.text import DynamicDecode
 
-            paddle.enable_dygraph()
+            paddle.disable_static()
 
             class Embedder(fluid.dygraph.Layer):
                 def __init__(self):
@@ -2445,7 +2445,7 @@ class TransformerBeamSearchDecoder(layers.BeamSearchDecoder):
             from paddle.incubate.hapi.text import TransformerBeamSearchDecoder
             from paddle.incubate.hapi.text import DynamicDecode
 
-            paddle.enable_dygraph()
+            paddle.disable_static()
 
             class Embedder(fluid.dygraph.Layer):
                 def __init__(self):

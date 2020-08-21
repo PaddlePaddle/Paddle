@@ -23,16 +23,16 @@ import paddle.fluid as fluid
 
 def p_norm(x, axis, porder, keepdims=False):
     if axis is None: axis = -1
-    xp = np.power(np.abs(x), porder)
-    s = np.sum(xp, axis=axis, keepdims=keepdims)
-    r = np.power(s, 1.0 / porder)
+    r = np.linalg.norm(
+        x, ord=porder, axis=axis, keepdims=keepdims).astype(x.dtype)
     return r
 
 
 def frobenius_norm(x, axis=None, keepdims=False):
     if isinstance(axis, list): axis = tuple(axis)
     if axis is None: axis = (-2, -1)
-    r = np.linalg.norm(x, ord='fro', axis=axis, keepdims=keepdims)
+    r = np.linalg.norm(
+        x, ord='fro', axis=axis, keepdims=keepdims).astype(x.dtype)
     return r
 
 
@@ -89,6 +89,7 @@ class TestPnormOp(OpTest):
             'porder': float(self.porder)
         }
         self.outputs = {'Out': norm}
+        self.gradient = self.calc_gradient()
 
     def test_check_output(self):
         self.check_output()
@@ -104,6 +105,34 @@ class TestPnormOp(OpTest):
         self.keepdim = False
         self.dtype = "float64"
 
+    def calc_gradient(self):
+        self.attrs = {
+            'epsilon': self.epsilon,
+            'axis': self.axis,
+            'keepdim': self.keepdim,
+            'porder': float(self.porder)
+        }
+        x = self.inputs["X"]
+        porder = self.attrs["porder"]
+        axis = self.attrs["axis"]
+        if porder == 0:
+            grad = np.zeros(x.shape).astype(x.dtype)
+        elif porder in [float("inf"), float("-inf")]:
+            norm = p_norm(x, axis=axis, porder=porder, keepdims=True)
+            x_abs = np.abs(x)
+            grad = np.sign(x)
+            grad[x_abs != norm] = 0.0
+        else:
+            norm = p_norm(x, axis=axis, porder=porder, keepdims=True)
+            grad = np.power(norm, 1 - porder) * np.power(
+                np.abs(x), porder - 1) * np.sign(x)
+
+        numel = 1
+        for s in x.shape:
+            numel *= s
+        numel /= x.shape[axis]
+        return [grad.astype(x.dtype) * 1 / numel]
+
 
 class TestPnormOp2(TestPnormOp):
     def init_test_case(self):
@@ -116,6 +145,45 @@ class TestPnormOp2(TestPnormOp):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestPnormOp3(TestPnormOp):
+    def init_test_case(self):
+        self.shape = [3, 20, 3]
+        self.axis = 2
+        self.epsilon = 1e-12
+        self.porder = np.inf
+        self.keepdim = True
+        self.dtype = "float32"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+
+
+class TestPnormOp4(TestPnormOp):
+    def init_test_case(self):
+        self.shape = [3, 20, 3]
+        self.axis = 2
+        self.epsilon = 1e-12
+        self.porder = -np.inf
+        self.keepdim = True
+        self.dtype = "float32"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+
+
+class TestPnormOp5(TestPnormOp):
+    def init_test_case(self):
+        self.shape = [3, 20, 3]
+        self.axis = 2
+        self.epsilon = 1e-12
+        self.porder = 0
+        self.keepdim = True
+        self.dtype = "float32"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
 
 
 def run_out(self, p, axis, shape_x, shape_y, dtype):
@@ -170,6 +238,9 @@ class API_NormTest(unittest.TestCase):
         run_fro(self, p='fro', axis=[0, 1], shape_x=[3, 3, 4], dtype="float64")
         run_pnorm(self, p=2, axis=None, shape_x=[3, 4], dtype="float32")
         run_pnorm(self, p=2, axis=1, shape_x=[3, 4], dtype="float64")
+        run_pnorm(self, p=np.inf, axis=1, shape_x=[3, 4], dtype="float32")
+        run_pnorm(self, p=-np.inf, axis=1, shape_x=[3, 4], dtype="float64")
+        run_pnorm(self, p=0, axis=1, shape_x=[3, 4], dtype="float64")
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):

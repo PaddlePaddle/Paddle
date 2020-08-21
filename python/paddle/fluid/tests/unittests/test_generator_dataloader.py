@@ -117,7 +117,6 @@ class TestBase(unittest.TestCase):
                 for _ in six.moves.range(EPOCH_NUM):
                     step = 0
                     for d in py_reader():
-                        print(d)
                         assert len(d) == len(places), "{} != {}".format(
                             len(d), len(places))
                         for i, item in enumerate(d):

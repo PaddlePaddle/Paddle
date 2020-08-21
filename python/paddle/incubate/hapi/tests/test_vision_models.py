@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 
 import paddle.incubate.hapi.vision.models as models
-from paddle.incubate.hapi.model import Input
+import paddle.incubate.hapi as hapi
 
 
 class TestVisonModels(unittest.TestCase):
@@ -24,13 +24,13 @@ class TestVisonModels(unittest.TestCase):
 
         x = np.array(np.random.random((2, 3, 224, 224)), dtype=np.float32)
         if batch_norm:
-            model = models.__dict__[arch](pretrained=pretrained,
-                                          batch_norm=True)
+            net = models.__dict__[arch](pretrained=pretrained, batch_norm=True)
         else:
-            model = models.__dict__[arch](pretrained=pretrained)
-        inputs = [Input([None, 3, 224, 224], 'float32', name='image')]
+            net = models.__dict__[arch](pretrained=pretrained)
 
-        model.prepare(inputs=inputs)
+        input = hapi.Input([None, 3, 224, 224], 'float32', 'image')
+        model = hapi.Model(net, input)
+        model.prepare()
 
         model.test_batch(x)
 
@@ -71,10 +71,9 @@ class TestVisonModels(unittest.TestCase):
         self.models_infer('resnet152')
 
     def test_lenet(self):
-        lenet = models.__dict__['LeNet']()
-
-        inputs = [Input([None, 1, 28, 28], 'float32', name='x')]
-        lenet.prepare(inputs=inputs)
+        input = hapi.Input([None, 1, 28, 28], 'float32', 'x')
+        lenet = hapi.Model(models.__dict__['LeNet'](), input)
+        lenet.prepare()
 
         x = np.array(np.random.random((2, 1, 28, 28)), dtype=np.float32)
         lenet.test_batch(x)

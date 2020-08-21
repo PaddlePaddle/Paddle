@@ -236,39 +236,38 @@ def elementwise_div(x, y, axis=-1, name=None):
         name=name)
 
 
-def trace(input, offset=0, dim1=0, dim2=1, name=None):
+def trace(x, offset=0, axis1=0, axis2=1, name=None):
     """
-    The layer to compute the trace for a complex number tensor. input :attr:`input` must be a ComplexVariable. 
+    The layer to compute the trace for a complex number tensor. x :attr:`x` must be a ComplexVariable. 
     See the detailed description for the function and other arguments 
     in :ref:`api_tensor_math_trace` . 
     
     Args:
-        input(ComplexVariable): The input ComplexVariable. Must be at least 2-dimensional. 
+        x(ComplexVariable): The input ComplexVariable x. Must be at least 2-dimensional. 
             The supported data types include complex64 and complex128.
-        offset(int, optional): Which diagonals in input tensor will be taken. Default: 0 (main diagonals).
-        dim1(int, optional): The first dimension with respect to take diagonal. Default: 0.
-        dim2(int, optional): The second dimension with respect to take diagonal. Default: 1.
+        offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
+        axis1(int, optional): The first axis with respect to take diagonal. Default: 0.
+        axis2(int, optional): The second axis with respect to take diagonal. Default: 1.
         name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
     
     Returns:
-        ComplexVariable: The trace result of input tensor, it's data type is the same as input data type.
+        ComplexVariable: The trace result of input tensor x, it's data type is the same as input data type.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.fluid.dygraph as dg
             import numpy as np
             
             case1 = np.random.randn(3, 10, 10).astype('float64') + 1j * np.random.randn(3, 10, 10).astype('float64')
             
-            with dg.guard():
-                case1 = dg.to_variable(case1)
-                data1 = paddle.complex.trace(case1, offset=1, dim1=1, dim2=2) # data1.shape = [3]
+            paddle.disable_static()
+            case1 = paddle.to_tensor(case1)
+            data1 = paddle.complex.trace(case1, offset=1, axis1=1, axis2=2) # data1.shape = [3]
     """
-    complex_variable_exists([input], "trace")
-    real = math.trace(input.real, offset, dim1, dim2, name)
-    imag = math.trace(input.imag, offset, dim1, dim2, name)
+    complex_variable_exists([x], "trace")
+    real = math.trace(x.real, offset, axis1, axis2, name)
+    imag = math.trace(x.imag, offset, axis1, axis2, name)
 
     return ComplexVariable(real, imag)
 
@@ -331,8 +330,8 @@ def sum(input, dim=None, keep_dim=False, name=None):
 
     """
     complex_variable_exists([input], "sum")
-    real = math.sum(input.real, dim=dim, keep_dim=keep_dim, name=name)
-    imag = math.sum(input.imag, dim=dim, keep_dim=keep_dim, name=name)
+    real = math.sum(input.real, axis=dim, keepdim=keep_dim, name=name)
+    imag = math.sum(input.imag, axis=dim, keepdim=keep_dim, name=name)
     return ComplexVariable(real, imag)
 
 

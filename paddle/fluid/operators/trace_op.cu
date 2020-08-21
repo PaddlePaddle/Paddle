@@ -33,8 +33,8 @@ class TraceCUDAKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
 
     const int64_t offset = context.Attr<int>("offset");
-    const int64_t dim1 = context.Attr<int>("dim1");
-    const int64_t dim2 = context.Attr<int>("dim2");
+    const int64_t dim1 = context.Attr<int>("axis1");
+    const int64_t dim2 = context.Attr<int>("axis2");
 
     T* out_data = out->mutable_data<T>(context.GetPlace());
     const framework::Tensor diag =

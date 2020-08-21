@@ -25,6 +25,9 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
 from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.fluid.dygraph.io import VARIABLE_FILENAME
+
+from predictor_utils import PredictorTools
 
 SEED = 2020
 
@@ -494,8 +497,13 @@ def do_train(args, to_static):
                 step += 1
         # save inference model
         if to_static:
-            program_translator.save_inference_model(
-                dirname=args.model_save_dir, feed=[0, 2], fetch=[1])
+            configs = fluid.dygraph.jit.SaveLoadConfig()
+            configs.output_spec = [crf_decode]
+            fluid.dygraph.jit.save(
+                layer=model,
+                model_path=args.model_save_dir,
+                input_spec=[words, length],
+                configs=configs)
         else:
             fluid.dygraph.save_dygraph(model.state_dict(), args.dy_param_path)
 
@@ -529,9 +537,19 @@ class TestLACModel(unittest.TestCase):
             batch = [np.vstack(var) for var in zip(*batch)]
             dy_pre = self.predict_dygraph(batch)
             st_pre = self.predict_static(batch)
+            dy_jit_pre = self.predict_dygraph_jit(batch)
+            predictor_pre = self.predict_analysis_inference(batch)
             self.assertTrue(
                 np.allclose(dy_pre, st_pre),
                 msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
+            self.assertTrue(
+                np.allclose(dy_jit_pre, st_pre),
+                msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(dy_jit_pre,
+                                                               st_pre))
+            self.assertTrue(
+                np.allclose(predictor_pre, st_pre),
+                msg="predictor_pre:\n {}\n, st_pre: \n{}.".format(predictor_pre,
+                                                                  st_pre))
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
@@ -558,7 +576,9 @@ class TestLACModel(unittest.TestCase):
         # load inference model
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(
-             self.args.model_save_dir, executor=exe)
+             self.args.model_save_dir,
+             executor=exe,
+             params_filename=VARIABLE_FILENAME)
 
         words, targets, length = batch
         pred_res = exe.run(
@@ -567,6 +587,24 @@ class TestLACModel(unittest.TestCase):
                   feed_target_names[1]: length},
             fetch_list=fetch_targets)
         return pred_res[0]
+
+    def predict_dygraph_jit(self, batch):
+        words, targets, length = batch
+        with fluid.dygraph.guard(self.place):
+            model = fluid.dygraph.jit.load(self.args.model_save_dir)
+            model.eval()
+
+            pred_res = model(to_variable(words), to_variable(length))
+
+            return pred_res.numpy()
+
+    def predict_analysis_inference(self, batch):
+        words, targets, length = batch
+
+        output = PredictorTools(self.args.model_save_dir, VARIABLE_FILENAME,
+                                [words, length])
+        out = output()
+        return out
 
 
 if __name__ == "__main__":

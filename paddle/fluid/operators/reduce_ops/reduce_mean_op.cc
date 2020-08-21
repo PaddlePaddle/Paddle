@@ -103,11 +103,7 @@ REGISTER_OP_CPU_KERNEL(reduce_mean,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                                          float, ops::MeanFunctor>,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         double, ops::MeanFunctor>,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         int, ops::MeanFunctor>,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         int64_t, ops::MeanFunctor>);
+                                         double, ops::MeanFunctor>);
 
 template <typename T>
 using CPUReduceMeanGradKernel =

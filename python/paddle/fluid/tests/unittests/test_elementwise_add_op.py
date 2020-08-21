@@ -389,44 +389,6 @@ class TestElementwiseAddOpError(unittest.TestCase):
 
 
 class TestAddOp(unittest.TestCase):
-    def test_out(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[3], dtype="float32")
-            y = fluid.data(name='y', shape=[3], dtype='float32')
-
-            res = fluid.data(name="output", shape=[3], dtype="float32")
-            y_1 = paddle.add(x, y, out=res)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            data1 = np.array([2, 3, 4], dtype='float32')
-            data2 = np.array([1, 5, 2], dtype='float32')
-            np_res, np_y_1 = exe.run(feed={'x': data1,
-                                           'y': data2},
-                                     fetch_list=[res, y_1])
-
-            self.assertEqual((np_res == np_y_1).all(), True)
-
-    def test_out_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
-            return
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[3], dtype="float32")
-            y = fluid.data(name='y', shape=[3], dtype='float32')
-
-            res = fluid.data(name="output", shape=[3], dtype="float32")
-            y_1 = paddle.add(x, y, out=res)
-
-            place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
-            data1 = np.array([2, 3, 4], dtype='float32')
-            data2 = np.array([1, 5, 2], dtype='float32')
-            np_res, np_y_1 = exe.run(feed={'x': data1,
-                                           'y': data2},
-                                     fetch_list=[res, y_1])
-
-            self.assertEqual((np_res == np_y_1).all(), True)
-
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")
@@ -435,7 +397,7 @@ class TestAddOp(unittest.TestCase):
             y_1 = paddle.add(x, y, name='add_res')
             self.assertEqual(('add_res' in y_1.name), True)
 
-    def test_alpha(self):
+    def test_declarative(self):
         with fluid.program_guard(fluid.Program()):
 
             def gen_data():
@@ -446,33 +408,12 @@ class TestAddOp(unittest.TestCase):
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
             y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = paddle.add(x, y, alpha=10)
+            z = paddle.add(x, y)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
-            z_expected = np.array([12., 53., 24.])
-            self.assertEqual((z_value == z_expected).all(), True)
-
-    def test_alpha_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
-            return
-        with fluid.program_guard(fluid.Program()):
-
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
-                }
-
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = paddle.add(x, y, alpha=-0.5)
-
-            place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
-            z_expected = np.array([1.5, 0.5, 3.])
+            z_expected = np.array([3., 8., 6.])
             self.assertEqual((z_value == z_expected).all(), True)
 
     def test_dygraph(self):
@@ -481,9 +422,9 @@ class TestAddOp(unittest.TestCase):
             np_y = np.array([1, 5, 2]).astype('float64')
             x = fluid.dygraph.to_variable(np_x)
             y = fluid.dygraph.to_variable(np_y)
-            z = paddle.add(x, y, alpha=-0.5)
+            z = paddle.add(x, y)
             np_z = z.numpy()
-            z_expected = np.array([1.5, 0.5, 3.])
+            z_expected = np.array([3., 8., 6.])
             self.assertEqual((np_z == z_expected).all(), True)
 
 
