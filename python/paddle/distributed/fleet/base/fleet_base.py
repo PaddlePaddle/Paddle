@@ -103,6 +103,7 @@ class Fleet(object):
                 "Something wrong occurred, please check whether rolemaker is instance of RoleMakerBase"
             )
         self.strategy_compiler = StrategyCompiler()
+        return None
 
     def is_first_worker(self):
         """

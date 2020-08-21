@@ -32,8 +32,7 @@ def mean(x, axis=None, keepdim=False, name=None):
     Computes the mean of the input tensor's elements along ``axis``.
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64, int32,
-            int64.
+        x (Tensor): The input Tensor with data type float32, float64.
         axis (int|list|tuple, optional): The axis along which to perform mean
             calculations. ``axis`` should be int, list(int) or tuple(int). If
             ``axis`` is a list/tuple of dimension(s), mean is calculated along
@@ -97,9 +96,12 @@ def mean(x, axis=None, keepdim=False, name=None):
         return core.ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
                                     'reduce_all', reduce_all)
 
-    check_variable_and_dtype(x, 'x/input',
-                             ['float32', 'float64', 'int32', 'int64'],
+    check_variable_and_dtype(x, 'x/input', ['float32', 'float64'],
                              'mean/reduce_mean')
+    check_type(axis, 'axis/dim', (int, list, tuple), 'mean/reduce_mean')
+    if isinstance(axis, (list, tuple)):
+        for item in axis:
+            check_type(item, 'elements of axis/dim', (int), 'mean/reduce_mean')
 
     helper = LayerHelper('mean', **locals())
     attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
