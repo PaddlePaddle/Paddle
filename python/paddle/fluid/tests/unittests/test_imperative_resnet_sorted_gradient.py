@@ -77,9 +77,8 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
         batch_size = train_parameters["batch_size"]
         batch_num = 10
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            paddle.manual_seed(seed)
             resnet = ResNet()
             optimizer = optimizer_setting(
                 train_parameters, parameter_list=resnet.parameters())
@@ -136,8 +135,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                     dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))

@@ -21,6 +21,7 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
+import paddle
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
@@ -259,15 +260,15 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
         op = Operator(
             "uniform_random",
             Out="X",
-            shape=[4, 784],
+            shape=[100, 784],
             min=-5.0,
             max=10.0,
             seed=10,
-            diag_num=4,
+            diag_num=100,
             diag_step=784,
             diag_val=1.0)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [4, 784])
+        self.assertEqual(out.get_tensor().shape(), [100, 784])
         hist, prob = output_hist_diag(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
@@ -347,6 +348,7 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
 class TestUniformRandomOp_API_seed(unittest.TestCase):
     def test_attr_tensor_API(self):
+        paddle.fluid.core.default_cpu_generator()._is_init_py = False
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
@@ -386,7 +388,7 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         shape_tensor = scope.var("Shape").get_tensor()
-        shape_tensor.set(np.array([4, 784]).astype("int64"), place)
+        shape_tensor.set(np.array([100, 784]).astype("int64"), place)
 
         op = Operator(
             "uniform_random",
@@ -396,7 +398,7 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
             max=10.0,
             seed=10)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [4, 784])
+        self.assertEqual(out.get_tensor().shape(), [100, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
