@@ -193,7 +193,7 @@ void AsyncCommunicator::RecvNoBarrier() {
       auto &var_name = iter.first;
       VLOG(4) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
-      recv_functor(iter.second, *recv_scope_, false);
+      recv_functor(iter.second, *recv_scope_);
     };
     task_futures.emplace_back(recv_threadpool_->enqueue(std::move(recv_task)));
   }
@@ -700,7 +700,7 @@ void GeoCommunicator::RecvDense(const std::string &varname) {
 
   auto &ctx = recv_varname_to_ctx_.at(varname);
   auto recv = distributed::ParameterRecv<float>();
-  recv(ctx, *pserver_scope_, true);
+  recv(ctx, *pserver_scope_);
 
   PADDLE_ENFORCE_EQ(
       var_psrever->IsInitialized(), true,
