@@ -28,13 +28,13 @@ __all__ = [
     'argsort',
     'has_inf',
     'has_nan',
-    #       'masked_select',
+    'masked_select',
     'topk',
     'where',
     'index_select',
     'nonzero',
     'sort',
-    'index_sample'
+    'index_sample',
 ]
 
 from paddle.common_ops_import import *
@@ -627,6 +627,60 @@ def index_sample(x, index):
         inputs={'X': x,
                 'Index': index},
         outputs={'Out': out})
+    return out
+
+
+def masked_select(x, mask, name=None):
+    """
+    This OP Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
+    which is a tensor with data type of bool.
+
+    Args:
+        x (Tensor): The input Tensor, the data type can be int32, int64, float32, float64. 
+        mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns: A 1-D Tensor which is the same data type  as ``x``.
+    
+    Raises:
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
+        TypeError: ``mask`` must be a Tensor and the data type of ``mask`` must be bool.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            
+            paddle.disable_static()
+            data = np.array([[1.0, 2.0, 3.0, 4.0],
+                                [5.0, 6.0, 7.0, 8.0],
+                                [9.0, 10.0, 11.0, 12.0]]).astype('float32')
+            
+            mask_data = np.array([[True, False, False, False],
+                            [True, True, False, False],
+                            [True, False, False, False]]).astype('bool')
+            x = paddle.to_tensor(data)
+            mask = paddle.to_tensor(mask_data)
+            out = paddle.masked_select(x, mask)
+            #[1.0 5.0 6.0 9.0]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.masked_select(x, mask)
+
+    helper = LayerHelper("masked_select", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.tensor.search.mask_select')
+    check_variable_and_dtype(mask, 'mask', ['bool'],
+                             'paddle.tensor.search.masked_select')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='masked_select', inputs={'X': x,
+                                      'Mask': mask}, outputs={'Y': out})
     return out
 
 
