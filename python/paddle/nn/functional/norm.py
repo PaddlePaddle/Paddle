@@ -156,8 +156,9 @@ def batch_norm(x,
           x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
           running_mean = np.random.random(size=1).astype('float32')
           running_variance = np.random.random(size=1).astype('float32')
-          rm = to_variable(running_mean)
-          rv = to_variable(running_variance)
+          x = to_tensor(x_data)
+          rm = to_tensor(running_mean)
+          rv = to_tensor(running_variance)
           batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv)
 
           print(batch_norm_out.numpy)
@@ -211,25 +212,26 @@ def batch_norm(x,
         "Variance": [running_var]
     }
 
-    saved_mean = self._helper.create_variable_for_type_inference(
+    helper = LayerHelper('batch_norm', **locals())
+    saved_mean = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
-    saved_variance = self._helper.create_variable_for_type_inference(
+    saved_variance = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
-    batch_norm_out = self._helper.create_variable_for_type_inference(x.dtype)
+    batch_norm_out = helper.create_variable_for_type_inference(x.dtype)
 
     outputs = {
         "Y": [batch_norm_out],
-        "MeanOut": [mean],
-        "VarianceOut": [variance],
+        "MeanOut": [running_mean],
+        "VarianceOut": [running_var],
         "SavedMean": [saved_mean],
         "SavedVariance": [saved_variance]
     }
 
-    self._helper.append_op(
+    helper.append_op(
         type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
     # Currently, we don't support inplace in dygraph mode
-    return self._helper.append_activation(batch_norm_out, None)
+    return helper.append_activation(batch_norm_out)
 
 
 def layer_norm(x,
@@ -304,13 +306,14 @@ def layer_norm(x,
     attrs = {"epsilon": epsilon, "begin_norm_axis": begin_norm_axis}
 
     # create output
-    mean_out = self._helper.create_variable_for_type_inference(
+    helper = LayerHelper('layer_norm', **locals())
+    mean_out = helper.create_variable_for_type_inference(
         dtype=x.type, stop_gradient=True)
-    variance_out = self._helper.create_variable_for_type_inference(
+    variance_out = helper.create_variable_for_type_inference(
         dtype=x.type, stop_gradient=True)
-    layer_norm_out = self._helper.create_variable_for_type_inference(x.type)
+    layer_norm_out = helper.create_variable_for_type_inference(x.type)
 
-    self._helper.append_op(
+    helper.append_op(
         type="layer_norm",
         inputs=inputs,
         outputs={
@@ -321,7 +324,7 @@ def layer_norm(x,
         attrs={"epsilon": epsilon,
                "begin_norm_axis": begin_norm_axis})
 
-    return self._helper.append_activation(layer_norm_out, act=None)
+    return helper.append_activation(layer_norm_out)
 
 
 def instance_norm(x,
@@ -378,7 +381,32 @@ def instance_norm(x,
 
     """
 
-    def _check_input_dim(self, input):
-        if len(input.shape) != 2 and len(input.shape) != 3:
-            raise ValueError('expected 2D or 3D input (got {}D input)'.format(
-                len(input.shape)))
+    if in_dygraph_mode():
+        out, _, _ = core.ops.instance_norm(x, weight, bias, 'epsilon', eps)
+        return out
+
+    check_variable_and_dtype(x, 'input', ['float32', 'float64'], "InstanceNorm")
+
+    attrs = {"epsilon": eps}
+
+    if weight and bias:
+        inputs = {"X": [x], "Scale": [weight], "Bias": [bias]}
+    else:
+        inputs = {"X": [x]}
+
+    helper = LayerHelper('instance_norm', **locals())
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
+    instance_norm_out = helper.create_variable_for_type_inference(x.dtype)
+
+    outputs = {
+        "Y": [instance_norm_out],
+        "SavedMean": [saved_mean],
+        "SavedVariance": [saved_variance]
+    }
+
+    helper.append_op(
+        type="instance_norm", inputs=inputs, outputs=outputs, attrs=attrs)
+    return instance_norm_out

@@ -571,7 +571,7 @@ class LayerNorm(layers.Layer):
                 "begin_norm_axis": self._begin_norm_axis
             })
 
-        return self._helper.append_activation(layer_norm_out, act=self._act)
+        return self._helper.append_activation(layer_norm_out, act=None)
 
 
 class _BatchNormBase(layers.Layer):
