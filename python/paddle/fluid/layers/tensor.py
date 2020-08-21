@@ -747,7 +747,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     return out
 
 
-@deprecated(since='1.8.0', update_to="paddle.fluid.fill_constant")
+@deprecated(since='1.8.0', update_to="paddle.fill_constant")
 @templatedoc()
 def fill_constant_batch_size_like(input,
                                   shape,
