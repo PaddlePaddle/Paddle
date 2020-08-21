@@ -348,6 +348,7 @@ def conv_transpose2d(x,
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
+    See more detail in :ref:`api_nn_conv_ConvTranspose2d` .
 
     For each input :math:`X`, the equation is:
 
@@ -402,7 +403,7 @@ def conv_transpose2d(x,
             where M is the number of output channels(filters), g is the number of groups,
             kH is the height of the kernel, and kW is the width of the kernel.
         bias(Tensor, optional): The bias, a Tensor with shape [M, ].
-        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution. 
+        stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution. 
             If stride is a tuple, it must contain two integers, (stride_height, stride_width). 
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
         padding(int|list|str|tuple, optional): The padding size. The padding argument effectively adds
@@ -416,9 +417,9 @@ def conv_transpose2d(x,
             when `data_format` is `'NHWC'`, `padding` can be in the form
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
-        output_padding(int|tuple, optional): Additional size added to one side
+        output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points. 
+        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
             If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width). 
             Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
@@ -442,19 +443,17 @@ def conv_transpose2d(x,
            None by default.
 
     Returns:
-        A Tensor representing the conv2d_transpose, whose 
+        A Tensor representing the conv_transpose2d, whose 
         data type is the same with input and shape is (num_batches, channels, out_h, 
-        out_w) or (num_batches, out_h, out_w, channels). If act is None, the tensor variable 
-        storing the transposed convolution result, and if act is not None, the 
-        tensor variable storing transposed convolution and non-linearity activation 
-        result.
+        out_w) or (num_batches, out_h, out_w, channels). The tensor variable storing 
+        transposed convolution result.
 
     Raises:
         ValueError: If `data_format` is not "NCHW" or "NHWC".
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
-        ValueError: If `output_size` and filter_size are None at the same time.
+        ValueError: If `output_size` and kernel_size are None at the same time.
         ShapeError: If the input is not 4-D Tensor.
         ShapeError: If the input's dimension size and filter's dimension size not equal.
         ShapeError: If the dimension size of input minus the size of `stride` is not 2.
@@ -464,17 +463,16 @@ def conv_transpose2d(x,
     Examples:
         .. code-block:: python
 
+          import numpy as np
           import paddle
           import paddle.nn.functional as F
-          import paddle.fluid.dygraph as dg
-          import numpy as np
 
           x = np.random.randn(2, 3, 8, 8).astype(np.float32)
           w = np.random.randn(3, 6, 3, 3).astype(np.float32)
 
           paddle.disable_static()
-          x_var = dg.to_variable(x)
-          w_var = dg.to_variable(w)
+          x_var = paddle.to_tensor(x)
+          w_var = paddle.to_tensor(w)
           y_var = F.conv2d_transpose(x_var, w_var)
           y_np = y_var.numpy()
           print(y_np.shape)
@@ -801,7 +799,7 @@ def conv_transpose3d(x,
                      output_size=None,
                      name=None):
     """
-    The convolution3D transpose layer calculates the output based on the input,
+    The convolution3d transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
     are in NCDHW or NDHWC format. Where N is batch size, C is the number of channels,
     D is the depth of the feature, H is the height of the feature, and W
@@ -812,6 +810,7 @@ def conv_transpose3d(x,
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
+    See more detail in :ref:`api_nn_conv_ConvTranspose3d` .
 
     For each input :math:`X`, the equation is:
 
@@ -870,7 +869,7 @@ def conv_transpose3d(x,
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M, ].
-        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution. 
+        stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution. 
             If stride is a tuple, it must contain three integers, (stride_depth, stride_height, 
             stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
             Default: stride = 1.
@@ -884,9 +883,9 @@ def conv_transpose3d(x,
             when `data_format` is `'NDHWC'`, `padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
-        output_padding(int|tuple, optional): Additional size added to one side
+        output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points. 
+        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
             If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height, 
             dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
             Default: dilation = 1.
@@ -900,7 +899,7 @@ def conv_transpose3d(x,
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
-        output_size(int|tuple, optional): The output image size. If output size is a
+        output_size(int|list|tuple, optional): The output image size. If output size is a
             tuple, it must contain three integers, (image_depth, image_height, image_width). This
             parameter only works when filter_size is None. If output_size and filter_size are 
             specified at the same time, They should follow the formula above. Default: None. 
@@ -921,7 +920,7 @@ def conv_transpose3d(x,
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
-        ValueError: If `output_size` and filter_size are None at the same time.
+        ValueError: If `output_size` and kernel_size are None at the same time.
         ShapeError: If the input is not 5-D Tensor.
         ShapeError: If the input's dimension size and filter's dimension size not equal.
         ShapeError: If the dimension size of input minus the size of `stride` is not 2.
@@ -930,10 +929,11 @@ def conv_transpose3d(x,
 
     Examples:
        .. code-block:: python
+          
+          import numpy as np
 
           import paddle
           import paddle.nn.functional as F
-          import numpy as np
 
           x = np.random.randn(2, 3, 8, 8, 8).astype(np.float32)
           w = np.random.randn(3, 6, 3, 3, 3).astype(np.float32)

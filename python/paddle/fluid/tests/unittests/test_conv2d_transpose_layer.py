@@ -164,8 +164,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
             stride=self.stride,
             dilation=self.dilation,
             groups=self.groups,
-            data_format=self.data_format,
-            dtype=self.dtype)
+            data_format=self.data_format)
         conv.weight.set_value(self.weight)
         if not self.no_bias:
             conv.bias.set_value(self.bias)
