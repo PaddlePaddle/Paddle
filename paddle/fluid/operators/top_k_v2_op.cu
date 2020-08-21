@@ -220,6 +220,18 @@ class TopkV2OpGradCUDAKernel : public framework::OpKernel<T> {
 
     // calcluate the block and grid num
     auto& dev_ctx = context.cuda_device_context();
+    auto ComputeBlockSize = [](int col) {
+      if (col > 512)
+        return 1024;
+      else if (col > 256 && col <= 512)
+        return 512;
+      else if (col > 128 && col <= 256)
+        return 256;
+      else if (col > 64 && col <= 128)
+        return 128;
+      else
+        return 64;
+    };
     int block_size = ComputeBlockSize(post * k);
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);

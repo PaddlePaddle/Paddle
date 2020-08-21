@@ -691,7 +691,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`axis`.
 
     Args:
-        x(Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int6.
+        x(Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
         k(int|Tensor): The number of top elements to look for along the last dimension
                            of input tensor.
         axis(int, optional): Axis to compute indices along. The effective range

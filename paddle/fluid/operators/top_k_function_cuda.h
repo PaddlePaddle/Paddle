@@ -361,7 +361,6 @@ __global__ void AssignGradWithAxis(const T* grad_out, const int64_t* indices,
     }
   }
 }
-
 // use the radix sort for the topk
 template <typename T>
 bool SortTopk(const platform::CUDADeviceContext& ctx,
