@@ -16,9 +16,11 @@ from __future__ import print_function
 
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import Program, program_guard
+import paddle.fluid.core as core
 
 
 class TestApiDataError(unittest.TestCase):
@@ -51,6 +53,20 @@ class TestApiDataError(unittest.TestCase):
                 layers.data(name='data1', shape=2, dtype="bool")
 
             self.assertRaises(TypeError, test_shape_type)
+
+
+class TestApiStaticDataError(unittest.TestCase):
+    def test_fluid_data(self):
+        with program_guard(Program(), Program()):
+            x1 = paddle.static.data(name="x1", shape=[2, 25])
+            self.assertEqual(x1.dtype, core.VarDesc.VarType.FP32)
+
+            x2 = paddle.static.data(name="x2", shape=[2, 25], dtype="bool")
+            self.assertEqual(x2.dtype, core.VarDesc.VarType.BOOL)
+
+            paddle.set_default_dtype("float64")
+            x3 = paddle.static.data(name="x3", shape=[2, 25])
+            self.assertEqual(x3.dtype, core.VarDesc.VarType.FP64)
 
 
 if __name__ == "__main__":

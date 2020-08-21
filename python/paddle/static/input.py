@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.data import data
+from ..fluid.data import data as fluid_data
+import paddle
 
 __all__ = ['data', 'InputSpec']
 
@@ -47,8 +48,78 @@ class InputSpec(object):
         self.name = name
 
     def _create_feed_layer(self):
-        return data(self.name, shape=self.shape, dtype=self.dtype)
+        return fluid_data(self.name, shape=self.shape, dtype=self.dtype)
 
     def __repr__(self):
         return '{}(shape={}, dtype={}, name={})'.format(
             type(self).__name__, self.shape, self.dtype, self.name)
+
+
+def data(name, shape, dtype=None, lod_level=0):
+    """
+    **Data Layer**
+
+    This function creates a variable on the global block. The global variable
+    can be accessed by all the following operators in the graph. The variable
+    is a placeholder that could be fed with input, such as Executor can feed
+    input into the variable. Except the `dtype` is different in default parameter 
+    settings, It is similar as `fluid.data` api. When `dtype` is not set, the dtype
+    will get from the global dtype by `paddle.get_default_dtype()`.
+
+    Args:
+       name (str): The name/alias of the variable, see :ref:`api_guide_Name`
+           for more details.
+       shape (list|tuple): List|Tuple of integers declaring the shape. You can
+           set "None" or -1 at a dimension to indicate the dimension can be of any
+           size. For example, it is useful to set changeable batch size as "None" or -1.
+       dtype (np.dtype|VarType|str, optional): The type of the data. Supported
+           dtype: bool, float16, float32, float64, int8, int16, int32, int64,
+           uint8. Default: float32. When `dtype` is not set, the dtype will get 
+           from the global dtype by `paddle.get_default_dtype()`.
+       lod_level (int, optional): The LoD level of the LoDTensor. Usually users
+           don't have to set this value. For more details about when and how to
+           use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0.
+
+    Returns:
+        Variable: The global variable that gives access to the data.
+
+    Examples:
+        .. code-block:: python
+
+          import numpy as np
+          import paddle
+
+          # Creates a variable with fixed size [3, 2, 1]
+          # User can only feed data of the same shape to x
+          # the dtype is not set, so it will set "float32" by
+          # paddle.get_default_dtype(). You can use paddle.get_default_dtype() to 
+          # change the global dtype
+          x = paddle.static.data(name='x', shape=[3, 2, 1])
+
+          # Creates a variable with changeable batch size -1.
+          # Users can feed data of any batch size into y,
+          # but size of each data sample has to be [2, 1]
+          y = paddle.static.data(name='y', shape=[-1, 2, 1], dtype='float32')
+
+          z = x + y
+
+          # In this example, we will feed x and y with np-ndarray "1"
+          # and fetch z, like implementing "1 + 1 = 2" in PaddlePaddle
+          feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
+
+          exe = fluid.Executor(fluid.CPUPlace())
+          out = exe.run(fluid.default_main_program(),
+                        feed={
+                            'x': feed_data,
+                            'y': feed_data
+                        },
+                        fetch_list=[z.name])
+
+          # np-ndarray of shape=[3, 2, 1], dtype=float32, whose elements are 2
+          print(out)
+
+    """
+    if dtype:
+        return fluid_data(name, shape, dtype, lod_level)
+    else:
+        return fluid_data(name, shape, paddle.get_default_dtype(), lod_level)
