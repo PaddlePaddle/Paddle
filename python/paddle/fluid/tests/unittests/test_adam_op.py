@@ -476,17 +476,57 @@ class TestAdamOpV2(unittest.TestCase):
         assert rets[0] is not None
 
     def test_adam_op_dygraph(self):
-        with fluid.dygraph.guard():
-            value = np.arange(26).reshape(2, 13).astype("float32")
-            a = fluid.dygraph.to_variable(value)
-            linear = fluid.Linear(13, 5, dtype="float32")
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = fluid.dygraph.to_variable(value)
+        linear = fluid.Linear(13, 5, dtype="float32")
 
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.01, parameters=linear.parameters())
-            out = linear(a)
-            out.backward()
-            adam.step()
-            adam.clear_gradients()
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=linear.parameters())
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+    def test_adam_op_with_state_dict(self):
+
+        import paddle
+        paddle.disable_static()
+        emb = paddle.nn.Embedding([10, 10])
+
+        adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
+        state_dict = adam.state_dict()
+
+        adam.set_state_dict(state_dict)
+
+        #learning_rate is Decay
+        from paddle.fluid.regularizer import L2Decay
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.01,
+            weight_decay=L2Decay(0.001),
+            parameters=emb.parameters())
+
+        state_dict = adam.state_dict()
+        adam.set_state_dict(state_dict)
+
+        params = adam.get_opti_var_name_list()
+        assert (params is not None)
+
+    def test_adam_op_with_set_lr(self):
+        import paddle
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
+
+        lr = 0.01
+        adam.set_lr(lr)
+        cur_lr = adam.current_step_lr()
+        assert (lr == cur_lr)
+
+        lr_var = paddle.create_global_var(shape=[1], value=lr, dtype='float32')
+        adam.set_lr(lr_var)
+        cur_lr = adam.current_step_lr()
+        assert (np.float32(lr) == cur_lr)
 
 
 if __name__ == "__main__":

@@ -27,6 +27,7 @@ class TestAdamWOp(unittest.TestCase):
         adam = paddle.optimizer.AdamW(
             learning_rate=0.01,
             parameters=linear.parameters(),
+            apply_decay_param_fun=lambda name: True,
             weight_decay=0.01)
         out = linear(a)
         out.backward()
