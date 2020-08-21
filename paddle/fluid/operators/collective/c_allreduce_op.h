@@ -104,7 +104,9 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
         break;
 
       default:
-        PADDLE_THROW("Invalid reduce type: %d", red_type);
+        PADDLE_ENFORCE_EQ(true, false,
+                          platform::errors::InvalidArgument(
+                              "Invalid reduce type: %d.", red_type));
     }
     gloo::allreduce(opts);
 #else

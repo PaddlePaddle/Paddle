@@ -114,7 +114,7 @@ def init_process_group(backend,
         strategy.path = '/tmp/tmp0'
         strategy.fs_name = ""
         strategy.fs_ugi = ""
-        gloo = GlooParallelContext(strategy)
+        gloo = fluid.core.GlooParallelContext(strategy)
         gloo.init()
     else:
         raise ValueError("Unknow backend: %s" % backend)
