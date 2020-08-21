@@ -388,9 +388,9 @@ struct HardShrinkFunctor : public BaseActivationFunctor<T> {
   }
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    auto temp1 = (x < static_cast<T>(threshold * -1)).template cast<T>();
-    auto temp2 = (x > static_cast<T>(threshold)).template cast<T>();
-    out.device(d) = x * (temp1 + temp2);
+    auto temp1 = x < static_cast<T>(threshold * -1.f);
+    auto temp2 = x > static_cast<T>(threshold);
+    out.device(d) = x * (temp1 + temp2 > 0).template cast<T>();
   }
 };
 
@@ -405,9 +405,9 @@ struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    auto temp1 = (x < static_cast<T>(threshold * -1)).template cast<T>();
-    auto temp2 = (x > static_cast<T>(threshold)).template cast<T>();
-    dx.device(d) = dout * (temp1 + temp2).template cast<T>();
+    auto temp1 = x < static_cast<T>(threshold * -1.f);
+    auto temp2 = x > static_cast<T>(threshold);
+    dx.device(d) = dout * (temp1 + temp2 > 0).template cast<T>();
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -975,32 +975,46 @@ struct HardSwishGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
-// softplus(x) = log(1 + exp(x))
-// When x is a very large positive number, exp(x) may explode to inf,
-// Using trick below for numerical stability
-// https://hips.seas.harvard.edu/blog/2013/01/09/computing-log-sum-exp/
-// Then: softplus(x) = max(x, 0) + log(exp(-max(x, 0)) + exp(x - max(x, 0)))
+// For numerical stability, using the following formula instead of softplus(x) =
+// log(1 + exp(x))
+// softplus(x) = log(1 + exp(beta * x)) / beta when beta * x <= threshold(beta =
+// 1, threshold = 20 by default), otherwise x
 template <typename T>
 struct SoftplusFunctor : public BaseActivationFunctor<T> {
+  float beta;
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}, {"threshold", &threshold}};
+  }
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) {
-    auto temp = x.cwiseMax(static_cast<T>(0));  // temp = max(x, 0)
-    out.device(d) = temp + (((-temp).exp() + (x - temp).exp()).log());
+    auto x_beta = static_cast<T>(beta) * x;
+    out.device(d) = (x_beta > static_cast<T>(threshold))
+                        .select(x, (static_cast<T>(1) + x_beta.exp()).log() /
+                                       static_cast<T>(beta));
   }
 };
 
-// d(softplus(x))/dx = exp(x) / (1 + exp(x))
-// For numerical stability:
-// d(softplus(x))/dx = exp(x - max(x, 0)) / (exp(-max(x, 0)) +
-// exp(x - max(x, 0)))
+// For numerical stability, using the following formula instead of
+// d(softplus(x))/dx = 1 / (1 + exp(-x))
+// d(softplus(x))/dx = 1 / (1 + exp(-beta * x)) when beta * x <= threshold(beta
+// = 1, threshold = 20 by default), otherwise x
 template <typename T>
 struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
+  float beta;
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}, {"threshold", &threshold}};
+  }
+
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) {
-    auto temp = x.cwiseMax(static_cast<T>(0));  // temp = max(x, 0)
+    auto x_beta = static_cast<T>(beta) * x;
     dx.device(d) =
-        dout * ((x - temp).exp() / ((-temp).exp() + (x - temp).exp()));
+        (x_beta > static_cast<T>(threshold))
+            .select(dout, dout / (static_cast<T>(1) + (-x_beta).exp()));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
