@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 from six.moves import reduce
 from .. import core
 from ..layers import utils
