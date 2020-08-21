@@ -161,8 +161,10 @@ class GlooWrapper {
 #endif
   }
 
+#ifdef PADDLE_WITH_GLOO
   bool IsInitialized() { return is_initialized_; }
   std::shared_ptr<gloo::Context> GetContext() { return context_; }
+#endif
 
   template <typename T>
   std::vector<T> AllReduce(std::vector<T>& sendbuf,            // NOLINT
