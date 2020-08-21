@@ -44,20 +44,22 @@ class CBroadcastOpCPUKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_GLOO)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
+    auto root = ctx.Attr<int>("root");
 
     int64_t send_numel = in->numel();
     const T* send_buff = in->data<T>();
     T* recv_buff = out->data<T>();
     auto place = ctx.GetPlace();
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
-    auto nranks = gloo->Rank();
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(), true,
         platform::errors::InvalidArgument(
             "You must initialize the gloo environment first to use it."));
     gloo::BroadcastOptions opts(gloo->GetContext());
     opts.setInput(const_cast<T*>(send_buff), send_numel);
-    opts.setOutput(recv_buff, send_numel * nranks);
+    opts.setOutput(recv_buff, send_numel);
+    opts.setRoot(root);
+    opts.setTimeout(std::chrono::seconds(99999));
     gloo::broadcast(opts);
 #else
     PADDLE_ENFORCE_EQ(

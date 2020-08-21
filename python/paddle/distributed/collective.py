@@ -104,7 +104,7 @@ def init_process_group(backend,
     if backend == 'nccl':
         prepare_context()
     elif backend == 'gloo':
-        strategy = fluid.core.GlooParallelstrategy()
+        strategy = fluid.core.GlooParallelStrategy()
         strategy.rank = rank
         strategy.rank_num = rank_num
         strategy.prefix = ""
@@ -279,6 +279,15 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0, async_op=False):
     if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
         raise ValueError("The op for reduce must be one of educeOp.PROD, "
                          "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
+    if op == ReduceOp.SUM:
+        op_type = 'c_reduce_sum'
+    elif op == ReduceOp.MAX:
+        op_type = 'c_reduce_max'
+    elif op == ReduceOp.MIN:
+        op_type = 'c_reduce_min'
+    elif op == ReduceOp.PROD:
+        op_type = 'c_reduce_prod'
+
     if not isinstance(dst, int) or not isinstance(group, int):
         raise ValueError("Both the type of 'dst' and 'group' for reduce "
                          "should be int.")

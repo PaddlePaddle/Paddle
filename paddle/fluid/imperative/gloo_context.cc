@@ -17,7 +17,6 @@
 namespace paddle {
 namespace imperative {
 #if defined(PADDLE_WITH_GLOO)
-
 void GlooParallelContext::Init() {
   auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
   gloo_ptr->SetRank(strategy_.rank);

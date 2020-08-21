@@ -13,6 +13,9 @@ if(NOT WIN32)
   if (WITH_NCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
   endif()
+  if (WITH_GLOO)
+    set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
+  endif()
 endif(NOT WIN32)
 
 if(WITH_PYTHON)
@@ -61,6 +64,10 @@ if(WITH_PYTHON)
 
   if(WITH_NCCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
+  endif(WITH_NCCL)
+
+  if(WITH_NCCL)
+    list(APPEND OP_FUNCTION_GENERETOR_DEPS gloo_context)
   endif(WITH_NCCL)
 
   add_executable(op_function_generator op_function_generator.cc)

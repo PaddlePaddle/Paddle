@@ -45,13 +45,21 @@ class CAllGatherOpCPUKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_GLOO)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
-
-    int64_t send_numel = in->numel();
-    const T* send_buff = in->data<T>();
-    T* recv_buff = out->data<T>();
+    framework::DDim out_dims = in->dims();
     auto place = ctx.GetPlace();
+
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
-    auto nranks = gloo->Rank();
+    auto nranks = gloo->Size();
+    out_dims[0] *= nranks;
+    int64_t send_numel = in->numel();
+    VLOG(0) << "In:";
+    const T* send_buff = in->data<T>();
+    VLOG(0) << "Out:";
+    out->mutable_data<T>(place);
+    out->Resize(out_dims);
+    T* recv_buff = out->mutable_data<T>(place);
+    VLOG(0) << "In_Out:";
+
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(), true,
         platform::errors::InvalidArgument(
