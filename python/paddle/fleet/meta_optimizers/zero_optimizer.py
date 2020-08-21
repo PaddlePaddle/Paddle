@@ -25,6 +25,13 @@ import re
 __all__ = ["ZeroOptimizer"]
 
 
+def _pretty_op_desc_(op_desc, prefix):
+    out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % \
+            (prefix + "_op", str(op_desc.type()), prefix + "_input", " ".join(op_desc.input_arg_names()),
+             prefix + "_output", " ".join(op_desc.output_arg_names()))
+    return out_s
+
+
 class ZeroOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(ZeroOptimizer, self).__init__(optimizer)
@@ -426,6 +433,70 @@ class ZeroOptimizer(MetaOptimizerBase):
         print("check done: ")
         return
 
+    def _remove_optimize_ops(self, block):
+        """
+        calculate deps from allredce op to optimize op,
+        remove ops and vars not needed in this worker
+        """
+        # string: var_name -> int: deps
+        reduce_var_deps = {}
+        for idx, op in enumerate(block.ops):
+            if op.type == "c_allreduce_sum":
+                output_names = op.desc.output_arg_names()
+                assert (len(output_names) == 1)
+                output_name = output_names[0]
+                reduce_var_deps[output_name] = 0
+            elif op.type in ["c_sync_comm_stream", "c_calc_comm_stream"]:
+                continue
+            else:
+                deps_reduce = False
+                for input_name in op.desc.input_arg_names():
+                    if input_name in reduce_var_deps:
+                        reduce_var_deps[input_name] += 1
+                        deps_reduce = True
+                if deps_reduce:
+                    for output_name in op.desc.output_arg_names():
+                        reduce_var_deps[output_name] = 0
+
+        tobe_removed_vars = set()
+        for var_name, _ in block.vars.items():
+            print("trying to add tobe_removed_vars: ", var_name)
+            if self._is_opti_var(var_name) and \
+                self._var_device_id(var_name) != self.role_maker.worker_index():
+                tobe_removed_vars.add(var_name)
+
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if op.type == "c_allreduce_sum":
+                # do something
+                output_names = op.desc.output_arg_names()
+                assert (len(output_names) == 1)
+                output_name = output_names[0]
+                del (reduce_var_deps[output_name])
+                if output_name in tobe_removed_vars:
+                    tobe_removed_vars.remove(output_name)
+                continue
+            if op.type in ["c_sync_comm_stream", "c_calc_comm_stream"]:
+                continue
+            remove_op = True
+            for output_name in op.desc.output_arg_names():
+                if output_name not in tobe_removed_vars:
+                    remove_op = False
+                    break
+            if remove_op:
+                print("%d: main_block remove op %s" %
+                      (self.role_maker.worker_index(), op.type))
+                for input_name in op.desc.input_arg_names():
+                    if input_name in reduce_var_deps:
+                        reduce_var_deps[input_name] -= 1
+                        if reduce_var_deps[input_name] == 0:
+                            tobe_removed_vars.add(input_name)
+                block._remove_op(idx)
+
+        for var_name in tobe_removed_vars:
+            block._remove_var(var_name)
+        block._sync_with_cpp()
+        return
+
     def minimize_impl(self,
                       loss,
                       startup_program=None,
@@ -471,42 +542,8 @@ class ZeroOptimizer(MetaOptimizerBase):
         self._split_params(params_grads)
         print(self._device2params)
 
-        # step3: remove ops that generate params
-        for idx, op in reversed(list(enumerate(startup_block.ops))):
-            for output_name in op.desc.output_arg_names():
-                var_device_id = self._var_device_id(output_name)
-                if var_device_id == -1 or var_device_id == self.role_maker.worker_index(
-                ):
-                    continue
-                print("%d: startup_block remove op %s" %
-                      (self.role_maker.worker_index(), op.type))
-                startup_block._remove_op(idx)
-                break
-        startup_block._sync_with_cpp()
-
-        for idx, op in reversed(list(enumerate(main_block.ops))):
-            for output_name in op.desc.output_arg_names():
-                if (output_name in self._varname2param) and \
-                    (output_name not in self._device2params[self.role_maker.worker_index()]):
-                    print("%d: main_block remove op %s" %
-                          (self.role_maker.worker_index(), op.type))
-                    main_block._remove_op(idx)
-                    break
-        main_block._sync_with_cpp()
-
         # step4 add broadcast ops
         self._insert_broadcast_ops(main_block)
-        main_block._sync_with_cpp()
-
-        # step5: remove Parameter from main program and startup program
-        for var_name, var in main_block.vars.items():
-            var_device_id = self._var_device_id(var_name)
-            if var_device_id == -1 or var_device_id == self.role_maker.worker_index(
-            ):
-                continue
-            print("%d: main_block remove %s" %
-                  (self.role_maker.worker_index(), var_name))
-            main_block._remove_var(var_name)
         main_block._sync_with_cpp()
 
         for var_name, var in startup_block.vars.items():
@@ -526,7 +563,24 @@ class ZeroOptimizer(MetaOptimizerBase):
         self._insert_allreduce_ops(main_block)
         main_block._sync_with_cpp()
         print("insert allreduce done")
+
+        # step7: remove optimize ops in block
+        for idx, op in reversed(list(enumerate(startup_block.ops))):
+            for output_name in op.desc.output_arg_names():
+                var_device_id = self._var_device_id(output_name)
+                if var_device_id == -1 or var_device_id == self.role_maker.worker_index(
+                ):
+                    continue
+                print("%d: startup_block remove op %s" %
+                      (self.role_maker.worker_index(), op.type))
+                startup_block._remove_op(idx)
+                break
+        startup_block._sync_with_cpp()
+        self._remove_optimize_ops(main_block)
+
+        # step8: check op dependecy for broadcast
         self._check_broadcast(main_block)
+
         return optimize_ops, params_grads
 
     def _broadcast_params(self, block):
