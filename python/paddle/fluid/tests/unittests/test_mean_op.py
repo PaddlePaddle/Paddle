@@ -129,9 +129,14 @@ class TestMeanAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_errors(self):
+        paddle.disable_static()
+        x = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        x = paddle.to_tensor(x)
+        self.assertRaises(Exception, paddle.mean, x, -3)
+        self.assertRaises(Exception, paddle.mean, x, 2)
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', [10, 12], 'int8')
+            x = paddle.data('X', [10, 12], 'int32')
             self.assertRaises(TypeError, paddle.mean, x)
 
 
