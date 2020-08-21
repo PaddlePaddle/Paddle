@@ -76,12 +76,10 @@ class Fleet(object):
         self._util = None
 
     def init(self, role_maker):
-        #if paddle.fluid.framework.in_dygraph_mode():
-        #    self.dy_strategy = paddle.fluid.dygraph.parallel.prepare_context()
-        #    return 
         self._role_maker = role_maker
         self.strategy_compiler = StrategyCompiler()
-        self.dy_strategy = paddle.fluid.dygraph.parallel.prepare_context()
+        if paddle.fluid.framework.in_dygraph_mode():
+            self.dy_strategy = paddle.fluid.dygraph.parallel.prepare_context()
 
     def is_first_worker(self):
         """
