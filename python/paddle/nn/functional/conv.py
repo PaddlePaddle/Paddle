@@ -475,7 +475,8 @@ def conv_transpose1d(input,
           
           # [[[60. 16. 99. 75.  4.]]]
     """
-    if get_cudnn_version() >= 7630:
+    cudnn_version = get_cudnn_version()
+    if cudnn_version is not None:
         use_cudnn = True
     else:
         use_cudnn = False
@@ -532,6 +533,8 @@ def conv_transpose1d(input,
     num_filters = weight.shape[1]
     if (num_channels == groups and num_filters == 1 and not use_cudnn):
         op_type = 'depthwise_conv2d_transpose'
+        if cudnn_version is not None and cudnn_version < 7603:
+            use_cudnn = False
 
     squeeze_axis = -2 if channel_last else -1
     conv2d_data_format = "NHWC" if channel_last else "NCHW"
