@@ -138,13 +138,13 @@ def monkey_patch_varbase():
 
         Args:
             backward_strategy(BackwardStrategy, optional): The backward strategy to run the backward pass. If you would
-            like to sum gradients by the reverse order of the forward execution sequence, please set the value of
-            `BackwardStrategy.sort_sum_gradient` to True. Refer to :ref:`api_fluid_dygraph_BackwardStrategy` for
-            more details. Defaults to None, which meant that the value of `BackwardStrategy.sort_sum_gradient` is False.
+                like to sum gradients by the reverse order of the forward execution sequence, please set the value of
+                :code:`BackwardStrategy.sort_sum_gradient` to True. Refer to :ref:`api_fluid_dygraph_BackwardStrategy` for
+                more details. Defaults to None, which meant that the value of :code:`BackwardStrategy.sort_sum_gradient` is False.
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
-            like to add more ops to the built graph after calling this method(`backward`), set the parameter
-            `retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
-            Defaults to False.
+                like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
+                :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+                Defaults to False.
 
         Returns:
             NoneType: None
