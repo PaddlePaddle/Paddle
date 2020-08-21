@@ -63,8 +63,8 @@ class TestDistTraning(unittest.TestCase):
         im_shape = (-1, 1, 28, 28)
         batch_size = 128
 
-        inputs = [Input('image', im_shape, 'float32')]
-        labels = [Input('label', [None, 1], 'int64')]
+        inputs = [Input(im_shape, 'float32', 'image')]
+        labels = [Input([None, 1], 'int64', 'label')]
 
         model = Model(LeNet(classifier_activation=None), inputs, labels)
         optim = fluid.optimizer.Momentum(
