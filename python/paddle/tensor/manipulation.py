@@ -864,17 +864,17 @@ def tile(x, repeat_times, name=None):
             np_data = np.array([1, 2, 3]).astype('int32')
             data = paddle.to_tensor(np_data)
             out = paddle.tile(data, repeat_times=[2, 1])
-			np_out = out.numpy()
+	    np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
 
             out = paddle.tile(data, repeat_times=[2, 2])
-			np_out = out.numpy()
+	    np_out = out.numpy()
             # [[1, 2, 3, 1, 2, 3], [1, 2, 3, 1, 2, 3]]
 
             np_repeat_times = np.array([2, 1]).astype("int32")
             repeat_times = paddle.to_tensor(np_repeat_times)
             out = paddle.tile(data, repeat_times=repeat_times)
-			np_out = out.numpy()
+	    np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
     check_variable_and_dtype(
@@ -950,7 +950,7 @@ def expand_as(x, y, name=None):
             data_x = paddle.to_tensor(np_data_x)
             data_y = paddle.to_tensor(np_data_y)
             out = paddle.expand_as(data_x, data_y)
-			np_out = out.numpy()
+	    np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
     check_variable_and_dtype(
@@ -1003,13 +1003,7 @@ def expand(x, shape, name=None):
             np_data = np.array([1, 2, 3]).astype('int32')
             data = paddle.to_tensor(np_data)
             out = paddle.expand(data, shape=[2, 3])
-			out = out.numpy()
-            # [[1, 2, 3], [1, 2, 3]]
-
-            np_shape = np.array([2, 3]).astype('int32')
-            shape = paddle.to_tensor(np_shape)
-            out = paddle.expand(data, shape=shape)
-			out = out.numpy()
+	    out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
     check_variable_and_dtype(
