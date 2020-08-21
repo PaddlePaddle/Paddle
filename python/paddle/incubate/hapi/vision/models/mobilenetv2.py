@@ -43,8 +43,8 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
         tmp_param = ParamAttr(name=self.full_name() + "_weights")
         self._conv = Conv2d(
-            num_channels=num_channels,
-            num_filters=num_filters,
+            in_channels=num_channels,
+            out_channels=num_filters,
             kernel_size=filter_size,
             stride=stride,
             padding=padding,

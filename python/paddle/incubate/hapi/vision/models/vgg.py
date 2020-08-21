@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-from paddle.nn import Conv2d, Pool2D, BatchNorm, Linear
+from paddle.nn import Conv2d, Pool2D, BatchNorm, Linear, ReLU
 from paddle.fluid.dygraph.container import Sequential
 
 from ...download import get_weights_path_from_url
@@ -106,11 +106,10 @@ def make_layers(cfg, batch_norm=False):
         else:
             if batch_norm:
                 conv2d = Conv2d(in_channels, v, kernel_size=3, padding=1)
-                layers += [conv2d, BatchNorm(v, act='relu')]
+                layers += [conv2d, BatchNorm(v), ReLU()]
             else:
-                conv2d = Conv2d(
-                    in_channels, v, kernel_size=3, padding=1, act='relu')
-                layers += [conv2d]
+                conv2d = Conv2d(in_channels, v, kernel_size=3, padding=1)
+                layers += [conv2d, ReLU()]
             in_channels = v
     return Sequential(*layers)
 

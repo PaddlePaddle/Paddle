@@ -16,6 +16,7 @@ from __future__ import print_function
 __all__ = ['conv2d', 'conv2d_transpose', 'conv3d', 'conv3d_transpose']
 
 import numpy as np
+from ...device import get_cudnn_version
 from ...fluid.framework import Variable, in_dygraph_mode
 from ...fluid import core, dygraph_utils
 from ...fluid.layers import nn, utils
@@ -204,17 +205,18 @@ def conv2d(x,
 
           import paddle
           import paddle.nn.functional as F
-          import paddle.fluid.dygraph as dg
           import numpy as np
 
           x = np.random.randn(2, 3, 8, 8).astype(np.float32)
           w = np.random.randn(6, 3, 3, 3).astype(np.float32)
 
-          with dg.guard(place):
-              x_var = dg.to_variable(x)
-              w_var = dg.to_variable(w)
-              y_var = F.conv2d(x_var, w_var)
-              y_np = y_var.numpy()
+          paddle.disable_static()
+
+          x_var = paddle.to_tensor(x)
+          w_var = paddle.to_tensor(w)
+          y_var = F.conv2d(x_var, w_var)
+          y_np = y_var.numpy()
+
           print(y_np.shape)
 
           # (2, 6, 6, 6)
@@ -243,7 +245,11 @@ def conv2d(x,
             "received: the number of filters is {}, the shape of weight is {}"
             ", the groups is {}".format(num_filters, weight.shape, groups))
 
-    use_cudnn = True if core.is_compiled_with_cuda() else False
+    # use_cudnn = True if core.is_compiled_with_cuda() else False
+    cudnn_version = get_cudnn_version()
+
+    use_cudnn = True if (core.is_compiled_with_cuda() and
+                         cudnn_version is not None) else False
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
@@ -251,9 +257,9 @@ def conv2d(x,
     dilation = utils.convert_to_list(dilation, 2, 'dilation')
 
     l_type = "conv2d"
-    if (num_channels == groups and num_filters % num_channels == 0 and
-            not use_cudnn):
+    if (num_channels == groups and num_filters % num_channels == 0):
         l_type = 'depthwise_conv2d'
+        use_cudnn = False
 
     inputs = {'Input': [x], 'Filter': [weight]}
     attrs = {
@@ -611,6 +617,9 @@ def conv3d(x,
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M, ].
+        stride (int|tuple): The stride size. It means the stride in convolution. If stride is a 
+            tuple, it must contain three integers, (stride_depth, stride_height, stride_width). 
+            Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
         padding (string|int|list|tuple): The padding size. It means the number of zero-paddings 
             on both sides for each dimension. If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
@@ -621,9 +630,6 @@ def conv3d(x,
             when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
-        stride (int|tuple): The stride size. It means the stride in convolution. If stride is a 
-            tuple, it must contain three integers, (stride_depth, stride_height, stride_width). 
-            Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
         dilation (int|tuple): The dilation size. It means the spacing between the kernel points. 
             If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height,
             dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
@@ -705,7 +711,9 @@ def conv3d(x,
             "Received: number of filters({}), groups({}).".format(num_filters,
                                                                   groups))
 
-    use_cudnn = True if core.is_compiled_with_cuda() else False
+    cudnn_version = get_cudnn_version()
+    use_cudnn = True if (core.is_compiled_with_cuda() and
+                         cudnn_version is not None) else False
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 3)
     stride = utils.convert_to_list(stride, 3, 'stride')

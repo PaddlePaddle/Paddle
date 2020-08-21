@@ -52,8 +52,8 @@ class ConvBNLayer(fluid.dygraph.Layer):
         super(ConvBNLayer, self).__init__()
 
         self._conv = Conv2d(
-            num_channels=num_channels,
-            num_filters=num_filters,
+            in_channels=num_channels,
+            out_channels=num_filters,
             kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
