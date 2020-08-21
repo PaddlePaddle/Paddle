@@ -44,6 +44,7 @@ class _ConvNd(layers.Layer):
                  out_channels,
                  kernel_size,
                  transposed,
+                 dims,
                  stride=1,
                  padding=0,
                  padding_mode='zeros',
@@ -62,9 +63,10 @@ class _ConvNd(layers.Layer):
         self._out_channels = out_channels
         self._data_format = data_format
 
-        self._stride = utils.convert_to_list(stride, 2, 'stride')
-        self._dilation = utils.convert_to_list(dilation, 2, 'dilation')
-        self._kernel_size = utils.convert_to_list(kernel_size, 2, 'kernel_size')
+        self._stride = utils.convert_to_list(stride, dims, 'stride')
+        self._dilation = utils.convert_to_list(dilation, dims, 'dilation')
+        self._kernel_size = utils.convert_to_list(kernel_size, dims,
+                                                  'kernel_size')
         self._padding = padding
         self.output_padding = output_padding
 
@@ -426,6 +428,7 @@ class ConvTranspose2d(_ConvNd):
             out_channels,
             kernel_size,
             True,
+            2,
             stride=stride,
             padding=padding,
             dilation=dilation,
@@ -801,6 +804,7 @@ class ConvTranspose3d(_ConvNd):
             out_channels,
             kernel_size,
             True,
+            3,
             stride=stride,
             padding=padding,
             dilation=dilation,
