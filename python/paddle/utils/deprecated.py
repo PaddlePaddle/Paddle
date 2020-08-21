@@ -18,6 +18,7 @@ decorator to deprecate a function or class
 import warnings
 import functools
 import paddle
+import inspect
 
 # NOTE(zhiqiu): Since python 3.2, DeprecationWarning is ignored by default,
 # and since python 3.7, it is once again shown by default when triggered directly by code in __main__.
@@ -43,7 +44,7 @@ def deprecated(update_to="", since="", reason=""):
            decorator: decorated function or class.
     """
 
-    def decorator(func):
+    def decorator(wrapped):
         """construct warning message, and return a decorated function or class."""
         assert isinstance(update_to, str), 'type of "update_to" must be str.'
         assert isinstance(since, str), 'type of "since" must be str.'
@@ -53,7 +54,8 @@ def deprecated(update_to="", since="", reason=""):
         _update_to = update_to.strip()
         _reason = reason.strip()
 
-        msg = 'API "{}.{}" is deprecated'.format(func.__module__, func.__name__)
+        msg = 'API "{}.{}" is deprecated'.format(wrapped.__module__,
+                                                 wrapped.__name__)
         if len(_since) > 0:
             msg += " since {}".format(_since)
         msg += ", and may be removed in future versions."
@@ -66,22 +68,46 @@ def deprecated(update_to="", since="", reason=""):
         if len(_reason) > 0:
             msg += "\n reason: {}".format(_reason)
 
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            """deprecated warning should be fired in 3 circumstances:
-               1. current version is develop version, i.e. "0.0.0", because we assume develop version is always the latest version.
-               2. since version is empty, in this case, API is deprecated in all versions.
-               3. current version is newer than since version.
-            """
-            v_current = [int(i) for i in paddle.__version__.split(".")]
-            v_current += [0] * (4 - len(v_current))
-            v_since = [int(i) for i in _since.split(".")]
-            v_since += [0] * (4 - len(v_since))
-            if paddle.__version__ == "0.0.0" or _since == "" or v_current >= v_since:
-                warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
+        need_warn = False
+        """deprecated warning should be fired in 3 circumstances:
+        1. current version is develop version, i.e. "0.0.0", because we assume develop version is always the latest version.
+        2. since version is empty, in this case, API is deprecated in all versions.
+        3. current version is newer than since version.
+        """
+        v_current = [int(i) for i in paddle.__version__.split(".")]
+        v_current += [0] * (4 - len(v_current))
+        v_since = [int(i) for i in _since.split(".")]
+        v_since += [0] * (4 - len(v_since))
+        if paddle.__version__ == "0.0.0" or _since == "" or v_current >= v_since:
+            need_warn = True
 
-            return func(*args, **kwargs)
+        if inspect.isclass(wrapped):
+            origin_new = wrapped.__new__
 
-        return wrapper
+            def wrapped_cls(cls, *args, **kwargs):
+                if need_warn:
+                    warnings.warn(
+                        msg, category=DeprecationWarning, stacklevel=1)
+                if origin_new is object.__new__:
+                    return origin_new(cls)
+
+                return origin_new(cls, *args, **kwargs)
+
+            wrapped.__new__ = staticmethod(wrapped_cls)
+
+        elif inspect.isroutine(wrapped):
+
+            @functools.wraps(wrapped)
+            def wrapper(*args, **kwargs):
+                if need_warn:
+                    warnings.warn(
+                        msg, category=DeprecationWarning, stacklevel=2)
+                return wrapped(*args, **kwargs)
+
+            return wrapper
+        else:
+            raise TypeError(
+                "Currently, '@deprecated' only supports class, method and function. but got {}".
+                format(type(wrapped)))
 
     return decorator
