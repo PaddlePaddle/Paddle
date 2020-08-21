@@ -179,7 +179,7 @@ def batch_size(use_cuda):
 def iter(use_cuda):
     if use_cuda:
         return 10
-    return 2
+    return 1
 
 
 gpu_img, gpu_label = init_data(
