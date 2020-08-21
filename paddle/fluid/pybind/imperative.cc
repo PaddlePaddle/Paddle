@@ -513,9 +513,9 @@ void BindImperative(py::module *m_ptr) {
     Attribute:
         **sort_sum_gradient**:
 
-        If framework will sum gradients by the reverse order of the forward execution sequence. 
-        For instance, x_var ( :ref:`api_guide_Variable` ) will be the input of multiple OP such as :ref:`api_fluid_layers_scale` ,
-        this attr will decide if framework will sum gradient of `x_var` by the reverse order.
+        If True, gradients are summed by the reverse order of the forward execution sequence.
+        For instance, if :code:`x_var` ( :ref:`api_guide_Variable` ) is the input of multiple OPs such as :ref:`api_fluid_layers_scale` ,
+        whether the framework sums gradients of :code:`x_var` by the reverse order is determined by this attr.
 
         By Default: False
 
@@ -527,16 +527,16 @@ void BindImperative(py::module *m_ptr) {
                 paddle.disable_static()
 
                 x = np.ones([2, 2], np.float32)
-                x_var = paddle.to_variable(x)
+                x_var = paddle.to_tensor(x)
                 sums_inputs = []
                 # x_var will be multi-scales' input here
                 for _ in range(10):
                     sums_inputs.append(paddle.scale(x_var))
-                ret2 = paddle.sums(sums_inputs)
-                loss2 = paddle.reduce_sum(ret2)
+                ret = paddle.sums(sums_inputs)
+                loss = paddle.reduce_sum(ret)
                 backward_strategy = paddle.BackwardStrategy()
                 backward_strategy.sort_sum_gradient = True
-                loss2.backward(backward_strategy)
+                loss.backward(backward_strategy)
       )DOC");
   backward_strategy.def(py::init())
       .def_property("sort_sum_gradient",

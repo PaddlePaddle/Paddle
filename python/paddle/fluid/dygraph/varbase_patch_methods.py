@@ -134,13 +134,13 @@ def monkey_patch_varbase():
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
-        Run backward of current Graph which starts from current Variable.
+        Run backward of current Graph which starts from current Tensor.
 
         Args:
             backward_strategy(BackwardStrategy, optional): The backward strategy to run the backward pass. If you would
                 like to sum gradients by the reverse order of the forward execution sequence, please set the value of
                 :code:`BackwardStrategy.sort_sum_gradient` to True. Refer to :ref:`api_fluid_dygraph_BackwardStrategy` for
-                more details. Defaults to None, which meant that the value of :code:`BackwardStrategy.sort_sum_gradient` is False.
+                more details. Defaults to None, which means that the value of :code:`BackwardStrategy.sort_sum_gradient` is False.
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
                 :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
@@ -157,18 +157,18 @@ def monkey_patch_varbase():
                 paddle.disable_static()
 
                 x = np.ones([2, 2], np.float32)
-                inputs2 = []
+                inputs = []
                 for _ in range(10):
-                    tmp = paddle.to_variable(x)
+                    tmp = paddle.to_tensor(x)
                     # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
                     # there is no one need gradient on it.
                     tmp.stop_gradient=False
-                    inputs2.append(tmp)
-                ret2 = paddle.sums(inputs2)
-                loss2 = paddle.reduce_sum(ret2)
+                    inputs.append(tmp)
+                ret = paddle.sums(inputs)
+                loss = paddle.reduce_sum(ret)
                 backward_strategy = paddle.BackwardStrategy()
                 backward_strategy.sort_sum_gradient = True
-                loss2.backward(backward_strategy)
+                loss.backward(backward_strategy)
 
         """
         if framework.in_dygraph_mode():
