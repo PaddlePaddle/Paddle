@@ -507,7 +507,7 @@ if(NOT WIN32 AND NOT APPLE)
 endif()
 
 # setting timeout value for old unittests
-set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
+# set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
 set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 150)
 set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
