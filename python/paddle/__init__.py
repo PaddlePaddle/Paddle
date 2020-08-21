@@ -31,6 +31,10 @@ import paddle.reader
 import paddle.dataset
 import paddle.batch
 batch = batch.batch
+from .fluid import monkey_patch_variable
+from .fluid.dygraph import monkey_patch_math_varbase
+monkey_patch_variable()
+monkey_patch_math_varbase()
 import paddle.framework
 from .framework import VarBase as Tensor
 from .framework import ComplexVariable as ComplexTensor
@@ -181,7 +185,7 @@ from .tensor.math import log1p  #DEFINE_ALIAS
 from .tensor.math import erf  #DEFINE_ALIAS
 from .tensor.math import addcmul  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
-from .tensor.math import clamp  #DEFINE_ALIAS
+from .tensor.math import clip  #DEFINE_ALIAS
 from .tensor.math import trace  #DEFINE_ALIAS
 from .tensor.math import kron  #DEFINE_ALIAS
 from .tensor.math import prod  #DEFINE_ALIAS
