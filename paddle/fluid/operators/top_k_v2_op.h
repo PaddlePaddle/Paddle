@@ -55,10 +55,12 @@ static void FullTopK(Type input_height, Type input_width, int input_dim,
           col_vec.begin(), col_vec.begin() + k, col_vec.end(),
           [&largest](const std::pair<T, Type>& l, const std::pair<T, Type>& r) {
             if (largest) {
-              return (std::isnan(l.first) && !std::isnan(r.first)) ||
+              return (std::isnan(static_cast<double>(l.first)) &&
+                      !std::isnan(static_cast<double>(r.first))) ||
                      (l.first > r.first);
             } else {
-              return (!std::isnan(l.first) && std::isnan(r.first)) ||
+              return (!std::isnan(static_cast<double>(l.first)) &&
+                      std::isnan(static_cast<double>(r.first))) ||
                      (l.first < r.first);
             }
           });
@@ -68,7 +70,8 @@ static void FullTopK(Type input_height, Type input_width, int input_dim,
         std::nth_element(
             col_vec.begin(), col_vec.begin() + k - 1, col_vec.end(),
             [](const std::pair<T, Type>& l, const std::pair<T, Type>& r) {
-              return (std::isnan(l.first) && !std::isnan(r.first)) ||
+              return (std::isnan(static_cast<double>(l.first)) &&
+                      !std::isnan(static_cast<double>(r.first))) ||
                      (l.first > r.first);
             });
         // the nth-element will get the unorder elements, sort the element
@@ -76,7 +79,8 @@ static void FullTopK(Type input_height, Type input_width, int input_dim,
           std::sort(col_vec.begin(), col_vec.begin() + k - 1,
                     [&largest](const std::pair<T, Type>& l,
                                const std::pair<T, Type>& r) {
-                      return (std::isnan(l.first) && !std::isnan(r.first)) ||
+                      return (std::isnan(static_cast<double>(l.first)) &&
+                              !std::isnan(static_cast<double>(r.first))) ||
                              (l.first > r.first);
                     });
         }
@@ -84,7 +88,8 @@ static void FullTopK(Type input_height, Type input_width, int input_dim,
         std::nth_element(
             col_vec.begin(), col_vec.begin() + k - 1, col_vec.end(),
             [](const std::pair<T, Type>& l, const std::pair<T, Type>& r) {
-              return (!std::isnan(l.first) && std::isnan(r.first)) ||
+              return (!std::isnan(static_cast<double>(l.first)) &&
+                      std::isnan(static_cast<double>(r.first))) ||
                      (l.first < r.first);
             });
         // the nth-element will get the unorder elements, sort the element
@@ -92,7 +97,8 @@ static void FullTopK(Type input_height, Type input_width, int input_dim,
           std::sort(
               col_vec.begin(), col_vec.begin() + k - 1,
               [](const std::pair<T, Type>& l, const std::pair<T, Type>& r) {
-                return (!std::isnan(l.first) && std::isnan(r.first)) ||
+                return (!std::isnan(static_cast<double>(l.first)) &&
+                        std::isnan(static_cast<double>(r.first))) ||
                        (l.first < r.first);
               });
         }
