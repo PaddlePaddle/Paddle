@@ -311,18 +311,10 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 }
 
 template <>
-std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
-    const NativeConfig &config, bool deprecated_warning) {
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
   // TODO(NHZlX): Should add the link to the doc of
   // paddle_infer::CreatePredictor<paddle_infer::Config>
-  if (deprecated_warning) {
-    LOG(WARNING) << "The 'paddle::CreatePaddlePredictor<paddle::NativeConfig>' "
-                    "is going to be deprecated in the next release, plase use "
-                    "the latest "
-                    "'paddle_infer::CreatePredictor<paddle_infer::Config>' "
-                    "instead.";
-  }
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memory

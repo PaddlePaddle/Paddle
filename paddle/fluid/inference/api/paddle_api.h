@@ -422,18 +422,16 @@ enum class PaddleEngineKind {
 };
 
 template <typename ConfigT, PaddleEngineKind engine>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
-    const ConfigT& config, bool deprecated_warning = true);
+PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
+    const ConfigT& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
-    const NativeConfig& config, bool deprecated_warning);
+PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig& config);
 
 template <>
-PD_INFER_DECL std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-    const AnalysisConfig& config, bool deprecated_warning);
+PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config);
 
 PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 

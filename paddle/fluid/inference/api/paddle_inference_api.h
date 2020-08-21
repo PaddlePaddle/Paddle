@@ -79,14 +79,7 @@ class PD_INFER_DECL Predictor {
   explicit Predictor(std::unique_ptr<paddle::PaddlePredictor>&& pred)
       : predictor_(std::move(pred)) {}
 
-  explicit Predictor(const Config& config) {
-    const_cast<Config*>(&config)->SwitchUseFeedFetchOps(false);
-    // The second parameter indicates that the discard log is not printed
-    predictor_ =
-        paddle::CreatePaddlePredictor<Config,
-                                      paddle::PaddleEngineKind::kAnalysis>(
-            config, false);
-  }
+  explicit Predictor(const Config& config);
 
   std::vector<std::string> GetInputNames();
   std::unique_ptr<Tensor> GetInputHandle(const std::string& name);

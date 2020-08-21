@@ -514,20 +514,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 }
 
 template <>
-std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-    const AnalysisConfig &config, bool deprecated_warning) {
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
   // TODO(NHZlX): Should add the link to the doc of
   // paddle_infer::CreatePredictor<paddle_infer::Config>
-  if (deprecated_warning) {
-    LOG(WARNING) << "The "
-                    "'paddle::CreatePaddlePredictor<paddle::AnalysisConfig>' "
-                    "is going to be deprecated in the next release, plase use "
-                    "the latest "
-                    "'paddle_infer::CreatePredictor<paddle_infer::Config>' "
-                    "instead.";
-  }
-
   if (config.glog_info_disabled()) {
     FLAGS_logtostderr = 1;
     FLAGS_minloglevel = 2;  // GLOG_ERROR
@@ -1085,6 +1075,13 @@ std::vector<std::vector<size_t>> Tensor::lod() const { return tensor_->lod(); }
 const std::string &Tensor::name() const { return tensor_->name(); }
 
 DataType Tensor::type() const { return tensor_->type(); }
+
+Predictor::Predictor(const Config &config) {
+  const_cast<Config *>(&config)->SwitchUseFeedFetchOps(false);
+  // The second parameter indicates that the discard log is not printed
+  predictor_ = paddle::CreatePaddlePredictor<
+      Config, paddle::PaddleEngineKind::kAnalysis>(config);
+}
 
 std::vector<std::string> Predictor::GetInputNames() {
   return predictor_->GetInputNames();
