@@ -201,7 +201,7 @@ from .tensor.search import argmin  #DEFINE_ALIAS
 from .tensor.search import argsort  #DEFINE_ALIAS
 from .tensor.search import has_inf  #DEFINE_ALIAS
 from .tensor.search import has_nan  #DEFINE_ALIAS
-# from .tensor.search import masked_select        #DEFINE_ALIAS
+from .tensor.search import masked_select  #DEFINE_ALIAS
 from .tensor.search import topk  #DEFINE_ALIAS
 from .tensor.search import where  #DEFINE_ALIAS
 from .tensor.search import index_select  #DEFINE_ALIAS
