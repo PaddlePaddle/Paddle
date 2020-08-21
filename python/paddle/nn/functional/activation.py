@@ -14,23 +14,14 @@
 
 # TODO: define activation functions of neural network
 from ...fluid.layers import brelu  #DEFINE_ALIAS
-from ...fluid.layers import elu  #DEFINE_ALIAS
 from ...fluid.layers import erf  #DEFINE_ALIAS
-from ...fluid.layers import gelu  #DEFINE_ALIAS
 from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import hard_swish  #DEFINE_ALIAS
 from ...fluid.layers import leaky_relu  #DEFINE_ALIAS
-from ...fluid.layers import logsigmoid  #DEFINE_ALIAS
 from ...fluid.layers import maxout  #DEFINE_ALIAS
-from ...fluid.layers import relu6  #DEFINE_ALIAS
-from ...fluid.layers import selu  #DEFINE_ALIAS
 from ...fluid.layers import soft_relu  #DEFINE_ALIAS
-from ...fluid.layers import softplus  #DEFINE_ALIAS
-from ...fluid.layers import softshrink  #DEFINE_ALIAS
-from ...fluid.layers import softsign  #DEFINE_ALIAS
 from ...fluid.layers import swish  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid  #DEFINE_ALIAS
-from ...fluid.layers import tanh_shrink  #DEFINE_ALIAS
 from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
 
 __all__ = [
@@ -56,7 +47,7 @@ __all__ = [
     'softsign',
     'sigmoid',
     'swish',
-    'tanh_shrink',
+    'tanhshrink',
     'thresholded_relu',
     'log_softmax'
 ]
@@ -67,6 +58,108 @@ from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
+
+
+def elu(x, alpha=1.0, name=None):
+    """
+    elu activation.
+
+    ..  math::
+
+        elu(x) = max(0, x) + min(0, \\alpha * (e^{x}-1))
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
+        out = F.elu(x, alpha=0.2) 
+        # [[-0.12642411  6.        ]
+        #  [ 1.          15.6      ]]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.elu(x, 'alpha', alpha)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'elu')
+    helper = LayerHelper("elu", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='elu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': alpha})
+    return out
+
+
+def gelu(x, approximate=False, name=None):
+    """
+    gelu activation.
+
+    if approximate is True
+    ..  math::
+        gelu(x) = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+    else
+    ..  math::
+        gelu(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
+    
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        approximate (bool, optional): Wether to enable approximation. Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        data = np.random.randn(2, 3).astype("float32")
+        x = paddle.to_tensor(data)
+
+        out = F.gelu(x)
+
+        data
+        # array([[ 0.87165993, -1.0541513 , -0.37214822],
+        #         [ 0.15647964,  0.32496083,  0.33045998]], dtype=float32)
+        out
+        # array([[ 0.70456535, -0.15380788, -0.13207214],
+        #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
+    """
+
+    if in_dygraph_mode():
+        return core.ops.gelu(x, 'approximate', approximate)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'gelu')
+    helper = LayerHelper("gelu", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='gelu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'approximate': approximate})
+    return out
 
 
 def hardshrink(x, threshold=0.5, name=None):
@@ -245,11 +338,8 @@ def hsigmoid(input,
     return out
 
 
-def relu(input, inplace=False, name=None):
+def relu(x, name=None):
     """
-	:alias_main: paddle.nn.functional.relu
-	:alias: paddle.nn.functional.relu,paddle.nn.functional.activation.relu
-
     ReLU Activation.
 
     .. math:
@@ -257,44 +347,171 @@ def relu(input, inplace=False, name=None):
         out = max(x, 0)
 
     Parameters:
-        input (Variable): The input variable. A multi-dimension Tensor with type float16, float32, or float64.
-        inplace (bool, optional): If inplace is True, the input and output of ``ReLU`` are the same variable.
-            Otherwise, the input and output of ``ReLU`` are different variables. Default: False. Note that if x is
-            more than one OPs' input, inplace must be False.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Output of relu operator, a Tensor with shape same as input
+        A Tensor with the same data type and shape as ``x`` .
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import paddle.nn.functional as functional
-          import numpy as np
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
 
-          data = np.array([-2, 0, 1]).astype('float32')
-          with fluid.dygraph.guard():
-              data = fluid.dygraph.to_variable(data)
-              res = functional.relu(data)  # [0, 0, 1]
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-2, 0, 1]).astype('float32'))
+        out = F.relu(x) # [0., 0., 1.]
     """
 
     if in_dygraph_mode():
-        if inplace:
-            warnings.warn(
-                "Inplace on ReLU is not allowed and will be discarded in dygraph mode currently."
-            )
-        return core.ops.relu(input)
+        return core.ops.relu(x)
 
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             'relu')
-
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
     helper = LayerHelper('relu', **locals())
-    outs = input if inplace else helper.create_variable_for_type_inference(
-        input.dtype)
-    helper.append_op(type='relu', inputs={'X': [input]}, outputs={'Out': outs})
-    return outs
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='relu', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
+def logsigmoid(x, name=None):
+    """
+    logsigmoid activation.
+
+    .. math:
+
+        logsigmoid(x) = \log \frac{1}{1 + e^{-x}}
+    
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
+        out = F.logsigmoid(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.logsigmoid(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'logsigmoid')
+    helper = LayerHelper("logsigmoid", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='logsigmoid', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
+def relu6(x, name=None):
+    """
+    relu6 activation
+
+    .. math::
+
+        \text{relu6}(x) = \min(\max(0,x), 6)
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
+        out = F.relu6(x) # [0, 0.3, 6]
+
+    """
+    threshold = 6.0
+    if in_dygraph_mode():
+        return core.ops.relu6(x, 'threshold', threshold)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu6')
+    helper = LayerHelper('relu6', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='relu6',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold})
+    return out
+
+
+def selu(x,
+         scale=1.0507009873554804934193349852946,
+         alpha=1.6732632423543772848170429916717,
+         name=None):
+    """
+    selu activation
+
+    .. math::
+
+        \text{selu}(x) = scale * (\max(0,x) + \min(0, \alpha * (\exp(x) - 1))), \\
+        with\,alpha=1.6732632423543772848170429916717 and \\
+        scale=1.0507009873554804934193349852946
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        scale (float, optional): The value of scale for selu. Default is 1.0507009873554804934193349852946
+        alpha (float, optional): The value of alpha for selu. Default is 1.6732632423543772848170429916717
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([[0, 1],[2, 3]]))
+        out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.selu(x, 'scale', scale, 'alpha', alpha)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'selu')
+    helper = LayerHelper('selu', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='selu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'scale': scale,
+               'alpha': alpha})
+    return out
 
 
 def softmax(x, axis=-1, name=None):
@@ -411,6 +628,188 @@ def softmax(x, axis=-1, name=None):
         #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
     """
     return paddle.fluid.layers.softmax(input=x, axis=axis, name=name)
+
+
+def softplus(x, beta=1, threshold=20, name=None):
+    """
+    softplus activation
+
+    .. math::
+
+        \text{softplus}(x) = \frac{1}{\beta} * \log(1 + \exp(\beta * x)) \\
+        \text{For numerical stability, the implementation reverts to the linear function when :}\,x \times \beta > threshold.
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        beta (float, optional): The value of beta for softplus. Default is 1
+        threshold (float, optional): The value of threshold for softplus. Default is 20
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.softplus(x, 'beta', beta, 'threshold', threshold)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'softplus')
+    helper = LayerHelper('softplus', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='softplus',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'beta': beta,
+               'threshold': threshold})
+    return out
+
+
+def softshrink(x, threshold=0.5, name=None):
+    """
+    softshrink activation
+
+    .. math::
+
+        \text{softshrink}(x) =
+        \begin{cases}
+        x - threshold, & \text{ if } x > threshold \\
+        x + threshold, & \text{ if } x < -threshold \\
+        0, & \text{ otherwise }
+        \end{cases}
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        threshold (float, optional): The value of threshold(must be no less than zero) for softplus. Default is 0.5
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
+        out = F.softshrink(x) # [-0.4, 0, 0, 0.3]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.softshrink(x, 'lambda', threshold)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'softshrink')
+    helper = LayerHelper('softshrink', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='softshrink',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'lambda': threshold})
+    return out
+
+
+def softsign(x, name=None):
+    """
+    softsign activation
+
+    .. math::
+
+        \text{softsign}(x) = \frac{x}{1 + |x|}
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.softsign(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'softsign')
+    helper = LayerHelper('softsign', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='softsign', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
+def tanhshrink(x, name=None):
+    """
+    tanhshrink activation
+
+    .. math::
+
+        \text{tanhshrink}(x) = x - \text{tanh}(x)
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+
+        .. code-block:: python
+
+        import paddle
+        import paddle.nn.functional as F
+        import numpy as np
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+        out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.tanh_shrink(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'tanhshrink')
+    helper = LayerHelper('tanh_shrink', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='tanh_shrink', inputs={'X': x}, outputs={'Out': out})
+    return out
 
 
 def log_softmax(x, axis=-1, dtype=None, name=None):
