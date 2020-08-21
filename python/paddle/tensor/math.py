@@ -63,6 +63,7 @@ from ..fluid.layers import tanh    #DEFINE_ALIAS
 from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
 from ..fluid.layers import sums    #DEFINE_ALIAS
+from ..fluid import layers
 
 __all__ = [
         'abs',
@@ -85,6 +86,7 @@ __all__ = [
         'log',
         'mul',
         'multiplex',
+        'prod',
         'pow',
         'reciprocal',
         'reduce_max',
@@ -119,7 +121,7 @@ __all__ = [
         'erf',
         'addcmul',
         'addmm',
-        'clamp',
+        'clip',
         'trace',
         'kron'
 ]
@@ -1324,14 +1326,14 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     return out
 
 
-def clamp(input, min=None, max=None, name=None):
+def clip(x, min=None, max=None, name=None):
     """
-	:alias_main: paddle.clamp
-	:alias: paddle.clamp,paddle.tensor.clamp,paddle.tensor.math.clamp
+        :alias_main: paddle.clip
+        :alias: paddle.clip,paddle.tensor.clip,paddle.tensor.math.clip
 
-    **clampe layer**
+    **clip layer**
 
-    This operator clamps all elements in input into the range [ min, max ] and return
+    This operator clip all elements in input into the range [ min, max ] and return
     a resulting tensor as the following equation:
 
     .. math::
@@ -1339,38 +1341,35 @@ def clamp(input, min=None, max=None, name=None):
         Out = MIN(MAX(x, min), max)
 
     Args:
-        input (Variable): An input N-D Tensor or LoDTensor
-            with data type float32, float64.
-        min (float32|Variable): The lower bound with type ``float32`` or a ``Tensor``
+        x (Tensor): An N-D Tensor with data type float32 or float64.
+        min (float32|Tensor): The lower bound with type ``float32`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
-        max (float32|Variable): The upper bound with type ``float32`` or a ``Tensor``
+        max (float32|Tensor): The upper bound with type ``float32`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A Tensor or LodTensor with the same data type and data shape as input's.
+        Tensor: A Tensor with the same data type and data shape as input.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
 
-            in1 = np.array([[1.2,3.5],
-                            [4.5,6.4]]).astype('float32')
-            with fluid.dygraph.guard():
-                x1 = fluid.dygraph.to_variable(in1)
-                out1 = paddle.tensor.clamp(x1, min=3.5, max=5.0)
-                out2 = paddle.tensor.clamp(x1, min=2.5)
-                print(out1.numpy())
-                # [[3.5, 3.5]
-                # [4.5, 5.0]]
-                print(out2.numpy())
-                # [[2.5, 3.5]
-                # [[4.5, 6.4]
+            paddle.disable_static()
+            x = np.array([[1.2,3.5], [4.5,6.4]]).astype('float32')
+            x1 = paddle.to_variable(x)
+            out1 = paddle.clip(x1, min=3.5, max=5.0)
+            out2 = paddle.clip(x1, min=2.5)
+            print(out1.numpy())
+            # [[3.5, 3.5]
+            # [4.5, 5.0]]
+            print(out2.numpy())
+            # [[2.5, 3.5]
+            # [[4.5, 6.4]
     """
 
     assert min is not None or max is not None, "either min or max should be defined."
@@ -1378,20 +1377,22 @@ def clamp(input, min=None, max=None, name=None):
     if in_dygraph_mode():
         min = sys.float_info.min if min is None else min
         max = sys.float_info.max if max is None else max
-        return core.ops.clip(input, "min", min, "max", max)
+        return core.ops.clip(x, "min", min, "max", max)
 
     if min is not None:
-        check_type(min, 'min', (float, Variable), 'clamp')
+        check_type(min, 'min', (float, int, Variable), 'clip')
         if isinstance(min, Variable):
             check_dtype(min.dtype, 'min', ['float32', 'float64', 'int32'],
-                        'clamp', '(When the type of min in clamp is Variable.)')
+                        'clip', '(When the type of min in clip is Variable.)')
     if max is not None:
-        check_type(max, 'max', (float, Variable), 'clamp')
+        check_type(max, 'max', (float, int, Variable), 'clip')
         if isinstance(max, Variable):
             check_dtype(max.dtype, 'max', ['float32', 'float64', 'int32'],
-                        'clamp', '(When the type of max in clamp is Variable.)')
+                        'clip', '(When the type of max in clip is Variable.)')
 
-    inputs = {'X': input}
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'clip')
+
+    inputs = {'X': x}
     attrs = {'min': sys.float_info.min, 'max': sys.float_info.max}
 
     if isinstance(min, Variable):
@@ -1406,9 +1407,9 @@ def clamp(input, min=None, max=None, name=None):
     elif max is not None:
         attrs['max'] = max
 
-    helper = LayerHelper('clamp', **locals())
+    helper = LayerHelper('clip', **locals())
     output = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+        dtype=helper.input_dtype())
     helper.append_op(
         type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
 
@@ -1632,3 +1633,85 @@ def cumsum(x, axis=None, dtype=None, name=None):
             kwargs[name] = val
     _cum_sum_ = generate_layer_fn('cumsum')
     return _cum_sum_(**kwargs)
+
+def prod(x, axis=None, keepdim=False, dtype=None, name=None):
+    """
+    Compute the product of tensor elements over the given axis.
+
+    Args:
+        x(Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        axis(int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
+            multiply all elements of `x` and return a Tensor with a single element, 
+            otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
+            the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
+        dtype(str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64, 
+            int32, int64. If specified, the input tensor is casted to dtype before operator performed. 
+            This is very useful for avoiding data type overflows. The default value is None, the dtype 
+            of output is the same as input Tensor `x`.
+        keepdim(bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
+            tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
+        name(string, optional): The default value is None. Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor, result of product on the specified dim of input tensor.
+
+    Raises:
+        ValueError: The :attr:`dtype` must be float32, float64, int32 or int64.
+        TypeError: The type of :attr:`axis` must be int, list or tuple.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            # the axis is a int element
+            data_x = np.array([[0.2, 0.3, 0.5, 0.9],
+                         [0.1, 0.2, 0.6, 0.7]]).astype(np.float32)
+            x = paddle.to_tensor(data_x)
+            out1 = paddle.prod(x)
+            print(out1.numpy())
+            # [0.0002268]
+
+            out2 = paddle.prod(x, -1)
+            print(out2.numpy())
+            # [0.027  0.0084]
+
+            out3 = paddle.prod(x, 0)
+            print(out3.numpy())
+            # [0.02 0.06 0.3  0.63]
+            print(out3.numpy().dtype)
+            # float32
+
+            out4 = paddle.prod(x, 0, keepdim=True)
+            print(out4.numpy())
+            # [[0.02 0.06 0.3  0.63]]
+
+            out5 = paddle.prod(x, 0, dtype='int64')
+            print(out5.numpy())
+            # [0 0 0 0]
+            print(out5.numpy().dtype)
+            # int64
+
+            # the axis is list
+            data_y = np.array([[[1.0, 2.0], [3.0, 4.0]],
+                               [[5.0, 6.0], [7.0, 8.0]]])
+            y = paddle.to_tensor(data_y)
+            out6 = paddle.prod(y, [0, 1])
+            print(out6.numpy())
+            # [105. 384.]
+
+            out7 = paddle.prod(y, (1, 2))
+            print(out7.numpy())
+            # [  24. 1680.]
+
+    """
+    if dtype is not None:
+        check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'], 'prod')
+        if x.dtype != convert_np_dtype_to_dtype_(dtype):
+            x = layers.cast(x, dtype)
+
+    return layers.reduce_prod(input=x, dim=axis, keep_dim=keepdim, name=name)
