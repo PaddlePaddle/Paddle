@@ -17,12 +17,14 @@
 from ...fluid.dygraph.nn import InstanceNorm
 
 from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
-from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
-from ...fluid.dygraph import LayerNorm  #DEFINE_ALIAS
+#from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
+
+#from ...fluid.dygraph import LayerNorm  #DEFINE_ALIAS
 from ...fluid.dygraph import SpectralNorm  #DEFINE_ALIAS
 from ...fluid.dygraph import SyncBatchNorm  #DEFINE_ALIAS
 
 from ...fluid.dygraph import layers
+
 from ...fluid.framework import in_dygraph_mode
 
 from ...fluid.initializer import Constant
@@ -30,10 +32,546 @@ from ...fluid.param_attr import ParamAttr
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid import core, dygraph_utils
 
+import numpy as np
+import numbers
+
 __all__ = [
     'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'InstanceNorm',
-    'BatchNorm1d', 'BatchNorm2d', 'BatchNorm3d', 'SyncBatchNorm'
+    'BatchNorm1d', 'BatchNorm2d', 'BatchNorm3d', 'InstanceNorm1d',
+    'InstanceNorm2d', 'InstanceNorm3d', 'SyncBatchNorm'
 ]
+
+
+class _InstanceNormBase(layers.Layer):
+    """
+    This class is based class for InstanceNorm1d, 2d, 3d.
+    """
+
+    def __init__(self,
+                 num_features,
+                 epsilon=1e-5,
+                 momentum=0.9,
+                 weight_attr=None,
+                 bias_attr=None,
+                 track_running_stats=False,
+                 data_format="NCHW",
+                 name=None):
+        super(_InstanceNormBase, self).__init__()
+
+        if weight_attr == False or bias_attr == False:
+            assert weight_attr == param_attr, "weight_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
+        self._epsilon = epsilon
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+
+        if weight_attr != False and bias_attr != False:
+            self.scale = self.create_parameter(
+                attr=self._weight_attr,
+                shape=[num_features],
+                default_initializer=Constant(1.0),
+                is_bias=False)
+            self.bias = self.create_parameter(
+                attr=self._bias_attr,
+                shape=[num_features],
+                default_initializer=Constant(0.0),
+                is_bias=True)
+        else:
+            self.scale = None
+            self.bias = None
+
+    def _check_input_dim(self, input):
+        raise NotImplementedError("InstanceNorm Base error")
+
+    def forward(self, input):
+        self._check_input_dim(input)
+
+        if in_dygraph_mode():
+            out, _, _ = core.ops.instance_norm(input, self.scale, self.bias,
+                                               'epsilon', self._epsilon)
+            return out
+
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 "InstanceNorm")
+
+        attrs = {"epsilon": self._epsilon}
+
+        if self.scale and self.bias:
+            inputs = {"X": [input], "Scale": [self.scale], "Bias": [self.bias]}
+        else:
+            inputs = {"X": [input]}
+
+        saved_mean = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True)
+        saved_variance = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True)
+        instance_norm_out = self._helper.create_variable_for_type_inference(
+            input.dtype)
+
+        outputs = {
+            "Y": [instance_norm_out],
+            "SavedMean": [saved_mean],
+            "SavedVariance": [saved_variance]
+        }
+
+        self._helper.append_op(
+            type="instance_norm", inputs=inputs, outputs=outputs, attrs=attrs)
+        return instance_norm_out
+
+
+class InstanceNorm1d(_InstanceNormBase):
+    """
+    Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
+
+    DataLayout: NCL `[batch, in_channels, length]`
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+        
+        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
+        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Note:
+        `H` means height of feature map, `W` means width of feature map.
+
+    Parameters:
+        num_features(int): Indicate the number of channels of the input ``Tensor``.
+        epsilon(float, optional): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
+        track_running_stats(bool, optional): Whether to use global mean and
+            variance. In train mode, when setting track_running_stats True, the global mean
+            and variance are also used during train period. Default: False.
+        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
+             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
+	     If the Initializer of the weight_attr is not set, the parameter is initialized 
+	     one. If it is set to False, will not create weight_attr. Default: None.
+        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
+             If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+             If it is set to False, will not create bias_attr. Default: None.
+        data_format(str, optional): Specify the input data format. Default: NCL.
+        name(str, optional): Default None.
+
+    Returns:
+        None.
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+
+          paddle.disable_static()
+          np.random.seed(123)
+          x_data = np.random.random(size=(2, 2, 3)).astype('float32')
+          x = paddle.to_tensor(x_data) 
+          instance_norm = paddle.nn.InstanceNorm1d(2)
+          instance_norm_out = instance_norm(x)
+
+          print(instance_norm_out.numpy)
+
+    """
+
+    def _check_input_dim(self, input):
+        if len(input.shape) != 2 and len(input.shape) != 3:
+            raise ValueError('expected 2D or 3D input (got {}D input)'.format(
+                len(input.shape)))
+
+
+class InstanceNorm2d(_InstanceNormBase):
+    """
+    Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
+
+    DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
+
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+        
+        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
+        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Note:
+        `H` means height of feature map, `W` means width of feature map.
+
+    Parameters:
+        num_features(int): Indicate the number of channels of the input ``Tensor``.
+        epsilon(float, optional): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
+        track_running_stats(bool, optional): Whether to use global mean and
+            variance. In train mode, when setting track_running_stats True, the global mean
+            and variance are also used during train period. Default: False.
+        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
+             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
+	     If the Initializer of the weight_attr is not set, the parameter is initialized 
+	     one. If it is set to False, will not create weight_attr. Default: None.
+        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
+             If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+             If it is set to False, will not create bias_attr. Default: None.
+        data_format(str, optional): Specify the input data format. Default: NCHW.
+        name(str, optional): Default None.
+
+    Returns:
+        None.
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+
+          paddle.disable_static()
+          np.random.seed(123)
+          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
+          x = paddle.to_tensor(x_data) 
+          instance_norm = paddle.nn.InstanceNorm2d(2)
+          instance_norm_out = instance_norm(x)
+
+          print(instance_norm_out.numpy)
+    """
+
+    def _check_input_dim(self, input):
+        if len(input.shape) != 4:
+            raise ValueError('expected 4D input (got {}D input)'.format(
+                len(input.shape)))
+
+
+class InstanceNorm3d(_InstanceNormBase):
+    """
+    Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
+
+    DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
+
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+        
+        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
+        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Note:
+        `H` means height of feature map, `W` means width of feature map.
+
+    Parameters:
+        num_features(int): Indicate the number of channels of the input ``Tensor``.
+        epsilon(float, optional): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
+        track_running_stats(bool, optional): Whether to use global mean and
+            variance. In train mode, when setting track_running_stats True, the global mean
+            and variance are also used during train period. Default: False.
+        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
+             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
+	     If the Initializer of the weight_attr is not set, the parameter is initialized 
+	     one. If it is set to False, will not create weight_attr. Default: None.
+        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
+             If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+             If it is set to False, will not create bias_attr. Default: None.
+        data_format(str, optional): Specify the input data format. Default: NCDHW.
+        name(str, optional): Default None.
+
+    Returns:
+        None.
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+
+          paddle.disable_static()
+          np.random.seed(123)
+          x_data = np.random.random(size=(2, 2, 2, 2, 3)).astype('float32')
+          x = paddle.to_tensor(x_data) 
+          instance_norm = paddle.nn.InstanceNorm3d(2)
+          instance_norm_out = instance_norm(x)
+
+          print(instance_norm_out.numpy)
+    """
+
+    def _check_input_dim(self, input):
+        if len(input.shape) != 5:
+            raise ValueError('expected 5D input (got {}D input)'.format(
+                len(input.shape)))
+
+
+class GroupNorm(layers.Layer):
+    """
+    :alias_main: paddle.nn.GroupNorm
+	:alias: paddle.nn.GroupNorm,paddle.nn.layer.GroupNorm,paddle.nn.layer.norm.GroupNorm
+	:old_api: paddle.fluid.dygraph.GroupNorm
+
+    This interface is used to construct a callable object of the ``GroupNorm`` class.
+    For more details, refer to code examples.
+    It implements the function of the Group Normalization Layer.
+    Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
+
+    Parameters:
+        num_channels(int): The number of channels of input.
+        num_groups(int): The number of groups that divided from channels.
+        epsilon(float, optional): The small value added to the variance to prevent
+                                  division by zero. Default: 1e-05.
+        weight_attr(ParamAttr, optional): The parameter attribute for the learnable
+                                         scale :math:`g`. If it is set to False, no scale will be added to the output units.
+                                         If it is set to None, the bias is initialized one. Default: None.
+        bias_attr(ParamAttr, optional): The parameter attribute for the learnable
+                                        bias :math:`b`. If it is set to False, no bias will be added to the output units.
+                                        If it is set to None, the bias is initialized zero. Default: None.
+        data_format(str, optional): Specify the input data format. Only NCHW is supported. Default: NCHW.
+        name(str, optional): Default None.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+          import paddle
+          import numpy as np
+
+          paddle.disable_static()
+          np.random.seed(123)
+          x_data = np.random.random(size=(2, 6, 2, 2)).astype('float32')
+          x = paddle.to_tensor(x_data) 
+          group_norm = paddle.nn.GroupNorm(num_channels=3, num_groups=6)
+          group_norm_out = group_norm(x)
+
+          print(group_norm_out.numpy)
+    """
+
+    def __init__(self,
+                 num_channels,
+                 num_groups,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 data_layout='NCHW',
+                 name=None):
+        super(GroupNorm, self).__init__()
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+        self._epsilon = epsilon
+        self._num_channels = num_channels
+        self._num_groups = num_groups
+        if data_layout != 'NCHW':
+            raise ValueError("unsupported data layout:" + data_layout)
+
+        param_shape = [self._num_channels]
+
+        self.weight = self.create_parameter(
+            attr=self._weight_attr or False,
+            shape=param_shape,
+            default_initializer=Constant(1.0))
+
+        self.bias = self.create_parameter(
+            attr=self._weight_attr or False, shape=param_shape, is_bias=True)
+
+    def forward(self, input):
+        inputs = {'X': input}
+        if self.bias is not None:
+            inputs['Bias'] = self.bias
+        if self.weight is not None:
+            inputs['Scale'] = self.weight
+
+        # create output
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True)
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True)
+        group_norm_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype)
+
+        self._helper.append_op(
+            type="group_norm",
+            inputs=inputs,
+            outputs={
+                "Y": group_norm_out,
+                "Mean": mean_out,
+                "Variance": variance_out,
+            },
+            attrs={"epsilon": self._epsilon,
+                   "groups": self._num_groups})
+
+        return self._helper.append_activation(group_norm_out, None)
+
+
+class LayerNorm(layers.Layer):
+    """
+    :alias_main: paddle.nn.LayerNorm
+	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
+	:old_api: paddle.fluid.dygraph.LayerNorm
+
+    This interface is used to construct a callable object of the ``LayerNorm`` class.
+    For more details, refer to code examples.
+    It implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
+    Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
+
+    The formula is as follows:
+
+    ..  math::
+
+        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} x_i
+
+        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}{(x_i - \\mu)^2} + \\epsilon}
+
+        y & = f(\\frac{g}{\\sigma}(x - \\mu) + b)
+
+    - :math:`x`: the vector representation of the summed inputs to the neurons in that layer.
+    - :math:`H`: the number of hidden units in a layers
+    - :math:`\\epsilon`: the small value added to the variance to prevent division by zero.
+    - :math:`g`: the trainable scale parameter.
+    - :math:`b`: the trainable bias parameter.
+
+    Parameters:
+        normalized_shape(int or list or tuple): Input shape from an expected input of
+            size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
+            If it is a single integer, this module will normalize over the last dimension
+            which is expected to be of that specific size.
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
+        weight_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
+            gain :math:`g`. If False, weight is None. If is None, a default :code:`ParamAttr` would be added as scale. The
+            :attr:`param_attr` is initialized as 1 if it is added. Default: None.
+        bias_attr(ParamAttr, optional): The parameter attribute for the learnable
+            bias :math:`b`. If is False, bias is None. If is None, a default :code:`ParamAttr` would be added as bias. The
+            :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
+        name(str, optional): parameter name. Default None.
+
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+
+          paddle.disable_static()
+          np.random.seed(123)
+          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
+          x = paddle.to_tensor(x_data) 
+          layer_norm = paddle.nn.LayerNorm(x_data.shape[1:])
+          layer_norm_out = layer_norm(x)
+
+          print(layer_norm_out.numpy)
+    """
+
+    def __init__(self,
+                 normalized_shape,
+                 epsilon=1e-05,
+                 weight_attr=None,
+                 bias_attr=None,
+                 name=None):
+        super(LayerNorm, self).__init__()
+        if isinstance(normalized_shape, numbers.Integral):
+            normalized_shape = [normalized_shape]
+
+        self._normalized_shape = list(normalized_shape)
+        self._epsilon = epsilon
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+        param_shape = [np.prod(self._normalized_shape)]
+
+        if weight_attr is False:
+            self.weight = None
+        else:
+            self.weight = self.create_parameter(
+                attr=self._weight_attr,
+                shape=param_shape,
+                default_initializer=Constant(1.0))
+
+        if bias_attr is False:
+            self.bias = None
+        else:
+            self.bias = self.create_parameter(
+                attr=self._bias_attr, shape=param_shape, is_bias=True)
+
+    def forward(self, input):
+        input_shape = list(input.shape)
+        input_ndim = len(input_shape)
+        normalized_ndim = len(self._normalized_shape)
+        self._begin_norm_axis = input_ndim - normalized_ndim
+        if input_ndim < normalized_ndim or input_shape[
+                self._begin_norm_axis:] != self._normalized_shape:
+            str_normalized_shape = str(self._normalized_shape)
+            raise ValueError(
+                'Given normalized_shape is ' + str_normalized_shape +
+                ', expected input with shape [*, ' + str_normalized_shape[
+                    1:] + ', but got input shape ' + str(input_shape))
+
+        if in_dygraph_mode():
+            pre_act, _, _ = core.ops.layer_norm(
+                input, self.weight, self.bias, 'epsilon', self._epsilon,
+                'begin_norm_axis', self._begin_norm_axis)
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, act=None)
+
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'LayerNorm')
+
+        inputs = dict()
+        inputs['X'] = [input]
+        if self.weight:
+            inputs['Scale'] = [self.weight]
+        if self.bias:
+            inputs['Bias'] = [self.bias]
+        attrs = {
+            "epsilon": self._epsilon,
+            "begin_norm_axis": self._begin_norm_axis
+        }
+
+        # create output
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=input.type, stop_gradient=True)
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=input.type, stop_gradient=True)
+        layer_norm_out = self._helper.create_variable_for_type_inference(
+            input.type)
+
+        self._helper.append_op(
+            type="layer_norm",
+            inputs=inputs,
+            outputs={
+                "Y": layer_norm_out,
+                "Mean": mean_out,
+                "Variance": variance_out,
+            },
+            attrs={
+                "epsilon": self._epsilon,
+                "begin_norm_axis": self._begin_norm_axis
+            })
+
+        return self._helper.append_activation(layer_norm_out, act=self._act)
 
 
 class _BatchNormBase(layers.Layer):
@@ -51,6 +589,7 @@ class _BatchNormBase(layers.Layer):
                  track_running_stats=False,
                  name=None):
         super(_BatchNormBase, self).__init__()
+        self._num_features = num_features
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
 
@@ -66,14 +605,16 @@ class _BatchNormBase(layers.Layer):
             shape=param_shape,
             #dtype=self._dtype,
             default_initializer=Constant(1.0))
-        self.weight.stop_gradient = self._weight_attr and self._weight_attr.learning_rate == 0.
+        self.weight.stop_gradient = (self._weight_attr is False) or (
+            self._weight_attr and self._weight_attr.learning_rate == 0.)
 
         self.bias = self.create_parameter(
             attr=self._bias_attr,
             shape=param_shape,
             #dtype=self._dtype,
             is_bias=True)
-        self.bias.stop_gradient = self._bias_attr and self._bias_attr.learning_rate == 0.
+        self.bias.stop_gradient = (self._bias_attr is False) or (
+            self._bias_attr and self._bias_attr.learning_rate == 0.)
 
         moving_mean_name = None
         moving_variance_name = None
@@ -238,15 +779,17 @@ class BatchNorm1d(_BatchNormBase):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          from paddle.fluid.dygraph.base import to_variable
+          import paddle
           import numpy as np
 
-          x = np.random.random(size=(3, 10)).astype('float32')
-          with fluid.dygraph.guard():
-              x = to_variable(x)
-              batch_norm = fluid.BatchNorm1d(10)
-              hidden1 = batch_norm(x)
+          paddle.disable_static()
+          np.random.seed(123)
+          x_data = np.random.random(size=(2, 1, 3)).astype('float32')
+          x = paddle.to_tensor(x_data) 
+          batch_norm = paddle.nn.BatchNorm1d(1)
+          batch_norm_out = batch_norm(x)
+
+          print(batch_norm_out.numpy)
     """
 
     def _check_input_dim(self, input):
@@ -315,15 +858,17 @@ class BatchNorm2d(_BatchNormBase):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          from paddle.fluid.dygraph.base import to_variable
+          import paddle
           import numpy as np
 
-          x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
-          with fluid.dygraph.guard():
-              x = to_variable(x)
-              batch_norm = fluid.BatchNorm2d(10)
-              hidden1 = batch_norm(x)
+          paddle.disable_static()
+          np.random.seed(123)
+          x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
+          x = paddle.to_tensor(x_data) 
+          batch_norm = paddle.nn.BatchNorm2d(1)
+          batch_norm_out = batch_norm(x)
+
+          print(batch_norm_out.numpy)
     """
 
     def _check_input_dim(self, input):
@@ -392,16 +937,17 @@ class BatchNorm3d(_BatchNormBase):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          from paddle.fluid.dygraph.base import to_variable
           import paddle
           import numpy as np
 
-          x = np.random.random(size=(3, 10, 3, 7, 6)).astype('float32')
-          with fluid.dygraph.guard():
-              x = to_variable(x)
-              batch_norm = paddle.nn.BatchNorm3d(10)
-              hidden1 = batch_norm(x)
+          paddle.disable_static()
+          np.random.seed(123)
+          x_data = np.random.random(size=(2, 1, 2, 2, 3)).astype('float32')
+          x = paddle.to_tensor(x_data) 
+          batch_norm = paddle.nn.BatchNorm3d(1)
+          batch_norm_out = batch_norm(x)
+
+          print(batch_norm_out.numpy)
     """
 
     def _check_input_dim(self, input):
