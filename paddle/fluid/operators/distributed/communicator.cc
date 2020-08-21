@@ -676,7 +676,8 @@ void GeoCommunicator::RecvSparse(const std::string &varname) {
   v_delta.resize(numel);
 
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
-  auto blas = math::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
+  auto blas = math::GetBlas<platform::CPUDeviceContext, float>(
+      paddle::platform::CPUDeviceContext());
 
   for (auto j = 0; j < static_cast<int>(ids.size()); ++j) {
     blas.VSUB(dims1, t_psrever.data<float>() + j * dims1,
@@ -798,7 +799,7 @@ void GeoCommunicator::InitSparse() {
       auto &recv_var_name = ctx.splited_varnames[i];
 
       distributed::VarHandlePtr ret;
-      ret = rpc_client->AsyncGetVarNoBarrier(endpoints[i], cpu_ctx, local_scope,
+      ret = rpc_client->AsyncGetVarNoBarrier(ctx.epmap[i], cpu_ctx, local_scope,
                                              recv_var_name, recv_var_name);
       width = recv_t.value().dims()[1];
 
