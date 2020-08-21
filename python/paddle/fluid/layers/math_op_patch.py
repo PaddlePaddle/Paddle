@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import warnings
 import inspect
+import paddle
 
 from .. import core
 from ..framework import Variable, unique_name
@@ -45,6 +46,7 @@ EXPRESSION_MAP = {
     "__pow__": "A ** B",
     "__rpow__": "A **= B",
     "__floordiv__": "A //B",
+    "__rfloordiv__": "A //= B",
     "__mod__": "A % B",
     "__eq__": "A == B",
     "__ne__": "A != B",
@@ -238,6 +240,23 @@ def monkey_patch_variable():
                          reverse=False,
                          scalar_method=None):
         def __impl__(self, other_var):
+            # TODO(shenliang03):  currently, it supports divide, floor_divide, remainder
+            if method_name in [
+                    "__div__", "__rdiv__", "__truediv__", "__rtruediv__"
+            ]:
+                if reverse:
+                    return paddle.divide(other_var, self)
+                else:
+                    return paddle.divide(self, other_var)
+
+            elif method_name in ["__floordiv__", "__rfloordiv__"]:
+                if reverse:
+                    return paddle.floor_divide(other_var, self)
+                else:
+                    return paddle.floor_divide(self, other_var)
+            elif method_name == "__mod__":
+                return paddle.remainder(self, other_var)
+
             # FIXME(zjl): elementwise_div between integers cannot be converted to scale,
             # which may lose accuracy. This is a hot fix for release 1.6.
             if scalar_method is not None and not (

@@ -19,6 +19,7 @@ from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
 from ..layers.layer_function_generator import OpProtoHolder
 from ..layers import common_methods
 from . import to_variable, no_grad
+import paddle
 
 import numpy as np
 import six
@@ -168,6 +169,23 @@ def monkey_patch_math_varbase():
                          reverse=False,
                          scalar_method=None):
         def __impl__(self, other_var):
+            # TODO(shenliang03):  currently, it supports divide, floor_divide, remainder
+            if method_name in [
+                    "__div__", "__rdiv__", "__truediv__", "__rtruediv__"
+            ]:
+                if reverse:
+                    return paddle.divide(other_var, self)
+                else:
+                    return paddle.divide(self, other_var)
+
+            elif method_name in ["__floordiv__", "__rfloordiv__"]:
+                if reverse:
+                    return paddle.floor_divide(other_var, self)
+                else:
+                    return paddle.floor_divide(self, other_var)
+            elif method_name == "__mod__":
+                return paddle.remainder(self, other_var)
+
             # FIXME(zjl): elementwise_div between integers cannot be converted to scale,
             # which may lose accuracy. This is a hot fix for release 1.6.
             if scalar_method is not None and not (

@@ -58,8 +58,15 @@ void elementwise_mod_fp(const framework::ExecutionContext &ctx,
                         const framework::Tensor *x, const framework::Tensor *y,
                         framework::Tensor *z) {
   int axis = ctx.Attr<int>("axis");
-  ElementwiseComputeEx<ModFunctorFP<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          ModFunctorFP<T>(), z);
+  auto x_dims = x->dims();
+  auto y_dims = y->dims();
+  if (x_dims.size() >= y_dims.size()) {
+    ElementwiseComputeEx<ModFunctorFP<T>, DeviceContext, T>(
+        ctx, x, y, axis, ModFunctorFP<T>(), z);
+  } else {
+    ElementwiseComputeEx<InverseModFunctorFP<T>, DeviceContext, T>(
+        ctx, x, y, axis, InverseModFunctorFP<T>(), z);
+  }
 }
 
 template <typename DeviceContext, typename T>
