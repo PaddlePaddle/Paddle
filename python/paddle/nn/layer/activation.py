@@ -642,6 +642,8 @@ class Softplus(layers.Layer):
         \text{For numerical stability, the implementation reverts to the linear function when :}\,x \times \beta > threshold.
 
     Parameters:
+        beta (float, optional): The value of beta for Softplus. Default is 1
+        threshold (float, optional): The value of threshold for Softplus. Default is 20
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -688,6 +690,7 @@ class Softshrink(layers.Layer):
         \end{cases}
 
     Parameters:
+        threshold (float, optional): The value of threshold(must be no less than zero) for softplus. Default is 0.5
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 

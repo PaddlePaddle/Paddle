@@ -883,6 +883,11 @@ def softshrink(x, threshold=0.5, name=None):
         out = F.softshrink(x) # [-0.4, 0, 0, 0.3]
 
     """
+    if threshold < 0:
+        raise ValueError(
+            "The threshold must be no less than zero. Received: {}.".format(
+                threshold))
+
     if in_dygraph_mode():
         return core.ops.softshrink(x, 'lambda', threshold)
 
