@@ -69,19 +69,6 @@ inline static int GetDesiredBlockDim(int dim) {
   }
 }
 
-auto ComputeBlockSize = [](int col) {
-  if (col > 512)
-    return 1024;
-  else if (col > 256 && col <= 512)
-    return 512;
-  else if (col > 128 && col <= 256)
-    return 256;
-  else if (col > 64 && col <= 128)
-    return 128;
-  else
-    return 64;
-};
-
 template <typename T>
 __global__ void InitIndex(T* indices, T num_rows, T num_cols) {
   int col_id = threadIdx.x;
@@ -392,6 +379,18 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
   input_indices.mutable_data<int64_t>(ctx.GetPlace());
   size_t temp_storage_bytes = -1;
 
+  auto ComputeBlockSize = [](int col) {
+    if (col > 512)
+      return 1024;
+    else if (col > 256 && col <= 512)
+      return 512;
+    else if (col > 128 && col <= 256)
+      return 256;
+    else if (col > 64 && col <= 128)
+      return 128;
+    else
+      return 64;
+  };
   int block_size = ComputeBlockSize(num_cols);
 
   unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
