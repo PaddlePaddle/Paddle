@@ -27,36 +27,43 @@ from paddle.incubate.hapi.download import get_path_from_url
 
 class TSVDataset(Dataset):
     """
-    Common tab separated text dataset that reads text fields based on provided sample splitter
-    and field separator.
-    The returned dataset includes samples, each of which can either be a list of text fields
-    if field_separator is specified, or otherwise a single string segment produced by the
-    sample_splitter.
+    Common tab separated text dataset that reads text fields based on provided
+    sample splitter and field separator.
+    The returned dataset includes samples, each of which can either be a list
+    of text fields if field_separator is specified, or otherwise a single
+    string segment produced by the sample_splitter.
 
     Args:
-        filename (str|list of str): Path to the input text file or list of paths to the input text files.
+        filename (str|list of str): Path to the input text file or list of
+            paths to the input text files.
         encoding (str): File encoding format. Default: 'utf8'.
-        sample_splitter (function): A function that splits the dataset string into samples.Default: str.splitlines
-        field_separator (function|None): A function that splits each sample string into list of text fields. 
-            If None, raw samples are returned according to `sample_splitter`. Default: Splitter('\t').
-        num_discard_samples (int): Number of samples discarded at the head of the first file. Default: 0.
-        field_indices (list|int|None): If set, for each sample, only fields with provided indices 
-            are selected as the output. Otherwise all fields are returned. Default: None.
-        allow_missing (bool): If set to True, no exception will be thrown if the number of fields is smaller than the
-            maximum field index provided.  Default: False.
+        sample_splitter (function): A function that splits the dataset string
+            into samples.Default: str.splitlines
+        field_separator (function|None): A function that splits each sample
+            string into list of text fields. If None, raw samples are returned
+            according to `sample_splitter`. Default: Splitter('\t').
+        num_discard_samples (int): Number of samples discarded at the head of
+            the first file. Default: 0.
+        field_indices (list|int|None): If set, for each sample, only fields
+            with provided indices are selected as the output. Otherwise all
+            fields are returned. Default: None.
+        allow_missing (bool): If set to True, no exception will be thrown if
+            the number of fields is smaller than the maximum field index
+            provided.  Default: False.
         
     Example:
         assume `test.tsv` contains the following content:
         Id\tFirstName\tLastName
-        a\tJiheng\tJiang
-        b\tLaoban\tZha
+        a\tmale\tTom
+        b\tFemal\tCat
         discard the first line and select the 0th and 2nd fields
 
         .. code-block:: python
-
-            dataset = TSVDataset('test.tsv', num_discard_samples=1, field_indices=[0, 2])
-            dataset[0] # ['a', 'Jiang']
-            dataset[1] # ['b', 'Zha']
+            from paddle.incubate.hapi.text.glue import TSVDataset
+            dataset = TSVDataset('test.tsv', num_discard_samples=1,
+                                field_indices=[0, 2])
+            dataset[0] # ['a', 'Tom']
+            dataset[1] # ['b', 'Cat']
     """
 
     def __init__(self,
@@ -179,23 +186,28 @@ class _GlueDataset(TSVDataset):
 
 class GlueCoLA(_GlueDataset):
     """
-    The Corpus of Linguistic Acceptability (Warstadt et al., 2018) consists of English acceptability judgments drawn from books and journal articles on linguistic theory.
-    Each example is a sequence of words annotated with whether it is a grammatical English sentence.
-    From https://gluebenchmark.com/tasks
+    The Corpus of Linguistic Acceptability (Warstadt et al., 2018) consists of
+    English acceptability judgments drawn from books and journal articles on
+    linguistic theory.
+    Each example is a sequence of words annotated with whether it is a
+    grammatical English sentence. From https://gluebenchmark.com/tasks
 
     Args:
         segment ('train'|'dev'|'test'): Dataset segment. Default: 'train'.
         root (str): Path to temp folder for storing data.
-        return_all_fields (bool): Return all fields available in the dataset. Default: False.
+        return_all_fields (bool): Return all fields available in the dataset.
+            Default: False.
 
     Example:
 
         .. code-block:: python
-
+            from paddle.incubate.hapi.text.glue import GlueCoLA
             cola_dev = GlueCoLA('dev', root='./datasets/cola')
             len(cola_dev) # 1043
             len(cola_dev[0]) # 2
-            cola_dev[0] # ['The sailors rode the breeze clear of the rocks.', '1']
+
+            # ['The sailors rode the breeze clear of the rocks.', '1']
+            cola_dev[0] 
             cola_test = GlueCoLA('test', root='./datasets/cola')
             len(cola_test) # 1063
             len(cola_test[0]) # 1
@@ -225,21 +237,24 @@ class GlueCoLA(_GlueDataset):
 
 class GlueSST2(_GlueDataset):
     """
-    The Stanford Sentiment Treebank (Socher et al., 2013) consists of sentences from movie reviews and human annotations of their sentiment.
+    The Stanford Sentiment Treebank (Socher et al., 2013) consists of sentences
+    from movie reviews and human annotations of their sentiment.
     From https://gluebenchmark.com/tasks
 
     Args:
         segment ('train'|'dev'|'test'): Dataset segment. Default: 'train'.
         root (str): Path to temp folder for storing data.
-        return_all_fields (bool): Return all fields available in the dataset. Default: False.
+        return_all_fields (bool): Return all fields available in the dataset.
+            Default: False.
 
     Examples:
         .. code-block:: python
-
+            from paddle.incubate.hapi.text.glue import GlueSST2
             sst_dev = GlueSST2('dev', root='./datasets/sst')
             len(sst_dev) # 872
             len(sst_dev[0]) # 2
-            sst_dev[0] # ["it 's a charming and often affecting journey . ", '1']
+            # ["it 's a charming and often affecting journey . ", '1']
+            sst_dev[0] 
             sst_test = GlueSST2('test', root='./datasets/sst')
             len(sst_test) # 1821
             len(sst_test[0]) # 1
@@ -281,17 +296,22 @@ class GlueMRPC(_GlueDataset):
     Example:
         .. code-block:: python
 
+            from paddle.incubate.hapi.text.glue import  GlueMRPC
             mrpc_dev = GlueMRPC('dev', root='./datasets/mrpc')
             len(mrpc_dev) # 408
             len(mrpc_dev[0]) # 3
-            mrpc_dev[0] # ["He said the foodservice pie business doesn 't fit the company 's long-term growth strategy .", 
-                # '" The foodservice pie business does not fit our long-term growth strategy .', '1']
+            mrpc_dev[0] # ["He said the foodservice pie business doesn 't fit
+                        # the company 's long-term growth strategy .", 
+                        # '" The foodservice pie business does not fit our 
+                        # long-term growth strategy .', '1']
             mrpc_test = GlueMRPC('test', root='./datasets/mrpc')
             len(mrpc_test) # 1725
             len(mrpc_test[0]) # 2
-            mrpc_test[0] # ["PCCW 's chief operating officer , Mike Butcher , and Alex Arena , the chief financial officer ,
-                # will report directly to Mr So .", 'Current Chief Operating Officer Mike Butcher and Group Chief Financial Officer 
-                # Alex Arena will report to So .']
+            mrpc_test[0] 
+            # ["PCCW 's chief operating officer , Mike Butcher , and Alex Arena ,
+            #  the chief financial officer , will report directly to Mr So .", 
+            # 'Current Chief Operating Officer Mike Butcher and Group Chief
+            # Financial Officer Alex Arena will report to So .']
     """
 
     DEV_ID_URL = 'https://dataset.bj.bcebos.com/glue/mrpc/dev_ids.tsv'
@@ -383,8 +403,10 @@ class GlueMRPC(_GlueDataset):
 
 class GlueSTSB(_GlueDataset):
     """
-    The Semantic Textual Similarity Benchmark (Cer et al., 2017) is a collection of sentence pairs drawn from news headlines, 
-    video and image captions, and natural language inference data. Each pair is human-annotated with a similarity score from 1 to 5.
+    The Semantic Textual Similarity Benchmark (Cer et al., 2017) is a
+    collection of sentence pairs drawn from news headlines, video and image
+    captions, and natural language inference data. Each pair is human-annotated
+    with a similarity score from 1 to 5.
 
     From https://gluebenchmark.com/tasks
 
@@ -395,7 +417,7 @@ class GlueSTSB(_GlueDataset):
 
     Example:
         .. code-block:: python
-
+            from paddle.incubate.hapi.text.glue import GlueSTSB
             stsb_dev = GlueSTSB('dev', root='./datasets/stsb')
             len(stsb_dev) # 1500
             len(stsb_dev[0]) # 3
@@ -429,17 +451,20 @@ class GlueSTSB(_GlueDataset):
 
 class GlueQQP(_GlueDataset):
     """
-    The Quora Question Pairs dataset is a collection of question pairs from the community question-answering website Quora.
+    The Quora Question Pairs dataset is a collection of question pairs from the
+    community question-answering website Quora.
     From https://gluebenchmark.com/tasks
 
     Args:
         segment ({'train', 'dev', 'test'}): Dataset segment. Default: 'train'.
         root (str): Path to temp folder for storing data.
-        return_all_fields (bool): Return all fields available in the dataset. Default: False.
+        return_all_fields (bool): Return all fields available in the dataset.
+            Default: False.
 
     Example:
         .. code-block:: python
 
+            from paddle.incubate.hapi.text.glue import GlueQQP
             import warnings
             with warnings.catch_warnings():
                 # Ignore warnings triggered by invalid entries in GlueQQP dev set
@@ -448,11 +473,13 @@ class GlueQQP(_GlueDataset):
 
             len(qqp_dev) # 40430
             len(qqp_dev[0]) # 3
-            qqp_dev[0] # ['Why are African-Americans so beautiful?', 'Why are hispanics so beautiful?', '0']
+            qqp_dev[0] # ['Why are African-Americans so beautiful?', 
+                    # 'Why are hispanics so beautiful?', '0']
             qqp_test = GlueQQP('test', root='./datasets/qqp')
             len(qqp_test) # 390965
             len(qqp_test[3]) # 2
-            qqp_test[3] # ['Is it safe to invest in social trade biz?', 'Is social trade geniune?']
+            qqp_test[3] # ['Is it safe to invest in social trade biz?',
+                    # 'Is social trade geniune?']
     """
     URL = 'https://dataset.bj.bcebos.com/glue/QQP.zip'
     MD5 = '884bf26e39c783d757acc510a2a516ef'
@@ -483,27 +510,34 @@ class GlueQQP(_GlueDataset):
 
 class GlueMNLI(_GlueDataset):
     """
-    The Multi-Genre Natural Language Inference Corpus (Williams et al., 2018) is a crowdsourced collection of sentence pairs 
-        with textual entailment annotations.
+    The Multi-Genre Natural Language Inference Corpus (Williams et al., 2018)
+    is a crowdsourced collection of sentence pairs with textual entailment
+    annotations.
     From https://gluebenchmark.com/tasks
 
     Args:
-        segment ('train'|'dev_matched'|'dev_mismatched'|'test_matched'|'test_mismatched'): Dataset segment. Default: ‘train’.
-        root (str, default '$MXNET_HOME/datasets/glue_mnli'): Path to temp folder for storing data.
-        return_all_fields (bool): Return all fields available in the dataset. Default: False.
+        segment ('train'|'dev_matched'|'dev_mismatched'|'test_matched'|
+            'test_mismatched'): Dataset segment. Default: ‘train’.
+        root (str, default '$MXNET_HOME/datasets/glue_mnli'): Path to temp
+            folder for storing data.
+        return_all_fields (bool): Return all fields available in the dataset.
+            Default: False.
 
     Example:
         .. code-block:: python
-
+            from paddle.incubate.hapi.text.glue import GlueMNLI
             mnli_dev = GlueMNLI('dev_matched', root='./datasets/mnli')
             len(mnli_dev) # 9815
             len(mnli_dev[0]) # 3
-            mnli_dev[0] # ['The new rights are nice enough', 'Everyone really likes the newest benefits ', 'neutral']
+            mnli_dev[0] # ['The new rights are nice enough', 
+                        # 'Everyone really likes the newest benefits ', 
+                        # 'neutral']
             mnli_test = GlueMNLI('test_matched', root='./datasets/mnli')
             len(mnli_test) # 9796
             len(mnli_test[0]) # 2
-            mnli_test[0] # ['Hierbas, ans seco, ans dulce, and frigola are just a few names worth keeping a look-out for.', 
-                # 'Hierbas is a name worth looking out for.']
+            mnli_test[0] # ['Hierbas, ans seco, ans dulce, and frigola are 
+                            # just a few names worth keeping a look-out for.', 
+                            # 'Hierbas is a name worth looking out for.']
 
     """
     URL = 'https://dataset.bj.bcebos.com/glue/MNLI.zip'
@@ -536,28 +570,37 @@ class GlueMNLI(_GlueDataset):
 
 class GlueQNLI(_GlueDataset):
     """
-    The Question-answering NLI dataset converted from Stanford Question Answering Dataset (Rajpurkar et al. 2016).
+    The Question-answering NLI dataset converted from Stanford Question
+    Answering Dataset (Rajpurkar et al. 2016).
     From https://gluebenchmark.com/tasks
 
     Args:
-        segment ('train'|'dev'|'test'): Dataset segment. Dataset segment. Default: 'train'.
+        segment ('train'|'dev'|'test'): Dataset segment. Dataset segment.
+            Default: 'train'.
         root (str): Path to temp folder for storing data.
-        return_all_fields (bool): Return all fields available in the dataset. Default: False.
+        return_all_fields (bool): Return all fields available in the dataset.
+            Default: False.
        
     Example:
         .. code-block:: python
-
+            from paddle.incubate.hapi.text.glue import GlueQNLI
             qnli_dev = GlueQNLI('dev', root='./datasets/qnli')
             len(qnli_dev) # 5732
             len(qnli_dev[0]) # 3
-            qnli_dev[0] # ['Which NFL team represented the AFC at Super Bowl 50?', 'The American Football Conference (AFC) champion 
-                # Denver Broncos defeated the National Football Conference (NFC) champion Carolina Panthers 24\u201310 to 
-                # earn their third Super Bowl title.', 'entailment']
+            qnli_dev[0] # ['Which NFL team represented the AFC at Super Bowl 
+                        # 50?', 'The American Football Conference (AFC) 
+                        # champion Denver Broncos defeated the National 
+                        # Football Conference (NFC) champion Carolina Panthers
+                        # 24\u201310 to earn their third Super Bowl title.', 
+                        # 'entailment']
             qnli_test = GlueQNLI('test', root='./datasets/qnli')
             len(qnli_test) # 5740
             len(qnli_test[0]) # 2
-            qnli_test[0] # ['What seldom used term of a unit of force equal to 1000 pound s of force?', 
-                # 'Other arcane units of force include the sthène, which is equivalent to 1000 N, and the kip, which is equivalent to 1000 lbf.']
+            qnli_test[0] # ['What seldom used term of a unit of force equal to
+                         # 1000 pound s of force?', 
+                         # 'Other arcane units of force include the sthène,
+                         # which is equivalent to 1000 N, and the kip, which
+                         # is equivalent to 1000 lbf.']
     """
     URL = 'https://dataset.bj.bcebos.com/glue/QNLI.zip'
     MD5 = 'b4efd6554440de1712e9b54e14760e82'
@@ -582,26 +625,32 @@ class GlueQNLI(_GlueDataset):
 
 class GlueRTE(_GlueDataset):
     """
-    The Recognizing Textual Entailment (RTE) datasets come from a series of annual textual entailment challenges (RTE1, RTE2, RTE3, and RTE5).
+    The Recognizing Textual Entailment (RTE) datasets come from a series of
+    annual textual entailment challenges (RTE1, RTE2, RTE3, and RTE5).
     From https://gluebenchmark.com/tasks
     Args:
         segment ('train'|'dev'|'test'): Dataset segment. Default: 'train'.
         root (str): Path to temp folder for storing data.
-        return_all_fields (bool): Return all fields available in the dataset. Default: False.
+        return_all_fields (bool): Return all fields available in the dataset.
+            Default: False.
 
     Examples:
         .. code-block:: python
-
+            from paddle.incubate.hapi.text.glue import GlueRTE
             rte_dev = GlueRTE('dev', root='./datasets/rte')
             len(rte_dev) # 277
             len(rte_dev[0]) # 3
-            rte_dev[0] # ['Dana Reeve, the widow of the actor Christopher Reeve, has died of lung cancer at age 44, 
-                # according to the Christopher Reeve Foundation.', 'Christopher Reeve had an accident.', 'not_entailment']
+            rte_dev[0] # ['Dana Reeve, the widow of the actor Christopher 
+                       # Reeve, has died of lung cancer at age 44, according
+                       # to the Christopher Reeve Foundation.', 'Christopher
+                       # Reeve had an accident.', 'not_entailment']
             rte_test = GlueRTE('test', root='./datasets/rte')
             len(rte_test) # 3000
             len(rte_test[16]) # 2
-            rte_test[16] # ['United failed to progress beyond the group stages of the Champions League 
-                # and trail in the Premiership title race, sparking rumours over its future.', 'United won the Champions League.']
+            rte_test[16] # ['United failed to progress beyond the group stages
+                         # of the Champions League and trail in the Premiership
+                         # title race, sparking rumours over its future.', 
+                         # 'United won the Champions League.']
     """
     URL = 'https://dataset.bj.bcebos.com/glue/RTE.zip'
     MD5 = 'bef554d0cafd4ab6743488101c638539'
@@ -627,27 +676,34 @@ class GlueRTE(_GlueDataset):
 
 class GlueWNLI(_GlueDataset):
     """
-    The Winograd NLI dataset converted from the dataset in Winograd Schema Challenge (Levesque et al., 2011).
+    The Winograd NLI dataset converted from the dataset in Winograd Schema
+    Challenge (Levesque et al., 2011).
     From https://gluebenchmark.com/tasks
 
     Args:
         segment ('train'|'dev'|'test'): Dataset segment. Default: 'train'.
         root (str): Path to temp folder for storing data.
-        return_all_fields (bool): Return all fields available in the dataset. Default: False.
+        return_all_fields (bool): Return all fields available in the dataset.
+            Default: False.
 
     Example:
         .. code-block:: python
-                wnli_dev = GlueWNLI('dev', root='./datasets/wnli')
-                len(wnli_dev) # 71
-                len(wnli_dev[0]) # 3
-                wnli_dev[0] # ['The drain is clogged with hair. It has to be cleaned.', 'The hair has to be cleaned.', '0']
-                wnli_test = GlueWNLI('test', root='./datasets/wnli')
-                len(wnli_test) # 146
-                len(wnli_test[0]) # 2
-                wnli_test[0] # ['Maude and Dora had seen the trains rushing across the prairie, with long, 
-                    # rolling puffs of black smoke streaming back from the engine. Their roars and their wild, 
-                    # clear whistles could be heard from far away. Horses ran away when they came in sight.', 
-                    # 'Horses ran away when Maude and Dora came in sight.']
+            from paddle.incubate.hapi.text.glue import GlueWNLI
+            wnli_dev = GlueWNLI('dev', root='./datasets/wnli')
+            len(wnli_dev) # 71
+            len(wnli_dev[0]) # 3
+            wnli_dev[0] # ['The drain is clogged with hair. It has to be 
+                        # cleaned.', 'The hair has to be cleaned.', '0']
+            wnli_test = GlueWNLI('test', root='./datasets/wnli')
+            len(wnli_test) # 146
+            len(wnli_test[0]) # 2
+            wnli_test[0] # ['Maude and Dora had seen the trains rushing 
+                            # across the prairie, with long, rolling puffs 
+                            # of black smoke streaming back from the engine.
+                            # Their roars and their wild, clear whistles 
+                            # could be heard from far away. Horses ran away 
+                            # when they came in sight.', 'Horses ran away when
+                            # Maude and Dora came in sight.']
     """
     URL = 'https://dataset.bj.bcebos.com/glue/WNLI.zip'
     MD5 = 'a1b4bd2861017d302d29e42139657a42'
