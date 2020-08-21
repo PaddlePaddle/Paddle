@@ -19,7 +19,8 @@ API_FILES=("CMakeLists.txt"
            "paddle/fluid/framework/ir/node.h"
            "paddle/fluid/framework/ir/graph.h"
            "paddle/fluid/framework/framework.proto"
-	   "python/paddle/fleet/__init__.py"
+	   "python/paddle/distributed/__init"
+	   "python/paddle/distributed/fleet/__init__.py"
            "python/requirements.txt"
            "python/paddle/fluid/__init__.py"
            "python/paddle/fluid/compiler.py"
@@ -118,7 +119,10 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "tools/wlist.json" ];then
         echo_line="You must have one TPM (jzhang533) approval for the api whitelist for the tools/wlist.json.\n"
         check_approval 1 29231
-      elif [ "${API_FILE}" == "python/paddle/fleet/__init__.py" ]; then
+      elif [ "${API_FILE}" == "python/paddle/distributed/fleet/__init__.py" ]; then
+	echo_line="You must have (guru4elephant,raindrops2sea) approval for ${API_FILE} changes "
+	check_approval 1 35550832 38231817
+      elif [ "${API_FILE}" == "python/paddle/distributed/__init__.py" ]; then
 	echo_line="You must have (guru4elephant,raindrops2sea) approval for ${API_FILE} changes "
 	check_approval 1 35550832 38231817
       else

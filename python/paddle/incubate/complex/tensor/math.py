@@ -262,7 +262,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             case1 = np.random.randn(3, 10, 10).astype('float64') + 1j * np.random.randn(3, 10, 10).astype('float64')
             
             paddle.disable_static()
-            case1 = paddle.to_variable(case1)
+            case1 = paddle.to_tensor(case1)
             data1 = paddle.complex.trace(case1, offset=1, axis1=1, axis2=2) # data1.shape = [3]
     """
     complex_variable_exists([x], "trace")
@@ -330,8 +330,8 @@ def sum(input, dim=None, keep_dim=False, name=None):
 
     """
     complex_variable_exists([input], "sum")
-    real = math.sum(input.real, dim=dim, keep_dim=keep_dim, name=name)
-    imag = math.sum(input.imag, dim=dim, keep_dim=keep_dim, name=name)
+    real = math.sum(input.real, axis=dim, keepdim=keep_dim, name=name)
+    imag = math.sum(input.imag, axis=dim, keepdim=keep_dim, name=name)
     return ComplexVariable(real, imag)
 
 
