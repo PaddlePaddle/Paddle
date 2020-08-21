@@ -96,7 +96,7 @@ class MultiheadAttention(Layer):
             query = paddle.rand((2, 4, 128))
             # self attention mask: [batch_size, num_heads, query_len, query_len]
             attn_mask = paddle.rand((2, 2, 4, 4))
-            multi_head_attn = paddle.MultiheadAttention(64, 64, 128, n_head=2)
+            multi_head_attn = paddle.MultiheadAttention(128, 2)
             output = multi_head_attn(query, attn_mask=attn_mask)  # [2, 4, 128]
     """
 
@@ -231,7 +231,7 @@ class MultiheadAttention(Layer):
         v = layers.transpose(x=v, perm=[0, 2, 1, 3])
         return k, v
 
-    def gen_cache(self, key, value=None, type=MultiheadAttention.Cache):
+    def gen_cache(self, key, value=None, type=Cache):
         """
         Generates cache for `forward` usage in inference accroding to arguments.
         The generated cache is an instance of `MultiheadAttention.Cache` or an
@@ -456,7 +456,6 @@ class TransformerEncoderLayer(Layer):
                  bias_attr=None):
         self._config = locals()
         self._config.pop("self")
-        self._config.pop("__class__", None)
         self._config.pop("__class__", None)  # py3
 
         super(TransformerEncoderLayer, self).__init__()
@@ -940,25 +939,32 @@ class TransformerDecoder(Layer):
 
         return output if cache is None else (output, new_caches)
 
-    def gen_cache(self, memory):
+    def gen_cache(self, memory, do_zip=False):
         """
         Generates cache for `forward` usage. The generated cache is a list, and
         each element in it is a tuple( :code:`(incremental_cache, static_cache)` )
         produced by `TransformerDecoderLayer.gen_cache`. See `TransformerDecoderLayer.gen_cache`
-        for more details.
+        for more details. If `do_zip` is True, apply `zip` on these tuples to get
+        a list with two elements.
 
 
         Parameters:
             memory (Variable): The output of Transformer encoder. It is a tensor
                 with shape `[batch_size, source_length, d_model]`. The data type
                 should be float32 or float64.
+            do_zip (bool, optional): Indicate whether to apply `zip` on the tuples.
+                If True, return a list with two elements. Default False
 
         Returns:
             list: It is a list, and each element in the list is a tuple produced \
                 by `TransformerDecoderLayer.gen_cache(memory)`. See `TransformerDecoderLayer.gen_cache` \
-                for more details.
+                for more details. If `do_zip` is True, apply `zip` on these tuples \
+                and return a list with two elements.
         """
-        return [layer.gen_cache(memory) for layer in self.layers]
+        cache = [layer.gen_cache(memory) for layer in self.layers]
+        if do_zip:
+            cache = list(zip(*cache))
+        return cache
 
 
 class Transformer(Layer):
@@ -1152,7 +1158,6 @@ class TransformerDecoderCell(Layer):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             from paddle.fluid.dygraph import Embedding, Linear
             from paddle.incubate.hapi.text import TransformerDecoder
             from paddle.incubate.hapi.text import TransformerCell
@@ -1209,11 +1214,11 @@ class TransformerDecoderCell(Layer):
 
     def forward(self,
                 inputs,
-                cache=None,
-                memory=None,
+                cache,
+                static_cache,
+                memory,
                 tgt_mask=None,
-                memory_mask=None,
-                static_cache=[]):
+                memory_mask=None):
         """
         Produces logits from `inputs` composed by ids and positions.
 
@@ -1222,10 +1227,14 @@ class TransformerDecoderCell(Layer):
                 tensors both have int64 data type and with 2D shape 
                 `[batch_size, sequence_length]` where `sequence_length` is 1
                 for inference.
-            cache(list): It caches the multi-head attention intermediate results
-                of history decoding steps. It is a list of dict where the length
-                of list is decoder layer number, and each dict has `k` and `v` as
-                keys and values are cached results. Default None
+            cache(list): It is a list and each element of the list is an instance
+                of `MultiheadAttention.Cache` for corresponding decoder layer. It
+                can be produced by `TransformerDecoder.gen_cache`, thus see
+                `TransformerDecoderLayer.gen_cache` for more details.
+            static_cache(list): It is a list and each element of the
+                list is an instance of `MultiheadAttention.StaticCache` for corresponding
+                decoder layer. It can be produced by `TransformerDecoder.gen_cache`,
+                thus see `TransformerDecoderLayer.gen_cache` for more details.
             memory (Variable): The output of Transformer encoder. It is a tensor
                 with shape `[batch_size, source_length, d_model]`. The data type
                 should be float32 or float64.
@@ -1236,7 +1245,8 @@ class TransformerDecoderCell(Layer):
                 where the unwanted positions have `-INF` values and the others
                 have 0 values. The data type should be float32 or float64. It can
                 be None when nothing wanted or needed to be prevented attention to.
-                Default None
+                It can be None for inference since there is no subsequent in
+                auto-regression decoding. Default None
             memory_mask (Variable, optional): A tensor used in decoder-encoder
                 cross attention to prevents attention to some unwanted positions,
                 usually the paddings. It is a tensor with shape broadcasted to
@@ -1244,61 +1254,31 @@ class TransformerDecoderCell(Layer):
                 unwanted positions have `-INF` values and the others have 0 values.
                 The data type should be float32 or float64. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None
-            static_cache(list): It stores transformed results of encoder output
-                to be used as keys and values in decoder-encoder cross attention
-                It is a list of dict where the length of list is decoder layer
-                number, and each dict has `static_k` and `static_v` as keys and
-                values are stored results. Default empty list
+            
 
         Returns:
             tuple: A tuple( :code:`(outputs, new_states)` ), where `outputs` \
                 is a float32 or float64 3D tensor representing logits shaped \
                 `[batch_size, sequence_length, vocab_size]`. `new_states has \
                 the same structure and data type with `states` while the length \
-                is one larger since the intermediate results of current step are \
-                concatenated into it.
+                is one larger since concatanating the intermediate results of \
+                current step.
         """
-        trg_word, trg_pos = inputs
+        tgt_word, tgt_pos = inputs
         if cache and static_cache:
-            for cache, static_cache in zip(states, static_caches):
-                cache.update(static_cache)
+            states = list(zip(cache, static_cache))
         if self.embedding_fn is not None:
-            dec_input = self.embedding_fn(trg_word, trg_pos)
-            outputs = self.decoder(dec_input, memory, tgt_mask, memory_mask,
-                                   states)
+            tgt = self.embedding_fn(tgt_word, tgt_pos)
+            outputs, new_states = self.decoder(tgt, memory, tgt_mask,
+                                               memory_mask, states)
         else:
-            outputs = self.decoder(trg_word, trg_pos, memory, tgt_mask,
-                                   memory_mask, states)
+            outputs, new_states = self.decoder(tgt_word, tgt_pos, memory,
+                                               tgt_mask, memory_mask, states)
         if self.output_fn is not None:
             outputs = self.output_fn(outputs)
 
-        new_states = [{
-            "k": cache["k"],
-            "v": cache["v"]
-        } for cache in states] if states else states
+        new_states = [cache[0] for cache in new_states]
         return outputs, new_states
-
-    @property
-    def state_shape(self):
-        """
-        States of TransformerCell cache the multi-head attention intermediate
-        results of history decoding steps, and have a increasing length as
-        decoding continued.
-        
-        `state_shape` of TransformerCell is used to initialize states. It is a
-        list of dict where the length of list is decoder layer, and each dict
-        has `k` and `v` as keys and values are `[n_head, 0, d_key]`, `[n_head, 0, d_value]`
-        separately. (-1 for batch size would be automatically inserted into shape).
-
-        Returns:
-            list: It is a list of dict where the length of list is decoder layer \
-                number, and each dict has `k` and `v` as keys and values are cached \
-                results.
-        """
-        return [{
-            "k": [self.decoder.n_head, 0, self.decoder.d_key],
-            "v": [self.decoder.n_head, 0, self.decoder.d_value],
-        } for i in range(self.decoder.n_layer)]
 
 
 class TransformerBeamSearchDecoder(layers.BeamSearchDecoder):
@@ -1310,7 +1290,7 @@ class TransformerBeamSearchDecoder(layers.BeamSearchDecoder):
     `BeamSearchDecoder` to make beam search adapt to Transformer decoder.
 
     Parameters:
-        cell(TransformerCell): An instance of `TransformerCell`.
+        cell(TransformerDecoderCell): An instance of `TransformerDecoderCell`.
         start_token(int): The start token id.
         end_token(int): The end token id.
         beam_size(int): The beam width used in beam search.
