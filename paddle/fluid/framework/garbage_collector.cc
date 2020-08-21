@@ -50,6 +50,15 @@ void CPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
   callback();
 }
 
+#ifdef PADDLE_WITH_XPU
+XPUGarbageCollector::XPUGarbageCollector(const platform::XPUPlace &place,
+                                         size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+void XPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
+  callback();
+}
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 UnsafeFastGPUGarbageCollector::UnsafeFastGPUGarbageCollector(
     const platform::CUDAPlace &place, size_t max_memory_size)
