@@ -185,7 +185,6 @@ class Hardshrink(layers.Layer):
 
 class Tanh(layers.Layer):
     """
-    Tanh Activation
 
     .. math::
 
