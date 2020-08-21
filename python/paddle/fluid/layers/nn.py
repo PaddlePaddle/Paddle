@@ -10320,7 +10320,7 @@ def expand_as(x, target_tensor, name=None):
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
-@deprecated(since='1.8.0', update_to="paddle.uniform_random")
+@deprecated(since='1.8.0', update_to="paddle.uniform")
 @templatedoc()
 def uniform_random_batch_size_like(input,
                                    shape,
