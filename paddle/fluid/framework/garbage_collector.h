@@ -59,6 +59,16 @@ class CPUGarbageCollector : public GarbageCollector {
   void ClearCallback(const std::function<void()> &callback) override;
 };
 
+#ifdef PADDLE_WITH_XPU
+class XPUGarbageCollector : public GarbageCollector {
+ public:
+  XPUGarbageCollector(const platform::XPUPlace &place, size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 class UnsafeFastGPUGarbageCollector : public GarbageCollector {
  public:
