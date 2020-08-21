@@ -95,12 +95,10 @@ class Conv1D(layers.Layer):
             it must contain one integer, (kernel_size).
         stride (int or tuple, optional): The stride size. If stride is a tuple, it must
             contain one integer, (stride_size). Default: 1.
-        padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
+        padding(int|str|tuple|list, optional): The size of zeros to be padded. It must be in one of the following forms.
             1. a string in ['valid', 'same'].
             2. an int, which means the feature map is zero paded by size of `padding` on both sides.
             3. a list[int] or tuple[int] whose length is 1, which means the feature map is zero paded by size of `padding[0]` on both sides.
-            4. a list[int] or tuple[int] whose length is 2. It has the form  [pad_before, pad_after].
-            5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             The default value is 0.
         dilation (int or tuple, optional): The dilation size. If dilation is a tuple, it must
             contain one integer, (dilation_size). Default: 1.
@@ -109,6 +107,12 @@ class Conv1D(layers.Layer):
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: 1.
+        padding_mode(str, optional): Four modes: 'zeros', 'reflect', 'replicate', 'circular'.
+            When in 'zeros' mode, this op uses zeros to pad the input tensor.
+            When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
+            When in 'replicate' mode, uses input boundaries to pad the input tensor.
+            When in 'circular' mode, uses circular input to pad the input tensor.
+            Default is 'zeros'.
         bias(bool, optional): Whether to use bias. Default: True.
         param_attr (ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
             of conv1d. If it is set to None or one attribute of ParamAttr, conv1d
@@ -170,6 +174,7 @@ class Conv1D(layers.Layer):
                  padding=0,
                  dilation=1,
                  groups=1,
+                 padding_mode='zeros',
                  bias=True,
                  weight_attr=None,
                  bias_attr=None,
@@ -191,6 +196,22 @@ class Conv1D(layers.Layer):
         self._data_format = data_format
         self._name = name
 
+        self._padding_mode = padding_mode
+
+        valid_padding_modes = {'zeros', 'reflect', 'replicate', 'circular'}
+        if padding_mode not in valid_padding_modes:
+            raise ValueError(
+                "padding_mode must be one of {}, but got padding_mode='{}'".
+                format(valid_padding_modes, padding_mode))
+
+        if padding_mode in {'reflect', 'replicate', 'circular'
+                            } and not isinstance(padding, np.int):
+            raise ValueError(
+                "when padding_mode in ['reflect', 'replicate', 'circular'], type of padding must be int"
+            )
+        if not isinstance(padding, str):
+            self._padding = utils.convert_to_list(padding, 1, 'padding') * 2
+
         num_filter_channels = in_channels // groups
         filter_shape = [self._out_channels, num_filter_channels
                         ] + self._kernel_size
@@ -208,11 +229,20 @@ class Conv1D(layers.Layer):
             is_bias=True) if bias else None
 
     def forward(self, x):
+        padding = 0
+        if self._padding_mode != "zeros":
+            x = F.pad(x,
+                      self._padding,
+                      mode=self._padding_mode,
+                      data_format=self._data_format)
+        else:
+            padding = self._padding
+
         out = F.conv1d(
             x,
             self.weight,
             bias=self.bias,
-            padding=self._padding,
+            padding=padding,
             stride=self._stride,
             dilation=self._dilation,
             groups=self._groups,

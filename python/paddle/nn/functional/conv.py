@@ -215,7 +215,7 @@ def conv1d(x,
           #   [160. 211.]]]
     """
     cudnn_version = get_cudnn_version()
-    if cudnn_version is not None and cudnn_version >= 7630:
+    if cudnn_version is not None:
         use_cudnn = True
     else:
         use_cudnn = False
@@ -262,6 +262,7 @@ def conv1d(x,
     if (num_channels == groups and num_filters % num_channels == 0 and
             not use_cudnn):
         l_type = 'depthwise_conv2d'
+        use_cudnn = False
 
     inputs = {'Input': [x], 'Filter': [weight]}
     attrs = {
