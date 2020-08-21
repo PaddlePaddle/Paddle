@@ -13,7 +13,14 @@
 # limitations under the License.
 
 # TODO: define the classes of Transformer neural network
-# __all__ = [ ]
+__all__ = [
+    'MultiheadAttention',
+    'TransformerEncoderLayer',
+    'TransformerEncoder',
+    'TransformerDecoderLayer',
+    'TransformerDecoder',
+    'Transformer',
+]
 
 import copy
 import collections
@@ -211,12 +218,12 @@ class MultiheadAttention(Layer):
         to construct cache for inference.
 
         Parameters:
-            key (Variable, optional): The keys for multi-head attention. It is
-                a tensor with shape `[batch_size, sequence_length, kdim]`. The
-                data type should be float32 or float64.
-            value (Variable, optional): The values for multi-head attention. It
-                is a tensor with shape `[batch_size, sequence_length, vdim]`.
-                The data type should be float32 or float64.
+            key (Variable): The keys for multi-head attention. It is a tensor
+                with shape `[batch_size, sequence_length, kdim]`. The data type
+                should be float32 or float64.
+            value (Variable): The values for multi-head attention. It is a tensor
+                with shape `[batch_size, sequence_length, vdim]`. The data type
+                should be float32 or float64.
 
         Returns:
             tuple: A tuple including transformed keys and values. Their shapes \
