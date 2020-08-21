@@ -669,9 +669,11 @@ def unique(x,
         axis = [axis]
 
     if in_dygraph_mode():
-        out, index, inverse, counts = core.ops.unique_v2(
-            x, 'return_index', return_index, 'return_inverse', return_inverse,
-            'return_counts', return_counts, 'axis', axis)
+        out, index, inverse, counts = core.ops.unique(
+            x, 'dtype',
+            convert_np_dtype_to_dtype_('int32'), 'return_index', return_index,
+            'return_inverse', return_inverse, 'return_counts', return_counts,
+            'axis', axis, "is_sorted", True)
         outs = [out]
         if return_index:
             outs.append(index)
@@ -679,10 +681,11 @@ def unique(x,
             outs.append(inverse)
         if return_counts:
             outs.append(counts)
+
         if len(outs) == 1:
-            return out
-        else:
-            return outs
+            return outs[0]
+
+        return tuple(outs)
 
     check_variable_and_dtype(x, "input",
                              ['float32', 'float64', 'int32', 'int64'], 'unique')
@@ -694,27 +697,40 @@ def unique(x,
 
     helper = LayerHelper('unique', **locals())
     attrs = {
+        'dtype': int(core.VarDesc.VarType.INT32),
         "return_index": return_index,
         "return_inverse": return_inverse,
         "return_counts": return_counts,
-        "axis": axis
+        "axis": axis,
+        "is_sorted": True
     }
     out = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
-    indices = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
-    inverse = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
-    counts = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
-    outputs = {
-        "Out": out,
-        "Indices": indices,
-        "Inverse": inverse,
-        "Counts": counts
-    }
+    outputs = {"Out": out}
+    outs = [out]
+    if return_index:
+        indices = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
+        outputs["Indices"] = indices
+        outs.append(indices)
+    if return_inverse:
+        inverse = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
+        outputs["Index"] = inverse
+        outs.append(inverse)
+    if return_counts:
+        counts = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
+        outputs["Counts"] = counts
+        outs.append(counts)
+
     helper.append_op(
-        type="unique_v2", inputs={"X": x}, attrs=attrs, outputs=outputs)
+        type="unique", inputs={"X": x}, attrs=attrs, outputs=outputs)
+
+    if len(outs) == 1:
+        return outs[0]
+
+    return tuple(outs)
 
 
 def unsqueeze(x, axis, name=None):
