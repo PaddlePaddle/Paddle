@@ -437,20 +437,20 @@ def grad(outputs,
 
                 return dx.numpy()
 
-            THREE = paddle.fill_constant(shape=[1], value=3.0, dtype='float32')
-            FOUR = paddle.fill_constant(shape=[1], value=4.0, dtype='float32')
+            grad_value = paddle.fill_constant(shape=[1], value=4.0, dtype='float32')
 
             # dy1 = [1], dy2 = [1]
             print(test_dygraph_grad(None)) # [7.]
 
             # dy1 = [1], dy2 = [4]
-            print(test_dygraph_grad([None, FOUR])) # [16.] 
+            print(test_dygraph_grad([None, grad_value])) # [16.]
 
             # dy1 = [4], dy2 = [1]
-            print(test_dygraph_grad([FOUR, None])) # [19.]
+            print(test_dygraph_grad([grad_value, None])) # [19.]
 
             # dy1 = [3], dy2 = [4]
-            print(test_dygraph_grad([THREE, FOUR])) # [24.]
+            grad_y1 = paddle.fill_constant(shape=[1], value=3.0, dtype='float32')
+            print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
 	'''
 
     def check_in_out(in_out_list, name):
