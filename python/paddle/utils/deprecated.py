@@ -19,6 +19,7 @@ import warnings
 import functools
 import paddle
 import inspect
+import importlib
 
 # NOTE(zhiqiu): Since python 3.2, DeprecationWarning is ignored by default,
 # and since python 3.7, it is once again shown by default when triggered directly by code in __main__.
@@ -26,7 +27,7 @@ import inspect
 # The following line set DeprecationWarning to show once, which is expected to work in python 3.2 -> 3.6
 # However, doing this could introduce one samll side effect, i.e., the DeprecationWarning which is not issued by @deprecated.
 # The side effect is acceptable, and we will find better way to do this if we could.
-warnings.simplefilter('default', DeprecationWarning)
+warnings.filterwarnings("once", category=DeprecationWarning, module="__main__")
 
 
 def deprecated(update_to="", since="", reason=""):
@@ -45,6 +46,17 @@ def deprecated(update_to="", since="", reason=""):
     """
 
     def decorator(wrapped):
+        # NOTE(zhiqiu): Currently, some unary operators in Paddle are generated dynamicly 
+        # (see details in ops.py), for example, paddle.tanh. 
+        # While, paddle.tanh is alias of paddle.fluid.layers.tanh. And paddle.fluid.layers.tanh is 
+        # marked as deprecated. So, it may lead to the following warnings when using paddle.tanh():
+        #   API "paddle.fluid.layers.tanh" is deprecated since 2.0.0, 
+        #   and may be removed in future versions. Please use "paddle.tanh" instead.
+        # This problem should be fixed.
+
+        # TODO(zhiqiu) We temporally disable the warnings by return, and it should be re-enabled after 
+        # the above problem fixed.
+        return wrapped
         """construct warning message, and return a decorated function or class."""
         assert isinstance(update_to, str), 'type of "update_to" must be str.'
         assert isinstance(since, str), 'type of "since" must be str.'
@@ -84,16 +96,16 @@ def deprecated(update_to="", since="", reason=""):
         if inspect.isclass(wrapped):
             origin_new = wrapped.__new__
 
+            @functools.wraps(origin_new)
             def wrapped_cls(cls, *args, **kwargs):
                 if need_warn:
                     warnings.warn(
-                        msg, category=DeprecationWarning, stacklevel=1)
-                if origin_new is object.__new__:
-                    return origin_new(cls)
+                        msg, category=DeprecationWarning, stacklevel=2)
 
                 return origin_new(cls, *args, **kwargs)
 
             wrapped.__new__ = staticmethod(wrapped_cls)
+            return wrapped
 
         elif inspect.isroutine(wrapped):
 
