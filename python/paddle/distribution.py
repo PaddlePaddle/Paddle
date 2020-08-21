@@ -88,7 +88,7 @@ class Distribution(object):
 
         return is_variable
 
-    def _to_variable(self, *args):
+    def _to_tensor(self, *args):
         """
         Argument convert args to Tensor
 
@@ -219,7 +219,7 @@ class Uniform(Distribution):
         else:
             if isinstance(low, float) and isinstance(high, float):
                 self.all_arg_is_float = True
-            self.low, self.high = self._to_variable(low, high)
+            self.low, self.high = self._to_tensor(low, high)
 
     def sample(self, shape, seed=0):
         """Generate samples of the specified shape.
@@ -426,7 +426,7 @@ class Normal(Distribution):
         else:
             if isinstance(loc, float) and isinstance(scale, float):
                 self.all_arg_is_float = True
-            self.loc, self.scale = self._to_variable(loc, scale)
+            self.loc, self.scale = self._to_tensor(loc, scale)
 
     def sample(self, shape, seed=0):
         """Generate samples of the specified shape.
