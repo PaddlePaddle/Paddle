@@ -143,9 +143,17 @@ class TestTrilinearInterpOp(OpTest):
             in_w = self.input_shape[3]
 
         if self.scale > 0:
-            out_d = int(in_d * self.scale)
-            out_h = int(in_h * self.scale)
-            out_w = int(in_w * self.scale)
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                scale_d = scale_h = scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_d = scale_w = scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                scale_w = self.scale[2]
+                scale_h = self.scale[1]
+                scale_d = self.scale[0]
+            out_d = int(in_d * scale_d)
+            out_h = int(in_h * scale_h)
+            out_w = int(in_w * scale_w)
         else:
             out_d = self.out_d
             out_h = self.out_h
@@ -335,9 +343,17 @@ class TestTrilinearInterpOpUint8(OpTest):
             low=0, high=256, size=self.input_shape).astype("uint8")
 
         if self.scale > 0:
-            out_d = int(self.input_shape[2] * self.scale)
-            out_h = int(self.input_shape[3] * self.scale)
-            out_w = int(self.input_shape[4] * self.scale)
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                scale_d = scale_h = scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_d = scale_w = scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                scale_w = self.scale[2]
+                scale_h = self.scale[1]
+                scale_d = self.scale[0]
+            out_d = int(self.input_shape[2] * scale_d)
+            out_h = int(self.input_shape[3] * scale_h)
+            out_w = int(self.input_shape[4] * scale_w)
         else:
             out_d = self.out_d
             out_h = self.out_h
@@ -491,9 +507,17 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         if self.scale_by_1Dtensor:
             self.inputs['Scale'] = np.array([self.scale]).astype("float32")
         elif self.scale > 0:
-            out_d = int(self.input_shape[2] * self.scale)
-            out_h = int(self.input_shape[3] * self.scale)
-            out_w = int(self.input_shape[4] * self.scale)
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                scale_d = scale_h = scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_d = scale_w = scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                scale_w = self.scale[2]
+                scale_h = self.scale[1]
+                scale_d = self.scale[0]
+            out_d = int(self.input_shape[2] * scale_d)
+            out_h = int(self.input_shape[3] * scale_h)
+            out_w = int(self.input_shape[4] * scale_w)
         else:
             out_d = self.out_d
             out_h = self.out_h

@@ -137,8 +137,15 @@ class TestBicubicInterpOp(OpTest):
             in_w = self.input_shape[2]
 
         if self.scale > 0:
-            out_h = int(in_h * self.scale)
-            out_w = int(in_w * self.scale)
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                scale_h = scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_w = scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                scale_w = self.scale[1]
+                scale_h = self.scale[0]
+            out_h = int(in_h * scale_h)
+            out_w = int(in_w * scale_w)
         else:
             out_h = self.out_h
             out_w = self.out_w
@@ -253,6 +260,16 @@ class TestBicubicInterpSame(TestBicubicInterpOp):
         self.out_h = 32
         self.out_w = 64
         self.scale = 0.
+        self.align_corners = True
+
+
+class TestBicubicInterpScale(TestBicubicInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'bicubic'
+        self.input_shape = [2, 3, 32, 64]
+        self.out_h = 32
+        self.out_w = 64
+        self.scale = [1., 1.]
         self.align_corners = True
 
 

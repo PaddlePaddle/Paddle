@@ -110,8 +110,15 @@ class TestBilinearInterpOp(OpTest):
             in_w = self.input_shape[2]
 
         if self.scale > 0:
-            out_h = int(in_h * self.scale)
-            out_w = int(in_w * self.scale)
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                scale_h = scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_w = scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                scale_w = self.scale[1]
+                scale_h = self.scale[0]
+            out_h = int(in_h * scale_h)
+            out_w = int(in_w * scale_w)
         else:
             out_h = self.out_h
             out_w = self.out_w
@@ -273,8 +280,15 @@ class TestBilinearInterpOpUint8(OpTest):
             low=0, high=256, size=self.input_shape).astype("uint8")
 
         if self.scale > 0:
-            out_h = int(self.input_shape[2] * self.scale)
-            out_w = int(self.input_shape[3] * self.scale)
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                scale_h = scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_w = scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                scale_w = self.scale[1]
+                scale_h = self.scale[0]
+            out_h = int(self.input_shape[2] * scale_h)
+            out_w = int(self.input_shape[3] * scale_w)
         else:
             out_h = self.out_h
             out_w = self.out_w
@@ -388,6 +402,17 @@ class TestBilinearInterpScale3(TestBilinearInterpOp):
         self.align_mode = 1
 
 
+class TestBilinearInterpScale4(TestBilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [2, 3, 5, 7]
+        self.out_h = 60
+        self.out_w = 25
+        self.scale = [1.5, 0.5]
+        self.align_corners = True
+        self.align_mode = 1
+
+
 class TestBilinearInterpZero(TestBilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -418,8 +443,15 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         if self.scale_by_1Dtensor:
             self.inputs['Scale'] = np.array([self.scale]).astype("float32")
         elif self.scale > 0:
-            out_h = int(self.input_shape[2] * self.scale)
-            out_w = int(self.input_shape[3] * self.scale)
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                scale_h = scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_w = scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                scale_w = self.scale[1]
+                scale_h = self.scale[0]
+            out_h = int(self.input_shape[2] * scale_h)
+            out_w = int(self.input_shape[3] * scale_w)
         else:
             out_h = self.out_h
             out_w = self.out_w

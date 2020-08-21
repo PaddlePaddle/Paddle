@@ -87,6 +87,10 @@ class TestLinearInterpOp(OpTest):
             in_w = self.input_shape[1]
 
         if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = float(self.scale)
+            if isinstance(self.scale, list):
+                self.scale = float(self.scale[0])
             out_w = int(in_w * self.scale)
         else:
             out_w = self.out_w
@@ -109,9 +113,7 @@ class TestLinearInterpOp(OpTest):
         }
         if self.scale > 0:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
-                self.scale = [self.scale]
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                self.scale = [self.scale[0], self.scale[0]]
+                self.scale = [float(self.scale)]
             self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
 
@@ -185,6 +187,10 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
             in_w = self.input_shape[1]
 
         if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = float(self.scale)
+            if isinstance(self.scale, list):
+                self.scale = float(self.scale[0])
             out_w = int(in_w * self.scale)
         else:
             out_w = self.out_w
@@ -328,7 +334,11 @@ class TestResizeLinearOpUint8(OpTest):
         input_np = np.random.random(self.input_shape).astype("uint8")
 
         if self.scale > 0:
-            out_w = int(self.input_shape[3] * self.scale)
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = float(self.scale)
+            if isinstance(self.scale, list):
+                self.scale = float(self.scale[0])
+            out_w = int(self.input_shape[2] * self.scale)
         else:
             out_w = self.out_w
 
