@@ -48,6 +48,7 @@ __all__ = [
     'eye',
     'full',
     'full_like',
+    'empty_like',
     'triu',
     'tril',
     'meshgrid'
@@ -990,4 +991,66 @@ def diag(x, offset=0, padding_value=0, name=None):
                'padding_value': padding_value})
 
     out.stop_gradient = True
+    return out
+
+
+def empty_like(x, dtype=None, name=None):
+    """
+	:alias_main: paddle.empty_like
+	:alias: paddle.tensor.empty_like, paddle.tensor.creation.empty_like
+
+    This function creates an uninitialized tensor  which has identical shape of ``x`` and ``dtype``.
+    If the ``dtype`` is None, the data type of Tensor is same with ``x``.
+
+    Args:
+        x(Tensor): The input tensor which specifies shape and data type. The data type can be float32, float64, int32, int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The data type can be one
+            of float32, float64, int32, int64. The default value is None, which means the output 
+            data type is the same as input.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+    
+    Returns:
+        Tensor: Tensor which is created according to ``x``, and ``dtype``.
+    
+    Raises:
+        TypeError: The data type of ``x`` must be one of float32, float64, int32, int64.
+        TypeError: The ``dtype`` must be one of float32, float64, int32, int64 and None.
+    
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+          
+          paddle.disable_static()  # Now we are in imperative mode 
+          input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
+          output = paddle.empty_like(input)
+          # [[2. 2. 2.]
+          #  [2. 2. 2.]]
+    """
+
+    if dtype is None:
+        dtype = x.dtype
+    else:
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dygraph_mode():
+        return core.ops.empty_like(x, 'dtype', dtype)
+
+    helper = LayerHelper("empty_like", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'empty_like')
+    check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
+                'empty_like')
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    helper.append_op(
+        type='empty_like',
+        inputs={'X': [x]},
+        attrs={"dtype": dtype},
+        outputs={'Out': [out]})
+
+    out.stop_gradient = True
+
     return out
