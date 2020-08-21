@@ -15,11 +15,16 @@
 import numpy as np
 import paddle
 import paddle.fluid as fluid
+import sys
 
-place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+backend = sys.argv[1]
+if backend == "gloo":
+    place = fluid.CPUPlace()
+elif backend == "nccl":
+    place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
 with fluid.dygraph.guard(place=place):
     rank = fluid.dygraph.ParallelEnv().local_rank
-    paddle.distributed.init_process_group('nccl', 100, 2, rank)
+    paddle.distributed.init_process_group(backend, 100, 2, rank)
     if fluid.dygraph.ParallelEnv().local_rank == 0:
         np_data = np.array([[4, 5, 6], [4, 5, 6]])
     else:
@@ -84,3 +89,5 @@ with fluid.dygraph.guard(place=place):
     else:
         assert (np.allclose(np.array([4, 5, 6]), out))
     print("scatter passed.")
+    paddle.distributed.barrier()
+    print("barrier passed.")

@@ -64,3 +64,9 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+REGISTER_OP_CUDA_KERNEL(barrier, ops::BarrierOpCUDAKernel<float>,
+                        ops::BarrierOpCUDAKernel<double>,
+                        ops::BarrierOpCUDAKernel<int>,
+                        ops::BarrierOpCUDAKernel<int64_t>,
+                        ops::BarrierOpCUDAKernel<plat::float16>);

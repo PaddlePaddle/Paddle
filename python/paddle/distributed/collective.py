@@ -484,5 +484,10 @@ def barrier(group=0, async_op=False):
     if not isinstance(async_op, bool):
         raise ValueError(
             "The type of 'async_op' for all_gather should be bool.")
+    temp = paddle.fill_constant([1], dtype="int32", value="1")
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type, attrs={'ring_id': group})
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [temp]},
+        outputs={'Out': [temp]},
+        attrs={'ring_id': group})

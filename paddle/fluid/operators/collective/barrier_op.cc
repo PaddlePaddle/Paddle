@@ -28,6 +28,8 @@ class BarrierOp : public framework::OperatorWithKernel {
 class BarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
+    AddInput("X", "(Tensor) Dependency of the variable need to sync");
+    AddInput("Out", "(Tensor) Dependency of the variable need to sync");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
     AddComment(R"DOC(
