@@ -26,6 +26,7 @@ from .. import core
 from .layer_function_generator import templatedoc
 from . import utils
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.utils import deprecated
 import numpy
 import warnings
 
@@ -746,6 +747,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     return out
 
 
+@deprecated(since='1.8.0', update_to="paddle.fill_constant")
 @templatedoc()
 def fill_constant_batch_size_like(input,
                                   shape,
