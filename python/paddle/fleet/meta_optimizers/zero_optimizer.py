@@ -334,7 +334,6 @@ class ZeroOptimizer(MetaOptimizerBase):
                             outputs={'Out': grad},
                             attrs={OP_ROLE_KEY: OpRole.Backward})
                         offset += 1
-
                     # As we search ops reversedly, we should insert c_allreduce_sum
                     # op in the same way to keep the ring_id alternate
                     print("add allreduce op for {}".format(grad.name))
@@ -482,7 +481,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                 if output_name not in tobe_removed_vars:
                     remove_op = False
                     break
-            if remove_op:
+            if remove_op and op.type != "cast":  # and op.type != "elementwise_div":
                 print("%d: main_block remove op %s" %
                       (self.role_maker.worker_index(), op.type))
                 for input_name in op.desc.input_arg_names():
@@ -493,6 +492,10 @@ class ZeroOptimizer(MetaOptimizerBase):
                 block._remove_op(idx)
 
         for var_name in tobe_removed_vars:
+            if "@GRAD" in var_name:
+                continue
+            if "tmp" in var_name:
+                continue
             block._remove_var(var_name)
         block._sync_with_cpp()
         return
