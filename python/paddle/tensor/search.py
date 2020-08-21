@@ -687,13 +687,12 @@ def masked_select(x, mask, name=None):
 def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     """
     This OP is used to find values and indices of the k largest or smallest at the optional axis.
-    If the input is a 1-D Tensor, finds the k largest values and indices.
+    If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
     If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`axis`.
 
     Args:
         x(Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
-        k(int|Tensor): The number of top elements to look for along the last dimension
-                           of input tensor.
+        k(int, Tensor): The number of top elements to look for along the axis.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is -1.
@@ -704,8 +703,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        tuple(Tensor), return the values and indices. values is the result that tensor's k largest or smallest elements along the ``axis``. The data type is the same as the input `x`. 
-        indices is the k largest or smallest elements alone the axis. The indice data type is int64.
+        tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
 
     Examples:
 
