@@ -15,7 +15,7 @@
 import unittest
 import paddle
 import os
-from launch_function_helper import launch_func
+from launch_function_helper import launch_func, _find_free_port
 
 
 class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         }
 
         def node_func():
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             import paddle.fluid.incubate.fleet.base.role_maker as role_maker
             role = role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
@@ -57,7 +57,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 input=prediction, label=input_y)
             avg_cost = paddle.fluid.layers.mean(x=cost)
 
-            strategy = paddle.fleet.DistributedStrategy()
+            strategy = paddle.distributed.fleet.DistributedStrategy()
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy)
@@ -71,26 +71,33 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         proc_b.join()
 
     def test_graph_execution_optimizer(self):
+
+        port_set = set()
+        port_a = _find_free_port(port_set)
+        port_b = _find_free_port(port_set)
+
         node_a = {
             "PADDLE_TRAINER_ID": "0",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36001",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
             "http_proxy": "",
             "https_proxy": ""
         }
 
         node_b = {
             "PADDLE_TRAINER_ID": "1",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36002",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_b),
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
             "http_proxy": "",
             "https_proxy": ""
         }
 
         def node_func():
-            import paddle.fleet as fleet
+            import paddle.distributed.fleet as fleet
             import paddle.fluid.incubate.fleet.base.role_maker as role_maker
             role = role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
@@ -108,7 +115,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 input=prediction, label=input_y)
             avg_cost = paddle.fluid.layers.mean(x=cost)
 
-            strategy = paddle.fleet.DistributedStrategy()
+            strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.nccl_comm_num = 2
             strategy.sync_nccl_allreduce = True
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
