@@ -16,13 +16,20 @@ from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = ["GradientMergeOptimizer"]
 
+# amp + gradient merge + lamb
+
 
 class GradientMergeOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(GradientMergeOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         self.wrapped_opt = GM(optimizer)
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = [
+            "LarsOptimizer",
+            "LambOptimizer",
+            "GraphExecutionOptimizer",
+        ]
+        self.meta_optimizers_black_list = []
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
@@ -40,7 +47,7 @@ class GradientMergeOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.gradient_merge = False
-        dist_strategy.gradient_merge_configs = {"k_steps": 1, "avg": True}
+        dist_strategy.gradient_merge_configs = {}
 
     def minimize_impl(self,
                       loss,

@@ -19,7 +19,6 @@ import astor
 import atexit
 import copy
 import gast
-import imp
 import inspect
 import os
 import six
@@ -27,6 +26,12 @@ import tempfile
 import textwrap
 
 from paddle.fluid import unique_name
+
+# imp is deprecated in python3
+if six.PY2:
+    import imp
+else:
+    from importlib.machinery import SourceFileLoader
 
 dygraph_class_to_static_api = {
     "CosineDecay": "cosine_decay",
@@ -369,13 +374,14 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     function, the other inner functions are invisible for the decorated function.
     """
 
-    def remove_file(filepath):
+    def remove_if_exit(filepath):
         if os.path.exists(filepath):
             os.remove(filepath)
 
     source = ast_to_source_code(ast_root)
     import_fluid = "import paddle.fluid as fluid\n"
     source = import_fluid + source
+
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
@@ -387,10 +393,13 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         f.write(source)
 
     if delete_on_exit:
-        atexit.register(lambda: remove_file(f.name))
-        atexit.register(lambda: remove_file(f.name[:-3] + ".pyc"))
+        atexit.register(lambda: remove_if_exit(f.name))
+        atexit.register(lambda: remove_if_exit(f.name[:-3] + ".pyc"))
 
-    module = imp.load_source(module_name, f.name)
+    if six.PY2:
+        module = imp.load_source(module_name, f.name)
+    else:
+        module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
     if not hasattr(module, func_name):
         raise ValueError(
@@ -1052,3 +1061,19 @@ class SplitAssignTransformer(gast.NodeTransformer):
             value_node = target
 
         return new_nodes
+
+
+# NOTE: inspect.unwrap() exits in PY3 but not in PY2.
+def unwrap(func):
+    """
+    Returns the object wrapped by decorators.
+    """
+
+    def _is_wrapped(f):
+        return hasattr(f, '__wrapped__')
+
+    unwrapped_f = func
+    while (_is_wrapped(unwrapped_f)):
+        unwrapped_f = unwrapped_f.__wrapped__
+
+    return unwrapped_f
