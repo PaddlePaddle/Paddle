@@ -68,8 +68,19 @@ class CVMOpKernel : public framework::OpKernel<T> {
 
     // for Input X do not have Lod Information.
     if (x->NumLevels() == 0) {
-      for (int i = 0; i < batch_size; i++) {
-        CvmComputeKernel(use_cvm, item_size, &x_data, &y_data);
+      if (use_cvm) {
+        for (int i = 0; i < batch_size; i++) {
+          int cursor = i * item_size;
+          y_data[cursor] = log(x_data[cursor] + 1);
+          y_data[cursor + 1] = log(x_data[cursor + 1] + 1) - y_data[cursor];
+          for (int j = 2; j < item_size; j++) {
+            y_data[cursor + j] = x_data[cursor + j];
+          }
+        }
+      } else {
+        for (int i = 0; i < batch_size; i++) {
+          CvmComputeKernel(use_cvm, item_size, &x_data, &y_data);
+        }
       }
     } else {
       auto lod = x->lod()[0];
