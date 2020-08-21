@@ -87,6 +87,8 @@ from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
 from .layer.common import Flatten  #DEFINE_ALIAS
 from .layer.common import UpSample  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
 from .layer.conv import Conv2D  #DEFINE_ALIAS
 from .layer.conv import Conv2DTranspose  #DEFINE_ALIAS
 from .layer.conv import Conv3D  #DEFINE_ALIAS
