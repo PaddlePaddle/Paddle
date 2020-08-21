@@ -1515,10 +1515,10 @@ class Model(object):
         return outputs
 
     def _save_inference_model(self,
-                             save_dir,
-                             model_filename=None,
-                             params_filename=None,
-                             model_only=False):
+                              save_dir,
+                              model_filename=None,
+                              params_filename=None,
+                              model_only=False):
         """
         Save inference model can be in static or dynamic mode.
         It should be noted that before using `save_inference_model`, you should
