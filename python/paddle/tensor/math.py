@@ -275,7 +275,7 @@ def divide(x, y, name=None):
         out = x / y
 
     **Note**:
-    ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` 。
+    ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -283,7 +283,7 @@ def divide(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. It’s dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
 
     Examples:
 
@@ -320,7 +320,7 @@ def floor_divide(x, y, name=None):
         out = x // y
 
     **Note**:
-    ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` 。
+    ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be int32, int64.
@@ -328,7 +328,7 @@ def floor_divide(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. It’s dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
 
     Examples:
 
@@ -364,7 +364,7 @@ def remainder(x, y, name=None):
         out = x % y
 
     **Note**:
-    ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` 。
+    ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
         x (Tensor): the input tensor, it's data type should be int32, int64.
@@ -372,7 +372,7 @@ def remainder(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. It’s dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
 
     Examples:
 
