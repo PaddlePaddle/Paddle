@@ -186,15 +186,6 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
         p (float|string, optional): Order of the norm. Supported values are `fro`, `1`, `2`,
            `inf`,`-inf` and any positive real number yielding the corresponding p-norm.
             Not supported: ord < 0, nuclear norm.
-            The following norms can be calculated:
-                            =====  =============================  ==========================
-                            ord    norm for matrices                  norm for vectors
-                            =====  =============================  ==========================
-                            None   Frobenius norm                  2-norm
-                            'fro'  Frobenius norm                  --
-                            Other  as vec norm when axis is None  sum(abs(x)**ord)**(1./ord)
-                            =====  =============================  ==========================
-
         axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
             or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
             If `axis < 0`, the dimension to norm operation is rank(input) + axis.
