@@ -55,14 +55,15 @@ from .decode import gather_tree  #DEFINE_ALIAS
 from .layer.activation import ELU
 from .layer.activation import GELU
 from .layer.activation import Hardshrink
-# from .layer.activation import PReLU        #DEFINE_ALIAS
+from .layer.activation import Hardtanh
+from .layer.activation import PReLU
 from .layer.activation import ReLU
 from .layer.activation import ReLU6  #DEFINE_ALIAS
 from .layer.activation import SELU  #DEFINE_ALIAS
 from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS
 from .layer.activation import LogSigmoid
-# from .layer.activation import Softmax        #DEFINE_ALIAS
+from .layer.activation import Softmax  #DEFINE_ALIAS
 from .layer.activation import Softplus  #DEFINE_ALIAS
 from .layer.activation import Softshrink  #DEFINE_ALIAS
 from .layer.activation import Softsign  #DEFINE_ALIAS

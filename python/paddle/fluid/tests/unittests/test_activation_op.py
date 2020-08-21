@@ -534,6 +534,63 @@ class TestHardShrinkAPI(unittest.TestCase):
             F.hardshrink(x_fp16)
 
 
+def ref_hardtanh(x, min=-1.0, max=1.0):
+    out = np.copy(x)
+    out[np.abs(x - min) < 0.005] = min + 0.02
+    out[np.abs(x - max) < 0.005] = max + 0.02
+    out = np.minimum(np.maximum(x, min), max)
+    return out
+
+
+class TestHardtanhAPI(unittest.TestCase):
+    # test paddle.nn.Hardtanh, paddle.nn.functional.hardtanh
+    def setUp(self):
+        self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [10, 12])
+            out1 = F.hardtanh(x)
+            m = paddle.nn.Hardtanh()
+            out2 = m(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_hardtanh(self.x_np)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_variable(self.x_np)
+        out1 = F.hardtanh(x)
+        m = paddle.nn.Hardtanh()
+        out2 = m(x)
+        out_ref = ref_hardtanh(self.x_np)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+
+        out1 = F.hardtanh(x, -2.0, 2.0)
+        m = paddle.nn.Hardtanh(-2.0, 2.0)
+        out2 = m(x)
+        out_ref = ref_hardtanh(self.x_np, -2.0, 2.0)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.hardtanh, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.hardtanh, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.hardtanh(x_fp16)
+
+
 def ref_softshrink(x, threshold=0.5):
     out = np.copy(x)
     out = (out < -threshold) * (out + threshold) + (out > threshold) * (
