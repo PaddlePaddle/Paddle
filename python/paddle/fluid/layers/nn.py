@@ -11440,6 +11440,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
+@deprecated(since="2.0.0", update_to="paddle.divide")
 def elementwise_div(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_div
@@ -11863,6 +11864,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
+@deprecated(since="2.0.0", update_to="paddle.remainder")
 def elementwise_mod(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_mod
@@ -11900,6 +11902,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
 
+@deprecated(since="2.0.0", update_to="paddle.floor_divide")
 def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_floordiv

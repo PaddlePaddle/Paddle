@@ -269,21 +269,37 @@ Examples:
 
 def divide(x, y, name=None):
     """
-Examples:
+    Divide two tensors element-wise. The equation is:
 
-    ..  code-block:: python
+    .. math::
+        out = x / y
 
-        import paddle
-        import numpy as np
-        
-        paddle.disable_static()
+    **Note**:
+    ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` 。
 
-        np_x = np.array([2, 3, 4]).astype('float64')
-        np_y = np.array([1, 5, 2]).astype('float64')
-        x = paddle.to_tensor(np_x)
-        y = paddle.to_tensor(np_y)
-        z = paddle.divide(x, y)
-        print(z.numpy())  # [2., 0.6, 2.]
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It’s dimension equals with $x$.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            np_x = np.array([2, 3, 4]).astype('float64')
+            np_y = np.array([1, 5, 2]).astype('float64')
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = paddle.divide(x, y)
+            print(z.numpy())  # [2., 0.6, 2.]
 
     """
     op_type = 'elementwise_div'
@@ -298,21 +314,37 @@ Examples:
 
 def floor_divide(x, y, name=None):
     """
-Examples:
+    Floor divide two tensors element-wise. The equation is:
 
-    ..  code-block:: python
+    .. math::
+        out = x // y
 
-        import paddle
-        import numpy as np
-        
-        paddle.disable_static()
+    **Note**:
+    ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` 。
 
-        np_x = np.array([2, 3, 8, 7])
-        np_y = np.array([1, 5, 3, 3])
-        x = paddle.to_tensor(np_x)
-        y = paddle.to_tensor(np_y)
-        z = paddle.floor_divide(x, y)
-        print(z.numpy())  # [2, 0, 2, 2]
+    Args:
+        x (Tensor): the input tensor, it's data type should be int32, int64.
+        y (Tensor): the input tensor, it's data type should be int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It’s dimension equals with $x$.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            np_x = np.array([2, 3, 8, 7])
+            np_y = np.array([1, 5, 3, 3])
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = paddle.floor_divide(x, y)
+            print(z.numpy())  # [2, 0, 2, 2]
 
     """
     op_type = 'elementwise_floordiv'
@@ -326,21 +358,37 @@ Examples:
 
 def remainder(x, y, name=None):
     """
-Examples:
+    Mod two tensors element-wise. The equation is:
 
-    ..  code-block:: python
+    .. math::
+        out = x % y
 
-        import paddle
-        import numpy as np
+    **Note**:
+    ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` 。
 
-        paddle.disable_static()
+    Args:
+        x (Tensor): the input tensor, it's data type should be int32, int64.
+        y (Tensor): the input tensor, it's data type should be int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-        np_x = np.array([2, 3, 8, 7])
-        np_y = np.array([1, 5, 3, 3])
-        x = paddle.to_tensor(np_x)
-        y = paddle.to_tensor(np_y)
-        z = paddle.remainder(x, y)
-        print(z.numpy())  # [0, 3, 2, 1]
+    Returns:
+        N-D Tensor. A location into which the result is stored. It’s dimension equals with $x$.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            np_x = np.array([2, 3, 8, 7])
+            np_y = np.array([1, 5, 3, 3])
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = paddle.remainder(x, y)
+            print(z.numpy())  # [0, 3, 2, 1]
 
     """
     op_type = 'elementwise_mod'
@@ -350,6 +398,10 @@ Examples:
             x, y, axis=axis, op_name=op_type)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+mod = remainder  #DEFINE_ALIAS
+floor_mod = remainder  #DEFINE_ALIAS
 
 
 def multiply(x, y, axis=-1, name=None):
@@ -493,21 +545,11 @@ Examples:
 
 for func in [
         add,
-        divide,
         maximum,
         minimum,
-        multiply,
-        floor_divide,
-        remainder,
+        multiply
 ]:
-    proto_dict = {'add': 'elementwise_add',
-            'divide': 'elementwise_div',
-            'maximum': 'elementwise_max',
-            'minimum': 'elementwise_min',
-            'multiply': 'elementwise_mul',
-            'floor_divide': 'elementwise_floordiv',
-            'remainder': 'elementwise_mod',
-            }
+    proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div', 'maximum': 'elementwise_max', 'minimum': 'elementwise_min', 'multiply': 'elementwise_mul'}
     op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
 
     additional_args_lines = [
@@ -522,10 +564,6 @@ for func in [
         skip_attrs_set={"x_data_format", "y_data_format", "axis",
             "use_quantizer", "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
         }) + """\n""" + str(func.__doc__)
-
-
-mod = remainder  #DEFINE_ALIAS
-floor_mod = remainder  #DEFINE_ALIAS
 
 
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
