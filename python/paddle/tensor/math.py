@@ -361,7 +361,7 @@ def remainder(x, y, name=None):
     Mod two tensors element-wise. The equation is:
 
     .. math::
-        out = x % y
+        out = x \% y
 
     **Note**:
     ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
