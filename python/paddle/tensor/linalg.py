@@ -246,6 +246,9 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
             raise ValueError(
                 "The dim of frobenius norm op should be None or two elements list!"
             )
+        if in_dygraph_mode():
+            return core.ops.frobenius_norm(input, 'dim', axis, 'keepdim',
+                                           keepdim)
         attrs = {
             'dim': dim if dim != None else [-2, -1],
             'keep_dim': keepdim,
@@ -292,10 +295,16 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
           out (Variable, optional): The tensor variable storing the output.
         """
 
+        if in_dygraph_mode():
+            return core.ops.p_norm(input, 'porder', porder, 'axis', axis,
+                                   'keepdim', keepdim, 'asvector', asvector)
         if porder is not None:
             check_type(porder, 'porder', (float, int), 'p_norm')
         if axis is not None:
             check_type(axis, 'axis', (int), 'p_norm')
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'p_norm')
+
         attrs = {
             'axis': axis if axis is not None else -1,
             'porder': float(porder) if porder is not None else 2.0,
@@ -303,10 +312,6 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
             'asvector': asvector,
             'epsilon': 1e-12,
         }
-        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                                 'p_norm')
-
-        print("check  porder=", porder, "  axis:", axis)
         helper = LayerHelper('p_norm', **locals())
         if out is None:
             out = helper.create_variable_for_type_inference(
