@@ -261,6 +261,21 @@ class TestRMSPropV2(unittest.TestCase):
             for data in train_reader():
                 exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
+    def test_raise_error(self):
+        self.assertRaises(ValueError, paddle.optimizer.RMSProp, None)
+        self.assertRaises(
+            ValueError, paddle.optimizer.RMSProp, learning_rate=0.1, rho=None)
+        self.assertRaises(
+            ValueError,
+            paddle.optimizer.RMSProp,
+            learning_rate=0.1,
+            epsilon=None)
+        self.assertRaises(
+            ValueError,
+            paddle.optimizer.RMSProp,
+            learning_rate=0.1,
+            momentum=None)
+
 
 if __name__ == "__main__":
     unittest.main()

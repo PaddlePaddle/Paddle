@@ -138,12 +138,6 @@ class RMSProp(Optimizer):
                  weight_decay=None,
                  grad_clip=None,
                  name=None):
-        super(RMSProp, self).__init__(
-            learning_rate=learning_rate,
-            parameters=parameters,
-            weight_decay=weight_decay,
-            grad_clip=grad_clip,
-            name=name)
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
         if rho is None:
@@ -152,6 +146,13 @@ class RMSProp(Optimizer):
             raise ValueError("epsilon is not set.")
         if momentum is None:
             raise ValueError("momentum is not set.")
+
+        super(RMSProp, self).__init__(
+            learning_rate=learning_rate,
+            parameters=parameters,
+            weight_decay=weight_decay,
+            grad_clip=grad_clip,
+            name=name)
 
         self.type = "rmsprop"
         self._rho = rho
