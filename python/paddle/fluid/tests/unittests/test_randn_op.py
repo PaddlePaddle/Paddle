@@ -34,7 +34,7 @@ class TestRandnOp(unittest.TestCase):
             dim_2 = paddle.fill_constant([1], "int32", 50)
             x3 = paddle.randn([dim_1, dim_2, 784])
 
-            var_shape = paddle.nn.data('X', [2], 'int32')
+            var_shape = paddle.static.data('X', [2], 'int32')
             x4 = paddle.randn(var_shape)
 
         place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
