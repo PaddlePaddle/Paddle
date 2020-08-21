@@ -38,7 +38,8 @@ class Adadelta(Optimizer):
         E(dx_t^2) &= \\rho * E(dx_{t-1}^2) + (1-\\rho) * (-g*learning\_rate)^2
 
     Args:
-        learning_rate (float|Variable): global learning rate.
+	learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
+            It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
         epsilon (float): a small float number for numeric stability. Default 1.0e-6.
         rho (float): a floating point value indicating the decay rate. Default 0.95.
         parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
