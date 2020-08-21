@@ -53,12 +53,17 @@ class CScatterOpCPUKernel : public framework::OpKernel<T> {
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     auto nranks = gloo->Size();
     send_numel /= nranks;
+    std::vector<T*> ptrs(nranks);
+    for (int i = 0; i < nranks; i++) {
+      ptrs[i] = send_buff;
+      send_buff += send_numel;
+    }
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(), true,
         platform::errors::InvalidArgument(
             "You must initialize the gloo environment first to use it."));
     gloo::ScatterOptions opts(gloo->GetContext());
-    opts.setInputs(&send_buff, nranks, send_numel);
+    opts.setInputs(ptrs, send_numel);
     opts.setOutput(recv_buff, send_numel);
     opts.setRoot(root_id);
 

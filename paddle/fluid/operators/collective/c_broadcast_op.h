@@ -47,7 +47,6 @@ class CBroadcastOpCPUKernel : public framework::OpKernel<T> {
     auto root = ctx.Attr<int>("root");
 
     int64_t send_numel = in->numel();
-    const T* send_buff = in->data<T>();
     T* recv_buff = out->data<T>();
     auto place = ctx.GetPlace();
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
@@ -56,10 +55,8 @@ class CBroadcastOpCPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "You must initialize the gloo environment first to use it."));
     gloo::BroadcastOptions opts(gloo->GetContext());
-    opts.setInput(const_cast<T*>(send_buff), send_numel);
     opts.setOutput(recv_buff, send_numel);
     opts.setRoot(root);
-    opts.setTimeout(std::chrono::seconds(99999));
     gloo::broadcast(opts);
 #else
     PADDLE_ENFORCE_EQ(

@@ -30,6 +30,7 @@ __all__ = [
     'reduce',
     'all_gather',
     'scatter',
+    'barrier',
     'ReduceOp',
     'init_process_group',
 ]
@@ -246,7 +247,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0, async_op=False):
     Args:
         tensor (Tensor): The output Tensor for the destination and the input Tensor otherwise. Its data type
             should be float16, float32, float64, int32 or int64.
-        destination (int): The destination rank id.
+        dst (int): The destination rank id.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD): Optional. The operation used.
         group (int): The id of the process group to work on.
         async_op (bool): Whether the op is sync or async.
@@ -484,5 +485,4 @@ def barrier(group=0, async_op=False):
         raise ValueError(
             "The type of 'async_op' for all_gather should be bool.")
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type, attrs={'use_calc_stream': False if async_op else True})
+    helper.append_op(type=op_type, attrs={'ring_id': group})

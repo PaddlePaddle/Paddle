@@ -24,14 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_GLOO)
-#include <gloo/allgather.h>
 #include <gloo/barrier.h>
-#include <gloo/rendezvous/context.h>
-#include <gloo/rendezvous/file_store.h>
-#include <gloo/rendezvous/http_store.h>
-#include <gloo/rendezvous/prefix_store.h>
-#include <gloo/rendezvous/store.h>
-#include <gloo/transport/tcp/device.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -39,32 +32,17 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class CAllGatherOpCPUKernel : public framework::OpKernel<T> {
+class BarrierOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)
-    auto in = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
-    framework::DDim out_dims = in->dims();
-    auto place = ctx.GetPlace();
-
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
-    auto nranks = gloo->Size();
-    out_dims[0] *= nranks;
-    int64_t send_numel = in->numel();
-    const T* send_buff = in->data<T>();
-    out->mutable_data<T>(place);
-    out->Resize(out_dims);
-    T* recv_buff = out->mutable_data<T>(place);
-
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(), true,
         platform::errors::InvalidArgument(
             "You must initialize the gloo environment first to use it."));
-    gloo::AllgatherOptions opts(gloo->GetContext());
-    opts.setInput(const_cast<T*>(send_buff), send_numel);
-    opts.setOutput(recv_buff, send_numel * nranks);
-    gloo::allgather(opts);
+    gloo::BarrierOptions opts(gloo->GetContext());
+    gloo::barrier(opts);
 #else
     PADDLE_ENFORCE_EQ(
         true, false,
