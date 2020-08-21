@@ -21,6 +21,7 @@ from ...fluid import core
 from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid.layers import utils, LayerHelper
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
+from ...fluid.layers import unsqueeze, squeeze
 
 __all__ = [
     'pool2d',
@@ -162,8 +163,7 @@ def avg_pool1d(x,
 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
-                          shape [N, C, L]. The format of input tensor is `"NCL"` or
-                          `"NHL"`, where `N` is batch size, `C` is the number of channels,
+                          shape [N, C, L]. where `N` is batch size, `C` is the number of channels,
                           `L` is the length of the feature. The data type if float32 or float64.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain one integers.
@@ -297,8 +297,7 @@ def max_pool1d(x,
 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
-                          shape [N, C, L]. The format of input tensor is `"NCL"` or
-                          `"NHL"`, where `N` is batch size, `C` is the number of channels,
+                          shape [N, C, L], where `N` is batch size, `C` is the number of channels,
                           `L` is the length of the feature. The data type if float32 or float64.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain one integers.
