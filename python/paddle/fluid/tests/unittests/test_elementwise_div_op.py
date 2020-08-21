@@ -240,25 +240,119 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
             self.assertEqual((out_result == (2 / x)).all(), True)
 
 
-class TestDivideOp(unittest.TestCase):
-    def test_name(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
-            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+class TestDivideAPI(unittest.TestCase):
+    def setUp(self):
+        paddle.set_default_dtype("float64")
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
 
-            y_1 = paddle.divide(x, y, name='div_res')
-            self.assertEqual(('div_res' in y_1.name), True)
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x = fluid.data(name="x", shape=[3], dtype="float64")
+            y = fluid.data(name="y", shape=[3], dtype="float64")
+            exe = fluid.Executor(place)
+
+            res = paddle.divide(x, y)
+            np_z = exe.run(fluid.default_main_program(),
+                           feed={
+                               "x": np.array([2, 3, 4]).astype('float64'),
+                               "y": np.array([1, 5, 2]).astype('float64')
+                           },
+                           fetch_list=[res])
+            z_expected = np.array([2., 0.6, 2.])
+            self.assertEqual((np_z[0] == z_expected).all(), True)
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x = fluid.data(name="x", shape=[3], dtype="int64")
+            y = fluid.data(name="y", shape=[3], dtype="int64")
+            exe = fluid.Executor(place)
+
+            res = paddle.divide(x, y)
+            np_z = exe.run(fluid.default_main_program(),
+                           feed={
+                               "x": np.array([2, 3, 4]).astype('int64'),
+                               "y": np.array([1, 5, 2]).astype('int64')
+                           },
+                           fetch_list=[res])
+            z_expected = np.array([2., 0.6, 2.])
+            self.assertEqual((np_z[0] == z_expected).all(), True)
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x = fluid.data(name="x", shape=[3], dtype="float64")
+            y = 2
+            exe = fluid.Executor(place)
+            res = paddle.divide(x, y)
+            np_z = exe.run(fluid.default_main_program(),
+                           feed={"x": np.array([2, 3, 4]).astype('float64')},
+                           fetch_list=[res])
+            z_expected = np.array([1., 1.5, 2.])
+            self.assertEqual((np_z[0] == z_expected).all(), True)
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x = fluid.data(name="x", shape=[3], dtype="float64")
+            y = fluid.data(name="y", shape=[3], dtype="float32")
+
+            y4 = np.array([1, 2, 3])
+            self.assertRaises(TypeError, paddle.divide, x=x, y=y)
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x = fluid.data(name="x", shape=[3], dtype="float64")
+            y = np.array([1, 2, 3])
+            self.assertRaises(TypeError, paddle.divide, x=x, y=y)
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
 
     def test_dygraph(self):
-        with fluid.dygraph.guard():
-            np_x = np.array([2, 3, 4]).astype('float64')
-            np_y = np.array([1, 5, 2]).astype('float64')
-            x = paddle.to_tensor(np_x)
-            y = paddle.to_tensor(np_y)
-            z = paddle.divide(x, y)
-            np_z = z.numpy()
-            z_expected = np.array([2., 0.6, 2.])
-            self.assertEqual((np_z == z_expected).all(), True)
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                np_x = np.array([2, 3, 4]).astype('float64')
+                np_y = np.array([1, 5, 2]).astype('float64')
+                x = paddle.to_tensor(np_x)
+                y = paddle.to_tensor(np_y)
+                z = paddle.divide(x, y)
+                np_z = z.numpy()
+                z_expected = np.array([2., 0.6, 2.])
+                self.assertEqual((np_z == z_expected).all(), True)
+
+                np_x = np.array([2, 3, 4]).astype('int32')
+                np_y = np.array([1, 5, 2]).astype('int32')
+                x = paddle.to_tensor(np_x)
+                y = paddle.to_tensor(np_y)
+                z = paddle.divide(x, y)
+                np_z = z.numpy()
+                z_expected = np.array([2., 0.6, 2.]).astype("float64")
+                self.assertEqual((np_z == z_expected).all(), True)
+
+                np_x = np.array([2, 3, 4]).astype('float32')
+                x = paddle.to_tensor(np_x)
+                z = paddle.divide(x, 2)
+                np_z = z.numpy()
+                z_expected = np.array([1., 1.5, 2.])
+                self.assertEqual((np_z == z_expected).all(), True)
+
+                np_x = np.array([2, 3, 4]).astype('float64')
+                np_y = 2.0
+                x = paddle.to_tensor(np_x)
+                y = paddle.to_tensor(np_y)
+                z = paddle.divide(x, y)
+                np_z = z.numpy()
+                z_expected = np.array([1., 1.5, 2.])
+                self.assertEqual((np_z == z_expected).all(), True)
+
+                # test raise error
+                np_x = np.array([2, 3, 4]).astype('float32')
+                np_y = np.array([1, 5, 2]).astype('float64')
+                x = paddle.to_tensor(np_x)
+                y = paddle.to_tensor(np_y)
+                self.assertRaises(TypeError, paddle.divide, x=x, y=y)
+
+                np_x = np.array([2, 3, 4]).astype('float32')
+                np_y = np.array([1, 5, 2]).astype('float32')
+                x = paddle.to_tensor(np_x)
+                self.assertRaises(TypeError, paddle.divide, x=x, y=np_y)
 
 
 if __name__ == '__main__':

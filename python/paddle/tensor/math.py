@@ -62,6 +62,7 @@ from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
 from ..fluid.layers import sums    #DEFINE_ALIAS
 from ..fluid import layers
+import paddle
 
 __all__ = [
         'abs',
@@ -304,8 +305,35 @@ def divide(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
+        if isinstance(y, numpy.ndarray):
+            raise TypeError("divide(): argument position 2 must be Tensor or scalar, not numpy.ndarray.")
+        if not isinstance(y, paddle.Tensor):
+            y = paddle.full(shape=[1], dtype=x.dtype, fill_value=y)
+        else:
+            if y.dtype != x.dtype:
+                raise TypeError("divide(): argument position 1 and argument position 2 must have the same dtype."
+                                "But x is {}, y is {}".format(x.dtype, y.dtype))
+
+        if x.dtype in [VarDesc.VarType.INT32, VarDesc.VarType.INT64] \
+           and y.dtype in [VarDesc.VarType.INT32, VarDesc.VarType.INT64]:
+            x = x.astype(paddle.get_default_dtype())
+            y = y.astype(paddle.get_default_dtype())
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
+
+    if isinstance(y, numpy.ndarray):
+        raise TypeError("divide(): argument position 2 must be Tensor or scalar, not numpy.ndarray.")
+    if not isinstance(y, Variable):
+        y = paddle.fill_constant(shape=[1], dtype=x.dtype, value=y)
+    else:
+        if y.dtype != x.dtype:
+            raise TypeError("divide(): argument position 1 and argument position 2 must have the same dtype."
+                            "But x is {}, y is {}".format(x.dtype, y.dtype))
+
+    if x.dtype in [VarDesc.VarType.INT32, VarDesc.VarType.INT64] \
+        and y.dtype in [VarDesc.VarType.INT32, VarDesc.VarType.INT64]:
+        x = paddle.cast(x, paddle.get_default_dtype())
+        y = paddle.cast(y, paddle.get_default_dtype())
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
@@ -348,10 +376,34 @@ def floor_divide(x, y, name=None):
     op_type = 'elementwise_floordiv'
     axis = -1
     if in_dygraph_mode():
+        if isinstance(y, numpy.ndarray):
+            raise TypeError("floor_divide(): argument position 2 must be Tensor or scalar, not numpy.ndarray.")
+        if not isinstance(y, paddle.Tensor):
+            y = paddle.full(shape=[1], dtype=x.dtype, fill_value=y)
+        else:
+            if y.dtype != x.dtype:
+                raise TypeError("floor_divide(): argument position 1 and argument position 2 must have the same dtype."
+                                "But x is {}, y is {}".format(x.dtype, y.dtype))
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
 
+    if isinstance(y, numpy.ndarray):
+        raise TypeError("floor_divide(): argument position 2 must be Tensor or scalar, not numpy.ndarray.")
+    if not isinstance(y, Variable):
+        y = paddle.fill_constant(shape=[1], dtype=x.dtype, value=y)
+    else:
+        if y.dtype != x.dtype:
+            raise TypeError("floor_divide(): argument position 1 and argument position 2 must have the same dtype."
+                            "But x is {}, y is {}".format(x.dtype, y.dtype))
     return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+
+
+
+
+
+
 
 
 def remainder(x, y, name=None):

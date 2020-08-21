@@ -16,16 +16,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct ModFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a % b; }
-};
 
 template <typename T>
 struct ModFunctorFP {
@@ -34,13 +30,27 @@ struct ModFunctorFP {
   }
 };
 
+template <typename T>
+struct InverseModFunctorFP {
+  inline HOSTDEVICE T operator()(T a, T b) const {
+    return fmod(a + fmod(b, a), a);
+  }
+};
+
 template <typename DeviceContext, typename T>
 void elementwise_mod(const framework::ExecutionContext &ctx,
                      const framework::Tensor *x, const framework::Tensor *y,
                      framework::Tensor *z) {
   int axis = ctx.Attr<int>("axis");
-  ElementwiseComputeEx<ModFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                        ModFunctor<T>(), z);
+  auto x_dims = x->dims();
+  auto y_dims = y->dims();
+  if (x_dims.size() >= y_dims.size()) {
+    ElementwiseComputeEx<ModFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                          ModFunctor<T>(), z);
+  } else {
+    ElementwiseComputeEx<InverseModFunctor<T>, DeviceContext, T>(
+        ctx, x, y, axis, InverseModFunctor<T>(), z);
+  }
 }
 
 template <typename DeviceContext, typename T>
