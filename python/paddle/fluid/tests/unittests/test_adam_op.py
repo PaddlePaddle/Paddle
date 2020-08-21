@@ -458,11 +458,20 @@ class TestAdamOpV2(unittest.TestCase):
         adam.set_state_dict(state_dict)
 
         #learning_rate is Decay
-        from paddle.fluid.regularizer import L2Decay
+        learning_rate = fluid.dygraph.CosineDecay(0.1, 10000, 120)
         adam = paddle.optimizer.Adam(
-            learning_rate=0.01,
-            weight_decay=L2Decay(0.001),
+            learning_rate=learning_rate,
+            weight_decay=fluid.regularizer.L2Decay(0.001),
             parameters=emb.parameters())
+
+        state_dict = adam.state_dict()
+        adam.set_state_dict(state_dict)
+
+        #leanrning_rate is Tensor
+        learning_rate = np.array([0.01]).astype("float32")
+        learning_rate = paddle.to_tensor(learning_rate)
+        adam = paddle.optimizer.Adam(
+            learning_rate=learning_rate, parameters=emb.parameters())
 
         state_dict = adam.state_dict()
         adam.set_state_dict(state_dict)
@@ -478,12 +487,12 @@ class TestAdamOpV2(unittest.TestCase):
 
         lr = 0.01
         adam.set_lr(lr)
-        cur_lr = adam.current_step_lr()
+        cur_lr = adam.get_lr()
         assert (lr == cur_lr)
 
         lr_var = paddle.create_global_var(shape=[1], value=lr, dtype='float32')
         adam.set_lr(lr_var)
-        cur_lr = adam.current_step_lr()
+        cur_lr = adam.get_lr()
         assert (np.float32(lr) == cur_lr)
 
 

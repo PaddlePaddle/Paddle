@@ -52,8 +52,8 @@ class Optimizer(object):
     but need to use one of it's implementation.
 
     Args:
-        learning_rate (float|Tensor): The learning rate used to update ``Parameter``.
-            It can be a float value or a ``Tensor`` with a float type.
+        learning_rate (float|Tensor|LearningRateDecay): The learning rate used to update ``Parameter``.
+            It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay.
         parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
@@ -161,7 +161,7 @@ class Optimizer(object):
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
-        self.clear_grad = self.clear_gradients
+        self.clear_gradients = self.clear_grad
 
     @framework.dygraph_only
     def state_dict(self):
@@ -366,7 +366,7 @@ class Optimizer(object):
                 lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
                 for i in range(5):
                     adam.set_lr(lr_list[i])
-                    lr = adam.current_step_lr()
+                    lr = adam.get_lr()
                     print("current lr is {}".format(lr))
                 # Print:
                 #    current lr is 0.2
@@ -380,7 +380,7 @@ class Optimizer(object):
                     lr_var = paddle.create_global_var(
                         shape=[1], value=0.7, dtype='float32')
                     adam.set_lr(lr_var)
-                    lr = adam.current_step_lr()
+                    lr = adam.get_lr()
                     print("current lr is {}".format(lr))
                     # Print:
                     #    current lr is 0.7
@@ -416,7 +416,7 @@ class Optimizer(object):
             self._learning_rate_map[framework.default_main_program()] = value
 
     @framework.dygraph_only
-    def current_step_lr(self):
+    def get_lr(self):
         """
         :api_attr: imperative
         
@@ -435,7 +435,7 @@ class Optimizer(object):
                 paddle.disable_static()
                 emb = paddle.nn.Embedding([10, 10])
                 adam = paddle.optimizer.Adam(0.001, parameters = emb.parameters())
-                lr = adam.current_step_lr()
+                lr = adam.get_lr()
                 print(lr) # 0.001
 
                 # example2: PiecewiseDecay is used, return the step learning rate
@@ -452,13 +452,13 @@ class Optimizer(object):
                                        parameters=linear.parameters())
 
                 # first step: learning rate is 0.2
-                np.allclose(adam.current_step_lr(), 0.2, rtol=1e-06, atol=0.0) # True
+                np.allclose(adam.get_lr(), 0.2, rtol=1e-06, atol=0.0) # True
 
                 # learning rate for different steps
                 ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
                 for i in range(12):
                     adam.step()
-                    lr = adam.current_step_lr()
+                    lr = adam.get_lr()
                     np.allclose(lr, ret[i], rtol=1e-06, atol=0.0) # True
 
         """
@@ -778,7 +778,7 @@ class Optimizer(object):
                 out = linear(a)
                 out.backward()
                 adam.step()
-                adam.clear_gradients()
+                adam.clear_grad()
         """
         act_no_grad_set = None
         if framework.in_dygraph_mode():
@@ -899,7 +899,7 @@ class Optimizer(object):
         return no_grad_set
 
     @framework.dygraph_only
-    def clear_gradients(self):
+    def clear_grad(self):
         """
         Clear the gradients of all optimized parameters for model.
         
@@ -921,7 +921,7 @@ class Optimizer(object):
                 out = linear(a)
                 out.backward()
                 adam.step()
-                adam.clear_gradients()
+                adam.clear_grad()
 
         """
         for p in self._parameter_list:
@@ -1021,7 +1021,7 @@ class Optimizer(object):
                 out = linear(a)
                 out.backward()
                 adam.step()
-                adam.clear_gradients()
+                adam.clear_grad()
         """
         parameter_list = self._parameter_list
         self._dtype = None
