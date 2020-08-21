@@ -12,47 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 import numpy as np
 import paddle.fluid as fluid
+from paddle.static import InputSpec
 from paddle.fluid.framework import core, convert_np_dtype_to_dtype_
-from paddle.fluid.dygraph.dygraph_to_static.input_spec import TensorSpec
-
-import unittest
 
 
-class TestTensorSpec(unittest.TestCase):
+class TestInputSpec(unittest.TestCase):
     def test_default(self):
-        tensor_spec = TensorSpec([3, 4])
+        tensor_spec = InputSpec([3, 4])
         self.assertEqual(tensor_spec.dtype, core.VarDesc.VarType.FP32)
         self.assertEqual(tensor_spec.name, None)
 
     def test_from_tensor(self):
         x_bool = fluid.layers.fill_constant(shape=[1], dtype='bool', value=True)
-        bool_spec = TensorSpec.from_tensor(x_bool)
+        bool_spec = InputSpec.from_tensor(x_bool)
         self.assertEqual(bool_spec.dtype, x_bool.dtype)
         self.assertEqual(bool_spec.shape, x_bool.shape)
         self.assertEqual(bool_spec.name, x_bool.name)
 
-        bool_spec2 = TensorSpec.from_tensor(x_bool, name='bool_spec')
+        bool_spec2 = InputSpec.from_tensor(x_bool, name='bool_spec')
         self.assertEqual(bool_spec2.name, bool_spec2.name)
 
     def test_from_numpy(self):
         x_numpy = np.ones([10, 12])
-        x_np_spec = TensorSpec.from_numpy(x_numpy)
+        x_np_spec = InputSpec.from_numpy(x_numpy)
         self.assertEqual(x_np_spec.dtype,
                          convert_np_dtype_to_dtype_(x_numpy.dtype))
         self.assertEqual(x_np_spec.shape, x_numpy.shape)
         self.assertEqual(x_np_spec.name, None)
 
         x_numpy2 = np.array([1, 2, 3, 4]).astype('int64')
-        x_np_spec2 = TensorSpec.from_numpy(x_numpy2, name='x_np_int64')
+        x_np_spec2 = InputSpec.from_numpy(x_numpy2, name='x_np_int64')
         self.assertEqual(x_np_spec2.dtype,
                          convert_np_dtype_to_dtype_(x_numpy2.dtype))
         self.assertEqual(x_np_spec2.shape, x_numpy2.shape)
         self.assertEqual(x_np_spec2.name, 'x_np_int64')
 
     def test_shape_with_none(self):
-        tensor_spec = TensorSpec([None, 4, None], dtype='int8', name='x_spec')
+        tensor_spec = InputSpec([None, 4, None], dtype='int8', name='x_spec')
         self.assertEqual(tensor_spec.dtype, convert_np_dtype_to_dtype_('int8'))
         self.assertEqual(tensor_spec.name, 'x_spec')
         self.assertEqual(tensor_spec.shape, (-1, 4, -1))
@@ -60,18 +59,18 @@ class TestTensorSpec(unittest.TestCase):
     def test_shape_raise_error(self):
         # 1. shape should only contain int and None.
         with self.assertRaises(ValueError):
-            tensor_spec = TensorSpec(['None', 4, None], dtype='int8')
+            tensor_spec = InputSpec(['None', 4, None], dtype='int8')
 
         # 2. shape should be type `list` or `tuple`
         with self.assertRaises(TypeError):
-            tensor_spec = TensorSpec(4, dtype='int8')
+            tensor_spec = InputSpec(4, dtype='int8')
 
         # 3. len(shape) should be greater than 0.
         with self.assertRaises(ValueError):
-            tensor_spec = TensorSpec([], dtype='int8')
+            tensor_spec = InputSpec([], dtype='int8')
 
     def test_batch_and_unbatch(self):
-        tensor_spec = TensorSpec([10])
+        tensor_spec = InputSpec([10])
         # insert batch_size
         batch_tensor_spec = tensor_spec.batch(16)
         self.assertEqual(batch_tensor_spec.shape, (16, 10))
@@ -93,11 +92,11 @@ class TestTensorSpec(unittest.TestCase):
             tensor_spec.batch('16')
 
     def test_eq_and_hash(self):
-        tensor_spec_1 = TensorSpec([10, 16], dtype='float32')
-        tensor_spec_2 = TensorSpec([10, 16], dtype='float32')
+        tensor_spec_1 = InputSpec([10, 16], dtype='float32')
+        tensor_spec_2 = InputSpec([10, 16], dtype='float32')
         self.assertTrue(tensor_spec_1 == tensor_spec_2)
 
-        tensor_spec_3 = TensorSpec([10, 16], dtype='float32', name='x')
+        tensor_spec_3 = InputSpec([10, 16], dtype='float32', name='x')
         self.assertFalse(tensor_spec_2 == tensor_spec_3)
 
         self.assertTrue(hash(tensor_spec_1) == hash(tensor_spec_3))

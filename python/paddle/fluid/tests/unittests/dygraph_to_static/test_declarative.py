@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import numpy as np
+from paddle.static import InputSpec
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator, Layer, jit
-from paddle.fluid.dygraph import TensorSpec
 
 import unittest
 
@@ -27,7 +27,7 @@ class SimpleNet(Layer):
         super(SimpleNet, self).__init__()
         self.linear = fluid.dygraph.Linear(10, 3)
 
-    @declarative(input_spec=[TensorSpec(shape=[None, 10], dtype='float32')])
+    @declarative(input_spec=[InputSpec(shape=[None, 10], dtype='float32')])
     def forward(self, x, a=1, b=2):
         y = self.inner_function(x)
         return y
@@ -42,7 +42,7 @@ class SimpleNet(Layer):
         z = x + y
         return z
 
-    @declarative(input_spec=[[TensorSpec([None, 10]), TensorSpec([None, 10])]])
+    @declarative(input_spec=[[InputSpec([None, 10]), InputSpec([None, 10])]])
     def func_with_list(self, l):
         x, y, int_val = l
         z = x + y
@@ -50,8 +50,8 @@ class SimpleNet(Layer):
         return z
 
     @declarative(input_spec=[{
-        'x': TensorSpec([None, 10]),
-        'y': TensorSpec([None, 10])
+        'x': InputSpec([None, 10]),
+        'y': InputSpec([None, 10])
     }])
     def func_with_dict(self, d):
         x = d['x']
@@ -64,9 +64,9 @@ class SimpleNet(Layer):
         return z
 
     @declarative(input_spec=[[
-        TensorSpec([None]), {
-            'x': TensorSpec([None, 10]),
-            'y': TensorSpec([None, 10])
+        InputSpec([None]), {
+            'x': InputSpec([None, 10]),
+            'y': InputSpec([None, 10])
         }
     ]])
     def func_with_list_dict(self, dl):
@@ -136,8 +136,8 @@ class TestInputSpec(unittest.TestCase):
                 net.add_func = declarative(
                     net.add_func,
                     input_spec=[
-                        TensorSpec([-1, 10]), TensorSpec([-1, 10]),
-                        TensorSpec([10])
+                        InputSpec([-1, 10]), InputSpec([-1, 10]),
+                        InputSpec([10])
                     ])
                 net.add_func(x, y)
 
@@ -148,11 +148,11 @@ class TestInputSpec(unittest.TestCase):
             int_val = 4.
 
             net = SimpleNet()
-            # We can get concrete_program by specificing TensorSpec information. Faking input is no need.
+            # We can get concrete_program by specificing InputSpec information. Faking input is no need.
             net.add_func = declarative(
                 net.add_func,
                 input_spec=[
-                    TensorSpec([-1, 10]), TensorSpec(
+                    InputSpec([-1, 10]), InputSpec(
                         [-1, 10], name='y')
                 ])
             cp1 = net.add_func.concrete_program
@@ -162,7 +162,7 @@ class TestInputSpec(unittest.TestCase):
             # generate another program
             net.add_func = declarative(
                 net.add_func,
-                input_spec=[TensorSpec([10]), TensorSpec(
+                input_spec=[InputSpec([10]), InputSpec(
                     [10], name='label')])
             cp2 = net.add_func.concrete_program
             self.assertTrue(cp2.inputs[-1].shape == (10, ))
@@ -213,37 +213,37 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
 
         foo = declarative(foo_func)
 
-        # 1. specific TensorSpec for `x`/`y`
+        # 1. specific InputSpec for `x`/`y`
         concrete_program_1 = foo.get_concrete_program(
-            TensorSpec([None, 10]), TensorSpec([10]))
+            InputSpec([None, 10]), InputSpec([10]))
         print(concrete_program_1)
         self.assertTrue(len(foo.program_cache) == 1)
 
         # 2. specific `c`/`d` explicitly with same default value
         concrete_program_2 = foo.get_concrete_program(
-            TensorSpec([None, 10]), TensorSpec([10]), 1, 2)
+            InputSpec([None, 10]), InputSpec([10]), 1, 2)
         self.assertTrue(concrete_program_2 == concrete_program_1)
         self.assertTrue(len(foo.program_cache) == 1)
 
         # 3. specific `c` = 2
         concrete_program_3 = foo.get_concrete_program(
-            TensorSpec([None, 10]), TensorSpec([10]), c=2)
+            InputSpec([None, 10]), InputSpec([10]), c=2)
         self.assertTrue(concrete_program_3 != concrete_program_1)
         self.assertTrue(len(foo.program_cache) == 2)
 
         # 4. specific x.shape = [10]
         concrete_program_4 = foo.get_concrete_program(
-            TensorSpec([10]), TensorSpec([10]))
+            InputSpec([10]), InputSpec([10]))
         self.assertTrue(concrete_program_4 != concrete_program_1)
         self.assertTrue(len(foo.program_cache) == 3)
 
-        # 5. only specific TensorSpec of x
+        # 5. only specific InputSpec of x
         with self.assertRaises(ValueError):
-            concrete_program_5 = foo.get_concrete_program(TensorSpec([10]))
+            concrete_program_5 = foo.get_concrete_program(InputSpec([10]))
 
         # 6. specific unknown kwargs `e`=4
         concrete_program_5 = foo.get_concrete_program(
-            TensorSpec([10]), TensorSpec([10]), e=4)
+            InputSpec([10]), InputSpec([10]), e=4)
 
 
 if __name__ == '__main__':

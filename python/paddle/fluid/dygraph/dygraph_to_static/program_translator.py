@@ -24,13 +24,10 @@ import warnings
 
 import gast
 import numpy as np
+from paddle.static import InputSpec
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
 from paddle.fluid.layers.utils import flatten
-from paddle.fluid import core
-from paddle.fluid import framework
-from paddle.fluid import scope_guard
-from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import update_op_callstack_with_origin_info
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
@@ -39,8 +36,8 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
-from paddle.fluid.dygraph.dygraph_to_static.input_spec import FunctionSpec
-from paddle.fluid.dygraph.dygraph_to_static.input_spec import get_buffers, get_parameters
+from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec
+from paddle.fluid.dygraph.dygraph_to_static.function_spec import get_buffers, get_parameters
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
@@ -150,7 +147,7 @@ class CacheKey(object):
 
         Args:
             functions_spec(FunctionSpec): a FunctionSpec instance of decorated function.
-            input_with_spec(list[TensorSpec]): actual inputs with some arguments replaced by TensorSpec.
+            input_with_spec(list[InputSpec]): actual inputs with some arguments replaced by InputSpec.
             class_instance(object): a instance of class `Layer`.
         """
         self.function_spec = function_spec
@@ -171,9 +168,9 @@ class CacheKey(object):
         # 1. filter `self` in args
         if args and isinstance(args[0], layers.Layer):
             args = args[1:]
-        # 2. convert tensor and numpy array into TensorSpec 
+        # 2. convert tensor and numpy array into InputSpec 
         _args, _kwargs = function_spec.unified_args_and_kwargs(args, kwargs)
-        input_with_spec = function_spec.args_to_tensor_spec(_args, _kwargs)
+        input_with_spec = function_spec.args_to_input_spec(_args, _kwargs)
 
         # 3. check whether hit the cache or build a new program for the input arguments
         return CacheKey(function_spec, input_with_spec, class_instance)
@@ -252,7 +249,7 @@ class StaticLayer(object):
 
         Args:
             function(callable): A function or method that will be converted into static program.
-            input_spec(list[TensorSpec]): list of TensorSpec to specify the `shape/dtype/name` information for each input argument, default None.
+            input_spec(list[InputSpec]): list of InputSpec to specify the `shape/dtype/name` information for each input argument, default None.
         """
         # save the instance `self` while decorating a method of class.
         if inspect.ismethod(function):
@@ -366,17 +363,17 @@ class StaticLayer(object):
         Returns traced concrete program and inner executable partial layer.
 
         Args:
-            *args(tuple): input arguments values or TensorSpec
+            *args(tuple): input arguments values or InputSpec
             **kwargs(dict) : input kwargs values.
 
         Returns:
             Traced ConcreteProgram and executable translated Layer.
         """
-        # 1. unify args/kwargs and replace Tensor with TensorSpec
+        # 1. unify args/kwargs and replace Tensor with InputSpec
         if len(args) != len(self._function_spec.args_name):
             args, kwargs = self._function_spec.unified_args_and_kwargs(args,
                                                                        kwargs)
-        input_with_spec = self._function_spec.args_to_tensor_spec(args, kwargs)
+        input_with_spec = self._function_spec.args_to_input_spec(args, kwargs)
 
         # 2. generate cache key
         cache_key = CacheKey(self._function_spec, input_with_spec,
@@ -530,7 +527,7 @@ class ConcreteProgram(object):
 
         Args:
             func_spec(FunctionSpec): A FunctionSpec instance for decorated function.
-            input_spec(list[TensorSpec]): 
+            input_spec(list[InputSpec]): 
         """
         # Transforms dygraph function into static function and caches it.
         dygraph_function = func_spec.dygraph_function

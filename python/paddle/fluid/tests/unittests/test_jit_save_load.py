@@ -18,9 +18,10 @@ import os
 import unittest
 import numpy as np
 
+from paddle.static import InputSpec
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Linear
-from paddle.fluid.dygraph import declarative, ProgramTranslator, TensorSpec
+from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME
 
 BATCH_SIZE = 32
@@ -207,8 +208,8 @@ class LinearNetMultiInput(fluid.dygraph.Layer):
         # self._linear2 = Linear(in_size, out_size)
 
     @declarative(input_spec=[
-        TensorSpec(
-            [None, 8], dtype='float32'), TensorSpec(
+        InputSpec(
+            [None, 8], dtype='float32'), InputSpec(
                 [None, 8], dtype='float32')
     ])
     def forward(self, x, y):
@@ -218,7 +219,7 @@ class LinearNetMultiInput(fluid.dygraph.Layer):
         return x_out, y_out, loss
 
 
-class TestSaveLoadWithTensorSpec(unittest.TestCase):
+class TestSaveLoadWithInputSpec(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
         fluid.enable_dygraph()
@@ -227,7 +228,7 @@ class TestSaveLoadWithTensorSpec(unittest.TestCase):
         net = LinearNetReturnLoss(8, 8)
         # set x.shape = [None, 8]
         net.forward = declarative(
-            net.forward, input_spec=[TensorSpec(
+            net.forward, input_spec=[InputSpec(
                 [None, 8], name='x')])
 
         model_path = "model.input_spec.output_spec"

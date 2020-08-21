@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from ..fluid.data import data
+from ..fluid import core, Variable
 
 __all__ = ['data', 'InputSpec']
 
@@ -22,8 +23,6 @@ class InputSpec(object):
     Define input specification of the model.
 
     Args:
-        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
-            for more details.
         shape (tuple(integers)|list[integers]): List|Tuple of integers
             declaring the shape. You can set "None" or -1 at a dimension
             to indicate the dimension can be of any size. For example,
@@ -31,6 +30,8 @@ class InputSpec(object):
         dtype (np.dtype|VarType|str, optional): The type of the data. Supported
             dtype: bool, float16, float32, float64, int8, int16, int32, int64,
             uint8. Default: float32.
+        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
+            for more details.
 
     Examples:
         .. code-block:: python
@@ -40,6 +41,8 @@ class InputSpec(object):
         input = InputSpec([None, 784], 'float32', 'x')
         label = InputSpec([None, 1], 'int64', 'label')
     """
+
+    __slots__ = ['shape', 'dtype', 'name']
 
     def __init__(self, shape=None, dtype='float32', name=None):
         self.shape = shape
@@ -52,3 +55,81 @@ class InputSpec(object):
     def __repr__(self):
         return '{}(shape={}, dtype={}, name={})'.format(
             type(self).__name__, self.shape, self.dtype, self.name)
+
+    @classmethod
+    def from_tensor(cls, tensor, name=None):
+        """
+        Generates a InputSpec based on the description of input tensor. 
+        """
+        if isinstance(tensor, (Variable, core.VarBase)):
+            return cls(tensor.shape, tensor.dtype, name or tensor.name)
+        else:
+            raise ValueError(
+                "Input `tensor` should be a Tensor, but received {}.".format(
+                    type_name(tensor)))
+
+    @classmethod
+    def from_numpy(cls, ndarray, name=None):
+        """
+        Generates a InputSpec based on the description of input np.ndarray. 
+        """
+        return cls(ndarray.shape, ndarray.dtype, name)
+
+    def batch(self, batch_size):
+        """
+        Inserts `batch_size` in front of the `shape`.
+        """
+        if isinstance(batch_size, (list, tuple)):
+            if len(batch_size) != 1:
+                raise ValueError(
+                    "Length of batch_size: {} shall be 1, but received {}.".
+                    format(batch_size, len(batch_size)))
+            batch_size = batch_size[1]
+        elif not isinstance(batch_size, six.integer_types):
+            raise TypeError("type(batch_size) shall be `int`, but received {}.".
+                            format(type_name(batch_size)))
+
+        new_shape = [batch_size] + list(self.shape)
+        return InputSpec(new_shape, self.dtype, self.name)
+
+    def unbatch(self):
+        """
+        remove the first element of `shape`.
+        """
+        if len(self.shape) == 0:
+            raise ValueError(
+                "Not support to unbatch a InputSpec when len(shape) == 0.")
+
+        return InputSpec(self.shape[1:], self.dtype, self.name)
+
+    def _verify(self, shape):
+        if not isinstance(shape, (list, tuple)):
+            raise TypeError(
+                "Type of `shape` in InputSpec should be one of (tuple, list), but received {}.".
+                format(type_name(shape)))
+        if len(shape) == 0:
+            raise ValueError(
+                "`shape` in InputSpec should contain at least 1 element, but received {}.".
+                format(shape))
+
+        for i, ele in enumerate(shape):
+            if ele is not None:
+                if not isinstance(ele, six.integer_types):
+                    raise ValueError(
+                        "shape[{}] should be an `int`, but received `{}`:{}.".
+                        format(i, type_name(ele), ele))
+            if ele is None or ele < -1:
+                shape[i] = -1
+
+        return tuple(shape)
+
+    def __hash__(self):
+        return hash((self.shape, self.dtype, self.name))
+
+    def __eq__(self, other):
+        return (type(self) is type(other) and all(
+            getattr(self, attr) == getattr(other, attr)
+            for attr in self.__slots__))
+
+    def __ne__(self, other):
+        return not self == other
