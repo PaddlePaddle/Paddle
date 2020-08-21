@@ -19,6 +19,7 @@ limitations under the License. */
 #include <deque>
 #include <map>
 #include <memory>
+#include <numeric>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -29,6 +30,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/large_scale_kv.h"
@@ -279,6 +281,8 @@ class AsyncCommunicator : public Communicator {
                 const RpcCtxMap &recv_varname_to_ctx,
                 Scope *recv_scope) override;
 
+  void InitParams();
+
   void MainThread();
 
   void Send(const std::vector<std::string> &var_names,
@@ -435,7 +439,7 @@ class GeoCommunicator : public AsyncCommunicator {
 
   void RecvDense(const std::string &varname);
 
-  void Init();
+  void InitParams();
 
   void InitSparse();
 

@@ -771,7 +771,6 @@ class ParameterServerOptimizer(DistributedOptimizer):
 
             # for startup program
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
-            _startup = worker.init_from_server_pass(_startup, compiled_config)
             _startup = worker.delet_extra_optimizes_pass(_startup,
                                                          compiled_config)
         else:

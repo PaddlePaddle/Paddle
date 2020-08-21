@@ -74,7 +74,11 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   } else {
     recv_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
   }
+
+  InitParams();
 }
+
+void AsyncCommunicator::InitParams() { RecvNoBarrier(); }
 
 AsyncCommunicator::~AsyncCommunicator() {
   running_ = false;
@@ -721,7 +725,7 @@ void GeoCommunicator::RecvDense(const std::string &varname) {
              t_timestamp->data<float>());
 }
 
-void GeoCommunicator::Init() {
+void GeoCommunicator::InitParams() {
   std::vector<std::future<void>> tasks;
   tasks.reserve(recv_varname_to_ctx_.size());
 
@@ -744,12 +748,17 @@ void GeoCommunicator::Init() {
 }
 
 void GeoCommunicator::InitDense(const std::string varname) {
-  auto *var = old_scope_->Var(varname);
-  var->GetMutable<framework::LoDTensor>();
-
   auto &ctx = recv_varname_to_ctx_.at(varname);
   auto recv = distributed::ParameterRecv<float>();
-  recv(ctx, *old_scope_);
+  recv(ctx, *recv_scope_);
+
+  auto *global_var = recv_scope_->FindVar(varname);
+  global_var->GetMutable<framework::LoDTensor>();
+
+  auto *old_var = old_scope_->Var(varname);
+  old_var->GetMutable<framework::LoDTensor>();
+
+  framework::CopyVariable(*global_var, old_var);
   VLOG(1) << "init dense variable " << varname << " done";
 }
 
@@ -781,67 +790,42 @@ void GeoCommunicator::InitSparse() {
 
   LargeScaleKV::Init(metas);
 
-  distributed::RPCClient *rpc_client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_);
-
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto cpu_place = platform::CPUPlace();
-  auto &cpu_ctx = *pool.Get(cpu_place);
-
-  framework::Scope &local_scope = send_scope_->NewScope();
-
   for (auto &meta : metas) {
     auto &ctx = recv_varname_to_ctx_.at(meta.name);
-    auto pserver_num = ctx.splited_varnames.size();
+    auto recv = distributed::ParameterRecv<float>();
 
-    for (size_t i = 0; i < ctx.splited_varnames.size(); i++) {
-      auto &recv_var_name = ctx.splited_varnames[i];
-      auto *var = local_scope.Var(recv_var_name);
-      var->GetMutable<framework::LoDTensor>();
+    auto *global_var = recv_scope_->FindVar(meta.name);
+    auto global_value = global_var->Get<framework::LoDTensor>();
+    auto rows = global_value.dims()[0];
+    auto dim1 = global_value.dims()[1];
 
-      distributed::VarHandlePtr ret;
+    recv(ctx, *recv_scope_);
+    VLOG(1) << "recv " << meta.name << " with global scope for init";
 
-      ret = rpc_client->AsyncGetVarNoBarrier(ctx.epmap[i], cpu_ctx, local_scope,
-                                             recv_var_name, recv_var_name);
+    auto n_rows = global_var->Get<framework::LoDTensor>().dims()[0];
 
-      auto *recv_var = local_scope.FindVar(recv_var_name);
-      auto &recv_t = recv_var->Get<framework::LoDTensor>();
+    PADDLE_ENFORCE_EQ(
+        rows, n_rows,
+        platform::errors::InvalidArgument(
+            "global var: %s origin dim must equal recved rows", meta.name));
 
-      auto width = recv_t.dims()[1];
-      auto rows = recv_t.dims()[0];
+    std::vector<int64_t> ids(rows);
+    std::iota(ids.begin(), ids.end(), 0);
 
-      PADDLE_ENFORCE_EQ(
-          width, meta.value_dims[0],
-          platform::errors::InvalidArgument("sparse params do not match"));
+    auto *ins = distributed::LargeScaleKV::GetInstance();
+    std::vector<std::vector<std::vector<float> *>> values;
 
-      std::vector<int64_t> ids;
+    ins->Get(meta.name)->Init(ids);
+    ins->Get(meta.name)->Get(ids, {"Param"}, &values);
 
-      for (int x = 0; x < rows; x++) {
-        ids.push_back(x * pserver_num + i);
-      }
+    auto blas = math::GetBlas<platform::CPUDeviceContext, float>(
+        paddle::platform::CPUDeviceContext());
 
-      std::vector<std::vector<std::vector<float> *>> values;
-      auto *ins = distributed::LargeScaleKV::GetInstance();
-
-      ins->Get(meta.name)->Init(ids);
-      ins->Get(meta.name)->Get(ids, {"Param"}, &values);
-
-      PADDLE_ENFORCE_NE(ret->Wait(), 0U, platform::errors::ExecutionTimeout(
-                                             "internal error in RPCClient"));
-
-      auto blas = math::GetBlas<platform::CPUDeviceContext, float>(
-          paddle::platform::CPUDeviceContext());
-
-      for (size_t k = 0; k < ids.size(); ++k) {
-        blas.VCOPY(width, recv_t.data<float>() + k * width,
-                   values[k][0]->data());
-      }
-
-      local_scope.EraseVars({recv_var_name});
+    for (auto &id : ids) {
+      blas.VCOPY(dim1, global_value.data<float>() + k * width,
+                 values[id][0]->data());
     }
   }
-
-  send_scope_->DeleteScope(&local_scope);
 
   VLOG(3) << "init sparse variable done";
 }
