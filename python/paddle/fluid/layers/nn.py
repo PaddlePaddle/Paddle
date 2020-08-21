@@ -8179,7 +8179,7 @@ def gather(input, index, overwrite=True):
                        [5, 6]]
 
     Args:
-        input (Temspr): The source input tensor with rank>=1. Supported data type is
+        input (Tensor): The source input tensor with rank>=1. Supported data type is
             int32, int64, float32, float64 and uint8 (only for CPU),
             float16 (only for GPU).
         index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
