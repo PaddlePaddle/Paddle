@@ -918,8 +918,8 @@ class Model(object):
                                 hapi.metrics.Accuracy())
                 mnist_data = hapi.datasets.MNIST(mode='train', chw_format=False)
                 model.fit(mnist_data, epochs=1, batch_size=32, verbose=0)
-                    model.save('checkpoint/test')
-                model.save('inference_model', True)
+                model.save('checkpoint/test') # save checkpoint
+                model.save('inference_model', True) # save for inference
         """
 
         if ParallelEnv().local_rank == 0:
