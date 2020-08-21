@@ -15,7 +15,7 @@
 import unittest
 import paddle
 import os
-from launch_function_helper import launch_func
+from launch_function_helper import launch_func, _find_free_port
 
 
 class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
@@ -71,20 +71,27 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         proc_b.join()
 
     def test_graph_execution_optimizer(self):
+
+        port_set = set()
+        port_a = _find_free_port(port_set)
+        port_b = _find_free_port(port_set)
+
         node_a = {
             "PADDLE_TRAINER_ID": "0",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36001",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
             "http_proxy": "",
             "https_proxy": ""
         }
 
         node_b = {
             "PADDLE_TRAINER_ID": "1",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36002",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_b),
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
             "http_proxy": "",
             "https_proxy": ""
         }
