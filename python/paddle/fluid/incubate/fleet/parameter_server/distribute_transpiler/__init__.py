@@ -393,6 +393,12 @@ class FleetTranspiler(Fleet):
                 "in fleet.save_inference_model() function, executor must be as Executor type"
             )
 
+        # Todo(MrChengmo): support recv&save GPU-Kernel for ps-gpu model save
+        if not isinstance(executor.place, fluid.CPUPlace):
+            save_executor = Executor(fluid.CPUPlace())
+        else:
+            save_executor = executor
+
         if main_program is not None:
             if isinstance(main_program, CompiledProgram):
                 raise TypeError(
@@ -579,7 +585,7 @@ class FleetTranspiler(Fleet):
                 block.append_op(
                     type='recv_save',
                     attrs={
-                        "trainer_id": self._role_maker.worker_id(),
+                        "trainer_id": self._role_maker.worker_index(),
                         "shape": var.shape,
                         "slice_shapes":
                         [",".join([str(i) for i in var.shape])],
@@ -670,6 +676,11 @@ if you would like to save all variables in a
             raise TypeError(
                 "in fleet.save_persistables() function, executor must be as Executor type"
             )
+        # Todo(MrChengmo): support recv&save GPU-Kernel for ps-gpu model save
+        if not isinstance(executor.place, fluid.CPUPlace):
+            save_executor = Executor(fluid.CPUPlace())
+        else:
+            save_executor = executor
 
         if main_program is None:
             main_program = self.main_program
@@ -679,7 +690,8 @@ if you would like to save all variables in a
                 "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        self._save_distributed_persistables(executor, dirname, main_program)
+        self._save_distributed_persistables(save_executor, dirname,
+                                            main_program)
 
     @staticmethod
     def __exclude_vars(exclude_var_names=[]):

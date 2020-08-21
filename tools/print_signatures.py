@@ -27,6 +27,7 @@ import pydoc
 import hashlib
 import six
 import functools
+import logging
 
 member_dict = collections.OrderedDict()
 
@@ -97,8 +98,11 @@ def queue_dict(member, cur_name):
     member_dict[cur_name] = "({}, ('document', '{}'))".format(args, doc_md5)
 
 
-def visit_member(parent_name, member):
-    cur_name = ".".join([parent_name, member.__name__])
+def visit_member(parent_name, member, member_name=None):
+    if member_name:
+        cur_name = ".".join([parent_name, member_name])
+    else:
+        cur_name = ".".join([parent_name, member.__name__])
     if inspect.isclass(member):
         queue_dict(member, cur_name)
         for name, value in inspect.getmembers(member):
@@ -163,7 +167,13 @@ def visit_all_module(mod):
         if inspect.ismodule(instance):
             visit_all_module(instance)
         else:
-            visit_member(mod.__name__, instance)
+            if member_name != instance.__name__:
+                logging.warn(
+                    "Found alias API, alias name is: {}, original name is: {}".
+                    format(member_name, instance.__name__))
+                visit_member(mod.__name__, instance, member_name)
+            else:
+                visit_member(mod.__name__, instance)
 
 
 modules = sys.argv[1].split(",")

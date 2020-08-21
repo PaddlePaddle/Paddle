@@ -612,35 +612,34 @@ def dist(x, y, p=2):
 
 def dot(x, y, name=None):
     """
-	:alias_main: paddle.dot
-	:alias: paddle.dot,paddle.tensor.dot,paddle.tensor.linalg.dot
-
     This operator calculates inner product for vectors.
    
     .. note::
-       Only support 1-d Tensor(vector).
+       Support 1-d and 2-d Tensor. When it is 2d, the first dimension of this matrix 
+       is the batch dimension, which means that the vectors of multiple batches are dotted. 
 
     Parameters:
-        x(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
-        y(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
+        x(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``
+        y(Tensor): 1-D or 2-D ``Tensor``. Its dtype soulde be ``float32``, ``float64``, ``int32``, ``int64``
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
-        Variable: the calculated result Tensor/LoDTensor.
+        Variable: the calculated result Tensor.
 
     Examples:
 
     .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
         import numpy as np
-        
-        with fluid.dygraph.guard():
-          x = fluid.dygraph.to_variable(np.random.uniform(0.1, 1, [10]).astype(np.float32))
-          y = fluid.dygraph.to_variable(np.random.uniform(1, 3, [10]).astype(np.float32))
-          z = paddle.dot(x, y)
-          print(z.numpy())
+
+        paddle.disable_static()
+        x_data = np.random.uniform(0.1, 1, [10]).astype(np.float32)
+        y_data = np.random.uniform(1, 3, [10]).astype(np.float32)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        z = paddle.dot(x, y)
+        print(z.numpy())
 
     """
     op_type = 'dot'
@@ -765,10 +764,10 @@ def cross(x, y, axis=None, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle.imperative import to_variable
+            from paddle import to_variable
             import numpy as np
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             data_x = np.array([[1.0, 1.0, 1.0],
                                [2.0, 2.0, 2.0],
@@ -811,11 +810,8 @@ def cross(x, y, axis=None, name=None):
     return out
 
 
-def cholesky(x, upper=False):
+def cholesky(x, upper=False, name=None):
     """
-	:alias_main: paddle.cholesky
-	:alias: paddle.cholesky,paddle.tensor.cholesky,paddle.tensor.linalg.cholesky
-
     Computes the Cholesky decomposition of one symmetric positive-definite
     matrix or batches of symmetric positive-definite matrice. 
     
@@ -840,21 +836,22 @@ def cholesky(x, upper=False):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
 
-            with fluid.dygraph.guard():
-                a = np.random.rand(3, 3)
-                a_t = np.transpose(a, [1, 0])
-                x = np.matmul(a, a_t) + 1e-03
-                x = fluid.dygraph.to_variable(x)
-                out = paddle.cholesky(x, upper=False)
-                print(out.numpy())
-                # [[1.190523   0.         0.        ]
-                #  [0.9906703  0.27676893 0.        ]
-                #  [1.25450498 0.05600871 0.06400121]]
+            paddle.disable_static()
+            a = np.random.rand(3, 3)
+            a_t = np.transpose(a, [1, 0])
+            x_data = np.matmul(a, a_t) + 1e-03
+            x = paddle.to_variable(x_data)
+            out = paddle.cholesky(x, upper=False)
+            print(out.numpy())
+            # [[1.190523   0.         0.        ]
+            #  [0.9906703  0.27676893 0.        ]
+            #  [1.25450498 0.05600871 0.06400121]]
 
     """
+    if in_dygraph_mode():
+        return core.ops.cholesky(x, "upper", upper)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
     helper = LayerHelper('cholesky', **locals())
@@ -889,26 +886,32 @@ def bmm(x, y, name=None):
 
     Examples:
         import paddle
-        import paddle.fluid as fluid
-        x = fluid.layers.data(name='x', shape=[10, 3, 4], dtype='float32')
-        y = fluid.layers.data(name='y', shape=[10, 4, 5], dtype='float32')
-        out = paddle.bmm(x, y)
-    
-        # In dygraph mode:
+
+        # In imperative mode:
         # size input1: (2, 2, 3) and input2: (2, 3, 2)
         input1 = np.array([[[1.0, 1.0, 1.0],[2.0, 2.0, 2.0]],[[3.0, 3.0, 3.0],[4.0, 4.0, 4.0]]])
         input2 = np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],[[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
 
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(input1)
-            y = fluid.dygraph.to_variable(input2)
-            out = paddle.bmm(x, y)
-            #output size: (2, 2, 2)
-            #output value:
-            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
-            out_np = out.numpy()
+        paddle.disable_static()
+        
+        x = paddle.to_variable(input1)
+        y = paddle.to_variable(input2)
+        out = paddle.bmm(x, y)
+        #output size: (2, 2, 2)
+        #output value:
+        #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+        out_np = out.numpy()
     """
-
+    x_shape = x.shape
+    y_shape = y.shape
+    if not len(x_shape) == len(y_shape) == 3:
+        raise ValueError(
+            "x and y should be 3-dimensional. But received x's dimention: {}, y's dimention: {}".
+            format(x_shape, y_shape))
+    if x_shape[2] != y_shape[1]:
+        raise ValueError(
+            "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".
+            format(x_shape, y_shape))
     helper = LayerHelper('bmm', **locals())
     if in_dygraph_mode():
         return core.ops.bmm(x, y)
@@ -936,13 +939,13 @@ def histogram(input, bins=100, min=0, max=0):
         .. code-block:: python
             import paddle
             import numpy as np
-            startup_program = paddle.Program()
-            train_program = paddle.Program()
-            with paddle.program_guard(train_program, startup_program):
+            startup_program = paddle.static.Program()
+            train_program = paddle.static.Program()
+            with paddle.static.program_guard(train_program, startup_program):
                 inputs = paddle.data(name='input', dtype='int32', shape=[2,3])
                 output = paddle.histogram(inputs, bins=5, min=1, max=5)
                 place = paddle.CPUPlace()
-                exe = paddle.Executor(place)
+                exe = paddle.static.Executor(place)
                 exe.run(startup_program)
                 img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
                 res = exe.run(train_program,
@@ -954,11 +957,12 @@ def histogram(input, bins=100, min=0, max=0):
         .. code-block:: python
             import paddle
             import numpy as np
-            with paddle.imperative.guard(paddle.CPUPlace()):
-                inputs_np = np.array([1, 2, 1]).astype(np.float)
-                inputs = paddle.imperative.to_variable(inputs_np)
-                result = paddle.histogram(inputs, bins=4, min=0, max=3)
-                print(result) # [0, 2, 1, 0]
+            paddle.disable_static(paddle.CPUPlace())
+            inputs_np = np.array([1, 2, 1]).astype(np.float)
+            inputs = paddle.to_variable(inputs_np)
+            result = paddle.histogram(inputs, bins=4, min=0, max=3)
+            print(result) # [0, 2, 1, 0]
+            paddle.enable_static()
     """
     if in_dygraph_mode():
         return core.ops.histogram(input, "bins", bins, "min", min, "max", max)

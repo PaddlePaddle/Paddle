@@ -17,7 +17,6 @@ from __future__ import print_function
 import unittest
 import paddle
 import paddle.fluid as fluid
-import paddle.imperative as imperative
 import paddle.fluid.layers as layers
 import numpy as np
 import six
@@ -72,16 +71,17 @@ class TestSortDygraph(unittest.TestCase):
             self.place = core.CPUPlace()
 
     def test_api_0(self):
-        with imperative.guard(self.place):
-            var_x = imperative.to_variable(self.input_data)
-            out = paddle.sort(var_x)
-            self.assertEqual((np.sort(self.input_data) == out.numpy()).all(),
-                             True)
+        paddle.disable_static(self.place)
+        var_x = paddle.to_variable(self.input_data)
+        out = paddle.sort(var_x)
+        self.assertEqual((np.sort(self.input_data) == out.numpy()).all(), True)
+        paddle.enable_static()
 
     def test_api_1(self):
-        with imperative.guard(self.place):
-            var_x = imperative.to_variable(self.input_data)
-            out = paddle.sort(var_x, axis=-1)
-            self.assertEqual(
-                (np.sort(
-                    self.input_data, axis=-1) == out.numpy()).all(), True)
+        paddle.disable_static(self.place)
+        var_x = paddle.to_variable(self.input_data)
+        out = paddle.sort(var_x, axis=-1)
+        self.assertEqual(
+            (np.sort(
+                self.input_data, axis=-1) == out.numpy()).all(), True)
+        paddle.enable_static()

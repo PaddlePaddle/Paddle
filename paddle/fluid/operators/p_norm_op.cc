@@ -42,6 +42,7 @@ class PnormOpMaker : public framework::OpProtoAndCheckerMaker {
         "keepdim",
         "(bool, default false) Whether to keep the dimensions as the input.")
         .SetDefault(false);
+
     AddAttr<bool>("asvector",
                   "(bool, default false) as vector norm when axis is None and "
                   "input is matrix, ")

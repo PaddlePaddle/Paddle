@@ -55,6 +55,7 @@ def p_norm(x, axis, porder, keepdims=False):
             axis = tuple(axis)
         r = np.linalg.norm(
             x, ord=porder, axis=axis, keepdims=keepdims).astype(x.dtype)
+
     return r
 
 
