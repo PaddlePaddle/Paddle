@@ -907,8 +907,8 @@ class Model(object):
                 paddle.disable_static(device) if dynamic else None
 
                 # inputs and labels are not required for dynamic graph.
-                input = hapi.Input('x', [None, 784], 'float32')
-                label = hapi.Input('label', [None, 1], 'int64')
+                input = hapi.Input([None, 784], 'float32', 'x')
+                label = hapi.Input([None, 1], 'int64', 'label')
 
                 model = hapi.Model(Mnist(), input, label)
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,

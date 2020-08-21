@@ -489,7 +489,7 @@ class TestModelFunction(unittest.TestCase):
             prog_translator = ProgramTranslator()
             prog_translator.enable(False) if not dynamic else None
             net = LeNetDeclarative()
-            inputs = [Input('X', [None, 1, 28, 28], 'float32')]
+            inputs = [Input([None, 1, 28, 28], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
             save_dir = tempfile.mkdtemp()
