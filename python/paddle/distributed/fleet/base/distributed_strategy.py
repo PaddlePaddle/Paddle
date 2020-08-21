@@ -333,6 +333,17 @@ class DistributedStrategy(object):
 
     @property
     def sync_nccl_allreduce(self):
+        """
+        Indicating whether we are using synchronized all reduce in each communication thread
+        We note that system overhead is usually lower when sync_nccl_allreduce = True
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.sync_nccl_allreduce = True
+        """
         return self.strategy.sync_nccl_allreduce
 
     @sync_nccl_allreduce.setter
@@ -344,6 +355,18 @@ class DistributedStrategy(object):
 
     @property
     def use_hierarchical_allreduce(self):
+        """
+        Indicating whether we are using hierarchical allreduce in collective communication
+        Hierarchical allreduce often does allreduce within a certain node group and then do
+        allreduce among the leaders of each group
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.use_hierarchical_allreduce = True
+        """
         return self.strategy.use_hierarchical_allreduce
 
     @use_hierarchical_allreduce.setter
@@ -357,6 +380,17 @@ class DistributedStrategy(object):
 
     @property
     def hierarchical_allreduce_inter_nranks(self):
+        """
+        Number of ranks for low level node groups in hierarchical allreduce
+        Default value: number of GPU cards on each single GPU machine
+
+        Example:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.hierarchical_allreduce_inter_nranks = 8
+        """
         return self.strategy.hierarchical_allreduce_inter_nranks
 
     @hierarchical_allreduce_inter_nranks.setter
@@ -370,6 +404,19 @@ class DistributedStrategy(object):
 
     @property
     def sync_batch_norm(self):
+        """
+        Indicating whether we are using sync_batch_norm to do synchronous batch normalization among all training nodes.
+        
+        Default value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.sync_batch_norm = True
+        """
+
         return self.strategy.sync_batch_norm
 
     @sync_batch_norm.setter
@@ -381,6 +428,17 @@ class DistributedStrategy(object):
 
     @property
     def fuse_all_reduce_ops(self):
+        """
+        Indicating whether we are using fuse_all_reduce_ops for gradient fusion during backward phase of training
+        Default value: True
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fuse_all_reduce_ops = False
+        """
         return self.strategy.fuse_all_reduce_ops
 
     @fuse_all_reduce_ops.setter
@@ -392,6 +450,18 @@ class DistributedStrategy(object):
 
     @property
     def fuse_grad_size_in_MB(self):
+        """
+        Specifying the size of gradient to fuse in Mega-Bytes
+
+        Default value: 32
+
+        Examples:
+          .. code-block:: python
+        
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fuse_grad_size_in_MB = 50
+        """
         return self.strategy.fuse_grad_size_in_MB
 
     @fuse_grad_size_in_MB.setter
@@ -416,6 +486,19 @@ class DistributedStrategy(object):
 
     @property
     def nccl_comm_num(self):
+        """
+        Specifying the number of NCCL communicator
+
+        Default value: 1
+
+        Examples:
+          .. code-block:: python
+        
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.nccl_comm_num = 2
+        """
+
         return self.strategy.nccl_comm_num
 
     @nccl_comm_num.setter
