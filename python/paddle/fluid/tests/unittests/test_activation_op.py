@@ -453,18 +453,27 @@ class TestHardShrink(TestActivation):
         self.op_type = "hard_shrink"
         self.init_dtype()
 
-        threshold = 0.5
+        self.threshold = 0.5
+        self.set_attrs()
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype) * 10
-        out = ref_hardshrink(x, threshold)
+        out = ref_hardshrink(x, self.threshold)
 
-        self.attrs = {'threshold': threshold}
+        self.attrs = {'threshold': self.threshold}
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
+
+    def set_attrs(self):
+        pass
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestHardShrink_threshold_negative(TestHardShrink):
+    def set_attrs(self):
+        self.threshold = -0.1
 
 
 class TestHardShrinkAPI(unittest.TestCase):
