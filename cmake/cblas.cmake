@@ -126,6 +126,6 @@ endif()
 
 include_directories(${CBLAS_INC_DIR})
 if(NOT ${CBLAS_PROVIDER} STREQUAL MKLML)
-  target_link_libraries(cblas ${CBLAS_LIBRARIES})
+  target_link_libraries(cblas gfortran ${CBLAS_LIBRARIES})
 endif()
 

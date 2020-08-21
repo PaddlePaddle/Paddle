@@ -55,8 +55,8 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX                ${GLOO_SOURCE_DIR}
     DOWNLOAD_DIR          ${GLOO_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate ${GLOO_URL} -c -q -O ${GLOO_NAME}.tar.gz
-                          && tar zxvf ${GLOO_NAME}.tar.gz
+    #DOWNLOAD_COMMAND      wget --no-check-certificate ${GLOO_URL} -c -q -O ${GLOO_NAME}.tar.gz
+    #                      && tar zxvf ${GLOO_NAME}.tar.gz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${GLOO_INSTALL_ROOT}

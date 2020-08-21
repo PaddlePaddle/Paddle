@@ -28,6 +28,9 @@ namespace paddle {
 namespace platform {
 
 void SetNumThreads(int num_threads) {
+#ifdef PADDLE_WITH_SW
+  return;
+#endif
 #ifdef PADDLE_USE_OPENBLAS
 // windows has no support for openblas multi-thread
 // please refer to: https://github.com/PaddlePaddle/Paddle/issues/7234

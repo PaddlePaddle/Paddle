@@ -288,6 +288,7 @@ class DeviceTracerImpl : public DeviceTracer {
   }
 
   void AddAnnotation(uint32_t id, Event *event) {
+#ifdef PADDLE_WITH_SW
     thread_local std::forward_list<std::pair<uint32_t, Event *>>
         *local_correlations_pairs = nullptr;
     if (local_correlations_pairs == nullptr) {
@@ -296,6 +297,7 @@ class DeviceTracerImpl : public DeviceTracer {
       local_correlations_pairs = &correlations_pairs.front();
     }
     local_correlations_pairs->push_front(std::make_pair(id, event));
+#endif
   }
 
   void AddCPURecords(const std::string &anno, uint64_t start_ns,
@@ -304,7 +306,7 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(1) << "Empty timeline annotation.";
       return;
     }
-    thread_local std::forward_list<CPURecord> *local_cpu_records_ = nullptr;
+    std::forward_list<CPURecord> *local_cpu_records_ = nullptr;
     if (local_cpu_records_ == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       cpu_records_.emplace_front();
@@ -335,8 +337,7 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(3) << alloc_in << ", " << free_in << " Cannot be traced.";
       return;
     }
-    thread_local std::forward_list<MemInfoRecord> *local_mem_info_record =
-        nullptr;
+    std::forward_list<MemInfoRecord> *local_mem_info_record = nullptr;
     if (local_mem_info_record == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       mem_info_record_.emplace_front();
@@ -353,8 +354,7 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(1) << "Empty timeline annotation.";
       return;
     }
-    thread_local std::forward_list<ActiveKindRecord>
-        *local_active_kind_records = nullptr;
+    std::forward_list<ActiveKindRecord> *local_active_kind_records = nullptr;
     if (local_active_kind_records == nullptr) {
       std::lock_guard<std::mutex> l(trace_mu_);
       active_kind_records_.emplace_front();

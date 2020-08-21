@@ -59,7 +59,7 @@ else()
   ExternalProject_Add(
       extern_xxhash
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      "${XXHASH_DOWNLOAD_CMD}"
+      #"${XXHASH_DOWNLOAD_CMD}"
       PREFIX           ${XXHASH_PREFIX_DIR}
       SOURCE_DIR       ${XXHASH_SOURCE_DIR}
       UPDATE_COMMAND    ""

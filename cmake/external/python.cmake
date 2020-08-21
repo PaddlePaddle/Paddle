@@ -14,8 +14,8 @@
 
 INCLUDE(python_module)
 
-FIND_PACKAGE(PythonInterp ${PY_VERSION} REQUIRED)
-FIND_PACKAGE(PythonLibs ${PY_VERSION} REQUIRED)
+#FIND_PACKAGE(PythonInterp ${PY_VERSION} REQUIRED)
+#FIND_PACKAGE(PythonLibs ${PY_VERSION} REQUIRED)
 
 if(WIN32)
     execute_process(COMMAND "${PYTHON_EXECUTABLE}" "-c"
@@ -64,16 +64,16 @@ ADD_LIBRARY(python SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET python PROPERTY IMPORTED_LOCATION ${PYTHON_LIBRARIES})
 
 SET(py_env "")
-IF(PYTHONINTERP_FOUND)
-    find_python_module(pip REQUIRED)
-    find_python_module(numpy REQUIRED)
-    find_python_module(wheel REQUIRED)
-    find_python_module(google.protobuf REQUIRED)
-    FIND_PACKAGE(NumPy REQUIRED)
-    IF(${PY_GOOGLE.PROTOBUF_VERSION} AND ${PY_GOOGLE.PROTOBUF_VERSION} VERSION_LESS "3.0.0")
-        MESSAGE(FATAL_ERROR "Found Python Protobuf ${PY_GOOGLE.PROTOBUF_VERSION} < 3.0.0, "
-        "please use pip to upgrade protobuf. pip install -U protobuf")
-    ENDIF()
-ENDIF(PYTHONINTERP_FOUND)
+#IF(PYTHONINTERP_FOUND)
+  #    find_python_module(pip REQUIRED)
+  #    find_python_module(numpy REQUIRED)
+  #    find_python_module(wheel REQUIRED)
+  #    find_python_module(google.protobuf REQUIRED)
+  #    FIND_PACKAGE(NumPy REQUIRED)
+  #    IF(${PY_GOOGLE.PROTOBUF_VERSION} AND ${PY_GOOGLE.PROTOBUF_VERSION} VERSION_LESS "3.0.0")
+  #        MESSAGE(FATAL_ERROR "Found Python Protobuf ${PY_GOOGLE.PROTOBUF_VERSION} < 3.0.0, "
+  #        "please use pip to upgrade protobuf. pip install -U protobuf")
+  #    ENDIF()
+#ENDIF(PYTHONINTERP_FOUND)
 INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_DIR})
 INCLUDE_DIRECTORIES(${PYTHON_NUMPY_INCLUDE_DIR})

@@ -25,7 +25,7 @@
 #include <libxsmm.h>
 #endif
 
-#ifdef PADDLE_USE_OPENBLAS
+#if defined(PADDLE_USE_OPENBLAS) || defined(PADDLE_WITH_SW)
 #include <cblas.h>
 #endif
 
