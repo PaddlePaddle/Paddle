@@ -38,6 +38,7 @@ from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.parameter_server import version
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _has_global_step
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, \
     SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
 
@@ -161,9 +162,9 @@ class FleetTranspiler(Fleet):
 
         print(trainer_config)
 
-        lrs = _get_lr_ops(self._origin_main_program)
+        lrs = _has_global_step(_get_lr_ops(self._origin_main_program))
 
-        if len(lrs) > 0:
+        if lrs > 0:
             kwargs = {"need_global_step": "1"}
         else:
             kwargs = {"need_global_step": "0"}
@@ -185,14 +186,6 @@ class FleetTranspiler(Fleet):
         else:
             recv_ctx = fleet.compiled_config.get_communicator_recv_context(
                 recv_type=1)
-
-        for name, ctx in send_ctx.items():
-            print("name: {}, ctx: {}".format(name, ctx))
-
-        print("==== = ==== =============== ====")
-
-        for name, ctx in recv_ctx.items():
-            print("name: {}, ctx: {}".format(name, ctx))
 
         from paddle.fluid.communicator import Communicator
         self._communicator = Communicator(
@@ -392,6 +385,12 @@ class FleetTranspiler(Fleet):
             raise TypeError(
                 "in fleet.save_inference_model() function, executor must be as Executor type"
             )
+
+        # Todo(MrChengmo): support recv&save GPU-Kernel for ps-gpu model save
+        if not isinstance(executor.place, fluid.CPUPlace):
+            save_executor = Executor(fluid.CPUPlace())
+        else:
+            save_executor = executor
 
         if main_program is not None:
             if isinstance(main_program, CompiledProgram):
@@ -670,6 +669,11 @@ if you would like to save all variables in a
             raise TypeError(
                 "in fleet.save_persistables() function, executor must be as Executor type"
             )
+        # Todo(MrChengmo): support recv&save GPU-Kernel for ps-gpu model save
+        if not isinstance(executor.place, fluid.CPUPlace):
+            save_executor = Executor(fluid.CPUPlace())
+        else:
+            save_executor = executor
 
         if main_program is None:
             main_program = self.main_program
@@ -679,7 +683,8 @@ if you would like to save all variables in a
                 "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        self._save_distributed_persistables(executor, dirname, main_program)
+        self._save_distributed_persistables(save_executor, dirname,
+                                            main_program)
 
     @staticmethod
     def __exclude_vars(exclude_var_names=[]):

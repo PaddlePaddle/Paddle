@@ -242,41 +242,38 @@ class DataParallel(layers.Layer):
     Examples:
         .. code-block:: python
 
-           import numpy as np
-           import paddle.fluid as fluid
-           import paddle.fluid.dygraph as dygraph
-           from paddle.fluid.optimizer import AdamOptimizer
-           from paddle.fluid.dygraph.nn import Linear
-           from paddle.fluid.dygraph.base import to_variable
+            import numpy as np
+            import paddle.fluid as fluid
 
-           place = place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-           with fluid.dygraph.guard(place=place):
+            place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+            with fluid.dygraph.guard(place):
 
-               # prepare the data parallel context
-               strategy=dygraph.prepare_context()
+                # prepare the data parallel context
+                strategy = fluid.dygraph.prepare_context()
 
-               linear = Linear(1, 10, act="softmax")
-               adam = fluid.optimizer.AdamOptimizer()
+                linear = fluid.dygraph.Linear(1, 10, act="softmax")
+                adam = fluid.optimizer.AdamOptimizer(
+                    learning_rate=0.001, parameter_list=linear.parameters())
 
-               # make the module become the data parallelism module
-               linear = dygraph.DataParallel(linear, strategy)
+                # make the module become the data parallelism module
+                linear = fluid.dygraph.DataParallel(linear, strategy)
 
-               x_data = np.random.random(size=[10, 1]).astype(np.float32)
-               data = to_variable(x_data)
+                x_data = np.random.random(size=[10, 1]).astype(np.float32)
+                data = fluid.dygraph.to_variable(x_data)
 
-               hidden = linear(data)
-               avg_loss = fluid.layers.mean(hidden)
+                hidden = linear(data)
+                avg_loss = fluid.layers.mean(hidden)
 
-               # scale the loss according to the number of trainers.
-               avg_loss = linear.scale_loss(avg_loss)
+                # scale the loss according to the number of trainers.
+                avg_loss = linear.scale_loss(avg_loss)
 
-               avg_loss.backward()
+                avg_loss.backward()
 
-               # collect the gradients of trainers.
-               linear.apply_collective_grads()
+                # collect the gradients of trainers.
+                linear.apply_collective_grads()
 
-               adam.minimize(avg_loss)
-               linear.clear_gradients()
+                adam.minimize(avg_loss)
+                linear.clear_gradients()
     """
 
     def __init__(self, layers, strategy):
@@ -306,20 +303,23 @@ class DataParallel(layers.Layer):
 
                 import numpy as np
                 import paddle.fluid as fluid
-                import paddle.fluid.dygraph as dygraph
-                from paddle.fluid.optimizer import AdamOptimizer
-                from paddle.fluid.dygraph.nn import Linear
-                from paddle.fluid.dygraph.base import to_variable
 
-                place = place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-                with fluid.dygraph.guard(place=place):
-                    strategy=dygraph.prepare_context()
-                    linear = Linear(1, 10, act="softmax")
-                    adam = fluid.optimizer.AdamOptimizer()
-                    linear = dygraph.DataParallel(linear, strategy)
+                place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+                with fluid.dygraph.guard(place):
+
+                    # prepare the data parallel context
+                    strategy = fluid.dygraph.prepare_context()
+
+                    linear = fluid.dygraph.Linear(1, 10, act="softmax")
+                    adam = fluid.optimizer.AdamOptimizer(
+                        learning_rate=0.001, parameter_list=linear.parameters())
+
+                    # make the module become the data parallelism module
+                    linear = fluid.dygraph.DataParallel(linear, strategy)
 
                     x_data = np.random.random(size=[10, 1]).astype(np.float32)
-                    data = to_variable(x_data)
+                    data = fluid.dygraph.to_variable(x_data)
+
                     hidden = linear(data)
                     avg_loss = fluid.layers.mean(hidden)
 
@@ -327,6 +327,8 @@ class DataParallel(layers.Layer):
                     avg_loss = linear.scale_loss(avg_loss)
 
                     avg_loss.backward()
+
+                    # collect the gradients of trainers.
                     linear.apply_collective_grads()
 
                     adam.minimize(avg_loss)
@@ -390,23 +392,29 @@ class DataParallel(layers.Layer):
 
                 import numpy as np
                 import paddle.fluid as fluid
-                import paddle.fluid.dygraph as dygraph
-                from paddle.fluid.optimizer import AdamOptimizer
-                from paddle.fluid.dygraph.nn import Linear
-                from paddle.fluid.dygraph.base import to_variable
 
-                place = place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-                with fluid.dygraph.guard(place=place):
-                    strategy=dygraph.prepare_context()
-                    linear = Linear(1, 10, act="softmax")
-                    adam = fluid.optimizer.AdamOptimizer()
-                    linear = dygraph.DataParallel(linear, strategy)
+                place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+                with fluid.dygraph.guard(place):
+
+                    # prepare the data parallel context
+                    strategy = fluid.dygraph.prepare_context()
+
+                    linear = fluid.dygraph.Linear(1, 10, act="softmax")
+                    adam = fluid.optimizer.AdamOptimizer(
+                        learning_rate=0.001, parameter_list=linear.parameters())
+
+                    # make the module become the data parallelism module
+                    linear = fluid.dygraph.DataParallel(linear, strategy)
 
                     x_data = np.random.random(size=[10, 1]).astype(np.float32)
-                    data = to_variable(x_data)
+                    data = fluid.dygraph.to_variable(x_data)
+
                     hidden = linear(data)
                     avg_loss = fluid.layers.mean(hidden)
+
+                    # scale the loss according to the number of trainers.
                     avg_loss = linear.scale_loss(avg_loss)
+
                     avg_loss.backward()
 
                     # collect the gradients of trainers.

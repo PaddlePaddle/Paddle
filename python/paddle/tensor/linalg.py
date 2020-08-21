@@ -455,11 +455,12 @@ def dot(x, y, name=None):
     This operator calculates inner product for vectors.
    
     .. note::
-       Only support 1-d Tensor(vector).
+       Support 1-d and 2-d Tensor. When it is 2d, the first dimension of this matrix 
+       is the batch dimension, which means that the vectors of multiple batches are dotted. 
 
     Parameters:
-        x(Tensor): 1-D ``Tensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
-        y(Tensor): 1-D ``Tensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
+        x(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``
+        y(Tensor): 1-D or 2-D ``Tensor``. Its dtype soulde be ``float32``, ``float64``, ``int32``, ``int64``
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
@@ -470,14 +471,13 @@ def dot(x, y, name=None):
     .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
         import numpy as np
 
         paddle.disable_static()
         x_data = np.random.uniform(0.1, 1, [10]).astype(np.float32)
         y_data = np.random.uniform(1, 3, [10]).astype(np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
         z = paddle.dot(x, y)
         print(z.numpy())
 
