@@ -31,13 +31,14 @@ from .activation import erf  #DEFINE_ALIAS
 from .activation import gelu  #DEFINE_ALIAS
 from .activation import tanh  #DEFINE_ALIAS
 from .activation import hardshrink  #DEFINE_ALIAS
+from .activation import hardtanh  #DEFINE_ALIAS
 from .activation import hard_sigmoid  #DEFINE_ALIAS
 from .activation import hard_swish  #DEFINE_ALIAS
 from .activation import hsigmoid  #DEFINE_ALIAS
 from .activation import leaky_relu  #DEFINE_ALIAS
 from .activation import logsigmoid  #DEFINE_ALIAS
 from .activation import maxout  #DEFINE_ALIAS
-# from .activation import prelu        #DEFINE_ALIAS
+from .activation import prelu  #DEFINE_ALIAS
 from .activation import relu  #DEFINE_ALIAS
 from .activation import relu6  #DEFINE_ALIAS
 from .activation import selu  #DEFINE_ALIAS
@@ -48,7 +49,7 @@ from .activation import softplus  #DEFINE_ALIAS
 from .activation import softshrink  #DEFINE_ALIAS
 from .activation import softsign  #DEFINE_ALIAS
 from .activation import swish  #DEFINE_ALIAS
-from .activation import tanh_shrink  #DEFINE_ALIAS
+from .activation import tanhshrink  #DEFINE_ALIAS
 from .activation import thresholded_relu  #DEFINE_ALIAS
 from .activation import log_softmax  #DEFINE_ALIAS
 from .common import dropout  #DEFINE_ALIAS
@@ -59,6 +60,7 @@ from .common import one_hot  #DEFINE_ALIAS
 from .common import pad  #DEFINE_ALIAS
 from .common import pad_constant_like  #DEFINE_ALIAS
 from .common import pad2d  #DEFINE_ALIAS
+from .common import cosine_similarity  #DEFINE_ALIAS
 from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
 from .common import assign  #DEFINE_ALIAS
@@ -120,6 +122,7 @@ from .lod import hash  #DEFINE_ALIAS
 # from .lod import dynamic_gru        #DEFINE_ALIAS
 # from .lod import dynamic_lstm        #DEFINE_ALIAS
 # from .lod import dynamic_lstmp        #DEFINE_ALIAS
+from .loss import binary_cross_entropy  #DEFINE_ALIAS
 from .loss import bpr_loss  #DEFINE_ALIAS
 from .loss import center_loss  #DEFINE_ALIAS
 from .loss import cross_entropy  #DEFINE_ALIAS
@@ -140,6 +143,7 @@ from .loss import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
 from .loss import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
 from .loss import sigmoid_focal_loss  #DEFINE_ALIAS
 from .loss import smooth_l1  #DEFINE_ALIAS
+from .loss import smooth_l1_loss  #DEFINE_ALIAS
 from .loss import softmax_with_cross_entropy  #DEFINE_ALIAS
 from .loss import square_error_cost  #DEFINE_ALIAS
 from .loss import ssd_loss  #DEFINE_ALIAS
@@ -157,6 +161,8 @@ from .pooling import pool2d  #DEFINE_ALIAS
 from .pooling import pool3d  #DEFINE_ALIAS
 from .pooling import adaptive_pool2d  #DEFINE_ALIAS
 from .pooling import adaptive_pool3d  #DEFINE_ALIAS
+from .pooling import adaptive_avg_pool2d  #DEFINE_ALIAS
+from .pooling import adaptive_avg_pool3d  #DEFINE_ALIAS
 # from .rnn import gru_unit        #DEFINE_ALIAS
 # from .rnn import lstm        #DEFINE_ALIAS
 # from .rnn import lstm_unit        #DEFINE_ALIAS
@@ -197,3 +203,4 @@ from .vision import shuffle_channel  #DEFINE_ALIAS
 from .vision import space_to_depth  #DEFINE_ALIAS
 from .vision import yolo_box  #DEFINE_ALIAS
 from .vision import yolov3_loss  #DEFINE_ALIAS
+from .input import one_hot  #DEFINE_ALIAS
