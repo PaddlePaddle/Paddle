@@ -221,7 +221,7 @@ class API_TestGather(unittest.TestCase):
 
 
 class API_TestDygraphGather(unittest.TestCase):
-    def test_out(self):
+    def test_out1(self):
         paddle.disable_static()
         input_1 = np.array([[1, 2], [3, 4], [5, 6]])
         index_1 = np.array([1, 2])
@@ -230,6 +230,18 @@ class API_TestDygraphGather(unittest.TestCase):
         output = paddle.fluid.layers.gather(input, index)
         output_np = output.numpy()
         expected_output = np.array([[3, 4], [5, 6]])
+        self.assertTrue(np.allclose(output_np, expected_output))
+        paddle.enable_static()
+
+    def test_out12(self):
+        paddle.disable_static()
+        input_1 = np.array([[1, 2], [3, 4], [5, 6]])
+        index_1 = np.array([1, 2])
+        x = paddle.to_tensor(input_1)
+        index = paddle.to_tensor(index_1)
+        output = paddle.gather(x, index, axis=0)
+        output_np = output.numpy()
+        expected_output = gather_numpy(input_1, index_1, axis=0)
         self.assertTrue(np.allclose(output_np, expected_output))
         paddle.enable_static()
 

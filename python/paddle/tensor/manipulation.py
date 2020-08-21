@@ -698,6 +698,11 @@ def gather(x, index, axis=None, name=None):
 
     Returns:
         output (Tensor): The output is a tensor with the same rank as ``x``.
+    
+    Raises:
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must to be one of float16, float32, float64, int32, int64, uint8.
+        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
+        TypeError: ``axis`` must be a Tensor or int and the data type of ``index`` must be int32 or int64 when it's a Tensor.
 
     Examples:
 
