@@ -18,6 +18,7 @@ import paddle.fluid as fluid
 import sys
 
 backend = sys.argv[1]
+place = None
 if backend == "gloo":
     place = fluid.CPUPlace()
 elif backend == "nccl":

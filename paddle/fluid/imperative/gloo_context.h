@@ -14,17 +14,13 @@
 #pragma once
 
 #include <string>
-#include <vector>
 
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
 
 namespace paddle {
 namespace imperative {
 
+#if defined(PADDLE_WITH_GLOO)
 struct GlooParallelStrategy {
   int rank{0};
   int rank_num{1};
@@ -37,7 +33,6 @@ struct GlooParallelStrategy {
   std::string fs_ugi;
 };
 
-#if defined(PADDLE_WITH_GLOO)
 class GlooParallelContext {
  public:
   explicit GlooParallelContext(const GlooParallelStrategy& strategy)
@@ -51,5 +46,6 @@ class GlooParallelContext {
   GlooParallelStrategy strategy_;
 };
 #endif
+
 }  //  namespace imperative
 }  //  namespace paddle

@@ -25,13 +25,6 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allgather.h>
-#include <gloo/barrier.h>
-#include <gloo/rendezvous/context.h>
-#include <gloo/rendezvous/file_store.h>
-#include <gloo/rendezvous/http_store.h>
-#include <gloo/rendezvous/prefix_store.h>
-#include <gloo/rendezvous/store.h>
-#include <gloo/transport/tcp/device.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -53,9 +46,7 @@ class CAllGatherOpCPUKernel : public framework::OpKernel<T> {
     out_dims[0] *= nranks;
     int64_t send_numel = in->numel();
     const T* send_buff = in->data<T>();
-    out->mutable_data<T>(place);
-    out->Resize(out_dims);
-    T* recv_buff = out->mutable_data<T>(place);
+    T* recv_buff = out->mutable_data<T>(out_dims, place);
 
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(), true,

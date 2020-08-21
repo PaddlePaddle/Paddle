@@ -27,13 +27,6 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allreduce.h>
-#include <gloo/barrier.h>
-#include <gloo/rendezvous/context.h>
-#include <gloo/rendezvous/file_store.h>
-#include <gloo/rendezvous/http_store.h>
-#include <gloo/rendezvous/prefix_store.h>
-#include <gloo/rendezvous/store.h>
-#include <gloo/transport/tcp/device.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -66,10 +59,10 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
+    auto place = ctx.GetPlace();
     int64_t send_numel = in->numel();
     const T* send_buff = in->data<T>();
-    T* recv_buff = out->data<T>();
-    auto place = ctx.GetPlace();
+    T* recv_buff = out->mutable_data<T>(in->dims(), place);
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(), true,
@@ -84,25 +77,21 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
             static_cast<void (*)(void*, const void*, const void*, size_t)>(
                 &gloo::sum<T>));
         break;
-
       case kRedMax:
         opts.setReduceFunction(
             static_cast<void (*)(void*, const void*, const void*, size_t)>(
                 &gloo::max<T>));
         break;
-
       case kRedMin:
         opts.setReduceFunction(
             static_cast<void (*)(void*, const void*, const void*, size_t)>(
                 &gloo::min<T>));
         break;
-
       case kRedProd:
         opts.setReduceFunction(
             static_cast<void (*)(void*, const void*, const void*, size_t)>(
                 &gloo::product<T>));
         break;
-
       default:
         PADDLE_ENFORCE_EQ(true, false,
                           platform::errors::InvalidArgument(

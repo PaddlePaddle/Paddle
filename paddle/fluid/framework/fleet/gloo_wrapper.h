@@ -160,8 +160,8 @@ class GlooWrapper {
 #endif
   }
 
-#ifdef PADDLE_WITH_GLOO
   bool IsInitialized() { return is_initialized_; }
+#ifdef PADDLE_WITH_GLOO
   std::shared_ptr<gloo::Context> GetContext() { return context_; }
 #endif
 

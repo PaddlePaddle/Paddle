@@ -36,15 +36,12 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
     ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
     int64_t numel = in->numel();
     const void* sendbuff = in->data<void>();
-    out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
     int rid = ctx.Attr<int>("ring_id");
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
-
-    cudaStream_t stream = nullptr;
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-    stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+    auto stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
     ncclRedOp_t nccl_red_type = ncclSum;
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
@@ -65,8 +62,4 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(barrier, ops::BarrierOpCUDAKernel<float>,
-                        ops::BarrierOpCUDAKernel<double>,
-                        ops::BarrierOpCUDAKernel<int>,
-                        ops::BarrierOpCUDAKernel<int64_t>,
-                        ops::BarrierOpCUDAKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(barrier, ops::BarrierOpCUDAKernel<int>);

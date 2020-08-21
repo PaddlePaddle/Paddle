@@ -28,14 +28,12 @@ class BarrierOp : public framework::OperatorWithKernel {
 class BarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor) Dependency of the variable need to sync");
-    AddInput("Out", "(Tensor) Dependency of the variable need to sync");
+    AddInput("X", "(Tensor) Input data (only used in CUDAKernel).");
+    AddInput("Out", "(Tensor) Output data (only used in CUDAKernel).");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
     AddComment(R"DOC(
-Barrier Operator.
-Barrier among all pariticapitors.
-)DOC");
+Barrier Operator - Barrier among all pariticapitors.)DOC");
   }
 };
 
@@ -46,9 +44,4 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(barrier, ops::BarrierOp, ops::BarrierOpMaker);
-
-REGISTER_OP_CPU_KERNEL(barrier, ops::BarrierOpCPUKernel<float>,
-                       ops::BarrierOpCPUKernel<double>,
-                       ops::BarrierOpCPUKernel<int>,
-                       ops::BarrierOpCPUKernel<int64_t>,
-                       ops::BarrierOpCPUKernel<plat::float16>);
+REGISTER_OP_CPU_KERNEL(barrier, ops::BarrierOpCPUKernel<int>);
