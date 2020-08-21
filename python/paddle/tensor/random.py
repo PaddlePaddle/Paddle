@@ -37,7 +37,8 @@ __all__ = [
     'randperm'
 ]
 
-def bernoulli(x):
+
+def bernoulli(x, name=None):
     """
 
     This OP returns a Tensor filled with random binary(0 or 1) number from a Bernoulli distribution.
@@ -49,9 +50,11 @@ def bernoulli(x):
         out_i ~ Bernoulli (x_i)
 
     Args:
-        x(int):  A tensor with probabilities for generating the random binary number. The data type 
+        x(Tensor):  A tensor with probabilities for generating the random binary number. The data type 
             should be float32, float64.
-
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
     Returns: 
         Tensor: A Tensor filled with random binary number with the same shape and dtype as ``x``.
 
@@ -65,8 +68,14 @@ def bernoulli(x):
 
         x = paddle.rand([2, 3])
         print(x.numpy())
+        # [[0.11272584 0.3890902  0.7730957 ]
+        # [0.10351662 0.8510418  0.63806665]]
+
         out = paddle.bernoulli(x)
         print(out.numpy())
+        # [[0. 0. 1.]
+        # [0. 0. 1.]]
+
     """
 
     if in_dygraph_mode():
@@ -184,6 +193,7 @@ def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
     helper.append_op(
         type="uniform_random", inputs=inputs, attrs=attrs,
         outputs={"Out": out})
+
 
 def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     """
