@@ -165,7 +165,7 @@ def standard_normal(shape, dtype=None, name=None):
         dtype = 'float32'
 
     return gaussian_random(
-        shape=shape, mean=0.0, std=1.0, seed=0, dtype=dtype, name=name)
+        shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
 
 
 randn = standard_normal
