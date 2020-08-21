@@ -61,11 +61,6 @@ class TestLogsumexp(OpTest):
         self.check_grad(['X'], ['Out'])
 
 
-class TestLogsumexp_dtype(TestLogsumexp):
-    def set_attrs(self):
-        self.dtype = 'float32'
-
-
 class TestLogsumexp_shape(TestLogsumexp):
     def set_attrs(self):
         self.shape = [4, 5, 6]
