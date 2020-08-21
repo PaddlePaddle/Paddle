@@ -193,6 +193,7 @@ def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
     helper.append_op(
         type="uniform_random", inputs=inputs, attrs=attrs,
         outputs={"Out": out})
+    return out
 
 
 def randint(low=0, high=None, shape=[1], dtype=None, name=None):
