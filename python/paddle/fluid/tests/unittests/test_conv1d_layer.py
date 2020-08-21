@@ -30,6 +30,7 @@ class Conv1DTestCase(unittest.TestCase):
                  num_filters=8,
                  filter_size=3,
                  padding=0,
+                 padding_mode="zeros",
                  stride=1,
                  dilation=1,
                  groups=1,
@@ -46,6 +47,7 @@ class Conv1DTestCase(unittest.TestCase):
         self.channel_last = (self.data_format == "NHWC")
 
         self.padding = padding
+        self.padding_mode = padding_mode
         self.stride = stride
         self.dilation = dilation
         self.groups = groups
@@ -110,6 +112,7 @@ class Conv1DTestCase(unittest.TestCase):
             self.num_filters,
             self.filter_size,
             padding=self.padding,
+            padding_mode=self.padding_mode,
             stride=self.stride,
             dilation=self.dilation,
             groups=self.groups,
@@ -154,15 +157,12 @@ def add_cases(suite):
     suite.addTest(
         Conv1DTestCase(
             methodName='runTest', filter_size=3, padding='valid'))
-    suite.addTest(Conv1DTestCase(methodName='runTest', padding=2))
+    suite.addTest(
+        Conv1DTestCase(
+            methodName='runTest', padding=2, data_format='NLC'))
     suite.addTest(Conv1DTestCase(methodName='runTest', padding=[1]))
-    suite.addTest(
-        Conv1DTestCase(
-            methodName='runTest', padding=[[0, 0], [0, 0], [1, 2]]))
+    suite.addTest(Conv1DTestCase(methodName='runTest', padding=2))
     suite.addTest(Conv1DTestCase(methodName='runTest'))
-    suite.addTest(
-        Conv1DTestCase(
-            methodName='runTest', padding=[[0, 0], [0, 0], [2, 2]]))
     suite.addTest(
         Conv1DTestCase(
             methodName='runTest', groups=2, padding="valid"))
@@ -172,13 +172,20 @@ def add_cases(suite):
             num_filters=6,
             num_channels=3,
             groups=3,
-            padding="valid"))
+            padding="valid",
+            data_format='NLC'))
 
 
 def add_error_cases(suite):
     suite.addTest(
         Conv1DErrorTestCase(
+            methodName='runTest', padding_mode="reflect", padding="valid"))
+    suite.addTest(
+        Conv1DErrorTestCase(
             methodName='runTest', data_format="VALID"))
+    suite.addTest(
+        Conv1DErrorTestCase(
+            methodName='runTest', padding_mode="VALID"))
     suite.addTest(
         Conv1DErrorTestCase(
             methodName='runTest', num_channels=5, groups=2))
