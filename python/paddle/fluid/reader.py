@@ -1039,7 +1039,7 @@ class GeneratorLoader(DataLoaderBase):
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_double_buffer,
-            self._drop_last, True)
+            self._drop_last, False)
 
     def _init_non_iterable(self):
         lod_levels = []

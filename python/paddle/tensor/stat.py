@@ -15,9 +15,10 @@
 # TODO: define statistical functions of a tensor  
 from ..fluid.layers import reduce_mean  #DEFINE_ALIAS
 
-__all__ = ['mean', 'reduce_mean', 'std', 'var']
+__all__ = ['mean', 'reduce_mean', 'std', 'var', 'numel']
 
 import numpy as np
+from ..fluid.framework import Variable
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import core, in_dygraph_mode
 from ..fluid import layers
@@ -31,8 +32,7 @@ def mean(x, axis=None, keepdim=False, name=None):
     Computes the mean of the input tensor's elements along ``axis``.
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64, int32,
-            int64.
+        x (Tensor): The input Tensor with data type float32, float64.
         axis (int|list|tuple, optional): The axis along which to perform mean
             calculations. ``axis`` should be int, list(int) or tuple(int). If
             ``axis`` is a list/tuple of dimension(s), mean is calculated along
@@ -96,9 +96,12 @@ def mean(x, axis=None, keepdim=False, name=None):
         return core.ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
                                     'reduce_all', reduce_all)
 
-    check_variable_and_dtype(x, 'x/input',
-                             ['float32', 'float64', 'int32', 'int64'],
+    check_variable_and_dtype(x, 'x/input', ['float32', 'float64'],
                              'mean/reduce_mean')
+    check_type(axis, 'axis/dim', (int, list, tuple), 'mean/reduce_mean')
+    if isinstance(axis, (list, tuple)):
+        for item in axis:
+            check_type(item, 'elements of axis/dim', (int), 'mean/reduce_mean')
 
     helper = LayerHelper('mean', **locals())
     attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
@@ -244,3 +247,41 @@ def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
         return out
     else:
         return tmp
+
+
+def numel(x, name=None):
+    """
+    Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static mode
+    or a scalar value in imperative mode
+
+    Args:
+        x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
+
+    Returns:
+        Tensor: The number of elements for the input Tensor.
+    
+    Raises:
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
+
+
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        
+        paddle.disable_static()
+        x = paddle.full(shape=[4, 5, 7], fill_value=0, dtype='int32')
+        numel = paddle.numel(x) # 140
+
+
+    """
+    if in_dygraph_mode():
+        return core.ops.size(x)
+
+    if not isinstance(x, Variable):
+        raise TypeError("x must be a Tensor in numel")
+    helper = LayerHelper('numel', **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.INT64)
+    helper.append_op(type='size', inputs={'Input': x}, outputs={'Out': out})
+    return out
