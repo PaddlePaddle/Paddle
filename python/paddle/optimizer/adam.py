@@ -45,8 +45,8 @@ class Adam(Optimizer):
     Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 
     Args:
-        learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
-            It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
+        learning_rate (float|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a LearningRateDecay. The default value is 0.001.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
             It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 0.9.

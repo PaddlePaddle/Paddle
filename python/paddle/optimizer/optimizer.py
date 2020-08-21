@@ -52,8 +52,8 @@ class Optimizer(object):
     but need to use one of it's implementation.
 
     Args:
-        learning_rate (float|Tensor|LearningRateDecay): The learning rate used to update ``Parameter``.
-            It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay.
+        learning_rate (float|LearningRateDecay): The learning rate used to update ``Parameter``.
+            It can be a float value or a LearningRateDecay.
         parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.

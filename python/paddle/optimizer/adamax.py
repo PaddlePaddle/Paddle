@@ -47,8 +47,8 @@ class Adamax(Optimizer):
     it is added here for numerical stability to prevent the division by 0 error.
 
     Args:
-        learning_rate (float|Tensor, optional): The learning rate used to update ``Parameter``.
-            It can be a float value or a ``Tensor`` with a float type. The default value is 0.001.
+        learning_rate (float|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a LearningRateDecay. The default value is 0.001.
         beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
             The default value is 0.9.
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.

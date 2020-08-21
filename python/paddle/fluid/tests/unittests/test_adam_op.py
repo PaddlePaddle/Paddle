@@ -468,16 +468,17 @@ class TestAdamOpV2(unittest.TestCase):
         adam.set_state_dict(state_dict)
 
         #leanrning_rate is Tensor
-        learning_rate = np.array([0.01]).astype("float32")
-        learning_rate = paddle.to_tensor(learning_rate)
-        adam = paddle.optimizer.Adam(
-            learning_rate=learning_rate, parameters=emb.parameters())
+        with self.assertRaises(TypeError):
+            learning_rate = np.array([0.01]).astype("float32")
+            learning_rate = paddle.to_tensor(learning_rate)
+            adam = paddle.optimizer.Adam(
+                learning_rate=learning_rate, parameters=emb.parameters())
 
-        state_dict = adam.state_dict()
-        adam.set_state_dict(state_dict)
+            state_dict = adam.state_dict()
+            adam.set_state_dict(state_dict)
 
-        params = adam.get_opti_var_name_list()
-        assert (params is not None)
+            params = adam.get_opti_var_name_list()
+            assert (params is not None)
 
     def test_adam_op_with_set_lr(self):
         import paddle
