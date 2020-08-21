@@ -24,7 +24,8 @@ class LarsOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.lars_opt = None
         # we do not allow meta optimizer to be inner optimizer currently
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = ["GraphExecutionOptimizer"]
+        self.meta_optimizers_black_list = []
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
