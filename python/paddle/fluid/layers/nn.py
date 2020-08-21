@@ -12205,8 +12205,6 @@ def logical_not(x, out=None, name=None):
 @templatedoc()
 def clip(x, min, max, name=None):
     """
-    :alias_main: paddle.nn.clip
-	:alias: paddle.nn.clip,paddle.nn.clip.clip
 	:old_api: paddle.fluid.layers.clip
 
     ${comment}
