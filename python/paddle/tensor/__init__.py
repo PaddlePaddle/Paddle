@@ -157,6 +157,7 @@ from .math import addmm  #DEFINE_ALIAS
 from .math import clamp  #DEFINE_ALIAS
 from .math import trace  #DEFINE_ALIAS
 from .math import kron  #DEFINE_ALIAS
+from .math import prod  #DEFINE_ALIAS
 # from .random import gaussin        #DEFINE_ALIAS
 # from .random import uniform        #DEFINE_ALIAS
 from .random import shuffle  #DEFINE_ALIAS
@@ -180,5 +181,7 @@ from .stat import mean  #DEFINE_ALIAS
 from .stat import reduce_mean  #DEFINE_ALIAS
 from .stat import std  #DEFINE_ALIAS
 from .stat import var  #DEFINE_ALIAS
+from .stat import numel  #DEFINE_ALIAS
+# from .tensor import Tensor        #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS

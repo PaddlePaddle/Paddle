@@ -4595,7 +4595,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
     Args:
         input (Variable): The input variable which is a Tensor, the data type is float32,
             float64, int32, int64.
-        dim (list|int, optional): The dimensions along which the product is performed. If
+        dim (int|list|tuple, optional): The dimensions along which the product is performed. If
             :attr:`None`, multiply all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
@@ -4635,9 +4635,18 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
     """
     helper = LayerHelper('reduce_prod', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
-        dim = [dim]
+        if isinstance(dim, tuple):
+            dim = list(dim)
+        elif isinstance(dim, int):
+            dim = [dim]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".
+                format(type(dim)))
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod')
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='reduce_prod',
         inputs={'X': input},
@@ -5965,7 +5974,6 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     """
     :alias_main: paddle.reshape
 	:alias: paddle.reshape,paddle.tensor.reshape,paddle.tensor.manipulation.reshape
-	:old_api: paddle.fluid.layers.reshape
 
     This operator changes the shape of ``x`` without changing its data.
 
@@ -6008,14 +6016,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         The parameter ``actual_shape`` will be deprecated in the future and only use ``shape`` instead to represent the target shape.
 
     Args:
-        x(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
-        shape(list|tuple|Variable): Define the target shape. At most one dimension of the target shape can be -1.
+        x(Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        shape(list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
                         The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
-                        If ``shape`` is an Variable, it should be an 1-D Tensor .
+                        If ``shape`` is an Tensor, it should be an 1-D Tensor .
         actual_shape(variable, optional): An 1-D ``Tensor`` or ``LoDTensor`` . The data type is ``int32`` . If provided, reshape
                                 according to this given shape rather than ``shape`` specifying shape.
                                 That is to say ``actual_shape`` has a higher priority
-                                than ``shape(list|tuple)`` but not ``shape(Variable)``. \
+                                than ``shape(list|tuple)`` but not ``shape(Tensor)``. \
                                 This argument ``actual_shape`` will be removed in a future version. \
                                 Instructions for updating: ``actual_shape`` will be removed in future versions and replaced by ``shape``.
         act (str, optional): The non-linear activation to be applied to the reshaped input. Default None.
@@ -6027,10 +6035,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``. It is a new tensor variable if ``inplace`` is ``False``, otherwise it is ``x``. If ``act`` is None, return the reshaped tensor variable, otherwise return the activated tensor variable.
+        Tensor: A reshaped Tensor with the same data type as ``x``. It is a new tensor variable if ``inplace`` is ``False``, otherwise it is ``x``. If ``act`` is None, return the reshaped tensor variable, otherwise return the activated tensor variable.
 
     Raises:
-        TypeError: If actual_shape is neither Variable nor None.
+        TypeError: If actual_shape is neither Tensor nor None.
         ValueError: If more than one elements of ``shape`` is -1.
         ValueError: If the element of ``shape`` is 0, the corresponding dimension should be less than or equal to the dimension of ``x``.
         ValueError: If the elements in ``shape`` is negative except -1.
@@ -6041,7 +6049,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             import paddle.fluid as fluid
 
             # example 1:
-            # attr shape is a list which doesn't contain tensor Variable.
+            # attr shape is a list which doesn't contain Tensors.
             data_1 = fluid.data(
               name='data_1', shape=[2, 4, 6], dtype='float32')
             reshaped_1 = fluid.layers.reshape(
@@ -6049,7 +6057,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             # the shape of reshaped_1 is [2,4,3,2].
 
             # example 2:
-            # attr shape is a list which contains tensor Variable.
+            # attr shape is a list which contains Tensors.
             data_2 = fluid.layers.fill_constant([2,25], "int32", 3)
             dim = fluid.layers.fill_constant([1], "int32", 5)
             reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
@@ -8644,11 +8652,9 @@ def relu(x, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.selu")
 def selu(x, scale=None, alpha=None, name=None):
     """
-    :alias_main: paddle.nn.functional.selu
-	:alias: paddle.nn.functional.selu,paddle.nn.functional.activation.selu
-	:old_api: paddle.fluid.layers.selu
 
     Selu Operator.
 
@@ -9305,12 +9311,9 @@ def elu(x, alpha=1.0, name=None):
     return out
 
 
-@templatedoc()
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.relu6")
 def relu6(x, threshold=6.0, name=None):
     """
-    :alias_main: paddle.nn.functional.relu6
-	:alias: paddle.nn.functional.relu6,paddle.nn.functional.activation.relu6
-	:old_api: paddle.fluid.layers.relu6
 
     ${comment}
 
@@ -11179,6 +11182,7 @@ def rank(input):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.numel")
 def size(input):
     """
     **Size Layer**
@@ -11186,11 +11190,14 @@ def size(input):
     Returns the number of elements for a tensor, which is a int64 Tensor with shape [1].
 
     Args:
-        input (Variable): The input variable.
+        input (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
 
     Returns:
-        Variable: The number of elements for the input variable.
+        Tensor: The number of elements for the input Tensor.
 
+    Raises:
+        TypeError: ``input`` must be a Tensor and the data type of ``input`` must be one of bool, float16, float32, float64, int32, int64.
+    
     Examples:
         .. code-block:: python
 
@@ -11201,6 +11208,11 @@ def size(input):
             rank = layers.size(input) # 300
     """
 
+    if in_dygraph_mode():
+        return core.ops.size(x)
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        "size")
     helper = LayerHelper('size', **locals())
     out = helper.create_variable_for_type_inference(dtype='int64')
     helper.append_op(type='size', inputs={'Input': input}, outputs={'Out': out})

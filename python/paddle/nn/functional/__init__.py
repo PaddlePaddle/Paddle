@@ -47,7 +47,7 @@ from .activation import softplus  #DEFINE_ALIAS
 from .activation import softshrink  #DEFINE_ALIAS
 from .activation import softsign  #DEFINE_ALIAS
 from .activation import swish  #DEFINE_ALIAS
-from .activation import tanh_shrink  #DEFINE_ALIAS
+from .activation import tanhshrink  #DEFINE_ALIAS
 from .activation import thresholded_relu  #DEFINE_ALIAS
 from .activation import log_softmax  #DEFINE_ALIAS
 from .common import dropout  #DEFINE_ALIAS
@@ -120,6 +120,7 @@ from .lod import hash  #DEFINE_ALIAS
 # from .lod import dynamic_gru        #DEFINE_ALIAS
 # from .lod import dynamic_lstm        #DEFINE_ALIAS
 # from .lod import dynamic_lstmp        #DEFINE_ALIAS
+from .loss import binary_cross_entropy  #DEFINE_ALIAS
 from .loss import binary_cross_entropy_with_logits  #DEFINE_ALIAS
 from .loss import bpr_loss  #DEFINE_ALIAS
 from .loss import center_loss  #DEFINE_ALIAS

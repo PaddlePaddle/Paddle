@@ -46,6 +46,7 @@ from ...fluid.framework import _varbase_creator
 from ...fluid.framework import Variable
 
 __all__ = [
+    'binary_cross_entropy',
     'binary_cross_entropy_with_logits',
     'bpr_loss',
     'center_loss',
@@ -75,6 +76,142 @@ __all__ = [
 ]
 
 
+def binary_cross_entropy(input, label, weight=None, reduction='mean',
+                         name=None):
+    """
+    This op measures the binary_cross_entropy loss between input predictions ``input``
+    and target labels ``label`` . The binary_cross_entropy loss can be described as:
+
+    If :attr:`weight` is set, the loss is:
+
+    .. math::
+        Out = -1 * weight * (label * log(input) + (1 - label) * log(1 - input))
+
+    If :attr:`weight` is None, the loss is:
+
+    .. math::
+        Out = -1 * (label * log(input) + (1 - label) * log(1 - input))
+
+    If :attr:`reduction` set to ``'none'``, the interface will return the original loss `Out`.
+
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
+
+    .. math::
+        Out = MEAN(Out)
+
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
+
+    .. math::
+        Out = SUM(Out)
+
+    Note that the input predictions ``input`` always be the output of sigmoid, and the target labels ``label``
+    should be numbers between 0 and 1.
+
+    Parameters:
+        input (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
+            N is batch_size, `*` means number of additional dimensions. The ``input``
+            should always be the output of sigmod.  Available dtype is float32, float64.
+        label (Tensor): The target labels tensor. 2-D tensor with the same shape as
+            ``input``. The target labels which values should be numbers between 0 and 1.
+            Available dtype is float32, float64.
+        weight (Tensor, optional): A manual rescaling weight given to the loss of each
+            batch element. If given, has to be a Tensor of size nbatch and the data type
+            is float32, float64. Default is ``'None'``.
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+
+    Returns:
+        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``input`` , else the shape of output is scalar.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            input_data = np.array([0.5, 0.6, 0.7]).astype("float32")
+            label_data = np.array([1.0, 0.0, 1.0]).astype("float32")
+
+            paddle.disable_static()
+            input = paddle.to_tensor(input_data)
+            label = paddle.to_tensor(label_data)
+            output = paddle.nn.functional.binary_cross_entropy(input, label)
+            print(output.numpy())  # [0.65537095]
+            paddle.enable_static()
+
+    """
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in binary_cross_entropy should be 'sum', "
+            "'mean' or 'none', but received %s, which is not allowed." %
+            reduction)
+
+    if in_dygraph_mode():
+        one = _varbase_creator(dtype=input.dtype)
+        core.ops.fill_constant(one, 'value',
+                               float(1.0), 'force_cpu', False, 'dtype',
+                               one.dtype, 'str_value', '1.0', 'shape', [1])
+        one.stop_gradient = True
+        label_minus = core.ops.elementwise_sub(label, one)
+        input_minus = core.ops.elementwise_sub(one, input)
+        input_minus_log = core.ops.log(input_minus)
+        input_log = core.ops.log(input)
+        loss_1 = core.ops.elementwise_mul(label_minus, input_minus_log)
+        loss_2 = core.ops.elementwise_mul(label, input_log)
+        out = core.ops.elementwise_sub(loss_1, loss_2)
+
+        if weight is not None:
+            out = core.ops.elementwise_mul(out, weight, 'axis', -1)
+
+        if reduction == 'sum':
+            return core.ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
+                                       "reduce_all", True)
+        elif reduction == 'mean':
+            return core.ops.reduce_mean(out, 'dim', [0], 'keep_dim', False,
+                                        "reduce_all", True)
+        else:
+            return out
+
+    fluid.data_feeder.check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'binary_cross_entropy')
+    fluid.data_feeder.check_variable_and_dtype(
+        label, 'label', ['float32', 'float64'], 'binary_cross_entropy')
+
+    one = paddle.fill_constant(shape=[1], value=1.0, dtype=input.dtype)
+    one.stop_gradient = True
+    label_minus = paddle.elementwise_sub(label, one)
+    input_minus = paddle.elementwise_sub(one, input)
+    input_minus_log = paddle.log(input_minus)
+    input_log = paddle.log(input)
+    loss_1 = paddle.multiply(label_minus, input_minus_log)
+    loss_2 = paddle.multiply(label, input_log)
+
+    sub_name = name if weight is None and reduction is 'none' else None
+    out = paddle.elementwise_sub(loss_1, loss_2, name=sub_name)
+
+    if weight is not None:
+        if isinstance(weight, paddle.framework.Variable):
+            weight_name = name if reduction is 'none' else None
+            out = paddle.multiply(out, weight, axis=-1, name=weight_name)
+        else:
+            raise ValueError(
+                "The weight is not a Tensor, please convert to Tensor.")
+
+    if reduction == 'sum':
+        return paddle.sum(out, name=name)
+    elif reduction == 'mean':
+        return paddle.mean(out, name=name)
+    else:
+        return out
+
+
 def binary_cross_entropy_with_logits(logit,
                                      label,
                                      weight=None,
@@ -97,16 +234,16 @@ def binary_cross_entropy_with_logits(logit,
     .. math::
            Out = -Labels * \\log(\\sigma(Logit)) - (1 - Labels) * \\log(1 - \\sigma(Logit))
 
-    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + \\exp^{-Logit}}`. By substituting this we get:
+    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + \\e^{-Logit}}`. By substituting this we get:
 
     .. math::
-           Out = Logit - Logit * Labels + \\log(1 + \\exp^{-Logit})
+           Out = Logit - Logit * Labels + \\log(1 + \\e^{-Logit})
 
-    For stability and to prevent overflow of :math:`\\exp^{-Logit}` when Logit < 0,
+    For stability and to prevent overflow of :math:`\\e^{-Logit}` when Logit < 0,
     we reformulate the loss as follows:
 
     .. math::
-           Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + \\exp^{-\|Logit\|})
+           Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + \\e^{-\|Logit\|})
 
     Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
