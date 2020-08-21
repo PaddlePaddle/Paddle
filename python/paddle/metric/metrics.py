@@ -496,7 +496,7 @@ class Recall(Metric):
         model.prepare(
             optim,
             loss=nn.BCELoss(),
-            metrics=paddle.metric.Recall())
+            metrics=[paddle.metric.Precision(), paddle.metric.Recall()])
         
         data = Data()
         model.fit(data, batch_size=16)
