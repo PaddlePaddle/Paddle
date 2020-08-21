@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import paddle
+from ...fluid.layer_helper import LayerHelper
+from ...fluid.data_feeder import check_variable_and_dtype
+import paddle.fluid as fluid
 
 # TODO: define loss functions of neural network
 import numpy as np
@@ -22,7 +25,6 @@ from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.layers.nn import _elementwise_op_in_dygraph
 from ...fluid.layers import bpr_loss  #DEFINE_ALIAS
 from ...fluid.layers import center_loss  #DEFINE_ALIAS
-from ...fluid.layers import cross_entropy  #DEFINE_ALIAS
 from ...fluid.layers import dice_loss  #DEFINE_ALIAS
 from ...fluid.layers import iou_similarity  #DEFINE_ALIAS
 from ...fluid.layers import log_loss  #DEFINE_ALIAS
@@ -72,7 +74,8 @@ __all__ = [
     'softmax_with_cross_entropy',
     'square_error_cost',
     'ssd_loss',
-    'teacher_student_sigmoid_loss'
+    'teacher_student_sigmoid_loss',
+    'ctc_loss',
 ]
 
 
@@ -488,6 +491,10 @@ def margin_ranking_loss(input,
             loss = paddle.nn.functional.margin_ranking_loss(input, other, label)
             print(loss.numpy()) # [0.75]
     """
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
+            "received %s, which is not allowed." % reduction)
     if fluid.framework.in_dygraph_mode():
         out = core.ops.elementwise_sub(other, input)
         out = core.ops.elementwise_mul(out, label)
@@ -935,3 +942,228 @@ def mse_loss(input, label, reduction='mean', name=None):
         return paddle.sum(paddle.fluid.layers.square(
             paddle.fluid.layers.elementwise_sub(input, label)),
                           name=name)
+
+
+def ctc_loss(log_probs,
+             labels,
+             input_lengths,
+             label_lengths,
+             blank=0,
+             reduction='mean'):
+    """
+
+    An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc) 
+    to compute Connectionist Temporal Classification (CTC) loss. 
+    It can be aliased as softmax with CTC, since a native softmax activation 
+    is interated to the Warp-CTC library to normalize values for each row of the input tensor.
+
+    Parameters:
+        log_probs (Tensor): The unscaled probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type must be float32.
+        labels (Tensor): The ground truth sequence with padding, which must be a 3-D Tensor. The tensor shape is [batch_size, max_label_length], where max_label_length is the longest length of label sequence. The data type must be int32.
+        input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
+        label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
+        blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
+        reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
+
+    Returns:
+        Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
+    
+    Examples:
+
+        .. code-block:: python
+
+            # declarative mode
+            import paddle.nn.functional as F
+            import numpy as np
+            import paddle
+
+            # length of the longest logit sequence
+            max_seq_length = 4
+            #length of the longest label sequence
+            max_label_length = 3
+            # number of logit sequences
+            batch_size = 2
+            # class num
+            class_num = 3
+
+            np.random.seed(1)
+            log_probs = np.array([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
+                                    [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
+
+                                    [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
+                                    [5.38816750e-01, 4.19194520e-01, 6.85219526e-01]],
+
+                                    [[2.04452246e-01, 8.78117442e-01, 2.73875929e-02],
+                                    [6.70467496e-01, 4.17304814e-01, 5.58689833e-01]],
+
+                                    [[1.40386939e-01, 1.98101491e-01, 8.00744593e-01],
+                                    [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
+
+                                    [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
+                                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]]).astype("float32")
+            labels = np.array([[1, 2, 2],
+                            [1, 2, 2]]).astype("int32")
+            input_lengths = np.array([5, 5]).astype("int64")
+            label_lengths = np.array([3, 3]).astype("int64")
+
+            paddle.disable_static()
+            log_probs = paddle.to_variable(log_probs)
+            labels = paddle.to_variable(labels)
+            input_lengths = paddle.to_variable(input_lengths)
+            label_lengths = paddle.to_variable(label_lengths)
+
+            loss = F.ctc_loss(log_probs, labels, 
+                input_lengths, 
+                label_lengths, 
+                blank=0, 
+                reduction='none')
+            print(loss.numpy())  #[3.9179852 2.9076521]
+
+            loss = F.ctc_loss(log_probs, labels, 
+                input_lengths, 
+                label_lengths, 
+                blank=0, 
+                reduction='mean') 
+            print(loss.numpy())  #[1.1376063]
+
+    """
+
+    loss_out = fluid.layers.warpctc(log_probs, labels, blank, False,
+                                    input_lengths, label_lengths)
+
+    loss_out = fluid.layers.squeeze(loss_out, [-1])
+    assert reduction in ['mean', 'sum', 'none']
+    if reduction == 'mean':
+        loss_out = paddle.mean(loss_out / label_lengths)
+    elif reduction == 'sum':
+        loss_out = paddle.sum(loss_out)
+    return loss_out
+
+
+def cross_entropy(input,
+                  label,
+                  weight=None,
+                  ignore_index=-100,
+                  reduction='mean'):
+    """
+    This operator implements the cross entropy loss function. This OP combines ``LogSoftmax``,
+    and ``NLLLoss`` together.
+
+    It is useful when training a classification problem with ``C`` classes.
+    If provided, the optional argument ``weight`` should be a 1D Variable assigning
+    weight to each of the classes.
+
+    For predictions label, and target label, the loss is calculated as follows.
+
+    .. math::
+
+        loss_j =  -\\text{input[class]} +
+        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{input}_i)\\right), j = 1,..., K
+
+    If weight is not ``None``:
+
+    .. math::
+
+        loss_j =  \\text{weight[class]}(-\\text{input[class]} +
+        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{input}_i)\\right)), j = 1,..., K
+
+    Parameters:
+        input (Tensor): Input tensor, the data type is float32, float64. Shape is
+	    (N, C), where C is number of classes, and if shape is more than 2D, this
+	    is (N, C, D1, D2,..., Dk), k >= 1. 
+        label (Tensor): Label tensor, the data type is int64. Shape is (N), where each 
+	    value is 0 <= label[i] <= C-1, and if shape is more than 2D, this is
+	    (N, D1, D2,..., Dk), k >= 1.
+        weight (Tensor, optional): Weight tensor, a manual rescaling weight given
+            to each class and the shape is (C). It has the same dimensions as class
+	    number and the data type is float32, float64. Default is ``'None'``.
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
+            Default is ``'mean'``.
+        ignore_index (int64, optional): Specifies a target value that is ignored
+            and does not contribute to the input gradient. Default is ``-100``.
+
+    Returns:
+        The tensor variable storing the cross_entropy_loss of input and label.
+
+    Return type: Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.disable_static()
+            input_data = np.random.random([5, 100]).astype("float64")
+            label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
+            weight_data = np.random.random([100]).astype("float64")
+            input =  paddle.to_tensor(input_data)
+            label =  paddle.to_tensor(label_data)
+            weight = paddle.to_tensor(weight_data)
+            loss = paddle.nn.functional.cross_entropy(input=input, label=label, weight=weight)
+            print(loss.numpy())
+ 
+    """
+    if not in_dygraph_mode():
+        fluid.data_feeder.check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'cross_entropy_loss')
+        fluid.data_feeder.check_variable_and_dtype(label, 'label', ['int64'],
+                                                   'cross_entropy_loss')
+
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in cross_entropy_loss should be 'sum', 'mean' or"
+            " 'none', but received %s, which is not allowed." % reduction)
+
+    #step 1. log_softmax
+    log_softmax_out = paddle.nn.functional.log_softmax(input)
+    if weight is not None and not isinstance(weight, Variable):
+        raise ValueError(
+            "The weight' is not a Variable, please convert to Variable.")
+
+    #step 2. nll_loss 
+    input = log_softmax_out
+    helper = LayerHelper('nll_loss', **locals())
+    dtype = helper.input_dtype(input)
+
+    if not in_dygraph_mode():
+        fluid.data_feeder.check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'nll_loss')
+        fluid.data_feeder.check_variable_and_dtype(label, 'label', ['int64'],
+                                                   'nll_loss')
+
+    x_shape = list(input.shape)
+    n = x_shape[0]
+    c = x_shape[1]
+    x_dims = len(x_shape)
+    if x_dims < 2:
+        raise ValueError('Expected 2 or more dimensions (got {})'.format(
+            x_dims))
+    if x_dims != 2 and x_dims != 4:
+        input = reshape(input, shape=[n, c, 1, -1])
+        label = reshape(label, shape=[n, 1, -1])
+        out_shape = [n] + x_shape[2:]
+
+    if not in_dygraph_mode():
+        fluid.data_feeder.check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'nll_loss')
+        fluid.data_feeder.check_variable_and_dtype(label, 'label', ['int64'],
+                                                   'nll_loss')
+    inputs = {'X': input, 'Label': label}
+    attrs = {'reduction': reduction, 'ignore_index': ignore_index}
+    if weight is not None:
+        if isinstance(weight, Variable):
+            inputs['Weight'] = weight
+
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    total_weight = helper.create_variable_for_type_inference(dtype=input.dtype)
+    outputs = {'Out': out, 'Total_weight': total_weight}
+
+    helper.append_op(
+        type='nll_loss', inputs=inputs, outputs=outputs, attrs=attrs)
+    if x_dims != 2 and x_dims != 4 and reduction == 'none':
+        out = reshape(out, shape=out_shape)
+
+    return out

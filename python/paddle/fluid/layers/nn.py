@@ -1189,6 +1189,7 @@ def chunk_eval(input,
             num_correct_chunks)
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.softmax")
 def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
     This operator implements the softmax layer. The calculation process is as follows:
@@ -8610,7 +8611,7 @@ def log(x, name=None):
     return out
 
 
-@templatedoc()
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.relu")
 def relu(x, name=None):
     """
     ${comment}
@@ -9269,7 +9270,7 @@ def pad2d(input,
     return out
 
 
-@templatedoc()
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.elu")
 def elu(x, alpha=1.0, name=None):
     """
     :alias_main: paddle.nn.functional.elu
@@ -9585,6 +9586,7 @@ def swish(x, beta=1.0, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.prelu")
 def prelu(x, mode, param_attr=None, name=None):
     """
     :api_attr: Static Graph
@@ -10325,6 +10327,7 @@ def expand_as(x, target_tensor, name=None):
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
+@deprecated(since='1.8.0', update_to="paddle.uniform")
 @templatedoc()
 def uniform_random_batch_size_like(input,
                                    shape,
@@ -10594,6 +10597,7 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     return out
 
 
+@deprecated(since='1.8.0', update_to="paddle.normal")
 @templatedoc()
 def gaussian_random_batch_size_like(input,
                                     shape,
@@ -12203,8 +12207,6 @@ def logical_not(x, out=None, name=None):
 @templatedoc()
 def clip(x, min, max, name=None):
     """
-    :alias_main: paddle.nn.clip
-	:alias: paddle.nn.clip,paddle.nn.clip.clip
 	:old_api: paddle.fluid.layers.clip
 
     ${comment}

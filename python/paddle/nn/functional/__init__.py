@@ -25,18 +25,21 @@ from . import extension
 __all__ += extension.__all__
 from . import common
 __all__ += common.__all__
+from . import loss
+__all__ += loss.__all__
 from .activation import brelu  #DEFINE_ALIAS
 from .activation import elu  #DEFINE_ALIAS
 from .activation import erf  #DEFINE_ALIAS
 from .activation import gelu  #DEFINE_ALIAS
 from .activation import hardshrink  #DEFINE_ALIAS
+from .activation import hardtanh  #DEFINE_ALIAS
 from .activation import hard_sigmoid  #DEFINE_ALIAS
 from .activation import hard_swish  #DEFINE_ALIAS
 from .activation import hsigmoid  #DEFINE_ALIAS
 from .activation import leaky_relu  #DEFINE_ALIAS
 from .activation import logsigmoid  #DEFINE_ALIAS
 from .activation import maxout  #DEFINE_ALIAS
-# from .activation import prelu        #DEFINE_ALIAS
+from .activation import prelu  #DEFINE_ALIAS
 from .activation import relu  #DEFINE_ALIAS
 from .activation import relu6  #DEFINE_ALIAS
 from .activation import selu  #DEFINE_ALIAS
@@ -147,6 +150,7 @@ from .loss import softmax_with_cross_entropy  #DEFINE_ALIAS
 from .loss import square_error_cost  #DEFINE_ALIAS
 from .loss import ssd_loss  #DEFINE_ALIAS
 from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
+from .loss import ctc_loss  #DEFINE_ALIAS
 # from .norm import batch_norm        #DEFINE_ALIAS
 # from .norm import data_norm        #DEFINE_ALIAS
 # from .norm import group_norm        #DEFINE_ALIAS
@@ -160,6 +164,8 @@ from .pooling import pool2d  #DEFINE_ALIAS
 from .pooling import pool3d  #DEFINE_ALIAS
 from .pooling import adaptive_pool2d  #DEFINE_ALIAS
 from .pooling import adaptive_pool3d  #DEFINE_ALIAS
+from .pooling import adaptive_avg_pool2d  #DEFINE_ALIAS
+from .pooling import adaptive_avg_pool3d  #DEFINE_ALIAS
 # from .rnn import gru_unit        #DEFINE_ALIAS
 # from .rnn import lstm        #DEFINE_ALIAS
 # from .rnn import lstm_unit        #DEFINE_ALIAS
