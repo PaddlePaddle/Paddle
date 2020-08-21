@@ -4434,7 +4434,6 @@ class Program(object):
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
             p._appending_grad_times = self._appending_grad_times
-            #set lr
             if hasattr(self, 'lr_sheduler'):
                 p.lr_sheduler = self.lr_sheduler
 

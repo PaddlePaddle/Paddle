@@ -20,7 +20,9 @@ __all__ = [
     'LambOptimizer', 'LarsMomentum', 'LarsMomentumOptimizer',
     'LookaheadOptimizer', 'ModelAverage', 'Momentum', 'MomentumOptimizer',
     'PipelineOptimizer', 'RecomputeOptimizer', 'RMSPropOptimizer', 'SGD',
-    'SGDOptimizer'
+    'SGDOptimizer', 'NoamLR', 'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR',
+    'PolynomialLR', 'LinearLrWarmup', 'ExponentialLR', 'MultiStepLR', 'StepLR',
+    'LambdaLR', 'ReduceLROnPlateau', 'CosineAnnealingLR'
 ]
 
 
@@ -33,6 +35,6 @@ from ..fluid.optimizer import  SGD, Momentum, Adagrad, Adam, Adamax, Dpsgd, Deca
             ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, \
             RecomputeOptimizer
 
-from ..fluid import lr_scheduler
-from ..fluid.lr_scheduler import NoamLR, PiecewiseLR, NaturalExpLR, InverseTimeLR, PolynomialLR, \
+from . import lr_scheduler
+from .lr_scheduler import NoamLR, PiecewiseLR, NaturalExpLR, InverseTimeLR, PolynomialLR, \
             LinearLrWarmup, ExponentialLR, MultiStepLR, StepLR, LambdaLR, ReduceLROnPlateau, CosineAnnealingLR

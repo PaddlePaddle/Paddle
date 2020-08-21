@@ -585,8 +585,11 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
                     'threshold_mode': n,
                     'epsilon': 1e-8
                 }
+            paddle.enable_static()
             self._test_static(place, kwargs)
-            #self._test_dygraph(place, kwargs)
+            paddle.disable_static(place)
+            self._test_dygraph(place, kwargs)
+            paddle.enable_static()
 
     def _test_static(self, place, kwargs):
         paddle.enable_static()
@@ -667,8 +670,6 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
                 kwargs['factor'], kwargs['threshold'], kwargs['cooldown'],
                 kwargs['patience'], kwargs['mode'], kwargs['threshold_mode'],
                 loss, var_list)
-            print(current_lr)
-            print(expected_lr)
             self.assertEqual(current_lr, expected_lr)
 
 
@@ -693,16 +694,16 @@ def piecewise_lr(epoch_num, boundaries, values, verbose=False):
     return values[len(values) - 1]
 
 
-def exponential_lr(epoch_num, learning_rate, gama, verbose=False):
-    return learning_rate * gama**epoch_num
+def exponential_lr(epoch_num, learning_rate, gamma, verbose=False):
+    return learning_rate * gamma**epoch_num
 
 
-def natural_exp_lr(epoch_num, learning_rate, gama, verbose=False):
-    return learning_rate * math.exp(-1 * gama * epoch_num)
+def natural_exp_lr(epoch_num, learning_rate, gamma, verbose=False):
+    return learning_rate * math.exp(-1 * gamma * epoch_num)
 
 
-def inverse_time_lr(epoch_num, learning_rate, gama, verbose=False):
-    return learning_rate / (1 + gama * epoch_num)
+def inverse_time_lr(epoch_num, learning_rate, gamma, verbose=False):
+    return learning_rate / (1 + gamma * epoch_num)
 
 
 def polynomial_lr(epoch_num,
@@ -771,21 +772,23 @@ def linear_warmup_lr(epoch_num,
         return learning_rate
 
 
-def multi_step_lr(epoch_num, learning_rate, milestones, gama=0.1,
+def multi_step_lr(epoch_num,
+                  learning_rate,
+                  milestones,
+                  gamma=0.1,
                   verbose=False):
     for i in range(len(milestones)):
         if epoch_num < milestones[i]:
-            return learning_rate * (gama**i)
-    return learning_rate * (gama**len(milestones))
+            return learning_rate * (gamma**i)
+    return learning_rate * (gamma**len(milestones))
 
 
-def step_lr(epoch_num, learning_rate, step_size, gama=0.1, verbose=False):
-    return learning_rate * math.pow(gama, epoch_num // step_size)
+def step_lr(epoch_num, learning_rate, step_size, gamma=0.1, verbose=False):
+    return learning_rate * math.pow(gamma, epoch_num // step_size)
 
 
 class TestLRScheduler(unittest.TestCase):
     def _test_static(self, python_func, paddle_api, kwarg, place):
-        paddle.enable_static()
         main_prog = fluid.Program()
         start_prog = fluid.Program()
         with fluid.program_guard(main_prog, start_prog):
@@ -882,7 +885,6 @@ class TestLRScheduler(unittest.TestCase):
                 num += 1
 
     def _test_dygraph(self, python_func, paddle_api, kwarg, place):
-        paddle.disable_static(place)
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle_api(**kwarg)
@@ -912,11 +914,11 @@ class TestLRScheduler(unittest.TestCase):
             "verbose": False
         }), (natural_exp_lr, paddle.optimizer.NaturalExpLR, {
             "learning_rate": 0.5,
-            "gama": 0.1,
+            "gamma": 0.1,
             "verbose": False
         }), (inverse_time_lr, paddle.optimizer.InverseTimeLR, {
             "learning_rate": 0.5,
-            "gama": 0.1,
+            "gamma": 0.1,
             "verbose": True
         }), (polynomial_lr, paddle.optimizer.PolynomialLR, {
             "learning_rate": 0.5,
@@ -932,17 +934,17 @@ class TestLRScheduler(unittest.TestCase):
             "verbose": False
         }), (exponential_lr, paddle.optimizer.ExponentialLR, {
             "learning_rate": 0.5,
-            "gama": 0.9,
+            "gamma": 0.9,
             "verbose": False
         }), (multi_step_lr, paddle.optimizer.MultiStepLR, {
             "learning_rate": 0.5,
             "milestones": [3, 6, 9, 15, 20],
-            "gama": 0.8,
+            "gamma": 0.8,
             "verbose": True
         }), (step_lr, paddle.optimizer.StepLR, {
             "learning_rate": 0.5,
             "step_size": 2,
-            "gama": 0.8,
+            "gamma": 0.8,
             "verbose": False
         }), (lambda_lr, paddle.optimizer.LambdaLR, {
             "learning_rate": 0.5,
@@ -960,8 +962,11 @@ class TestLRScheduler(unittest.TestCase):
                 places.append(fluid.CUDAPlace(0))
 
             for place in places:
+                paddle.enable_static()
                 self._test_static(python_func, paddle_api, kwarg, place)
+                paddle.disable_static(place)
                 self._test_dygraph(python_func, paddle_api, kwarg, place)
+                paddle.enable_static()
 
 
 if __name__ == '__main__':

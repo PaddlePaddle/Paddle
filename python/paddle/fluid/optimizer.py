@@ -41,8 +41,6 @@ from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 
-from .lr_scheduler import _LRScheduler
-
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
     'Ftrl', 'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer',
@@ -69,6 +67,8 @@ class Optimizer(object):
                  regularization=None,
                  grad_clip=None,
                  name=None):
+        # Because of the loop import, so place it in the function body
+        from paddle.optimizer.lr_scheduler import _LRScheduler
         self._parameter_list = list(
             parameter_list) if parameter_list is not None else None
         self._name = name
@@ -145,6 +145,7 @@ class Optimizer(object):
                     state_dict = adam.state_dict()
 
         '''
+        from paddle.optimizer.lr_scheduler import _LRScheduler
         state_dict = {}
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
@@ -196,6 +197,7 @@ class Optimizer(object):
                     adam.set_dict(opti_state_dict)
 
         '''
+        from paddle.optimizer.lr_scheduler import _LRScheduler
         if isinstance(self._learning_rate, _LRScheduler):
             self._learning_rate.set_dict(state_dict["LR_Scheduler"])
 
@@ -258,11 +260,11 @@ class Optimizer(object):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
+        from paddle.optimizer.lr_scheduler import _LRScheduler
         if isinstance(self._learning_rate, _LRScheduler):
             lr_var = self._global_learning_rate()
             # only create global lr_var once
             if not isinstance(lr_var, framework.Variable):
-                print("create global learning rate")
                 lr_name = unique_name.generate('learning_rate')
                 self._learning_rate._var_name = lr_name
                 lr_var = self.helper.create_global_variable(

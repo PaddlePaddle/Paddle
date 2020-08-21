@@ -34,8 +34,6 @@ import copy
 from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
 
-from .lr_scheduler import _LRScheduler
-
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
 g_scope = core.Scope()
@@ -619,7 +617,6 @@ class Executor(object):
 
         # prepend feed operators
         if not has_feed_operators(global_block, feed, feed_var_name):
-
             for i, name in enumerate(feed):
                 if global_block.has_var(name):
                     out = global_block.var(name)
@@ -853,6 +850,7 @@ class Executor(object):
 
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy, return_merged):
+        from paddle.optimizer.lr_scheduler import _LRScheduler
         exe = program._executor
         # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
         # instead of program. We will add support for checking Vars in Graph
@@ -894,7 +892,6 @@ class Executor(object):
                         check_feed_shape_type(var, tensor)
                     res_dict[feed_name] = tensor
                 res.append(res_dict)
-
             exe.feed_tensors_into_local_scopes(res)
 
         if hasattr(program._program, 'lr_sheduler'):
@@ -1084,7 +1081,6 @@ class Executor(object):
                 #  [-0.49232286 -0.25939852]
                 #  [-0.44514108 -0.2345845 ]]
         """
-
         try:
             return self._run_impl(
                 program=program,
@@ -1237,7 +1233,7 @@ class Executor(object):
 
     def _run_program(self, program, feed, fetch_list, feed_var_name,
                      fetch_var_name, scope, return_numpy, use_program_cache):
-
+        from paddle.optimizer.lr_scheduler import _LRScheduler
         if feed is None:
             feed = {}
         elif isinstance(feed, (list, tuple)):
@@ -1293,7 +1289,6 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
-        #set lr
         if hasattr(program, 'lr_sheduler'):
             assert isinstance(program.lr_sheduler,
                               _LRScheduler), "must be _LRScheduler"
