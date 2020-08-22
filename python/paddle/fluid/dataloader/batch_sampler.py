@@ -16,7 +16,7 @@ from __future__ import print_function
 from __future__ import division
 
 import numpy as np
-from .sampler import Sampler, SequenceSampler
+from .sampler import Sampler, SequenceSampler, RandomSampler
 from .dataset import Dataset, IterableDataset
 
 __all__ = ["BatchSampler"]
