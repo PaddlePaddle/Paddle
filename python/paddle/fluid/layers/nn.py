@@ -932,6 +932,7 @@ def cos_sim(X, Y):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.dropout")
 def dropout(x,
             dropout_prob,
             is_test=False,
@@ -939,9 +940,6 @@ def dropout(x,
             name=None,
             dropout_implementation="downgrade_in_infer"):
     """
-    :alias_main: paddle.nn.functional.dropout
-	:alias: paddle.nn.functional.dropout,paddle.nn.functional.common.dropout
-	:old_api: paddle.fluid.layers.dropout
 
     Computes dropout.
 
