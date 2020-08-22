@@ -39,6 +39,20 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestGatherNdOpWithIndex1(OpTest):
+    def setUp(self):
+        self.op_type = "gather_nd"
+        xnp = np.random.random((5, 20)).astype("float64")
+        self.inputs = {'X': xnp, 'Index': np.array([1]).astype("int32")}
+        self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestGatherNdOpWithLowIndex(OpTest):
     #Index has low rank, X has high rank
 
@@ -50,6 +64,25 @@ class TestGatherNdOpWithLowIndex(OpTest):
         self.inputs = {'X': xnp, 'Index': index}
 
         self.outputs = {'Out': xnp[tuple(index.T)]}  #[[14, 25, 1], [76, 22, 3]]
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestGatherNdOpIndex1(OpTest):
+    #Index has low rank, X has high rank
+
+    def setUp(self):
+        self.op_type = "gather_nd"
+        xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
+        index = np.array([1, 2]).astype("int64")
+
+        self.inputs = {'X': xnp, 'Index': index}
+
+        self.outputs = {'Out': xnp[tuple(index.T)]}
 
     def test_check_output(self):
         self.check_output()
