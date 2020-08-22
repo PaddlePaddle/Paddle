@@ -91,10 +91,8 @@ class TestRandomSampler(unittest.TestCase):
     def test_with_generator_num_samples(self):
         dataset = RandomDataset(100, 10)
         generator = iter(range(0, 60))
-        sampler = RandomSampler(dataset,
-                                generator=generator,
-                                num_samples=50,
-                                replacement=True)
+        sampler = RandomSampler(
+            dataset, generator=generator, num_samples=50, replacement=True)
         assert len(sampler) == 50
 
         rets = []
