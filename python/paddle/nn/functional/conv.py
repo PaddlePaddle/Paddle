@@ -328,7 +328,7 @@ def conv2d(input,
     return out
 
 
-def conv_transpose1d(input,
+def conv_transpose1d(x,
                      weight,
                      bias=None,
                      stride=1,
@@ -393,13 +393,13 @@ def conv_transpose1d(input,
           and :math:`L^\prime_{out} + stride`. conv1d_transpose can compute the kernel size automatically.
 
     Args:
-        input(Tensor): 3-D tensor with [N, C, L] or [N, L, C] format,
+        x(Tensor): 3-D tensor with [N, C, L] or [N, L, C] format,
                          its data type is float32 or float64.
         weight(Tensor): The convolution kernel, a Tensor with shape [C, M/g, K],
             where M is the number of output channels(filters), g is the number of groups,
             K is the size of the kernel.
         bias(Tensor, optional): The bias, a Tensor with shape [M, ].
-        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
+        stride(int|tuple|list, optional): The stride size. It means the stride in transposed convolution.
             If stride is a tuple, it must contain one integer, `(stride_size)`.
             Default: stride = 1.
         padding(int|list|str|tuple, optional): The padding size. The padding argument effectively adds
@@ -415,10 +415,10 @@ def conv_transpose1d(input,
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups = 1.
-        dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points.
+        dilation(int|tuple|list, optional): The dilation size. It means the spacing between the kernel points.
             If dilation is a tuple, it must contain one integer, `(dilation_size)`.
             Default: dilation = 1.
-        output_size(int|tuple, optional): The output image size. If output size is a
+        output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple, it must contain one integer, `(feature_length)`. None if use
             filter_size, padding, and stride to calculate output_size.
             If output_size and filter_size are specified at the same time, They
@@ -488,16 +488,16 @@ def conv_transpose1d(input,
     channel_last = (data_format == "NLC")
     channel_dim = -1 if channel_last else 1
 
-    num_channels = input.shape[channel_dim]
+    num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError("The channel dimmention of the input({}) "
                          "should be defined. Received: {}.".format(
-                             input.shape, num_channels))
+                             x.shape, num_channels))
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
             "received: the channel of input is {}, the shape of input is {}"
-            ", the groups is {}".format(num_channels, input.shape, groups))
+            ", the groups is {}".format(num_channels, x.shape, groups))
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 1)
@@ -536,7 +536,7 @@ def conv_transpose1d(input,
     squeeze_axis = -2 if channel_last else -1
     conv2d_data_format = "NHWC" if channel_last else "NCHW"
 
-    input = nn.unsqueeze(input=input, axes=[squeeze_axis])
+    x = nn.unsqueeze(input=x, axes=[squeeze_axis])
     weight = nn.unsqueeze(input=weight, axes=[-1])
 
     if in_dygraph_mode():
@@ -544,11 +544,11 @@ def conv_transpose1d(input,
                  padding, 'padding_algorithm', padding_algorithm, 'dilations',
                  dilation, 'groups', groups, 'use_cudnn', use_cudnn,
                  'data_format', conv2d_data_format)
-        out = getattr(core.ops, op_type)(input, weight, *attrs)
+        out = getattr(core.ops, op_type)(x, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
     else:
-        inputs = {'Input': [input], 'Filter': [weight]}
+        inputs = {'Input': [x], 'Filter': [weight]}
         attrs = {
             'output_size': output_size,
             'strides': stride,
@@ -559,8 +559,7 @@ def conv_transpose1d(input,
             'use_cudnn': use_cudnn,
             'data_format': conv2d_data_format
         }
-        check_variable_and_dtype(input, 'input',
-                                 ['float16', 'float32', 'float64'],
+        check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                                  'conv2d_transpose')
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype()
