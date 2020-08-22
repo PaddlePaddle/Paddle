@@ -625,18 +625,19 @@ def unique(x,
         x(Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
         return_index(bool, optional): If True, also return the indices of the input tensor that
             result in the unique Tensor.
-        return_inverse(bool. optional): If True, also return the indices for where elements in
+        return_inverse(bool, optional): If True, also return the indices for where elements in
             the original input ended up in the returned unique tensor.
         return_counts(bool, optional): If True, also return the counts for each unique element.
         axis(int, optional): The axis to apply unique. If None, the input will be flattened.
-            default: None.
+            Default: None.
         name(str, optional): Name for the operation. For more information, please refer to
             :ref:`api_guide_Name`. Default: None.
 
-    Returns:
-        tuple: (out, indices, inverse, counts). `out` is the unique tensor
-        for `x`.`indices` is only provided if `return_index` is True. `inverse` is
-        only provided if `return_inverse` is True. `counts` is only provided if `return_counts` is True.
+    Returns: 
+        out(Tensor): The unique tensor for `x`.
+        indices(Tensor, optional): The indices is provided only if `return_index` is True. 
+        inverse(Tensor, optional): The inverse is provided only if `return_inverse` is True. 
+        counts(Tensor, optional): The counts is provided only if `return_counts` is True.
 
     Examples:
         .. code-block:: python
