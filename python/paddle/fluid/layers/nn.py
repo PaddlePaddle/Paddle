@@ -12301,13 +12301,10 @@ def clip_by_norm(x, max_norm, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.mean")
 @templatedoc()
 def mean(x, name=None):
     """
-    :alias_main: paddle.mean
-	:alias: paddle.mean,paddle.tensor.mean,paddle.tensor.stat.mean
-	:old_api: paddle.fluid.layers.mean
-
     ${comment}
 
     Args:
