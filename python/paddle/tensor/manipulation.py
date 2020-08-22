@@ -110,9 +110,9 @@ def concat(x, axis=0, name=None):
                             [14, 15, 16]])
             in3 = np.array([[21, 22],
                             [23, 24]])
-            x1 = paddle.to_variable(in1)
-            x2 = paddle.to_variable(in2)
-            x3 = paddle.to_variable(in3)
+            x1 = paddle.to_tensor(in1)
+            x2 = paddle.to_tensor(in2)
+            x3 = paddle.to_tensor(in3)
             zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
             # When the axis is negative, the real axis is (axis + Rank(x))
             # As follow, axis is -1, Rank(x) is 2, the real axis is 1
@@ -506,7 +506,7 @@ def split(x, num_or_sections, axis=0, name=None):
             paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.to_variable(x_np)
+            x = paddle.to_tensor(x_np)
 
             out0, out1, out22 = paddle.split(x, num_or_sections=3, axis=1)
             # out0.shape [3, 3, 5]
