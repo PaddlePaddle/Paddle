@@ -72,6 +72,7 @@ from .extension import RowConv  #DEFINE_ALIAS
 # from .learning_rate import PiecewiseDecay        #DEFINE_ALIAS
 # from .learning_rate import PolynomialDecay        #DEFINE_ALIAS
 # from .loss import NCELoss        #DEFINE_ALIAS
+from .loss import BCEWithLogitsLoss  #DEFINE_ALIAS
 from .loss import CrossEntropyLoss  #DEFINE_ALIAS
 from .loss import MSELoss  #DEFINE_ALIAS
 from .loss import L1Loss  #DEFINE_ALIAS
