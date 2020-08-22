@@ -163,6 +163,7 @@ class NoamLR(_LRScheduler):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
         # train on default dygraph mode
         paddle.disable_static()
@@ -261,6 +262,7 @@ class PiecewiseLR(_LRScheduler):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
         # train on default dygraph mode
         paddle.disable_static()
@@ -345,6 +347,7 @@ class NaturalExpLR(_LRScheduler):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
         # train on default dygraph mode
         paddle.disable_static()
@@ -424,6 +427,7 @@ class InverseTimeLR(_LRScheduler):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
         # train on default dygraph mode
         paddle.disable_static()
@@ -519,6 +523,7 @@ class PolynomialLR(_LRScheduler):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
         # train on default dygraph mode
         paddle.disable_static()
@@ -615,6 +620,7 @@ class LinearLrWarmup(_LRScheduler):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
         # train on default dygraph mode
         paddle.disable_static()
@@ -721,6 +727,7 @@ class ExponentialLR(_LRScheduler):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
         # train on default dygraph mode
         paddle.disable_static()
@@ -809,6 +816,7 @@ class MultiStepLR(_LRScheduler):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
         # train on default dygraph mode
         paddle.disable_static()
@@ -918,6 +926,7 @@ class StepLR(_LRScheduler):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
         # train on default dygraph mode
         paddle.disable_static()
@@ -1014,6 +1023,7 @@ class LambdaLR(_LRScheduler):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
         # train on default dygraph mode
         paddle.disable_static()
@@ -1114,6 +1124,7 @@ class ReduceLROnPlateau(_LRScheduler):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
         # train on default dygraph mode
         paddle.disable_static()
@@ -1320,6 +1331,7 @@ class CosineAnnealingLR(_LRScheduler):
         .. code-block:: python
 
         import paddle
+        import numpy as np
 
         # train on default dygraph mode
         paddle.disable_static()
