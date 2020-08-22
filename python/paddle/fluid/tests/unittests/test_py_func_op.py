@@ -147,8 +147,7 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
 
     with fluid.program_guard(fluid.Program(), fluid.Program()):
         with fluid.scope_guard(fluid.core.Scope()):
-            fluid.default_main_program().random_seed = 1
-            fluid.default_startup_program().random_seed = 1
+            paddle.manual_seed(1)
             np.random.seed(1)
 
             img = fluid.layers.data(name='image', shape=[784], dtype='float32')
