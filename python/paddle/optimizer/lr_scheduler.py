@@ -65,7 +65,7 @@ class _LRScheduler(object):
             None
         
         Examples:
-            Please refer to the example of current _LRScheduler.
+            Please refer to the example of current _LRScheduler. 
         """
         if epoch is None:
             self.last_epoch += 1
