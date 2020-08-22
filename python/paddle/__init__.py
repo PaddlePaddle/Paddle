@@ -91,7 +91,7 @@ from .tensor.logic import equal  #DEFINE_ALIAS
 from .tensor.logic import greater_equal  #DEFINE_ALIAS
 from .tensor.logic import greater_than  #DEFINE_ALIAS
 from .tensor.logic import is_empty  #DEFINE_ALIAS
-from .tensor.logic import isfinite  #DEFINE_ALIAS
+#from .tensor.logic import isfinite  #DEFINE_ALIAS
 from .tensor.logic import less_equal  #DEFINE_ALIAS
 from .tensor.logic import less_than  #DEFINE_ALIAS
 from .tensor.logic import logical_and  #DEFINE_ALIAS
@@ -193,6 +193,9 @@ from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clip  #DEFINE_ALIAS
 from .tensor.math import trace  #DEFINE_ALIAS
 from .tensor.math import kron  #DEFINE_ALIAS
+from .tensor.math import isfinite  #DEFINE_ALIAS
+from .tensor.math import isinf  #DEFINE_ALIAS
+from .tensor.math import isnan  #DEFINE_ALIAS
 from .tensor.math import prod  #DEFINE_ALIAS
 # from .tensor.random import gaussin        #DEFINE_ALIAS
 from .tensor.random import uniform  #DEFINE_ALIAS
