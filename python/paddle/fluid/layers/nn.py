@@ -8353,6 +8353,7 @@ def gather_nd(input, index, name=None):
     return output
 
 
+@deprecated(since="2.0.0", update_to="paddle.scatter")
 def scatter(input, index, updates, name=None, overwrite=True):
     """
     :alias_main: paddle.scatter

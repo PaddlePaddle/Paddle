@@ -12,47 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.data import data as fluid_data
 import paddle
+import numpy as np
+import six
+
+from paddle.fluid import core
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.data_feeder import check_dtype, check_type
 
 __all__ = ['data', 'InputSpec']
-
-
-class InputSpec(object):
-    """
-    Define input specification of the model.
-
-    Args:
-        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
-            for more details.
-        shape (tuple(integers)|list[integers]): List|Tuple of integers
-            declaring the shape. You can set "None" or -1 at a dimension
-            to indicate the dimension can be of any size. For example,
-            it is useful to set changeable batch size as "None" or -1.
-        dtype (np.dtype|VarType|str, optional): The type of the data. Supported
-            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
-            uint8. Default: float32.
-
-    Examples:
-        .. code-block:: python
-
-        from paddle.static import InputSpec
-
-        input = InputSpec([None, 784], 'float32', 'x')
-        label = InputSpec([None, 1], 'int64', 'label')
-    """
-
-    def __init__(self, shape=None, dtype='float32', name=None):
-        self.shape = shape
-        self.dtype = dtype
-        self.name = name
-
-    def _create_feed_layer(self):
-        return fluid_data(self.name, shape=self.shape, dtype=self.dtype)
-
-    def __repr__(self):
-        return '{}(shape={}, dtype={}, name={})'.format(
-            type(self).__name__, self.shape, self.dtype, self.name)
 
 
 def data(name, shape, dtype=None, lod_level=0):
@@ -62,8 +30,7 @@ def data(name, shape, dtype=None, lod_level=0):
     This function creates a variable on the global block. The global variable
     can be accessed by all the following operators in the graph. The variable
     is a placeholder that could be fed with input, such as Executor can feed
-    input into the variable. Except the `dtype` is different in default parameter 
-    settings, It is similar as `fluid.data` api. When `dtype` is not set, the dtype
+    input into the variable. When `dtype` is None, the dtype
     will get from the global dtype by `paddle.get_default_dtype()`.
 
     Args:
@@ -74,7 +41,7 @@ def data(name, shape, dtype=None, lod_level=0):
            size. For example, it is useful to set changeable batch size as "None" or -1.
        dtype (np.dtype|VarType|str, optional): The type of the data. Supported
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
-           uint8. Default: float32. When `dtype` is not set, the dtype will get 
+           uint8. Default: None. When `dtype` is not set, the dtype will get 
            from the global dtype by `paddle.get_default_dtype()`.
        lod_level (int, optional): The LoD level of the LoDTensor. Usually users
            don't have to set this value. For more details about when and how to
@@ -120,7 +87,69 @@ def data(name, shape, dtype=None, lod_level=0):
           print(out)
 
     """
+    helper = LayerHelper('data', **locals())
+    check_type(name, 'name', (six.binary_type, six.text_type), 'data')
+    check_type(shape, 'shape', (list, tuple), 'data')
+
+    shape = list(shape)
+    for i in six.moves.range(len(shape)):
+        if shape[i] is None:
+            shape[i] = -1
+
     if dtype:
-        return fluid_data(name, shape, dtype, lod_level)
+        return helper.create_global_variable(
+            name=name,
+            shape=shape,
+            dtype=dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            stop_gradient=True,
+            lod_level=lod_level,
+            is_data=True,
+            need_check_feed=True)
     else:
-        return fluid_data(name, shape, paddle.get_default_dtype(), lod_level)
+        return helper.create_global_variable(
+            name=name,
+            shape=shape,
+            dtype=paddle.get_default_dtype(),
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            stop_gradient=True,
+            lod_level=lod_level,
+            is_data=True,
+            need_check_feed=True)
+
+
+class InputSpec(object):
+    """
+    Define input specification of the model.
+
+    Args:
+        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
+            for more details.
+        shape (tuple(integers)|list[integers]): List|Tuple of integers
+            declaring the shape. You can set "None" or -1 at a dimension
+            to indicate the dimension can be of any size. For example,
+            it is useful to set changeable batch size as "None" or -1.
+        dtype (np.dtype|str, optional): The type of the data. Supported
+            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
+            uint8. Default: float32.
+
+    Examples:
+        .. code-block:: python
+
+        from paddle.static import InputSpec
+
+        input = InputSpec([None, 784], 'float32', 'x')
+        label = InputSpec([None, 1], 'int64', 'label')
+    """
+
+    def __init__(self, shape=None, dtype='float32', name=None):
+        self.shape = shape
+        self.dtype = dtype
+        self.name = name
+
+    def _create_feed_layer(self):
+        return data(self.name, shape=self.shape, dtype=self.dtype)
+
+    def __repr__(self):
+        return '{}(shape={}, dtype={}, name={})'.format(
+            type(self).__name__, self.shape, self.dtype, self.name)
