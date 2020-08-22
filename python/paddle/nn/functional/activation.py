@@ -419,7 +419,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 
             paddle.disable_static()
 
-            x = paddle.to_tensor(np.array([-2, 0, 1]))
+            x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
             out = F.leaky_relu(x) # [-0.02, 0., 1.]
 
     """
@@ -466,11 +466,11 @@ def prelu(x, weight, name=None):
             paddle.disable_static()
 
             data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
-                            [ 3.0, -4.0,  5.0, -6.0],
-                            [-7.0, -8.0,  8.0,  9.0]],
-                            [[ 1.0, -2.0, -3.0,  4.0],
-                            [-5.0,  6.0,  7.0, -8.0],
-                            [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
+                               [ 3.0, -4.0,  5.0, -6.0],
+                               [-7.0, -8.0,  8.0,  9.0]],
+                              [[ 1.0, -2.0, -3.0,  4.0],
+                               [-5.0,  6.0,  7.0, -8.0],
+                               [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
             x = paddle.to_tensor(data)
             w = paddle.to_tensor(np.array([0.25]).astype('float32'))
             out = F.prelu(x, w)
