@@ -59,18 +59,6 @@ class GridSampleOp : public framework::OperatorWithKernel {
               "Input(X) and Input(Grid) dimension[0] should be equal, but "
               "received X dimension[0](%d) != Grid dimension[0](%d)",
               x_dims[0], grid_dims[0]));
-      PADDLE_ENFORCE_EQ(
-          grid_dims[1], x_dims[2],
-          platform::errors::InvalidArgument(
-              "Input(X) dims[2] and Input(Grid) dims[1] should be equal, but "
-              "received X dimension[2](%d) != Grid dimension[1](%d)",
-              x_dims[2], grid_dims[1]));
-      PADDLE_ENFORCE_EQ(
-          grid_dims[2], x_dims[3],
-          platform::errors::InvalidArgument(
-              "Input(X) dims[3] and Input(Grid) dims[2] should be equal, but "
-              "received X dimension[3](%d) != Grid dimension[2](%d)",
-              x_dims[3], grid_dims[2]));
     }
 
     ctx->SetOutputDim("Output", x_dims);
@@ -225,9 +213,9 @@ REGISTER_OPERATOR(grid_sampler_grad, ops::GridSampleOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     grid_sampler,
-    ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, float>);
-// ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     grid_sampler_grad,
-    ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, float>);
-//    ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, double>);

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <iostream>
 #include <string>
 #include <utility>
 #include "paddle/fluid/framework/eigen.h"
@@ -23,6 +24,13 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+enum class Model {
+  bilinear,
+  nearest,
+};
+
+enum class PaddingMode { zeros, border, reflect };
 
 using Tensor = framework::Tensor;
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
@@ -95,90 +103,104 @@ static inline void clipWithGrad(const platform::CPUDeviceContext& ctx,
   grid_scale->mutable_data<T>(grid_slice->dims(), ctx.GetPlace());
 
   auto grid_slice_t = EigenTensor<T, 3>::From(*grid_slice);
-  auto grid_scale_t = EigenTensor<T, 3>::From(*grid_scale).setConstant((T)1);
+  auto factor = static_cast<T>(max_val * 0.5);
+  if (!align_corners) {
+    factor = static_cast<T>((max_val + 1) * 0.5);
+  }
+  auto grid_scale_t = EigenTensor<T, 3>::From(*grid_scale).setConstant(factor);
 
   if (padding_mode == "border") {
-    auto bounded_lo = grid_slice_t.cwiseMax(static_cast<T>(0));
+    //    auto bounded_lo = grid_slice_t.cwiseMax(static_cast<T>(0));
+    auto res = grid_slice_t.cwiseMax(static_cast<T>(0))
+                   .cwiseMin(static_cast<T>(max_val));
 
-    auto in_bound_lo =
-        (bounded_lo.template cast<int>() ==
-         grid_slice_t.template cast<int>());  // debugggggggggggggggggggggggg
-    auto res = grid_slice_t.cwiseMin(static_cast<T>(max_val));
-
-    auto in_bound_hi = (res == grid_slice_t);
+    auto in_bound = (res == grid_slice_t);
+    grid_scale_t.device(place) = grid_scale_t * in_bound.template cast<T>();
     grid_slice_t.device(place) = res;
-    auto tmp = in_bound_lo && in_bound_hi;
-    grid_scale_t.device(place) = tmp.template cast<T>();
-
   } else if (padding_mode == "reflect") {
     if (align_corners) {
       auto double_range = static_cast<T>(max_val * 2);
+      auto is_neg = (grid_slice_t < static_cast<T>(0));
       auto grid_abs = grid_slice_t.abs();
       auto extra = grid_abs - (grid_abs / double_range).floor() * double_range;
+      auto one_more_flip = (extra > (double_range - extra));
+      grid_scale_t.device(place) =
+          grid_scale_t * ((is_neg == one_more_flip).template cast<T>() -
+                          (is_neg != one_more_flip).template cast<T>());
       grid_slice_t.device(place) = extra.cwiseMin(double_range - extra);
     } else {
       auto double_range = static_cast<T>((max_val + 1) * 2);
       auto grid_abs = (grid_slice_t + static_cast<T>(0.5)).abs();
+      auto is_neg = ((grid_slice_t + static_cast<T>(0.5)) < static_cast<T>(0));
       auto extra = grid_abs - (grid_abs / double_range).floor() * double_range;
-      grid_slice_t.device(place) =
+      auto one_more_flip = (extra > (double_range - extra));
+      auto reflected =
           extra.cwiseMin(double_range - extra) - static_cast<T>(0.5);
-      grid_slice_t.device(place) = grid_slice_t.cwiseMax(static_cast<T>(0))
-                                       .cwiseMin(static_cast<T>(max_val));
+      auto clipped = reflected.cwiseMax(static_cast<T>(0))
+                         .cwiseMin(static_cast<T>(max_val));
+      auto in_bound = (clipped == reflected).template cast<T>();
+      grid_scale_t.device(place) =
+          grid_scale_t * ((is_neg == one_more_flip).template cast<T>() -
+                          (is_neg != one_more_flip).template cast<T>()) *
+          in_bound;
+      grid_slice_t.device(place) = clipped;
     }
   }
 }
 
 template <typename T>
 static void CalcGridLocations(const platform::CPUDeviceContext& ctx,
-                              const Tensor& grid, bool align_corners,
+                              const Tensor& grid, const int in_h,
+                              const int in_w, bool align_corners,
                               std::string padding_mode, Tensor* grid_x,
                               Tensor* grid_y) {
   const int n = grid.dims()[0];
-  const int h = grid.dims()[1];
-  const int w = grid.dims()[2];
+  const int out_h = grid.dims()[1];
+  const int out_w = grid.dims()[2];
 
   // split grid with shape (n, h, w, 2) into (x, y) by the 3rd Dim
-  T* grid_x_data = grid_x->mutable_data<T>({n, h, w}, ctx.GetPlace());
-  T* grid_y_data = grid_y->mutable_data<T>({n, h, w}, ctx.GetPlace());
+  T* grid_x_data = grid_x->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
+  T* grid_y_data = grid_y->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
   const T* grid_data = grid.data<T>();
-  for (int i = 0; i < n * h * w; i++) {
+  for (int i = 0; i < n * out_h * out_w; i++) {
     grid_x_data[i] = grid_data[2 * i];
     grid_y_data[i] = grid_data[(2 * i) + 1];
   }
 
-  unnormalize<T>(ctx, grid_x, w - 1, align_corners);
-  unnormalize<T>(ctx, grid_y, h - 1, align_corners);
+  unnormalize<T>(ctx, grid_x, in_w - 1, align_corners);
+  unnormalize<T>(ctx, grid_y, in_h - 1, align_corners);
 
-  clip<T>(ctx, grid_x, w - 1, align_corners, padding_mode);
-  clip<T>(ctx, grid_y, h - 1, align_corners, padding_mode);
+  clip<T>(ctx, grid_x, in_w - 1, align_corners, padding_mode);
+  clip<T>(ctx, grid_y, in_h - 1, align_corners, padding_mode);
 }
 
 template <typename T>
 static void CalcGridLocationsWithGrad(const platform::CPUDeviceContext& ctx,
-                                      const Tensor& grid, bool align_corners,
+                                      const Tensor& grid, const int in_h,
+                                      const int in_w, bool align_corners,
                                       std::string padding_mode, Tensor* grid_x,
                                       Tensor* grid_y, Tensor* grid_x_scale,
                                       Tensor* grid_y_scale) {
   const int n = grid.dims()[0];
-  const int h = grid.dims()[1];
-  const int w = grid.dims()[2];
+  const int out_h = grid.dims()[1];
+  const int out_w = grid.dims()[2];
 
   // split grid with shape (n, h, w, 2) into (x, y) by the 3rd Dim
-  T* grid_x_data = grid_x->mutable_data<T>({n, h, w}, ctx.GetPlace());
-  T* grid_y_data = grid_y->mutable_data<T>({n, h, w}, ctx.GetPlace());
+  T* grid_x_data = grid_x->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
+  T* grid_y_data = grid_y->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
 
   const T* grid_data = grid.data<T>();
-  for (int i = 0; i < n * h * w; i++) {
+  for (int i = 0; i < n * out_h * out_w; i++) {
     grid_x_data[i] = grid_data[2 * i];
     grid_y_data[i] = grid_data[(2 * i) + 1];
   }
 
-  unnormalize<T>(ctx, grid_x, w - 1, align_corners);
-  unnormalize<T>(ctx, grid_y, h - 1, align_corners);
+  unnormalize<T>(ctx, grid_x, in_w - 1, align_corners);
+  unnormalize<T>(ctx, grid_y, in_h - 1, align_corners);
 
-  clipWithGrad<T>(ctx, w - 1, align_corners, padding_mode, grid_x,
+  clipWithGrad<T>(ctx, in_w - 1, align_corners, padding_mode, grid_x,
                   grid_x_scale);
-  clipWithGrad<T>(ctx, h - 1, align_corners, padding_mode, grid_y,
+  clipWithGrad<T>(ctx, in_h - 1, align_corners, padding_mode, grid_y,
                   grid_y_scale);
 }
 
@@ -187,17 +209,20 @@ static void GetGridPointValue(const Tensor& input, Tensor* output,
                               const Tensor& x, const Tensor& y) {
   const int n = input.dims()[0];
   const int c = input.dims()[1];
-  const int h = input.dims()[2];
-  const int w = input.dims()[3];
+  const int in_h = input.dims()[2];
+  const int in_w = input.dims()[3];
+  const int out_h = x.dims()[1];
+  const int out_w = x.dims()[2];
   auto x_t = EigenTensor<T, 3>::From(x);
   auto y_t = EigenTensor<T, 3>::From(y);
   auto output_t = EigenTensor<T, 4>::From(*output).setConstant((T)0);
   auto input_t = EigenTensor<T, 4>::From(input);
 
   for (int i = 0; i < n; i++) {
-    for (int k = 0; k < h; k++) {
-      for (int l = 0; l < w; l++) {
-        if (isInBound(x_t(i, k, l), y_t(i, k, l), (T)(w - 1), (T)(h - 1))) {
+    for (int k = 0; k < out_h; k++) {
+      for (int l = 0; l < out_w; l++) {
+        if (isInBound(x_t(i, k, l), y_t(i, k, l), (T)(in_w - 1),
+                      (T)(in_h - 1))) {
           for (int j = 0; j < c; j++) {
             output_t(i, j, k, l) =
                 input_t(i, j, static_cast<int>(round(y_t(i, k, l))),
@@ -222,13 +247,13 @@ static void all_neigbors(const platform::CPUDeviceContext& ctx,
 
   const int c = input.dims()[1];
   const int n = grid_x->dims()[0];
-  const int h = grid_x->dims()[1];
-  const int w = grid_x->dims()[2];
+  const int out_h = grid_x->dims()[1];
+  const int out_w = grid_x->dims()[2];
   // calculate coords of 4 corner points
-  x_w->mutable_data<T>({n, h, w}, ctx.GetPlace());
-  x_e->mutable_data<T>({n, h, w}, ctx.GetPlace());
-  y_n->mutable_data<T>({n, h, w}, ctx.GetPlace());
-  y_s->mutable_data<T>({n, h, w}, ctx.GetPlace());
+  x_w->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
+  x_e->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
+  y_n->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
+  y_s->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
   auto x_w_t = EigenTensor<T, 3>::From(*x_w);
   auto x_e_t = EigenTensor<T, 3>::From(*x_e);
   auto y_n_t = EigenTensor<T, 3>::From(*y_n);
@@ -243,10 +268,10 @@ static void all_neigbors(const platform::CPUDeviceContext& ctx,
   y_s_t.device(place) = y_n_t + static_cast<T>(1);
 
   // calculate distances to 4 sides
-  d_w->mutable_data<T>({n, h, w}, ctx.GetPlace());
-  d_e->mutable_data<T>({n, h, w}, ctx.GetPlace());
-  d_n->mutable_data<T>({n, h, w}, ctx.GetPlace());
-  d_s->mutable_data<T>({n, h, w}, ctx.GetPlace());
+  d_w->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
+  d_e->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
+  d_n->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
+  d_s->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
   auto d_w_t = EigenTensor<T, 3>::From(*d_w);
   auto d_e_t = EigenTensor<T, 3>::From(*d_e);
   auto d_n_t = EigenTensor<T, 3>::From(*d_n);
@@ -257,10 +282,10 @@ static void all_neigbors(const platform::CPUDeviceContext& ctx,
   d_s_t.device(place) = y_s_t - grid_y_t;
 
   // calc 4 corner points value
-  v_wn->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
-  v_en->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
-  v_ws->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
-  v_es->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
+  v_wn->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
+  v_en->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
+  v_ws->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
+  v_es->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
   GetGridPointValue<T>(input, v_wn, *x_w, *y_n);
   GetGridPointValue<T>(input, v_en, *x_e, *y_n);
   GetGridPointValue<T>(input, v_ws, *x_w, *y_s);
@@ -273,8 +298,8 @@ static void bilinear_inter(const platform::CPUDeviceContext& ctx,
                            Tensor* out) {
   auto& place = *ctx.eigen_device();
   const int n = grid_x->dims()[0];
-  const int h = grid_x->dims()[1];
-  const int w = grid_x->dims()[2];
+  const int out_h = grid_x->dims()[1];
+  const int out_w = grid_x->dims()[2];
   const int c = input.dims()[1];
 
   Tensor x_w, x_e, y_n, y_s;
@@ -290,13 +315,13 @@ static void bilinear_inter(const platform::CPUDeviceContext& ctx,
   auto d_s_t = EigenTensor<T, 3>::From(d_s);
 
   auto d_w_scaled_t =
-      d_w_t.reshape(Array4(n, 1, h, w)).broadcast(Array4(1, c, 1, 1));
+      d_w_t.reshape(Array4(n, 1, out_h, out_w)).broadcast(Array4(1, c, 1, 1));
   auto d_e_scaled_t =
-      d_e_t.reshape(Array4(n, 1, h, w)).broadcast(Array4(1, c, 1, 1));
+      d_e_t.reshape(Array4(n, 1, out_h, out_w)).broadcast(Array4(1, c, 1, 1));
   auto d_n_scaled_t =
-      d_n_t.reshape(Array4(n, 1, h, w)).broadcast(Array4(1, c, 1, 1));
+      d_n_t.reshape(Array4(n, 1, out_h, out_w)).broadcast(Array4(1, c, 1, 1));
   auto d_s_scaled_t =
-      d_s_t.reshape(Array4(n, 1, h, w)).broadcast(Array4(1, c, 1, 1));
+      d_s_t.reshape(Array4(n, 1, out_h, out_w)).broadcast(Array4(1, c, 1, 1));
   auto v_wn_t = EigenTensor<T, 4>::From(v_wn);
   auto v_en_t = EigenTensor<T, 4>::From(v_en);
   auto v_ws_t = EigenTensor<T, 4>::From(v_ws);
@@ -310,14 +335,29 @@ static void bilinear_inter(const platform::CPUDeviceContext& ctx,
 }
 
 template <typename T>
+static void nearest_inter(const platform::CPUDeviceContext& ctx,
+                          const Tensor& input, Tensor* grid_x, Tensor* grid_y,
+                          Tensor* out) {
+  auto& place = *ctx.eigen_device();
+
+  auto grid_x_t = EigenTensor<T, 3>::From(*grid_x);
+  auto grid_y_t = EigenTensor<T, 3>::From(*grid_y);
+  grid_x_t = grid_x_t.round();
+  grid_y_t = grid_y_t.round();
+  GetGridPointValue<T>(input, out, *grid_x, *grid_y);
+}
+
+template <typename T>
 static void GatherOutputGradToInputGrad(const Tensor& output_grad,
                                         Tensor* input_grad, const Tensor& x,
                                         const Tensor& y, const Tensor& d1,
                                         const Tensor& d2) {
   const int n = output_grad.dims()[0];
   const int c = output_grad.dims()[1];
-  const int h = output_grad.dims()[2];
-  const int w = output_grad.dims()[3];
+  const int out_h = output_grad.dims()[2];
+  const int out_w = output_grad.dims()[3];
+  const int in_h = input_grad->dims()[2];
+  const int in_w = input_grad->dims()[3];
   auto x_t = EigenTensor<T, 3>::From(x);
   auto y_t = EigenTensor<T, 3>::From(y);
   auto d1_t = EigenTensor<T, 3>::From(d1);
@@ -326,9 +366,10 @@ static void GatherOutputGradToInputGrad(const Tensor& output_grad,
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
 
   for (int i = 0; i < n; i++) {
-    for (int k = 0; k < h; k++) {
-      for (int l = 0; l < w; l++) {
-        if (isInBound(x_t(i, k, l), y_t(i, k, l), (T)(w - 1), (T)(h - 1))) {
+    for (int k = 0; k < out_h; k++) {
+      for (int l = 0; l < out_w; l++) {
+        if (isInBound(x_t(i, k, l), y_t(i, k, l), (T)(in_w - 1),
+                      (T)(in_h - 1))) {
           for (int j = 0; j < c; j++) {
             input_grad_t(i, j, static_cast<int>(round(y_t(i, k, l))),
                          static_cast<int>(round(x_t(i, k, l)))) +=
@@ -340,42 +381,35 @@ static void GatherOutputGradToInputGrad(const Tensor& output_grad,
   }
 }
 
-template <typename DeviceContext, typename T>
-class GridSampleOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto align_corners = ctx.Attr<bool>("align_corners");
-    auto padding_mode = ctx.Attr<std::string>("padding_mode");
-    auto mode = ctx.Attr<std::string>("mode");
-
-    auto* input = ctx.Input<Tensor>("X");
-    auto* grid = ctx.Input<Tensor>("Grid");
-
-    const int n = grid->dims()[0];
-    const int h = grid->dims()[1];
-    const int w = grid->dims()[2];
-    const int c = input->dims()[1];
-
-    auto* output = ctx.Output<Tensor>("Output");
-    output->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
-    math::SetConstant<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), output,
-        static_cast<T>(0));
-
-    Tensor grid_x, grid_y;
-    CalcGridLocations<T>(
-        ctx.template device_context<platform::CPUDeviceContext>(), *grid,
-        align_corners, padding_mode, &grid_x, &grid_y);
-    VLOG(4) << "mode: " << mode;
-    if (mode == "bilinear") {
-      bilinear_inter<T>(
-          ctx.template device_context<platform::CPUDeviceContext>(), *input,
-          &grid_x, &grid_y, output);
-    } else if (mode == "nearest") {
-      VLOG(3) << "pass";
+template <typename T>
+static void GatherOutputGradToInputGrad(const Tensor& output_grad,
+                                        Tensor* input_grad, const Tensor& x,
+                                        const Tensor& y) {
+  const int n = output_grad.dims()[0];
+  const int c = output_grad.dims()[1];
+  const int out_h = output_grad.dims()[2];
+  const int out_w = output_grad.dims()[3];
+  const int in_h = input_grad->dims()[2];
+  const int in_w = input_grad->dims()[3];
+  auto x_t = EigenTensor<T, 3>::From(x);
+  auto y_t = EigenTensor<T, 3>::From(y);
+  auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
+  auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
+  for (int i = 0; i < n; i++) {
+    for (int k = 0; k < out_h; k++) {
+      for (int l = 0; l < out_w; l++) {
+        if (isInBound(x_t(i, k, l), y_t(i, k, l), (T)(in_w - 1),
+                      (T)(in_h - 1))) {
+          for (int j = 0; j < c; j++) {
+            input_grad_t(i, j, static_cast<int>(round(y_t(i, k, l))),
+                         static_cast<int>(round(x_t(i, k, l)))) +=
+                output_grad_t(i, j, k, l);
+          }
+        }
+      }
     }
   }
-};
+}
 
 template <typename T>
 static void GatherBilinearGrad(const platform::CPUDeviceContext& ctx,
@@ -384,8 +418,8 @@ static void GatherBilinearGrad(const platform::CPUDeviceContext& ctx,
                                Tensor* grid_x_scale, Tensor* grid_y_scale,
                                Tensor* input_grad, Tensor* grid_grad) {
   const int n = grid_x->dims()[0];
-  const int h = grid_x->dims()[1];
-  const int w = grid_x->dims()[2];
+  const int out_h = grid_x->dims()[1];
+  const int out_w = grid_x->dims()[2];
   const int c = input.dims()[1];
 
   Tensor x_w, x_e, y_n, y_s;
@@ -417,16 +451,16 @@ static void GatherBilinearGrad(const platform::CPUDeviceContext& ctx,
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
 
   Tensor grid_grad_x, grid_grad_y;
-  grid_grad_x.mutable_data<T>({n, h, w}, ctx.GetPlace());
-  grid_grad_y.mutable_data<T>({n, h, w}, ctx.GetPlace());
+  grid_grad_x.mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
+  grid_grad_y.mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
   auto grid_grad_x_t =
       EigenTensor<T, 3>::From(grid_grad_x).setConstant(static_cast<T>(0.0));
   auto grid_grad_y_t =
       EigenTensor<T, 3>::From(grid_grad_y).setConstant(static_cast<T>(0.0));
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < c; j++) {
-      for (int k = 0; k < h; k++) {
-        for (int l = 0; l < w; l++) {
+      for (int k = 0; k < out_h; k++) {
+        for (int l = 0; l < out_w; l++) {
           grid_grad_x_t(i, k, l) +=
               ((v_en_t(i, j, k, l) - v_wn_t(i, j, k, l)) * d_s_t(i, k, l) +
                (v_es_t(i, j, k, l) - v_ws_t(i, j, k, l)) * d_n_t(i, k, l)) *
@@ -440,6 +474,9 @@ static void GatherBilinearGrad(const platform::CPUDeviceContext& ctx,
     }
   }
 
+  //  const T x_max = static_cast<T>(in_w - 1);
+  //  const T y_max = static_cast<T>(in_h - 1);
+
   auto grid_x_scale_t = EigenTensor<T, 3>::From(*grid_x_scale);
   auto grid_y_scale_t = EigenTensor<T, 3>::From(*grid_y_scale);
   grid_grad_x_t = grid_grad_x_t * grid_x_scale_t;
@@ -449,11 +486,53 @@ static void GatherBilinearGrad(const platform::CPUDeviceContext& ctx,
   T* grid_grad_data = grid_grad->data<T>();
   T* grid_grad_x_data = grid_grad_x.data<T>();
   T* grid_grad_y_data = grid_grad_y.data<T>();
-  for (int i = 0; i < n * h * w; i++) {
+  for (int i = 0; i < n * out_h * out_w; i++) {
     grid_grad_data[2 * i] = grid_grad_x_data[i];
     grid_grad_data[2 * i + 1] = grid_grad_y_data[i];
   }
 }
+
+template <typename DeviceContext, typename T>
+class GridSampleOpKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto align_corners = ctx.Attr<bool>("align_corners");
+    auto padding_mode = ctx.Attr<std::string>("padding_mode");
+    auto mode = ctx.Attr<std::string>("mode");
+
+    auto* input = ctx.Input<Tensor>("X");
+    auto* grid = ctx.Input<Tensor>("Grid");
+
+    const int n = grid->dims()[0];
+    const int out_h = grid->dims()[1];
+    const int out_w = grid->dims()[2];
+    const int c = input->dims()[1];
+    const int in_h = input->dims()[2];
+    const int in_w = input->dims()[3];
+
+    auto* output = ctx.Output<Tensor>("Output");
+    output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
+    math::SetConstant<DeviceContext, T>()(
+        ctx.template device_context<DeviceContext>(), output,
+        static_cast<T>(0));
+
+    Tensor grid_x, grid_y;
+    CalcGridLocations<T>(
+        ctx.template device_context<platform::CPUDeviceContext>(), *grid, in_h,
+        in_w, align_corners, padding_mode, &grid_x, &grid_y);
+    if (mode == "bilinear") {
+      bilinear_inter<T>(
+          ctx.template device_context<platform::CPUDeviceContext>(), *input,
+          &grid_x, &grid_y, output);
+    } else if (mode == "nearest") {
+      auto grid_x_t = EigenTensor<T, 3>::From(grid_x);
+      auto grid_y_t = EigenTensor<T, 3>::From(grid_y);
+      grid_x_t = grid_x_t.round();
+      grid_y_t = grid_y_t.round();
+      GetGridPointValue<T>(*input, output, grid_x, grid_y);
+    }
+  }
+};
 
 template <typename DeviceContext, typename T>
 class GridSampleGradOpKernel : public framework::OpKernel<T> {
@@ -468,34 +547,39 @@ class GridSampleGradOpKernel : public framework::OpKernel<T> {
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
 
     const int n = grid->dims()[0];
-    const int h = grid->dims()[1];
-    const int w = grid->dims()[2];
+    const int out_h = grid->dims()[1];
+    const int out_w = grid->dims()[2];
     const int c = input->dims()[1];
+    const int in_h = input->dims()[2];
+    const int in_w = input->dims()[3];
 
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    input_grad->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
+    input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
     math::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), input_grad,
         static_cast<T>(0));
     auto* grid_grad = ctx.Output<Tensor>(framework::GradVarName("Grid"));
-    grid_grad->mutable_data<T>({n, h, w, 2}, ctx.GetPlace());
+    grid_grad->mutable_data<T>({n, out_h, out_w, 2}, ctx.GetPlace());
     math::SetConstant<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), grid_grad,
         static_cast<T>(0));
-
     Tensor grid_x, grid_y;
     Tensor grid_x_scale, grid_y_scale;
-
     CalcGridLocationsWithGrad<T>(
-        ctx.template device_context<platform::CPUDeviceContext>(), *grid,
-        align_corners, padding_mode, &grid_x, &grid_y, &grid_x_scale,
+        ctx.template device_context<platform::CPUDeviceContext>(), *grid, in_h,
+        in_w, align_corners, padding_mode, &grid_x, &grid_y, &grid_x_scale,
         &grid_y_scale);
-
     if (mode == "bilinear") {
       GatherBilinearGrad<T>(ctx.template device_context<DeviceContext>(),
                             *input, *output_grad, &grid_x, &grid_y,
                             &grid_x_scale, &grid_y_scale, input_grad,
                             grid_grad);
+    } else {
+      auto grid_x_t = EigenTensor<T, 3>::From(grid_x);
+      auto grid_y_t = EigenTensor<T, 3>::From(grid_y);
+      grid_x_t = grid_x_t.round();
+      grid_y_t = grid_y_t.round();
+      GatherOutputGradToInputGrad<T>(*output_grad, input_grad, grid_x, grid_y);
     }
   }
 };
