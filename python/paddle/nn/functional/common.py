@@ -550,7 +550,7 @@ def dropout(x,
                  [4 0 6]]
             (3) What about ``axis=[0, 1]`` ? This means the dropout is performed in all axes of x,
                 which is the same case as default setting ``axis=None`` .
-            (4) You may note that logically `axis=None` means the dropout is performed in no axis of x,
+            (4) You may note that logically `axis=None` means the dropout is performed in none axis of x,
                 We generate mask with the shape 1*1. Whole input is randomly selected or dropped.
                 For example, we may get such mask:
                 [[0]]
@@ -564,8 +564,7 @@ def dropout(x,
             When x is a 4d tensor with shape `NCHW`, we can set ``axis=[0,1]`` and the dropout will be performed
             in channel `N` and `C`, `H` and `W` is tied, i.e.
             paddle.nn.dropout(x, p, axis=[0,1])
-            This is something we called dropout2d. Please refer to ``paddle.nn.functional.dropout2d``
-            for more details.
+            Please refer to ``paddle.nn.functional.dropout2d`` for more details.
             Similarly, when x is a 5d tensor with shape `NCDHW`, we can set ``axis=[0,1]`` to perform
             dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
 
