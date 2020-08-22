@@ -4929,6 +4929,11 @@ class LookaheadOptimizer(object):
 
             mod = layers.elementwise_mod(step, k)
             with layers.control_flow.Switch() as switch:
+                with switch.case(step == one_var):
+                    for param_name in params:
+                        fast_var = main_block.var(param_name)
+                        slow_var = param_to_slow[param_name]
+                        layers.assign(input=fast_var, output=slow_var)
                 with switch.case(mod == zero_var):
                     for param_name in params:
                         fast_var = main_block.var(param_name)

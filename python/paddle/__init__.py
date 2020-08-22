@@ -53,6 +53,7 @@ import paddle.incubate.complex as complex
 # TODO: define alias in tensor and framework directory
 
 from .tensor.random import randperm
+from .tensor.random import bernoulli
 
 from .tensor.attribute import rank  #DEFINE_ALIAS
 from .tensor.attribute import shape  #DEFINE_ALIAS
@@ -202,7 +203,7 @@ from .tensor.search import argmin  #DEFINE_ALIAS
 from .tensor.search import argsort  #DEFINE_ALIAS
 from .tensor.search import has_inf  #DEFINE_ALIAS
 from .tensor.search import has_nan  #DEFINE_ALIAS
-# from .tensor.search import masked_select        #DEFINE_ALIAS
+from .tensor.search import masked_select  #DEFINE_ALIAS
 from .tensor.search import topk  #DEFINE_ALIAS
 from .tensor.search import where  #DEFINE_ALIAS
 from .tensor.search import index_select  #DEFINE_ALIAS

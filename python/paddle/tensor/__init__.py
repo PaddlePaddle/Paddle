@@ -178,6 +178,7 @@ from .search import index_select  #DEFINE_ALIAS
 from .search import nonzero  #DEFINE_ALIAS
 from .search import sort  #DEFINE_ALIAS
 from .search import index_sample  #DEFINE_ALIAS
+from .search import masked_select  #DEFINE_ALIAS
 from .stat import mean  #DEFINE_ALIAS
 from .stat import reduce_mean  #DEFINE_ALIAS
 from .stat import std  #DEFINE_ALIAS
