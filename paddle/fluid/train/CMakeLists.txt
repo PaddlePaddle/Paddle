@@ -32,7 +32,7 @@ function(train_test TARGET_NAME)
     endforeach()
 endfunction(train_test)
 
-
+# disable test_train_recognize_digits_mlp and test_train_recognize_digits_conv
 #if(WITH_TESTING)
 #  train_test(recognize_digits ARGS mlp conv)
 #endif()
