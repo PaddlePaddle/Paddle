@@ -177,7 +177,7 @@ class RandomSampler(Sampler):
                 def __len__(self):
                     return self.num_samples
 
-            sampler = RandomSampler(data_souce=RandomDataset(100))
+            sampler = RandomSampler(data_source=RandomDataset(100))
 
             for index in sampler:
                 print(index)

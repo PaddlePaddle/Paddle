@@ -86,7 +86,6 @@ class BatchSampler(Sampler):
             # init with sampler
             sampler = RandomSampler(RandomDataset(100))
             bs = BatchSampler(sampler=sampler,
-                              shuffle=True,
                               batch_size=8,
                               drop_last=True)
 
