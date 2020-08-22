@@ -18,6 +18,7 @@ __all__ = [
     'ELU',
     'GELU',
     'Hardshrink',
+    'Tanh',
     'Hardtanh',
     'PReLU',
     'ReLU',
@@ -180,6 +181,45 @@ class Hardshrink(layers.Layer):
 
     def forward(self, x):
         return F.hardshrink(x, self._threshold, self._name)
+
+
+class Tanh(layers.Layer):
+    """
+    Tanh Activation.
+
+    .. math::
+        Tanh(x) = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            m = paddle.nn.Tanh()
+            out = m(x)
+            print(out.numpy())
+            # [-0.37994896 -0.19737532  0.09966799  0.29131261]
+    """
+
+    def __init__(self, name=None):
+        super(Tanh, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.tanh(x, self._name)
 
 
 class Hardtanh(layers.Layer):
