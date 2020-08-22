@@ -45,8 +45,3 @@ struct IsfiniteV2Functor {
 
 }  // namespace operators
 }  // namespace paddle
-
-#define FOR_EACH_KERNEL_V2FUNCTOR(__macro) \
-  __macro(isinf_v2, InfinityV2Functor);    \
-  __macro(isnan_v2, NANV2Functor);         \
-  __macro(isfinite_v2, IsfiniteV2Functor);

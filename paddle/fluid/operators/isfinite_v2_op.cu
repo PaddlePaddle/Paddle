@@ -31,4 +31,6 @@ namespace plat = paddle::platform;
       ops::OverflowKernel<paddle::platform::CUDADeviceContext, plat::float16, \
                           ops::functor>);
 
-FOR_EACH_KERNEL_V2FUNCTOR(REGISTER_OVERFLOW_CUDA_KERNEL);
+REGISTER_OVERFLOW_CUDA_KERNEL(isinf_v2, InfinityV2Functor);
+REGISTER_OVERFLOW_CUDA_KERNEL(isnan_v2, NANV2Functor);
+REGISTER_OVERFLOW_CUDA_KERNEL(isfinite_v2, IsfiniteV2Functor);

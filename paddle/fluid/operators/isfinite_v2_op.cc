@@ -116,4 +116,7 @@ namespace ops = paddle::operators;
 REGISTER_V2OP_MAKER(isinf_v2, "isinfv2(X)");
 REGISTER_V2OP_MAKER(isnan_v2, "isnanv2(X)");
 REGISTER_V2OP_MAKER(isfinite_v2, "isfinitev2(X)");
-FOR_EACH_KERNEL_V2FUNCTOR(REGISTER_OVERFLOW_CPU_KERNEL);
+
+REGISTER_OVERFLOW_CPU_KERNEL(isinf_v2, InfinityV2Functor);
+REGISTER_OVERFLOW_CPU_KERNEL(isnan_v2, NANV2Functor);
+REGISTER_OVERFLOW_CPU_KERNEL(isfinite_v2, IsfiniteV2Functor);
