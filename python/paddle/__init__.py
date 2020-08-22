@@ -31,6 +31,10 @@ import paddle.reader
 import paddle.dataset
 import paddle.batch
 batch = batch.batch
+from .fluid import monkey_patch_variable
+from .fluid.dygraph import monkey_patch_math_varbase
+monkey_patch_variable()
+monkey_patch_math_varbase()
 import paddle.framework
 from .framework import VarBase as Tensor
 from .framework import ComplexVariable as ComplexTensor
@@ -38,6 +42,7 @@ import paddle.compat
 import paddle.distributed
 import paddle.sysconfig
 import paddle.tensor
+import paddle.distribution
 import paddle.nn
 import paddle.distributed.fleet
 import paddle.optimizer
@@ -48,6 +53,7 @@ import paddle.incubate.complex as complex
 # TODO: define alias in tensor and framework directory
 
 from .tensor.random import randperm
+from .tensor.random import bernoulli
 
 from .tensor.attribute import rank  #DEFINE_ALIAS
 from .tensor.attribute import shape  #DEFINE_ALIAS
@@ -170,7 +176,11 @@ from .tensor.math import maximum  #DEFINE_ALIAS
 from .tensor.math import min  #DEFINE_ALIAS
 from .tensor.math import minimum  #DEFINE_ALIAS
 from .tensor.math import mm  #DEFINE_ALIAS
-from .tensor.math import div  #DEFINE_ALIAS
+from .tensor.math import divide  #DEFINE_ALIAS
+from .tensor.math import floor_divide  #DEFINE_ALIAS
+from .tensor.math import remainder  #DEFINE_ALIAS
+from .tensor.math import mod  #DEFINE_ALIAS
+from .tensor.math import floor_mod  #DEFINE_ALIAS
 from .tensor.math import multiply  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
@@ -180,11 +190,12 @@ from .tensor.math import log1p  #DEFINE_ALIAS
 from .tensor.math import erf  #DEFINE_ALIAS
 from .tensor.math import addcmul  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
-from .tensor.math import clamp  #DEFINE_ALIAS
+from .tensor.math import clip  #DEFINE_ALIAS
 from .tensor.math import trace  #DEFINE_ALIAS
 from .tensor.math import kron  #DEFINE_ALIAS
+from .tensor.math import prod  #DEFINE_ALIAS
 # from .tensor.random import gaussin        #DEFINE_ALIAS
-# from .tensor.random import uniform        #DEFINE_ALIAS
+from .tensor.random import uniform  #DEFINE_ALIAS
 from .tensor.random import shuffle  #DEFINE_ALIAS
 from .tensor.random import randn  #DEFINE_ALIAS
 from .tensor.random import rand  #DEFINE_ALIAS
@@ -195,7 +206,7 @@ from .tensor.search import argmin  #DEFINE_ALIAS
 from .tensor.search import argsort  #DEFINE_ALIAS
 from .tensor.search import has_inf  #DEFINE_ALIAS
 from .tensor.search import has_nan  #DEFINE_ALIAS
-# from .tensor.search import masked_select        #DEFINE_ALIAS
+from .tensor.search import masked_select  #DEFINE_ALIAS
 from .tensor.search import topk  #DEFINE_ALIAS
 from .tensor.search import where  #DEFINE_ALIAS
 from .tensor.search import index_select  #DEFINE_ALIAS
@@ -236,6 +247,7 @@ from .tensor.stat import reduce_mean  #DEFINE_ALIAS
 from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
 from .fluid.data import data
+from .tensor.stat import numel  #DEFINE_ALIAS
 from .device import get_cudnn_version
 from .device import set_device
 from .device import get_device

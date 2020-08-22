@@ -44,40 +44,40 @@ __all__ = [
 
 
 def split_states(states, bidirectional=False, state_components=1):
-    """
+    r"""
     Split states of RNN network into possibly nested list or tuple of
     states of each RNN cells of the RNN network.
 
     Arguments:
         states (Tensor|tuple|list): the concatenated states for RNN network.
-            When ``state_components`` is 1, states in a Tensor with shape
-            ``(L\*D, N, C)`` where ``L`` is the number of layers of the RNN 
-            network, ``D`` is the number of directions of the RNN network(1 
-            for unidirectional RNNs and 2 for bidirectional RNNs), ``N`` is 
-            the batch size of the input to the RNN network, ``C`` is the 
+            When `state_components` is 1, states in a Tensor with shape
+            `(L*D, N, C)` where `L` is the number of layers of the RNN 
+            network, `D` is the number of directions of the RNN network(1 
+            for unidirectional RNNs and 2 for bidirectional RNNs), `N` is 
+            the batch size of the input to the RNN network, `C` is the 
             hidden size of the RNN network. 
 
-            When `state_components` is larger than 1, ``states`` is a tuple of 
-            ``state_components`` Tensors that meet the requirements described 
+            When `state_components` is larger than 1, `states` is a tuple of 
+            `state_components` Tensors that meet the requirements described 
             above. 
             
-            For SimpleRNNs and GRUs, ``state_components`` is 1, and for LSTMs, 
-            ``state_components`` is 2.
+            For SimpleRNNs and GRUs, `state_components` is 1, and for LSTMs, 
+            `state_components` is 2.
         bidirectional (bool): whether the state is of a bidirectional RNN 
             network. Defaults to False.
         state_components (int): the number of the components of the states. see
-            ``states`` above. Defaults to 1.
+            `states` above. Defaults to 1.
     
     Returns:
         A nested list or tuple of RNN cell states. 
-        If ``bidirectional`` is True, it can be indexed twice to get an RNN 
+        If `bidirectional` is True, it can be indexed twice to get an RNN 
         cell state. The first index indicates the layer, the second index 
         indicates the direction.
-        If ``bidirectional`` is False, it can be indexed once to get an RNN
+        If `bidirectional` is False, it can be indexed once to get an RNN
         cell state. The index indicates the layer.
-        Note that if ``state_components`` is larger than 1, an RNN cell state
+        Note that if `state_components` is larger than 1, an RNN cell state
         can be indexed one more time to get a tensor of shape(N, C), where 
-        ``N`` is the batch size of the input to the RNN cell, and ``C`` is the
+        `N` is the batch size of the input to the RNN cell, and `C` is the
         hidden size of the RNN cell.
     """
     if state_components == 1:
@@ -97,34 +97,34 @@ def split_states(states, bidirectional=False, state_components=1):
 
 
 def concat_states(states, bidirectional=False, state_components=1):
-    """
+    r"""
     Concatenate a possibly nested list or tuple of RNN cell states into a 
     compact form.
 
     Arguments:
         states (list|tuple): a possibly nested list or tuple of RNN cell 
             states. 
-            If ``bidirectional`` is True, it can be indexed twice to get an 
+            If `bidirectional` is True, it can be indexed twice to get an 
             RNN cell state. The first index indicates the layer, the second 
             index indicates the direction.
-            If ``bidirectional`` is False, it can be indexed once to get an RNN
+            If `bidirectional` is False, it can be indexed once to get an RNN
             cell state. The index indicates the layer.
-            Note that if ``state_components`` is larger than 1, an RNN cell 
+            Note that if `state_components` is larger than 1, an RNN cell 
             state can be indexed one more time to get a tensor of shape(N, C), 
-            where ``N`` is the batch size of the input to the RNN cell, and 
-            ``C`` is the hidden size of the RNN cell. 
+            where `N` is the batch size of the input to the RNN cell, and 
+            `C` is the hidden size of the RNN cell. 
         bidirectional (bool): whether the state is of a bidirectional RNN 
             network. Defaults to False.
         state_components (int): the number of the components of the states. see
-            ``states`` above. Defaults to 1.
+            `states` above. Defaults to 1.
     
     Returns:
         Concatenated states for RNN network.
-        When ``state_components`` is 1, states in a Tensor with shape
-        ``(L\*D, N, C)`` where ``L`` is the number of layers of the RNN 
-        network, ``D`` is the number of directions of the RNN network(1 for 
-        unidirectional RNNs and 2 for bidirectional RNNs), ``N`` is the batch 
-        size of the input to the RNN network, ``C`` is the hidden size of the 
+        When `state_components` is 1, states in a Tensor with shape
+        `(L\*D, N, C)` where `L` is the number of layers of the RNN 
+        network, `D` is the number of directions of the RNN network(1 for 
+        unidirectional RNNs and 2 for bidirectional RNNs), `N` is the batch 
+        size of the input to the RNN network, `C` is the hidden size of the 
         RNN network.
         
     """
@@ -139,7 +139,7 @@ def concat_states(states, bidirectional=False, state_components=1):
 
 
 class RNNCellBase(Layer):
-    """
+    r"""
     RNNCellBase is the base class for abstraction representing the calculations
     mapping the input and state to the output and new state. It is suitable to
     and mostly used in RNN.
@@ -151,7 +151,7 @@ class RNNCellBase(Layer):
                            dtype=None,
                            init_value=0,
                            batch_dim_idx=0):
-        """
+        r"""
         Generate initialized states according to provided shape, data type and
         value.
         Arguments:
@@ -226,7 +226,7 @@ class RNNCellBase(Layer):
 
     @property
     def state_shape(self):
-        """
+        r"""
         Abstract method (property).
         Used to initialize states.
         A (possiblely nested structure of) shape[s], where a shape is represented
@@ -241,7 +241,7 @@ class RNNCellBase(Layer):
 
     @property
     def state_dtype(self):
-        """
+        r"""
         Abstract method (property).
         Used to initialize states.
         A (possiblely nested structure of) data types[s]. The structure must be
@@ -275,15 +275,15 @@ class SimpleRNNCell(RNNCellBase):
         input_size (int): The input size.
         hidden_size (int): The hidden size.
         nonlinearity (str): The activation in the SimpleRNN cell. It can be 
-            ``tanh`` or ``relu``. Defaults to ``tanh``.
+            `tanh` or `relu`. Defaults to `tanh`.
         weight_ih_attr(ParamAttr, optional): The parameter attribute for 
-            ``weight_ih``. Default: None.
+            `weight_ih`. Default: None.
         weight_hh_attr(ParamAttr, optional): The parameter attribute for 
-            ``weight_hh``. Default: None.
+            `weight_hh`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            ``bias_ih``. Default: None.
+            `bias_ih`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            ``bias_hh``. Default: None.
+            `bias_hh`. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -342,7 +342,7 @@ class SimpleRNNCell(RNNCellBase):
             else F.relu
 
     def forward(self, inputs, states=None):
-        """
+        r"""
         Given the input and previous atate, compute the output and update state.
 
         Arguments:
@@ -402,13 +402,13 @@ class LSTMCell(RNNCellBase):
         input_size (int): The input size.
         hidden_size (int): The hidden size.
         weight_ih_attr(ParamAttr, optional): The parameter attribute for 
-            ``weight_ih``. Default: None.
+            `weight_ih`. Default: None.
         weight_hh_attr(ParamAttr, optional): The parameter attribute for 
-            ``weight_hh``. Default: None.
+            `weight_hh`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            ``bias_ih``. Default: None.
+            `bias_ih`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            ``bias_hh``. Default: None.
+            `bias_hh`. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -461,7 +461,7 @@ class LSTMCell(RNNCellBase):
         self._activation = paddle.tanh
 
     def forward(self, inputs, states=None):
-        """
+        r"""
         Given the input and previous atate, compute the output and update state.
 
         Arguments:
@@ -502,7 +502,7 @@ class LSTMCell(RNNCellBase):
 
     @property
     def state_shape(self):
-        """
+        r"""
         The `state_shape` of LSTMCell is a tuple with two shapes: 
         `((hidden_size, ), (hidden_size,))`. (-1 for batch size would be 
         automatically inserted into shape). These two shapes correspond 
@@ -535,13 +535,13 @@ class GRUCell(RNNCellBase):
         input_size (int): The input size..
         hidden_size (int): The hidden size.
         weight_ih_attr(ParamAttr, optional): The parameter attribute for 
-            ``weight_ih``. Default: None.
+            `weight_ih`. Default: None.
         weight_hh_attr(ParamAttr, optional): The parameter attribute for 
-            ``weight_hh``. Default: None.
+            `weight_hh`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            ``bias_ih``. Default: None.
+            `bias_ih`. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            ``bias_hh``. Default: None.
+            `bias_hh`. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -594,7 +594,7 @@ class GRUCell(RNNCellBase):
         self._activation = paddle.tanh
 
     def forward(self, inputs, states=None):
-        """
+        r"""
         Performs single step GRU calculations.
 
         Parameters:
@@ -634,7 +634,7 @@ class GRUCell(RNNCellBase):
 
     @property
     def state_shape(self):
-        """
+        r"""
         The `state_shape` of GRUCell is a shape `[hidden_size]` (-1 for batch
         size would be automatically inserted into shape). The shape corresponds
         to :math:`h_{t-1}`.
@@ -643,7 +643,7 @@ class GRUCell(RNNCellBase):
 
 
 class RNN(Layer):
-    """
+    r"""
     Wrapper for RNN, which creates a recurrent neural network specified with a
     RNN cell. It performs :code:`cell.forward()` repeatedly until reaches to 
     the maximum length of `inputs`.
@@ -728,7 +728,7 @@ class RNN(Layer):
 
 
 class BiRNN(Layer):
-    """
+    r"""
     Wrapper for bidirectional RNN. It assembles two RNN cells by performing
     forward and backward RNN separately, and concat outputs.
 
@@ -873,7 +873,7 @@ class SimpleRNN(RNNMixin):
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int): Number of layers. Defaults to 1.
         nonlinearity (str): The activation in each SimpleRNN cell. It can be 
-            ``tanh`` or ``relu``. Defaults to ``tanh``.
+            `tanh` or `relu`. Defaults to `tanh`.
         direction (str): The direction of the network. It can be "forward", 
             "backward" and "bidirectional". Defaults to "forward".
         dropout (float): The droput probability. Dropout is applied to the 
@@ -881,13 +881,13 @@ class SimpleRNN(RNNMixin):
         time_major (bool): Whether the first dimension of the input means the
             time steps.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
-            ``weight_ih`` of each cell. Default: None.
+            `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
-            ``weight_hh`` of each cell. Default: None.
+            `weight_hh` of each cell. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            ``bias_ih`` of each cells. Default: None.
+            `bias_ih` of each cells. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            ``bias_hh`` of each cells. Default: None.
+            `bias_hh` of each cells. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1017,13 +1017,13 @@ class LSTM(RNNMixin):
         time_major (bool): Whether the first dimension of the input means the
             time steps.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
-            ``weight_ih`` of each cell. Default: None.
+            `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
-            ``weight_hh`` of each cell. Default: None.
+            `weight_hh` of each cell. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            ``bias_ih`` of each cells. Default: None.
+            `bias_ih` of each cells. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            ``bias_hh`` of each cells. Default: None.
+            `bias_hh` of each cells. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1145,13 +1145,13 @@ class GRU(RNNMixin):
         time_major (bool): Whether the first dimension of the input means the
             time steps.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
-            ``weight_ih`` of each cell. Default: None.
+            `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
-            ``weight_hh`` of each cell. Default: None.
+            `weight_hh` of each cell. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            ``bias_ih`` of each cells. Default: None.
+            `bias_ih` of each cells. Default: None.
         bias_ih_attr (ParamAttr, optional): The parameter attribute for the 
-            ``bias_hh`` of each cells. Default: None.
+            `bias_hh` of each cells. Default: None.
         name (str, optional): Name for the operation (optional, default is 
             None). For more information, please refer to :ref:`api_guide_Name`.
 

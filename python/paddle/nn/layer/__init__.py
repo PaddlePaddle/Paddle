@@ -40,10 +40,25 @@ from .activation import HSigmoid  #DEFINE_ALIAS
 from .common import BilinearTensorProduct  #DEFINE_ALIAS
 from .common import Pool2D  #DEFINE_ALIAS
 from .common import Pad2D  #DEFINE_ALIAS
+from .common import ReflectionPad1d  #DEFINE_ALIAS
+from .common import ReplicationPad1d  #DEFINE_ALIAS
+from .common import ConstantPad1d  #DEFINE_ALIAS
+from .common import ReflectionPad2d  #DEFINE_ALIAS
+from .common import ReplicationPad2d  #DEFINE_ALIAS
+from .common import ConstantPad2d  #DEFINE_ALIAS
+from .common import ZeroPad2d  #DEFINE_ALIAS
+from .common import ReplicationPad3d  #DEFINE_ALIAS
+from .common import ConstantPad3d  #DEFINE_ALIAS
+from .common import CosineSimilarity  #DEFINE_ALIAS
 from .common import Embedding  #DEFINE_ALIAS
 from .common import Linear  #DEFINE_ALIAS
 from .common import Flatten  #DEFINE_ALIAS
 from .common import UpSample  #DEFINE_ALIAS
+from .common import Dropout  #DEFINE_ALIAS
+from .common import Dropout2D  #DEFINE_ALIAS
+from .common import Dropout3D  #DEFINE_ALIAS
+from .pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
+from .pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
 from .conv import Conv2D  #DEFINE_ALIAS
 from .conv import Conv2DTranspose  #DEFINE_ALIAS
 from .conv import Conv3D  #DEFINE_ALIAS
@@ -59,6 +74,7 @@ from .extension import RowConv  #DEFINE_ALIAS
 # from .learning_rate import PiecewiseDecay        #DEFINE_ALIAS
 # from .learning_rate import PolynomialDecay        #DEFINE_ALIAS
 # from .loss import NCELoss        #DEFINE_ALIAS
+from .loss import BCEWithLogitsLoss  #DEFINE_ALIAS
 from .loss import CrossEntropyLoss  #DEFINE_ALIAS
 from .loss import MSELoss  #DEFINE_ALIAS
 from .loss import L1Loss  #DEFINE_ALIAS
@@ -66,6 +82,8 @@ from .loss import NLLLoss  #DEFINE_ALIAS
 from .loss import BCELoss  #DEFINE_ALIAS
 from .loss import KLDivLoss  #DEFINE_ALIAS
 from .loss import MarginRankingLoss  #DEFINE_ALIAS
+from .loss import CTCLoss  #DEFINE_ALIAS
+from .loss import SmoothL1Loss  #DEFINE_ALIAS
 from .norm import BatchNorm  #DEFINE_ALIAS
 from .norm import SyncBatchNorm  #DEFINE_ALIAS
 from .norm import GroupNorm  #DEFINE_ALIAS
