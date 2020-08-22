@@ -798,9 +798,8 @@ def softplus(x, beta=1, threshold=20, name=None):
 
     .. math::
 
-        softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x})
-
-        For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.
+        softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\
+        \\text{For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.

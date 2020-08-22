@@ -634,9 +634,8 @@ class Softplus(layers.Layer):
 
     .. math::
 
-        Softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x})
-
-        For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.
+        Softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\
+        \\text{For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.}
 
     Parameters:
         beta (float, optional): The value of beta for Softplus. Default is 1
