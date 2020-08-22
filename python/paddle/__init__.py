@@ -176,7 +176,11 @@ from .tensor.math import maximum  #DEFINE_ALIAS
 from .tensor.math import min  #DEFINE_ALIAS
 from .tensor.math import minimum  #DEFINE_ALIAS
 from .tensor.math import mm  #DEFINE_ALIAS
-from .tensor.math import div  #DEFINE_ALIAS
+from .tensor.math import divide  #DEFINE_ALIAS
+from .tensor.math import floor_divide  #DEFINE_ALIAS
+from .tensor.math import remainder  #DEFINE_ALIAS
+from .tensor.math import mod  #DEFINE_ALIAS
+from .tensor.math import floor_mod  #DEFINE_ALIAS
 from .tensor.math import multiply  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS

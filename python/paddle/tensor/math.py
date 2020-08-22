@@ -111,7 +111,11 @@ __all__ = [
         'min',
         'minimum',
         'mm',
-        'div',
+        'divide',
+        'floor_divide',
+        'remainder',
+        'mod',
+        'floor_mod',
         'multiply',
         'add',
         'atan',
@@ -263,102 +267,39 @@ Examples:
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def div(x, y, name=None):
+def divide(x, y, name=None):
     """
-Examples:
+    Divide two tensors element-wise. The equation is:
 
-    .. code-block:: python
+    .. math::
+        out = x / y
 
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
+    **Note**:
+    ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
-        def gen_data():
-            return {
-                "x": np.array([2, 3, 4]).astype('float32'),
-                "y": np.array([1, 5, 2]).astype('float32')
-            }
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-        x = fluid.data(name="x", shape=[3], dtype='float32')
-        y = fluid.data(name="y", shape=[3], dtype='float32')
-        z = paddle.div(x, y)
-        # z = x / y
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        z_value = exe.run(feed=gen_data(),
-                            fetch_list=[z.name])
+    Examples:
 
-        print(z_value) # [2., 0.6, 2.]
+        ..  code-block:: python
 
+            import paddle
+            import numpy as np
 
-    .. code-block:: python
+            paddle.disable_static()
 
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        def gen_data():
-            return {
-                "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                "y": np.zeros((4, 5)).astype('float32')
-            }
-
-        x = fluid.data(name="x", shape=[2, 3, 4, 5], dtype='float32')
-        y = fluid.data(name="y", shape=[4, 5], dtype='float32')
-        z = paddle.div(x, y, name='z')
-        # z = x / y
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-
-        z_value = exe.run(feed=gen_data(),
-                            fetch_list=[z.name])
-
-        print(z_value[0])
-        print(z_value[0].shape) # z.shape=[2,3,4,5]
-
-
-    ..  code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        def gen_data():
-            return {
-                "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
-                "y": np.random.randint(1, 5, size=[5]).astype('float32')
-            }
-
-        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.data(name="y", shape=[5], dtype='float32')
-        z = paddle.div(x, y)
-        # z = x / y
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-
-        z_value = exe.run(feed=gen_data(),
-                            fetch_list=[z.name])
-        print(z_value[0])
-        print(z_value[0].shape) # z.shape=[2,3,4,5]
-
-
-    ..  code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        with fluid.dygraph.guard(fluid.CPUPlace()):
             np_x = np.array([2, 3, 4]).astype('float64')
             np_y = np.array([1, 5, 2]).astype('float64')
-            x = fluid.dygraph.to_variable(np_x)
-            y = fluid.dygraph.to_variable(np_y)
-            z = paddle.div(x, y)
-            np_z = z.numpy()
-            print(np_z)  # [2., 0.6, 2.]
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = paddle.divide(x, y)
+            print(z.numpy())  # [2., 0.6, 2.]
 
     """
     op_type = 'elementwise_div'
@@ -369,6 +310,98 @@ Examples:
             x, y, axis=axis, act=act, op_name=op_type)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def floor_divide(x, y, name=None):
+    """
+    Floor divide two tensors element-wise. The equation is:
+
+    .. math::
+        out = x // y
+
+    **Note**:
+    ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be int32, int64.
+        y (Tensor): the input tensor, it's data type should be int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            np_x = np.array([2, 3, 8, 7])
+            np_y = np.array([1, 5, 3, 3])
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = paddle.floor_divide(x, y)
+            print(z.numpy())  # [2, 0, 2, 2]
+
+    """
+    op_type = 'elementwise_floordiv'
+    axis = -1
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, op_name=op_type)
+
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def remainder(x, y, name=None):
+    """
+    Mod two tensors element-wise. The equation is:
+
+    .. math::
+        out = x \% y
+
+    **Note**:
+    ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be int32, int64.
+        y (Tensor): the input tensor, it's data type should be int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            np_x = np.array([2, 3, 8, 7])
+            np_y = np.array([1, 5, 3, 3])
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = paddle.remainder(x, y)
+            print(z.numpy())  # [0, 3, 2, 1]
+
+    """
+    op_type = 'elementwise_mod'
+    axis = -1
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, op_name=op_type)
+
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+mod = remainder  #DEFINE_ALIAS
+floor_mod = remainder  #DEFINE_ALIAS
 
 
 def multiply(x, y, axis=-1, name=None):
@@ -512,7 +545,6 @@ Examples:
 
 for func in [
         add,
-        div,
         maximum,
         minimum,
         multiply
