@@ -59,7 +59,9 @@ class CPURandintKernel : public framework::OpKernel<T> {
       }
       engine.seed(seed);
 
-      for (int64_t i = 0; i < size; ++i) data[i] = dist(engine);
+      for (int64_t i = 0; i < size; ++i) {
+        data[i] = dist(engine);
+      }
     }
   }
 };
