@@ -53,7 +53,14 @@ _default_group = Group(0, 1)
 _default_backend = None
 
 
-def init_process_group(backend, rank_num, rank, timeout=999999, group_name=''):
+def init_process_group(backend,
+                       rank_num,
+                       rank,
+                       timeout=999999,
+                       group_name='',
+                       fs_path="",
+                       fs_name="",
+                       fs_ugi=""):
     """
 
     Initialize the default distributed environment.
@@ -64,6 +71,10 @@ def init_process_group(backend, rank_num, rank, timeout=999999, group_name=''):
         rank (int): Rank of the current process starting from 0.
         timeout (int): Timeout in seconds for gloo only. 
         group_name (str): Name of the group.
+        fs_path (str): A file system path used to initialized gloo.
+        fs_name (str): A file system name used to initialized gloo.
+        fs_ugi (str): A file system ugi (name and password) used to 
+                      initialized gloo.
 
     Returns:
         None
