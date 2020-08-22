@@ -798,8 +798,9 @@ def softplus(x, beta=1, threshold=20, name=None):
 
     .. math::
 
-        softplus(x) = \frac{1}{beta} * \log(1 + e^{beta * x}) \\
-        For numerical stability, the implementation reverts to the linear function when :\,beta * x > threshold.
+        softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x})
+
+        For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -845,12 +846,11 @@ def softshrink(x, threshold=0.5, name=None):
 
     .. math::
 
-        softshrink(x) =
-            \begin{cases}
-            x - threshold, & if \ x > threshold \\
-            x + threshold, & if \ x < -threshold \\
-            0, & otherwise
-           \end{cases}
+        softshrink(x)= \\begin{cases}
+                        x - threshold, \\text{if } x > threshold \\\\
+                        x + threshold, \\text{if } x < -threshold \\\\
+                        0,  \\text{otherwise}
+                      \\end{cases}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -899,7 +899,7 @@ def softsign(x, name=None):
 
     .. math::
 
-        softsign(x) = \frac{x}{1 + |x|}
+        softsign(x) = \\frac{x}{1 + |x|}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.

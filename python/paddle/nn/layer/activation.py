@@ -634,8 +634,9 @@ class Softplus(layers.Layer):
 
     .. math::
 
-        Softplus(x) = \frac{1}{beta} * \log(1 + e^{beta * x}) \\
-        For numerical stability, the implementation reverts to the linear function when :\,beta * x > threshold.
+        Softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x})
+
+        For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.
 
     Parameters:
         beta (float, optional): The value of beta for Softplus. Default is 1
@@ -676,12 +677,11 @@ class Softshrink(layers.Layer):
 
     .. math::
 
-        Softshrink(x) =
-            \begin{cases}
-            x - threshold, & if \ x > threshold \\
-            x + threshold, & if \ x < -threshold \\
-            0, & otherwise
-           \end{cases}
+        Softshrink(x)= \\begin{cases}
+                        x - threshold, \\text{if } x > threshold \\\\
+                        x + threshold, \\text{if } x < -threshold \\\\
+                        0,  \\text{otherwise}
+                      \\end{cases}
 
     Parameters:
         threshold (float, optional): The value of threshold(must be no less than zero) for softplus. Default is 0.5
@@ -720,7 +720,7 @@ class Softsign(layers.Layer):
 
     .. math::
 
-        Softsign(x) = \frac{x}{1 + |x|}
+        Softsign(x) = \\frac{x}{1 + |x|}
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
