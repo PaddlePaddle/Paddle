@@ -131,3 +131,7 @@ class VOC2012(Dataset):
 
     def __len__(self):
         return len(self.data)
+
+    def __del__(self):
+        if self.data_tar:
+            self.data_tar.close()
