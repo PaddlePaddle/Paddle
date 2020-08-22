@@ -25,6 +25,8 @@ from . import extension
 __all__ += extension.__all__
 from . import common
 __all__ += common.__all__
+from . import loss
+__all__ += loss.__all__
 from .activation import brelu  #DEFINE_ALIAS
 from .activation import elu  #DEFINE_ALIAS
 from .activation import erf  #DEFINE_ALIAS
@@ -48,10 +50,13 @@ from .activation import softplus  #DEFINE_ALIAS
 from .activation import softshrink  #DEFINE_ALIAS
 from .activation import softsign  #DEFINE_ALIAS
 from .activation import swish  #DEFINE_ALIAS
+from .activation import tanh  #DEFINE_ALIAS
 from .activation import tanhshrink  #DEFINE_ALIAS
 from .activation import thresholded_relu  #DEFINE_ALIAS
 from .activation import log_softmax  #DEFINE_ALIAS
 from .common import dropout  #DEFINE_ALIAS
+from .common import dropout2d  #DEFINE_ALIAS
+from .common import dropout3d  #DEFINE_ALIAS
 # from .common import embedding        #DEFINE_ALIAS
 # from .common import fc  #DEFINE_ALIAS
 from .common import label_smooth  #DEFINE_ALIAS
@@ -66,9 +71,9 @@ from .common import assign  #DEFINE_ALIAS
 from .common import interpolate  #DEFINE_ALIAS
 from .conv import conv1d  #DEFINE_ALIAS
 from .conv import conv2d  #DEFINE_ALIAS
-from .conv import conv2d_transpose  #DEFINE_ALIAS
+from .conv import conv_transpose2d  #DEFINE_ALIAS
 from .conv import conv3d  #DEFINE_ALIAS
-from .conv import conv3d_transpose  #DEFINE_ALIAS
+from .conv import conv_transpose3d  #DEFINE_ALIAS
 from .extension import add_position_encoding  #DEFINE_ALIAS
 # from .extension import autoincreased_step_counter        #DEFINE_ALIAS
 from .extension import continuous_value_model  #DEFINE_ALIAS
@@ -123,6 +128,7 @@ from .lod import hash  #DEFINE_ALIAS
 # from .lod import dynamic_lstm        #DEFINE_ALIAS
 # from .lod import dynamic_lstmp        #DEFINE_ALIAS
 from .loss import binary_cross_entropy  #DEFINE_ALIAS
+from .loss import binary_cross_entropy_with_logits  #DEFINE_ALIAS
 from .loss import bpr_loss  #DEFINE_ALIAS
 from .loss import center_loss  #DEFINE_ALIAS
 from .loss import cross_entropy  #DEFINE_ALIAS
@@ -148,6 +154,7 @@ from .loss import softmax_with_cross_entropy  #DEFINE_ALIAS
 from .loss import square_error_cost  #DEFINE_ALIAS
 from .loss import ssd_loss  #DEFINE_ALIAS
 from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
+from .loss import ctc_loss  #DEFINE_ALIAS
 # from .norm import batch_norm        #DEFINE_ALIAS
 # from .norm import data_norm        #DEFINE_ALIAS
 # from .norm import group_norm        #DEFINE_ALIAS

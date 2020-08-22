@@ -26,6 +26,7 @@ from .. import core
 from .layer_function_generator import templatedoc
 from . import utils
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.utils import deprecated
 import numpy
 import warnings
 
@@ -642,7 +643,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         shape(list|tuple|Tensor): Shape of the output Tensor, the data type of ``shape`` is int32 or int64.
             If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
             If ``shape`` is an Tensor, it should be an 1-D Tensor with date type int32 or int64.
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output Tensor which can
+        dtype(np.dtype|str): Data type of the output Tensor which can
             be float16, float32, float64, int32, int64.
         value(bool|float|int|Tensor): The constant value used to initialize 
             the Tensor to be created. If ``value`` is an Tensor, it should be an 1-D Tensor.
@@ -746,6 +747,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     return out
 
 
+@deprecated(since='1.8.0', update_to="paddle.fill_constant")
 @templatedoc()
 def fill_constant_batch_size_like(input,
                                   shape,
@@ -1040,7 +1042,7 @@ def ones(shape, dtype, force_cpu=False):
 
     Parameters:
         shape(tuple|list|Tensor): Shape of output Tensor, the data type of shape is int32 or int64.
-        dtype (np.dtype|core.VarDesc.VarType|str): Data type of output Tensor, it supports
+        dtype (np.dtype|str): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64.
         force_cpu (bool, optional): Whether force to store the output Tensor in CPU memory.
             If :attr:`force_cpu` is False, the output Tensor will be stored in running device memory.
@@ -1073,7 +1075,7 @@ def zeros(shape, dtype, force_cpu=False, name=None):
 
     Parameters:
         shape(tuple|list|Tensor): Shape of output Tensor, the data type of ``shape`` is int32 or int64.
-        dtype (np.dtype|core.VarDesc.VarType|str): Data type of output Tensor, it supports
+        dtype (np.dtype|str): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64.
         force_cpu (bool, optional): Whether force to store the output Tensor in CPU memory.
             If :attr:`force_cpu` is False, the output Tensor will be stored in running device memory.
@@ -1441,7 +1443,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             or a Tensor of shape [1] with input data type int32, int64, float32 or float64.
         num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int scalar, \
             or a Tensor of shape [1] with data type int32 or int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output tensor, it could be
+        dtype(np.dtype|str, optional): The data type of output tensor, it could be
             int32, int64, float32 and float64. Default: if None, the data type is float32.
         name(str, optional): Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name`.Default: None.
@@ -1557,6 +1559,7 @@ def zeros_like(x, out=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.diag")
 def diag(diagonal):
     """
 	:alias_main: paddle.diag
@@ -1618,7 +1621,7 @@ def eye(num_rows,
             If None, default: num_rows.
         batch_shape(list, optional): If provided, the returned tensor will have a leading
             batch size of this shape, the data type of ``batch_shape`` is int. Default is None.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the returned tensor.
+        dtype(np.dtype|str, optional): The data type of the returned tensor.
             It should be int32, int64, float16, float32, float64, default is 'float32'.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
