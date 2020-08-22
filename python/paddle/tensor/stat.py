@@ -267,11 +267,11 @@ def numel(x, name=None):
     Examples:
         .. code-block:: python
 
-        import paddle
-        
-        paddle.disable_static()
-        x = paddle.full(shape=[4, 5, 7], fill_value=0, dtype='int32')
-        numel = paddle.numel(x) # 140
+            import paddle
+            
+            paddle.disable_static()
+            x = paddle.full(shape=[4, 5, 7], fill_value=0, dtype='int32')
+            numel = paddle.numel(x) # 140
 
 
     """
