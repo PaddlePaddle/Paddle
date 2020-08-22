@@ -26,7 +26,6 @@ __all__ = [
 
 import numpy as np
 
-from ...framework import get_default_dtype
 from ...fluid.dygraph import layers
 from ...fluid.initializer import Normal
 from .. import functional as F
@@ -297,11 +296,11 @@ class ConvTranspose1D(layers.Layer):
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of the filter. It is as same as the output
             feature map.
-        kernel_size(int|tuple, optional): The filter size. If kernel_size is a tuple,
+        kernel_size(int|tuple|list, optional): The filter size. If kernel_size is a tuple,
             it must contain one integers, (kernel_size). None if
             use output size to calculate kernel_size. Default: None. kernel_size and
             output_size should not be None at the same time.
-        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
+        stride(int|tuple|list, optional): The stride size. It means the stride in transposed convolution.
             If stride is a tuple, it must contain one integer, (stride_size).
             Default: stride = 1.
         padding(int|list|str|tuple, optional): The padding size. The padding argument effectively adds
@@ -318,7 +317,7 @@ class ConvTranspose1D(layers.Layer):
             filters is only connected to the second half of the input channels.
             Default: groups = 1.
         bias(bool, optional): Whether to use bias. Default: True.
-        dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points.
+        dilation(int|tuple|list, optional): The dilation size. It means the spacing between the kernel points.
             If dilation is a tuple, it must contain one integer, (dilation_size).
             Default: dilation = 1.
         weight_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
@@ -338,7 +337,7 @@ class ConvTranspose1D(layers.Layer):
     Shape:
         - x(Tensor): 3-D tensor with shape (batch, in_channels, length) when data_format is
             "NCL" or shape (batch, length, in_channels) when data_format is "NLC".
-        - output_size(int|tuple, optional): The output image size. If output size is a
+        - output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple, it must contain one integer, (feature_length). None if use
             kernel_size, padding, output_padding and stride to calculate output_size.
             If output_size and kernel_size are specified at the same time, They
@@ -402,13 +401,9 @@ class ConvTranspose1D(layers.Layer):
         filter_shape = [self._in_channels, out_channels // groups
                         ] + self._kernel_size
         self.weight = self.create_parameter(
-            dtype=get_default_dtype(),
-            shape=filter_shape,
-            attr=self._param_attr)
+            shape=filter_shape, attr=self._param_attr)
         self.bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=[self._out_channels],
-            dtype=get_default_dtype(),
+            attr=self._bias_attr, shape=[self._out_channels],
             is_bias=True) if self._bias else None
 
     def forward(self, x, output_size=None):
