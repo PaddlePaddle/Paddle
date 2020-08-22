@@ -323,7 +323,7 @@ def instance_norm(x,
                   weight=None,
                   bias=None,
                   use_input_stats=True,
-                  momentum=0.1,
+                  momentum=0.9,
                   eps=1e-05,
                   data_format="NCHW",
                   name=None):
@@ -363,12 +363,14 @@ def instance_norm(x,
     """
 
     if in_dygraph_mode():
-        out, _, _ = core.ops.instance_norm(x, weight, bias, 'epsilon', eps)
+        out, _, _ = core.ops.instance_norm(x, weight, bias, "epsilon", eps,
+                                           "momentum", momentum, "data_format",
+                                           data_format)
         return out
 
     check_variable_and_dtype(x, 'input', ['float32', 'float64'], "InstanceNorm")
 
-    attrs = {"epsilon": eps}
+    attrs = {"epsilon": eps, "momentum": momentum, "data_format": data_format}
 
     if weight and bias:
         inputs = {"X": [x], "Scale": [weight], "Bias": [bias]}
