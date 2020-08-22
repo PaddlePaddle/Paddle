@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the common classes to build a neural network  
+# TODO: define the common classes to build a neural network
 from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Embedding  #DEFINE_ALIAS
@@ -20,12 +20,14 @@ from ...fluid.dygraph import Linear  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
 from .. import functional as F
+from ...fluid.framework import _dygraph_tracer
 
 __all__ = [
     'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
     'Pad2D', 'ReflectionPad1d', 'ReplicationPad1d', 'ConstantPad1d',
     'ReflectionPad2d', 'ReplicationPad2d', 'ConstantPad2d', 'ZeroPad2d',
-    'ConstantPad3d', 'ReplicationPad3d', 'CosineSimilarity', 'AlphaDropout'
+    'ConstantPad3d', 'ReplicationPad3d', 'CosineSimilarity', 'Dropout',
+    'Dropout2D', 'Dropout3D', 'AlphaDropout'
 ]
 
 
@@ -44,42 +46,35 @@ class UpSample(layers.Layer):
         'trilinear' : Trilinear interpolation
         'nearest' : Nearest neighbor interpolation
         'bicubic' : Bicubic interpolation
+    Linear interpolation is the method of using a line connecting two known quantities
+    to determine the value of an unknown quantity between the two known quantities.
 
-    Linear interpolation is the method of using a line connecting two known quantities 
-    to determine the value of an unknown quantity between the two known quantities. 
-    
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
     direction) on input tensor.
-
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
     W-direction in this op) on a rectilinear 2D grid. The key idea is
     to perform linear interpolation first in one direction, and then
     again in the other direction.
-    
+
     Bicubic interpolation is an extension of cubic interpolation for interpolating
     data points on a two-dimensional regular grid. The interpolated surface is
     smoother than corresponding surfaces obtained by bilinear interpolation or
     nearest-neighbor interpolation.
-
     Trilinear interpolation is an extension of linear interpolation for
     interpolating functions of three variables (e.g. D-direction,
     H-direction and W-direction in this op) on a rectilinear 3D grid.
     The linear interpolation is performed on three directions.
     Align_corners and align_mode are optional parameters,the calculation method
     of interpolation can be selected by them.
-
     Example:
-
     .. code-block:: text
-
         For scale_factor:
             if align_corners = True && out_size > 1 :
               scale_factor = (in_size-1.0)/(out_size-1.0)
             else:
               scale_factor = float(in_size/out_size)
-
         Linear interpolation:
             if:
                 align_corners = False , align_mode = 0
@@ -90,7 +85,6 @@ class UpSample(layers.Layer):
                 input : (N,C,W_in)
                 output: (N,C,W_out) where:
                 W_out = W_{in} * scale_{factor}
-
         Nearest neighbor interpolation:
           if:
               align_corners = False
@@ -104,22 +98,19 @@ class UpSample(layers.Layer):
               output: (N,C,H_out,W_out) where:
               H_out = round(H_{in} * scale_{factor})
               W_out = round(W_{in} * scale_{factor})
-        
+
         Bilinear interpolation:
           if:
               align_corners = False , align_mode = 0
-
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
           else:
-
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
-
         Bicubic interpolation:
           if:
               align_corners = False
@@ -127,13 +118,11 @@ class UpSample(layers.Layer):
               output: (N,C,H_out,W_out) where:
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-
           else:
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
-
         Trilinear interpolation:
           if:
               align_corners = False , align_mode = 0
@@ -148,28 +137,27 @@ class UpSample(layers.Layer):
               D_out = D_{in} * scale_{factor}
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
-
     https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of linear interpolation, please refer to Wikipedia:
-    
+
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
-    
+
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
-    
+
     For details of bicubic interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bicubic_interpolation
-    
+
     For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
-    
+
     Parameters:
         input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Variable|None): Output shape of image resize
-             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
-             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
         scale_factor (float|Variable|None): The multiplier for the input height or width. At
@@ -212,7 +200,6 @@ class UpSample(layers.Layer):
         TypeError: align_corners should be a bool value
         ValueError: align_mode can only be '0' or '1'
         ValueError: data_format can only be 'NCW', 'NWC', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
-
     Examples:
         .. code-block:: python
             import paddle
@@ -265,8 +252,8 @@ class Pad2D(layers.Layer):
     If mode is 'reflect', paddings[0] and paddings[1] must be no greater
     than height-1. And the width dimension has the same condition.
     Parameters:
-        paddings (int | List[int32]): The padding size. If padding is a int, uses the same 
-            padding in all boundaries, if padding is a List, it must contain four integers, 
+        paddings (int | List[int32]): The padding size. If padding is a int, uses the same
+            padding in all boundaries, if padding is a List, it must contain four integers,
             (padding_top, padding_bottom, padding_left, padding_right).
             Default is [0, 0, 0, 0].
         mode (str): Three modes: 'constant' (default), 'reflect', 'edge' .
@@ -278,7 +265,7 @@ class Pad2D(layers.Layer):
         data_format (str): An string from: "NHWC", "NCHW". Specify the data format of
                            the input data.
                            Default is  "NCHW"
-    Returns: 
+    Returns:
         None
     Examples:
         .. code-block:: text
@@ -336,6 +323,178 @@ class Pad2D(layers.Layer):
             data_format=self._data_format)
 
 
+class Dropout(layers.Layer):
+    """
+    Dropout is a regularization technique for reducing overfitting by preventing
+    neuron co-adaption during training as described in the paper:
+    `Improving neural networks by preventing co-adaptation of feature detectors <https://arxiv.org/abs/1207.0580>`_
+    The dropout operator randomly sets the outputs of some units to zero, while upscale others
+    according to the given dropout probability.
+    See ``paddle.nn.functional.dropout`` for more details.
+    
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+    
+    Parameters:
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        axis (int | list): The axis along which the dropout is performed. Default None.
+        mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
+                               1. upscale_in_train(default), upscale the output at training time
+                                  - train: out = input * mask / ( 1.0 - p )
+                                  - inference: out = input
+                               2. downscale_in_infer, downscale the output at inference
+                                  - train: out = input * mask
+                                  - inference: out = input * (1.0 - p)
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        
+    Shape:
+        - input: N-D tensor.
+        - output: N-D tensor, the same shape as input.
+        
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+            x = np.array([[1,2,3], [4,5,6]]).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
+        super(Dropout, self).__init__()
+
+        self.p = p
+        self.axis = axis
+        self.mode = mode
+        self.name = name
+
+    def forward(self, input):
+        out = F.dropout(
+            input,
+            p=self.p,
+            axis=self.axis,
+            training=self.training,
+            mode=self.mode,
+            name=self.name)
+        return out
+
+
+class Dropout2D(layers.Layer):
+    """
+    Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
+    a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
+    on every forward call with probability `p` using samples from a Bernoulli distribution.
+    Dropout2d will help promote independence between feature maps as described in the paper:
+    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_
+    See ``paddle.nn.functional.dropout2d`` for more details.
+    
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+    
+    Parameters:
+        p (float, optional): Probability of setting units to zero. Default: 0.5
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+                                     will be consistent with that of the input. An optional string from:
+                                    `NCHW`, `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is
+                                     stored in the order of: [batch_size, input_channels, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    
+    Shape:
+        - input: 4-D tensor.
+        - output: 4-D tensor, the same shape as input.
+    
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+            x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout2D(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, data_format='NCHW', name=None):
+        super(Dropout2D, self).__init__()
+
+        self.p = p
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, input):
+        out = F.dropout2d(
+            input,
+            p=self.p,
+            training=self.training,
+            data_format=self.data_format,
+            name=self.name)
+        return out
+
+
+class Dropout3D(layers.Layer):
+    """
+    Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
+    a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
+    on every forward call with probability `p` using samples from a Bernoulli distribution.
+    Dropout3d will help promote independence between feature maps as described in the paper:
+    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_
+    See ``paddle.nn.functional.dropout3d`` for more details.
+    
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+    
+    Parameters:
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+                                     will be consistent with that of the input. An optional string from:
+                                    `NCDHW`, `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is
+                                     stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    Shape:
+        - input: 5-D tensor.
+        - output: 5-D tensor, the same shape as input.
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+            x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout3D(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, data_format='NCDHW', name=None):
+        super(Dropout3D, self).__init__()
+
+        self.p = p
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, input):
+        out = F.dropout3d(
+            input,
+            p=self.p,
+            training=self.training,
+            data_format=self.data_format,
+            name=self.name)
+        return out
+
+
 class AlphaDropout(layers.Layer):
     """
     Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
@@ -389,7 +548,6 @@ class ReflectionPad1d(layers.Layer):
     """
     This interface is used to construct a callable object of the ``ReflectionPad1d`` class.
     Uses reflection of the input boundaries to pad the input tensor.
-
     Parameters:
         padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
@@ -397,27 +555,22 @@ class ReflectionPad1d(layers.Layer):
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
-        None
 
+    Returns:
+        None
     Examples:
         .. code-block:: text
-
             x = [[[1., 2., 3.],
                   [4., 5., 6.]]]
             padding = [1, 2],
             Out = [[[2. 1. 2. 3. 2. 1.]
                     [5. 4. 5. 6. 5. 4.]]]
-
     Code Examples:
         .. code-block:: python
-
             import paddle
             import paddle.nn as nn
             import numpy as np
             paddle.disable_static()
-
             input_shape = (1, 2, 3)
             pad = [1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
@@ -448,7 +601,6 @@ class ReplicationPad1d(layers.Layer):
     """
     This interface is used to construct a callable object of the ``ReplicationPad1d`` class.
     Uses input boundaries to pad the input tensor.
-
     Parameters:
         padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
@@ -456,27 +608,23 @@ class ReplicationPad1d(layers.Layer):
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
-        None
 
+    Returns:
+        None
     Examples:
         .. code-block:: text
-
             x = [[[1., 2., 3.],
                   [4., 5., 6.]]]
             padding = [1, 2],
             Out = [[[2. 1. 2. 3. 2. 1.]
                     [5. 4. 5. 6. 5. 4.]]]
-
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
             paddle.disable_static()
-
             input_shape = (1, 2, 3)
             pad = [1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
@@ -507,7 +655,6 @@ class ConstantPad1d(layers.Layer):
     """
     This interface is used to construct a callable object of the ``ConstantPad1d`` class.
     Uses a constant value to pad the input tensor.
-
     Parameters:
         padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
@@ -516,28 +663,24 @@ class ConstantPad1d(layers.Layer):
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
-        None
 
+    Returns:
+        None
     Examples:
         .. code-block:: text
-
             x = [[[1., 2., 3.],
                   [4., 5., 6.]]]
             padding = [1, 2],
             value = 0.0
             Out = [[[0. 1. 2. 3. 0. 0.]
                     [0. 4. 5. 6. 0. 0.]]]
-
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
             paddle.disable_static()
-
             input_shape = (1, 2, 3)
             pad = [1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
@@ -570,7 +713,6 @@ class ConstantPad2d(layers.Layer):
     """
     This interface is used to construct a callable object of the ``ConstantPad2d`` class.
     Uses a constant value to pad the input tensor.
-
     Parameters:
         padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
@@ -579,28 +721,24 @@ class ConstantPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
-        None
 
+    Returns:
+        None
     Examples:
         .. code-block:: text
-
             x = [[[[1., 2., 3.],
                    [4., 5., 6.]]]]
             padding = [1, 1, 0, 0]
             value = 0.0
             Out = [[[[0. 1. 2. 3. 0.]
                      [0. 4. 5. 6. 0.]]]]
-
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
             paddle.disable_static()
-
             input_shape = (1, 1, 2, 3)
             pad = [1, 0, 1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
@@ -636,7 +774,6 @@ class ZeroPad2d(layers.Layer):
     """
     This interface is used to construct a callable object of the ``ZeroPad2d`` class.
     Uses 0 to pad the input tensor.
-
     Parameters:
         padding (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
@@ -644,27 +781,23 @@ class ZeroPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
-        None
 
+    Returns:
+        None
     Examples:
         .. code-block:: text
-
             x = [[[[1., 2., 3.],
                    [4., 5., 6.]]]]
             padding = [1, 1, 0, 0]
             Out = [[[[0. 1. 2. 3. 0.]
                      [0. 4. 5. 6. 0.]]]]
-
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
             paddle.disable_static()
-
             input_shape = (1, 1, 2, 3)
             pad = [1, 0, 1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
@@ -698,7 +831,6 @@ class ReplicationPad2d(layers.Layer):
     """
     This interface is used to construct a callable object of the ``ReplicationPad2d`` class.
     Uses input boundaries to pad the input tensor.
-
     Parameters:
         padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
@@ -706,27 +838,23 @@ class ReplicationPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
-        None
 
+    Returns:
+        None
     Examples:
         .. code-block:: text
-
             x = [[[[1., 2., 3.],
                    [4., 5., 6.]]]]
             padding = [1, 1, 0, 0]
             Out = [[[[1. 1. 2. 3. 3.]
                      [4. 4. 5. 6. 6.]]]]
-
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
             paddle.disable_static()
-
             input_shape = (1, 1, 2, 3)
             pad = [1, 0, 1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
@@ -760,7 +888,6 @@ class ReflectionPad2d(layers.Layer):
     """
     This interface is used to construct a callable object of the ``ReflectionPad2d`` class.
     Uses reflection of the input boundaries to pad the input tensor.
-
     Parameters:
         padding (Variable | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
@@ -768,27 +895,23 @@ class ReflectionPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
-        None
 
+    Returns:
+        None
     Examples:
         .. code-block:: text
-
             x = [[[[1., 2., 3.],
                    [4., 5., 6.]]]]
             padding = [1, 1, 0, 0]
             Out = [[[[2. 1. 2. 3. 2.]
                      [5. 4. 5. 6. 5.]]]]
-
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
             paddle.disable_static()
-
             input_shape = (1, 1, 4, 3)
             pad = [1, 0, 1, 2]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
@@ -824,7 +947,6 @@ class ConstantPad3d(layers.Layer):
     """
     This interface is used to construct a callable object of the ``ConstantPad3d`` class.
     Uses a constant value to pad the input tensor.
-
     Parameters:
         padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
@@ -833,28 +955,24 @@ class ConstantPad3d(layers.Layer):
            Default is  "NCDHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
-        None
 
+    Returns:
+        None
     Examples:
         .. code-block:: text
-
             x = [[[[[1., 2., 3.],
                     [4., 5., 6.]]]]]
             padding = [1, 2, 0, 0, 0, 0]
             value = 0.0
             Out = [[[[[0. 1. 2. 3. 0. 0.]
                       [0. 4. 5. 6. 0. 0.]]]]]
-
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
             paddle.disable_static()
-
             input_shape = (1, 1, 1, 2, 3)
             pad = [1, 0, 1, 2, 0, 0]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
@@ -890,7 +1008,6 @@ class ReplicationPad3d(layers.Layer):
     """
     This interface is used to construct a callable object of the ``ReplicationPad3d`` class.
     Uses input boundaries to pad the input tensor.
-
     Parameters:
         padding (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
@@ -898,27 +1015,23 @@ class ReplicationPad3d(layers.Layer):
            Default is  "NCDHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
-        None
 
+    Returns:
+        None
     Examples:
         .. code-block:: text
-
             x = [[[[[1., 2., 3.],
                     [4., 5., 6.]]]]]
             padding = [1, 2, 0, 0, 0, 0]
             Out = [[[[[1. 1. 2. 3. 3. 3.]
                       [4. 4. 5. 6. 6. 6.]]]]]
-
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
             paddle.disable_static()
-
             input_shape = (1, 1, 1, 2, 3)
             pad = [1, 0, 1, 2, 0, 0]
             data = np.arange(np.prod(input_shape), dtype=np.float32).reshape(input_shape) + 1
@@ -950,17 +1063,14 @@ class ReplicationPad3d(layers.Layer):
 
 class CosineSimilarity(layers.Layer):
     """
-    This interface is used to compute cosine similarity between x1 and x2 along dim.
-
+    This interface is used to compute cosine similarity between x1 and x2 along axis.
     Parameters:
-        dim (int): Dimension of vectors to compute cosine similarity. Default is 1.
+        axis (int): Dimension of vectors to compute cosine similarity. Default is 1.
         eps(float): Small value to avoid division by zero. Default is 1e-8.
-    Returns: 
+    Returns:
         None
-
     Examples:
         .. code-block:: text
-
             Case 0:
                 x1 = [[0.8024077  0.9927354  0.27238318 0.8344984 ]
                      [0.48949873 0.5797396  0.65444374 0.66510963]
@@ -970,34 +1080,31 @@ class CosineSimilarity(layers.Layer):
                      [0.9098952  0.15715368 0.8671125  0.3156102 ]
                      [0.4427798  0.54136837 0.5276275  0.32394758]
                      [0.3769419  0.8535014  0.48041078 0.9256797 ]]
-                dim = 1
+                axis = 1
                 eps = 1e-8
                 Out: [0.5275037  0.8368967  0.75037485 0.9245899]
-
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
             paddle.disable_static()
-
             np.random.seed(0)
             x1 = np.random.rand(2,3)
             x2 = np.random.rand(2,3)
             x1 = paddle.to_tensor(x1)
             x2 = paddle.to_tensor(x2)
-
-            cos_sim_func = nn.CosineSimilarity(dim=0)
+            cos_sim_func = nn.CosineSimilarity(axis=0)
             result = cos_sim_func(x1, x2)
             print(result.numpy())
             # [0.99806249 0.9817672  0.94987036]
     """
 
-    def __init__(self, dim=1, eps=1e-8):
+    def __init__(self, axis=1, eps=1e-8):
         super(CosineSimilarity, self).__init__()
-        self._dim = dim
+        self._axis = axis
         self._eps = eps
 
     def forward(self, x1, x2):
-        return F.cosine_similarity(x1, x2, dim=self._dim, eps=self._eps)
+        return F.cosine_similarity(x1, x2, axis=self._axis, eps=self._eps)
