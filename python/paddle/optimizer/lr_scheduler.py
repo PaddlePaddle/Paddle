@@ -185,13 +185,14 @@ class NoamLR(_LRScheduler):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = paddle.static.data(name='x', shape=[-1 4, 5])
+            x = paddle.static.data(name='x', shape=[-1, 4, 5])
             y = paddle.static.data(name='y', shape=[-1, 4, 5])
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.NoamLR(d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -282,13 +283,14 @@ class PiecewiseLR(_LRScheduler):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = paddle.static.data(name='x', shape=[-1 4, 5])
+            x = paddle.static.data(name='x', shape=[-1, 4, 5])
             y = paddle.static.data(name='y', shape=[-1, 4, 5])
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.PiecewiseLR(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -365,13 +367,14 @@ class NaturalExpLR(_LRScheduler):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = paddle.static.data(name='x', shape=[-1 4, 5])
+            x = paddle.static.data(name='x', shape=[-1, 4, 5])
             y = paddle.static.data(name='y', shape=[-1, 4, 5])
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.NaturalExpLR(learning_rate=0.5, gamma=0.1, verbose=True)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -443,13 +446,14 @@ class InverseTimeLR(_LRScheduler):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = paddle.static.data(name='x', shape=[-1 4, 5])
+            x = paddle.static.data(name='x', shape=[-1, 4, 5])
             y = paddle.static.data(name='y', shape=[-1, 4, 5])
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.InverseTimeLR(learning_rate=0.5, gamma=0.1, verbose=True)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -537,13 +541,14 @@ class PolynomialLR(_LRScheduler):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = paddle.static.data(name='x', shape=[-1 4, 5])
+            x = paddle.static.data(name='x', shape=[-1, 4, 5])
             y = paddle.static.data(name='y', shape=[-1, 4, 5])
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.PolynomialLR(learning_rate=0.5, decay_steps=20, verbose=True)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -633,7 +638,7 @@ class LinearLrWarmup(_LRScheduler):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = paddle.static.data(name='x', shape=[-1 4, 5])
+            x = paddle.static.data(name='x', shape=[-1, 4, 5])
             y = paddle.static.data(name='y', shape=[-1, 4, 5])
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
@@ -641,6 +646,7 @@ class LinearLrWarmup(_LRScheduler):
                 learning_rate=0.5, warmup_steps=20, start_lr=0, end_lr=0.5, verbose=True)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -737,13 +743,14 @@ class ExponentialLR(_LRScheduler):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = paddle.static.data(name='x', shape=[-1 4, 5])
+            x = paddle.static.data(name='x', shape=[-1, 4, 5])
             y = paddle.static.data(name='y', shape=[-1, 4, 5])
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.ExponentialLR(learning_rate=0.5, gamma=0.9, verbose=True)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -824,13 +831,14 @@ class MultiStepLR(_LRScheduler):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = paddle.static.data(name='x', shape=[-1 4, 5])
+            x = paddle.static.data(name='x', shape=[-1, 4, 5])
             y = paddle.static.data(name='y', shape=[-1, 4, 5])
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.MultiStepLR(learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8, verbose=True)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -932,13 +940,14 @@ class StepLR(_LRScheduler):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = paddle.static.data(name='x', shape=[-1 4, 5])
+            x = paddle.static.data(name='x', shape=[-1, 4, 5])
             y = paddle.static.data(name='y', shape=[-1, 4, 5])
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.StepLR(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -1027,13 +1036,14 @@ class LambdaLR(_LRScheduler):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = paddle.static.data(name='x', shape=[-1 4, 5])
+            x = paddle.static.data(name='x', shape=[-1, 4, 5])
             y = paddle.static.data(name='y', shape=[-1, 4, 5])
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.LambdaLR(learning_rate=0.5, lr_lambda=lambda x:0.95**x, verbose=True)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -1119,20 +1129,21 @@ class ReduceLROnPlateau(_LRScheduler):
                 out.backward()
                 adam.minimize(loss)
                 linear.clear_gradients()
-            scheduler.step()
+            scheduler.step(loss)
 
         # train on statich mode
         paddle.enable_static()
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = paddle.static.data(name='x', shape=[-1 4, 5])
+            x = paddle.static.data(name='x', shape=[-1, 4, 5])
             y = paddle.static.data(name='y', shape=[-1, 4, 5])
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.ReduceLROnPlateau(learning_rate=1.0, factor=0.5, patience=5, verbose=True)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -1145,7 +1156,7 @@ class ReduceLROnPlateau(_LRScheduler):
                         'y': np.random.randn(3, 4, 5).astype('float32')
                     },
                     fetch_list=lr_var.name)
-            scheduler.step()
+            scheduler.step(out[0])
 
     """
 
@@ -1256,9 +1267,9 @@ class ReduceLROnPlateau(_LRScheduler):
                 if self.last_lr - new_lr > self.epsilon:
                     self.last_lr = new_lr
                     if self.verbose:
-                        print('Epoch {}: {} adjusting learning rate to {}.'.
-                              format(self.last_epoch, self.__class__.__name__,
-                                     self.last_lr))
+                        print('Epoch {}: {} set learning rate to {}.'.format(
+                            self.last_epoch, self.__class__.__name__,
+                            self.last_lr))
 
     def _is_better(self, current, best):
         if self.mode == 'min' and self.threshold_mode == 'rel':
@@ -1314,7 +1325,7 @@ class CosineAnnealingLR(_LRScheduler):
         paddle.disable_static()
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
-        scheduler = paddle.optimizer.PiecewiseLR(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
+        scheduler = paddle.optimizer.CosineAnnealingLR(learning_rate=0.5, T_max=10, verbose=True)
         adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
@@ -1331,13 +1342,14 @@ class CosineAnnealingLR(_LRScheduler):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = paddle.static.data(name='x', shape=[-1 4, 5])
+            x = paddle.static.data(name='x', shape=[-1, 4, 5])
             y = paddle.static.data(name='y', shape=[-1, 4, 5])
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
-            scheduler = paddle.optimizer.PiecewiseLR(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
+            scheduler = paddle.optimizer.CosineAnnealingLR(learning_rate=0.5, T_max=10, verbose=True)
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
+            lr_var = adam._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
