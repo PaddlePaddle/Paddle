@@ -18,7 +18,7 @@ from __future__ import print_function
 import math
 import paddle.fluid as fluid
 
-from paddle.nn import Conv2d, Pool2D, BatchNorm, Linear
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.container import Sequential
 
 from ...download import get_weights_path_from_url
@@ -51,13 +51,14 @@ class ConvBNLayer(fluid.dygraph.Layer):
                  act=None):
         super(ConvBNLayer, self).__init__()
 
-        self._conv = Conv2d(
-            in_channels=num_channels,
-            out_channels=num_filters,
-            kernel_size=filter_size,
+        self._conv = Conv2D(
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=groups,
+            act=None,
             bias_attr=False)
 
         self._batch_norm = BatchNorm(num_filters, act=act)
