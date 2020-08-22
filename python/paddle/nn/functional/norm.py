@@ -131,13 +131,13 @@ def batch_norm(x,
     nn.functional.batch_norm is uesd for nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d. Please use above API for BatchNorm.
     
     Parameters:
-        x(Tesnor): input value.
+        x(Tesnor): input value. It's data type should be float32, float64.
         running_mean(Tensor): running mean.
         running_var(Tensor): running variance.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        weight(Tensor, optional): The weight tensor of batch_norm. Default: None.
-        bias(Tensor, optional): The bias tensor of batch_norm. Default: None.
+        weight(Tensor, optional): The weight tensor of batch_norm, can not be None. Default: None.
+        bias(Tensor, optional): The bias tensor of batch_norm can not be None. Default: None.
         training(bool, optional): The actual meaning is the opposite of global status. Defalut False.
         data_format(str, optional): Specify the input data format. Defalut "NCHW".
         name(str, optional): Default: None.
@@ -169,6 +169,8 @@ def batch_norm(x,
 
     assert len(x.shape) >= 2, "input dim must be larger than 1"
 
+    assert weight is not None, "the weight must not be None, please use nn.BatchNorm1d, nn.BatchNorm2d or nn.BatchNorm3d"
+    assert bias is not None, "the bias must not be None, please use nn.BatchNorm1d, nn.BatchNorm2d or nn.BatchNorm3d"
     # we use not training means use_global_status, more details see nn._BatchNormBase
     use_global_stats = not training
     # input ad out must share the memory
@@ -236,7 +238,7 @@ def layer_norm(x,
     see more detail in paddle.nn.LayerNorm
     
     Parameters:
-        x(Tensor): Input Tensor.
+        x(Tensor): Input Tensor. It's data type should be float32, float64.
         normalized_shape(int|list|tuple): Input shape from an expected input of
             size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
             If it is a single integer, this module will normalize over the last dimension
@@ -329,15 +331,14 @@ def instance_norm(x,
     See more detail in nn.layer.InstanceNorm2d.
 
     Parameters:
-        num_features(int): Indicate the number of channels of the input ``Tensor``.
+        x(Tensor): Input Tensor. It's data type should be float32, float64.
         running_mean(Tensor): running mean. Default None.
         running_var(Tensor): running variance. Default None.
-        eps(float, optional): A value added to the denominator for
-            numerical stability. Default is 1e-5.
-        momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        use_input_stats(bool): Default True.
         weight(Tensor, optional): The weight tensor of instance_norm. Default: None.
         bias(Tensor, optional): The bias tensor of instance_norm. Default: None.
+        eps(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
+        momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
+        use_input_stats(bool): Default True.
         data_format(str, optional): Specify the input data format. Default: NCHW.
         name(str, optional): Default None.
 
