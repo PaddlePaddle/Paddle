@@ -1034,8 +1034,8 @@ def ctc_loss(log_probs,
     loss_out = fluid.layers.squeeze(loss_out, [-1])
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
-        loss_out = paddle.mean(loss_out / fluid.layers.cast(label_lengths,
-                                                            loss_out.dtype))
+        loss_out = paddle.mean(loss_out / paddle.cast(label_lengths,
+                                                      loss_out.dtype))
     elif reduction == 'sum':
         loss_out = paddle.sum(loss_out)
     return loss_out
