@@ -32,6 +32,8 @@ from ...fluid.param_attr import ParamAttr
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid import core, dygraph_utils
 
+from ..functional import batch_norm, layer_norm, instance_norm
+
 import numpy as np
 import numbers
 
@@ -85,37 +87,8 @@ class _InstanceNormBase(layers.Layer):
     def forward(self, input):
         self._check_input_dim(input)
 
-        if in_dygraph_mode():
-            out, _, _ = core.ops.instance_norm(input, self.scale, self.bias,
-                                               'epsilon', self._epsilon)
-            return out
-
-        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                                 "InstanceNorm")
-
-        attrs = {"epsilon": self._epsilon}
-
-        if self.scale and self.bias:
-            inputs = {"X": [input], "Scale": [self.scale], "Bias": [self.bias]}
-        else:
-            inputs = {"X": [input]}
-
-        saved_mean = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True)
-        saved_variance = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True)
-        instance_norm_out = self._helper.create_variable_for_type_inference(
-            input.dtype)
-
-        outputs = {
-            "Y": [instance_norm_out],
-            "SavedMean": [saved_mean],
-            "SavedVariance": [saved_variance]
-        }
-
-        self._helper.append_op(
-            type="instance_norm", inputs=inputs, outputs=outputs, attrs=attrs)
-        return instance_norm_out
+        return instance_norm(
+            input, weight=self.scale, bias=self.bias, eps=self._epsilon)
 
 
 class InstanceNorm1d(_InstanceNormBase):
@@ -517,61 +490,12 @@ class LayerNorm(layers.Layer):
                 attr=self._bias_attr, shape=param_shape, is_bias=True)
 
     def forward(self, input):
-        input_shape = list(input.shape)
-        input_ndim = len(input_shape)
-        normalized_ndim = len(self._normalized_shape)
-        self._begin_norm_axis = input_ndim - normalized_ndim
-        if input_ndim < normalized_ndim or input_shape[
-                self._begin_norm_axis:] != self._normalized_shape:
-            str_normalized_shape = str(self._normalized_shape)
-            raise ValueError(
-                'Given normalized_shape is ' + str_normalized_shape +
-                ', expected input with shape [*, ' + str_normalized_shape[
-                    1:] + ', but got input shape ' + str(input_shape))
-
-        if in_dygraph_mode():
-            pre_act, _, _ = core.ops.layer_norm(
-                input, self.weight, self.bias, 'epsilon', self._epsilon,
-                'begin_norm_axis', self._begin_norm_axis)
-            return dygraph_utils._append_activation_in_dygraph(
-                pre_act, act=None)
-
-        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                                 'LayerNorm')
-
-        inputs = dict()
-        inputs['X'] = [input]
-        if self.weight:
-            inputs['Scale'] = [self.weight]
-        if self.bias:
-            inputs['Bias'] = [self.bias]
-        attrs = {
-            "epsilon": self._epsilon,
-            "begin_norm_axis": self._begin_norm_axis
-        }
-
-        # create output
-        mean_out = self._helper.create_variable_for_type_inference(
-            dtype=input.type, stop_gradient=True)
-        variance_out = self._helper.create_variable_for_type_inference(
-            dtype=input.type, stop_gradient=True)
-        layer_norm_out = self._helper.create_variable_for_type_inference(
-            input.type)
-
-        self._helper.append_op(
-            type="layer_norm",
-            inputs=inputs,
-            outputs={
-                "Y": layer_norm_out,
-                "Mean": mean_out,
-                "Variance": variance_out,
-            },
-            attrs={
-                "epsilon": self._epsilon,
-                "begin_norm_axis": self._begin_norm_axis
-            })
-
-        return self._helper.append_activation(layer_norm_out, act=None)
+        return layer_norm(
+            input,
+            normalized_shape=self._normalized_shape,
+            weight=self.weight,
+            bias=self.bias,
+            epsilon=self._epsilon)
 
 
 class _BatchNormBase(layers.Layer):
@@ -603,16 +527,12 @@ class _BatchNormBase(layers.Layer):
         self.weight = self.create_parameter(
             attr=self._weight_attr,
             shape=param_shape,
-            #dtype=self._dtype,
             default_initializer=Constant(1.0))
         self.weight.stop_gradient = (self._weight_attr is False) or (
             self._weight_attr and self._weight_attr.learning_rate == 0.)
 
         self.bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=param_shape,
-            #dtype=self._dtype,
-            is_bias=True)
+            attr=self._bias_attr, shape=param_shape, is_bias=True)
         self.bias.stop_gradient = (self._bias_attr is False) or (
             self._bias_attr and self._bias_attr.learning_rate == 0.)
 
@@ -654,69 +574,19 @@ class _BatchNormBase(layers.Layer):
         raise NotImplementedError("BatchNorm Base error")
 
     def forward(self, input):
-        # create output
-        # mean and mean_out share the same memory
-        # variance and variance out share the same memory
+
         self._check_input_dim(input)
-        mean_out = self._mean
-        variance_out = self._variance
 
-        if in_dygraph_mode():
-            attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
-                     "is_test", not self.training, "data_layout",
-                     self._data_format, "use_mkldnn", False, "fuse_with_relu",
-                     self._fuse_with_relu, "use_global_stats",
-                     self._track_running_stats, 'trainable_statistics',
-                     self._track_running_stats)
-            batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
-                input, self.weight, self.bias, self._mean, self._variance,
-                mean_out, variance_out, *attrs)
-
-            return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=None)
-
-        check_variable_and_dtype(
-            input, 'input', ['float16', 'float32', 'float64'], 'BatchNorm2d')
-
-        attrs = {
-            "momentum": self._momentum,
-            "epsilon": self._epsilon,
-            "is_test": not self.training,
-            "data_layout": self._data_format,
-            "use_mkldnn": False,
-            "fuse_with_relu": self._fuse_with_relu,
-            "use_global_stats": self._track_running_stats,
-            "trainable_statistics": self._track_running_stats,
-        }
-
-        inputs = {
-            "X": [input],
-            "Scale": [self.weight],
-            "Bias": [self.bias],
-            "Mean": [self._mean],
-            "Variance": [self._variance]
-        }
-
-        saved_mean = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True)
-        saved_variance = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True)
-        batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
-            self._dtype)
-
-        outputs = {
-            "Y": [batch_norm_out],
-            "MeanOut": [mean_out],
-            "VarianceOut": [variance_out],
-            "SavedMean": [saved_mean],
-            "SavedVariance": [saved_variance]
-        }
-
-        self._helper.append_op(
-            type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
-
-        # Currently, we don't support inplace in dygraph mode
-        return self._helper.append_activation(batch_norm_out, None)
+        return batch_norm(
+            input,
+            self._mean,
+            self._variance,
+            weight=self.weight,
+            bias=self.bias,
+            training=self.training or not self._track_running_stats,
+            momentum=self._momentum,
+            epsilon=self._epsilon,
+            data_format=self._data_format)
 
 
 class BatchNorm1d(_BatchNormBase):

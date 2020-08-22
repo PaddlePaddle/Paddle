@@ -25,52 +25,24 @@ from paddle.fluid import Program, program_guard
 import paddle
 
 
-class TestInstanceNorm(unittest.TestCase):
-    def test_error(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"):
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-
-            def error1d():
-                x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                instance_norm1d = paddle.nn.InstanceNorm1d(1)
-                instance_norm1d(fluid.dygraph.to_variable(x_data_4))
-
-            def error2d():
-                x_data_3 = np.random.random(size=(2, 1, 3)).astype('float32')
-                instance_norm2d = paddle.nn.InstanceNorm2d(1)
-                instance_norm2d(fluid.dygraph.to_variable(x_data_3))
-
-            def error3d():
-                x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                instance_norm3d = paddle.nn.BatchNorm3d(1)
-                instance_norm3d(fluid.dygraph.to_variable(x_data_4))
-
-            with fluid.dygraph.guard(p):
-                self.assertRaises(ValueError, error1d)
-                self.assertRaises(ValueError, error2d)
-                self.assertRaises(ValueError, error3d)
-
+class TestDygraphGroupNormv2(unittest.TestCase):
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"):
+        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
             places.append(fluid.CUDAPlace(0))
         for p in places:
-            shape = [4, 10, 4, 4]
+            shape = [2, 6, 2, 2]
 
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
-                    bn = fluid.dygraph.InstanceNorm(shape[1])
-                    y = bn(fluid.dygraph.to_variable(x))
+                    gn = fluid.dygraph.GroupNorm(channels=2, groups=2)
+                    y = gn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
             def compute_v2(x):
                 with fluid.dygraph.guard(p):
-                    bn = paddle.nn.InstanceNorm2d(shape[1])
-                    y = bn(fluid.dygraph.to_variable(x))
+                    gn = paddle.nn.GroupNorm(num_channels=2, num_groups=2)
+                    y = gn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
             x = np.random.randn(*shape).astype("float32")
@@ -80,27 +52,26 @@ class TestInstanceNorm(unittest.TestCase):
 
     def test_static(self):
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"):
+        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             exe = fluid.Executor(p)
-            shape = [4, 10, 16, 16]
+            shape = [2, 6, 2, 2]
 
             def compute_v1(x_np):
                 with program_guard(Program(), Program()):
-                    ins = fluid.dygraph.InstanceNorm(shape[1])
+                    gn = fluid.dygraph.GroupNorm(channels=2, groups=2)
                     x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
-                    y = ins(x)
+                    y = gn(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r
 
             def compute_v2(x_np):
                 with program_guard(Program(), Program()):
-                    ins = paddle.nn.InstanceNorm2d(shape[1])
+                    gn = paddle.nn.GroupNorm(num_channels=2, num_groups=2)
                     x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
-                    y = ins(x)
+                    y = gn(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r

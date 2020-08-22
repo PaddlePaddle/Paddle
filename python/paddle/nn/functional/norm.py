@@ -128,7 +128,7 @@ def batch_norm(x,
     """
     Applies Batch Normalization as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    see nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d for detail.
+    nn.functional.batch_norm is uesd for nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d. Please use above API for BatchNorm.
     
     Parameters:
         x(Tesnor): input value.
@@ -136,9 +136,9 @@ def batch_norm(x,
         running_var(Tensor): running variance.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        weight(Tensor, optional): The parameter attribute for Parameter `scale` of batch_norm. Default: None.
-        bias_attr(ParamAttr, optional): The parameter attribute for the bias of batch_norm. Default: None.
-        training(bool, optional): defalut False.
+        weight(Tensor, optional): The weight tensor of batch_norm. Default: None.
+        bias(Tensor, optional): The bias tensor of batch_norm. Default: None.
+        training(bool, optional): The actual meaning is the opposite of global status. Defalut False.
         data_format(str, optional): Specify the input data format. Defalut "NCHW".
         name(str, optional): Default: None.
 
@@ -152,37 +152,32 @@ def batch_norm(x,
           import numpy as np
 
           paddle.disable_static()
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
+          x = np.random.seed(123)
+          x = np.random.random(size=(2, 1, 2, 3)).astype('float32')
           running_mean = np.random.random(size=1).astype('float32')
           running_variance = np.random.random(size=1).astype('float32')
-          x = to_tensor(x_data)
-          rm = to_tensor(running_mean)
-          rv = to_tensor(running_variance)
-          batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv)
-
-          print(batch_norm_out.numpy)
+          weight_data = np.random.random(size=1).astype('float32')
+          bias_data = np.random.random(size=1).astype('float32')
+          x = paddle.to_tensor(x)
+          rm = paddle.to_tensor(running_mean)
+          rv = paddle.to_tensor(running_variance)
+          w = paddle.to_tensor(weight_data)
+          b = paddle.to_tensor(bias_data)
+          batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv, w, b)
+          print batch_norm_out
     """
 
     assert len(x.shape) >= 2, "input dim must be larger than 1"
-    param_shape = [x.shape[1]]
-    if weight is None or weight is False:
-        weight = create_parameter(
-            dtype=x.dtype, shape=param_shape, default_initializer=Constant(1.0))
-        weight.stop_gradient = True
 
-    if bias is None or bias is False:
-        bias = create_parameter(
-            dtype=x.dtype, shape=param_shape, default_initializer=Constant(0.0))
-        bias.stop_gradient = True
-
+    # we use not training means use_global_status, more details see nn._BatchNormBase
+    use_global_stats = not training
+    # input ad out must share the memory
     mean_out = running_mean
     variance_out = running_var
     if in_dygraph_mode():
-        attrs = ("momentum", momentum, "epsilon", epsilon, "is_test", training,
-                 "data_layout", data_format, "use_mkldnn", False,
-                 "fuse_with_relu", False, "use_global_stats", training,
-                 'trainable_statistics', training)
+        attrs = ("momentum", momentum, "epsilon", epsilon, "data_layout",
+                 data_format, "use_mkldnn", False, "fuse_with_relu", False,
+                 "use_global_stats", use_global_stats)
         batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
             x, weight, bias, running_mean, running_var, mean_out, variance_out,
             *attrs)
@@ -196,12 +191,10 @@ def batch_norm(x,
     attrs = {
         "momentum": momentum,
         "epsilon": epsilon,
-        "is_test": not training,
         "data_layout": data_format,
         "use_mkldnn": False,
         "fuse_with_relu": False,
-        "use_global_stats": training,
-        "trainable_statistics": training,
+        "use_global_stats": use_global_stats,
     }
 
     inputs = {
@@ -230,7 +223,6 @@ def batch_norm(x,
     helper.append_op(
         type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
-    # Currently, we don't support inplace in dygraph mode
     return helper.append_activation(batch_norm_out)
 
 
@@ -245,19 +237,15 @@ def layer_norm(x,
     
     Parameters:
         x(Tensor): Input Tensor.
-        normalized_shape(int or list or tuple): Input shape from an expected input of
+        normalized_shape(int|list|tuple): Input shape from an expected input of
             size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.
         epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
-            gain :math:`g`. If False, weight is None. If is None, a default :code:`ParamAttr` would be added as scale. The
-            :attr:`param_attr` is initialized as 1 if it is added. Default: None.
-        bias_attr(ParamAttr, optional): The parameter attribute for the learnable
-            bias :math:`b`. If is False, bias is None. If is None, a default :code:`ParamAttr` would be added as bias. The
-            :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
-        name(str, optional): parameter name. Default None.
+        weight(Tensor, optional): The weight tensor of batch_norm. Default: None.
+        bias(Tensor, optional): The bias tensor of batch_norm. Default: None.
+        name(str, optional): Default None.
 
     Returns:
         None
@@ -348,17 +336,9 @@ def instance_norm(x,
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         use_input_stats(bool): Default True.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
-             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the weight_attr is not set, the parameter is initialized 
-	     one. If it is set to False, will not create weight_attr. Default: None.
-        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
-             If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
-             If it is set to False, will not create bias_attr. Default: None.
-        data_format(str, optional): Specify the input data format. Default: NCL.
+        weight(Tensor, optional): The weight tensor of instance_norm. Default: None.
+        bias(Tensor, optional): The bias tensor of instance_norm. Default: None.
+        data_format(str, optional): Specify the input data format. Default: NCHW.
         name(str, optional): Default None.
 
     Returns:

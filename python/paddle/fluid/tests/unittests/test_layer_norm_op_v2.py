@@ -26,30 +26,6 @@ import paddle
 
 
 class TestDygraphLayerNormv2(unittest.TestCase):
-    def test_functional_dygraph(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            with fluid.dygraph.guard(p):
-                x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
-                x = fluid.dygraph.to_variable(x_data)
-                layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
-
-    def test_functional_static(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            exe = fluid.Executor(p)
-            with program_guard(Program(), Program()):
-                x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
-                x = fluid.data(name='x', shape=x_data.shape, dtype=x_data.dtype)
-                layer_norm_out = paddle.nn.functional.layer_norm(x, [1, 2, 3])
-                exe.run(fluid.default_startup_program())
-                r = exe.run(feed={'x': x_data, },
-                            fetch_list=[layer_norm_out])[0]
-
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
