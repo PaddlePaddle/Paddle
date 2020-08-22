@@ -39,7 +39,7 @@ def data(name, shape, dtype=None, lod_level=0):
        shape (list|tuple): List|Tuple of integers declaring the shape. You can
            set "None" or -1 at a dimension to indicate the dimension can be of any
            size. For example, it is useful to set changeable batch size as "None" or -1.
-       dtype (np.dtype|VarType|str, optional): The type of the data. Supported
+       dtype (np.dtype|str, optional): The type of the data. Supported
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: None. When `dtype` is not set, the dtype will get 
            from the global dtype by `paddle.get_default_dtype()`.
