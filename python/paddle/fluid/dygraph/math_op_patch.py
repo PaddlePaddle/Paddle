@@ -290,6 +290,7 @@ def monkey_patch_math_varbase():
         # These binary use paddle.optype
         ('__div__', _binary_method_creator_('divide', False)),
         ('__truediv__', _binary_method_creator_('divide', False)),
+        ('__rtruediv__', _binary_method_creator_('divide', True)),
         ('__rdiv__', _binary_method_creator_('divide', True)),
         ('__floordiv__', _binary_method_creator_('floor_divide', False)),
         ('__rfloordiv__', _binary_method_creator_('floor_divide', True)),
