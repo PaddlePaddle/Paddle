@@ -156,19 +156,7 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
             reduction)
 
     if in_dygraph_mode():
-        one = _varbase_creator(dtype=input.dtype)
-        core.ops.fill_constant(one, 'value',
-                               float(1.0), 'force_cpu', False, 'dtype',
-                               one.dtype, 'str_value', '1.0', 'shape', [1])
-        one.stop_gradient = True
-        label_minus = core.ops.elementwise_sub(label, one)
-        input_minus = core.ops.elementwise_sub(one, input)
-        input_minus_log = core.ops.log(input_minus)
-        input_log = core.ops.log(input)
-        loss_1 = core.ops.elementwise_mul(label_minus, input_minus_log)
-        loss_2 = core.ops.elementwise_mul(label, input_log)
-        out = core.ops.elementwise_sub(loss_1, loss_2)
-
+        out = core.ops.bce_loss(input, label)
         if weight is not None:
             out = core.ops.elementwise_mul(out, weight, 'axis', -1)
 
@@ -186,17 +174,16 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
     fluid.data_feeder.check_variable_and_dtype(
         label, 'label', ['float32', 'float64'], 'binary_cross_entropy')
 
-    one = paddle.fill_constant(shape=[1], value=1.0, dtype=input.dtype)
-    one.stop_gradient = True
-    label_minus = paddle.elementwise_sub(label, one)
-    input_minus = paddle.elementwise_sub(one, input)
-    input_minus_log = paddle.log(input_minus)
-    input_log = paddle.log(input)
-    loss_1 = paddle.multiply(label_minus, input_minus_log)
-    loss_2 = paddle.multiply(label, input_log)
-
     sub_name = name if weight is None and reduction is 'none' else None
-    out = paddle.elementwise_sub(loss_1, loss_2, name=sub_name)
+    helper = LayerHelper("binary_cross_entropy", name=sub_name)
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='bce_loss',
+        inputs={
+            'X': [input],
+            'Label': [label],
+        },
+        outputs={'Out': [out]})
 
     if weight is not None:
         if isinstance(weight, paddle.framework.Variable):
@@ -803,9 +790,9 @@ def ctc_loss(log_probs,
              reduction='mean'):
     """
 
-    An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc) 
-    to compute Connectionist Temporal Classification (CTC) loss. 
-    It can be aliased as softmax with CTC, since a native softmax activation 
+    An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
+    to compute Connectionist Temporal Classification (CTC) loss.
+    It can be aliased as softmax with CTC, since a native softmax activation
     is interated to the Warp-CTC library to normalize values for each row of the input tensor.
 
     Parameters:
@@ -818,7 +805,7 @@ def ctc_loss(log_probs,
 
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
-    
+
     Examples:
 
         .. code-block:: python
@@ -863,18 +850,18 @@ def ctc_loss(log_probs,
             input_lengths = paddle.to_variable(input_lengths)
             label_lengths = paddle.to_variable(label_lengths)
 
-            loss = F.ctc_loss(log_probs, labels, 
-                input_lengths, 
-                label_lengths, 
-                blank=0, 
+            loss = F.ctc_loss(log_probs, labels,
+                input_lengths,
+                label_lengths,
+                blank=0,
                 reduction='none')
             print(loss.numpy())  #[3.9179852 2.9076521]
 
-            loss = F.ctc_loss(log_probs, labels, 
-                input_lengths, 
-                label_lengths, 
-                blank=0, 
-                reduction='mean') 
+            loss = F.ctc_loss(log_probs, labels,
+                input_lengths,
+                label_lengths,
+                blank=0,
+                reduction='mean')
             print(loss.numpy())  #[1.1376063]
 
     """
@@ -921,8 +908,8 @@ def cross_entropy(input,
     Parameters:
         input (Tensor): Input tensor, the data type is float32, float64. Shape is
 	    (N, C), where C is number of classes, and if shape is more than 2D, this
-	    is (N, C, D1, D2,..., Dk), k >= 1. 
-        label (Tensor): Label tensor, the data type is int64. Shape is (N), where each 
+	    is (N, C, D1, D2,..., Dk), k >= 1.
+        label (Tensor): Label tensor, the data type is int64. Shape is (N), where each
 	    value is 0 <= label[i] <= C-1, and if shape is more than 2D, this is
 	    (N, D1, D2,..., Dk), k >= 1.
         weight (Tensor, optional): Weight tensor, a manual rescaling weight given
@@ -955,7 +942,7 @@ def cross_entropy(input,
             weight = paddle.to_tensor(weight_data)
             loss = paddle.nn.functional.cross_entropy(input=input, label=label, weight=weight)
             print(loss.numpy())
- 
+
     """
     if not in_dygraph_mode():
         fluid.data_feeder.check_variable_and_dtype(
@@ -974,7 +961,7 @@ def cross_entropy(input,
         raise ValueError(
             "The weight' is not a Variable, please convert to Variable.")
 
-    #step 2. nll_loss 
+    #step 2. nll_loss
     input = log_softmax_out
     helper = LayerHelper('nll_loss', **locals())
     dtype = helper.input_dtype(input)
