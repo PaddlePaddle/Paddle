@@ -17,7 +17,6 @@ from ...fluid.layers import brelu  #DEFINE_ALIAS
 from ...fluid.layers import erf  #DEFINE_ALIAS
 from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import hard_swish  #DEFINE_ALIAS
-from ...fluid.layers import leaky_relu  #DEFINE_ALIAS
 from ...fluid.layers import maxout  #DEFINE_ALIAS
 from ...fluid.layers import soft_relu  #DEFINE_ALIAS
 from ...fluid.layers import swish  #DEFINE_ALIAS
@@ -383,6 +382,57 @@ def hsigmoid(input,
         inputs=inputs,
         outputs=outputs,
         attrs=attrs)
+    return out
+
+
+def leaky_relu(x, negative_slope=0.01, name=None):
+    """
+    leaky_relu activation
+
+    .. math:
+        leaky_relu(x)=
+            \left\{
+            \begin{aligned}
+            &x, & & if \ x >= 0 \\
+            &negative\_slope * x, & & otherwise \\
+            \end{aligned}
+            \right. \\
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        negative_slope (float, optional): Slope of the activation function at
+            :math:`x < 0` . Default is 0.01.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
+
+            paddle.disable_static()
+
+            x = paddle.to_tensor(np.array([-2, 0, 1]))
+            out = F.leaky_relu(x) # [-0.02, 0., 1.]
+
+    """
+    if in_dygraph_mode():
+        return core.ops.leaky_relu(x, 'alpha', negative_slope)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'leaky_relu')
+    helper = LayerHelper('leaky_relu', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='leaky_relu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': negative_slope})
     return out
 
 

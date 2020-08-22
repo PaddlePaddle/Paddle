@@ -558,11 +558,17 @@ class LeakyReLU(layers.Layer):
 
     .. math:
 
-        out = max(x, alpha * x)
+        LeakyReLU(x)=
+            \left\{
+            \begin{aligned}
+            &x, & & if \ x >= 0 \\
+            &negative\_slope * x, & & otherwise \\
+            \end{aligned}
+            \right. \\
 
     Parameters:
-        alpha (float, optional): Slope of the activation function at :math:`x < 0` .
-            Default: 0.01.
+        negative_slope (float, optional): Slope of the activation function at
+            :math:`x < 0` . Default is 0.01.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
     
@@ -573,23 +579,23 @@ class LeakyReLU(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        lrelu = paddle.nn.LeakyReLU()
-        x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
-        out = lrelu(x)  # [-0.02, 0., 1.]
+            m = paddle.nn.LeakyReLU()
+            x = paddle.to_tensor(np.array([-2, 0, 1]))
+            out = m(x)  # [-0.02, 0., 1.]
     """
 
-    def __init__(self, alpha=1e-2, name=None):
+    def __init__(self, negative_slope=0.01, name=None):
         super(LeakyReLU, self).__init__()
-        self._alpha = alpha
+        self._negative_slope = negative_slope
         self._name = name
 
     def forward(self, x):
-        return F.leaky_relu(x, self._alpha, self._name)
+        return F.leaky_relu(x, self._negative_slope, self._name)
 
 
 class Sigmoid(layers.Layer):
