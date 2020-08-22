@@ -94,9 +94,9 @@ from .layer.common import Dropout3D  #DEFINE_ALIAS
 from .layer.pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
 from .layer.pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
 from .layer.conv import Conv2D  #DEFINE_ALIAS
-from .layer.conv import Conv2DTranspose  #DEFINE_ALIAS
+from .layer.conv import ConvTranspose2d  #DEFINE_ALIAS
 from .layer.conv import Conv3D  #DEFINE_ALIAS
-from .layer.conv import Conv3DTranspose  #DEFINE_ALIAS
+from .layer.conv import ConvTranspose3d  #DEFINE_ALIAS
 # from .layer.conv import TreeConv        #DEFINE_ALIAS
 # from .layer.conv import Conv1D        #DEFINE_ALIAS
 from .layer.extension import RowConv  #DEFINE_ALIAS

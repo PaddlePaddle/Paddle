@@ -70,9 +70,9 @@ from .common import unfold  #DEFINE_ALIAS
 from .common import assign  #DEFINE_ALIAS
 from .common import interpolate  #DEFINE_ALIAS
 from .conv import conv2d  #DEFINE_ALIAS
-from .conv import conv2d_transpose  #DEFINE_ALIAS
+from .conv import conv_transpose2d  #DEFINE_ALIAS
 from .conv import conv3d  #DEFINE_ALIAS
-from .conv import conv3d_transpose  #DEFINE_ALIAS
+from .conv import conv_transpose3d  #DEFINE_ALIAS
 from .extension import add_position_encoding  #DEFINE_ALIAS
 # from .extension import autoincreased_step_counter        #DEFINE_ALIAS
 from .extension import continuous_value_model  #DEFINE_ALIAS
