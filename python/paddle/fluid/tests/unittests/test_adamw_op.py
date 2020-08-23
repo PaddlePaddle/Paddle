@@ -44,7 +44,7 @@ class TestAdamWOp(unittest.TestCase):
             parameters=linear.parameters(),
             apply_decay_param_fun=lambda name: True,
             weight_decay=0.01)
-        assert (adam.__str__ is not None)
+        assert (adam.__str__() is not None)
 
     def test_adamw_op(self):
         place = fluid.CPUPlace()

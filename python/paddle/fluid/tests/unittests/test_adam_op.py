@@ -454,7 +454,6 @@ class TestAdamOpV2(unittest.TestCase):
 
         adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
         state_dict = adam.state_dict()
-
         adam.set_state_dict(state_dict)
 
         #learning_rate is Decay
@@ -463,7 +462,7 @@ class TestAdamOpV2(unittest.TestCase):
             learning_rate=learning_rate,
             weight_decay=fluid.regularizer.L2Decay(0.001),
             parameters=emb.parameters())
-
+        lr = adam.get_lr()
         state_dict = adam.state_dict()
         adam.set_state_dict(state_dict)
 
@@ -474,14 +473,23 @@ class TestAdamOpV2(unittest.TestCase):
             adam = paddle.optimizer.Adam(
                 learning_rate=learning_rate, parameters=emb.parameters())
 
-            state_dict = adam.state_dict()
-            adam.set_state_dict(state_dict)
+        params = adam.get_opti_var_name_list()
+        assert (params is not None)
 
-            params = adam.get_opti_var_name_list()
-            assert (params is not None)
+    def test_adam_with_grad_clip(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = fluid.dygraph.to_variable(value)
+        linear = fluid.Linear(13, 5, dtype="float32")
+        clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+        adam = paddle.optimizer.Adam(
+            0.1, parameters=linear.parameters(), grad_clip=clip)
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
 
     def test_adam_op_with_set_lr(self):
-        import paddle
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
         adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
@@ -495,6 +503,10 @@ class TestAdamOpV2(unittest.TestCase):
         adam.set_lr(lr_var)
         cur_lr = adam.get_lr()
         assert (np.float32(lr) == cur_lr)
+
+        with self.assertRaises(TypeError):
+            lr = int(1)
+            adam.set_lr(lr)
 
 
 if __name__ == "__main__":
