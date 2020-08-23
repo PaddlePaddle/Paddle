@@ -27,6 +27,8 @@ from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 
+from predictor_utils import PredictorTools
+
 SEED = 2020
 
 program_translator = ProgramTranslator()
@@ -536,6 +538,7 @@ class TestLACModel(unittest.TestCase):
             dy_pre = self.predict_dygraph(batch)
             st_pre = self.predict_static(batch)
             dy_jit_pre = self.predict_dygraph_jit(batch)
+            predictor_pre = self.predict_analysis_inference(batch)
             self.assertTrue(
                 np.allclose(dy_pre, st_pre),
                 msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
@@ -543,6 +546,10 @@ class TestLACModel(unittest.TestCase):
                 np.allclose(dy_jit_pre, st_pre),
                 msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(dy_jit_pre,
                                                                st_pre))
+            self.assertTrue(
+                np.allclose(predictor_pre, st_pre),
+                msg="predictor_pre:\n {}\n, st_pre: \n{}.".format(predictor_pre,
+                                                                  st_pre))
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
@@ -590,6 +597,14 @@ class TestLACModel(unittest.TestCase):
             pred_res = model(to_variable(words), to_variable(length))
 
             return pred_res.numpy()
+
+    def predict_analysis_inference(self, batch):
+        words, targets, length = batch
+
+        output = PredictorTools(self.args.model_save_dir, VARIABLE_FILENAME,
+                                [words, length])
+        out = output()
+        return out
 
 
 if __name__ == "__main__":

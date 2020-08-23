@@ -29,10 +29,10 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
-    def _get_numpy_out(self, x1, x2, dim=1, eps=1e-8):
-        w12 = np.sum(x1 * x2, axis=dim)
-        w1 = np.sum(x1 * x1, axis=dim)
-        w2 = np.sum(x2 * x2, axis=dim)
+    def _get_numpy_out(self, x1, x2, axis=1, eps=1e-8):
+        w12 = np.sum(x1 * x2, axis=axis)
+        w1 = np.sum(x1 * x1, axis=axis)
+        w2 = np.sum(x2 * x2, axis=axis)
         n12 = np.sqrt(np.clip(w1 * w2, eps * eps, None))
         cos_sim = w12 / n12
         return cos_sim
@@ -42,7 +42,7 @@ class TestCosineSimilarityAPI(unittest.TestCase):
 
         with program_guard(Program(), Program()):
             shape = [10, 15]
-            dim = 1
+            axis = 1
             eps = 1e-8
             np.random.seed(0)
             np_x1 = np.random.rand(*shape).astype(np.float32)
@@ -50,14 +50,14 @@ class TestCosineSimilarityAPI(unittest.TestCase):
 
             x1 = paddle.data(name="x1", shape=shape)
             x2 = paddle.data(name="x2", shape=shape)
-            result = F.cosine_similarity(x1, x2, dim=dim, eps=eps)
+            result = F.cosine_similarity(x1, x2, axis=axis, eps=eps)
             exe = Executor(place)
             fetches = exe.run(default_main_program(),
                               feed={"x1": np_x1,
                                     "x2": np_x2},
                               fetch_list=[result])
 
-            np_out = self._get_numpy_out(np_x1, np_x2, dim=dim, eps=eps)
+            np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
             self.assertTrue(np.allclose(fetches[0], np_out))
 
     def test_static(self):
@@ -68,16 +68,16 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         paddle.disable_static()
 
         shape = [10, 15]
-        dim = 1
+        axis = 1
         eps = 1e-8
         np.random.seed(1)
         np_x1 = np.random.rand(*shape).astype(np.float32)
         np_x2 = np.random.rand(*shape).astype(np.float32)
-        np_out = self._get_numpy_out(np_x1, np_x2, dim=dim, eps=eps)
+        np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
         tesnor_x1 = paddle.to_variable(np_x1)
         tesnor_x2 = paddle.to_variable(np_x2)
-        y = F.cosine_similarity(tesnor_x1, tesnor_x2, dim=dim, eps=eps)
+        y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
 
         self.assertTrue(np.allclose(y.numpy(), np_out))
 
@@ -85,16 +85,16 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         paddle.disable_static()
 
         shape = [12, 13]
-        dim = 0
+        axis = 0
         eps = 1e-6
         np.random.seed(1)
         np_x1 = np.random.rand(*shape).astype(np.float32)
         np_x2 = np.random.rand(*shape).astype(np.float32)
-        np_out = self._get_numpy_out(np_x1, np_x2, dim=dim, eps=eps)
+        np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
         tesnor_x1 = paddle.to_variable(np_x1)
         tesnor_x2 = paddle.to_variable(np_x2)
-        y = F.cosine_similarity(tesnor_x1, tesnor_x2, dim=dim, eps=eps)
+        y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
 
         self.assertTrue(np.allclose(y.numpy(), np_out))
 
@@ -103,16 +103,35 @@ class TestCosineSimilarityAPI(unittest.TestCase):
 
         shape1 = [10, 12, 10]
         shape2 = [10, 1, 10]
-        dim = 2
+        axis = 2
         eps = 1e-6
         np.random.seed(1)
         np_x1 = np.random.rand(*shape1).astype(np.float32)
         np_x2 = np.random.rand(*shape2).astype(np.float32)
-        np_out = self._get_numpy_out(np_x1, np_x2, dim=dim, eps=eps)
+        np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
         tesnor_x1 = paddle.to_variable(np_x1)
         tesnor_x2 = paddle.to_variable(np_x2)
-        y = F.cosine_similarity(tesnor_x1, tesnor_x2, dim=dim, eps=eps)
+        y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
+
+        self.assertTrue(np.allclose(y.numpy(), np_out))
+
+    def test_dygraph_4(self):
+        paddle.disable_static()
+
+        shape1 = [23, 12, 1]
+        shape2 = [23, 1, 10]
+        axis = 2
+        eps = 1e-6
+        np.random.seed(1)
+        np_x1 = np.random.rand(*shape1).astype(np.float32)
+        np_x2 = np.random.rand(*shape2).astype(np.float32)
+        np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
+
+        cos_sim_func = nn.CosineSimilarity(axis=axis, eps=eps)
+        tesnor_x1 = paddle.to_variable(np_x1)
+        tesnor_x2 = paddle.to_variable(np_x2)
+        y = cos_sim_func(tesnor_x1, tesnor_x2)
 
         self.assertTrue(np.allclose(y.numpy(), np_out))
 

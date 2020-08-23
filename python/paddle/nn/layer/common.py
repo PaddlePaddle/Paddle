@@ -913,10 +913,10 @@ class ReplicationPad3d(layers.Layer):
 
 class CosineSimilarity(layers.Layer):
     """
-    This interface is used to compute cosine similarity between x1 and x2 along dim.
+    This interface is used to compute cosine similarity between x1 and x2 along axis.
 
     Parameters:
-        dim (int): Dimension of vectors to compute cosine similarity. Default is 1.
+        axis (int): Dimension of vectors to compute cosine similarity. Default is 1.
         eps(float): Small value to avoid division by zero. Default is 1e-8.
     Returns: 
         None
@@ -933,7 +933,7 @@ class CosineSimilarity(layers.Layer):
                      [0.9098952  0.15715368 0.8671125  0.3156102 ]
                      [0.4427798  0.54136837 0.5276275  0.32394758]
                      [0.3769419  0.8535014  0.48041078 0.9256797 ]]
-                dim = 1
+                axis = 1
                 eps = 1e-8
                 Out: [0.5275037  0.8368967  0.75037485 0.9245899]
 
@@ -951,16 +951,16 @@ class CosineSimilarity(layers.Layer):
             x1 = paddle.to_tensor(x1)
             x2 = paddle.to_tensor(x2)
 
-            cos_sim_func = nn.CosineSimilarity(dim=0)
+            cos_sim_func = nn.CosineSimilarity(axis=0)
             result = cos_sim_func(x1, x2)
             print(result.numpy())
             # [0.99806249 0.9817672  0.94987036]
     """
 
-    def __init__(self, dim=1, eps=1e-8):
+    def __init__(self, axis=1, eps=1e-8):
         super(CosineSimilarity, self).__init__()
-        self._dim = dim
+        self._axis = axis
         self._eps = eps
 
     def forward(self, x1, x2):
-        return F.cosine_similarity(x1, x2, dim=self._dim, eps=self._eps)
+        return F.cosine_similarity(x1, x2, axis=self._axis, eps=self._eps)
