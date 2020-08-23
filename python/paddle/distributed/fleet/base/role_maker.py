@@ -329,6 +329,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         is run in single card or in single node
         """
+        if not self._role_is_generated:
+            self.generate_role()
         return self.single_run
 
     def _get_rank(self):
