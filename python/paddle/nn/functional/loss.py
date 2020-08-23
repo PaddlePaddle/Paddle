@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import paddle
+from ...fluid.layer_helper import LayerHelper
+from ...fluid.data_feeder import check_variable_and_dtype
+import paddle.fluid as fluid
 
 # TODO: define loss functions of neural network
 import numpy as np
@@ -46,6 +49,7 @@ from ...fluid.framework import Variable
 
 __all__ = [
     'binary_cross_entropy',
+    'binary_cross_entropy_with_logits',
     'bpr_loss',
     'center_loss',
     'cross_entropy',
@@ -70,7 +74,8 @@ __all__ = [
     'softmax_with_cross_entropy',
     'square_error_cost',
     'ssd_loss',
-    'teacher_student_sigmoid_loss'
+    'teacher_student_sigmoid_loss',
+    'ctc_loss',
 ]
 
 
@@ -208,6 +213,154 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
         return paddle.mean(out, name=name)
     else:
         return out
+
+
+def binary_cross_entropy_with_logits(logit,
+                                     label,
+                                     weight=None,
+                                     reduction='mean',
+                                     pos_weight=None,
+                                     name=None):
+    """
+    This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
+    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
+    layer and some reduce operations.
+
+    This measures the element-wise probability error in classification tasks
+    in which each class is independent.
+    This can be thought of as predicting labels for a data-point, where labels
+    are not mutually exclusive. For example, a news article can be about
+    politics, technology or sports at the same time or none of these.
+
+    First this operator calculate loss function as follows:
+
+    .. math::
+           Out = -Labels * \\log(\\sigma(Logit)) - (1 - Labels) * \\log(1 - \\sigma(Logit))
+
+    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + \\e^{-Logit}}`. By substituting this we get:
+
+    .. math::
+           Out = Logit - Logit * Labels + \\log(1 + \\e^{-Logit})
+
+    For stability and to prevent overflow of :math:`\\e^{-Logit}` when Logit < 0,
+    we reformulate the loss as follows:
+
+    .. math::
+           Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + \\e^{-\|Logit\|})
+
+    Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
+    weight tensor on the loss `Out`. The ``weight`` tensor will attach different
+    weight on every items in the batch. The ``pos_weight`` will attach different
+    weight on the positive label of each class.
+
+    Finally, this operator applies reduce operation on the loss.
+    If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
+
+    Note that the target labels ``label`` should be numbers between 0 and 1.
+
+    Args:
+        logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
+            N is batch_size, `*` means number of additional dimensions. The ``logit``
+            is usually the output of Linear layer. Available dtype is float32, float64.
+        label (Tensor): The target labels tensor. 2-D tensor with the same shape as
+            ``logit``. The target labels which values should be numbers between 0 and 1.
+            Available dtype is float32, float64.
+        weight (Tensor, optional): A manual rescaling weight given to the loss of each
+            batch element. If given, it has to be a 1D Tensor whose size is `[N, ]`,
+            The data type is float32, float64. Default is ``'None'``.
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'mean'``.
+        pos_weight (Tensor, optional): A weight of positive examples. Must be a vector
+            with length equal to the number of classes. The data type is float32, float64.
+            Default is ``'None'``.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``logit`` , else the shape of output is scalar.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.disable_static()
+            logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
+            label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
+            output = paddle.nn.functional.binary_cross_entropy_with_logits(logit, label)
+            print(output.numpy())  # [0.45618808]
+
+    """
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in binary_cross_entropy_with_logits "
+            "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
+            % reduction)
+
+    if in_dygraph_mode():
+        one = _varbase_creator(dtype=logit.dtype)
+        core.ops.fill_constant(one, 'value',
+                               float(1.0), 'force_cpu', False, 'dtype',
+                               one.dtype, 'str_value', '1.0', 'shape', [1])
+        out = core.ops.sigmoid_cross_entropy_with_logits(logit, label)
+        if pos_weight is not None:
+            log_weight = core.ops.elementwise_add(
+                core.ops.elementwise_mul(
+                    label, core.ops.elementwise_sub(pos_weight, one)), one)
+            out = core.ops.elementwise_mul(out, log_weight)
+        if weight is not None:
+            out = core.ops.elementwise_mul(out, weight)
+
+        if reduction == "sum":
+            return core.ops.reduce_sum(out, 'reduce_all', True)
+        elif reduction == "mean":
+            return core.ops.mean(out)
+        else:
+            return out
+
+    fluid.data_feeder.check_variable_and_dtype(
+        logit, 'logit', ['float32', 'float64'],
+        'binary_cross_entropy_with_logits')
+    fluid.data_feeder.check_variable_and_dtype(
+        label, 'label', ['float32', 'float64'],
+        'binary_cross_entropy_with_logits')
+    sigmoid_name = None
+    if reduction == 'none' and pos_weight is None and weight is None:
+        sigmoid_name = name
+
+    out = paddle.nn.functional.sigmoid_cross_entropy_with_logits(
+        logit, label, name=sigmoid_name)
+
+    one = paddle.fill_constant(shape=[1], value=1.0, dtype=logit.dtype)
+    if pos_weight is not None:
+        fluid.data_feeder.check_variable_and_dtype(
+            pos_weight, 'pos_weight', ['float32', 'float64'],
+            'binary_cross_entropy_with_logits')
+        log_weight = paddle.add(
+            paddle.multiply(label, paddle.elementwise_sub(pos_weight, one)),
+            one)
+        pos_weight_name = name if reduction == 'none' and weight is None else None
+        out = paddle.multiply(out, log_weight, name=pos_weight_name)
+
+    if weight is not None:
+        fluid.data_feeder.check_variable_and_dtype(
+            weight, 'weight', ['float32', 'float64'],
+            'binary_cross_entropy_with_logits')
+        weight_name = name if reduction == 'none' else None
+        out = paddle.multiply(out, weight, name=weight_name)
+
+    if reduction == "sum":
+        return paddle.sum(out, name=name)
+    elif reduction == "mean":
+        return paddle.mean(out, name=name)
+    return out
 
 
 def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
@@ -789,6 +942,102 @@ def mse_loss(input, label, reduction='mean', name=None):
         return paddle.sum(paddle.fluid.layers.square(
             paddle.fluid.layers.elementwise_sub(input, label)),
                           name=name)
+
+
+def ctc_loss(log_probs,
+             labels,
+             input_lengths,
+             label_lengths,
+             blank=0,
+             reduction='mean'):
+    """
+
+    An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc) 
+    to compute Connectionist Temporal Classification (CTC) loss. 
+    It can be aliased as softmax with CTC, since a native softmax activation 
+    is interated to the Warp-CTC library to normalize values for each row of the input tensor.
+
+    Parameters:
+        log_probs (Tensor): The unscaled probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type must be float32.
+        labels (Tensor): The ground truth sequence with padding, which must be a 3-D Tensor. The tensor shape is [batch_size, max_label_length], where max_label_length is the longest length of label sequence. The data type must be int32.
+        input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
+        label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
+        blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
+        reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
+
+    Returns:
+        Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
+    
+    Examples:
+
+        .. code-block:: python
+
+            # declarative mode
+            import paddle.nn.functional as F
+            import numpy as np
+            import paddle
+
+            # length of the longest logit sequence
+            max_seq_length = 4
+            #length of the longest label sequence
+            max_label_length = 3
+            # number of logit sequences
+            batch_size = 2
+            # class num
+            class_num = 3
+
+            np.random.seed(1)
+            log_probs = np.array([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
+                                    [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
+
+                                    [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
+                                    [5.38816750e-01, 4.19194520e-01, 6.85219526e-01]],
+
+                                    [[2.04452246e-01, 8.78117442e-01, 2.73875929e-02],
+                                    [6.70467496e-01, 4.17304814e-01, 5.58689833e-01]],
+
+                                    [[1.40386939e-01, 1.98101491e-01, 8.00744593e-01],
+                                    [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
+
+                                    [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
+                                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]]).astype("float32")
+            labels = np.array([[1, 2, 2],
+                            [1, 2, 2]]).astype("int32")
+            input_lengths = np.array([5, 5]).astype("int64")
+            label_lengths = np.array([3, 3]).astype("int64")
+
+            paddle.disable_static()
+            log_probs = paddle.to_variable(log_probs)
+            labels = paddle.to_variable(labels)
+            input_lengths = paddle.to_variable(input_lengths)
+            label_lengths = paddle.to_variable(label_lengths)
+
+            loss = F.ctc_loss(log_probs, labels, 
+                input_lengths, 
+                label_lengths, 
+                blank=0, 
+                reduction='none')
+            print(loss.numpy())  #[3.9179852 2.9076521]
+
+            loss = F.ctc_loss(log_probs, labels, 
+                input_lengths, 
+                label_lengths, 
+                blank=0, 
+                reduction='mean') 
+            print(loss.numpy())  #[1.1376063]
+
+    """
+
+    loss_out = fluid.layers.warpctc(log_probs, labels, blank, False,
+                                    input_lengths, label_lengths)
+
+    loss_out = fluid.layers.squeeze(loss_out, [-1])
+    assert reduction in ['mean', 'sum', 'none']
+    if reduction == 'mean':
+        loss_out = paddle.mean(loss_out / label_lengths)
+    elif reduction == 'sum':
+        loss_out = paddle.sum(loss_out)
+    return loss_out
 
 
 def cross_entropy(input,

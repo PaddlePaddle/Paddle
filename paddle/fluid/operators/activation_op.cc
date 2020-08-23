@@ -781,8 +781,8 @@ class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   }
 };
 
-// leaky_relu Grad: dx=dy if y>=0 else alpha * dy
-// leaky_relu GradGrad: ddy=ddx if y>=0 else alpha * ddx
+// leaky_relu Grad: dx=dy if x>=0 else alpha * dy
+// leaky_relu GradGrad: ddy=ddx if x>=0 else alpha * ddx
 template <typename T>
 class LeakyReluDoubleGradMaker
     : public ::paddle::framework::SingleGradOpMaker<T> {
@@ -792,8 +792,8 @@ class LeakyReluDoubleGradMaker
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("leaky_relu_grad_grad");
-    // input1: Out
-    op->SetInput("Out", this->Input("Out"));
+    // input1: X
+    op->SetInput("X", this->Input("X"));
     // X@GRAD@GRAD: ddx
     op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(this->Attrs());

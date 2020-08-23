@@ -41,12 +41,12 @@ static void InitRandom(framework::Tensor *tensor,
 
 template <typename T>
 struct LeakyReluGradGradEachElementFunctor {
-  LeakyReluGradGradEachElementFunctor(const T *ddx, const T *out, T alpha,
+  LeakyReluGradGradEachElementFunctor(const T *ddx, const T *x, T alpha,
                                       T *ddout)
-      : ddx_(ddx), out_(out), alpha_(alpha), ddout_(ddout) {}
+      : ddx_(ddx), x_(x), alpha_(alpha), ddout_(ddout) {}
 
   HOSTDEVICE void operator()(int idx) {
-    if (out_[idx] > 0) {
+    if (x_[idx] >= 0) {
       ddout_[idx] = ddx_[idx];
     } else {
       ddout_[idx] = ddx_[idx] * alpha_;
@@ -54,7 +54,7 @@ struct LeakyReluGradGradEachElementFunctor {
   }
 
   const T *ddx_;
-  const T *out_;
+  const T *x_;
   T alpha_;
   T *ddout_;
 };
@@ -66,13 +66,13 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
   LeakyReluGradGradFunctor<T> functor;
   functor.alpha = alpha;
   auto &dev_ctx = *platform::DeviceContextPool::Instance().Get(place);
-  framework::Tensor *x = nullptr;
+  framework::Tensor *out = nullptr;
   framework::Tensor *dout = nullptr;
   framework::Tensor *dx = nullptr;
 
-  framework::Tensor out;
-  out.Resize(dim);
-  InitRandom<T>(&out, place);
+  framework::Tensor x;
+  x.Resize(dim);
+  InitRandom<T>(&x, place);
 
   framework::Tensor ddx;
   ddx.Resize(dim);
@@ -85,22 +85,22 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
   framework::Tensor ddout_actual;
   ddout_actual.mutable_data<T>(dim, place);
   LeakyReluGradGradEachElementFunctor<T> actual_functor(
-      ddx.data<T>(), out.data<T>(), static_cast<T>(alpha),
+      ddx.data<T>(), x.data<T>(), static_cast<T>(alpha),
       ddout_actual.data<T>());
 
-  int64_t limit = out.numel();
+  int64_t limit = x.numel();
 
 #ifdef __NVCC__
   if (platform::is_gpu_place(place)) {
     auto &cuda_dev_ctx = dynamic_cast<platform::CUDADeviceContext &>(dev_ctx);
-    functor(cuda_dev_ctx, x, &out, &ddx, &ddout, dout, dx);
+    functor(cuda_dev_ctx, &x, out, &ddx, &ddout, dout, dx);
     platform::ForRange<platform::CUDADeviceContext> for_range(cuda_dev_ctx,
                                                               limit);
     for_range(actual_functor);
   } else {
 #endif
     auto &cpu_dev_ctx = dynamic_cast<platform::CPUDeviceContext &>(dev_ctx);
-    functor(cpu_dev_ctx, x, &out, &ddx, &ddout, dout, dx);
+    functor(cpu_dev_ctx, &x, out, &ddx, &ddout, dout, dx);
     platform::ForRange<platform::CPUDeviceContext> for_range(cpu_dev_ctx,
                                                              limit);
     for_range(actual_functor);
