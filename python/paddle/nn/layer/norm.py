@@ -178,7 +178,6 @@ class InstanceNorm2d(_InstanceNormBase):
 
     DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
 
-
     :math:`input` is the input features over a mini-batch.
 
     ..  math::
@@ -252,8 +251,7 @@ class InstanceNorm3d(_InstanceNormBase):
     """
     Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
-    DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
-
+    DataLayout: NCHW `[batch, in_channels, dims, in_height, in_width]`
 
     :math:`input` is the input features over a mini-batch.
 
@@ -425,10 +423,6 @@ class GroupNorm(layers.Layer):
 
 class LayerNorm(layers.Layer):
     """
-    :alias_main: paddle.nn.LayerNorm
-	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
-	:old_api: paddle.fluid.dygraph.LayerNorm
-
     This interface is used to construct a callable object of the ``LayerNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
