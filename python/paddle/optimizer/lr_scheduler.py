@@ -55,8 +55,8 @@ class _LRScheduler(object):
 
     def step(self, epoch=None):
         """
-        step should be called after 'minimize' . It will Update the learning rate in optimizer according to 'epoch'.  
-        The new learning rate will take effect on next optimize operation.
+        'step' should be called after 'minimize' . It will update the learning rate in optimizer according to 'epoch'.  
+        The new learning rate will take effect on next epoch.
 
         Args:
             epoch (int, None): specify current epoch. Default: None. Auto-increment from last_epoch=-1.
@@ -247,7 +247,6 @@ class PiecewiseLR(_LRScheduler):
             learning_rate = 0.1
 
     Args:
-        learning_rate (float): The initial learning rate. It is a python float number.
         boundaries(list): A list of steps numbers. The type of element in the list is python int. 
         values(list): A list of learning rate values that will be picked during different epoch boundaries. 
             The type of element in the list is python float.
@@ -493,17 +492,17 @@ class PolynomialLR(_LRScheduler):
 
     .. math::
 
-        decay\_steps & = decay\_steps * math.ceil(\\frac{global\_step}{decay\_steps}) 
+        decay\_steps & = decay\_steps * math.ceil(\\frac{epoch}{decay\_steps}) 
 
-        new\_learning\_rate & = (learning\_rate-end\_lr)*(1-\\frac{global\_step}{decay\_steps})^{power}+end\_learning\_rate
+        new\_learning\_rate & = (learning\_rate-end\_lr)*(1-\\frac{epoch}{decay\_steps})^{power}+end\_lr
 
     If cycle is set to False, then:
 
     .. math::
 
-        global\_step & = min(global\_step, decay\_steps) 
+        epoch & = min(epoch, decay\_steps) 
 
-        new\_learning\_rate & = (learning\_rate-end\_learning\_rate)*(1-\\frac{global\_step}{decay\_steps})^{power}+end\_learning\_rate
+        new\_learning\_rate & = (learning\_rate-end\_lr)*(1-\\frac{epoch}{decay\_steps})^{power}+end\_lr
 
 
     Args:
@@ -511,7 +510,8 @@ class PolynomialLR(_LRScheduler):
         decay_steps(int): The decay step size. It determines the decay cycle.
         end_lr(float, optional): The minimum final learning rate. Default: 0.0001.
         power(float, optional): Power of polynomial. Default: 1.0.
-        cycle(bool, optional): If set true, decay the learning rate every decay_steps. Default: False.
+        cycle(bool, optional): Whether the learning rate rises again. If True, then the learning rate will rise when it decrease 
+            to ``end_lr`` .  If False, the learning rate is monotone decreasing. Default: False.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
@@ -1249,8 +1249,8 @@ class ReduceLROnPlateau(_LRScheduler):
 
     def step(self, metrics, epoch=None):
         """
-        step should be called after 'minimize' . It will Update the learning rate in optimizer according to ``metrics`` .  
-        The new learning rate will take effect on next optimize operation.
+        step should be called after 'minimize' . It will update the learning rate in optimizer according to ``metrics`` .  
+        The new learning rate will take effect on next epoch.
 
         Args:
             metrics (Tensor|numpy.ndarray|float): Which will be monitored to determine whether the learning rate will reduce. 
