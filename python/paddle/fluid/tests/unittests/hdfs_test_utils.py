@@ -24,7 +24,7 @@ from paddle.distributed.fleet.utils import LocalFS, HDFSClient, FSTimeOut, FSFil
 java_home = os.environ["JAVA_HOME"]
 
 
-class FSTest(unittest.TestCase):
+class FSTestBase(unittest.TestCase):
     def _test_dirs(self, fs):
         dir_path = os.path.abspath("./test_dir")
         fs.delete(dir_path)
@@ -187,106 +187,6 @@ class FSTest(unittest.TestCase):
             self.assertFalse(True)
         except Exception as e:
             pass
-
-    def test_exists(self):
-        fs = HDFSClient(
-            "/usr/local/hadoop-2.7.7/",
-            None,
-            time_out=15 * 1000,
-            sleep_inter=100)
-        self.assertFalse(fs.is_exist(os.path.abspath("./xxxx")))
-        self.assertFalse(fs.is_dir(os.path.abspath("./xxxx")))
-        self.assertTrue(fs.is_dir(os.path.abspath("./xxx/..")))
-        dirs, files = fs.ls_dir(os.path.abspath("./test_hdfs.py"))
-        self.assertTrue(dirs == [])
-        self.assertTrue(len(files) == 1)
-        dirs, files = fs.ls_dir(os.path.abspath("./xxx/.."))
-
-    def test_hdfs(self):
-        fs = HDFSClient(
-            "/usr/local/hadoop-2.7.7/",
-            None,
-            time_out=15 * 1000,
-            sleep_inter=100)
-        self._test_rm(fs)
-        self._test_touch(fs)
-        self._test_dirs(fs)
-        self._test_upload(fs)
-
-        self._test_download(fs)
-        self._test_mkdirs(fs)
-        self._test_list_dir(fs)
-        self._test_try_upload(fs)
-        self._test_try_download(fs)
-
-    def test_local(self):
-        fs = LocalFS()
-        self._test_rm(fs)
-        self._test_touch(fs)
-        self._test_dirs(fs)
-        self._test_touch_file(fs)
-        self._test_mkdirs(fs)
-        self._test_list_dir(fs)
-        self._test_try_upload(fs)
-        self._test_try_download(fs)
-
-    def test_timeout(self):
-        fs = HDFSClient(
-            "/usr/local/hadoop-2.7.7/",
-            None,
-            time_out=6 * 1000,
-            sleep_inter=100)
-        src = "hdfs_test_timeout"
-        dst = "new_hdfs_test_timeout"
-        fs.delete(dst)
-        fs.mkdirs(src)
-        fs.mkdirs(dst)
-        fs.mkdirs(dst + "/" + src)
-        output = ""
-        try:
-            fs.mv(src, dst, test_exists=False)
-            self.assertFalse(1, "can't execute cmd:{} output:{}".format(cmd,
-                                                                        output))
-        except FSTimeOut as e:
-            print("execute mv {} to {} timeout".format(src, dst))
-
-        cmd = "{} -mv {} {}".format(fs._base_cmd, src, dst)
-        ret, output = fluid.core.shell_execute_cmd(cmd, 6 * 1000, 2 * 1000)
-        self.assertNotEqual(ret, 0)
-        print("second mv ret:{} output:{}".format(ret, output))
-
-    def test_is_dir(self):
-        fs = HDFSClient(
-            "/usr/local/hadoop-2.7.7/",
-            None,
-            time_out=15 * 1000,
-            sleep_inter=100)
-        self.assertFalse(fs.is_dir("./test_hdfs.py"))
-        s = """
-java.io.IOException: Input/output error
- responseErrorMsg : failed to getFileStatus, errorCode: 3, path: /user/PUBLIC_KM_Data/wangxi16/data/serving_model, lparam: d868f6bb6822c621, errorMessage: inner error
-	at org.apache.hadoop.util.FileSystemUtil.throwException(FileSystemUtil.java:164)
-	at org.apache.hadoop.util.FileSystemUtil.dealWithResponse(FileSystemUtil.java:118)
-	at org.apache.hadoop.lite.client.LiteClientImpl.getFileStatus(LiteClientImpl.java:696)
-	at org.apache.hadoop.fs.LibDFileSystemImpl.getFileStatus(LibDFileSystemImpl.java:297)
-	at org.apache.hadoop.fs.LiteFileSystem.getFileStatus(LiteFileSystem.java:514)
-	at org.apache.hadoop.fs.FsShell.test(FsShell.java:1092)
-	at org.apache.hadoop.fs.FsShell.run(FsShell.java:2285)
-	at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:65)
-	at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:79)
-	at org.apache.hadoop.fs.FsShell.main(FsShell.java:2353)
-        """
-
-        print("split lines:", s.splitlines())
-        self.assertTrue(fs._test_match(s.splitlines()) != None)
-
-    def test_config(self):
-        config = {"fs.default.name": "hdfs://xxx", "hadoop.job.ugi": "ugi"}
-        fs = HDFSClient(
-            "/usr/local/hadoop-2.7.7/",
-            config,
-            time_out=15 * 1000,
-            sleep_inter=100)
 
     def _test_list_dir(self, fs):
         fs = HDFSClient(

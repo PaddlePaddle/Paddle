@@ -910,7 +910,7 @@ set +x
                         multiple_card_tests="$multiple_card_tests|^$testcase$"
                     fi
                 else
-                    if [[ "${#single_card_tests}" -gt 3000 ]];then
+                    if [[ "${#single_card_tests}" -gt 10000 ]];then
                         if [[ "$single_card_tests_1" == "" ]]; then 
                             single_card_tests_1="^$testcase$"
                         else
