@@ -8323,14 +8323,18 @@ def gather_nd(input, index, name=None):
                          = [23]
 
     Args:
-        input (Variable): The source input. Its dtype should be int32, int64, float32, float64.
-        index (Variable): The index input with rank > 1, index.shape[-1] <= input.rank.
-                          Its dtype should be int32, int64.
-        name (str|None): A name for this layer(optional). If set None, the
-                         layer will be named automatically.
+        input (Tensor): The source input. Its dtype should be bool, float32, float64, int32, int64.
+        index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
+                        Its dtype should be int32, int64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+                        For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        output (Variable): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
+        output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
+    
+    Raises:
+        TypeError: ``input`` must be a Tensor and the data type of ``input`` must be one of float32, float64, int32 and int64.
+        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be one of int32 and int64.
 
     Examples:
 
@@ -8342,6 +8346,12 @@ def gather_nd(input, index, name=None):
             output = fluid.layers.gather_nd(x, index)
 
     """
+    if in_dygraph_mode():
+        return core.ops.gather_nd(input, index)
+    check_variable_and_dtype(input, 'input',
+                             ['bool', 'float32', 'float64', 'int32', 'int64'],
+                             'gather_np')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather_np')
     helper = LayerHelper('gather_nd', **locals())
     dtype = helper.input_dtype()
     output = helper.create_variable_for_type_inference(dtype)
