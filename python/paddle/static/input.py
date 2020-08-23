@@ -163,6 +163,26 @@ class InputSpec(object):
     def from_tensor(cls, tensor, name=None):
         """
         Generates a InputSpec based on the description of input tensor. 
+
+        Arg:
+            tensor(Tensor): the source tensor to generate a InputSpec instance
+        
+        Returns:
+            A InputSpec instance generated from Tensor.
+
+        Examples:
+            .. code-block:: python
+
+            import numpy as np
+            import paddle.fluid as fluid
+            from paddle.static import InputSpec
+
+            fluid.enable_dygraph()
+
+            x = fluid.dygraph.to_variable(np.ones([2, 2], np.float32))
+            x_spec = InputSpec.from_tensor(x, name='x')
+            print(x_spec)  # InputSpec(shape=(2, 2), dtype=VarType.FP32, name=x)
+
         """
         if isinstance(tensor, (Variable, core.VarBase)):
             return cls(tensor.shape, tensor.dtype, name or tensor.name)
@@ -175,12 +195,45 @@ class InputSpec(object):
     def from_numpy(cls, ndarray, name=None):
         """
         Generates a InputSpec based on the description of input np.ndarray. 
+
+        Args:
+            tensor(Tensor): the source numpy ndarray to generate a InputSpec instance
+        
+        Returns:
+            A InputSpec instance generated from Tensor.
+
+        Examples:
+            .. code-block:: python
+
+            import numpy as np
+            from paddle.static import InputSpec
+
+            x = np.ones([2, 2], np.float32)
+            x_spec = InputSpec.from_numpy(x, name='x')
+            print(x_spec)  # InputSpec(shape=(2, 2), dtype=VarType.FP32, name=x)
+
         """
         return cls(ndarray.shape, ndarray.dtype, name)
 
     def batch(self, batch_size):
         """
         Inserts `batch_size` in front of the `shape`.
+
+        Args:
+            batch_size(int): the inserted integer value of batch size.
+        
+        Returns:
+            The original InputSpec instance by inserting `batch_size` in front of `shape`.
+
+        Examples:
+            .. code-block:: python
+
+            from paddle.static import InputSpec
+
+            x_spec = InputSpec(shape=[64], dtype='float32', name='x')
+            x_spec.batch(4)
+            print(x_spec) # InputSpec(shape=(4, 64), dtype=VarType.FP32, name=x)
+
         """
         if isinstance(batch_size, (list, tuple)):
             if len(batch_size) != 1:
@@ -193,17 +246,33 @@ class InputSpec(object):
                             format(type(batch_size).__name__))
 
         new_shape = [batch_size] + list(self.shape)
-        return InputSpec(tuple(new_shape), self.dtype, self.name)
+        self.shape = tuple(new_shape)
+
+        return self
 
     def unbatch(self):
         """
         Removes the first element of `shape`.
+        
+        Returns:
+            The original InputSpec instance by removing the first element of `shape` .
+
+        Examples:
+            .. code-block:: python
+
+            from paddle.static import InputSpec
+
+            x_spec = InputSpec(shape=[4, 64], dtype='float32', name='x')
+            x_spec.unbatch()
+            print(x_spec) # InputSpec(shape=(64,), dtype=VarType.FP32, name=x)
+
         """
         if len(self.shape) == 0:
             raise ValueError(
                 "Not support to unbatch a InputSpec when len(shape) == 0.")
 
-        return InputSpec(tuple(self.shape[1:]), self.dtype, self.name)
+        self.shape = self._verify(self.shape[1:])
+        return self
 
     def _verify(self, shape):
         """
@@ -235,9 +304,9 @@ class InputSpec(object):
         return hash((tuple(self.shape), self.dtype))
 
     def __eq__(self, other):
+        slots = ['shape', 'dtype', 'name']
         return (type(self) is type(other) and all(
-            getattr(self, attr) == getattr(other, attr)
-            for attr in self.__slots__))
+            getattr(self, attr) == getattr(other, attr) for attr in slots))
 
     def __ne__(self, other):
         return not self == other
