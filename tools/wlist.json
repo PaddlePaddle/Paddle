@@ -128,17 +128,17 @@
         "Callback.on_eval_batch_end",
         "Callback.on_test_batch_begin",
         "Callback.on_test_batch_end",
-        "Model.prepare"
-    ],
-    "wlist_no_op_pass":[
-        "gelu",
-        "erf",
+        "Model.prepare",
         "init_progress_group",
         "broadcast",
         "all_reduce",
         "reduce",
         "scatter",
         "all_gather"
+    ],
+    "wlist_no_op_pass":[
+        "gelu",
+        "erf"
     ],
     "wlist_ci_nopass":[
         "DecodeHelper",
