@@ -132,7 +132,7 @@
     ],
     "wlist_no_op_pass":[
         "gelu",
-        "erf"
+        "erf",
         "init_progress_group",
         "broadcast",
         "all_reduce",
