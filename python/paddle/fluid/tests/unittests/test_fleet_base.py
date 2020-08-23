@@ -126,6 +126,9 @@ class TestFleetBase(unittest.TestCase):
 
 
 class TestFleetBaseSingleRun(unittest.TestCase):
+    def setUp(self):
+        os.environ.pop("PADDLE_TRAINER_ENDPOINTS")
+
     def test_single_run_minimize(self):
         input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
