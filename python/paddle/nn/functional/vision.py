@@ -177,9 +177,8 @@ def grid_sample(x,
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
-    Returns:
-        Tensor: Shape of output is [N, C, grid_H, grid_W] in which `grid_H` is the height of grid
-                and `grid_W` is the width of grid. The data type is same as input tensor.
+    Returns: Tensor, The shape of output is [N, C, grid_H, grid_W] in which `grid_H` is the height of grid
+                 and `grid_W` is the width of grid. The data type is same as input tensor.
 
     Examples:
 
