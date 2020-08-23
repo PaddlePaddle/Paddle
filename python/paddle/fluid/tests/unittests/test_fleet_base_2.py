@@ -29,7 +29,6 @@ class TestFleetBase(unittest.TestCase):
     def test_ps_minimize(self):
         import paddle
         import paddle.distributed.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["POD_IP"] = "127.0.0.1"
@@ -46,7 +45,7 @@ class TestFleetBase(unittest.TestCase):
             input=prediction, label=input_y)
         avg_cost = paddle.fluid.layers.mean(x=cost)
 
-        role = role_maker.PaddleCloudRoleMaker(is_collective=False)
+        role = fleet.PaddleCloudRoleMaker(is_collective=False)
         fleet.init(role)
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = False

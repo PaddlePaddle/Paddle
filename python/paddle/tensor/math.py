@@ -51,14 +51,12 @@ from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
 from ..fluid.layers import round    #DEFINE_ALIAS
 from ..fluid.layers import rsqrt    #DEFINE_ALIAS
 from ..fluid.layers import scale    #DEFINE_ALIAS
-from ..fluid.layers import sign    #DEFINE_ALIAS
 from ..fluid.layers import square    #DEFINE_ALIAS
 from ..fluid.layers import stanh    #DEFINE_ALIAS
 from ..fluid.layers import atan    #DEFINE_ALIAS
 from ..fluid.layers import erf    #DEFINE_ALIAS
 from ..fluid.layers import sqrt    #DEFINE_ALIAS
 from ..fluid.layers import sin    #DEFINE_ALIAS
-from ..fluid.layers import tanh    #DEFINE_ALIAS
 
 from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
@@ -111,7 +109,11 @@ __all__ = [
         'min',
         'minimum',
         'mm',
-        'div',
+        'divide',
+        'floor_divide',
+        'remainder',
+        'mod',
+        'floor_mod',
         'multiply',
         'add',
         'atan',
@@ -121,7 +123,7 @@ __all__ = [
         'erf',
         'addcmul',
         'addmm',
-        'clamp',
+        'clip',
         'trace',
         'kron'
 ]
@@ -263,102 +265,39 @@ Examples:
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def div(x, y, name=None):
+def divide(x, y, name=None):
     """
-Examples:
+    Divide two tensors element-wise. The equation is:
 
-    .. code-block:: python
+    .. math::
+        out = x / y
 
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
+    **Note**:
+    ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
-        def gen_data():
-            return {
-                "x": np.array([2, 3, 4]).astype('float32'),
-                "y": np.array([1, 5, 2]).astype('float32')
-            }
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-        x = fluid.data(name="x", shape=[3], dtype='float32')
-        y = fluid.data(name="y", shape=[3], dtype='float32')
-        z = paddle.div(x, y)
-        # z = x / y
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        z_value = exe.run(feed=gen_data(),
-                            fetch_list=[z.name])
+    Examples:
 
-        print(z_value) # [2., 0.6, 2.]
+        ..  code-block:: python
 
+            import paddle
+            import numpy as np
 
-    .. code-block:: python
+            paddle.disable_static()
 
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        def gen_data():
-            return {
-                "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                "y": np.zeros((4, 5)).astype('float32')
-            }
-
-        x = fluid.data(name="x", shape=[2, 3, 4, 5], dtype='float32')
-        y = fluid.data(name="y", shape=[4, 5], dtype='float32')
-        z = paddle.div(x, y, name='z')
-        # z = x / y
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-
-        z_value = exe.run(feed=gen_data(),
-                            fetch_list=[z.name])
-
-        print(z_value[0])
-        print(z_value[0].shape) # z.shape=[2,3,4,5]
-
-
-    ..  code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        def gen_data():
-            return {
-                "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
-                "y": np.random.randint(1, 5, size=[5]).astype('float32')
-            }
-
-        x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-        y = fluid.data(name="y", shape=[5], dtype='float32')
-        z = paddle.div(x, y)
-        # z = x / y
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-
-        z_value = exe.run(feed=gen_data(),
-                            fetch_list=[z.name])
-        print(z_value[0])
-        print(z_value[0].shape) # z.shape=[2,3,4,5]
-
-
-    ..  code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        with fluid.dygraph.guard(fluid.CPUPlace()):
             np_x = np.array([2, 3, 4]).astype('float64')
             np_y = np.array([1, 5, 2]).astype('float64')
-            x = fluid.dygraph.to_variable(np_x)
-            y = fluid.dygraph.to_variable(np_y)
-            z = paddle.div(x, y)
-            np_z = z.numpy()
-            print(np_z)  # [2., 0.6, 2.]
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = paddle.divide(x, y)
+            print(z.numpy())  # [2., 0.6, 2.]
 
     """
     op_type = 'elementwise_div'
@@ -369,6 +308,98 @@ Examples:
             x, y, axis=axis, act=act, op_name=op_type)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def floor_divide(x, y, name=None):
+    """
+    Floor divide two tensors element-wise. The equation is:
+
+    .. math::
+        out = x // y
+
+    **Note**:
+    ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be int32, int64.
+        y (Tensor): the input tensor, it's data type should be int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            np_x = np.array([2, 3, 8, 7])
+            np_y = np.array([1, 5, 3, 3])
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = paddle.floor_divide(x, y)
+            print(z.numpy())  # [2, 0, 2, 2]
+
+    """
+    op_type = 'elementwise_floordiv'
+    axis = -1
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, op_name=op_type)
+
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def remainder(x, y, name=None):
+    """
+    Mod two tensors element-wise. The equation is:
+
+    .. math::
+        out = x \% y
+
+    **Note**:
+    ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be int32, int64.
+        y (Tensor): the input tensor, it's data type should be int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            np_x = np.array([2, 3, 8, 7])
+            np_y = np.array([1, 5, 3, 3])
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = paddle.remainder(x, y)
+            print(z.numpy())  # [0, 3, 2, 1]
+
+    """
+    op_type = 'elementwise_mod'
+    axis = -1
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, op_name=op_type)
+
+    return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+mod = remainder  #DEFINE_ALIAS
+floor_mod = remainder  #DEFINE_ALIAS
 
 
 def multiply(x, y, axis=-1, name=None):
@@ -512,7 +543,6 @@ Examples:
 
 for func in [
         add,
-        div,
         maximum,
         minimum,
         multiply
@@ -1326,14 +1356,14 @@ def addcmul(input, tensor1, tensor2, value=1.0, name=None):
     return out
 
 
-def clamp(input, min=None, max=None, name=None):
+def clip(x, min=None, max=None, name=None):
     """
-	:alias_main: paddle.clamp
-	:alias: paddle.clamp,paddle.tensor.clamp,paddle.tensor.math.clamp
+        :alias_main: paddle.clip
+        :alias: paddle.clip,paddle.tensor.clip,paddle.tensor.math.clip
 
-    **clampe layer**
+    **clip layer**
 
-    This operator clamps all elements in input into the range [ min, max ] and return
+    This operator clip all elements in input into the range [ min, max ] and return
     a resulting tensor as the following equation:
 
     .. math::
@@ -1341,38 +1371,35 @@ def clamp(input, min=None, max=None, name=None):
         Out = MIN(MAX(x, min), max)
 
     Args:
-        input (Variable): An input N-D Tensor or LoDTensor
-            with data type float32, float64.
-        min (float32|Variable): The lower bound with type ``float32`` or a ``Tensor``
+        x (Tensor): An N-D Tensor with data type float32 or float64.
+        min (float32|Tensor): The lower bound with type ``float32`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
-        max (float32|Variable): The upper bound with type ``float32`` or a ``Tensor``
+        max (float32|Tensor): The upper bound with type ``float32`` or a ``Tensor``
             with shape [1] and type ``int32``, ``float32``, ``float64``.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A Tensor or LodTensor with the same data type and data shape as input's.
+        Tensor: A Tensor with the same data type and data shape as input.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
 
-            in1 = np.array([[1.2,3.5],
-                            [4.5,6.4]]).astype('float32')
-            with fluid.dygraph.guard():
-                x1 = fluid.dygraph.to_variable(in1)
-                out1 = paddle.tensor.clamp(x1, min=3.5, max=5.0)
-                out2 = paddle.tensor.clamp(x1, min=2.5)
-                print(out1.numpy())
-                # [[3.5, 3.5]
-                # [4.5, 5.0]]
-                print(out2.numpy())
-                # [[2.5, 3.5]
-                # [[4.5, 6.4]
+            paddle.disable_static()
+            x = np.array([[1.2,3.5], [4.5,6.4]]).astype('float32')
+            x1 = paddle.to_variable(x)
+            out1 = paddle.clip(x1, min=3.5, max=5.0)
+            out2 = paddle.clip(x1, min=2.5)
+            print(out1.numpy())
+            # [[3.5, 3.5]
+            # [4.5, 5.0]]
+            print(out2.numpy())
+            # [[2.5, 3.5]
+            # [[4.5, 6.4]
     """
 
     assert min is not None or max is not None, "either min or max should be defined."
@@ -1380,20 +1407,22 @@ def clamp(input, min=None, max=None, name=None):
     if in_dygraph_mode():
         min = sys.float_info.min if min is None else min
         max = sys.float_info.max if max is None else max
-        return core.ops.clip(input, "min", min, "max", max)
+        return core.ops.clip(x, "min", min, "max", max)
 
     if min is not None:
-        check_type(min, 'min', (float, Variable), 'clamp')
+        check_type(min, 'min', (float, int, Variable), 'clip')
         if isinstance(min, Variable):
             check_dtype(min.dtype, 'min', ['float32', 'float64', 'int32'],
-                        'clamp', '(When the type of min in clamp is Variable.)')
+                        'clip', '(When the type of min in clip is Variable.)')
     if max is not None:
-        check_type(max, 'max', (float, Variable), 'clamp')
+        check_type(max, 'max', (float, int, Variable), 'clip')
         if isinstance(max, Variable):
             check_dtype(max.dtype, 'max', ['float32', 'float64', 'int32'],
-                        'clamp', '(When the type of max in clamp is Variable.)')
+                        'clip', '(When the type of max in clip is Variable.)')
 
-    inputs = {'X': input}
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'clip')
+
+    inputs = {'X': x}
     attrs = {'min': sys.float_info.min, 'max': sys.float_info.max}
 
     if isinstance(min, Variable):
@@ -1408,9 +1437,9 @@ def clamp(input, min=None, max=None, name=None):
     elif max is not None:
         attrs['max'] = max
 
-    helper = LayerHelper('clamp', **locals())
+    helper = LayerHelper('clip', **locals())
     output = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype())
+        dtype=helper.input_dtype())
     helper.append_op(
         type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
 
@@ -1716,3 +1745,78 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             x = layers.cast(x, dtype)
 
     return layers.reduce_prod(input=x, dim=axis, keep_dim=keepdim, name=name)
+
+
+def sign(x, name=None):
+    """
+    This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
+
+    Args:
+        x(Tensor): The input tensor. The data type can be float16, float32 or float64.
+        name (str, optional): The default value is None. Normally there is no need for user to
+            set this property. For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: The output sign tensor with identical shape and data type to the input :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+
+          import numpy as np
+          import paddle
+
+          data = np.array([3.0, 0.0, -2.0, 1.7], dtype='float32')
+          paddle.disable_static()
+          x = paddle.to_tensor(data)
+          out = paddle.sign(x=x)
+          print(out)  # [1.0, 0.0, -1.0, 1.0]
+    """
+    if in_dygraph_mode():
+        return core.ops.sign(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'sign')
+    helper = LayerHelper("sign", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
+
+    return out
+
+
+def tanh(x, name=None):
+    """
+    Tanh Activation Operator.
+
+    .. math::
+        out = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
+
+    Args:
+        x (Tensor): Input of Tanh operator, an N-D Tensor, with data type float32, float64 or float16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Output of Tanh operator, a Tensor with same data type and shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            x_data = np.array([-0.4, -0.2, 0.1, 0.3])
+            x = paddle.to_tensor(x_data)
+            out = paddle.tanh(x)
+            print(out.numpy())
+            # [-0.37994896 -0.19737532  0.09966799  0.29131261]
+    """
+    if in_dygraph_mode():
+        return core.ops.tanh(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'tanh')
+    helper = LayerHelper('tanh', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
+    return out

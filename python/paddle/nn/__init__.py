@@ -54,15 +54,17 @@ from .decode import gather_tree  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 from .layer.activation import ELU
 from .layer.activation import GELU
+from .layer.activation import Tanh
 from .layer.activation import Hardshrink
-# from .layer.activation import PReLU        #DEFINE_ALIAS
+from .layer.activation import Hardtanh
+from .layer.activation import PReLU
 from .layer.activation import ReLU
 from .layer.activation import ReLU6  #DEFINE_ALIAS
 from .layer.activation import SELU  #DEFINE_ALIAS
 from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS
 from .layer.activation import LogSigmoid
-# from .layer.activation import Softmax        #DEFINE_ALIAS
+from .layer.activation import Softmax  #DEFINE_ALIAS
 from .layer.activation import Softplus  #DEFINE_ALIAS
 from .layer.activation import Softshrink  #DEFINE_ALIAS
 from .layer.activation import Softsign  #DEFINE_ALIAS
@@ -86,10 +88,16 @@ from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
 from .layer.common import Flatten  #DEFINE_ALIAS
 from .layer.common import UpSample  #DEFINE_ALIAS
-from .layer.conv import Conv2D  #DEFINE_ALIAS
-from .layer.conv import Conv2DTranspose  #DEFINE_ALIAS
-from .layer.conv import Conv3D  #DEFINE_ALIAS
-from .layer.conv import Conv3DTranspose  #DEFINE_ALIAS
+from .layer.common import Dropout  #DEFINE_ALIAS
+from .layer.common import Dropout2D  #DEFINE_ALIAS
+from .layer.common import Dropout3D  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
+from .layer.conv import Conv1d  #DEFINE_ALIAS
+from .layer.conv import Conv2d  #DEFINE_ALIAS
+from .layer.conv import Conv3d  #DEFINE_ALIAS
+from .layer.conv import ConvTranspose2d  #DEFINE_ALIAS
+from .layer.conv import ConvTranspose3d  #DEFINE_ALIAS
 # from .layer.conv import TreeConv        #DEFINE_ALIAS
 # from .layer.conv import Conv1D        #DEFINE_ALIAS
 from .layer.extension import RowConv  #DEFINE_ALIAS
@@ -101,6 +109,7 @@ from .layer.extension import RowConv  #DEFINE_ALIAS
 # from .layer.learning_rate import PiecewiseDecay        #DEFINE_ALIAS
 # from .layer.learning_rate import PolynomialDecay        #DEFINE_ALIAS
 # from .layer.loss import NCELoss        #DEFINE_ALIAS
+from .layer.loss import BCEWithLogitsLoss  #DEFINE_ALIAS
 from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
 from .layer.loss import MSELoss  #DEFINE_ALIAS
 from .layer.loss import L1Loss  #DEFINE_ALIAS
@@ -108,6 +117,7 @@ from .layer.loss import NLLLoss  #DEFINE_ALIAS
 from .layer.loss import BCELoss  #DEFINE_ALIAS
 from .layer.loss import KLDivLoss  #DEFINE_ALIAS
 from .layer.loss import MarginRankingLoss  #DEFINE_ALIAS
+from .layer.loss import CTCLoss  #DEFINE_ALIAS
 from .layer.loss import SmoothL1Loss  #DEFINE_ALIAS
 from .layer.norm import BatchNorm  #DEFINE_ALIAS
 from .layer.norm import SyncBatchNorm  #DEFINE_ALIAS
