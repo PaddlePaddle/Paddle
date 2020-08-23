@@ -903,18 +903,18 @@ class TestLRScheduler(unittest.TestCase):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle_api(**kwarg)
-        adam = paddle.optimizer.Adam(
-            learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler,
+                                   parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
 
-            self.assertAlmostEqual(adam.current_step_lr(),
+            self.assertAlmostEqual(sgd.current_step_lr(),
                                    python_func(epoch, **kwarg))
             if paddle_api.__name__ != "CosineAnnealingLR":
                 scheduler.step()

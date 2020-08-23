@@ -170,14 +170,14 @@ class NoamLR(_LRScheduler):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.NoamLR(d_model=0.01, warmup_steps=100, verbose=True)
-        adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
             scheduler.step()
 
@@ -191,9 +191,9 @@ class NoamLR(_LRScheduler):
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.NoamLR(d_model=0.01, warmup_steps=100, verbose=True)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
-            adam.minimize(loss)
-            lr_var = adam._global_learning_rate()
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            sgd.minimize(loss)
+            lr_var = sgd._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -268,14 +268,14 @@ class PiecewiseLR(_LRScheduler):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.PiecewiseLR(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
-        adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
             scheduler.step()
 
@@ -289,9 +289,9 @@ class PiecewiseLR(_LRScheduler):
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.PiecewiseLR(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
-            adam.minimize(loss)
-            lr_var = adam._global_learning_rate()
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            sgd.minimize(loss)
+            lr_var = sgd._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -353,14 +353,14 @@ class NaturalExpLR(_LRScheduler):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.NaturalExpLR(learning_rate=0.5, gamma=0.1, verbose=True)
-        adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
             scheduler.step()
 
@@ -374,9 +374,9 @@ class NaturalExpLR(_LRScheduler):
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.NaturalExpLR(learning_rate=0.5, gamma=0.1, verbose=True)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
-            adam.minimize(loss)
-            lr_var = adam._global_learning_rate()
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            sgd.minimize(loss)
+            lr_var = sgd._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -433,14 +433,14 @@ class InverseTimeLR(_LRScheduler):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.InverseTimeLR(learning_rate=0.5, gamma=0.1, verbose=True)
-        adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
             scheduler.step()
 
@@ -454,9 +454,9 @@ class InverseTimeLR(_LRScheduler):
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.InverseTimeLR(learning_rate=0.5, gamma=0.1, verbose=True)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
-            adam.minimize(loss)
-            lr_var = adam._global_learning_rate()
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            sgd.minimize(loss)
+            lr_var = sgd._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -530,14 +530,14 @@ class PolynomialLR(_LRScheduler):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.PolynomialLR(learning_rate=0.5, decay_steps=20, verbose=True)
-        adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
             scheduler.step()
 
@@ -551,9 +551,9 @@ class PolynomialLR(_LRScheduler):
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.PolynomialLR(learning_rate=0.5, decay_steps=20, verbose=True)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
-            adam.minimize(loss)
-            lr_var = adam._global_learning_rate()
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            sgd.minimize(loss)
+            lr_var = sgd._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -646,14 +646,14 @@ class LinearLrWarmup(_LRScheduler):
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.LinearLrWarmup(
                 learning_rate=0.5, warmup_steps=20, start_lr=0, end_lr=0.5, verbose=True)
-        adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
             scheduler.step()
 
@@ -668,9 +668,9 @@ class LinearLrWarmup(_LRScheduler):
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.LinearLrWarmup(
                 learning_rate=0.5, warmup_steps=20, start_lr=0, end_lr=0.5, verbose=True)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
-            adam.minimize(loss)
-            lr_var = adam._global_learning_rate()
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            sgd.minimize(loss)
+            lr_var = sgd._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -752,14 +752,14 @@ class ExponentialLR(_LRScheduler):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.ExponentialLR(learning_rate=0.5, gamma=0.9, verbose=True)
-        adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
             scheduler.step()
 
@@ -773,9 +773,9 @@ class ExponentialLR(_LRScheduler):
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.ExponentialLR(learning_rate=0.5, gamma=0.9, verbose=True)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
-            adam.minimize(loss)
-            lr_var = adam._global_learning_rate()
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            sgd.minimize(loss)
+            lr_var = sgd._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -841,14 +841,14 @@ class MultiStepLR(_LRScheduler):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.MultiStepLR(learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8, verbose=True)
-        adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
             scheduler.step()
 
@@ -862,9 +862,9 @@ class MultiStepLR(_LRScheduler):
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.MultiStepLR(learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8, verbose=True)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
-            adam.minimize(loss)
-            lr_var = adam._global_learning_rate()
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            sgd.minimize(loss)
+            lr_var = sgd._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -951,14 +951,14 @@ class StepLR(_LRScheduler):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.StepLR(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
-        adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
             scheduler.step()
 
@@ -972,9 +972,9 @@ class StepLR(_LRScheduler):
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.StepLR(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
-            adam.minimize(loss)
-            lr_var = adam._global_learning_rate()
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            sgd.minimize(loss)
+            lr_var = sgd._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -1048,14 +1048,14 @@ class LambdaLR(_LRScheduler):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.LambdaLR(learning_rate=0.5, lr_lambda=lambda x:0.95**x, verbose=True)
-        adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
             scheduler.step()
 
@@ -1069,9 +1069,9 @@ class LambdaLR(_LRScheduler):
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.LambdaLR(learning_rate=0.5, lr_lambda=lambda x:0.95**x, verbose=True)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
-            adam.minimize(loss)
-            lr_var = adam._global_learning_rate()
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            sgd.minimize(loss)
+            lr_var = sgd._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -1149,14 +1149,14 @@ class ReduceLROnPlateau(_LRScheduler):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.ReduceLROnPlateau(learning_rate=1.0, factor=0.5, patience=5, verbose=True)
-        adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
             scheduler.step(loss)
 
@@ -1170,9 +1170,9 @@ class ReduceLROnPlateau(_LRScheduler):
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.ReduceLROnPlateau(learning_rate=1.0, factor=0.5, patience=5, verbose=True)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
-            adam.minimize(loss)
-            lr_var = adam._global_learning_rate()
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            sgd.minimize(loss)
+            lr_var = sgd._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
@@ -1357,14 +1357,14 @@ class CosineAnnealingLR(_LRScheduler):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.CosineAnnealingLR(learning_rate=0.5, T_max=10, verbose=True)
-        adam = paddle.optimizer.Adam(learning_rate=scheduler, parameter_list=linear.parameters())
+        sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
                 out.backward()
-                adam.minimize(loss)
+                sgd.minimize(loss)
                 linear.clear_gradients()
             scheduler.step()
 
@@ -1378,9 +1378,9 @@ class CosineAnnealingLR(_LRScheduler):
             z = paddle.static.nn.fc(x, 100)
             loss = paddle.mean(z)
             scheduler = paddle.optimizer.CosineAnnealingLR(learning_rate=0.5, T_max=10, verbose=True)
-            adam = paddle.optimizer.Adam(learning_rate=scheduler)
-            adam.minimize(loss)
-            lr_var = adam._global_learning_rate()
+            sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            sgd.minimize(loss)
+            lr_var = sgd._global_learning_rate()
 
         exe = paddle.static.Executor()
         exe.run(start_prog)
