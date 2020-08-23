@@ -162,7 +162,8 @@ from .math import clip  #DEFINE_ALIAS
 from .math import trace  #DEFINE_ALIAS
 from .math import kron  #DEFINE_ALIAS
 from .math import prod  #DEFINE_ALIAS
-# from .random import gaussin        #DEFINE_ALIAS
+from .random import standard_normal
+from .random import normal
 from .random import uniform  #DEFINE_ALIAS
 from .random import shuffle  #DEFINE_ALIAS
 from .random import randn  #DEFINE_ALIAS

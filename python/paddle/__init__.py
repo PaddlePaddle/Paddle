@@ -194,7 +194,8 @@ from .tensor.math import clip  #DEFINE_ALIAS
 from .tensor.math import trace  #DEFINE_ALIAS
 from .tensor.math import kron  #DEFINE_ALIAS
 from .tensor.math import prod  #DEFINE_ALIAS
-# from .tensor.random import gaussin        #DEFINE_ALIAS
+from .tensor.random import standard_normal
+from .tensor.random import normal
 from .tensor.random import uniform  #DEFINE_ALIAS
 from .tensor.random import shuffle  #DEFINE_ALIAS
 from .tensor.random import randn  #DEFINE_ALIAS

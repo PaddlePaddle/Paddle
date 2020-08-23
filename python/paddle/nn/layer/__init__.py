@@ -57,6 +57,7 @@ from .common import Dropout2D  #DEFINE_ALIAS
 from .common import Dropout3D  #DEFINE_ALIAS
 from .pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
 from .pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
+from .conv import Conv1d  #DEFINE_ALIAS
 from .conv import Conv2d  #DEFINE_ALIAS
 from .conv import Conv3d  #DEFINE_ALIAS
 from .conv import ConvTranspose1d  #DEFINE_ALIAS
