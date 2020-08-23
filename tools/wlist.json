@@ -129,7 +129,7 @@
         "Callback.on_test_batch_begin",
         "Callback.on_test_batch_end",
         "Model.prepare",
-        "init_progress_group",
+        "init_process_group",
         "broadcast",
         "all_reduce",
         "reduce",
