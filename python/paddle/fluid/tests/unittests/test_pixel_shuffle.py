@@ -105,11 +105,13 @@ class TestPixelShuffleAPI(unittest.TestCase):
             exe = paddle.static.Executor(place=place)
             res_1 = exe.run(fluid.default_main_program(),
                             feed={"x": self.x_1_np},
-                            fetch_list=out_1)
+                            fetch_list=out_1,
+                            use_prune=True)
 
             res_2 = exe.run(fluid.default_main_program(),
                             feed={"x2": self.x_2_np},
-                            fetch_list=out_2)
+                            fetch_list=out_2,
+                            use_prune=True)
 
             assert np.allclose(res_1, self.out_1_np)
             assert np.allclose(res_2, self.out_2_np)
@@ -134,11 +136,13 @@ class TestPixelShuffleAPI(unittest.TestCase):
             exe = paddle.static.Executor(place=place)
             res_1 = exe.run(fluid.default_main_program(),
                             feed={"x": self.x_1_np},
-                            fetch_list=out_1)
+                            fetch_list=out_1,
+                            use_prune=True)
 
             res_2 = exe.run(fluid.default_main_program(),
                             feed={"x2": self.x_2_np},
-                            fetch_list=out_2)
+                            fetch_list=out_2,
+                            use_prune=True)
 
             assert np.allclose(res_1, out_1_np)
             assert np.allclose(res_2, out_2_np)
