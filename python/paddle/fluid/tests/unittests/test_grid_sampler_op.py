@@ -176,12 +176,13 @@ class TestGridSamplerOp(OpTest):
             numeric_grad_delta=self.numeric_grad_delta)
 
     def initTestCase(self):
-        self.x_shape = (1, 1, 2, 2)
-        self.grid_shape = (1, 5, 7, 2)
-        self.theta_shape = (1, 2, 3)
+        self.x_shape = (2, 3, 8, 8)
+        self.grid_shape = (2, 7, 9, 2)
+        self.theta_shape = (2, 2, 3)
         self.align_corners = True
         self.padding_mode = "zeros"
         self.mode = "bilinear"
+        self.use_cudnn = True
 
 
 class Case1(TestGridSamplerOp):
