@@ -24,7 +24,6 @@ import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
 from ..fluid.layers import expand_as  #DEFINE_ALIAS
-from ..fluid.layers import scatter  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
 from ..fluid.layers import strided_slice  #DEFINE_ALIAS
 from ..fluid.layers import transpose  #DEFINE_ALIAS
@@ -111,9 +110,9 @@ def concat(x, axis=0, name=None):
                             [14, 15, 16]])
             in3 = np.array([[21, 22],
                             [23, 24]])
-            x1 = paddle.to_variable(in1)
-            x2 = paddle.to_variable(in2)
-            x3 = paddle.to_variable(in3)
+            x1 = paddle.to_tensor(in1)
+            x2 = paddle.to_tensor(in2)
+            x3 = paddle.to_tensor(in3)
             zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
             # When the axis is negative, the real axis is (axis + Rank(x))
             # As follow, axis is -1, Rank(x) is 2, the real axis is 1
@@ -507,7 +506,7 @@ def split(x, num_or_sections, axis=0, name=None):
             paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.to_variable(x_np)
+            x = paddle.to_tensor(x_np)
 
             out0, out1, out22 = paddle.split(x, num_or_sections=3, axis=1)
             # out0.shape [3, 3, 5]
@@ -790,6 +789,100 @@ def unbind(input, axis=0):
     return outs
 
 
+def scatter(x, index, updates, overwrite=True, name=None):
+    """
+    **Scatter Layer**
+    Output is obtained by updating the input on selected indices based on updates.
+    
+    .. code-block:: python
+        import numpy as np
+        #input:
+        x = np.array([[1, 1], [2, 2], [3, 3]])
+        index = np.array([2, 1, 0, 1])
+        # shape of updates should be the same as x
+        # shape of updates with dim > 1 should be the same as input
+        updates = np.array([[1, 1], [2, 2], [3, 3], [4, 4]])
+        overwrite = False
+        # calculation:
+        if not overwrite:
+            for i in range(len(index)):
+                x[index[i]] = np.zeros((2))
+        for i in range(len(index)):
+            if (overwrite):
+                x[index[i]] = updates[i]
+            else:
+                x[index[i]] += updates[i]
+        # output:
+        out = np.array([[3, 3], [6, 6], [1, 1]])
+        out.shape # [3, 2]
+
+    **NOTICE**: The order in which updates are applied is nondeterministic, 
+    so the output will be nondeterministic if index contains duplicates.
+
+    Args:
+        x (Tensor): The input N-D Tensor with ndim>=1. Data type can be float32, float64.
+        index (Tensor): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
+        updates (Tensor): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
+        overwrite (bool): The mode that updating the output when there are same indices. 
+          If True, use the overwrite mode to update the output of the same index,
+	      if False, use the accumulate mode to update the output of the same index.Default value is True.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+ 
+    Returns:
+        Tensor: The output is a Tensor with the same shape as x.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+
+            x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float32)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float32)
+            
+            x = paddle.to_tensor(x_data)
+            index = paddle.to_tensor(index_data)
+            updates = paddle.to_tensor(updates_data)
+  
+            output1 = paddle.scatter(x, index, updates, overwrite=False)
+            # [[3., 3.],
+            #  [6., 6.],
+            #  [1., 1.]]
+
+            output2 = paddle.scatter(x, index, updates, overwrite=True)
+            # CPU device:
+            # [[3., 3.],
+            #  [4., 4.],
+            #  [1., 1.]]
+            # GPU device maybe have two results because of the repeated numbers in index
+            # result 1:
+            # [[3., 3.],
+            #  [4., 4.],
+            #  [1., 1.]]
+            # result 2:
+            # [[3., 3.],
+            #  [2., 2.],
+            #  [1., 1.]]
+    """
+    if in_dygraph_mode():
+        return core.ops.scatter(x, index, updates, 'overwrite', overwrite)
+
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'scatter')
+    check_type(overwrite, 'overwrite', bool, 'scatter')
+    helper = LayerHelper('scatter', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type="scatter",
+        inputs={"X": x,
+                "Ids": index,
+                "Updates": updates},
+        attrs={'overwrite': overwrite},
+        outputs={"Out": out})
+    return out
+
+
 def chunk(x, chunks, axis=0, name=None):
     """
     Split the input tensor into multiple sub-Tensors.
@@ -817,7 +910,7 @@ def chunk(x, chunks, axis=0, name=None):
             paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.to_variable(x_np)
+            x = paddle.to_tensor(x_np)
 
             out0, out1, out22 = paddle.chunk(x, chunks=3, axis=1)
             # out0.shape [3, 3, 5]
@@ -864,17 +957,17 @@ def tile(x, repeat_times, name=None):
             np_data = np.array([1, 2, 3]).astype('int32')
             data = paddle.to_tensor(np_data)
             out = paddle.tile(data, repeat_times=[2, 1])
-			np_out = out.numpy()
+            np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
 
             out = paddle.tile(data, repeat_times=[2, 2])
-			np_out = out.numpy()
+            np_out = out.numpy()
             # [[1, 2, 3, 1, 2, 3], [1, 2, 3, 1, 2, 3]]
 
             np_repeat_times = np.array([2, 1]).astype("int32")
             repeat_times = paddle.to_tensor(np_repeat_times)
             out = paddle.tile(data, repeat_times=repeat_times)
-			np_out = out.numpy()
+            np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
     check_variable_and_dtype(
@@ -950,7 +1043,7 @@ def expand_as(x, y, name=None):
             data_x = paddle.to_tensor(np_data_x)
             data_y = paddle.to_tensor(np_data_y)
             out = paddle.expand_as(data_x, data_y)
-			np_out = out.numpy()
+            np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
     check_variable_and_dtype(
@@ -1003,13 +1096,7 @@ def expand(x, shape, name=None):
             np_data = np.array([1, 2, 3]).astype('int32')
             data = paddle.to_tensor(np_data)
             out = paddle.expand(data, shape=[2, 3])
-			out = out.numpy()
-            # [[1, 2, 3], [1, 2, 3]]
-
-            np_shape = np.array([2, 3]).astype('int32')
-            shape = paddle.to_tensor(np_shape)
-            out = paddle.expand(data, shape=shape)
-			out = out.numpy()
+            out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
     check_variable_and_dtype(

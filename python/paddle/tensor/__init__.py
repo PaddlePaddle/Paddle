@@ -144,7 +144,11 @@ from .math import maximum  #DEFINE_ALIAS
 from .math import min  #DEFINE_ALIAS
 from .math import minimum  #DEFINE_ALIAS
 from .math import mm  #DEFINE_ALIAS
-from .math import div  #DEFINE_ALIAS
+from .math import divide  #DEFINE_ALIAS
+from .math import floor_divide  #DEFINE_ALIAS
+from .math import remainder  #DEFINE_ALIAS
+from .math import mod  #DEFINE_ALIAS
+from .math import floor_mod  #DEFINE_ALIAS
 from .math import multiply  #DEFINE_ALIAS
 from .math import add  #DEFINE_ALIAS
 from .math import atan  #DEFINE_ALIAS
