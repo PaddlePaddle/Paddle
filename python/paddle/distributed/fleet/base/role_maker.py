@@ -400,7 +400,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._worker_endpoints = "127.0.0.1:6170"
             self._cur_endpoint = self._worker_endpoints
             self.single_run = True
-        # assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
         self._node_num = len(
