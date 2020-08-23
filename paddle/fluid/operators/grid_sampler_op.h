@@ -25,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-enum class Model {
+enum class Mode {
   bilinear,
   nearest,
 };

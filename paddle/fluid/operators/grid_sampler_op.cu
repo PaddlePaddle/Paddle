@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Mode = paddle::operators::Model;
-
 static __forceinline__ __device__ bool in_bounds(int h, int w, int H, int W) {
   return h >= 0 && h < H && w >= 0 && w < W;
 }
