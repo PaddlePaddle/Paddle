@@ -8236,19 +8236,21 @@ def gather(input, index, overwrite=True):
                        [5, 6]]
 
     Args:
-        input (Variable): The source input tensor with rank>=1. Supported data type is
+        input (Tensor): The source input tensor with rank>=1. Supported data type is
             int32, int64, float32, float64 and uint8 (only for CPU),
             float16 (only for GPU).
-        index (Variable): The index input tensor with rank=1. Data type is int32 or int64.
+        index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
         overwrite (bool, optional): The mode that updating the grad when has same index.
             If True, use the overwrite mode to update the grad of the same index,
 	    if False, use the accumulate mode to update the grad of the same index.
 	    Default value is True.
 
-
-
     Returns:
-        output (Variable): The output is a tensor with the same rank as input.
+        output (Tensor): The output is a tensor with the same rank as input.
+    
+    Raises:
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must to be one of float16, float32, float64, int32, int64, uint8.
+        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
 
     Examples:
 
@@ -8259,6 +8261,13 @@ def gather(input, index, overwrite=True):
             index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
             output = fluid.layers.gather(x, index)
     """
+    if in_dygraph_mode():
+        return core.ops.gather(input, index, None)
+
+    check_variable_and_dtype(
+        input, 'x',
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'], 'gather')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
     helper = LayerHelper('gather', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)

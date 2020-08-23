@@ -658,10 +658,8 @@ def unsqueeze(x, axis, name=None):
     return layers.unsqueeze(x, axis, name)
 
 
-def gather(input, index, overwrite=True):
+def gather(x, index, axis=None, name=None):
     """
-	:alias_main: paddle.gather
-	:alias: paddle.gather,paddle.tensor.gather,paddle.tensor.manipulation.gather
 
     **Gather Layer**
 
@@ -678,30 +676,33 @@ def gather(input, index, overwrite=True):
 
                 Given:
 
-                X = [[1, 2],
+                x = [[1, 2],
                      [3, 4],
                      [5, 6]]
 
-                Index = [1, 2]
+                index = [1, 2]
+                axis=[0]
 
                 Then:
 
-                Out = [[3, 4],
+                out = [[3, 4],
                        [5, 6]]
     Args:
-        input (Variable): The source input tensor with rank>=1. Supported data type is
+        x (Tensor): The source input tensor with rank>=1. Supported data type is
             int32, int64, float32, float64 and uint8 (only for CPU),
             float16 (only for GPU).
-        index (Variable): The index input tensor with rank=1. Data type is int32 or int64.
-        overwrite (bool, optional): The mode that updating the grad when has same index.
-            If True, use the overwrite mode to update the grad of the same index,
-            if False, use the accumulate mode to update the grad of the same index.
-            Default value is True.
-
-
+        index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
+        axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. Default: if None, the axis is 0.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        output (Variable): The output is a tensor with the same rank as input.
+        output (Tensor): The output is a tensor with the same rank as ``x``.
+    
+    Raises:
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must to be one of float16, float32, float64, int32, int64, uint8.
+        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
+        TypeError: ``axis`` must be a Tensor or int and the data type of ``index`` must be int32 or int64 when it's a Tensor.
 
     Examples:
 
@@ -709,26 +710,41 @@ def gather(input, index, overwrite=True):
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
 
-
-            with fluid.dygraph.guard():
-                input_1 = np.array([[1,2],[3,4],[5,6]])
-                index_1 = np.array([0,1])
-                input = fluid.dygraph.to_variable(input_1)
-                index = fluid.dygraph.to_variable(index_1)
-                output = paddle.gather(input, index)
-                # expected output: [[1,2],[3,4]]
+            paddle.disable_static()
+            input_1 = np.array([[1,2],[3,4],[5,6]])
+            index_1 = np.array([0,1])
+            input = fluid.to_tensor(input_1)
+            index = fluid.to_tensor(index_1)
+            output = paddle.gather(input, index, axis=0)
+            # expected output: [[1,2],[3,4]]
     """
+    if axis is None:
+        axis = 0
+    axis_tensor = axis
+    if not isinstance(axis, Variable):
+        axis_tensor = fill_constant(shape=[1], dtype='int64', value=axis)
+    if in_dygraph_mode():
+        return core.ops.gather(x, index, axis_tensor)
+
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+        'gather')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
+    if isinstance(axis, Variable):
+        check_variable_and_dtype(axis, 'axis', ['int32', 'int64'], 'gather')
+    else:
+        check_type(axis, 'axis', (int), 'gather')
+
     helper = LayerHelper('gather', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="gather",
-        inputs={"X": input,
-                "Index": index},
-        outputs={"Out": out},
-        attrs={'overwrite': overwrite})
+        inputs={"X": x,
+                "Index": index,
+                "Axis": axis_tensor},
+        outputs={"Out": out})
     return out
 
 
