@@ -168,6 +168,7 @@ def declarative(function=None, input_spec=None):
           import numpy as np
           from paddle.fluid.dygraph.jit import declarative
 
+          fluid.enable_dygraph()
 
           @declarative
           def func(x):
