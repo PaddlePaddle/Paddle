@@ -449,6 +449,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
+  PADDLE_ENFORCE(places.size() > 0 && !is_xpu_place(places[0]),
+                 platform::errors::Unavailable(
+                     "XPU is not supported in ParallelExecutor"));
   ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
                                  member_->places_.size());
   member_->use_cuda_ = exec_strategy.use_cuda_;

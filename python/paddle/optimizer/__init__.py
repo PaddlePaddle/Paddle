@@ -14,21 +14,25 @@
 
 __all__ = [
     'Adadelta', 'AdadeltaOptimizer', 'Adagrad', 'AdagradOptimizer', 'Adam',
-    'Adamax', 'AdamaxOptimizer', 'AdamOptimizer', 'DecayedAdagrad',
-    'DecayedAdagradOptimizer', 'DGCMomentumOptimizer', 'Dpsgd',
-    'DpsgdOptimizer', 'ExponentialMovingAverage', 'Ftrl', 'FtrlOptimizer',
-    'LambOptimizer', 'LarsMomentum', 'LarsMomentumOptimizer',
-    'LookaheadOptimizer', 'ModelAverage', 'Momentum', 'MomentumOptimizer',
-    'PipelineOptimizer', 'RecomputeOptimizer', 'RMSPropOptimizer', 'SGD',
-    'SGDOptimizer'
+    'Adamax', 'AdamW', 'DecayedAdagrad', 'DecayedAdagradOptimizer',
+    'DGCMomentumOptimizer', 'Dpsgd', 'DpsgdOptimizer',
+    'ExponentialMovingAverage', 'Ftrl', 'FtrlOptimizer', 'LambOptimizer',
+    'LarsMomentum', 'LarsMomentumOptimizer', 'LookaheadOptimizer',
+    'ModelAverage', 'Momentum', 'MomentumOptimizer', 'PipelineOptimizer',
+    'RecomputeOptimizer', 'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer'
 ]
 
 
-from ..fluid.optimizer import  SGD, Momentum, Adagrad, Adam, Adamax, Dpsgd, DecayedAdagrad, \
-            Ftrl, SGDOptimizer, MomentumOptimizer, AdagradOptimizer, \
-            AdamOptimizer, AdamaxOptimizer, DpsgdOptimizer, \
-            DecayedAdagradOptimizer, RMSPropOptimizer, FtrlOptimizer, Adadelta, \
-            AdadeltaOptimizer, ModelAverage, LarsMomentum, \
-            LarsMomentumOptimizer, DGCMomentumOptimizer, LambOptimizer, \
+from ..fluid.optimizer import  SGD, Momentum, Adagrad, Dpsgd, DecayedAdagrad, \
+            Ftrl, Adadelta, \
+            SGDOptimizer, MomentumOptimizer, AdagradOptimizer,DpsgdOptimizer,\
+            DecayedAdagradOptimizer,FtrlOptimizer,AdadeltaOptimizer, \
+            ModelAverage, LarsMomentum, DGCMomentumOptimizer, LambOptimizer,\
             ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, \
-            RecomputeOptimizer
+            RecomputeOptimizer, LarsMomentumOptimizer
+
+from .optimizer import Optimizer
+from .adam import Adam
+from .adamw import AdamW
+from .adamax import Adamax
+from .rmsprop import RMSProp

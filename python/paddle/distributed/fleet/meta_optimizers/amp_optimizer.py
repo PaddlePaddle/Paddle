@@ -23,7 +23,12 @@ class AMPOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.amp_opt = None
         # we do not allow meta optimizer to be inner optimizer currently
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = [
+            "LarsOptimizer", "LambOptimizer", "RecomputeOptimizer",
+            "LocalSGDOptimizer", "GradientMergeOptimizer",
+            "GraphExecutionOptimizer"
+        ]
+        self.meta_optimizers_black_list = ["DGCOptimizer"]
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
@@ -37,6 +42,7 @@ class AMPOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.amp = False
+        dist_strategy.amp_configs = {}
 
     def minimize_impl(self,
                       loss,

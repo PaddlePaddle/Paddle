@@ -42,23 +42,17 @@ static void PrepareData(const platform::Place& place,
     for (const auto& var_base : name_pair.second) {
       const auto* tensor = GetTensorFromVar(var_base->Var());
       if (tensor && tensor->IsInitialized()) {
-        auto tmp_place = tensor->place();
-
-        // TODO(jiabin): Support transform data layout when we Verify it on more
-        // tests
-        if (!(tmp_place == place)) {
-          auto kernel_type_for_var = op.GetKernelTypeForVar(
-              name_pair.first, *tensor, expected_kernel_key);
-          if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
-            continue;
-          } else {
-            VLOG(3) << "Transform Variable " << var_base->Name() << " from "
-                    << kernel_type_for_var << " to " << expected_kernel_key;
-            framework::Tensor out;
-            TransformData(expected_kernel_key, kernel_type_for_var, *tensor,
-                          &out);
-            SetTensorToVariable(var_base->Var(), out, var_base->MutableVar());
-          }
+        auto kernel_type_for_var = op.GetKernelTypeForVar(
+            name_pair.first, *tensor, expected_kernel_key);
+        if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
+          continue;
+        } else {
+          VLOG(3) << "Transform Variable " << var_base->Name() << " from "
+                  << kernel_type_for_var << " to " << expected_kernel_key;
+          framework::Tensor out;
+          TransformData(expected_kernel_key, kernel_type_for_var, *tensor,
+                        &out);
+          SetTensorToVariable(var_base->Var(), out, var_base->MutableVar());
         }
       }
     }
@@ -93,12 +87,26 @@ PreparedOp PrepareOpImpl(const NameVarMap<VarType>& ins,
   auto& kernels = kernels_iter->second;
 
   framework::RuntimeContext ctx({}, {});
+#ifdef PADDLE_WITH_MKLDNN
+  // MKLDNN variant of code reads attributes in some of GetKernelTypeForVar and
+  // GetKernelType functions, so we need to copy the attributes there.
+  // Const qualifier of Attrs had to be discarded to overwrite it.
+  auto& mutable_op_attrs = const_cast<framework::AttributeMap&>(op.Attrs());
+  mutable_op_attrs = attrs;
+#endif
   auto expected_kernel_key =
       op.GetExpectedKernelType(DygraphExecutionContext<VarType>(
           op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
+#ifdef PADDLE_WITH_XPU
+  if (kernel_iter == kernels.end() &&
+      is_xpu_place(expected_kernel_key.place_)) {
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
   // TODO(jiabin): Add operator.cc's line 1000 part back when we need that case
   PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
                     platform::errors::NotFound(

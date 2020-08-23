@@ -14,12 +14,30 @@
 
 from __future__ import print_function
 import paddle
+from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
 from .strategy_compiler import StrategyCompiler
+from .distributed_strategy import DistributedStrategy
 from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
 from .util_factory import UtilFactory
+from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = ['Fleet']
+
+
+def _inited_runtime_handler_(func):
+    def __impl__(*args, **kwargs):
+        cls = args[0]
+
+        if cls._runtime_handle is None:
+            raise ValueError("Fleet can not find suitable runtime handler")
+
+        return func(*args, **kwargs)
+
+    return __impl__
+
+
+inited_runtime_handler = wrap_decorator(_inited_runtime_handler_)
 
 
 class Fleet(object):
@@ -57,10 +75,35 @@ class Fleet(object):
     def __init__(self):
         self._runtime_handle = None
         self._util = None
+        self._role_maker = None
+        self._is_collective = False
 
-    def init(self, role_maker):
-        self._role_maker = role_maker
+    def init(self, role_maker=None, is_collective=False):
+        """
+        Initialize role_maker in Fleet.
+
+        This function is responsible for the distributed architecture 
+        what you want to run your code behind,such as Transpiler,
+        Collective in PaddleCloudRoleMaker or UserDefinedRoleMaker 
+        
+        """
+        if isinstance(role_maker, RoleMakerBase):
+            self._role_maker = role_maker
+        elif role_maker == None:
+            if isinstance(is_collective, bool):
+                self._is_collective = is_collective
+                self._role_maker = PaddleCloudRoleMaker(
+                    is_collective=self._is_collective)
+            else:
+                raise ValueError(
+                    "Something wrong occurred, please check whether is_collective is bool value"
+                )
+        else:
+            raise ValueError(
+                "Something wrong occurred, please check whether rolemaker is instance of RoleMakerBase"
+            )
         self.strategy_compiler = StrategyCompiler()
+        return None
 
     def is_first_worker(self):
         """
@@ -181,35 +224,49 @@ class Fleet(object):
         """
         self._role_maker.barrier_worker()
 
+    @inited_runtime_handler
     def init_worker(self):
         """
         init worker
         """
-        assert self._runtime_handle is not None
         self._runtime_handle._init_worker()
 
+    @inited_runtime_handler
     def init_server(self, *args, **kwargs):
         """
         init server
         """
-        assert self._runtime_handle is not None
         self._runtime_handle._init_server(*args, **kwargs)
 
+    @inited_runtime_handler
     def run_server(self):
         """
         run server
         """
-        assert self._runtime_handle is not None
         self._runtime_handle._run_server()
 
+    @inited_runtime_handler
     def stop_worker(self):
         """
         stop worker
         """
-        assert self._runtime_handle is not None
         self._runtime_handle._stop_worker()
 
-    def distributed_optimizer(self, optimizer, strategy):
+    def save_inference_model(self,
+                             executor,
+                             dirname,
+                             feeded_var_names,
+                             target_vars,
+                             main_program=None,
+                             export_for_deployment=True):
+        self._runtime_handle._save_inference_model(
+            executor, dirname, feeded_var_names, target_vars, main_program,
+            export_for_deployment)
+
+    def save_persistables(self, executor, dirname, main_program=None):
+        self._runtime_handle._save_persistables(executor, dirname, main_program)
+
+    def distributed_optimizer(self, optimizer, strategy=None):
         """
         distirbuted_optimizer
         Returns:
@@ -225,6 +282,8 @@ class Fleet(object):
             optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         """
         self.user_defined_optimizer = optimizer
+        if strategy == None:
+            strategy = DistributedStrategy()
         self.user_defined_strategy = strategy
         self.valid_strategy = None
         return self

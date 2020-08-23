@@ -21,7 +21,7 @@ import shutil
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
 
 # For Net
@@ -165,7 +165,7 @@ class TestPSPassWithBow(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
-        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)
 
