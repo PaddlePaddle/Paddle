@@ -117,7 +117,7 @@ class TestDygraphWeightNorm(unittest.TestCase):
 
     def test_check_output(self):
         fluid.enable_imperative()
-        linear = paddle.nn.Conv2D(2, 3, 3)
+        linear = paddle.nn.Conv2d(2, 3, 3)
         before_weight = linear.weight.numpy()
         if self.dim == None:
             self.dim = -1
@@ -169,7 +169,7 @@ class TestDygraphRemoveWeightNorm(unittest.TestCase):
 
     def test_check_output(self):
         fluid.enable_imperative()
-        linear = paddle.nn.Conv2D(2, 3, 3)
+        linear = paddle.nn.Conv2d(2, 3, 3)
         before_weight = linear.weight
         wn = weight_norm(linear, dim=self.dim)
         rwn = remove_weight_norm(linear)
