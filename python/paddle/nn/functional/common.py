@@ -54,7 +54,7 @@ __all__ = [
     'assign',
     'interpolate',
     'bilinear',
-    'cosine_similarity'
+    'cosine_similarity',
 ]
 
 
