@@ -47,7 +47,9 @@ __all__ = [
 
 class _InstanceNormBase(layers.Layer):
     """
-    This class is based class for InstanceNorm1d, 2d, 3d.
+    This class is based class for InstanceNorm1d, 2d, 3d. 
+
+    See InstaceNorm1d, InstanceNorm2d or InstanceNorm3d for more details.
     """
 
     def __init__(self,
@@ -134,8 +136,17 @@ class InstanceNorm1d(_InstanceNormBase):
         data_format(str, optional): Specify the input data format. Default: NCL.
         name(str, optional): Default None.
 
+
+    Shape:
+        - x: 2-D or 3-D tensor with shape: (batch, num_features) or (batch, num_features, length).
+        - output: 3-D tensor with same shape as input x.
+
     Returns:
         None.
+
+    **Note**:
+        Momentum and track_running_stats is not effective. The next version will fix the problem .
+
 
     Examples:
 
@@ -204,8 +215,15 @@ class InstanceNorm2d(_InstanceNormBase):
         data_format(str, optional): Specify the input data format. Default: NCHW.
         name(str, optional): Default None.
 
+    Shape:
+        - x: 4-D tensor with shape: (batch, num_features, height, weight).
+        - output: 4-D tensor with same shape as input x.
+
     Returns:
         None.
+
+    **Note**:
+        Momentum and track_running_stats is not effective. The next version will fix the problem .
 
     Examples:
 
@@ -273,8 +291,15 @@ class InstanceNorm3d(_InstanceNormBase):
         data_format(str, optional): Specify the input data format. Default: NCDHW.
         name(str, optional): Default None.
 
+    Shape:
+        - x: 5-D tensor with shape: (batch, num_features, dims, height, weight).
+        - output: 5-D tensor with same shape as input x.
+
     Returns:
         None.
+
+    **Note**:
+        Momentum and track_running_stats is not effective. The next version will fix the problem .
 
     Examples:
 
@@ -301,10 +326,6 @@ class InstanceNorm3d(_InstanceNormBase):
 
 class GroupNorm(layers.Layer):
     """
-    :alias_main: paddle.nn.GroupNorm
-	:alias: paddle.nn.GroupNorm,paddle.nn.layer.GroupNorm,paddle.nn.layer.norm.GroupNorm
-	:old_api: paddle.fluid.dygraph.GroupNorm
-
     This interface is used to construct a callable object of the ``GroupNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Group Normalization Layer.
@@ -323,6 +344,10 @@ class GroupNorm(layers.Layer):
                                         If it is set to None, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format. Only NCHW is supported. Default: NCHW.
         name(str, optional): Default None.
+
+    Shape:
+        - x: 4-D tensor with shape: (batch, num_features, height, weight).
+        - output: 4-D tensor with same shape as input x.
 
     Returns:
         None
@@ -426,7 +451,7 @@ class LayerNorm(layers.Layer):
     - :math:`b`: the trainable bias parameter.
 
     Parameters:
-        normalized_shape(int or list or tuple): Input shape from an expected input of
+        normalized_shape(int|list|tuple): Input shape from an expected input of
             size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.
@@ -439,6 +464,10 @@ class LayerNorm(layers.Layer):
             bias :math:`b`. If is False, bias is None. If is None, a default :code:`ParamAttr` would be added as bias. The
             :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
         name(str, optional): parameter name. Default None.
+
+    Shape:
+        - x: 2-D, 3-D, 4-D or 5-D tensor.
+        - output: same shape as input x.
 
     Returns:
         None
@@ -643,6 +672,16 @@ class BatchNorm1d(_BatchNormBase):
             and variance are also used during train period. Default: True.
         name(str, optional): Default: None.
 
+    Shape:
+        - x: 2-D or 3-D tensor with shape: (batch, num_features) or (batch, num_features, length).
+        - output: 3-D tensor with same shape as input x.
+
+    Returns:
+        None.
+
+    **Note**:
+        When inference period, track_running_stats is not effective and will always use global mean and var. The next version will fix the problem .
+
     Returns:
         None
 
@@ -722,8 +761,15 @@ class BatchNorm2d(_BatchNormBase):
             and variance are also used during train period. Default: True.
         name(str, optional): Default: None.
 
+    Shape:
+        - x: 4-D tensor with shape: (batch, num_features, height, weight).
+        - output: 4-D tensor with same shape as input x.
+
     Returns:
         None
+
+    **Note**:
+        When inference period, track_running_stats is not effective and will always use global mean and var. The next version will fix the problem .
 
     Examples:
         .. code-block:: python
@@ -801,8 +847,15 @@ class BatchNorm3d(_BatchNormBase):
             and variance are also used during train period. Default: True.
         name(str, optional): Default: None.
 
+    Shape:
+        - x: 5-D tensor with shape: (batch, num_features, dims, height, weight).
+        - output: 5-D tensor with same shape as input x.
+
     Returns:
         None
+
+    **Note**:
+        When inference period, track_running_stats is not effective and will always use global mean and var. The next version will fix the problem .
 
     Examples:
         .. code-block:: python

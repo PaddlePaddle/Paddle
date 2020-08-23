@@ -118,8 +118,8 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 def batch_norm(x,
                running_mean,
                running_var,
-               weight=None,
-               bias=None,
+               weight,
+               bias,
                training=False,
                momentum=0.9,
                epsilon=1e-05,
@@ -134,10 +134,10 @@ def batch_norm(x,
         x(Tesnor): input value. It's data type should be float32, float64.
         running_mean(Tensor): running mean.
         running_var(Tensor): running variance.
+        weight(Tensor): The weight tensor of batch_norm, can not be None.
+        bias(Tensor): The bias tensor of batch_norm can not be None. 
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        weight(Tensor, optional): The weight tensor of batch_norm, can not be None. Default: None.
-        bias(Tensor, optional): The bias tensor of batch_norm can not be None. Default: None.
         training(bool, optional): The actual meaning is the opposite of global status. Defalut False.
         data_format(str, optional): Specify the input data format. Defalut "NCHW".
         name(str, optional): Default: None.
@@ -169,17 +169,21 @@ def batch_norm(x,
 
     assert len(x.shape) >= 2, "input dim must be larger than 1"
 
-    assert weight is not None, "the weight must not be None, please use nn.BatchNorm1d, nn.BatchNorm2d or nn.BatchNorm3d"
-    assert bias is not None, "the bias must not be None, please use nn.BatchNorm1d, nn.BatchNorm2d or nn.BatchNorm3d"
     # we use not training means use_global_status, more details see nn._BatchNormBase
     use_global_stats = not training
     # input ad out must share the memory
     mean_out = running_mean
     variance_out = running_var
+    attrs = {
+        "momentum": momentum,
+        "epsilon": epsilon,
+        "data_layout": data_format,
+        "use_mkldnn": False,
+        "fuse_with_relu": False,
+        "use_global_stats": use_global_stats,
+    }
+
     if in_dygraph_mode():
-        attrs = ("momentum", momentum, "epsilon", epsilon, "data_layout",
-                 data_format, "use_mkldnn", False, "fuse_with_relu", False,
-                 "use_global_stats", use_global_stats)
         batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
             x, weight, bias, running_mean, running_var, mean_out, variance_out,
             *attrs)
@@ -190,15 +194,6 @@ def batch_norm(x,
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'BatchNorm')
 
-    attrs = {
-        "momentum": momentum,
-        "epsilon": epsilon,
-        "data_layout": data_format,
-        "use_mkldnn": False,
-        "fuse_with_relu": False,
-        "use_global_stats": use_global_stats,
-    }
-
     inputs = {
         "X": [x],
         "Scale": [weight],
@@ -208,11 +203,13 @@ def batch_norm(x,
     }
 
     helper = LayerHelper('batch_norm', **locals())
+
+    dtype = x.dtype if x.dtype is not 'float16' else 'float32'
     saved_mean = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
+        dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
-    batch_norm_out = helper.create_variable_for_type_inference(x.dtype)
+        dtype=dtype, stop_gradient=True)
+    batch_norm_out = helper.create_variable_for_type_inference(dtype)
 
     outputs = {
         "Y": [batch_norm_out],
