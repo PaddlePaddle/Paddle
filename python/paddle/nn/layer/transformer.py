@@ -14,7 +14,7 @@
 
 # TODO: define the classes of Transformer neural network
 __all__ = [
-    'MultiheadAttention',
+    'MultiHeadAttention',
     'TransformerEncoderLayer',
     'TransformerEncoder',
     'TransformerDecoderLayer',
@@ -24,8 +24,6 @@ __all__ = [
 
 import copy
 import collections
-
-import numpy as np
 
 from ...fluid import layers
 from ...fluid.param_attr import ParamAttr
@@ -66,7 +64,7 @@ def _convert_param_attr_to_list(param_attr, n):
     return param_attrs
 
 
-class MultiheadAttention(Layer):
+class MultiHeadAttention(Layer):
     """
     Attention mapps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
@@ -104,7 +102,7 @@ class MultiheadAttention(Layer):
             query = paddle.rand((2, 4, 128))
             # self attention mask: [batch_size, num_heads, query_len, query_len]
             attn_mask = paddle.rand((2, 2, 4, 4))
-            multi_head_attn = paddle.MultiheadAttention(128, 2)
+            multi_head_attn = paddle.MultiHeadAttention(128, 2)
             output = multi_head_attn(query, attn_mask=attn_mask)  # [2, 4, 128]
     """
 
@@ -120,7 +118,7 @@ class MultiheadAttention(Layer):
                  need_weights=False,
                  weight_attr=None,
                  bias_attr=None):
-        super(MultiheadAttention, self).__init__()
+        super(MultiHeadAttention, self).__init__()
         self.embed_dim = embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
         self.vdim = vdim if vdim is not None else embed_dim
@@ -158,11 +156,11 @@ class MultiheadAttention(Layer):
                 is a tensor with shape `[batch_size, value_length, vdim]`.
                 The data type should be float32 or float64. If None, use `query` as
                 `value`.
-            cache (MultiheadAttention.Cache|MultiheadAttention.StaticCache, optional):
+            cache (MultiHeadAttention.Cache|MultiHeadAttention.StaticCache, optional):
                 It is a namedtuple with `k` and `v` as fields, and stores tensors
                 shaped `[batch_size, num_heads, length, embed_dim]` which are results
                 of linear projection, reshape and transpose calculations in
-                MultiheadAttention. If is an instance of `Cache`, `k` and `v`
+                MultiHeadAttention. If is an instance of `Cache`, `k` and `v`
                 fields reserve intermediate results of previous positions, which
                 mostly used for decoder self attention. If it is an instance of
                 `StaticCache`, `key` and `value` args would be ignored, `k` and
@@ -185,7 +183,7 @@ class MultiheadAttention(Layer):
             # for encoder-decoder attention in inference and has cached
             k, v = cache.k, cache.v
         else:
-            k, v = self.cal_kv(key, value)
+            k, v = self.compute_kv(key, value)
 
         if isinstance(cache, self.Cache):
             # for decoder self-attention in inference
@@ -195,7 +193,7 @@ class MultiheadAttention(Layer):
 
         return (q, k, v) if cache is None else (q, k, v, cache)
 
-    def cal_kv(self, key, value):
+    def compute_kv(self, key, value):
         """
         Applies linear projection on input keys and values, then splits heads
         (reshape and transpose) to get keys and values from different representation
@@ -230,13 +228,13 @@ class MultiheadAttention(Layer):
     def gen_cache(self, key, value=None, type=Cache):
         """
         Generates cache for `forward` usage in inference accroding to arguments.
-        The generated cache is an instance of `MultiheadAttention.Cache` or an
-        instance of `MultiheadAttention.StaticCache`.
+        The generated cache is an instance of `MultiHeadAttention.Cache` or an
+        instance of `MultiHeadAttention.StaticCache`.
 
         `Cache` or `StaticCache` is namedtuple with `k` and `v` as fields,
         and it stores tensors shaped `[batch_size, num_heads, length, embed_dim]`
         which are results of linear projection, reshape and transpose calculations
-        in MultiheadAttention.
+        in MultiHeadAttention.
         
         If the generated cache is an instance of `Cache`, `k` and `v` fields
         reserve intermediate result tensors of previous positions, and the tensors
@@ -250,8 +248,8 @@ class MultiheadAttention(Layer):
 
         The cache is generated as follows:
 
-        1. If `type` is `StaticCache`, apply `cal_kv(key, value)` and use the results
-        to create an instance of `StaticCache`.
+        1. If `type` is `StaticCache`, apply `compute_kv(key, value)` and use the
+        results to create an instance of `StaticCache`.
         
         2. If `type` is `Cache` and `value` is None, generate empty tensors shaped
         `[batch_size, num_heads, 0, embed_dim // num_heads]` and use the results
@@ -270,14 +268,14 @@ class MultiheadAttention(Layer):
                 is a tensor with shape `[batch_size, value_length, vdim]`.
                 The data type should be float32 or float64. If None, `key` is only
                 for batch size reference. Default None.
-            type (type): It should be `MultiheadAttention.StaticCache` or
-                `MultiheadAttention.Cache` to indicate the cache type to generate.
+            type (type): It should be `MultiHeadAttention.StaticCache` or
+                `MultiHeadAttention.Cache` to indicate the cache type to generate.
         
         Returns:
             namedtuple: an instance of `Cache` or `StaticCache` accordingly.
         """
-        if type == MultiheadAttention.StaticCache:  # static_kv
-            k, v = self.cal_kv(key, value)
+        if type == MultiHeadAttention.StaticCache:  # static_kv
+            k, v = self.compute_kv(key, value)
             return self.StaticCache(k, v)
         elif value is None:  # incremental_state
             k = layers.fill_constant_batch_size_like(
@@ -320,11 +318,11 @@ class MultiheadAttention(Layer):
                 have 0 values. The data type should be float32 or float64. It can
                 be None when nothing wanted or needed to be prevented attention to.
                 Default None
-            cache (MultiheadAttention.Cache|MultiheadAttention.StaticCache, optional):
+            cache (MultiHeadAttention.Cache|MultiHeadAttention.StaticCache, optional):
                 It is a namedtuple with `k` and `v` as fields, and stores tensors
                 shaped `[batch_size, num_heads, length, embed_dim]` which are results
                 of linear projection, reshape and transpose calculations in
-                MultiheadAttention. If it is an instance of `Cache`, `k` and `v`
+                MultiHeadAttention. If it is an instance of `Cache`, `k` and `v`
                 fields reserve intermediate results of previous positions, which
                 mostly used for decoder self attention. If it is an instance of
                 `StaticCache`, `key` and `value` args would be ignored, `k` and
@@ -464,7 +462,7 @@ class TransformerEncoderLayer(Layer):
         weight_attrs = _convert_param_attr_to_list(weight_attr, 2)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
 
-        self.self_attn = MultiheadAttention(
+        self.self_attn = MultiHeadAttention(
             d_model,
             nhead,
             dropout=attn_dropout,
@@ -685,13 +683,13 @@ class TransformerDecoderLayer(Layer):
         weight_attrs = _convert_param_attr_to_list(weight_attr, 3)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 3)
 
-        self.self_attn = MultiheadAttention(
+        self.self_attn = MultiHeadAttention(
             d_model,
             nhead,
             dropout=attn_dropout,
             weight_attr=weight_attrs[0],
             bias_attr=bias_attrs[0])
-        self.cross_attn = MultiheadAttention(
+        self.cross_attn = MultiHeadAttention(
             d_model,
             nhead,
             dropout=attn_dropout,
@@ -741,8 +739,8 @@ class TransformerDecoderLayer(Layer):
                 The data type should be float32 or float64. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None
             cache (tuple, optional): It is a tuple( :code:`(incremental_cache, static_cache)` ),
-                `incremental_cache` is an instance of `MultiheadAttention.Cache`,
-                `static_cache` is an instance of `MultiheadAttention.StaticCache.
+                `incremental_cache` is an instance of `MultiHeadAttention.Cache`,
+                `static_cache` is an instance of `MultiHeadAttention.StaticCache.
                 See `TransformerDecoderLayer.gen_cache` for more details. It is
                 only used for inference and should be None for training. Default
                 None.
@@ -753,7 +751,7 @@ class TransformerDecoderLayer(Layer):
                 Or a tuple if `cache` is not None, except for decoder layer output, \
                 the tuple includes the new cache which is same as input `cache` \
                 argument but `incremental_cache` in it has an incremental length. \
-                See `MultiheadAttention.gen_cache` and `MultiheadAttention.forward` \
+                See `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
         """
         residual = tgt
@@ -793,8 +791,8 @@ class TransformerDecoderLayer(Layer):
     def gen_cache(self, memory):
         """
         Generates cache for `forward` usage. The generated cache is a tuple
-        composed of an instance of `MultiheadAttention.Cache` and an instance
-        of `MultiheadAttention.StaticCache`.
+        composed of an instance of `MultiHeadAttention.Cache` and an instance
+        of `MultiHeadAttention.StaticCache`.
 
         Parameters:
             memory (Tensor): The output of Transformer encoder. It is a tensor
@@ -803,13 +801,13 @@ class TransformerDecoderLayer(Layer):
 
         Returns:
             tuple: It is a tuple( :code:`(incremental_cache, static_cache)` ). \
-                `incremental_cache` is an instance of `MultiheadAttention.Cache` \
-                produced by `self_attn.gen_cache(memory, MultiheadAttention.Cache)`, \
+                `incremental_cache` is an instance of `MultiHeadAttention.Cache` \
+                produced by `self_attn.gen_cache(memory, MultiHeadAttention.Cache)`, \
                 it reserves two tensors shaped `[batch_size, nhead, 0, d_model // nhead]`. \
-                `static_cache` is an instance of `MultiheadAttention.StaticCache` \
-                produced by `cross_attn.gen_cache(memory, MultiheadAttention.StaticCache)`, \
+                `static_cache` is an instance of `MultiHeadAttention.StaticCache` \
+                produced by `cross_attn.gen_cache(memory, MultiHeadAttention.StaticCache)`, \
                 it reserves two tensors shaped `[batch_size, nhead, source_length, d_model // nhead]`.
-                See `MultiheadAttention.gen_cache` and `MultiheadAttention.forward` \
+                See `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
         """
         incremental_cache = self.self_attn.gen_cache(
@@ -901,7 +899,7 @@ class TransformerDecoder(Layer):
                 Or a tuple if `cache` is not None, except for decoder output, \
                 the tuple includes the new cache which is same as input `cache` \
                 argument but `incremental_cache` in it has an incremental length. \
-                See `MultiheadAttention.gen_cache` and `MultiheadAttention.forward` \
+                See `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
         """
         output = tgt

@@ -118,6 +118,12 @@ from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS
+from .layer.transformer import MultiHeadAttention
+from .layer.transformer import TransformerEncoderLayer
+from .layer.transformer import TransformerEncoder
+from .layer.transformer import TransformerDecoderLayer
+from .layer.transformer import TransformerDecoder
+from .layer.transformer import Transformer
 from .layer.distance import PairwiseDistance  #DEFINE_ALIAS
 
 from .layer import loss  #DEFINE_ALIAS
