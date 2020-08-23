@@ -14,6 +14,7 @@
 
 # TODO: define normalization api  
 
+import warnings
 from ...fluid.dygraph.nn import InstanceNorm
 
 from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
@@ -138,7 +139,7 @@ class SyncBatchNorm(layers.Layer):
         self._track_running_stats = track_running_stats
 
         if self._track_running_stats == False:
-            logging.warn(
+            warnings.warn(
                 "moving mean and moving variance will be calculated whether `track_running_stats` is set to `True` or `False`, we will fix it in the next version."
             )
 
