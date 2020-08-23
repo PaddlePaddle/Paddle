@@ -101,7 +101,7 @@ class InputSpec(object):
 
     def unbatch(self):
         """
-        remove the first element of `shape`.
+        Removes the first element of `shape`.
         """
         if len(self.shape) == 0:
             raise ValueError(
@@ -110,7 +110,12 @@ class InputSpec(object):
         return InputSpec(tuple(self.shape[1:]), self.dtype, self.name)
 
     def _verify(self, shape):
-        if not isinstance(shape, (list, tuple)):
+        """
+        Verifies the input shape and modifies `None` into `-1`.
+        """
+        if shape is None:
+            shape = [None]
+        elif not isinstance(shape, (list, tuple)):
             raise TypeError(
                 "Type of `shape` in InputSpec should be one of (tuple, list), but received {}.".
                 format(type(shape).__name__))
