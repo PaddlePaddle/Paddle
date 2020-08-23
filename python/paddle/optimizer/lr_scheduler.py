@@ -157,7 +157,7 @@ class NoamLR(_LRScheduler):
         verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        'NoamLR' instance to update learning rate.
+        'NoamLR' instance to schedule learning rate.
 
     Examples:
         .. code-block:: python
@@ -255,7 +255,7 @@ class PiecewiseLR(_LRScheduler):
         verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        'PiecewiseLR' instance to update learning rate.
+        'PiecewiseLR' instance to schedule learning rate.
 
     Examples:
         
@@ -340,7 +340,7 @@ class NaturalExpLR(_LRScheduler):
         verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        'NaturalExpLR' instance to update learning rate.
+        'NaturalExpLR' instance to schedule learning rate.
 
     Examples:
         
@@ -420,7 +420,7 @@ class InverseTimeLR(_LRScheduler):
         verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        'InverseTimeLR' instance to update learning rate.
+        'InverseTimeLR' instance to schedule learning rate.
 
     Examples:
         
@@ -516,7 +516,7 @@ class PolynomialLR(_LRScheduler):
         verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        'PolynomialLR' instance to update learning rate.
+        'PolynomialLR' instance to schedule learning rate.
 
     Examples:
         
@@ -603,9 +603,27 @@ class PolynomialLR(_LRScheduler):
 
 class LinearLrWarmup(_LRScheduler):
     """
+    Linear learning rate warm up strategy. Update the learning rate preliminarily before the normal learning rate scheduler.
+    For more information, please refer to `Bag of Tricks for Image Classification with Convolutional Neural Networks <https://arxiv.org/abs/1812.01187>`_
+    
+    When epoch < warmup_steps, learning rate is updated as:
+    
+    .. code-block:: text
+    
+            lr = start_lr + (end_lr - start_lr) * (epoch / warmup_steps)
+    
+    where start_lr is the initial learning rate, and end_lr is the final learning rate;
+    
+    When epoch >= warmup_steps, learning rate is updated as:
+    
+    .. code-block:: text
+    
+            lr = learning_rate
+    
+    where lr is float or any subclass of ``_LRScheduler`` .
 
     Args:
-        learning_rate (float|_LRScheduler): The learning rate after warm-up. It is a python float number or any subclass of _LRScheduler.
+        learning_rate (float|_LRScheduler): The learning rate after warm-up. It is a python float number or any subclass of ``_LRScheduler`` .
         warmup_steps (int): total steps of warm up.
         start_lr (float): Initial learning rate of warm up.
         end_lr (float): Final learning rate of warm up.
@@ -613,7 +631,7 @@ class LinearLrWarmup(_LRScheduler):
         verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        'LinearLrWarmup' instance to update learning rate.
+        'LinearLrWarmup' instance to schedule learning rate.
 
     Examples:
         
@@ -704,7 +722,7 @@ class LinearLrWarmup(_LRScheduler):
 class ExponentialLR(_LRScheduler):
     """
 
-    update learning rate by 'gamma' each epoch.
+    Update learning rate by 'gamma' each epoch.
 
     The algorithm can be described as following.
     
@@ -720,7 +738,7 @@ class ExponentialLR(_LRScheduler):
         verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        'ExponentialLR' instance to update learning rate.
+        'ExponentialLR' instance to schedule learning rate.
 
     Examples:
         
@@ -809,7 +827,7 @@ class MultiStepLR(_LRScheduler):
         
 
     Returns:
-        'MultiStepLR' instance to update learning rate.
+        'MultiStepLR' instance to schedule learning rate.
 
     Examples:
         
@@ -918,7 +936,7 @@ class StepLR(_LRScheduler):
         verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        'StepLR' instance to update learning rate.
+        'StepLR' instance to schedule learning rate.
 
 
     Examples:
@@ -1016,7 +1034,7 @@ class LambdaLR(_LRScheduler):
         verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
     
     Returns:
-        'LambdaLR' instance to update learning rate.
+        'LambdaLR' instance to schedule learning rate.
 
     Examples:
         
@@ -1117,7 +1135,7 @@ class ReduceLROnPlateau(_LRScheduler):
 
     
     Returns:
-        'ReduceLROnPlateau' instance to update learning rate.
+        'ReduceLROnPlateau' instance to schedule learning rate.
 
 
     Examples:
@@ -1184,7 +1202,7 @@ class ReduceLROnPlateau(_LRScheduler):
                  verbose=False):
         mode = mode.lower()
         if mode not in ['min', 'max']:
-            raise ValueError('mode ' + mode + ' is unknown!')
+            raise ValueError('mode: ' + mode + ' is unknown!')
         self.mode = mode
 
         if factor >= 1.0:
@@ -1195,12 +1213,12 @@ class ReduceLROnPlateau(_LRScheduler):
 
         threshold_mode = threshold_mode.lower()
         if threshold_mode not in ['rel', 'abs']:
-            raise ValueError('threshold mode ' + threshold_mode +
+            raise ValueError('threshold mode: ' + threshold_mode +
                              ' is unknown!')
         self.threshold_mode = threshold_mode
-        if not isinstance(learning_rate, float):
+        if not isinstance(learning_rate, (float, int)):
             raise TypeError(
-                "The type of 'lr' in 'ReduceLROnPlateau' must be 'float', but received %s."
+                "The type of 'learning_rate' in 'ReduceLROnPlateau' must be 'float', but received %s."
                 % type(learning_rate))
 
         self.verbose = verbose
@@ -1216,13 +1234,13 @@ class ReduceLROnPlateau(_LRScheduler):
         self.num_bad_epochs = 0
 
         # Can not call Parent __init__, so implement here.
-        self.base_lr = learning_rate
-        self.last_lr = learning_rate
+        self.base_lr = float(learning_rate)
+        self.last_lr = float(learning_rate)
         self.last_epoch = 0
         self.verbose = verbose
         self._var_name = None
 
-    # "cooldown_counter / best_loss / num_bad_epochs / last_epoch / last_lr" will be stored.
+    # "cooldown_counter / best / num_bad_epochs / last_epoch / last_lr" will be stored.
     def _state_keys(self):
         self.keys = [
             'cooldown_counter', 'best', 'num_bad_epochs', 'last_epoch',
@@ -1283,6 +1301,7 @@ class ReduceLROnPlateau(_LRScheduler):
                             self.last_lr))
 
     def _is_better(self, current, best):
+        print("mode", self.mode, 'threshold_mode', self.threshold_mode)
         if self.mode == 'min' and self.threshold_mode == 'rel':
             return current < best - best * self.threshold
 
@@ -1324,7 +1343,7 @@ class CosineAnnealingLR(_LRScheduler):
         verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-        'CosineAnnealingLR' instance to update learning rate.
+        'CosineAnnealingLR' instance to schedule learning rate.
 
     Examples:
         

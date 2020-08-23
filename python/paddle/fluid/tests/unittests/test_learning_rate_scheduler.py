@@ -565,31 +565,35 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.optimizer.ReduceLROnPlateau(
                 learning_rate=1.0, threshold_mode="test")
+        with self.assertRaises(TypeError):
+            paddle.optimizer.ReduceLROnPlateau(learning_rate="test")
+        with self.assertRaises(TypeError):
+            paddle.optimizer.ReduceLROnPlateau(learning_rate=0.5).step("test")
 
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
 
         for place in places:
-            paddle.disable_static(place)
             for m, n in zip(['min', 'max', 'min', 'max'],
                             ['rel', 'rel', 'abs', 'abs']):
                 kwargs = {
                     'learning_rate': 1.0,
-                    'factor': 0.5,
-                    'threshold': 1e-4,
-                    'verbose': True,
-                    'patience': 3,
-                    'cooldown': 1,
                     'mode': m,
+                    'factor': 0.5,
+                    'patience': 3,
+                    'threshold': 1e-4,
                     'threshold_mode': n,
-                    'epsilon': 1e-8
+                    'cooldown': 1,
+                    'min_lr': 0,
+                    'epsilon': 1e-8,
+                    'verbose': False,
                 }
-            paddle.enable_static()
-            self._test_static(place, kwargs)
-            paddle.disable_static(place)
-            self._test_dygraph(place, kwargs)
-            paddle.enable_static()
+                paddle.enable_static()
+                self._test_static(place, kwargs)
+                paddle.disable_static(place)
+                self._test_dygraph(place, kwargs)
+                paddle.enable_static()
 
     def _test_static(self, place, kwargs):
         paddle.enable_static()
@@ -671,6 +675,17 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
                 kwargs['patience'], kwargs['mode'], kwargs['threshold_mode'],
                 loss, var_list)
             self.assertEqual(current_lr, expected_lr)
+        state_dict = sgd.state_dict()
+        scheduler1 = paddle.optimizer.ReduceLROnPlateau(**kwargs)
+        sgd1 = paddle.optimizer.SGD(learning_rate=scheduler1,
+                                    parameter_list=linear.parameters())
+        sgd1.set_dict(state_dict)
+        self.assertEqual(scheduler.cooldown_counter,
+                         scheduler1.cooldown_counter)
+        self.assertEqual(scheduler.best.numpy()[0], scheduler1.best)
+        self.assertEqual(scheduler.num_bad_epochs, scheduler1.num_bad_epochs)
+        self.assertEqual(scheduler.last_epoch, scheduler1.last_epoch)
+        self.assertEqual(scheduler.last_lr, scheduler1.last_lr)
 
 
 def noam_lr(epoch_num, d_model, warmup_steps, learning_rate=1.0, verbose=False):
@@ -901,9 +916,26 @@ class TestLRScheduler(unittest.TestCase):
 
             self.assertAlmostEqual(adam.current_step_lr(),
                                    python_func(epoch, **kwarg))
-            scheduler.step()
+            if paddle_api.__name__ != "CosineAnnealingLR":
+                scheduler.step()
+            else:
+                scheduler.step(epoch + 1)
 
     def test_scheduler(self):
+        with self.assertRaises(NotImplementedError):
+            paddle.optimizer.lr_scheduler._LRScheduler().step()
+        with self.assertRaises(TypeError):
+            paddle.optimizer.MultiStepLR(
+                learning_rate="test", milestones=[1, 2, 3])
+        with self.assertRaises(TypeError):
+            paddle.optimizer.MultiStepLR(learning_rate=0.5, milestones='test')
+        with self.assertRaises(ValueError):
+            paddle.optimizer.MultiStepLR(
+                learning_rate=0.5, milestones=[3, 2, 1])
+        with self.assertRaises(ValueError):
+            paddle.optimizer.MultiStepLR(
+                learning_rate=0.5, milestones=[1, 2, 3], gamma=2)
+
         func_api_kwargs = [(noam_lr, paddle.optimizer.NoamLR, {
             "d_model": 0.01,
             "warmup_steps": 100,
@@ -925,6 +957,14 @@ class TestLRScheduler(unittest.TestCase):
             "decay_steps": 20,
             "end_lr": 0,
             "power": 1.0,
+            "cycle": False,
+            "verbose": False
+        }), (polynomial_lr, paddle.optimizer.PolynomialLR, {
+            "learning_rate": 0.5,
+            "decay_steps": 20,
+            "end_lr": 0,
+            "power": 1.0,
+            "cycle": True,
             "verbose": False
         }), (linear_warmup_lr, paddle.optimizer.LinearLrWarmup, {
             'learning_rate': 0.5,
