@@ -239,12 +239,12 @@ class TestUniformRandomOpSelectedRows(unittest.TestCase):
         op = Operator(
             "uniform_random",
             Out="X",
-            shape=[4, 784],
+            shape=[100, 784],
             min=-5.0,
             max=10.0,
             seed=10)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [4, 784])
+        self.assertEqual(out.get_tensor().shape(), [100, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
@@ -457,21 +457,21 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
 
             def test_Variable():
                 x1 = fluid.create_lod_tensor(
-                    np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace())
+                    np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace())
                 fluid.layers.uniform_random_batch_size_like(x1)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_shape():
                 x1 = fluid.layers.data(
-                    name='x2', shape=[4, 784], dtype='float32')
+                    name='x2', shape=[100, 784], dtype='float32')
                 fluid.layers.uniform_random_batch_size_like(x1, shape="shape")
 
             self.assertRaises(TypeError, test_shape)
 
             def test_dtype():
                 x2 = fluid.layers.data(
-                    name='x2', shape=[4, 784], dtype='float32')
+                    name='x2', shape=[100, 784], dtype='float32')
                 fluid.layers.uniform_random_batch_size_like(x2, 'int32')
 
             self.assertRaises(TypeError, test_dtype)
@@ -497,20 +497,20 @@ class TestUniformOpError(unittest.TestCase):
 
             def test_Variable():
                 x1 = fluid.create_lod_tensor(
-                    np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace())
+                    np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace())
                 paddle.tensor.random.uniform(x1)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_Variable2():
-                x1 = np.zeros((4, 784))
+                x1 = np.zeros((100, 784))
                 paddle.tensor.random.uniform(x1)
 
             self.assertRaises(TypeError, test_Variable2)
 
             def test_dtype():
                 x2 = fluid.layers.data(
-                    name='x2', shape=[4, 784], dtype='float32')
+                    name='x2', shape=[100, 784], dtype='float32')
                 paddle.tensor.random.uniform(x2, 'int32')
 
             self.assertRaises(TypeError, test_dtype)
