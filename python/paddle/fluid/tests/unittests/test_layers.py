@@ -2912,14 +2912,6 @@ class TestBook(LayerTest):
             out = layers.grid_sampler(x, grid)
             return (out)
 
-    def make_grid_sample(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            x = self._get_data(name='x', shape=[3, 5, 7], dtype='float32')
-            grid = self._get_data(name='grid', shape=[5, 7, 2], dtype='float32')
-            out = nn.functional.grid_sampler(x, grid)
-            return (out)
-
     def make_bilinear_tensor_product_layer(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):

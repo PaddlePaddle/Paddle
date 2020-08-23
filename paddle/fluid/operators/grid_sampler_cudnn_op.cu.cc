@@ -41,8 +41,6 @@ class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
 
     int n = input->dims()[0];
     int c = input->dims()[1];
-    //    int in_h = input->dims()[2];
-    //    int in_w = input->dims()[3];
     int out_h = grid->dims()[1];
     int out_w = grid->dims()[2];
     const int size[4] = {n, c, out_h, out_w};
