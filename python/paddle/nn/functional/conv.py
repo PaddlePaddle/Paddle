@@ -13,7 +13,13 @@
 # limitations under the License.
 from __future__ import print_function
 
-__all__ = ['conv1d', 'conv2d', 'conv_transpose2d', 'conv3d', 'conv_transpose3d',]
+__all__ = [
+    'conv1d',
+    'conv2d',
+    'conv_transpose2d',
+    'conv3d',
+    'conv_transpose3d',
+]
 
 import numpy as np
 from ...device import get_cudnn_version

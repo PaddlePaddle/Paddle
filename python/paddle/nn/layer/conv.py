@@ -267,8 +267,7 @@ class Conv1D(layers.Layer):
             default_initializer=_get_default_param_initializer(
                 self._in_channels, filter_shape))
         self.bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=[self._out_channels],
+            attr=self._bias_attr, shape=[self._out_channels],
             is_bias=True) if bias else None
 
     def forward(self, x):
