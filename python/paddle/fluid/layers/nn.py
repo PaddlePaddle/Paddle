@@ -8210,7 +8210,6 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
 @deprecated(since="2.0.0", update_to="paddle.gather")
 def gather(input, index, overwrite=True):
     """
-    **Gather Layer**
 
     Output is obtained by gathering entries of the outer-most dimension
     of X indexed by `index` and concatenate them together.

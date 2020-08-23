@@ -1237,7 +1237,6 @@ def reshape(x, shape, name=None):
 
 def gather_nd(x, index, name=None):
     """
-    **Gather Nd Layer**
 
     This function is actually a high-dimensional extension of :code:`gather`
     and supports for simultaneous indexing by multiple axes. :attr:`index` is a
