@@ -125,5 +125,22 @@ class TestFleetBase(unittest.TestCase):
         self.assertRaises(Exception, fleet.init_worker)
 
 
+class TestFleetBaseSingleRun(unittest.TestCase):
+    def test_single_run_minimize(self):
+        input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+        input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+
+        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+        prediction = paddle.fluid.layers.fc(input=fc_1, size=2, act='softmax')
+        cost = paddle.fluid.layers.cross_entropy(
+            input=prediction, label=input_y)
+        avg_cost = paddle.mean(x=cost)
+
+        fleet.init(is_collective=True)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+        optimizer = fleet.distributed_optimizer(optimizer)
+        optimizer.minimize(avg_cost)
+
+
 if __name__ == "__main__":
     unittest.main()
