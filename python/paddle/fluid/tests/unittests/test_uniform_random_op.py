@@ -420,7 +420,7 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         shape_1 = scope.var("shape1").get_tensor()
-        shape_1.set(np.array([4]).astype("int64"), place)
+        shape_1.set(np.array([100]).astype("int64"), place)
         shape_2 = scope.var("shape2").get_tensor()
         shape_2.set(np.array([784]).astype("int64"), place)
 
@@ -432,7 +432,7 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
             max=10.0,
             seed=10)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [4, 784])
+        self.assertEqual(out.get_tensor().shape(), [100, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
