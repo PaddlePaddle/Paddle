@@ -41,7 +41,7 @@ class TestBatchify(unittest.TestCase):
         a = ([1, 2, 3, 4], 3)
         b = ([2, 3], 2)
         tuple_data = tuple_fn([a, b])
-        assert tuple_data[0].shape == (2, 4) and tuple_data[1].shape == (2,)
+        assert tuple_data[0].shape == (2, 4) and tuple_data[1].shape == (2, )
 
 
 if __name__ == '__main__':

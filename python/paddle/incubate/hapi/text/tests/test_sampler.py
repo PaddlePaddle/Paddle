@@ -23,7 +23,7 @@ class TestSamplerHelper(unittest.TestCase):
         self.sampler_helper = SamplerHelper(dataset)
 
     def test_get_set_length(self):
-        length =  self.sampler_helper.length
+        length = self.sampler_helper.length
         self.sampler_helper.length = length
 
     def test_apply(self):
@@ -31,6 +31,7 @@ class TestSamplerHelper(unittest.TestCase):
             buffer_size = 3
             seed = 2020
             random_generator = np.random.RandomState(seed)
+
             def _impl():
                 buf = []
                 for idx in iter(sampler_helper):
@@ -44,7 +45,9 @@ class TestSamplerHelper(unittest.TestCase):
                     random_generator.shuffle(buf)
                     for b in buf:
                         yield b
+
             return _impl
+
         applied_sampler = self.sampler_helper.apply(fn)
         for idx in iter(applied_sampler):
             break
@@ -76,7 +79,7 @@ class TestSamplerHelper(unittest.TestCase):
         iterator = listed_sampler.iterable()
         for idx in iterator:
             break
-    
+
 
 if __name__ == '__main__':
     unittest.main()

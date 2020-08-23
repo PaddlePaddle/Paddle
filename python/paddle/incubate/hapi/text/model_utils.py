@@ -27,6 +27,7 @@ from paddle.incubate.hapi.model import Model
 # from .utils import InitTrackerMeta
 from paddle.incubate.hapi.text.utils import InitTrackerMeta
 
+
 @six.add_metaclass(InitTrackerMeta)
 class PreTrainedModel(Model):
     """

@@ -24,6 +24,7 @@ class InitTrackerMeta(type(paddle.fluid.dygraph.Layer)):
     conflicts temporarily.
     
     """
+
     # def __new__(cls, name, bases, attrs):
     #     if '__init__' in attrs:
     #         init_func = attrs['__init__']
