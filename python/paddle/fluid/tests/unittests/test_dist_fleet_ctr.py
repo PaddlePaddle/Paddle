@@ -22,7 +22,7 @@ from test_dist_fleet_base import TestFleetBase
 
 class TestDistMnistSync2x2(TestFleetBase):
     def _setup_config(self):
-        self._mode = "async"
+        self._mode = "sync"
         self._reader = "pyreader"
 
     def check_with_place(self,
@@ -123,7 +123,7 @@ class TestDistMnistAsyncDataset2x2(TestFleetBase):
 
 class TestDistCtrHalfAsync2x2(TestFleetBase):
     def _setup_config(self):
-        self._mode = "half_async"
+        self._mode = "async"
         self._reader = "pyreader"
 
     def check_with_place(self,
@@ -154,6 +154,41 @@ class TestDistCtrHalfAsync2x2(TestFleetBase):
     def test_dist_train(self):
         self.check_with_place(
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+
+
+class TestDistCtrPsGpuPyreaderAsync2x2(TestFleetBase):
+    def _setup_config(self):
+        self._mode = "async"
+        self._reader = "pyreader"
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+        required_envs = {
+            "PATH": os.getenv("PATH", ""),
+            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
+            "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
+            "http_proxy": "",
+            "FLAGS_communicator_send_queue_size": "2",
+            "FLAGS_communicator_max_merge_var_num": "2",
+            "CPU_NUM": "2",
+            "SAVE_MODEL": "1"
+        }
+
+        required_envs.update(need_envs)
+
+        if check_error_log:
+            required_envs["GLOG_v"] = "3"
+            required_envs["GLOG_logtostderr"] = "1"
+
+        tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
+
+    def test_dist_train(self):
+        self.check_with_place(
+            "dist_fleet_ctr_ps_gpu.py", delta=1e-5, check_error_log=True)
 
 
 if __name__ == "__main__":
