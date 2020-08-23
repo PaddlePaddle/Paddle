@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import paddle
+from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
 from .strategy_compiler import StrategyCompiler
 from .distributed_strategy import DistributedStrategy
 from .meta_optimizer_factory import MetaOptimizerFactory
@@ -74,9 +75,33 @@ class Fleet(object):
     def __init__(self):
         self._runtime_handle = None
         self._util = None
+        self._role_maker = None
+        self._is_collective = False
 
-    def init(self, role_maker):
-        self._role_maker = role_maker
+    def init(self, role_maker=None, is_collective=False):
+        """
+        Initialize role_maker in Fleet.
+
+        This function is responsible for the distributed architecture 
+        what you want to run your code behind,such as Transpiler,
+        Collective in PaddleCloudRoleMaker or UserDefinedRoleMaker 
+        
+        """
+        if isinstance(role_maker, RoleMakerBase):
+            self._role_maker = role_maker
+        elif role_maker == None:
+            if isinstance(is_collective, bool):
+                self._is_collective = is_collective
+                self._role_maker = PaddleCloudRoleMaker(
+                    is_collective=self._is_collective)
+            else:
+                raise ValueError(
+                    "Something wrong occurred, please check whether is_collective is bool value"
+                )
+        else:
+            raise ValueError(
+                "Something wrong occurred, please check whether rolemaker is instance of RoleMakerBase"
+            )
         self.strategy_compiler = StrategyCompiler()
         return None
 
