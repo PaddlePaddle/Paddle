@@ -142,8 +142,6 @@ class InputSpec(object):
         label = InputSpec([None, 1], 'int64', 'label')
     """
 
-    __slots__ = ['shape', 'dtype', 'name']
-
     def __init__(self, shape=None, dtype='float32', name=None):
         # replace `None` in shape  with -1
         self.shape = self._verify(shape)
