@@ -8207,6 +8207,7 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
     return image_resize(input=input, out_shape=out_shape, resample=resample)
 
 
+@deprecated(since="2.0.0", update_to="paddle.gather")
 def gather(input, index, overwrite=True):
     """
     **Gather Layer**
@@ -8280,6 +8281,7 @@ def gather(input, index, overwrite=True):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.gather_nd")
 def gather_nd(input, index, name=None):
     """
     **Gather Nd Layer**
@@ -8332,7 +8334,7 @@ def gather_nd(input, index, name=None):
                          = [23]
 
     Args:
-        input (Tensor): The source input. Its dtype should be bool, float32, float64, int32, int64.
+        input (Tensor): The input Tensor which it's data typeshould be bool, float32, float64, int32, int64.
         index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
                         Its dtype should be int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.

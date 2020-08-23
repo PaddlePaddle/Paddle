@@ -663,13 +663,8 @@ def gather(x, index, axis=None, name=None):
 
     **Gather Layer**
 
-    Output is obtained by gathering entries of the outer-most dimension
-    of X indexed by `index` and concatenate them together.
-
-    .. math::
-
-        Out = X[Index]
-
+    Output is obtained by gathering entries of ``axis``
+    of ``x`` indexed by ``index`` and concatenate them together.
 
     .. code-block:: text
 
@@ -692,7 +687,7 @@ def gather(x, index, axis=None, name=None):
             int32, int64, float32, float64 and uint8 (only for CPU),
             float16 (only for GPU).
         index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
-        axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. Default: if None, the axis is 0.
+        axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. The default value is None, if None, the ``axis`` is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -1260,13 +1255,13 @@ def gather_nd(x, index, name=None):
     .. code-block:: text
 
             Given:
-                input = [[[ 0,  1,  2,  3],
+                x = [[[ 0,  1,  2,  3],
                           [ 4,  5,  6,  7],
                           [ 8,  9, 10, 11]],
                          [[12, 13, 14, 15],
                           [16, 17, 18, 19],
                           [20, 21, 22, 23]]]
-                input.shape = (2, 3, 4)
+                x.shape = (2, 3, 4)
 
             * Case 1:
                 index = [[1]]
@@ -1308,6 +1303,7 @@ def gather_nd(x, index, name=None):
     Examples:
 
         .. code-block:: python
+            
             import paddle
             import numpy as np
             
