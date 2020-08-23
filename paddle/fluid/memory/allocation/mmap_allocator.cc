@@ -61,12 +61,6 @@ std::string GetIPCName() {
 #endif
   handle += "_";
   handle += std::to_string(rd());
-  /*
-  handle +=
-      framework::Generator::GetInstance()->is_init_py
-          ? std::to_string(framework::Generator::GetInstance()->Random64())
-          : std::to_string(rd());
-  */
   return std::move(handle);
 }
 

@@ -13,7 +13,6 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/gather.h"
@@ -191,13 +190,7 @@ std::vector<std::vector<int>> SampleFgBgGt(
       const int64_t fg_size = static_cast<int64_t>(fg_inds.size());
       if (fg_size > fg_rois_per_this_image) {
         for (int64_t i = fg_rois_per_this_image; i < fg_size; ++i) {
-          int rng_ind =
-              framework::Generator::GetInstance()->is_init_py
-                  ? std::floor(uniform(framework::Generator::GetInstance()
-                                           ->GetCPUEngine()) *
-                               i)
-                  : std::floor(uniform(engine) * i);
-          // int rng_ind = std::floor(uniform(engine) * i);
+          int rng_ind = std::floor(uniform(engine) * i);
           if (rng_ind < fg_rois_per_this_image) {
             std::iter_swap(fg_inds.begin() + rng_ind, fg_inds.begin() + i);
             std::iter_swap(mapped_gt_inds.begin() + rng_ind,
