@@ -10466,6 +10466,7 @@ def uniform_random_batch_size_like(input,
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.normal")
 @templatedoc()
 def gaussian_random(shape,
                     mean=0.0,
