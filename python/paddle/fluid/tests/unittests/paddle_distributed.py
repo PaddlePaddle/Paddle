@@ -25,7 +25,7 @@ elif backend == "nccl":
     place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
 with fluid.dygraph.guard(place=place):
     rank = fluid.dygraph.ParallelEnv().local_rank
-    paddle.distributed.init_process_group(backend, 2, rank)
+    paddle.distributed.init_distributed_context(backend, 2, rank)
     if fluid.dygraph.ParallelEnv().local_rank == 0:
         np_data = np.array([[4, 5, 6], [4, 5, 6]])
     else:

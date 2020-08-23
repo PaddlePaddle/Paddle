@@ -29,7 +29,7 @@ __all__ = [
     'all_gather',
     'scatter',
     'ReduceOp',
-    'init_process_group',
+    'init_distributed_context',
 ]
 
 
@@ -41,7 +41,7 @@ class ReduceOp:
     PROD = 3
 
 
-class Group():
+class _Group():
     """The abstract representation of group."""
 
     def __init__(self, rank, rank_num):
@@ -49,21 +49,22 @@ class Group():
         self.nranks = rank_num
 
 
-_default_group = Group(0, 1)
+_default_group = _Group(0, 1)
 _default_backend = None
 
 
-def init_process_group(backend,
-                       rank_num,
-                       rank,
-                       timeout=999999,
-                       group_name='',
-                       fs_path="",
-                       fs_name="",
-                       fs_ugi=""):
+def init_distributed_context(backend,
+                             rank_num,
+                             rank,
+                             timeout=999999,
+                             group_name='',
+                             group_num=1,
+                             fs_path="",
+                             fs_name="",
+                             fs_ugi=""):
     """
 
-    Initialize the default distributed environment.
+    Initialize the default distributed context.
 
     Args:
         backend (str): The backend to use, one of 'nccl' or 'gloo'.
@@ -71,6 +72,7 @@ def init_process_group(backend,
         rank (int): Rank of the current process starting from 0.
         timeout (int): Timeout in seconds for gloo only. 
         group_name (str): Name of the group.
+        group_num (int): Number of groups.
         fs_path (str): A file system path used to initialized gloo.
         fs_name (str): A file system name used to initialized gloo.
         fs_ugi (str): A file system ugi (name and password) used to 
@@ -84,7 +86,7 @@ def init_process_group(backend,
 
         import paddle
         place = paddle.fluid.CUDAPlace(0)
-        paddle.distributed.init_process_group('nccl', 2, 1)
+        paddle.distributed.init_distributed_context('nccl', 2, 1)
     """
     global _default_backend
     if not backend in ['nccl', 'gloo']:
@@ -145,7 +147,7 @@ def broadcast(tensor, src, group=0):
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
         with fluid.dygraph.guard(place=place):
-             paddle.distributed.init_process_group('nccl', 1000, 2, 1)
+             paddle.distributed.init_distributed_context('nccl', 1000, 2, 1)
              if fluid.dygraph.ParallelEnv().local_rank == 0:
                  np_data = np.array([[4, 5, 6], [4, 5, 6]])
              else:
@@ -198,7 +200,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0):
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
         with fluid.dygraph.guard(place=place):
-             paddle.distributed.init_process_group('nccl', 1000, 2, 1)
+             paddle.distributed.init_distributed_context('nccl', 1000, 2, 1)
              if fluid.dygraph.ParallelEnv().local_rank == 0:
                  np_data = np.array([[4, 5, 6], [4, 5, 6]])
              else:
@@ -256,7 +258,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
         with fluid.dygraph.guard(place=place):
-             paddle.distributed.init_process_group('nccl', 1000, 2, 1)
+             paddle.distributed.init_distributed_context('nccl', 1000, 2, 1)
              if fluid.dygraph.ParallelEnv().local_rank == 0:
                  np_data = np.array([[4, 5, 6], [4, 5, 6]])
              else:
@@ -320,7 +322,7 @@ def all_gather(tensor_list, tensor, group=0):
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
         with fluid.dygraph.guard(place=place):
-             paddle.distributed.init_process_group('nccl', 1000, 2, 1)
+             paddle.distributed.init_distributed_context('nccl', 1000, 2, 1)
              tensor_list = []
              if fluid.dygraph.ParallelEnv().local_rank == 0:
                  np_data1 = np.array([[4, 5, 6], [4, 5, 6]])
@@ -385,7 +387,7 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
         with fluid.dygraph.guard(place=place):
-             paddle.distributed.init_process_group('nccl', 1000, 2, 1)
+             paddle.distributed.init_distributed_context('nccl', 1000, 2, 1)
              if fluid.dygraph.ParallelEnv().local_rank == 0:
                  np_data1 = np.array([7, 8, 9])
                  np_data2 = np.array([10, 11, 12])
