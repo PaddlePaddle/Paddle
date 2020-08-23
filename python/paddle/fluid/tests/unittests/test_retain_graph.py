@@ -96,8 +96,8 @@ class TestRetainGraph(unittest.TestCase):
         g = Generator()
         d = Discriminator()
 
-        optim_g = paddle.optimizer.Adam(parameter_list=g.parameters())
-        optim_d = paddle.optimizer.Adam(parameter_list=d.parameters())
+        optim_g = paddle.optimizer.Adam(parameters=g.parameters())
+        optim_d = paddle.optimizer.Adam(parameters=d.parameters())
 
         gan_criterion = paddle.nn.MSELoss()
         l1_criterion = paddle.nn.L1Loss()
