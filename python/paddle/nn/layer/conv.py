@@ -454,7 +454,7 @@ class ConvTranspose2d(_ConvNd):
         return out
 
 
-class Conv3d(layers.Layer):
+class Conv3d(_ConvNd):
     """
 
     **Convlution3d Layer**

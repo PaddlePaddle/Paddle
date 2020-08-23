@@ -40,7 +40,7 @@ def uncombined_weight_to_state_dict(weight_dir):
             import os
 
             from paddle import fluid
-            from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential
+            from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
             from paddle.incubate.hapi.utils import uncombined_weight_to_state_dict
 
 
@@ -49,11 +49,11 @@ def uncombined_weight_to_state_dict(weight_dir):
                     super(LeNetDygraph, self).__init__()
                     self.num_classes = num_classes
                     self.features = Sequential(
-                        Conv2d(
+                        Conv2D(
                             1, 6, 3, stride=1, padding=1),
                         ReLU(),
                         Pool2D(2, 'max', 2),
-                        Conv2d(
+                        Conv2D(
                             6, 16, 5, stride=1, padding=0),
                         ReLU(),
                         Pool2D(2, 'max', 2))
