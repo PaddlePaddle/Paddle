@@ -95,10 +95,16 @@ endif()
 
 
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint1)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint3)
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint_multiple)
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint_dist_basic)
+LIST(REMOVE_ITEM TEST_OPS test_hdfs1)
+LIST(REMOVE_ITEM TEST_OPS test_hdfs2)
+LIST(REMOVE_ITEM TEST_OPS test_hdfs3)
 LIST(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 if(APPLE OR WIN32)
-    LIST(REMOVE_ITEM TEST_OPS test_hdfs)
     LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
 endif()
@@ -239,6 +245,51 @@ function(bash_test_modules TARGET_NAME)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout})
     endif()
 endfunction()
+
+function(parallel_bash_test_modules TARGET_NAME)
+    if(NOT WITH_TESTING)
+        return()
+    endif()
+
+    set(options SERIAL)
+    set(oneValueArgs TIMEOUT START_BASH)
+    set(multiValueArgs DEPS ENVS LABELS UnitTests)
+    cmake_parse_arguments(parallel_bash_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+
+    set(timeout 120)
+    if(${parallel_bash_test_modules_TIMEOUT})
+        set(timeout ${parallel_bash_test_modules_TIMEOUT})
+    endif()
+
+    list(JOIN  parallel_bash_test_modules_UnitTests " " uts_string)
+
+    if(WITH_COVERAGE)
+        add_test(NAME ${TARGET_NAME}
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${parallel_bash_test_modules_ENVS} UnitTests=${uts_string}
+            WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${parallel_bash_test_modules_START_BASH}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+        add_test(NAME ${TARGET_NAME}
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${parallel_bash_test_modules_ENVS} UnitTests=${uts_string}
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${parallel_bash_test_modules_START_BASH}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+
+    if (parallel_bash_test_modules_SERIAL)
+        set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
+    endif()
+
+    if(parallel_bash_test_modules_LABELS)
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout} LABELS ${parallel_bash_test_modules_LABELS})
+    else()
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout})
+    endif()
+endfunction()
+
 
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
@@ -469,9 +520,9 @@ if(NOT WIN32)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
-    bash_test_modules(test_auto_checkpoint START_BASH dist_test.sh TIMEOUT 600)
-    bash_test_modules(test_auto_checkpoint2 START_BASH dist_test.sh TIMEOUT 600)
-    bash_test_modules(test_checkpoint_saver START_BASH dist_test.sh TIMEOUT 600)
+    parallel_bash_test_modules(test_acp START_BASH parallel_test.sh TIMEOUT 140 UnitTests test_auto_checkpoint test_auto_checkpoint1 test_auto_checkpoint2 test_auto_checkpoint3)
+    parallel_bash_test_modules(test_acp2 START_BASH parallel_test.sh TIMEOUT 140 UnitTests test_auto_checkpoint_multiple test_auto_checkpoint_dist_basic)
+    parallel_bash_test_modules(test_hdfs START_BASH parallel_test.sh TIMEOUT 120 UnitTests test_hdfs1 test_hdfs2 test_hdfs3)
 endif()
 
 add_subdirectory(sequence)

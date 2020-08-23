@@ -17,7 +17,7 @@ import paddle
 from paddle import fluid
 import os
 import paddle.distributed.fleet as fleet
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import MetaOptimizerBase
 
 

@@ -29,6 +29,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/variable.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
+DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {
@@ -262,6 +267,9 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     }
     VLOG(2) << "The number of sub scopes after forward: "
             << out_scope_vec->front()->kids().size();
+#ifdef PADDLE_WITH_MKLDNN
+    if (FLAGS_use_mkldnn) DontClearMKLDNNCache(ctx.GetPlace());
+#endif
   }
 };
 
