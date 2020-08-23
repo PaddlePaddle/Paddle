@@ -164,7 +164,7 @@ class InputSpec(object):
         """
         Generates a InputSpec based on the description of input tensor. 
 
-        Arg:
+        Args:
             tensor(Tensor): the source tensor to generate a InputSpec instance
         
         Returns:
