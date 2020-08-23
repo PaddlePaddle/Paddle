@@ -15,7 +15,7 @@
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.nn.layer.transformer import MultiheadAttention, TransformerEncoderLayer, TransformerDecoderLayer, TransformerEncoder, TransformerDecoder, Transformer
+from paddle.nn.layer.transformer import MultiHeadAttention, TransformerEncoderLayer, TransformerDecoderLayer, TransformerEncoder, TransformerDecoder, Transformer
 
 import unittest
 
@@ -225,7 +225,7 @@ class TestTransformer(unittest.TestCase):
                     attn_mask = np.concatenate((attn_mask, attn_mask), axis=3)
                 need_weight, param_attr, bias_attr = False, None, None
                 # call paddle's function
-                multi_head_attn = MultiheadAttention(
+                multi_head_attn = MultiHeadAttention(
                     embed_dim, num_heads, attn_dropout, kdim, vdim, need_weight,
                     param_attr, bias_attr)
                 # construct cache object
@@ -298,7 +298,7 @@ class TestTransformer(unittest.TestCase):
                 paddle.to_variable(src_mask))  # paddle.to_variable(src_mask))
             # 4.numpy:
             # paddle self attention
-            self_attn = MultiheadAttention(
+            self_attn = MultiHeadAttention(
                 d_model, n_head, dropout=attn_dropout)
             attn_output = self_attn(
                 paddle.to_variable(src),
@@ -334,9 +334,9 @@ class TestTransformer(unittest.TestCase):
                                     source_length)).astype("float32")
             memory_mask[0][0][0][0] = -1e9
             for cache in [True, False]:
-                self_attn = MultiheadAttention(
+                self_attn = MultiHeadAttention(
                     d_model, n_head, dropout=attn_dropout)
-                cross_attn = MultiheadAttention(
+                cross_attn = MultiHeadAttention(
                     d_model, n_head, dropout=attn_dropout)
 
                 # paddle decoderlayer:
