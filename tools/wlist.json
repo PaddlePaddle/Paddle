@@ -133,6 +133,12 @@
     "wlist_no_op_pass":[
         "gelu",
         "erf"
+        "init_progress_group",
+        "broadcast",
+        "all_reduce",
+        "reduce",
+        "scatter",
+        "all_gather"
     ],
     "wlist_ci_nopass":[
         "DecodeHelper",
