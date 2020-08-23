@@ -40,12 +40,14 @@ from paddle.incubate.hapi.text.utils import InitTrackerMeta
 
 class Stack(object):
     """
-    Stack the input data samples to construct the batch.
-    The N input samples must have the same shape/length and will be stacked to construct a batch.
+    Stack the input data samples to construct the batch. The N input samples
+    must have the same shape/length and will be stacked to construct a batch.
 
     Args:
-        axis (int, optional): The axis in the result data along which the input data are stacked. Default: 0.
-        dtype (str|numpy.dtype, optional): The value type of the output. If it is set to None, the input data type is used. Default: None.
+        axis (int, optional): The axis in the result data along which the input
+            data are stacked. Default: 0.
+        dtype (str|numpy.dtype, optional): The value type of the output. If it
+            is set to None, the input data type is used. Default: None.
 
     Example:
         .. code-block:: python
@@ -64,20 +66,23 @@ class Stack(object):
     """
 
     def __init__(self, axis=0, dtype=None):
+        self._axis = axis
         self._dtype = dtype
 
     def __call__(self, data):
         """
-        Batchify the input data
+        Batchify the input data by stacking.
 
         Args:
-            data (list): The input data samples.
+            data (list(numpy.ndarray)): The input data samples.
         Returns:
-            numpy.ndarray: Batch data.
+            numpy.ndarray: Stacked batch data.
 
         """
-        data = np.stack(data).astype(self._dtype) if self._dtype else np.stack(
-            data)
+        data = np.stack(
+            data,
+            axis=self._axis).astype(self._dtype) if self._dtype else np.stack(
+                data, axis=self._axis)
         return data
 
 
@@ -87,11 +92,18 @@ class Pad(object):
 
     Args:
         pad_val (float|int, optional): The padding value. Default: 0.
-        axis (int, optional): The axis to pad the arrays. The arrays will be padded to the largest dimension at axis. For example, 
-            assume the input arrays have shape (10, 8, 5), (6, 8, 5), (3, 8, 5) and the axis is 0.Each input will be padded into 
-            (10, 8, 5) and then stacked to form the final output, which has shape（3, 10, 8, 5). Default: 0.
-        ret_length (int, optional): Length of the output. Default: None.
-        dtype (str|numpy.dtype, optional): The value type of the output. If it is set to None, the input data type is used. Default: None.
+        axis (int, optional): The axis to pad the arrays. The arrays will be
+            padded to the largest dimension at axis. For example, 
+            assume the input arrays have shape (10, 8, 5), (6, 8, 5), (3, 8, 5)
+            and the axis is 0. Each input will be padded into 
+            (10, 8, 5) and then stacked to form the final output, which has
+            shape（3, 10, 8, 5). Default: 0.
+        ret_length (bool|numpy.dtype, optional): If it is bool, indicate whether
+            to return the valid length in the output, and the data type of
+            returned length is int32 if True. If it is numpy.dtype, indicate the
+            data type of returned length. Default: False.
+        dtype (numpy.dtype, optional): The value type of the output. If it is
+            set to None, the input data type is used. Default: None.
 
     Example:
         .. code-block:: python
@@ -116,18 +128,21 @@ class Pad(object):
 
     def __call__(self, data):
         """
-        Batchify the input data.
-        The input can be list of numpy.ndarray, list of numbers. 
+        Batchify the input data by padding The input can be list of numpy.ndarray. 
 
-        The arrays will be padded to the largest dimension at axis and then stacked to form the final output. 
-        In addition, the function will output the original dimensions at the axis if ret_length is not None.
+        The arrays will be padded to the largest dimension at axis and then
+        stacked to form the final output.  In addition, the function will output
+        the original dimensions at the axis if ret_length is not None.
 
         Args:
             data (list(numpy.ndarray)|list(list)): List of samples to pad and stack.
 
         Returns:
-            numpy.ndarray: Batch data, data in the minibatch. Shape is (N, …)
-            numpy.ndarray (optional): Includes original length and output length. This will only be returned in ret_length is not None.
+            numpy.ndarray|tuple: If `ret_length` is False, it is a numpy.ndarray \
+                representing the padded batch data and the shape is (N, …). \
+                Otherwise, it is a tuple, except for the padded batch data, the \
+                tuple also includes a numpy.ndarray representing all samples' \
+                original length shaped `(N,)`. 
         """
         arrs = [np.asarray(ele) for ele in data]
         original_length = [ele.shape[self._axis] for ele in arrs]
@@ -148,17 +163,26 @@ class Pad(object):
                 if slices[self._axis].start != slices[self._axis].stop:
                     slices = [slice(i, i + 1)] + slices
                     ret[tuple(slices)] = arr
-        if self._ret_length is None:
-            return ret
+        if self._ret_length:
+            return ret, np.asarray(
+                original_length,
+                dtype="int32") if self._ret_length == True else np.asarray(
+                    original_length, self._ret_length)
         else:
-            return ret, np.asarray(original_length, self._ret_length)
+            return ret
 
 
 class Tuple(object):
     """
-    Wrap multiple batchify functions together. The input functions will be applied to the corresponding input fields.
-    Each data sample should be a list or tuple containing multiple attributes. The i'th batchify function stored in 
-    Tuple will be applied on the i'th attribute. For example, each data sample is (nd_data, label). 
+    Wrap multiple batchify functions together. The input functions will be applied
+    to the corresponding input fields.
+    
+    Each sample should be a list or tuple containing multiple fields. The i'th
+    batchify function stored in Tuple will be applied on the i'th field. 
+    
+    For example, when data sample is (nd_data, label), you can wrap two batchify
+    functions using `Tuple(DataBatchify, LabelBatchify)` to batchify nd_data and
+    label correspondingly.
 
     Args:
         fn (list|tuple|callable): The batchify functions to wrap.
@@ -186,12 +210,14 @@ class Tuple(object):
 
     def __call__(self, data):
         """
-        Batchify the input data.
+        Batchify data samples by applying each function on the corresponding data
+        field, and each data field is produced by stacking the field data of samples.
 
         Args:
-            data (list): The samples to batchfy. Each sample should contain N attributes.
+            data (list): The samples to batchfy. Each sample should contain N fields.
+
         Returns:
-            tuple: A tuple of length N. Contains the batchified result of each attribute in the input.
+            tuple: A tuple composed of results from all including batchifying functions.
         """
 
         assert len(data[0]) == len(self._fn),\
@@ -199,16 +225,23 @@ class Tuple(object):
             ' {} elements'.format(len(self._fn))
         ret = []
         for i, ele_fn in enumerate(self._fn):
-            ret.append(ele_fn([ele[i] for ele in data]))
+            result = ele_fn([ele[i] for ele in data])
+            if isinstance(result, (tuple, list)):
+                ret.extend(result)
+            else:
+                ret.append(result)
         return tuple(ret)
 
 
 class SimpleDataset(Dataset):
     """
-    Decorates dataset with shuffle, sort and other transformations.
-    It acts as some specific sampler or iterator for dataset.
+    Wraps a dataset-like object as a instance of Dataset, and equips it with
+    `apply` and other utility methods. All non-magic methods of the raw object
+    also accessible.
+
     Args:
-        dataset (list|Dataset): A dataset-like object. It can be a list or a subclass of Dataset.
+        dataset (list|Dataset): A dataset-like object. It can be a list or a
+            subclass of Dataset.
     """
 
     def __init__(self, data):
@@ -226,121 +259,77 @@ class SimpleDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-    def shuffle(self, buffer_size=-1, seed=None):
+    def filter(self, fn):
         """
-        Shuffle the dataset according to the given buffer size and random seed.
+        Filters samples by the filter function and uses the filtered data to
+        create a new SimpleDataset instance.
 
         Args:
-            buffer_size (int): Buffer size for shuffle. if buffer_size < 0, buffer_size is the length of the dataset. Default: -1. 
-            seed (int): Seed for the random. Default: None.
-        Returns:
-            SimpleDataset: A new object.
-        """
-        if seed is not None:
-            np_rand_state_bak = np.random.get_state()
-            np.random.seed(seed)
-        buffer_size = len(self.data) if buffer_size < 0 else buffer_size
-        shuffled_data = []
-        for i in range(0, len(self.data), buffer_size):
-            buf = list(range(i, i + buffer_size))
-            np.random.shuffle(buf)
-            shuffled_data.extend([self.data[idx] for idx in buf])
-        if seed is not None:
-            np.random.set_state(np_rand_state_bak)
-        return type(self)(shuffled_data)
+            fn (callable): A filter function that takes a sample as input and
+                returns a boolean. Samples that return False are discarded.
 
-    def sort(self, cmp=None, key=None, reverse=False, buffer_size=-1):
-        """
-        Sort the dataset according to the given callable cmp or key.
-        Args:
-            cmp (callable): The function of comparison. Default: None. 
-            key (callable): Return elements to be compared. Default: None.
-            reverse (bool): If True, it means sorted results are in descending order, and False means in ascending order. 
-                Default: False.
-            buffer_size (int): Buffer size for sort. If buffer_size < 0 or buffer_size is more than the length of the data, 
-                buffer_size will be set to the length of the data. Default: -1.
         Returns:
-            SimpleDataset: A new object.
-        """
-        sorted_data = []
-        buffer_size = len(self.data) if buffer_size < 0 else buffer_size
-        if key:
-            key = lambda x: key(self.dataset[x])
-        elif cmp:
-            key = functools.cmp_to_key(
-                lambda x, y: cmp(self.data[x], self.data[y]))
-        for i in range(0, len(self.data), buffer_size):
-            sorted_data.extend(
-                sorted(
-                    range(i, i + buffer_size), key=key, reverse=reverse))
-        return type(self)(sorted_data)
-
-    def filter(self, predicate_func):
-        """
-        Filter the dataset with predicate_func.
-
-        Args:
-            predicate_func (callable): Return whether the data can be left in dataset.
-        Returns:
-            SimpleDataset: A new object.
+            SimpleDataset: The filtered dataset
         """
         filted_data = [
             self.data[idx] for idx in range(len(self.data))
-            if predicate_func(self.data[idx])
+            if fn(self.data[idx])
         ]
         return type(self)(filted_data)
 
-    def apply(self, transform_func, lazy=False):
+    def shard(self, num_shards=None, index=None):
         """
-        Transformations would be performed to dataset. It includes `Shuffle`, `sort`, `fit` and `shard`.
+        Use samples whose indices mod `index` equals 0 to create a new
+        SimpleDataset instance.
 
         Args:
-            transform_func (callable): Transformations to be performed. It receives single
-                sample as argument rather than dataset.
-            lazy (bool): If True, transformations would be delayed and performed when calling
-                `__getitem__`, which would run multi-times for each sample but can take
-                advantage of DataLoader multi-processing. Defalt: False.
-        Returns:
-            SimpleDataset: A new object.
-        """
-        if lazy:
-            self._transform_func = transform_func
-        else:
-            applied_data = [
-                transform_func(self.data[idx])
-                for idx in range(len(self.data))
-            ]
-            return type(self)(applied_data)
-        return self
+            num_shards (int, optional): A integer representing the number of
+                data shards. If None, `num_shards` would be number of trainers.
+                Default: None
+            index (int, optional): A integer representing the index of the
+                current shard. If None, index` would be the current trainer rank
+                id. Default: None.
 
-    def shard(self, num_replicas=None, rank=None):
-        """
-        Operates slice using multi GPU.
-        Args:
-            num_replicas (int, optional): The number of training process, and is also the number of GPU cards used in training. 
-                Default: None.
-            rank (int, optional): Number of training process. Equals to the value of the environment variable PADDLE_TRAINER_ID.
-                Default: None.
         Returns:
-            SimpleDataset: A new object.
+            SimpleDataset: The result dataset
         """
-        if num_replicas is None:
-            num_replicas = ParallelEnv().nranks
-        if rank is None:
-            rank = ParallelEnv().local_rank
-        num_samples = int(math.ceil(len(self.data) * 1.0 / num_replicas))
-        total_size = num_samples * num_replicas
+        if num_shards is None:
+            num_shards = ParallelEnv().nranks
+        if index is None:
+            index = ParallelEnv().local_rank
+        num_samples = int(math.ceil(len(self.data) * 1.0 / num_shards))
+        total_size = num_samples * num_shards
         # add extra samples to make it evenly divisible
         sharded_data = [
             self.data[idx]
             for idx in list(range(len(self.data))) + list(
-                range(total_size - len(self.data)))
-            if idx % num_replicas == rank
+                range(total_size - len(self.data))) if idx % num_shards == index
         ]
         return type(self)(sharded_data)
 
-    # def __getattribute__(self, name):
-    #     return super().__getattribute__(name)
+    def apply(self, fn, lazy=False):
+        """
+        Performs specific function on the dataset to transform every sample.
+
+        Args:
+            fn (callable): Transformations to be performed. It receives single
+                sample as argument rather than dataset.
+            lazy (bool, optional): If True, transformations would be delayed and
+                performed on demand. Otherwise, transforms all samples at once
+                and return a new SimpleDataset instance. Note that if `fn` is
+                stochastic, `lazy` should be True or you will get the same
+                result on all epochs. Defalt: False.
+
+        Returns:
+            SimpleDataset: A new SimpleDataset instance if `lazy` is True, \
+                otherwise bind `fn` as a property to transform on demand.
+        """
+        if lazy:
+            self._transform_func = fn
+        else:
+            applied_data = [fn(self.data[idx]) for idx in range(len(self.data))]
+            return type(self)(applied_data)
+        return self
 
     def __getattr__(self, name):
         return getattr(self.data, name)
@@ -348,7 +337,9 @@ class SimpleDataset(Dataset):
 
 class SamplerHelper(object):
     """
-    Sampler Factory. chain of sampling strategies
+    SamplerHelper is to help construct iterable sampler used for `DataLoader`. It wraps
+    a dataset and uses its :code:`__getitem__`
+
 
     Every SamplerHelper subclass has to provide an :meth:`__iter__` method, providing a
     way to iterate over indices of dataset elements, and a :meth:`__len__` method
@@ -361,8 +352,9 @@ class SamplerHelper(object):
     .. note:: The :meth:`__len__` method isn't strictly required by
               :class:`DataLoader`, but is expected in any
               calculation involving the length of a :class:`DataLoader`.
+
     Args:
-        dataset (collections.Iterable|Dataset): Input dataset for SamplerHelper.
+        dataset (Dataset): Input dataset for SamplerHelper.
         iterable (collections.Iterable|callable, optional): Iterator of dataset. Default: None.
     """
 
@@ -416,6 +408,7 @@ class SamplerHelper(object):
     def apply(self, fn):
         """
         Transformations would be performed. It includes `Shuffle`, `sort`, `fit` and `shard`.
+
         Args:
             fn (callable): Transformations to be performed. It returns transformed iterable (and data_source).
 
@@ -595,14 +588,20 @@ class SamplerHelper(object):
 
 class Vocab(object):
     """
-    A vocab class.
+    Vocab is indexing for text tokens.
+
     Args:
-        counter (collections.Counter|dict, optional): A dict describes the tokens and their frequencies. If None,
-            `token_to_idx` must be provided. Default: None.
-        max_size (int, optional): Max size of vocab, not including special tokens. Default: None.
-        min_freq (int): Ignore tokens whose frequencies are less than `min_freq`. Default: 1.
-        token_to_idx (dict, optional): A dict describes the mapping relationship between tokens
-            and indices. If None, counter must be provided. Default: None.
+        counter (collections.Counter|dict, optional): A dict describes the tokens
+            and their frequencies. If None, `token_to_idx` must be provided. 
+            Default: None.
+        max_size (int, optional): Max size of vocab, not including special tokens.
+            Default: None.
+        min_freq (int): Ignore tokens whose frequencies are less than `min_freq`.
+            Default: 1.
+        token_to_idx (dict, optional): A dict describes the mapping relationship
+            between tokens and indices. If provided, justify the mapping between
+            tokens and indices according to it. If None, counter must be provided.
+            Default: None.
         unk_token (str): special token for unknow token. Default: '<unk>'.
         pad_token (str): special token for padding token. Default: '<pad>'.
         bos_token (str): special token for bos token. Default: <bos>'.
@@ -646,7 +645,7 @@ class Vocab(object):
             assert token_to_idx, (
                 'token_to_idx should not be None when counter is None')
             for special_token in special_tokens:
-                assert special_token in special_tokens, '{} is not in token_to_idx'.format(
+                assert special_token in token_to_idx, '{} is not in token_to_idx'.format(
                     special_token)
             self._token_to_idx = token_to_idx
             self._idx_to_token = sorted(
