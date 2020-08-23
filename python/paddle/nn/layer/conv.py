@@ -15,13 +15,11 @@
 # TODO: define classes of convolutional neural network
 
 __all__ = [
-    'ConvTranspose1D',
+    'ConvTranspose1d',
     'Conv2D',
     'ConvTranspose2d',
     'Conv3D',
     'ConvTranspose3d',
-    #       'TreeConv',
-    #       'Conv1D'
 ]
 
 import numpy as np
@@ -281,9 +279,9 @@ class Conv2D(layers.Layer):
         return out
 
 
-class ConvTranspose1D(layers.Layer):
+class ConvTranspose1d(layers.Layer):
     """
-    This interface is used to construct a callable object of the ``Conv1DTranspose`` class.
+    This interface is used to construct a callable object of the ``ConvTranspose1d`` class.
     For more details, refer to code examples.
     The 1-D convolution transpose layer calculates the output based on the input,
     filter, and dilation, stride, padding. Input(Input) and output(Output)
@@ -394,7 +392,7 @@ class ConvTranspose1D(layers.Layer):
        .. code-block:: python
 
           import paddle
-          from paddle.nn import ConvTranspose1D
+          from paddle.nn import ConvTranspose1d
           import numpy as np
           
           paddle.disable_static()
@@ -405,7 +403,7 @@ class ConvTranspose1D(layers.Layer):
           y=np.array([[[7, 0]],
                       [[4, 2]]]).astype(np.float32)
           x_t = paddle.to_tensor(x)
-          conv = ConvTranspose1D(2, 1, 2)
+          conv = ConvTranspose1d(2, 1, 2)
           conv.weight.set_value(y)
           y_t = conv(x_t)
           y_np = y_t.numpy()
@@ -427,8 +425,8 @@ class ConvTranspose1D(layers.Layer):
                  weight_attr=None,
                  bias_attr=None,
                  data_format="NCL"):
-        super(ConvTranspose1D, self).__init__()
-        assert weight_attr is not False, "param_attr should not be False in ConvTranspose1D."
+        super(ConvTranspose1d, self).__init__()
+        assert weight_attr is not False, "param_attr should not be False in ConvTranspose1d."
         self._param_attr = weight_attr
         self._bias_attr = bias_attr
         self._groups = groups
