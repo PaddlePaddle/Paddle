@@ -174,16 +174,12 @@ def batch_norm(x,
     # input ad out must share the memory
     mean_out = running_mean
     variance_out = running_var
-    attrs = {
-        "momentum": momentum,
-        "epsilon": epsilon,
-        "data_layout": data_format,
-        "use_mkldnn": False,
-        "fuse_with_relu": False,
-        "use_global_stats": use_global_stats,
-    }
 
     if in_dygraph_mode():
+        # for dygraph need tuple
+        attrs = ("momentum", momentum, "epsilon", epsilon, "data_layout",
+                 data_format, "use_mkldnn", False, "fuse_with_relu", False,
+                 "use_global_stats", use_global_stats)
         batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
             x, weight, bias, running_mean, running_var, mean_out, variance_out,
             *attrs)
@@ -193,6 +189,16 @@ def batch_norm(x,
 
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
                              'BatchNorm')
+
+    # for static need dict
+    attrs = {
+        "momentum": momentum,
+        "epsilon": epsilon,
+        "data_layout": data_format,
+        "use_mkldnn": False,
+        "fuse_with_relu": False,
+        "use_global_stats": use_global_stats,
+    }
 
     inputs = {
         "X": [x],

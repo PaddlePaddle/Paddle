@@ -37,6 +37,7 @@ from ..functional import batch_norm, layer_norm, instance_norm
 
 import numpy as np
 import numbers
+import warnings
 
 __all__ = [
     'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'InstanceNorm',
@@ -178,6 +179,7 @@ class InstanceNorm2d(_InstanceNormBase):
 
     DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
 
+
     :math:`input` is the input features over a mini-batch.
 
     ..  math::
@@ -251,7 +253,8 @@ class InstanceNorm3d(_InstanceNormBase):
     """
     Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
-    DataLayout: NCHW `[batch, in_channels, dims, in_height, in_width]`
+    DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
+
 
     :math:`input` is the input features over a mini-batch.
 
@@ -423,6 +426,10 @@ class GroupNorm(layers.Layer):
 
 class LayerNorm(layers.Layer):
     """
+    :alias_main: paddle.nn.LayerNorm
+	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
+	:old_api: paddle.fluid.dygraph.LayerNorm
+
     This interface is used to construct a callable object of the ``LayerNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
@@ -600,6 +607,11 @@ class _BatchNormBase(layers.Layer):
 
         self._check_input_dim(input)
 
+        if not self.training and not self._track_running_stats:
+            warnings.warn(
+                "If both training and track are false, the bn op will run in train mode."
+            )
+
         return batch_norm(
             input,
             self._mean,
@@ -663,7 +675,8 @@ class BatchNorm1d(_BatchNormBase):
         data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
         track_running_stats(bool, optional): Whether to use global mean and
             variance. In train mode, when setting track_running_stats True, the global mean
-            and variance are also used during train period. Default: True.
+            and variance are also used during train period. When inference mode, track_running_stats 
+            is not effective and will use train mode. Default: True.
         name(str, optional): Default: None.
 
     Shape:
@@ -752,7 +765,8 @@ class BatchNorm2d(_BatchNormBase):
         data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
         track_running_stats(bool, optional): Whether to use global mean and
             variance. In train mode, when setting track_running_stats True, the global mean
-            and variance are also used during train period. Default: True.
+            and variance are also used during train period. When inference mode, track_running_stats 
+            is not effective and will use train mode. Default: True.
         name(str, optional): Default: None.
 
     Shape:
@@ -838,7 +852,8 @@ class BatchNorm3d(_BatchNormBase):
         data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
         track_running_stats(bool, optional): Whether to use global mean and
             variance. In train mode, when setting track_running_stats True, the global mean
-            and variance are also used during train period. Default: True.
+            and variance are also used during train period. When inference mode, track_running_stats 
+            is not effective and will use train mode. Default: True.
         name(str, optional): Default: None.
 
     Shape:
