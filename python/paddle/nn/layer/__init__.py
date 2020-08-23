@@ -61,6 +61,7 @@ from .pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
 from .conv import Conv1d  #DEFINE_ALIAS
 from .conv import Conv2d  #DEFINE_ALIAS
 from .conv import Conv3d  #DEFINE_ALIAS
+from .conv import ConvTranspose1d  #DEFINE_ALIAS
 from .conv import ConvTranspose2d  #DEFINE_ALIAS
 from .conv import ConvTranspose3d  #DEFINE_ALIAS
 # from .conv import TreeConv        #DEFINE_ALIAS
