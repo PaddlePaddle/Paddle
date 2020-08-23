@@ -35,13 +35,6 @@ class BCELossOpKernel : public framework::OpKernel<T> {
     auto label_data = labels->data<T>();
     auto out_data = out->mutable_data<T>(ctx.GetPlace());
     auto x_numel = x->numel();
-    auto labels_numel = labels->numel();
-    PADDLE_ENFORCE_EQ(
-        x_numel, labels_numel,
-        platform::errors::InvalidArgument(
-            "Illegal input, the number elements of input `X` must be equal to "
-            "input `Label`. X's shape is [%s], Label's shape is [%s].",
-            x->dims(), labels->dims()));
 
     // out = -(label * ln(x) + (1 - label) * ln(1 - x)) = (label - 1) * ln(1 -
     // x) - label * ln(x)

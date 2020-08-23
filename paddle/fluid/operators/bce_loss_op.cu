@@ -68,13 +68,6 @@ class BCELossCUDAKernel : public framework::OpKernel<T> {
     auto x_data = x->data<T>();
     auto out_data = out->mutable_data<T>(ctx.GetPlace());
     auto x_numel = x->numel();
-    auto labels_numel = labels->numel();
-    PADDLE_ENFORCE_EQ(
-        x_numel, labels_numel,
-        platform::errors::InvalidArgument(
-            "Illegal input, the number elements of input `X` must be equal to "
-            "input `Label`. X's shape is [%s], Label's shape is [%s].",
-            x->dims(), labels->dims()));
 
     platform::GpuLaunchConfig config =
         platform::getGpuLaunchConfig(x_numel, ctx);
