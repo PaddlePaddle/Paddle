@@ -26,7 +26,7 @@ import six
 import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, _varbase_creator
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -932,6 +932,7 @@ def cos_sim(X, Y):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.dropout")
 def dropout(x,
             dropout_prob,
             is_test=False,
@@ -939,9 +940,6 @@ def dropout(x,
             name=None,
             dropout_implementation="downgrade_in_infer"):
     """
-    :alias_main: paddle.nn.functional.dropout
-	:alias: paddle.nn.functional.dropout,paddle.nn.functional.common.dropout
-	:old_api: paddle.fluid.layers.dropout
 
     Computes dropout.
 
@@ -5035,6 +5033,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.matmul")
 def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
     Applies matrix multiplication to two tensors.
@@ -5106,7 +5105,65 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
     """
-    return paddle.matmul(x, y, transpose_x, transpose_y, alpha, name)
+    attrs = {
+        'transpose_X': transpose_x,
+        'transpose_Y': transpose_y,
+        'alpha': float(alpha),
+    }
+
+    if in_dygraph_mode():
+        out = _varbase_creator(dtype=x.dtype)
+        core.ops.matmul(x, y, out, 'transpose_X', transpose_x, 'transpose_Y',
+                        transpose_y, 'alpha', float(alpha))
+        return out
+
+    def __check_input(x, y):
+        var_names = {'x': x, 'y': y}
+        for name, val in var_names.items():
+            check_variable_and_dtype(
+                val, name, ['float16', 'float32', 'float64'], 'matmul')
+        x_shape = list(x.shape)
+        y_shape = list(y.shape)
+        if len(x_shape) == 1:
+            x_shape = [1] + x_shape
+        if len(y_shape) == 1:
+            y_shape = y_shape + [1]
+
+        # check the inner 2 dimensions
+        if transpose_x:
+            x_shape[-2], x_shape[-1] = x_shape[-1], x_shape[-2]
+        if transpose_y:
+            y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
+        if x_shape[-1] != y_shape[-2]:
+            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
+                "After performing an optional transpose, Input X's width should be "   \
+                "equal to Y's width for multiplication "                               \
+                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
+                (x_shape, y_shape)
+
+        if len(y_shape) > 2 and len(x_shape) > 2:
+            for i, dim_x in enumerate(x_shape[:-2]):
+                # don't check neg shape
+                if dim_x < 0 or y_shape[i] < 0:
+                    continue
+                if dim_x != y_shape[i]:
+                    raise ValueError(
+                        "When the matrix is larger than 2 dimensions, the higher "
+                        "dimensional values of the two matrices need to be equal. "
+                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
+                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
+
+    __check_input(x, y)
+
+    helper = LayerHelper('matmul', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='matmul',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs=attrs)
+    return out
 
 
 def topk(input, k, name=None):
@@ -8296,6 +8353,7 @@ def gather_nd(input, index, name=None):
     return output
 
 
+@deprecated(since="2.0.0", update_to="paddle.scatter")
 def scatter(input, index, updates, name=None, overwrite=True):
     """
     :alias_main: paddle.scatter
@@ -9715,13 +9773,10 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.leaky_relu")
 @templatedoc()
 def leaky_relu(x, alpha=0.02, name=None):
     """
-    :alias_main: paddle.nn.functional.leaky_relu
-	:alias: paddle.nn.functional.leaky_relu,paddle.nn.functional.activation.leaky_relu
-	:old_api: paddle.fluid.layers.leaky_relu
-
     ${comment}
     Args:
         x(${x_type}): ${x_comment}
@@ -9750,19 +9805,7 @@ def leaky_relu(x, alpha=0.02, name=None):
             res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
             print(res_val) # [[-0.1, 2], [3, -0.4]]
     """
-    if in_dygraph_mode():
-        return core.ops.leaky_relu(x, 'alpha', alpha)
-
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                             'leaky_relu')
-
-    inputs = {'X': [x]}
-    attrs = {'alpha': alpha}
-    helper = LayerHelper('leaky_relu', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='leaky_relu', inputs=inputs, outputs={'Out': out}, attrs=attrs)
-    return out
+    return paddle.nn.functional.leaky_relu(x, alpha, name)
 
 
 def soft_relu(x, threshold=40.0, name=None):
@@ -10327,6 +10370,7 @@ def expand_as(x, target_tensor, name=None):
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
+@deprecated(since='1.8.0', update_to="paddle.uniform")
 @templatedoc()
 def uniform_random_batch_size_like(input,
                                    shape,
@@ -10422,6 +10466,7 @@ def uniform_random_batch_size_like(input,
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.normal")
 @templatedoc()
 def gaussian_random(shape,
                     mean=0.0,
@@ -10596,6 +10641,7 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     return out
 
 
+@deprecated(since='1.8.0', update_to="paddle.normal")
 @templatedoc()
 def gaussian_random_batch_size_like(input,
                                     shape,
@@ -11440,6 +11486,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
+@deprecated(since="2.0.0", update_to="paddle.divide")
 def elementwise_div(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_div
@@ -11863,6 +11910,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
+@deprecated(since="2.0.0", update_to="paddle.remainder")
 def elementwise_mod(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_mod
@@ -11900,6 +11948,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
 
+@deprecated(since="2.0.0", update_to="paddle.floor_divide")
 def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_floordiv
@@ -12205,8 +12254,6 @@ def logical_not(x, out=None, name=None):
 @templatedoc()
 def clip(x, min, max, name=None):
     """
-    :alias_main: paddle.nn.clip
-	:alias: paddle.nn.clip,paddle.nn.clip.clip
 	:old_api: paddle.fluid.layers.clip
 
     ${comment}
@@ -12301,13 +12348,10 @@ def clip_by_norm(x, max_norm, name=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.mean")
 @templatedoc()
 def mean(x, name=None):
     """
-    :alias_main: paddle.mean
-	:alias: paddle.mean,paddle.tensor.mean,paddle.tensor.stat.mean
-	:old_api: paddle.fluid.layers.mean
-
     ${comment}
 
     Args:
@@ -13986,12 +14030,9 @@ def where(condition):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.sign")
 def sign(x):
     """
-    :alias_main: paddle.sign
-	:alias: paddle.sign,paddle.tensor.sign,paddle.tensor.math.sign
-	:old_api: paddle.fluid.layers.sign
-
     This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:
