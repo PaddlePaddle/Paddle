@@ -19,6 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+from paddle.nn.functional import interpolate
 
 
 def bilinear_interp_np(input,
@@ -575,6 +576,23 @@ class TestBilinearInterpOpAPI(unittest.TestCase):
             x_data, out_h=12, out_w=12, align_corners=True)
         for res in results:
             self.assertTrue(np.allclose(res, expect_res))
+
+
+class TestBilinearInterpOpAPI_dy(unittest.TestCase):
+    def test_case(self):
+        import paddle
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False)
+            out = interpolate(
+                x=input_x, size=[12, 12], mode="bilinear", align_corners=False)
+            self.assertTrue(np.allclose(out.numpy(), expect_res))
 
 
 if __name__ == "__main__":

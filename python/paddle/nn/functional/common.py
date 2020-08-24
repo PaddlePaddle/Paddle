@@ -53,7 +53,7 @@ __all__ = [
 ]
 
 
-def interpolate(input,
+def interpolate(x,
                 size=None,
                 scale_factor=None,
                 mode='nearest',
@@ -62,16 +62,13 @@ def interpolate(input,
                 data_format='NCHW',
                 name=None):
     """
-	:alias_main: paddle.nn.functional.interpolate
-	:alias: paddle.nn.functional.interpolate,paddle.nn.functional.common.interpolate
 
     This op resizes a batch of images.
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     and the resizing only applies on the three dimensions(depth, height and width).
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
-    future and only use :attr:`out_shape` instead.
+
     Supporting resample methods:
         'linear' : Linear interpolation
         'bilinear' : Bilinear interpolation
@@ -190,14 +187,14 @@ def interpolate(input,
     https://en.wikipedia.org/wiki/Bicubic_interpolation
     
     Parameters:
-        input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
+        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
-        size (list|tuple|Variable|None): Output shape of image resize
+        size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|Variable|list|None): The multiplier for the input height or width. At
+        scale_factor (float|Tensor|list|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
              And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.Has to match input size if it is a list.
              Default: None.
@@ -223,7 +220,7 @@ def interpolate(input,
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
     Raises:
-        TypeError: size should be a list or tuple or Variable.
+        TypeError: size should be a list or tuple or Tensor.
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
                     'trilinear', 'bicubic', or 'nearest' currently.
         ValueError: 'linear' only support 3-D tensor.
@@ -241,53 +238,16 @@ def interpolate(input,
     Examples:
         .. code-block:: python
 
-	    #declarative mode
 	    import paddle
 	    import numpy as np
-	    input = fluid.data(name="input", shape=[None,3,6,10])
-	    #1
-	    output = paddle.nn.functional.interpolate(input=input, size=[12,12])
-	    #2
-	    #x = np.array([2]).astype("int32")
-	    #dim1 = fluid.data(name="dim1", shape=[1], dtype="int32")
-	    #fluid.layers.assign(input=x, output=dim1)
-	    #output = paddle.nn.functional.interpolate(input=input, size=[12,dim1])
-	    #3
-	    #x = np.array([3,12]).astype("int32")
-	    #shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-	    #fluid.layers.assign(input=x, output=shape_tensor)
-	    #output = paddle.nn.functional.interpolate(input=input, size=shape_tensor)
-	    #4
-	    #x = np.array([0.5]).astype("float32")
-	    #scale_tensor = fluid.data(name="scale", shape=[1], dtype="float32")
-	    #fluid.layers.assign(x,scale_tensor)
-	    #output = paddle.nn.functional.interpolate(input=input, scale_factor=scale_tensor)
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
-
-	    input_data = np.random.rand(2,3,6,10).astype("float32")
-	    output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data},
-                fetch_list=[output],
-                return_numpy=True)
-
-	    print(output_data[0].shape)
-	    #1
-	    # (2, 3, 12, 12)
-	    #2
-	    # (2, 3, 12, 2)
-	    #3
-	    # (2, 3, 3, 12)
-	    #4
-	    # (2, 3, 3, 5)
-	    #imperative mode
-	    import paddle.fluid.dygraph as dg
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		output = paddle.nn.functional.interpolate(input=input, size=[12,12])
-    		print(output.shape)
-		# [2L, 3L, 12L, 12L]
+            import paddle.nn.functional as F
+            paddle.disable_static()
+            
+            input_data = np.random.rand(2,3,6,10).astype("float32")
+            x = paddle.to_tensor(input_data)
+            output = F.interpolate(x=x, size=[12,12])
+    	    print(output.shape)
+	    # [2L, 3L, 12L, 12L]
     """
     data_format = data_format.upper()
     resample = mode.upper()
@@ -305,13 +265,13 @@ def interpolate(input,
             "The 'resample' of image_resize can only be 'linaer', 'bilinear', 'trilinear', "
             " 'bicubic' or 'nearest' currently.")
 
-    if resample in ['LINEAR'] and len(input.shape) != 3:
+    if resample in ['LINEAR'] and len(x.shape) != 3:
         raise ValueError("'linear' only support 3-D tensor.")
 
-    if resample in ['BILINEAR', 'NEAREST', 'BICUBIC'] and len(input.shape) != 4:
+    if resample in ['BILINEAR', 'NEAREST', 'BICUBIC'] and len(x.shape) != 4:
         raise ValueError(
             "'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.")
-    if resample == 'TRILINEAR' and len(input.shape) != 5:
+    if resample == 'TRILINEAR' and len(x.shape) != 5:
         raise ValueError("'trilinear'only support 5-D tensor.")
 
     if size is None and scale_factor is None:
@@ -329,15 +289,15 @@ def interpolate(input,
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
-    if len(input.shape) == 3 and data_format not in ['NCW', 'NWC']:
+    if len(x.shape) == 3 and data_format not in ['NCW', 'NWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
             " received but only `NCW` or `NWC` supported for 3-D input.")
-    elif len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
+    elif len(x.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
             " received but only `NCHW` or `NHWC` supported for 4-D input.")
-    elif len(input.shape) == 5 and data_format not in ['NCDHW', 'NDHWC']:
+    elif len(x.shape) == 5 and data_format not in ['NCDHW', 'NDHWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
             " received but only `NCDHW` or `NDHWC` supported for 5-D input.")
@@ -353,7 +313,7 @@ def interpolate(input,
     if resample == 'NEAREST':
         align_corners = False
 
-    inputs = {"X": input}
+    inputs = {"X": x}
     attrs = {
         "out_d": -1,
         "out_h": -1,
@@ -402,7 +362,7 @@ def interpolate(input,
                         size_list.append(dim)
                 inputs['SizeTensor'] = new_size_tensor
 
-            if len(input.shape) == 3:
+            if len(x.shape) == 3:
                 if len(out_shape) != 1:
                     raise ValueError(
                         "out_shape length should be 2 for input 3-D tensor")
@@ -411,7 +371,7 @@ def interpolate(input,
                 else:
                     out_shape = list(map(int, out_shape))
                     attrs['out_w'] = out_shape[0]
-            if len(input.shape) == 4:
+            if len(x.shape) == 4:
                 if len(out_shape) != 2:
                     raise ValueError("out_shape length should be 2 for "
                                      "input 4-D tensor.")
@@ -422,7 +382,7 @@ def interpolate(input,
                     out_shape = list(map(int, out_shape))
                     attrs['out_h'] = out_shape[0]
                     attrs['out_w'] = out_shape[1]
-            if len(input.shape) == 5:
+            if len(x.shape) == 5:
                 if len(out_shape) != 3:
                     raise ValueError("out_shape length should be 3 for "
                                      "input 5-D tensor.")
@@ -444,21 +404,40 @@ def interpolate(input,
             if scale <= 0:
                 raise ValueError("Attr(scale) should be greater than zero.")
             scale_list = []
-            for i in range(len(input.shape) - 2):
+            for i in range(len(x.shape) - 2):
                 scale_list.append(scale)
             attrs['scale'] = list(map(float, scale))
         elif isinstance(scale, list):
-            if len(scale) != len(input.shape) - 2:
+            if len(scale) != len(x.shape) - 2:
                 raise ValueError("scale_shape length should be {} for "
                                  "input {}-D tensor.".format(
-                                     len(input.shape) - 2, len(input.shape)))
+                                     len(x.shape) - 2, len(x.shape)))
             for value in scale:
                 if value <= 0:
                     raise ValueError("Attr(scale) should be greater than zero.")
             attrs['scale'] = list(map(float, scale))
         else:
             raise TypeError(
-                "Attr(scale)'s type should be float, int, list or Variable.")
+                "Attr(scale)'s type should be float, int, list or Tensor.")
+
+    if in_dygraph_mode():
+        attr_list = []
+        for k, v in attrs.items():
+            attr_list.append(k)
+            attr_list.append(v)
+        dy_attr = tuple(attr_list)
+
+        if resample_type == "linear":
+            out = core.ops.linear_interp_v2(x, *dy_attr)
+        if resample_type == "bilinear":
+            out = core.ops.bilinear_interp_v2(x, *dy_attr)
+        if resample_type == "trilinear":
+            out = core.ops.trilinear_interp_v2(x, *dy_attr)
+        if resample_type == "nearest":
+            out = core.ops.nearest_interp_v2(x, *dy_attr)
+        if resample_type == "bicubic":
+            out = core.ops.bicubic_interp_v2(x, *dy_attr)
+
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='{}_interp_v2'.format(resample_type),
@@ -468,7 +447,7 @@ def interpolate(input,
     return out
 
 
-def upsample(input,
+def upsample(x,
              size=None,
              scale_factor=None,
              mode='nearest',
@@ -482,8 +461,7 @@ def upsample(input,
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     and the resizing only applies on the three dimensions(depth, height and width).
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
-    future and only use :attr:`out_shape` instead.
+
     Supporting resample methods:
         'linear' : Linear interpolation
         'bilinear' : Bilinear interpolation
@@ -597,14 +575,14 @@ def upsample(input,
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
     
     Parameters:
-        input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
+        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
-        size (list|tuple|Variable|None): Output shape of image resize
+        size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|Variable|None): The multiplier for the input height or width. At
+        scale_factor (float|Tensor|list|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
              And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
              Default: None.
@@ -630,7 +608,7 @@ def upsample(input,
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
     Raises:
-        TypeError: size should be a list or tuple or Variable.
+        TypeError: size should be a list or tuple or Tensor.
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
                     'trilinear', 'bicubic', or 'nearest' currently.
         ValueError: 'linear' only support 3-D tensor.
@@ -648,18 +626,17 @@ def upsample(input,
         .. code-block:: python
             import paddle
             import numpy as np
-            import paddle.fluid.dygraph as dg
-            upsample_op = paddle.nn.UpSample(size=[12,12])
-            input_data = np.random.rand(2,3,6,10).astype("float32")
-            place = paddle.fluid.CPUPlace()
-            with dg.guard(place) as g:
-                input = dg.to_variable(input_data)
-                output = upsample_op(input=input)
-                print(output.shape)
-                # [2L, 3L, 12L, 12L]
+            import paddle.nn.functional as F
+            paddle.disable_static()
+
+            input = paddle.to_tensor(input_data)
+            output = F.upSample(input=input, size=[12,12])
+            print(output.shape)
+            # [2L, 3L, 12L, 12L]
+
     """
-    return interpolate(input, size, scale_factor, mode, align_corners,
-                       align_mode, data_format)
+    return interpolate(x, size, scale_factor, mode, align_corners, align_mode,
+                       data_format)
 
 
 def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
