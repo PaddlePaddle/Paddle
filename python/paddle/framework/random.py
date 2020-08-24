@@ -47,5 +47,5 @@ def manual_seed(seed):
     program = fluid.Program()
     program.global_seed(seed)
 
-    core.default_cpu_generator()._is_init_py = True
+    core.default_cpu_generator()._is_init_py = False
     return core.default_cpu_generator().manual_seed(seed)
