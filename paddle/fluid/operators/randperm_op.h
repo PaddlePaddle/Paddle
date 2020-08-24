@@ -19,6 +19,7 @@ limitations under the License. */
 #include <ctime>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/place.h"
@@ -31,11 +32,17 @@ static inline void random_permate(T* data_ptr, int num, unsigned int seed) {
   for (int i = 0; i < num; ++i) {
     data_ptr[i] = static_cast<T>(i);
   }
-  if (seed == 0) {
-    seed = std::random_device()();
+  if (framework::Generator::GetInstance()->is_init_py) {
+    std::shuffle(data_ptr, data_ptr + num,
+                 framework::Generator::GetInstance()->GetCPUEngine());
+
+  } else {
+    if (seed == 0) {
+      seed = std::random_device()();
+    }
+    std::srand(seed);
+    std::random_shuffle(data_ptr, data_ptr + num);
   }
-  std::srand(seed);
-  std::random_shuffle(data_ptr, data_ptr + num);
 }
 
 template <typename DeviceContext, typename T>
@@ -51,6 +58,7 @@ class RandpermKernel : public framework::OpKernel<T> {
     if (platform::is_cpu_place(ctx.GetPlace())) {
       T* out_data = out_tensor->mutable_data<T>(platform::CPUPlace());
       random_permate<T>(out_data, n, seed);
+
     } else {
       framework::Tensor tmp_tensor;
       tmp_tensor.Resize(framework::make_ddim({n}));

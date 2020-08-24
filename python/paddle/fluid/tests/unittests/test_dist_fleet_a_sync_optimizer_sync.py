@@ -47,7 +47,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = False
-        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
