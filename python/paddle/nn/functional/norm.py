@@ -139,8 +139,8 @@ def batch_norm(x,
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Defalut False.
-        data_format(str, optional): Specify the input data format. Defalut "NCHW".
-        name(str, optional): Default: None.
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Defalut "NCHW".
+        name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
         None
@@ -250,7 +250,7 @@ def layer_norm(x,
             division by zero. Default: 1e-05.
         weight(Tensor, optional): The weight tensor of batch_norm. Default: None.
         bias(Tensor, optional): The bias tensor of batch_norm. Default: None.
-        name(str, optional): Default None.
+        name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
         None
@@ -342,8 +342,8 @@ def instance_norm(x,
         eps(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         use_input_stats(bool): Default True.
-        data_format(str, optional): Specify the input data format. Default: NCHW.
-        name(str, optional): Default None.
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Defalut "NCHW".
+        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
         None.

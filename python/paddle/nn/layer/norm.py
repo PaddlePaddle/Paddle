@@ -34,7 +34,6 @@ from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
 
 #from ...fluid.dygraph import LayerNorm  #DEFINE_ALIAS
 from ...fluid.dygraph import SpectralNorm  #DEFINE_ALIAS
-from ...fluid.dygraph import SyncBatchNorm  #DEFINE_ALIAS
 
 from ...fluid.dygraph import layers
 
@@ -147,8 +146,8 @@ class InstanceNorm1d(_InstanceNormBase):
 	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
              If it is set to False, will not create bias_attr. Default: None.
-        data_format(str, optional): Specify the input data format. Default: NCL.
-        name(str, optional): Default None.
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL". Defalut "NCL".
+        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
 
     Shape:
@@ -226,8 +225,8 @@ class InstanceNorm2d(_InstanceNormBase):
 	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
              If it is set to False, will not create bias_attr. Default: None.
-        data_format(str, optional): Specify the input data format. Default: NCHW.
-        name(str, optional): Default None.
+        data_format(str, optional): Specify the input data format, could be "NCHW". Default: NCHW.
+        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
         - x: 4-D tensor with shape: (batch, num_features, height, weight).
@@ -302,8 +301,8 @@ class InstanceNorm3d(_InstanceNormBase):
 	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
              If it is set to False, will not create bias_attr. Default: None.
-        data_format(str, optional): Specify the input data format. Default: NCDHW.
-        name(str, optional): Default None.
+        data_format(str, optional): Specify the input data format, could be "NCDHW". Default: NCDHW.
+        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
         - x: 5-D tensor with shape: (batch, num_features, dims, height, weight).
@@ -357,7 +356,7 @@ class GroupNorm(layers.Layer):
                                         bias :math:`b`. If it is set to False, no bias will be added to the output units.
                                         If it is set to None, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format. Only NCHW is supported. Default: NCHW.
-        name(str, optional): Default None.
+        name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
         - x: 4-D tensor with shape: (batch, num_features, height, weight).
@@ -477,7 +476,7 @@ class LayerNorm(layers.Layer):
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
             bias :math:`b`. If is False, bias is None. If is None, a default :code:`ParamAttr` would be added as bias. The
             :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
-        name(str, optional): parameter name. Default None.
+        name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
         - x: 2-D, 3-D, 4-D or 5-D tensor.
@@ -688,11 +687,11 @@ class BatchNorm1d(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL". Defalut "NCL".
         track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
             True will track global mean and variance used for inference. When inference, track_running_stats must be 
             True. Default: True.
-        name(str, optional): Default: None.
+        name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
         - x: 2-D or 3-D tensor with shape: (batch, num_features) or (batch, num_features, length).
@@ -779,7 +778,7 @@ class BatchNorm2d(_BatchNormBase):
         track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
             True will track global mean and variance used for inference. When inference, track_running_stats must be 
             True. Default: True.
-        name(str, optional): Default: None.
+        name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
         - x: 4-D tensor with shape: (batch, num_features, height, weight).
@@ -861,11 +860,11 @@ class BatchNorm3d(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
+        data_format(str, optional): Specify the input data format, the data format can be "NCDHW". Default: NCDHW.
         track_running_stats(bool, optional): Whether to use global mean and variance. In train period, 
             True will track global mean and variance used for inference. When inference, track_running_stats must be 
             True. Default: True.
-        name(str, optional): Default: None.
+        name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
         - x: 5-D tensor with shape: (batch, num_features, dims, height, weight).
