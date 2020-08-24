@@ -3362,6 +3362,15 @@ def data_norm(input,
         "BatchSum": batch_sum,
         "BatchSquareSum": batch_square_sum
     }
+    attrs = {
+        "epsilon": epsilon,
+        "sync_stats": sync_stats,
+        "summary_decay_rate": summary_decay_rate,
+    }
+    if slot_dim > 0:
+        attrs["slot_dim"] = slot_dim
+    if enable_scale_and_shift:
+        attrs["enable_scale_and_shift"] = enable_scale_and_shift
     if enable_scale_and_shift:
         inputs["scale_w"] = scale_w
         inputs["bias"] = bias
@@ -3376,13 +3385,7 @@ def data_norm(input,
             "BatchSum": batch_sum,
             "BatchSquareSum": batch_square_sum
         },
-        attrs={
-            "epsilon": epsilon,
-            "slot_dim": slot_dim,
-            "sync_stats": sync_stats,
-            "summary_decay_rate": summary_decay_rate,
-            "enable_scale_and_shift": enable_scale_and_shift
-        })
+        attrs=attrs)
 
     return helper.append_activation(data_norm_out)
 
@@ -8236,19 +8239,21 @@ def gather(input, index, overwrite=True):
                        [5, 6]]
 
     Args:
-        input (Variable): The source input tensor with rank>=1. Supported data type is
+        input (Tensor): The source input tensor with rank>=1. Supported data type is
             int32, int64, float32, float64 and uint8 (only for CPU),
             float16 (only for GPU).
-        index (Variable): The index input tensor with rank=1. Data type is int32 or int64.
+        index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
         overwrite (bool, optional): The mode that updating the grad when has same index.
             If True, use the overwrite mode to update the grad of the same index,
 	    if False, use the accumulate mode to update the grad of the same index.
 	    Default value is True.
 
-
-
     Returns:
-        output (Variable): The output is a tensor with the same rank as input.
+        output (Tensor): The output is a tensor with the same rank as input.
+    
+    Raises:
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must to be one of float16, float32, float64, int32, int64, uint8.
+        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
 
     Examples:
 
@@ -8259,6 +8264,13 @@ def gather(input, index, overwrite=True):
             index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
             output = fluid.layers.gather(x, index)
     """
+    if in_dygraph_mode():
+        return core.ops.gather(input, index, None)
+
+    check_variable_and_dtype(
+        input, 'x',
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'], 'gather')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
     helper = LayerHelper('gather', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
@@ -8323,14 +8335,18 @@ def gather_nd(input, index, name=None):
                          = [23]
 
     Args:
-        input (Variable): The source input. Its dtype should be int32, int64, float32, float64.
-        index (Variable): The index input with rank > 1, index.shape[-1] <= input.rank.
-                          Its dtype should be int32, int64.
-        name (str|None): A name for this layer(optional). If set None, the
-                         layer will be named automatically.
+        input (Tensor): The source input. Its dtype should be bool, float32, float64, int32, int64.
+        index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
+                        Its dtype should be int32, int64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+                        For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        output (Variable): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
+        output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
+    
+    Raises:
+        TypeError: ``input`` must be a Tensor and the data type of ``input`` must be one of float32, float64, int32 and int64.
+        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be one of int32 and int64.
 
     Examples:
 
@@ -8342,6 +8358,12 @@ def gather_nd(input, index, name=None):
             output = fluid.layers.gather_nd(x, index)
 
     """
+    if in_dygraph_mode():
+        return core.ops.gather_nd(input, index)
+    check_variable_and_dtype(input, 'input',
+                             ['bool', 'float32', 'float64', 'int32', 'int64'],
+                             'gather_np')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather_np')
     helper = LayerHelper('gather_nd', **locals())
     dtype = helper.input_dtype()
     output = helper.create_variable_for_type_inference(dtype)
@@ -8353,6 +8375,7 @@ def gather_nd(input, index, name=None):
     return output
 
 
+@deprecated(since="2.0.0", update_to="paddle.scatter")
 def scatter(input, index, updates, name=None, overwrite=True):
     """
     :alias_main: paddle.scatter
@@ -10465,6 +10488,7 @@ def uniform_random_batch_size_like(input,
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.normal")
 @templatedoc()
 def gaussian_random(shape,
                     mean=0.0,
@@ -11484,6 +11508,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
+@deprecated(since="2.0.0", update_to="paddle.divide")
 def elementwise_div(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_div
@@ -11907,6 +11932,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
+@deprecated(since="2.0.0", update_to="paddle.remainder")
 def elementwise_mod(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_mod
@@ -11944,6 +11970,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
 
+@deprecated(since="2.0.0", update_to="paddle.floor_divide")
 def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_floordiv
@@ -14025,12 +14052,9 @@ def where(condition):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.sign")
 def sign(x):
     """
-    :alias_main: paddle.sign
-	:alias: paddle.sign,paddle.tensor.sign,paddle.tensor.math.sign
-	:old_api: paddle.fluid.layers.sign
-
     This OP returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:

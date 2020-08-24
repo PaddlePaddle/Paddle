@@ -189,15 +189,15 @@ class TestMathOpPatches(unittest.TestCase):
     @prog_scope()
     def test_integer_div(self):
         a = fluid.layers.data(name="a", shape=[1], dtype='int64')
-        b = a / 7
+        b = a / 2
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        a_np = numpy.array([3, 4, 10, 14, 9, 18]).astype('int64')
+        a_np = numpy.array([3, 4, 10, 14, 9, 18])
         b_np, = exe.run(fluid.default_main_program(),
                         feed={"a": a_np},
                         fetch_list=[b])
-
-        b_np_actual = (a_np / 7).astype('int64')
+        # for paddle2.0, use true_divide
+        b_np_actual = (a_np / 2.0)
         self.assertTrue(numpy.array_equal(b_np, b_np_actual))
 
     @prog_scope()

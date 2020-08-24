@@ -1559,6 +1559,7 @@ def zeros_like(x, out=None):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.diag")
 def diag(diagonal):
     """
 	:alias_main: paddle.diag

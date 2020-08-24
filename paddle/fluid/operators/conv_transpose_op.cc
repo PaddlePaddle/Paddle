@@ -37,6 +37,8 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   auto filter_dims = ctx->GetInputDim("Filter");
   std::vector<int> output_size =
       ctx->Attrs().Get<std::vector<int>>("output_size");
+  std::vector<int> output_padding =
+      ctx->Attrs().Get<std::vector<int>>("output_padding");
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
@@ -77,6 +79,12 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
         output_size.size(), strides.size(),
         platform::errors::InvalidArgument(
             "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
+            "should be the same."));
+  if (output_padding.size())
+    PADDLE_ENFORCE_EQ(
+        output_padding.size(), strides.size(),
+        platform::errors::InvalidArgument(
+            "The Attr(output_padding) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
 
   const int64_t C =
@@ -136,6 +144,27 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 infer_shape + strides[i]));
       }
       output_shape.push_back(output_size[i]);
+    } else if (output_padding.size()) {
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_GE(
+            output_padding[i], 0,
+            platform::errors::InvalidArgument(
+                "output_padding of Op(ConvTransposeOp) should not be "
+                "less than the 0. But received output_padding = "
+                "[%s], whose dim %d is less than 0",
+                framework::make_ddim(output_padding), i));
+        PADDLE_ENFORCE_LT(
+            output_padding[i], std::max(strides[i], dilations[i]),
+            platform::errors::InvalidArgument(
+                "output_padding of Op(ConvTransposeOp) should be less "
+                "than either stride or dilation. But received output_size = "
+                "[%s], "
+                "whose dim %d is not less than either stride (%d)  or "
+                "dilation (%d)",
+                framework::make_ddim(output_size), i, strides[i],
+                dilations[i]));
+      }
+      output_shape.push_back((infer_shape + output_padding[i]));
     } else {
       output_shape.push_back(infer_shape);
     }
@@ -223,10 +252,14 @@ void Conv2DTransposeOpMaker::Make() {
            "The format of output tensor is X (one-dimensional) of size equal"
            "to the number of output channels. Only used with MKL-DNN.")
       .AsDispensable();
-
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is the same as input tensor.");
+  AddAttr<std::vector<int>>("output_padding",
+                            "(vector<int> default: []), Additional size added "
+                            "to one side of each dimension in the output "
+                            "shape")
+      .SetDefault({});
   AddAttr<std::vector<int>>("output_size",
                             "(vector<int> default: []), the "
                             "size of the output tensor")
@@ -338,6 +371,11 @@ void Conv3DTransposeOpMaker::Make() {
             "Where N is batch size, C is "
             "the number of channels, D is the depth of the feature, H is the "
             "height of the feature, and W is the width of the feature.");
+  AddAttr<std::vector<int>>("output_padding",
+                            "(vector<int> default: []), Additional size added "
+                            "to one side of each dimension in the output "
+                            "shape")
+      .SetDefault({});
   AddAttr<std::vector<int>>("output_size",
                             "(vector<int> default: []), the "
                             "size of the output tensor")
