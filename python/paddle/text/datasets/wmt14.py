@@ -20,7 +20,7 @@ import gzip
 
 from paddle.io import Dataset
 import paddle.compat as cpt
-from .utils import _check_exists_and_download
+from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ['WMT14']
 
@@ -61,7 +61,7 @@ class WMT14(Dataset):
         .. code-block:: python
 
 	    import paddle
-	    from paddle.incubate.hapi.datasets import WMT14
+	    from paddle.text.datasets import WMT14
 
 	    class SimpleNet(paddle.nn.Layer):
 		def __init__(self):

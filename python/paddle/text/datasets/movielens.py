@@ -24,7 +24,7 @@ import six
 import paddle
 from paddle.io import Dataset
 import paddle.compat as cpt
-from .utils import _check_exists_and_download
+from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ['Movielens']
 
@@ -107,7 +107,7 @@ class Movielens(Dataset):
         .. code-block:: python
 
 	    import paddle
-	    from paddle.incubate.hapi.datasets import Movielens
+	    from paddle.text.datasets import Movielens
 
 	    class SimpleNet(paddle.nn.Layer):
 		def __init__(self):

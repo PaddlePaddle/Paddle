@@ -20,7 +20,7 @@ import six
 from six.moves import cPickle as pickle
 
 from paddle.io import Dataset
-from .utils import _check_exists_and_download
+from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ['Cifar10', 'Cifar100']
 

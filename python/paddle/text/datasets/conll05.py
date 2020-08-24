@@ -72,7 +72,7 @@ class Conll05st(Dataset):
         .. code-block:: python
 
 	    import paddle
-	    from paddle.incubate.hapi.datasets import Conll05st
+	    from paddle.text.datasets import Conll05st
 
 	    class SimpleNet(paddle.nn.Layer):
 		def __init__(self):

@@ -20,7 +20,7 @@ import numpy as np
 import collections
 
 from paddle.io import Dataset
-from .utils import _check_exists_and_download
+from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ['Imikolov']
 
@@ -50,7 +50,7 @@ class Imikolov(Dataset):
         .. code-block:: python
 
 	    import paddle
-	    from paddle.incubate.hapi.datasets import Imikolov
+	    from paddle.text.datasets import Imikolov
 
 	    class SimpleNet(paddle.nn.Layer):
 		def __init__(self):

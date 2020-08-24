@@ -68,7 +68,7 @@ class ImperativeQuantAware(object):
 
             from paddle.fluid.contrib.slim.quantization \
                 import ImperativeQuantAware
-            from paddle.incubate.hapi.vision.models \
+            from paddle.vision.models \
                 import resnet
             
             model = resnet.resnet50(pretrained=True)

@@ -22,7 +22,7 @@ import scipy.io as scio
 from PIL import Image
 
 from paddle.io import Dataset
-from .utils import _check_exists_and_download
+from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ["Flowers"]
 

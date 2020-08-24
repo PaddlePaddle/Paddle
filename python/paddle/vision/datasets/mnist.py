@@ -21,7 +21,7 @@ import numpy as np
 
 import paddle.dataset.common
 from paddle.io import Dataset
-from .utils import _check_exists_and_download
+from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ["MNIST"]
 

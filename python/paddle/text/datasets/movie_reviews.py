@@ -55,7 +55,7 @@ class MovieReviews(Dataset):
         .. code-block:: python
 
 	    import paddle
-	    from paddle.incubate.hapi.datasets import MovieReviews
+	    from paddle.text.datasets import MovieReviews
 
 	    class SimpleNet(paddle.nn.Layer):
 		def __init__(self):

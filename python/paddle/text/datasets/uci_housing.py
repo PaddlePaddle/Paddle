@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle.dataset.common
 from paddle.io import Dataset
-from .utils import _check_exists_and_download
+from paddle.dataset.common import _check_exists_and_download
 
 __all__ = ["UCIHousing"]
 
@@ -51,7 +51,7 @@ class UCIHousing(Dataset):
         .. code-block:: python
 
 	    import paddle
-	    from paddle.incubate.hapi.datasets import UCIHousing
+	    from paddle.text.datasets import UCIHousing
 
 	    class SimpleNet(paddle.nn.Layer):
 		def __init__(self):
