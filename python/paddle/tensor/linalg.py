@@ -211,26 +211,38 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
         .. code-block:: python
             
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
-            x = fluid.data(name='x', shape=[2, 3, 5], dtype='float64')
-            
-            # compute frobenius norm along last two dimensions.
-            out_fro = paddle.norm(x, p='fro', axis=[1,2])
-            
-            # compute 2-order vector norm along last dimension.
-            out_pnorm = paddle.norm(x, p=2, axis=-1)
+            with fluid.dygraph.guard():
+                shape=[2, 3, 4]
+                np_input = np.arange(24).astype('float32') - 12
+                x = paddle.to_tensor(np_input)
+                #[[[-12. -11. -10.  -9.] [ -8.  -7.  -6.  -5.] [ -4.  -3.  -2.  -1.]]
+                # [[  0.   1.   2.   3.] [  4.   5.   6.   7.] [  8.   9.  10.  11.]]]
 
-            # compute 2-order  norm along [0,1] dimension.
-            out_pnorm = paddle.norm(x, p=2, axis=[0,1])
+                # compute frobenius norm along last two dimensions.
+                out_fro = paddle.norm(x, p='fro', axis=[0,1])
+                # out_fro = [17.43559577 16.91153453 16.73320053 16.91153453]
 
-            # compute inf-order  norm 
-            out_pnorm = paddle.norm(x, p=np.inf)
-            out_pnorm = paddle.norm(x, p=np.inf, axis=0)
+                # compute 2-order vector norm along last dimension.
+                out_pnorm = paddle.norm(x, p=2, axis=-1)
+                #out_pnorm = [[21.11871208 13.19090596  5.47722558]
+                #             [ 3.74165739 11.22497216 19.13112647]]
 
-            # compute -inf-order  norm 
-            out_pnorm = paddle.norm(x, p=-np.inf)
-            out_pnorm = paddle.norm(x, p=-np.inf, axis=0)
+                # compute 2-order  norm along [0,1] dimension.
+                out_pnorm = paddle.norm(x, p=2, axis=[0,1])
+                #out_pnorm = [17.43559577 16.91153453 16.73320053 16.91153453]
+
+                # compute inf-order  norm
+                out_pnorm = paddle.norm(x, p=np.inf)
+                #out_pnorm = [12.]
+                out_pnorm = paddle.norm(x, p=np.inf, axis=0)
+                #out_pnorm = [[0. 1. 2. 3.] [4. 5. 6. 5.] [4. 3. 2. 1.]]
+
+                # compute -inf-order  norm
+                out_pnorm = paddle.norm(x, p=-np.inf)
+                #out_pnorm = [0.]
+                out_pnorm = paddle.norm(x, p=-np.inf, axis=0)
+                #out_pnorm = [[0. 1. 2. 3.] [4. 5. 6. 5.] [4. 3. 2. 1.]]
     """
 
     def frobenius_norm(input, dim=None, keepdim=False, out=None, name=None):
@@ -294,8 +306,8 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
           out (Variable, optional): The tensor variable storing the output.
         """
-
         if in_dygraph_mode():
+            if axis is None: axis = -1
             return core.ops.p_norm(input, 'porder', porder, 'axis', axis,
                                    'keepdim', keepdim, 'asvector', asvector)
         if porder is not None:

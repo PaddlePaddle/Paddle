@@ -235,22 +235,30 @@ def run_fro(self, p, axis, shape_x, dtype):
         out = paddle.norm(input=data, p=p, axis=axis)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
+        all_len = 1
+        for s in shape_x:
+            all_len = s * all_len
         np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
+        np_input = np.arange(all_len).astype(dtype) - all_len / 2
+        np_input = np_input.reshape(shape_x)
         expected_result = frobenius_norm(np_input, axis=axis)
         result, = exe.run(feed={"X": np_input}, fetch_list=[out])
     self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
 
 
 def run_pnorm(self, p, axis, shape_x, dtype):
-    with fluid.program_guard(fluid.Program()):
-        data = fluid.data(name="X", shape=shape_x, dtype=dtype)
+    with fluid.dygraph.guard():
+        all_len = 1
+        for s in shape_x:
+            all_len = s * all_len
+        np_input = np.arange(all_len).astype(dtype) - all_len / 2
+        np_input = np_input.reshape(shape_x)
+
+        data = paddle.to_tensor(np_input)
         out = paddle.norm(input=data, p=p, axis=axis)
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
         expected_result = p_norm(np_input, porder=p, axis=axis).astype(dtype)
-        result, = exe.run(feed={"X": np_input}, fetch_list=[out])
-    self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
+        result = out.numpy()
+        self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
 
 
 class API_NormTest(unittest.TestCase):
@@ -265,18 +273,21 @@ class API_NormTest(unittest.TestCase):
             dtype="float32")
 
     def test_basic(self):
-        run_fro(self, p='fro', axis=None, shape_x=[3, 3, 4], dtype="float32")
-        run_fro(self, p='fro', axis=[0, 1], shape_x=[3, 3, 4], dtype="float64")
+        run_fro(self, p='fro', axis=None, shape_x=[2, 3, 4], dtype="float32")
+        run_fro(self, p='fro', axis=[0, 1], shape_x=[2, 3, 4], dtype="float64")
         run_pnorm(self, p=2, axis=None, shape_x=[3, 4], dtype="float32")
         run_pnorm(self, p=2, axis=1, shape_x=[3, 4], dtype="float64")
-        run_pnorm(self, p=np.inf, axis=1, shape_x=[3, 4], dtype="float32")
-        run_pnorm(self, p=-np.inf, axis=1, shape_x=[3, 4], dtype="float64")
+        run_pnorm(self, p=np.inf, axis=0, shape_x=[2, 3, 4], dtype="float32")
+        run_pnorm(self, p=np.inf, axis=None, shape_x=[2, 3, 4], dtype="float32")
+        run_pnorm(self, p=-np.inf, axis=0, shape_x=[2, 3, 4], dtype="float64")
+        run_pnorm(
+            self, p=-np.inf, axis=None, shape_x=[2, 3, 4], dtype="float64")
         run_pnorm(self, p=0, axis=1, shape_x=[3, 4], dtype="float64")
 
         run_pnorm(self, p=1, axis=1, shape_x=[3, 4], dtype="float64")
         run_pnorm(self, p=0, axis=None, shape_x=[3, 4], dtype="float64")
-
         run_pnorm(self, p=2, axis=[0, 1], shape_x=[2, 3, 4], dtype="float64")
+        run_pnorm(self, p=2, axis=-1, shape_x=[2, 3, 4], dtype="float64")
         run_pnorm(self, p=1, axis=[0, 1], shape_x=[2, 3, 4], dtype="float64")
         run_pnorm(self, p=0, axis=[0, 1], shape_x=[2, 3, 4], dtype="float64")
         run_pnorm(
