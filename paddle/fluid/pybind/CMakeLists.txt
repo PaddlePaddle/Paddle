@@ -74,8 +74,7 @@ if(WITH_PYTHON)
   if(WIN32)
     add_custom_target(op_function_cmd
           COMMAND op_function_generator "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h"
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    )
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
     add_dependencies(op_function_cmd op_function_generator)
     if(${CBLAS_PROVIDER} STREQUAL MKLML)

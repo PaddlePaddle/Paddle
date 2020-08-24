@@ -19,7 +19,10 @@ __all__ = [
     'ExponentialMovingAverage', 'Ftrl', 'FtrlOptimizer', 'LambOptimizer',
     'LarsMomentum', 'LarsMomentumOptimizer', 'LookaheadOptimizer',
     'ModelAverage', 'Momentum', 'MomentumOptimizer', 'PipelineOptimizer',
-    'RecomputeOptimizer', 'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer'
+    'RecomputeOptimizer', 'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer',
+    '_LRScheduler', 'NoamLR', 'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR',
+    'PolynomialLR', 'LinearLrWarmup', 'ExponentialLR', 'MultiStepLR', 'StepLR',
+    'LambdaLR', 'ReduceLROnPlateau', 'CosineAnnealingLR'
 ]
 
 
@@ -36,3 +39,7 @@ from .adam import Adam
 from .adamw import AdamW
 from .adamax import Adamax
 from .rmsprop import RMSProp
+
+from . import lr_scheduler
+from .lr_scheduler import _LRScheduler, NoamLR, PiecewiseLR, NaturalExpLR, InverseTimeLR, PolynomialLR, \
+            LinearLrWarmup, ExponentialLR, MultiStepLR, StepLR, LambdaLR, ReduceLROnPlateau, CosineAnnealingLR

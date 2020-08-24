@@ -25,7 +25,7 @@ mkdir build
 cd /d build
 tree .
 dir paddle\fluid\pybind\Release
-taskkill /f /im %cd%\paddle\fluid\pybind\Release\op_function_generator.exe  2>NUL
+taskkill /f /im %work_dir%\build\paddle\fluid\pybind\Release\op_function_generator.exe  2>NUL
 
 rem ------initialize the virtual environment------
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
@@ -161,7 +161,7 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 echo Build Paddle for %build_times% time:
-msbuild /m /p:Configuration=Release /verbosity:minimal paddle.sln
+msbuild /m /p:Configuration=Release /verbosity:normal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 2 (

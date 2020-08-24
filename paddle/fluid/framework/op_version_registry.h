@@ -48,11 +48,15 @@ struct ModifyAttr : OpUpdateRecord {
   boost::any default_value_;
 };
 struct NewAttr : OpUpdateRecord {
-  NewAttr(const std::string& name, const std::string& remark)
-      : OpUpdateRecord({Type::kNewAttr, remark}), name_(name) {}
+  NewAttr(const std::string& name, const std::string& remark,
+          boost::any default_value)
+      : OpUpdateRecord({Type::kNewAttr, remark}),
+        name_(name),
+        default_value_(default_value) {}
 
  private:
   std::string name_;
+  boost::any default_value_;
 };
 
 class OpVersionDesc {
@@ -64,9 +68,10 @@ class OpVersionDesc {
     return *this;
   }
 
-  OpVersionDesc& NewAttr(const std::string& name, const std::string& remark) {
-    infos_.push_back(
-        std::shared_ptr<OpUpdateRecord>(new compatible::NewAttr(name, remark)));
+  OpVersionDesc& NewAttr(const std::string& name, const std::string& remark,
+                         boost::any default_value) {
+    infos_.push_back(std::shared_ptr<OpUpdateRecord>(
+        new compatible::NewAttr(name, remark, default_value)));
     return *this;
   }
 
