@@ -145,8 +145,14 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
   T b = static_cast<T>(0);
   if (platform::is_cpu_place(self.place())) {
     b = self.data<T>()[offset];
+  } else if (platform::is_xpu_place(self.place())) {
+#ifdef PADDLE_WITH_XPU
+    const T *a = self.data<T>();
+    auto p = BOOST_GET_CONST(platform::XPUPlace, self.place());
+    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T));
+#endif
+  } else if (platform::is_gpu_place(self.place())) {
 #ifdef PADDLE_WITH_CUDA
-  } else {
     const T *a = self.data<T>();
     auto p = BOOST_GET_CONST(platform::CUDAPlace, self.place());
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
@@ -163,8 +169,14 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
                         "The offset exceeds the size of tensor."));
   if (platform::is_cpu_place(self->place())) {
     self->mutable_data<T>(self->place())[offset] = elem;
+  } else if (platform::is_xpu_place(self->place())) {
+#ifdef PADDLE_WITH_XPU
+    auto p = BOOST_GET_CONST(platform::XPUPlace, self->place());
+    T *a = self->mutable_data<T>(p);
+    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T));
+#endif
+  } else if (platform::is_gpu_place(self->place())) {
 #ifdef PADDLE_WITH_CUDA
-  } else {
     auto p = BOOST_GET_CONST(platform::CUDAPlace, self->place());
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
@@ -194,6 +206,16 @@ void SetTensorFromPyArrayT(
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
     }
+  } else if (paddle::platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+    auto dst = self->mutable_data<T>(place);
+    xpu_memcpy(dst, array.data(), array.nbytes(),
+               XPUMemcpyKind::XPU_HOST_TO_DEVICE);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use XPUPlace in CPU/GPU version, "
+        "Please recompile or reinstall Paddle with XPU support."));
+#endif
   } else {
 #ifdef PADDLE_WITH_CUDA
     auto dst = self->mutable_data<T>(place);
@@ -211,7 +233,7 @@ void SetTensorFromPyArrayT(
     }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use CUDAPlace in CPU only version, "
+        "Cannot use CUDAPlace or CUDAPinnedPlace in CPU only version, "
         "Please recompile or reinstall Paddle with CUDA support."));
 #endif
   }
@@ -354,8 +376,13 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
   if (platform::is_cpu_place(place)) {
     output->mutable_data(BOOST_GET_CONST(platform::CPUPlace, place),
                          self.type());
-#ifdef PADDLE_WITH_CUDA
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+    output->mutable_data(BOOST_GET_CONST(platform::XPUPlace, place),
+                         self.type());
+#endif
   } else {
+#ifdef PADDLE_WITH_CUDA
     if (platform::is_cuda_pinned_place(place)) {
       output->mutable_data(BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
                            self.type());
@@ -516,6 +543,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
     return py::array();
   }
   bool is_gpu_tensor = platform::is_gpu_place(tensor.place());
+  bool is_xpu_tensor = platform::is_xpu_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
   auto tensor_dtype = tensor.type();
   size_t sizeof_dtype = framework::SizeOfType(tensor_dtype);
@@ -534,7 +562,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(tensor.type());
 
-  if (!is_gpu_tensor) {
+  if (!is_gpu_tensor && !is_xpu_tensor) {
     if (!need_deep_copy) {
       return py::array(py::buffer_info(
           const_cast<void *>(tensor_buf_ptr), sizeof_dtype, py_dtype_str,
@@ -557,28 +585,54 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
                            copy_bytes);
       return py_arr;
     }
-  }
+  } else if (is_xpu_tensor) {
+#ifdef PADDLE_WITH_XPU
+    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+    PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+                      platform::errors::InvalidArgument(
+                          "PyArray is not writable, in which case memory leak "
+                          "or double free would occur"));
+    PADDLE_ENFORCE_EQ(
+        py_arr.owndata(), true,
+        platform::errors::InvalidArgument(
+            "PyArray does not own data, in which case  memory leak "
+            "or double free would occur"));
 
-#ifdef PADDLE_WITH_CUDA
-  py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
-  PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
-                    platform::errors::InvalidArgument(
-                        "PyArray is not writable, in which case memory leak "
-                        "or double free would occur"));
-  PADDLE_ENFORCE_EQ(py_arr.owndata(), true,
-                    platform::errors::InvalidArgument(
-                        "PyArray does not own data, in which case  memory leak "
-                        "or double free would occur"));
-
-  size_t copy_bytes = sizeof_dtype * numel;
-  paddle::platform::GpuMemcpySync(py_arr.mutable_data(), tensor_buf_ptr,
-                                  copy_bytes, cudaMemcpyDeviceToHost);
-  return py_arr;
+    size_t copy_bytes = sizeof_dtype * numel;
+    auto p = BOOST_GET_CONST(platform::XPUPlace, tensor.place());
+    paddle::memory::Copy(platform::CPUPlace(), py_arr.mutable_data(), p,
+                         tensor_buf_ptr, copy_bytes);
+    return py_arr;
 #else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "Cannot use CUDAPlace in CPU only version, "
-      "Please recompile or reinstall Paddle with CUDA support."));
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use XPUPlace in CPU/GPU version, "
+        "Please recompile or reinstall Paddle with XPU support."));
 #endif
+  } else if (is_gpu_tensor) {
+#ifdef PADDLE_WITH_CUDA
+    py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+    PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+                      platform::errors::InvalidArgument(
+                          "PyArray is not writable, in which case memory leak "
+                          "or double free would occur"));
+    PADDLE_ENFORCE_EQ(
+        py_arr.owndata(), true,
+        platform::errors::InvalidArgument(
+            "PyArray does not own data, in which case  memory leak "
+            "or double free would occur"));
+
+    size_t copy_bytes = sizeof_dtype * numel;
+    paddle::platform::GpuMemcpySync(py_arr.mutable_data(), tensor_buf_ptr,
+                                    copy_bytes, cudaMemcpyDeviceToHost);
+    return py_arr;
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use CUDAPlace in CPU only version, "
+        "Please recompile or reinstall Paddle with CUDA support."));
+#endif
+  }
+  PADDLE_THROW(platform::errors::Unimplemented("Place is not supported"));
+  return py::array();
 }
 
 }  // namespace pybind

@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from ..fluid.layers import core, reshape
+from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -23,10 +23,7 @@ from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import expand  #DEFINE_ALIAS
 from ..fluid.layers import expand_as  #DEFINE_ALIAS
-from ..fluid.layers import reshape  #DEFINE_ALIAS
-from ..fluid.layers import scatter  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
 from ..fluid.layers import strided_slice  #DEFINE_ALIAS
 from ..fluid.layers import transpose  #DEFINE_ALIAS
@@ -45,6 +42,7 @@ __all__ = [
     'cast',
     'concat',
     'expand',
+    'broadcast_to',
     'expand_as',
     'flatten',
     'gather',
@@ -57,6 +55,7 @@ __all__ = [
     'shard_index',
     'slice',
     'split',
+    'chunk'
     'squeeze',
     'stack',
     'strided_slice',
@@ -68,6 +67,7 @@ __all__ = [
     'flip',
     'unbind',
     'roll',
+    'tile',
 ]
 
 
@@ -110,9 +110,9 @@ def concat(x, axis=0, name=None):
                             [14, 15, 16]])
             in3 = np.array([[21, 22],
                             [23, 24]])
-            x1 = paddle.to_variable(in1)
-            x2 = paddle.to_variable(in2)
-            x3 = paddle.to_variable(in3)
+            x1 = paddle.to_tensor(in1)
+            x2 = paddle.to_tensor(in2)
+            x3 = paddle.to_tensor(in3)
             zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
             # When the axis is negative, the real axis is (axis + Rank(x))
             # As follow, axis is -1, Rank(x) is 2, the real axis is 1
@@ -376,7 +376,7 @@ def roll(x, shifts, axis=None, name=None):
         outputs={'Out': out},
         attrs={'axis': axis,
                'shifts': shifts})
-    out = reshape(out, shape=origin_shape, inplace=True)
+    out = layers.reshape(out, shape=origin_shape, inplace=True)
     return out
 
 
@@ -506,7 +506,7 @@ def split(x, num_or_sections, axis=0, name=None):
             paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.to_variable(x_np)
+            x = paddle.to_tensor(x_np)
 
             out0, out1, out22 = paddle.split(x, num_or_sections=3, axis=1)
             # out0.shape [3, 3, 5]
@@ -658,10 +658,8 @@ def unsqueeze(x, axis, name=None):
     return layers.unsqueeze(x, axis, name)
 
 
-def gather(input, index, overwrite=True):
+def gather(x, index, axis=None, name=None):
     """
-	:alias_main: paddle.gather
-	:alias: paddle.gather,paddle.tensor.gather,paddle.tensor.manipulation.gather
 
     **Gather Layer**
 
@@ -678,30 +676,33 @@ def gather(input, index, overwrite=True):
 
                 Given:
 
-                X = [[1, 2],
+                x = [[1, 2],
                      [3, 4],
                      [5, 6]]
 
-                Index = [1, 2]
+                index = [1, 2]
+                axis=[0]
 
                 Then:
 
-                Out = [[3, 4],
+                out = [[3, 4],
                        [5, 6]]
     Args:
-        input (Variable): The source input tensor with rank>=1. Supported data type is
+        x (Tensor): The source input tensor with rank>=1. Supported data type is
             int32, int64, float32, float64 and uint8 (only for CPU),
             float16 (only for GPU).
-        index (Variable): The index input tensor with rank=1. Data type is int32 or int64.
-        overwrite (bool, optional): The mode that updating the grad when has same index.
-            If True, use the overwrite mode to update the grad of the same index,
-            if False, use the accumulate mode to update the grad of the same index.
-            Default value is True.
-
-
+        index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
+        axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. Default: if None, the axis is 0.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        output (Variable): The output is a tensor with the same rank as input.
+        output (Tensor): The output is a tensor with the same rank as ``x``.
+    
+    Raises:
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must to be one of float16, float32, float64, int32, int64, uint8.
+        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
+        TypeError: ``axis`` must be a Tensor or int and the data type of ``index`` must be int32 or int64 when it's a Tensor.
 
     Examples:
 
@@ -709,26 +710,41 @@ def gather(input, index, overwrite=True):
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
 
-
-            with fluid.dygraph.guard():
-                input_1 = np.array([[1,2],[3,4],[5,6]])
-                index_1 = np.array([0,1])
-                input = fluid.dygraph.to_variable(input_1)
-                index = fluid.dygraph.to_variable(index_1)
-                output = paddle.gather(input, index)
-                # expected output: [[1,2],[3,4]]
+            paddle.disable_static()
+            input_1 = np.array([[1,2],[3,4],[5,6]])
+            index_1 = np.array([0,1])
+            input = fluid.to_tensor(input_1)
+            index = fluid.to_tensor(index_1)
+            output = paddle.gather(input, index, axis=0)
+            # expected output: [[1,2],[3,4]]
     """
+    if axis is None:
+        axis = 0
+    axis_tensor = axis
+    if not isinstance(axis, Variable):
+        axis_tensor = fill_constant(shape=[1], dtype='int64', value=axis)
+    if in_dygraph_mode():
+        return core.ops.gather(x, index, axis_tensor)
+
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+        'gather')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
+    if isinstance(axis, Variable):
+        check_variable_and_dtype(axis, 'axis', ['int32', 'int64'], 'gather')
+    else:
+        check_type(axis, 'axis', (int), 'gather')
+
     helper = LayerHelper('gather', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="gather",
-        inputs={"X": input,
-                "Index": index},
-        outputs={"Out": out},
-        attrs={'overwrite': overwrite})
+        inputs={"X": x,
+                "Index": index,
+                "Axis": axis_tensor},
+        outputs={"Out": out})
     return out
 
 
@@ -787,3 +803,523 @@ def unbind(input, axis=0):
         outputs={"Out": outs},
         attrs={"axis": axis})
     return outs
+
+
+def scatter(x, index, updates, overwrite=True, name=None):
+    """
+    **Scatter Layer**
+    Output is obtained by updating the input on selected indices based on updates.
+    
+    .. code-block:: python
+        import numpy as np
+        #input:
+        x = np.array([[1, 1], [2, 2], [3, 3]])
+        index = np.array([2, 1, 0, 1])
+        # shape of updates should be the same as x
+        # shape of updates with dim > 1 should be the same as input
+        updates = np.array([[1, 1], [2, 2], [3, 3], [4, 4]])
+        overwrite = False
+        # calculation:
+        if not overwrite:
+            for i in range(len(index)):
+                x[index[i]] = np.zeros((2))
+        for i in range(len(index)):
+            if (overwrite):
+                x[index[i]] = updates[i]
+            else:
+                x[index[i]] += updates[i]
+        # output:
+        out = np.array([[3, 3], [6, 6], [1, 1]])
+        out.shape # [3, 2]
+
+    **NOTICE**: The order in which updates are applied is nondeterministic, 
+    so the output will be nondeterministic if index contains duplicates.
+
+    Args:
+        x (Tensor): The input N-D Tensor with ndim>=1. Data type can be float32, float64.
+        index (Tensor): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
+        updates (Tensor): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
+        overwrite (bool): The mode that updating the output when there are same indices. 
+          If True, use the overwrite mode to update the output of the same index,
+	      if False, use the accumulate mode to update the output of the same index.Default value is True.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+ 
+    Returns:
+        Tensor: The output is a Tensor with the same shape as x.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+
+            x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float32)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float32)
+            
+            x = paddle.to_tensor(x_data)
+            index = paddle.to_tensor(index_data)
+            updates = paddle.to_tensor(updates_data)
+  
+            output1 = paddle.scatter(x, index, updates, overwrite=False)
+            # [[3., 3.],
+            #  [6., 6.],
+            #  [1., 1.]]
+
+            output2 = paddle.scatter(x, index, updates, overwrite=True)
+            # CPU device:
+            # [[3., 3.],
+            #  [4., 4.],
+            #  [1., 1.]]
+            # GPU device maybe have two results because of the repeated numbers in index
+            # result 1:
+            # [[3., 3.],
+            #  [4., 4.],
+            #  [1., 1.]]
+            # result 2:
+            # [[3., 3.],
+            #  [2., 2.],
+            #  [1., 1.]]
+    """
+    if in_dygraph_mode():
+        return core.ops.scatter(x, index, updates, 'overwrite', overwrite)
+
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'scatter')
+    check_type(overwrite, 'overwrite', bool, 'scatter')
+    helper = LayerHelper('scatter', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type="scatter",
+        inputs={"X": x,
+                "Ids": index,
+                "Updates": updates},
+        attrs={'overwrite': overwrite},
+        outputs={"Out": out})
+    return out
+
+
+def chunk(x, chunks, axis=0, name=None):
+    """
+    Split the input tensor into multiple sub-Tensors.
+    
+    Args:
+        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+        chunks(int): The number of tensor to be split along the certain axis.
+        axis (int|Tensor, optional): The axis along which to split, it can be a scalar with type 
+            ``int`` or a ``Tensor`` with shape [1] and data type  ``int32`` or ``int64``.
+            If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+    Returns:
+        list(Tensor): The list of segmented Tensors.
+    Raises:
+        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
+        TypeError: ``chunks`` is not int.
+        TypeError: ``axis`` is not int or Tensor. the data type of ``axis`` must be int32 or int64 when it's a Tensor.
+    Example:
+        .. code-block:: python
+            
+            import numpy as np
+            import paddle
+            
+            paddle.disable_static()
+            # x is a Tensor which shape is [3, 9, 5]
+            x_np = np.random.random([3, 9, 5]).astype("int32")
+            x = paddle.to_tensor(x_np)
+
+            out0, out1, out22 = paddle.chunk(x, chunks=3, axis=1)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
+
+            
+            # axis is negative, the real axis is (rank(x) + axis) which real
+            # value is 1.
+            out0, out1, out2 = paddle.chunk(x, chunks=3, axis=-2)
+            # out0.shape [3, 3, 5]
+            # out1.shape [3, 3, 5]
+            # out2.shape [3, 3, 5]
+    """
+    check_type(chunks, 'chunks', (int), 'chunk')
+    return paddle.fluid.layers.split(
+        input=x, num_or_sections=chunks, dim=axis, name=name)
+
+
+def tile(x, repeat_times, name=None):
+    """
+
+    Construct a new Tensor by repeating ``x`` the number of times given by ``repeat_times``.
+    After tiling, the value of the i'th dimension of the output is equal to ``x.shape[i]*repeat_times[i]``.
+
+    Both the number of dimensions of ``x`` and the number of elements in ``repeat_times`` should be less than or equal to 6.
+
+    Args:
+        x (Tensor): The input tensor, its data type should be bool, float32, float64, int32 or int64.
+        repeat_times (Tensor|tuple|list): The number of repeating times. If repeat_times is a list or tuple, all its elements
+            should be integers or 1-D Tensors with the data type int32. If repeat_times is a Tensor, it should be an 1-D Tensor with the data type int32.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. The data type is the same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            np_data = np.array([1, 2, 3]).astype('int32')
+            data = paddle.to_tensor(np_data)
+            out = paddle.tile(data, repeat_times=[2, 1])
+            np_out = out.numpy()
+            # [[1, 2, 3], [1, 2, 3]]
+
+            out = paddle.tile(data, repeat_times=[2, 2])
+            np_out = out.numpy()
+            # [[1, 2, 3, 1, 2, 3], [1, 2, 3, 1, 2, 3]]
+
+            np_repeat_times = np.array([2, 1]).astype("int32")
+            repeat_times = paddle.to_tensor(np_repeat_times)
+            out = paddle.tile(data, repeat_times=repeat_times)
+            np_out = out.numpy()
+            # [[1, 2, 3], [1, 2, 3]]
+    """
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile')
+    check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+        raise ValueError(
+            "When the date type is bool for the input 'x' of tile op, you "
+            "must set its stop_gradient to be True by "
+            "some_var.stop_gradient == True supporting some_var is the input.")
+
+    if in_dygraph_mode():
+        return core.ops.tile(x, 'repeat_times', repeat_times)
+
+    helper = LayerHelper('tile', **locals())
+
+    inputs = {"X": [x]}
+    attrs = {}
+
+    def get_attr_repeat_times(list_repeat_times):
+        attrs_repeat_times = []
+        for idx, times in enumerate(list_repeat_times):
+            if isinstance(times, Variable):
+                attrs_repeat_times.append(-1)
+            else:
+                attrs_repeat_times.append(times)
+                assert times > 0, (
+                    "All elements in repeat_times must be positive for tile.")
+        return attrs_repeat_times
+
+    if isinstance(repeat_times, Variable):
+        repeat_times.stop_gradient = True
+        inputs['RepeatTimes'] = repeat_times
+        attrs['repeat_times'] = [-1]
+    elif isinstance(repeat_times, (list, tuple)):
+        attrs['repeat_times'] = get_attr_repeat_times(repeat_times)
+        if utils._contain_var(repeat_times):
+            inputs['repeat_times_tensor'] = utils._convert_to_tensor_list(
+                repeat_times)
+
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='tile', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out
+
+
+def expand_as(x, y, name=None):
+    """
+
+    Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
+
+    Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greather than or equal to that of ``x``. The dimension to expand must have a value of 1.
+
+    Args:
+        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
+        y (Tensor): The input tensor that gives the shape to expand to.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor: A Tensor with the same shape as ``y``. The data type is the same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            paddle.disable_static()
+
+            np_data_x = np.array([1, 2, 3]).astype('int32')
+            np_data_y = np.array([[1, 2, 3], [4, 5, 6]]).astype('int32')
+            data_x = paddle.to_tensor(np_data_x)
+            data_y = paddle.to_tensor(np_data_y)
+            out = paddle.expand_as(data_x, data_y)
+            np_out = out.numpy()
+            # [[1, 2, 3], [1, 2, 3]]
+    """
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand_as')
+    check_type(y, 'y', Variable, 'expand_as')
+
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+        raise ValueError(
+            "When the data type of input 'x' for expand_as is bool, "
+            "you must set its stop_gradient to be False by "
+            "some_var.stop_gradient = True, supporting "
+            "some_var as the input 'x'.")
+    inputs = {"X": [x], "target_tensor": [y]}
+
+    if in_dygraph_mode():
+        return core.ops.expand_as_v2(x, y)
+
+    helper = LayerHelper('expand_as', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type='expand_as_v2', inputs=inputs, outputs={'Out': out})
+    return out
+
+
+def expand(x, shape, name=None):
+    """
+
+    Expand the input tensor to a given shape.
+
+    Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. The dimension to expand must have a value 1.
+
+
+    Args:
+        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
+        shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
+            should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32. 
+            The value -1 in shape means keeping the corresponding dimension unchanged.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        N-D Tensor: A Tensor with the given shape. The data type is the same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            paddle.disable_static()
+            np_data = np.array([1, 2, 3]).astype('int32')
+            data = paddle.to_tensor(np_data)
+            out = paddle.expand(data, shape=[2, 3])
+            out = out.numpy()
+            # [[1, 2, 3], [1, 2, 3]]
+    """
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
+    check_type(shape, 'shape', (list, tuple, Variable), 'expand')
+
+    inputs = {"X": [x]}
+    attrs = {}
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+        raise ValueError("When the data type of input 'x' for expand is bool, "
+                         "you must set its stop_gradient to be False by "
+                         "some_var.stop_gradient = True, supporting "
+                         "some_var as the input.")
+
+    if in_dygraph_mode():
+        return core.ops.expand_v2(x, 'shape', shape)
+
+    helper = LayerHelper('expand', **locals())
+
+    def get_attr_expand_shape(list_expand_shape):
+        attrs_expand_shape = []
+        for idx, shape in enumerate(list_expand_shape):
+            if isinstance(shape, Variable):
+                attrs_expand_shape.append(-1)
+            else:
+                attrs_expand_shape.append(shape)
+                assert shape > 0 or shape == -1, (
+                    "All elements in shape of expand must be positive or -1.")
+        return attrs_expand_shape
+
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        inputs['Shape'] = shape
+    elif isinstance(shape, (list, tuple)):
+        attrs['shape'] = get_attr_expand_shape(shape)
+        if utils._contain_var(shape):
+            inputs['expand_shapes_tensor'] = utils._convert_to_tensor_list(
+                shape)
+
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out
+
+
+broadcast_to = expand
+
+
+def reshape(x, shape, name=None):
+    """
+    :alias_main: paddle.reshape
+	:alias: paddle.reshape,paddle.tensor.reshape,paddle.tensor.manipulation.reshape
+
+    This operator changes the shape of ``x`` without changing its data.
+
+    Some tricks exist when specifying the target shape.
+
+    1. -1 means the value of this dimension is inferred from the total element
+    number of x and remaining dimensions. Thus one and only one dimension can
+    be set -1.
+
+    2. 0 means the actual dimension value is going to be copied from the
+    corresponding dimension of x. The index of 0s in shape can not exceed
+    the dimension of x.
+
+    Here are some examples to explain it.
+
+    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    is [6, 8], the reshape operator will transform x into a 2-D tensor with
+    shape [6, 8] and leaving x's data unchanged.
+
+    2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    specified is [2, 3, -1, 2], the reshape operator will transform x into a
+    4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this
+    case, one dimension of the target shape is set to -1, the value of this
+    dimension is inferred from the total element number of x and remaining
+    dimensions.
+
+    3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor
+    with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case,
+    besides -1, 0 means the actual dimension value is going to be copied from
+    the corresponding dimension of x.
+
+    Args:
+        x(Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        shape(list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
+                        The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
+                        If ``shape`` is an Tensor, it should be an 1-D Tensor .
+        name(str, optional): The default value is None. Normally there is no need for user to set this property.
+                            For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor: A reshaped Tensor with the same data type as ``x``.
+
+    Raises:
+        ValueError: If more than one elements of ``shape`` is -1.
+        ValueError: If the element of ``shape`` is 0, the corresponding dimension should be less than or equal to the dimension of ``x``.
+        ValueError: If the elements in ``shape`` is negative except -1.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            paddle.disable_static()
+
+            data = np.random.random([2, 4, 6]).astype("float32")
+            x = paddle.to_tensor(data)
+
+            positive_four = paddle.fill_constant([1], "int32", 4)
+
+            out_1 = paddle.reshape(x, [-1, 0, 3, 2])
+            # the shape of out_1 is [2,4,3,2].
+
+            out_2 = paddle.reshape(x, shape=[positive_four, 12])
+            # the shape of out_2 is [4, 12].
+
+            shape_tensor = paddle.to_tensor(np.array([8, 6]).astype("int32"))
+            out_3 = paddle.reshape(x, shape=shape_tensor)
+            # the shape of out_2 is [8, 6].
+    """
+    return paddle.fluid.layers.reshape(x=x, shape=shape, name=name)
+
+
+def gather_nd(x, index, name=None):
+    """
+    **Gather Nd Layer**
+
+    This function is actually a high-dimensional extension of :code:`gather`
+    and supports for simultaneous indexing by multiple axes. :attr:`index` is a
+    K-dimensional integer tensor, which is regarded as a (K-1)-dimensional
+    tensor of :attr:`index` into :attr:`input`, where each element defines
+    a slice of params:
+
+    .. math::
+
+        output[(i_0, ..., i_{K-2})] = input[index[(i_0, ..., i_{K-2})]]
+
+    Obviously, :code:`index.shape[-1] <= input.rank` . And, the output tensor has
+    shape :code:`index.shape[:-1] + input.shape[index.shape[-1]:]` .
+
+    .. code-block:: text
+
+            Given:
+                input = [[[ 0,  1,  2,  3],
+                          [ 4,  5,  6,  7],
+                          [ 8,  9, 10, 11]],
+                         [[12, 13, 14, 15],
+                          [16, 17, 18, 19],
+                          [20, 21, 22, 23]]]
+                input.shape = (2, 3, 4)
+
+            * Case 1:
+                index = [[1]]
+
+                gather_nd(input, index)
+                         = [input[1, :, :]]
+                         = [[12, 13, 14, 15],
+                            [16, 17, 18, 19],
+                            [20, 21, 22, 23]]
+
+            * Case 2:
+                index = [[0,2]]
+
+                gather_nd(input, index)
+                         = [input[0, 2, :]]
+                         = [8, 9, 10, 11]
+
+            * Case 3:
+                index = [[1, 2, 3]]
+
+                gather_nd(input, index)
+                         = [input[1, 2, 3]]
+                         = [23]
+
+    Args:
+        x (Tensor): The input Tensor which it's data type should be bool, float32, float64, int32, int64.
+        index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
+                        Its dtype should be int32, int64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+                        For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
+    
+    Raises:
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of float32, float64, int32 and int64.
+        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be one of int32 and int64.
+
+    Examples:
+
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            
+            paddle.disable_static()
+            np_x = np.array([[[1, 2], [3, 4], [5, 6]],
+                             [[7, 8], [9, 10], [11, 12]]])
+            np_index = [[0, 1]]
+            x = paddle.to_tensor(np_x)
+            index = paddle.to_tensor(np_index)
+            
+            output = paddle.gather_nd(x, index) #[[3, 4]]
+
+    """
+
+    return paddle.fluid.layers.gather_nd(input=x, index=index, name=name)

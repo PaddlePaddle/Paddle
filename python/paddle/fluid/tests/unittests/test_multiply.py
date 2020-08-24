@@ -26,8 +26,10 @@ class TestMultiplyAPI(unittest.TestCase):
 
     def __run_static_graph_case(self, x_data, y_data, axis=-1):
         with program_guard(Program(), Program()):
-            x = paddle.nn.data(name='x', shape=x_data.shape, dtype=x_data.dtype)
-            y = paddle.nn.data(name='y', shape=y_data.shape, dtype=y_data.dtype)
+            x = paddle.static.data(
+                name='x', shape=x_data.shape, dtype=x_data.dtype)
+            y = paddle.static.data(
+                name='y', shape=y_data.shape, dtype=y_data.dtype)
             res = tensor.multiply(x, y, axis=axis)
 
             place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
@@ -109,14 +111,14 @@ class TestMultiplyError(unittest.TestCase):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
         with program_guard(Program(), Program()):
-            x = paddle.nn.data(name='x', shape=[100], dtype=np.int8)
-            y = paddle.nn.data(name='y', shape=[100], dtype=np.int8)
+            x = paddle.static.data(name='x', shape=[100], dtype=np.int8)
+            y = paddle.static.data(name='y', shape=[100], dtype=np.int8)
             self.assertRaises(TypeError, tensor.multiply, x, y)
 
         # test static computation graph: inputs must be broadcastable 
         with program_guard(Program(), Program()):
-            x = paddle.nn.data(name='x', shape=[20, 50], dtype=np.float64)
-            y = paddle.nn.data(name='y', shape=[20], dtype=np.float64)
+            x = paddle.static.data(name='x', shape=[20, 50], dtype=np.float64)
+            y = paddle.static.data(name='y', shape=[20], dtype=np.float64)
             self.assertRaises(fluid.core.EnforceNotMet, tensor.multiply, x, y)
 
         np.random.seed(7)

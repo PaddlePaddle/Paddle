@@ -16,8 +16,8 @@ import unittest
 import paddle
 from paddle import fluid
 import os
-import paddle.fleet as fleet
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
 
 
 class TestFleetLarsMetaOptimizer(unittest.TestCase):
@@ -47,7 +47,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
                     input=prediction, label=input_y)
                 avg_cost = paddle.fluid.layers.mean(x=cost)
 
-                strategy = paddle.fleet.DistributedStrategy()
+                strategy = paddle.distributed.fleet.DistributedStrategy()
                 strategy.lars = True
                 strategy.lars_configs = {
                     "lars_coeff": 0.001,
@@ -62,7 +62,8 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+        optimizer = paddle.fluid.optimizer.Momentum(
+            learning_rate=0.01, momentum=0.9)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -75,7 +76,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

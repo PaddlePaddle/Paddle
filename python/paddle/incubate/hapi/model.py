@@ -25,6 +25,8 @@ import warnings
 from collections import Iterable
 
 from paddle import fluid
+# Note: Use alias `Input` temporarily before releasing hapi feature.
+from paddle.static import InputSpec as Input
 from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
@@ -45,40 +47,6 @@ __all__ = [
     'Model',
     'Input',
 ]
-
-
-class Input(fluid.dygraph.Layer):
-    """
-    Define inputs the model.
-
-    Args:
-        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
-            for more details.
-        shape (tuple(integers)|list[integers]): List|Tuple of integers
-            declaring the shape. You can set "None" or -1 at a dimension
-            to indicate the dimension can be of any size. For example,
-            it is useful to set changeable batch size as "None" or -1.
-        dtype (np.dtype|VarType|str, optional): The type of the data. Supported
-            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
-            uint8. Default: float32.
-
-    Examples:
-        .. code-block:: python
-
-        import paddle.incubate.hapi as hapi
-
-        input = hapi.Input('x', [None, 784], 'float32')
-        label = hapi.Input('label', [None, 1], 'int64')
-    """
-
-    def __init__(self, name, shape=None, dtype='float32'):
-        super(Input, self).__init__()
-        self.shape = shape
-        self.dtype = dtype
-        self.name = name
-
-    def forward(self):
-        return fluid.data(self.name, shape=self.shape, dtype=self.dtype)
 
 
 class StaticGraphAdapter(object):
@@ -388,8 +356,8 @@ class StaticGraphAdapter(object):
         with fluid.program_guard(prog, self._startup_prog):
             inputs = self.model._inputs
             labels = self.model._labels if self.model._labels else []
-            inputs = [k.forward() for k in to_list(inputs)]
-            labels = [k.forward() for k in to_list(labels)]
+            inputs = [k._create_feed_layer() for k in to_list(inputs)]
+            labels = [k._create_feed_layer() for k in to_list(labels)]
             self._label_vars[mode] = labels
             outputs = to_list(self.model.network.forward(*inputs))
 
@@ -704,8 +672,8 @@ class Model(object):
         fluid.enable_dygraph(device)
         
         # inputs and labels are not required for dynamic graph.
-        input = hapi.Input('x', [None, 784], 'float32')
-        label = hapi.Input('label', [None, 1], 'int64')
+        input = hapi.Input([None, 784], 'float32', 'x')
+        label = hapi.Input([None, 1], 'int64', 'label')
         
         model = hapi.Model(MyNet(), input, label)
         optim = fluid.optimizer.SGD(learning_rate=1e-3,
@@ -734,16 +702,8 @@ class Model(object):
             if not isinstance(inputs, (list, dict, Input)):
                 raise TypeError(
                     "'inputs' must be list or dict in static graph mode")
-        if inputs is None:
-            self._inputs = [Input(name=n) \
-                for n in extract_args(self.network.forward) if n != 'self']
-        elif isinstance(input, dict):
-            self._inputs = [inputs[n] \
-                for n in extract_args(self.network.forward) if n != 'self']
-        else:
-            self._inputs = to_list(inputs)
-
-        self._labels = to_list(labels)
+        self._inputs = self._verify_spec(inputs, True)
+        self._labels = self._verify_spec(labels)
 
         # init backend
         if fluid.in_dygraph_mode():
@@ -787,8 +747,8 @@ class Model(object):
               device = hapi.set_device('gpu')
               fluid.enable_dygraph(device)
 
-              input = hapi.Input('x', [None, 784], 'float32')
-              label = hapi.Input('label', [None, 1], 'int64')
+              input = hapi.Input([None, 784], 'float32', 'x')
+              label = hapi.Input([None, 1], 'int64', 'label')
               model = hapi.Model(MyNet(), input, label)
               optim = fluid.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
@@ -836,8 +796,8 @@ class Model(object):
               device = hapi.set_device('gpu')
               fluid.enable_dygraph(device)
 
-              input = hapi.Input('x', [None, 784], 'float32')
-              label = hapi.Input('label', [None, 1], 'int64')
+              input = hapi.Input([None, 784], 'float32', 'x')
+              label = hapi.Input([None, 1], 'int64', 'label')
               model = hapi.Model(MyNet(), input, label)
               optim = fluid.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
@@ -1194,8 +1154,8 @@ class Model(object):
               train_dataset = hapi.datasets.MNIST(mode='train')
               val_dataset = hapi.datasets.MNIST(mode='test')
            
-              input = hapi.Input('image', [None, 1, 28, 28], 'float32')
-              label = hapi.Input('label', [None, 1], 'int64')
+              input = hapi.Input([None, 1, 28, 28], 'float32', 'image')
+              label = hapi.Input([None, 1], 'int64', 'label')
            
               model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
                   input, label)
@@ -1231,8 +1191,8 @@ class Model(object):
               val_loader = fluid.io.DataLoader(val_dataset,
                   places=device, batch_size=64)
            
-              input = hapi.Input('image', [None, 1, 28, 28], 'float32')
-              label = hapi.Input('label', [None, 1], 'int64')
+              input = hapi.Input([None, 1, 28, 28], 'float32', 'image')
+              label = hapi.Input([None, 1], 'int64', 'label')
            
               model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
                   input, label)
@@ -1359,8 +1319,8 @@ class Model(object):
             # declarative mode
             val_dataset = hapi.datasets.MNIST(mode='test')
 
-            input = hapi.Input('image', [-1, 1, 28, 28], 'float32')
-            label = hapi.Input('label', [None, 1], 'int64')
+            input = hapi.Input([-1, 1, 28, 28], 'float32', 'image')
+            label = hapi.Input([None, 1], 'int64', 'label')
             model = hapi.Model(hapi.vision.LeNet(), input, label)
             model.prepare(metrics=hapi.metrics.Accuracy())
 
@@ -1433,12 +1393,13 @@ class Model(object):
             num_workers (int): The number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
                 both the instance of Dataloader, this argument will be ignored. Default: 0.
-            stack_output (bool): Whether stack output field like a batch, as for an output
+            stack_outputs (bool): Whether stack output field like a batch, as for an output
                 filed of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
                 be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
                 is False. stack_outputs as False is used for LoDTensor output situation,
                 it is recommended set as True if outputs contains no LoDTensor. Default: False.
+            callbacks(Callback): A Callback instance, default None.
         Returns:
             list: output of models.
 
@@ -1466,7 +1427,7 @@ class Model(object):
             test_dataset = MnistDataset(mode='test', return_label=False)
 
             # declarative mode
-            input = hapi.Input('image', [-1, 1, 28, 28], 'float32')
+            input = hapi.Input([-1, 1, 28, 28], 'float32', 'image')
             model = hapi.Model(hapi.vision.LeNet(), input)
             model.prepare()
 
@@ -1548,7 +1509,7 @@ class Model(object):
             import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
 
-            input = hapi.Input('image', [-1, 1, 28, 28], 'float32')
+            input = hapi.Input([-1, 1, 28, 28], 'float32', 'image')
             model = hapi.Model(hapi.vision.LeNet(), input)
             model.prepare()
 
@@ -1638,6 +1599,36 @@ class Model(object):
         if mode == 'test':
             return logs, outputs
         return logs
+
+    def _verify_spec(self, specs, is_input=False):
+        out_specs = []
+
+        if specs is None:
+            # If not specific specs of `Input`, using argument names of `forward` function
+            # to generate `Input`.
+            if is_input:
+                out_specs = [
+                    Input(name=n) for n in extract_args(self.network.forward)
+                    if n != 'self'
+                ]
+            else:
+                out_specs = to_list(specs)
+        elif isinstance(specs, dict):
+            assert is_input == False
+            out_specs = [specs[n] \
+                for n in extract_args(self.network.forward) if n != 'self']
+        else:
+            out_specs = to_list(specs)
+        # Note: checks each element has specificed `name`.
+        if out_specs is not None:
+            for i, spec in enumerate(out_specs):
+                assert isinstance(spec, Input)
+                if spec.name is None:
+                    raise ValueError(
+                        "Requires Input[{}].name != None, but receive `None` with {}.".
+                        format(i, spec))
+
+        return out_specs
 
     def _reset_metrics(self):
         for metric in self._metrics:
