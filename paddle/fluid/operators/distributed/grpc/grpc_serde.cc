@@ -39,7 +39,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            ::grpc::ByteBuffer* msg, const std::string& out_name,
                            const int trainer_id,
                            const std::string& table_name) {
-  VLOG(2) << "SerializeToByteBuffer Send_var_name: " << name
+  VLOG(4) << "SerializeToByteBuffer Send_var_name: " << name
           << " Recv_var_name: " << out_name;
   platform::RecordRPCEvent record_event("serial");
   VarMsg request;
@@ -51,7 +51,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   // 1 trainer returns true for ShouldSendProfileState(). It tells PS
   // servers the trainer's profiling state so that PS can follow the
   // trainer.
-  VLOG(2) << "SerializeToByteBuffer ShouldSendProfileState "
+  VLOG(4) << "SerializeToByteBuffer ShouldSendProfileState "
           << platform::ShouldSendProfileState();
   if (platform::ShouldSendProfileState()) {
     if (platform::IsProfileEnabled()) {
@@ -67,7 +67,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     request.set_table_name(table_name);
   }
   if (var->IsType<framework::LoDTensor>()) {
-    VLOG(2) << "SerializeToByteBuffer Get TensorPayload LoDTensor";
+    VLOG(4) << "SerializeToByteBuffer Get TensorPayload LoDTensor";
     request.set_type(::sendrecv::LOD_TENSOR);
     payload = new TensorPayload(GetTensorPayload(var, ctx, &request));
   } else if (var->IsType<framework::SelectedRows>()) {
@@ -82,17 +82,17 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                  typeid(var->Type()).name());
   }
 
-  VLOG(2) << "SerializeToByteBuffer AppendToString";
+  VLOG(4) << "SerializeToByteBuffer AppendToString";
   std::string header;
   request.AppendToString(&header);
   auto buffer = std::unique_ptr<char[]>(new char[1024]);
   void* buf = buffer.get();
-  VLOG(2) << "SerializeToByteBuffer ProtoEncodeHelper begin";
-  VLOG(2) << "SerializeToByteBuffer ProtoEncodeHelper buf " << buf;
+  VLOG(4) << "SerializeToByteBuffer ProtoEncodeHelper begin";
+  VLOG(4) << "SerializeToByteBuffer ProtoEncodeHelper buf " << buf;
   ProtoEncodeHelper e(static_cast<char*>(buf), 1024);
-  VLOG(2) << "SerializeToByteBuffer ProtoEncodeHelper end";
+  VLOG(4) << "SerializeToByteBuffer ProtoEncodeHelper end";
   e.WriteRawBytes(std::string(header.data(), header.size()));
-  VLOG(2) << "SerializeToByteBuffer WriteRawBytes end";
+  VLOG(4) << "SerializeToByteBuffer WriteRawBytes end";
 // NCCLID is copied directly to the message, return bytebuffer
 // with only one slice if serializing NCCLID.
 #ifdef PADDLE_WITH_NCCL
@@ -111,7 +111,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   }
 #endif
   PADDLE_ENFORCE_NOT_NULL(payload);
-  VLOG(2) << "SerializeToByteBuffer WriteVarlengthBeginning";
+  VLOG(4) << "SerializeToByteBuffer WriteVarlengthBeginning";
   e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                             payload->memory_size());
   if (payload->memory_size() >= std::numeric_limits<int>::max()) {
@@ -119,7 +119,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         "Variable %s length %d should less than %d.", name,
         payload->memory_size(), std::numeric_limits<int>::max()));
   }
-  VLOG(2) << "SerializeToByteBuffer grpc_slice_new_with_user_data";
+  VLOG(4) << "SerializeToByteBuffer grpc_slice_new_with_user_data";
   // steal reference of tensor data
   ::grpc::Slice slices[4];  // metadata, tensor, rows meta, rows
   int num_slices = 2;       // only SelectedRows have rows buffer
@@ -151,7 +151,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         ::grpc::Slice::STEAL_REF);
     num_slices = 4;
   }
-  VLOG(2) << "SerializeToByteBuffer msg->Swap(&tmp)";
+  VLOG(4) << "SerializeToByteBuffer msg->Swap(&tmp)";
   ::grpc::ByteBuffer tmp(&slices[0], num_slices);
   msg->Swap(&tmp);
 }
@@ -173,7 +173,9 @@ void DeserializeRecvFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                    framework::Variable** var, int* trainer_id) {
   platform::RecordRPCEvent record_event("deserial");
   operators::distributed::GRPCVariableResponse resp(scope, &ctx);
-  PADDLE_ENFORCE_EQ(resp.Parse(msg), 0, platform::errors::InvalidArgument("parse bytebuffer to tensor error!"));
+  PADDLE_ENFORCE_EQ(
+      resp.Parse(msg), 0,
+      platform::errors::InvalidArgument("parse bytebuffer to tensor error!"));
   *var = resp.GetRecvVar();
   *trainer_id = resp.GetTrainerId();
 }

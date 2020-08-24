@@ -132,10 +132,8 @@ class ProtoEncodeHelper {
     p_++;
   }
   void EncodeBytes(const char* bytes, int N) {
-    VLOG(2) << "EncodeBytes char* bytes " << bytes << " N " << N;
     memcpy(p_, bytes, N);
     p_ += N;
-    VLOG(2) << "EncodeBytes memcpy end";
   }
 
   char* base_;

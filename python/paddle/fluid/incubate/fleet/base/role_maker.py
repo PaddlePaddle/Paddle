@@ -95,15 +95,13 @@ class RoleMakerBase(object):
         """
         return is_worker() of current process
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def is_server(self):
         """
         return is_server() of current process
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def is_first_worker(self):
         """
@@ -112,8 +110,7 @@ class RoleMakerBase(object):
             bool: True if this is the first node of worker,
                   False if not.
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def worker_num(self):
         """
@@ -122,8 +119,7 @@ class RoleMakerBase(object):
         Returns:
             int: worker number
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def role_id(self):
         return self.worker_index() if self.is_worker() else self.server_index()
@@ -135,8 +131,7 @@ class RoleMakerBase(object):
         Returns:
             int: node id
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def server_index(self):
         """
@@ -145,8 +140,7 @@ class RoleMakerBase(object):
         Returns:
             int: node id
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
     def get_trainer_endpoints(self):
         """
@@ -209,7 +203,8 @@ class RoleMakerBase(object):
         This function only implement in PaddleCloudRoleMaker currently
         """
         warnings.warn(
-            "No def _is_heter_worker implement, please check your env setting.")
+            "No function _is_heter_worker implement, please check your env setting."
+        )
         return False
 
     def _heter_worker_num(self):
@@ -222,7 +217,8 @@ class RoleMakerBase(object):
             int: worker number
         """
         warnings.warn(
-            "No def _heter_worker_num implement, please check your env setting.")
+            "No function _heter_worker_num implement, please check your env setting."
+        )
         return 0
 
     def _get_heter_worker_endpoints(self):
@@ -319,8 +315,7 @@ class MPIRoleMaker(RoleMakerBase):
         """
         generate_role() should be called to identify current process's role
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        raise NotImplementedError("Please implement this method in child class")
 
 
 class MPISymetricRoleMaker(MPIRoleMaker):
@@ -735,8 +730,7 @@ class GeneralRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
             training_role = os.environ["TRAINING_ROLE"]
-            worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(
-                ",")
+            worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(",")
             trainers_num = len(worker_endpoints)
             if training_role not in ["TRAINER", "PSERVER"]:
                 raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
@@ -1122,8 +1116,7 @@ class HeterRoleMaker(GeneralRoleMaker):
         if not self._role_is_generated:
             eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
             training_role = os.environ["TRAINING_ROLE"]
-            worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(
-                ",")
+            worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(",")
             trainers_num = len(worker_endpoints)
             xpu_endpoints = os.environ["PADDLE_XPU_ENDPOINTS"].split(",")
             xpu_num = len(xpu_endpoints)
@@ -1150,8 +1143,7 @@ class HeterRoleMaker(GeneralRoleMaker):
                 gloo = fluid.core.Gloo()
                 gloo.init(current_id,
                           len(xpu_endpoints),
-                          self._hdfs_path.rstrip(
-                              "/") + "/xpu", self._hdfs_name,
+                          self._hdfs_path.rstrip("/") + "/xpu", self._hdfs_name,
                           self._hdfs_ugi, self._iface, self._prefix)
                 self._node_type_comm = gloo
             elif training_role == "PSERVER":

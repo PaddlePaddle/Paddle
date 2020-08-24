@@ -797,7 +797,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
             _startup = _startup
 
         if fleet._role_maker.is_heter_parameter_server:
-            # for main program
+            # for heter main program
             if fleet._role_maker._is_heter_worker():
                 _main = heter_worker.split_heter_worker_ops_pass(
                     _main, compiled_config)

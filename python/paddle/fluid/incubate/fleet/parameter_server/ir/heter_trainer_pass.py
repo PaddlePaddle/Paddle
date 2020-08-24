@@ -34,14 +34,14 @@ def split_heter_worker_ops_pass(program, config):
     3. create heter worker program, add listen&serv op
     """
     default_deveice = "cpu"
-    program, heter_ops, _, program_block_ops = find_heter_ops(
-        program, default_deveice)
+    program, heter_ops, _, program_block_ops = find_heter_ops(program,
+                                                              default_deveice)
     if len(heter_ops) == 0:
         return program
     current_device = "gpu"
     if current_device not in heter_ops:
-        raise ValueError(
-            "Op which run on device {} not exist.".format(current_device))
+        raise ValueError("Op which run on device {} not exist.".format(
+            current_device))
 
     block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)
     heter_program = framework.Program()
@@ -55,11 +55,11 @@ def split_trainer_ops_pass(program, config):
     split cpu-trainer program from origin-program
     1. find heter op (located on different device)
     2. find input&output of every heter-block
-    3. create cpu-trainer program, add send&recv op
+    3. create cpu-trainer program, add send&recv op 
     """
     default_deveice = "cpu"
-    program, heter_ops, _, program_block_ops = find_heter_ops(
-        program, default_deveice)
+    program, heter_ops, _, program_block_ops = find_heter_ops(program,
+                                                              default_deveice)
     block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)
     create_trainer_program(program, config, heter_ops, block_vars_detail)
     return program
@@ -78,8 +78,8 @@ def delete_startup_useless_ops_var_pass(startup_program, main_program, config):
         # delete useless op
         need_delete_op = []
         for op in current_block.ops:
-            inputs, outputs = find_op_input_output(
-                startup_program, current_block, op)
+            inputs, outputs = find_op_input_output(startup_program,
+                                                   current_block, op)
             inputs += outputs
             # Todo: delete some concat op
             if list(set(inputs) & set(vars_in_main_program)) == None:

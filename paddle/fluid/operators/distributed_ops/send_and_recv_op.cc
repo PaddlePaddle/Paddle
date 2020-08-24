@@ -31,26 +31,26 @@ namespace operators {
 
 template <typename DeviceContext, typename T>
 class SendAndRecvKernel : public framework::OpKernel<T> {
-  public:
-    void Compute(const framework::ExecutionContext &ctx) const override{
-        auto &scope = ctx.scope();
-        const auto &place = ctx.GetPlace();
-        auto send_var_name = ctx.Attr<std::string>("send_var_name");
-        auto recv_var_name = ctx.Attr<std::string>("recv_var_name");
-        auto epmap = ctx.Attr<std::string>("endpoint");
-        auto trainer_id = ctx.Attr<int>("trainer_id");
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto& scope = ctx.scope();
+    const auto& place = ctx.GetPlace();
+    auto send_var_name = ctx.Attr<std::string>("send_var_name");
+    auto recv_var_name = ctx.Attr<std::string>("recv_var_name");
+    auto epmap = ctx.Attr<std::string>("endpoint");
+    auto trainer_id = ctx.Attr<int>("trainer_id");
 
-        platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-        auto& context = *pool.Get(place);
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& context = *pool.Get(place);
 
-        distributed::RPCClient* rpc_client =
-            distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
-        VLOG(3) << "SendAndRecvOp Send_var_name: " << send_var_name
-                << " Recv_var_name: " << recv_var_name;
-        distributed::VarHandlePtr rets = rpc_client->AsyncSendAndRecv(
-            epmap, context, scope, send_var_name, recv_var_name);
-        rets->Wait();
-    }
+    distributed::RPCClient* rpc_client =
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
+    VLOG(3) << "SendAndRecvOp Send_var_name: " << send_var_name
+            << " Recv_var_name: " << recv_var_name;
+    distributed::VarHandlePtr rets = rpc_client->AsyncSendAndRecv(
+        epmap, context, scope, send_var_name, recv_var_name);
+    rets->Wait();
+  }
 };
 
 class SendAndRecvOp : public framework::OperatorWithKernel {
@@ -58,7 +58,7 @@ class SendAndRecvOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
-  protected:
+ protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -80,7 +80,6 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({"127.0.0.1:6164"});
     AddComment(R"DOC(
     SendAndRecv operator
-
     This operator will send variables to listen_and_serve op at the parameter server.
     And recv variable from parameter server of send variable's scope.
     )DOC");
@@ -92,10 +91,8 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(
-    send_and_recv, ops::SendAndRecvOp,ops::SendAndRecvOpMaker);
+REGISTER_OPERATOR(send_and_recv, ops::SendAndRecvOp, ops::SendAndRecvOpMaker);
 
 REGISTER_OP_CPU_KERNEL(
     send_and_recv,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, float>
-)
+    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, float>)

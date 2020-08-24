@@ -134,9 +134,8 @@ void ProcGetResponse(const VarHandle& var_h,
 
 void ProcGetRecvResponse(const VarHandle& var_h,
                          const ::grpc::ByteBuffer& ret_msg) {
-  VLOG(4) << "ProcGetResponse";
+  VLOG(4) << "ProcGetRecvResponse";
   framework::Variable* outvar = nullptr;
-  // get response's trainer_id is not used
   int trainer_id;
   DeserializeRecvFromByteBuffer(ret_msg, *var_h.ctx(), var_h.scope(), &outvar,
                                 &trainer_id);
@@ -507,16 +506,16 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   const std::string method = kSendAndRecvRPC;
-  VLOG(2) << "GRPCClient::SendAndRecv Begin ,Send_var_name: "
+  VLOG(4) << "GRPCClient::SendAndRecv Begin ,Send_var_name: "
           << send_var_name_val << " Recv_var_name: " << recv_var_name_val;
   int retry_times_ = 0;
 
   while (true) {
     SendAndRecvProcessor* s = new SendAndRecvProcessor(ch);
-    VLOG(2) << "GRPCClient::SendAndRecv Get VarHandlePtr";
+    VLOG(4) << "GRPCClient::SendAndRecv Get VarHandlePtr";
     VarHandlePtr h(
         new VarHandle(ep, method, send_var_name_val, p_ctx, p_scope));
-    VLOG(2) << "GRPCClient::SendAndRecv SendAndRecvProcessor Begin prepare";
+    VLOG(4) << "GRPCClient::SendAndRecv SendAndRecvProcessor Begin prepare";
     VarHandlePtr h_recv(
         new VarHandle(ep, method, recv_var_name_val, p_ctx, p_scope));
     s->Prepare(h, time_out);
@@ -524,13 +523,13 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
 
     framework::AsyncIO([send_var_name_val, recv_var_name_val, table_name_val,
                         p_scope, p_ctx, s, method, h, this] {
-      VLOG(2) << "GRPCClient::SendAndRecv Begin AsyncIO";
+      VLOG(4) << "GRPCClient::SendAndRecv Begin AsyncIO";
 
       auto* send_var = p_scope->FindVar(send_var_name_val);
       send_var->GetMutable<framework::LoDTensor>()->set_lod({});
       ::grpc::ByteBuffer buf;
-      VLOG(2) << "GRPCClient::SendAndRecv Begin AsyncIO SerializeToByteBuffer";
-      VLOG(2) << "SerializeToByteBuffer: send_var_name_val: "
+      VLOG(4) << "GRPCClient::SendAndRecv Begin AsyncIO SerializeToByteBuffer";
+      VLOG(4) << "SerializeToByteBuffer: send_var_name_val: "
               << send_var_name_val
               << " recv_var_name_val: " << recv_var_name_val;
       SerializeToByteBuffer(send_var_name_val, send_var, *p_ctx, &buf,
@@ -543,19 +542,19 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
 
       platform::RecordRPCEvent record_event(method);
 
-      VLOG(2) << "GRPCClient::SendAndRecv Begin AsyncIO PrepareUnaryCall";
+      VLOG(4) << "GRPCClient::SendAndRecv Begin AsyncIO PrepareUnaryCall";
       auto call = s->stub_g_.PrepareUnaryCall(
           s->context_.get(), "/sendrecv.SendRecvService/SendAndRecvVariable",
           buf, &cq_);
-      VLOG(2) << "GRPCClient::SendAndRecv Begin AsyncIO StartCall";
+      VLOG(4) << "GRPCClient::SendAndRecv Begin AsyncIO StartCall";
       call->StartCall();
-      VLOG(2) << "GRPCClient::SendAndRecv Begin AsyncIO Finish";
+      VLOG(4) << "GRPCClient::SendAndRecv Begin AsyncIO Finish";
       call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
 
-      // VLOG(2) << "GRPCClient::SendAndRecv Begin GRPCVariableResponse";
+      // VLOG(4) << "GRPCClient::SendAndRecv Begin GRPCVariableResponse";
       // distributed::GRPCVariableResponse resp(p_scope, p_ctx);
       // resp.Parse(*(&s->reply_));
-      // VLOG(2) << "GRPCClient::SendAndRecv End GRPCVariableResponse";
+      // VLOG(4) << "GRPCClient::SendAndRecv End GRPCVariableResponse";
       if (UNLIKELY(platform::IsProfileEnabled())) {
         h->Wait();
       }

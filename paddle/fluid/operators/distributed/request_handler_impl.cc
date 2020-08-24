@@ -334,7 +334,7 @@ bool RequestSendAndRecvHandler::Handle(const std::string &varname,
                                        const std::string &table_name) {
   VLOG(3) << "SendAndRecvHandle: " << varname
           << " out_var_name: " << out_var_name
-          << " , trainer_id: " << trainer_id;
+          << " , trainer_id:  " << trainer_id;
 
   executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(), Scope);
   *outvar = Scope->FindVar(out_var_name);

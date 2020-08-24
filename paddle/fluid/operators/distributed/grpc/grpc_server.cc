@@ -440,7 +440,7 @@ class RequestSendAndRecv final : public RequestBase {
                               ::grpc::ServerCompletionQueue* cq,
                               RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    VLOG(2) << "RequestSendAndRecv Begin GRPCVariableResponse. ";
+    VLOG(4) << "RequestSendAndRecv Begin GRPCVariableResponse. ";
     request_.reset(new GRPCVariableResponse(
         request_handler->scope(), request_handler->dev_ctx(),
         request_handler->distributed_mode()));
@@ -448,18 +448,18 @@ class RequestSendAndRecv final : public RequestBase {
     int method_id =
         static_cast<int>(distributed::GrpcMethod::kRequestSendAndRecv);
 
-    VLOG(2) << "RequestSendAndRecv Begin RequestAsyncUnary. ";
+    VLOG(4) << "RequestSendAndRecv Begin RequestAsyncUnary. ";
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
-    VLOG(2) << "RequestSendAndRecv End RequestAsyncUnary. ";
+    VLOG(4) << "RequestSendAndRecv End RequestAsyncUnary. ";
   }
 
   virtual ~RequestSendAndRecv() {}
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
-    VLOG(2) << "RequestSendAndRecv Begin Process. ";
+    VLOG(4) << "RequestSendAndRecv Begin Process. ";
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
     std::string table_name = request_->TableName();
@@ -474,7 +474,7 @@ class RequestSendAndRecv final : public RequestBase {
     framework::Variable* outvar = nullptr;
     // framework::Variable* outvar = scope->Var(out_var_name);
 
-    VLOG(2) << "RequestSendAndRecv Begin Get Handle. ";
+    VLOG(4) << "RequestSendAndRecv Begin Get Handle. ";
     request_handler_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
                              out_var_name, table_name);
 

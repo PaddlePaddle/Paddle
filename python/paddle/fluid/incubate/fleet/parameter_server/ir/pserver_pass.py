@@ -49,7 +49,7 @@ def _same_or_split_var(p_name, var_name):
 def _get_optimizer_input_shape(op_type, varkey, orig_shape, param_shape):
     """
     Returns the shape for optimizer inputs that need to be reshaped when
-    Param and Grad is split to multiple servers.
+    Param and Grad is split to multiple servers. 
     """
     # HACK(typhoonzero) : Should use functions of corresponding optimizer in
     # optimizer.py to get the shape, do not bind this in the transpiler.
@@ -401,8 +401,7 @@ def add_optimizer_pass(program, config):
             dtype=grad_block.dtype,
             shape=grad_block.shape)
 
-        grad_to_block_id.append(
-            merged_var.name + ":" + str(optimize_block.idx))
+        grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
         if config.is_sync_mode() and trainers > 1:
             vars2merge = []
             for i in range(trainers):
@@ -581,8 +580,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
     opt_value_map["lars_momentum"] = ["Param", "Velocity"]
     opt_value_map["rmsprop"] = ["Param", "Moment", "MeanSquare"]
     opt_value_map["decayed_adagrad"] = ["Param", "Moment"]
-    opt_value_map["ftrl"] = [
-        "Param", "SquaredAccumulator", "LinearAccumulator"]
+    opt_value_map["ftrl"] = ["Param", "SquaredAccumulator", "LinearAccumulator"]
 
     geo_value_map = {}
     geo_value_map["sum"] = "Param"

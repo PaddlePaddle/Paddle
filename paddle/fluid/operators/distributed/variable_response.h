@@ -91,19 +91,15 @@ class VariableResponse {
   // should call parse first.
   framework::Variable* GetVar() {
     if (create_scope_) {
-      VLOG(2) << "VariableResponse GetVar varname: " << meta_.varname();
       return local_scope_->Var(meta_.varname());
     }
-    VLOG(2) << "VariableResponse GetVar varname: " << meta_.varname();
     return scope_->FindVar(meta_.varname());
   }
 
   framework::Variable* GetRecvVar() {
     if (create_scope_) {
-      VLOG(2) << "VariableResponse GetVar out_varname: " << meta_.varname();
       return local_scope_->Var(meta_.out_varname());
     }
-    VLOG(2) << "VariableResponse GetVar out_varname: " << meta_.varname();
     return scope_->FindVar(meta_.out_varname());
   }
 

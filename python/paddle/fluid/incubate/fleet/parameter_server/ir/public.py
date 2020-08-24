@@ -121,7 +121,7 @@ def find_heter_ops(program, default_device="cpu"):
         if op_device in heter_devices:
             return True
         elif op_type in COMMUNICATE_OPS_TYPE and current_heter_device != default_device:
-            # for distributed communciate ops: send & recv & barrier
+            # for distributed communciate ops: send & recv & barrier etc.
             # Todo: need update this method
             op._set_attr('op_device', current_heter_device)
             return True
@@ -396,8 +396,8 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list,
                                          entrance_var, exit_var)
 
     print("entrance_var: {}".format(entrance_var))
-    print("Block {} create: \ndefault_device_comm_info {}, \ncomm_info {}".format(
-        heter_block_index, default_device_comm_info, comm_info))
+    print("Block {} create: \ndefault_device_comm_info {}, \ncomm_info {}".
+          format(heter_block_index, default_device_comm_info, comm_info))
     # create reshape op
     for i in range(len(entrance_var)):
         insert_reshape_op(
