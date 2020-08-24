@@ -21,6 +21,7 @@ from . import extension
 from . import activation
 from . import norm
 from . import distance
+from . import transformer
 
 from .activation import *
 from .loss import *
@@ -28,6 +29,7 @@ from .conv import *
 from .extension import *
 from .activation import *
 from .norm import *
+from .transformer import *
 # from .activation import PReLU        #DEFINE_ALIAS
 from .activation import ReLU  #DEFINE_ALIAS
 from .activation import LeakyReLU  #DEFINE_ALIAS
