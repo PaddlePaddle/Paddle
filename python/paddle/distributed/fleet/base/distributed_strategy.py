@@ -793,13 +793,17 @@ class DistributedStrategy(object):
         strategy = self.strategy
         keys = [
             "FLAGS_cudnn_batchnorm_spatial_persistent",
-            "FLAGS_conv_workspace_size_limit", "FLAGS_cudnn_exhaustive_search",
-            "FLAGS_sync_nccl_allreduce"
+            "FLAGS_conv_workspace_size_limit",
+            "FLAGS_cudnn_exhaustive_search",
+            "FLAGS_sync_nccl_allreduce",
+            "FLAGS_fuse_parameter_memory_size",
+            "FLAGS_fuse_parameter_groups_size",
         ]
         values = [
             strategy.cudnn_batchnorm_spatial_persistent,
             strategy.conv_workspace_size_limit,
-            strategy.cudnn_exhaustive_search, strategy.sync_nccl_allreduce
+            strategy.cudnn_exhaustive_search, strategy.sync_nccl_allreduce,
+            strategy.fuse_grad_size_in_MB, strategy.fuse_grad_size_in_TFLOPS
         ]
 
         for i, key in enumerate(keys):
