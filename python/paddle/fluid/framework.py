@@ -48,6 +48,7 @@ __all__ = [
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
+    'is_compiled_with_xpu',
     'Variable',
     'ComplexVariable',
     'load_op_library',
@@ -308,6 +309,21 @@ def _cuda_ids():
     else:
         device_ids = six.moves.range(core.get_cuda_device_count())
     return device_ids
+
+
+def is_compiled_with_xpu():
+    """
+    Whether this whl package can be used to run the model on XPU.
+
+    Returns (bool): support xpu or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_xpu = fluid.is_compiled_with_xpu()
+    """
+    return core.is_compiled_with_xpu()
 
 
 def is_compiled_with_cuda():
@@ -4434,6 +4450,8 @@ class Program(object):
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
             p._appending_grad_times = self._appending_grad_times
+            if hasattr(self, 'lr_sheduler'):
+                p.lr_sheduler = self.lr_sheduler
 
             #NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.
