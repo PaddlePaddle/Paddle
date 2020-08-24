@@ -30,7 +30,6 @@ from ..fluid.layers import transpose  #DEFINE_ALIAS
 from ..fluid.layers import unique  #DEFINE_ALIAS
 from ..fluid.layers import unstack  #DEFINE_ALIAS
 
-from ..fluid.layers import gather_nd  #DEFINE_ALIAS
 from ..fluid.layers import scatter_nd_add  #DEFINE_ALIAS
 from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
 from ..fluid.layers import shard_index  #DEFINE_ALIAS
@@ -1265,8 +1264,8 @@ def gather_nd(x, index, name=None):
             * Case 1:
                 index = [[1]]
 
-                gather_nd(input, index)
-                         = [input[1, :, :]]
+                gather_nd(x, index)
+                         = [x[1, :, :]]
                          = [[12, 13, 14, 15],
                             [16, 17, 18, 19],
                             [20, 21, 22, 23]]
@@ -1274,15 +1273,15 @@ def gather_nd(x, index, name=None):
             * Case 2:
                 index = [[0,2]]
 
-                gather_nd(input, index)
-                         = [input[0, 2, :]]
+                gather_nd(x, index)
+                         = [x[0, 2, :]]
                          = [8, 9, 10, 11]
 
             * Case 3:
                 index = [[1, 2, 3]]
 
-                gather_nd(input, index)
-                         = [input[1, 2, 3]]
+                gather_nd(x, index)
+                         = [x[1, 2, 3]]
                          = [23]
 
     Args:
