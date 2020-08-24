@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -55,6 +56,8 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         return;
       }
 
+      bool init_generator_py = framework::Generator::GetInstance()->is_init_py;
+
       // NOTE: fixed seed should only be used in unittest or for debug.
       // Guarantee to use random seed in training.
       std::random_device rnd;
@@ -71,7 +74,11 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
       std::uniform_real_distribution<float> dist(0, 1);
 
       for (size_t i = 0; i < size; ++i) {
-        if (dist(engine) < dropout_prob) {
+        float cur_random =
+            init_generator_py
+                ? dist(framework::Generator::GetInstance()->GetCPUEngine())
+                : dist(engine);
+        if (cur_random < dropout_prob) {
           mask_data[i] = 0;
           y_data[i] = 0;
         } else {

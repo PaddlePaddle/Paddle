@@ -21,6 +21,7 @@ from .. import functional as F
 from paddle.fluid.framework import core, in_dygraph_mode, _varbase_creator
 
 __all__ = [
+    'BCEWithLogitsLoss',
     'CrossEntropyLoss',
     'MSELoss',
     'L1Loss',
@@ -28,8 +29,114 @@ __all__ = [
     'BCELoss',
     'KLDivLoss',
     'MarginRankingLoss',
+    'CTCLoss',
     'SmoothL1Loss',
 ]
+
+
+class BCEWithLogitsLoss(fluid.dygraph.Layer):
+    """
+    This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
+    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
+    layer and some reduce operations.
+
+    This measures the element-wise probability error in classification tasks
+    in which each class is independent.
+    This can be thought of as predicting labels for a data-point, where labels
+    are not mutually exclusive. For example, a news article can be about
+    politics, technology or sports at the same time or none of these.
+
+    First this operator calculate loss function as follows:
+
+    .. math::
+           Out = -Labels * \\log(\\sigma(Logit)) - (1 - Labels) * \\log(1 - \\sigma(Logit))
+
+    We know that :math:`\\sigma(Logit) = \\frac{1}{1 + \\e^{-Logit}}`. By substituting this we get:
+
+    .. math::
+           Out = Logit - Logit * Labels + \\log(1 + \\e^{-Logit})
+
+    For stability and to prevent overflow of :math:`\\e^{-Logit}` when Logit < 0,
+    we reformulate the loss as follows:
+
+    .. math::
+           Out = \\max(Logit, 0) - Logit * Labels + \\log(1 + \\e^{-\|Logit\|})
+
+    Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
+    weight tensor on the loss `Out`. The ``weight`` tensor will attach different
+    weight on every items in the batch. The ``pos_weight`` will attach different
+    weight on the positive label of each class.
+
+    Finally, this operator applies reduce operation on the loss.
+    If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
+
+    Note that the target labels ``label`` should be numbers between 0 and 1.
+
+    Args:
+        weight (Tensor, optional): A manual rescaling weight given to the loss of each
+            batch element. If given, it has to be a 1D Tensor whose size is `[N, ]`,
+            The data type is float32, float64. Default is ``'None'``.
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'mean'``.
+        pos_weight (Tensor, optional): A weight of positive examples. Must be a vector
+            with length equal to the number of classes. The data type is float32, float64.
+            Default is ``'None'``.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shapes:
+        logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
+            N is batch_size, `*` means number of additional dimensions. The ``logit``
+            is usually the output of Linear layer. Available dtype is float32, float64.
+        label (Tensor): The target labels tensor. 2-D tensor with the same shape as
+            ``logit``. The target labels which values should be numbers between 0 and 1.
+            Available dtype is float32, float64.
+        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+            same as ``logit`` , else the shape of output is scalar.
+
+    Returns:
+        A callable object of BCEWithLogitsLoss.
+
+    Examples:
+
+        .. code-block:: python
+            import paddle
+            paddle.disable_static()
+            logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
+            label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
+            bce_logit_loss = paddle.nn.BCEWithLogitsLoss()
+            output = bce_logit_loss(logit, label)
+            print(output.numpy())  # [0.45618808]
+
+    """
+
+    def __init__(self,
+                 weight=None,
+                 reduction='mean',
+                 pos_weight=None,
+                 name=None):
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in BCEWithLogitsLoss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction)
+
+        super(BCEWithLogitsLoss, self).__init__()
+        self.weight = weight
+        self.reduction = reduction
+        self.pos_weight = pos_weight
+        self.name = name
+
+    def forward(self, logit, label):
+        out = paddle.nn.functional.binary_cross_entropy_with_logits(
+            logit, label, self.weight, self.reduction, self.pos_weight,
+            self.name)
+        return out
 
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
@@ -146,9 +253,6 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
 class MSELoss(fluid.dygraph.layers.Layer):
     """
-	:alias_main: paddle.nn.MSELoss
-	:alias: paddle.nn.MSELoss,paddle.nn.layer.MSELoss,paddle.nn.layer.loss.MSELoss
-
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
 
@@ -170,8 +274,6 @@ class MSELoss(fluid.dygraph.layers.Layer):
     where `input` and `label` are `float32` tensors of same shape.
 
     Parameters:
-        input (Variable): Input tensor, the data type is float32,
-        label (Variable): Label tensor, the data type is float32,
         reduction (string, optional): The reduction method for the output,
             could be 'none' | 'mean' | 'sum'.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned.
@@ -179,46 +281,27 @@ class MSELoss(fluid.dygraph.layers.Layer):
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
 
-    Returns:
-        The tensor variable storing the MSE loss of input and label.
-
-    Return type:
-        Variable.
+    Shape:
+        input (Tensor): Input tensor, the data type is float32 or float64
+        label (Tensor): Label tensor, the data type is float32 or float64
+        output (Tensor): output tensor storing the MSE loss of input and label, the data type is same as input.
 
     Examples:
         .. code-block:: python
 
             import numpy as np
             import paddle
-            from paddle import fluid
-            import paddle.fluid.dygraph as dg
 
-            mse_loss = paddle.nn.loss.MSELoss()
-            input = fluid.data(name="input", shape=[1])
-            label = fluid.data(name="label", shape=[1])
-            place = fluid.CPUPlace()
             input_data = np.array([1.5]).astype("float32")
             label_data = np.array([1.7]).astype("float32")
 
-            # declarative mode
-            output = mse_loss(input,label)
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            output_data = exe.run(
-                fluid.default_main_program(),
-                feed={"input":input_data, "label":label_data},
-                fetch_list=[output],
-                return_numpy=True)
-            print(output_data)
-            # [array([0.04000002], dtype=float32)]
-
-            # imperative mode
-            with dg.guard(place) as g:
-                input = dg.to_variable(input_data)
-                label = dg.to_variable(label_data)
-                output = mse_loss(input, label)
-                print(output.numpy())
-                # [0.04000002]
+            paddle.disable_static()
+            mse_loss = paddle.nn.loss.MSELoss()
+            input = paddle.to_tensor(input_data)
+            label = paddle.to_tensor(label_data)
+            output = mse_loss(input, label)
+            print(output.numpy())
+            # [0.04000002]
     """
 
     def __init__(self, reduction='mean'):
@@ -231,10 +314,10 @@ class MSELoss(fluid.dygraph.layers.Layer):
 
     def forward(self, input, label):
         if not fluid.framework.in_dygraph_mode():
-            fluid.data_feeder.check_variable_and_dtype(input, 'input',
-                                                       ['float32'], 'MSELoss')
-            fluid.data_feeder.check_variable_and_dtype(label, 'label',
-                                                       ['float32'], 'MSELoss')
+            fluid.data_feeder.check_variable_and_dtype(
+                input, 'input', ['float32', 'float64'], 'MSELoss')
+            fluid.data_feeder.check_variable_and_dtype(
+                label, 'label', ['float32', 'float64'], 'MSELoss')
 
         square_out = fluid.layers.square(
             fluid.layers.elementwise_sub(input, label))
@@ -670,6 +753,94 @@ class MarginRankingLoss(fluid.dygraph.Layer):
         out = paddle.nn.functional.margin_ranking_loss(
             input, other, label, self.margin, self.reduction, self.name)
         return out
+
+
+class CTCLoss(fluid.dygraph.Layer):
+    """
+	:alias_main: paddle.nn.CTCLoss
+	:alias: paddle.nn.CTCLoss, paddle.nn.layer.CTCLoss, paddle.nn.layer.loss.CTCLoss
+
+    An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
+    to compute Connectionist Temporal Classification (CTC) loss.
+    It can be aliased as softmax with CTC, since a native softmax activation
+    is interated to the Warp-CTC library to normalize values for each row of the input tensor.
+
+    Parameters:
+        blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
+        reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
+
+    Shape:
+        log_probs (Tensor): The unscaled probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type must be float32.
+        labels (Tensor): The ground truth sequence with padding, which must be a 3-D Tensor. The tensor shape is [batch_size, max_label_length], where max_label_length is the longest length of label sequence. The data type must be int32.
+        input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
+        label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
+
+    Returns:
+        Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
+
+    Examples:
+
+        .. code-block:: python
+
+            # declarative mode
+            import numpy as np
+            import paddle
+
+            # length of the longest logit sequence
+            max_seq_length = 4
+            #length of the longest label sequence
+            max_label_length = 3
+            # number of logit sequences
+            batch_size = 2
+            # class num
+            class_num = 3
+
+            np.random.seed(1)
+            log_probs = np.array([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
+                                    [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
+
+                                    [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
+                                    [5.38816750e-01, 4.19194520e-01, 6.85219526e-01]],
+
+                                    [[2.04452246e-01, 8.78117442e-01, 2.73875929e-02],
+                                    [6.70467496e-01, 4.17304814e-01, 5.58689833e-01]],
+
+                                    [[1.40386939e-01, 1.98101491e-01, 8.00744593e-01],
+                                    [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
+
+                                    [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
+                                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]]).astype("float32")
+            labels = np.array([[1, 2, 2],
+                            [1, 2, 2]]).astype("int32")
+            input_lengths = np.array([5, 5]).astype("int64")
+            label_lengths = np.array([3, 3]).astype("int64")
+
+            paddle.disable_static()
+            log_probs = paddle.to_tensor(log_probs)
+            labels = paddle.to_tensor(labels)
+            input_lengths = paddle.to_tensor(input_lengths)
+            label_lengths = paddle.to_tensor(label_lengths)
+
+            loss = paddle.nn.CTCLoss(blank=0, reduction='none')(log_probs, labels,
+                input_lengths,
+                label_lengths)
+            print(loss.numpy())  #[3.9179852 2.9076521]
+
+            loss = paddle.nn.CTCLoss(blank=0, reduction='mean')(log_probs, labels,
+                input_lengths,
+                label_lengths)
+            print(loss.numpy())  #[1.1376063]
+    """
+
+    def __init__(self, blank=0, reduction='mean'):
+        super(CTCLoss, self).__init__()
+        self.blank = blank
+        self.reduction = reduction
+
+    def forward(self, log_probs, labels, input_lengths, label_lengths):
+        return paddle.nn.functional.ctc_loss(log_probs, labels, input_lengths,
+                                             label_lengths, self.blank,
+                                             self.reduction)
 
 
 class SmoothL1Loss(fluid.dygraph.Layer):

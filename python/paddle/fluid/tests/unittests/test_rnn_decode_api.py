@@ -248,7 +248,8 @@ class PolicyGradient(object):
             func=reward_func, x=[action, length], out=reward)
         neg_log_prob = layers.cross_entropy(act_prob, action)
         cost = neg_log_prob * reward
-        cost = (layers.reduce_sum(cost) / layers.reduce_sum(length)
+        cost = (layers.reduce_sum(cost) /
+                layers.cast(layers.reduce_sum(length), "float32")
                 ) if length is not None else layers.reduce_mean(cost)
         optimizer = fluid.optimizer.Adam(self.lr)
         optimizer.minimize(cost)
