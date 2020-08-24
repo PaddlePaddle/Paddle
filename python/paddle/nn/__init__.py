@@ -88,6 +88,7 @@ from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
 from .layer.common import Flatten  #DEFINE_ALIAS
 from .layer.common import UpSample  #DEFINE_ALIAS
+from .layer.common import Bilinear  #DEFINE_ALIAS
 from .layer.common import Dropout  #DEFINE_ALIAS
 from .layer.common import Dropout2D  #DEFINE_ALIAS
 from .layer.common import Dropout3D  #DEFINE_ALIAS
@@ -138,7 +139,10 @@ from .layer.transformer import TransformerDecoder
 from .layer.transformer import Transformer
 from .layer.distance import PairwiseDistance  #DEFINE_ALIAS
 
+from .layer.vision import PixelShuffle
+
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS
+from .layer import vision  #DEFINE_ALIAS
 from ..fluid.dygraph.layers import Layer  #DEFINE_ALIAS
 from ..fluid.dygraph.container import LayerList, ParameterList, Sequential  #DEFINE_ALIAS

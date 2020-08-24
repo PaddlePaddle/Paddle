@@ -77,7 +77,8 @@ class AffineGridTestCase(unittest.TestCase):
         theta_var = dg.to_variable(
             self.theta) if not self.invalid_theta else "invalid"
         output_shape = dg.to_variable(
-            self.output_shape) if variable_output_shape else self.output_shape
+            self.
+            output_shape) if self.variable_output_shape else self.output_shape
         y_var = F.affine_grid(
             theta_var, output_shape, align_corners=self.align_corners)
         y_np = y_var.numpy()
