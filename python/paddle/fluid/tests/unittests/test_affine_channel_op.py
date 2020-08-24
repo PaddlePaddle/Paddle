@@ -123,7 +123,7 @@ class TestAffineChannel2D(TestAffineChannelOp):
         return
 
     def test_check_grad_stopgrad_dscale_dbias(self):
-	print('test pr 26623')
+        print('test pr 26623')
         return
 
 
