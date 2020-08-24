@@ -50,5 +50,4 @@ class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveAllgatherAPI, "allgather", 'gloo')
-    runtime_main(TestCollectiveAllgatherAPI, "allgather", 'nccl')
+    runtime_main(TestCollectiveAllgatherAPI, "allgather")

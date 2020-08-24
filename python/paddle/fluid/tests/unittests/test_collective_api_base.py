@@ -114,7 +114,7 @@ class TestCollectiveAPIRunnerBase(object):
             strategy.iface = "lo"
             strategy.init_seconds = 999999
             strategy.run_seconds = 999999
-            strategy.path = "/tmp/tmp0"
+            strategy.path = "/tmp/tmp%d" % args['path_id']
             gloo = fluid.core.GlooParallelContext(strategy)
             gloo.init()
             place = fluid.CPUPlace()
@@ -134,7 +134,7 @@ class TestCollectiveAPIRunnerBase(object):
             sys.stdout.buffer.write(pickle.dumps(out))
 
 
-def runtime_main(test_class, col_type, backend):
+def runtime_main(test_class, col_type):
     args = {}
     model = test_class()
     args["deviceid"] = os.getenv("FLAGS_selected_gpus")
@@ -143,7 +143,8 @@ def runtime_main(test_class, col_type, backend):
     args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
     args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
     args["col_type"] = col_type
-    args["backend"] = backend
+    args["backend"] = os.getenv("BACKEND")
+    args["path_id"] = int(os.getenv("PATH_ID"))
     model.run_trainer(args)
 
 
@@ -226,6 +227,8 @@ class TestDistBase(unittest.TestCase):
     def check_with_place(self,
                          model_file,
                          col_type,
+                         backend="nccl",
+                         path_id="0",
                          check_error_log=False,
                          need_envs={}):
         required_envs = {
@@ -236,7 +239,9 @@ class TestDistBase(unittest.TestCase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "0",
-            "NCCL_P2P_DISABLE": "1"
+            "NCCL_P2P_DISABLE": "1",
+            "BACKEND": backend,
+            "PATH_ID": path_id
         }
         required_envs.update(need_envs)
         if check_error_log:

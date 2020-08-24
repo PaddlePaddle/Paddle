@@ -23,8 +23,13 @@ class TestCollectiveAllgatherAPI(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_allgather(self):
-        self.check_with_place("collective_allgather_api.py", "allgather")
+    def test_allgather_nccl(self):
+        self.check_with_place("collective_allgather_api.py", "allgather",
+                              "nccl")
+
+    def test_allgather_gloo(self):
+        self.check_with_place("collective_allgather_api.py", "allgather",
+                              "gloo", "3")
 
 
 if __name__ == '__main__':

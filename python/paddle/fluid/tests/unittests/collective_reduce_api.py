@@ -49,5 +49,4 @@ class TestCollectiveReduceAPI(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveReduceAPI, "reduce", 'gloo')
-    runtime_main(TestCollectiveReduceAPI, "reduce", 'nccl')
+    runtime_main(TestCollectiveReduceAPI, "reduce")

@@ -23,8 +23,13 @@ class TestCollectiveBroadcastAPI(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_broadcast(self):
-        self.check_with_place("collective_broadcast_api.py", "broadcast")
+    def test_broadcast_nccl(self):
+        self.check_with_place("collective_broadcast_api.py", "broadcast",
+                              "nccl")
+
+    def test_broadcast_gloo(self):
+        self.check_with_place("collective_broadcast_api.py", "broadcast",
+                              "gloo", "0")
 
 
 if __name__ == '__main__':
