@@ -180,14 +180,66 @@ def init_parallel_env(rank=-1, backend='nccl', **options):
     Args:
         rank(int, optional): Rank of current process. Default vaule is -1.
         backend(str, optional): The backend to communication between multiple devices.
-            Now only support `nccl`. Default value is `nccl`.
-        **options(dict, optional): Other initial parallel execution environment configuration.
+            Now only support ``nccl`` . Default value is ``nccl`` .
+        **options(dict, optional): Other initial parallel execution environment configuration options. 
+            The following options are currently supported:
+            - cluster_node_ips: Paddle cluster nodes ips, such as "192.168.0.16,192.168.0.17". Default: "127.0.0.1"
+            - node_ip: The current node ip, such as "192.168.0.16". Default: "127.0.0.1"
+            - started_port: The trainer's started port on a single node, such as 6170. Default: None
+            - selected_gpus: The training process will run on the selected_gpus, such as "0,1,2,3". Default: None
+            - print_config: Print current parallel training config. Default: True.
+            - use_paddlecloud: Wheter to use paddlecloud platform to run your multi-process job. Default: False.
 
     Returns:
         ParallelStrategy
         
     Examples:
-        
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+            import paddle.optimizer as opt
+            import paddle.distributed as dist
+
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear1 = nn.Linear(10, 10)
+                    self._linear2 = nn.Linear(10, 1)
+                    
+                def forward(self, x):
+                    return self._linear2(self._linear1(x))
+
+            def train(rank):
+                # 1. enable dynamic mode
+                paddle.disable_static()
+                
+                # 2. initialize parallel environment
+                strategy = dist.init_parallel_env(rank)
+
+                # 3. create data parallel layer & optimizer
+                layer = LinearNet()
+                dp_layer = dist.DataParallel(layer, strategy)
+
+                loss_fn = nn.MSELoss()
+                sgd = opt.SGD(
+                    learning_rate=0.001, parameter_list=dp_layer.parameters())
+
+                # 4. run layer
+                inputs = paddle.randn([10, 10], 'float32')
+                outputs = dp_layer(inputs)
+                labels = paddle.randn([10, 1], 'float32')
+                loss = loss_fn(outputs, labels)
+                
+                loss = dp_layer.scale_loss(loss)
+                loss.backward()
+                dp_layer.apply_collective_grads()
+
+                sgd.minimize(loss)
+                dp_layer.clear_gradients()
+
+            if __name__ == '__main__':
+                dist.spawn(train, args=(), nprocs=2)
     """
 
     # 1. input check

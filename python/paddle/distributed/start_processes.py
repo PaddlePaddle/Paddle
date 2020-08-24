@@ -133,6 +133,77 @@ def start_processes(func,
                     join=True,
                     daemon=False,
                     start_method='spawn'):
+    """
+    Start multiple rocesses for parallel training.
+
+    Args:
+        func (function): The targert function is called by started process.
+            This function need to be able to pickled, so it must be defined
+            at the top level of a module.
+            This function should be called as ``func(i, *args)`` , ``i`` is
+            the process index and ``args`` contains other arguments as tuple.
+        args (tuple): Arguments passed to ``func`` .
+        nprocs (int): Number of processed to start. 
+        join (bool): Perform a blocking join on all started processes.
+            Default: True.
+        daemon (bool): The started processes' daemon flag. Default: False.
+        start_method (string): the way to start a process. The start method
+            can be ``spawn`` , ``fork`` , ``forkserver`` . Because the CUDA 
+            runtime does not support the ``fork`` start method, when use 
+            CUDA in subprocesses, we should start process by ``spawn`` or
+            ``forkserver`` method.
+
+    Returns:
+        ``MultiprocessContext`` object, it hold the started processes.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+            import paddle.optimizer as opt
+            import paddle.distributed as dist
+
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear1 = nn.Linear(10, 10)
+                    self._linear2 = nn.Linear(10, 1)
+                    
+                def forward(self, x):
+                    return self._linear2(self._linear1(x))
+
+            def train(rank):
+                # 1. enable dynamic mode
+                paddle.disable_static()
+                
+                # 2. initialize parallel environment
+                strategy = dist.init_parallel_env(rank)
+
+                # 3. create data parallel layer & optimizer
+                layer = LinearNet()
+                dp_layer = dist.DataParallel(layer, strategy)
+
+                loss_fn = nn.MSELoss()
+                sgd = opt.SGD(
+                    learning_rate=0.001, parameter_list=dp_layer.parameters())
+
+                # 4. run layer
+                inputs = paddle.randn([10, 10], 'float32')
+                outputs = dp_layer(inputs)
+                labels = paddle.randn([10, 1], 'float32')
+                loss = loss_fn(outputs, labels)
+                
+                loss = dp_layer.scale_loss(loss)
+                loss.backward()
+                dp_layer.apply_collective_grads()
+
+                sgd.minimize(loss)
+                dp_layer.clear_gradients()
+
+            if __name__ == '__main__':
+                dist.start_processes(train, args=(), nprocs=2)
+    """
     # NOTE(chenweihang): [ why only supports python3.4+? ]
     # Python has only supported setting the child process startup method
     # since 3.4. The previous version can only use the default startup 
@@ -182,4 +253,72 @@ def start_processes(func,
 # by `spwan` method, if users want to start processes by other
 # method, they can use start_processes
 def spawn(func, args=(), nprocs=1, join=True, daemon=False):
+    """
+    Start multiple rocesses with ``spawn`` method for parallel training.
+    
+    This is specialized method of method ``paddle.distributed.start_processes`` .
+
+    Args:
+        func (function): The targert function is called by spawned process.
+            This function need to be able to pickled, so it must be defined
+            at the top level of a module.
+            This function should be called as ``func(i, *args)``, ``i`` is
+            the process index and ``args`` contains other arguments as tuple.
+        args (tuple): Arguments passed to ``func``.
+        nprocs (int): Number of processed to spawn. 
+        join (bool): Perform a blocking join on all spawned processes.
+            Default: True.
+        daemon (bool): The spawned processes' daemon flag. Default: False.
+
+    Returns:
+        ``MultiprocessContext`` object, it hold the spawned processes.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+            import paddle.optimizer as opt
+            import paddle.distributed as dist
+
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear1 = nn.Linear(10, 10)
+                    self._linear2 = nn.Linear(10, 1)
+                    
+                def forward(self, x):
+                    return self._linear2(self._linear1(x))
+
+            def train(rank):
+                # 1. enable dynamic mode
+                paddle.disable_static()
+                
+                # 2. initialize parallel environment
+                strategy = dist.init_parallel_env(rank)
+
+                # 3. create data parallel layer & optimizer
+                layer = LinearNet()
+                dp_layer = dist.DataParallel(layer, strategy)
+
+                loss_fn = nn.MSELoss()
+                sgd = opt.SGD(
+                    learning_rate=0.001, parameter_list=dp_layer.parameters())
+
+                # 4. run layer
+                inputs = paddle.randn([10, 10], 'float32')
+                outputs = dp_layer(inputs)
+                labels = paddle.randn([10, 1], 'float32')
+                loss = loss_fn(outputs, labels)
+                
+                loss = dp_layer.scale_loss(loss)
+                loss.backward()
+                dp_layer.apply_collective_grads()
+
+                sgd.minimize(loss)
+                dp_layer.clear_gradients()
+
+            if __name__ == '__main__':
+                dist.spawn(train, args=(), nprocs=2)
+    """
     return start_processes(func, args, nprocs, join, daemon, 'spawn')
