@@ -48,9 +48,6 @@ __all__ = [
 
 class Linear(layers.Layer):
     """
-    :alias_main: paddle.nn.Linear
-	:alias: paddle.nn.Linear,paddle.nn.layer.Linear,paddle.nn.layer.common.Linear
-	:old_api: paddle.fluid.dygraph.Linear
     
     Fully-connected linear transformation layer:
 
@@ -88,21 +85,19 @@ class Linear(layers.Layer):
         .. code-block:: python
 
           import paddle
-          import paddle.fluid as fluid
           from paddle import nn
           import numpy as np
 
           data = np.ones((3,1,2), np.float32)
-          place = fluid.CPUPlace()
-          with fluid.dygraph.guard(place):
-              data = paddle.to_variable(data)
-              linear = nn.Linear(2, 2)
-              weight_attr=fluid.ParamAttr(name="linear_weight", learning_rate=1.0,
-              trainable=False, regularizer=None, initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0))
-              bias_attr=fluid.ParamAttr(name="linear_bias", learning_rate=1.0,
-              trainable=False, regularizer=None, initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0))
-              linear = paddle.nn.Linear(2,2,weight_attr=weight_attr, bias_attr=bias_attr)
-              res = linear(data)  # [3 3 3 3 3 3]
+          place = paddle.CPUPlace()
+          paddle.disable_static(place)
+          data = paddle.to_tensor(data)
+          weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+          trainable=False, regularizer=None, initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0))
+          bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+          trainable=False, regularizer=None, initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0))
+          linear = nn.Linear(2,2,weight_attr=weight_attr, bias_attr=bias_attr)
+          res = linear(data)  # [3 3 3 3 3 3]
     """
 
     def __init__(self,
@@ -130,7 +125,7 @@ class Linear(layers.Layer):
 
     def forward(self, input):
         out = F.linear(
-            input=input, weight=self.weight, bias=self.bias, name=self.name)
+            x=input, weight=self.weight, bias=self.bias, name=self.name)
         return out
 
 

@@ -1163,11 +1163,8 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
     return cos_sim
 
 
-def linear(input, weight, bias=None, name=None):
+def linear(x, weight, bias=None, name=None):
     """
-
-	:alias_main: paddle.nn.functional.linear
-	:alias: paddle.nn.functional.linear,paddle.nn.functional.common.linear
 
     Fully-connected linear transformation op
 
@@ -1183,9 +1180,9 @@ def linear(input, weight, bias=None, name=None):
     If ``bias`` is not None, a bias will be added to the output.
 
     Args:
-        input(Variable): Input tensor.
-        weight(Variable): Weight tensor.
-        bias(Variable|None): Bias tensor, if it is set to None, no bias will be added to the output units.
+        x(Tensor): Input tensor.
+        weight(Tensor): Weight tensor.
+        bias(Tensor|None): Bias tensor, if it is set to None, no bias will be added to the output units.
         name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
@@ -1196,36 +1193,35 @@ def linear(input, weight, bias=None, name=None):
           
           import numpy as np
           import paddle
-          import paddle.fluid as fluid
           import paddle.nn.functional as F
           
-          input = np.ones((3,1,2), np.float32)
+          input = np.ones((3,1,2), dtype=np.float32)
           weight = np.ones((2,2), dtype=np.float32)
           bias = np.ones((2), dtype=np.float32)
-          place = fluid.CPUPlace()
-          with paddle.fluid.dygraph.guard(place):
-              input = paddle.to_variable(input)
-              weight = paddle.to_variable(weight)
-              bias = paddle.to_variable(bias)
-              out = F.linear(input, weight, bias)
+          place = paddle.CPUPlace()
+          paddle.disable_static(place)
+          input = paddle.to_tensor(input)
+          weight = paddle.to_tensor(weight)
+          bias = paddle.to_tensor(bias)
+          out = F.linear(input, weight, bias)
           print(out) #[3 3 3 3 3 3]
     
     """
     if in_dygraph_mode():
-        pre_bias = _varbase_creator(dtype=input.dtype)
-        core.ops.matmul(input, weight, pre_bias, 'transpose_X', False,
+        pre_bias = _varbase_creator(dtype=x.dtype)
+        core.ops.matmul(x, weight, pre_bias, 'transpose_X', False,
                         'transpose_Y', False, "alpha", 1)
         return dygraph_utils._append_bias_in_dygraph(
-            pre_bias, bias, axis=len(input.shape) - 1)
+            pre_bias, bias, axis=len(x.shape) - 1)
     else:
         helper = LayerHelper('linear', **locals())
-        dtype = helper.input_dtype()
+        dtype = helper.get_default_dtype()
 
-        check_variable_and_dtype(input, 'input',
-                                 ['float16', 'float32', 'float64'], 'linear')
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 'linear')
         check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
 
-        inputs = {'X': [input], 'Y': [weight]}
+        inputs = {'X': [x], 'Y': [weight]}
         attrs = {
             'transpose_X': False,
             'transpose_Y': False,
@@ -1241,7 +1237,7 @@ def linear(input, weight, bias=None, name=None):
                 inputs={'X': [tmp],
                         'Y': [bias]},
                 outputs={'Out': [res]},
-                attrs={'axis': len(input.shape) - 1})
+                attrs={'axis': len(x.shape) - 1})
         else:
             res = tmp
         return res

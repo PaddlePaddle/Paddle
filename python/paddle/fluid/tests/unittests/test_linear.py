@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
-from scipy.special import expit, erf
 import paddle
 from paddle import fluid, nn
 import paddle.fluid.dygraph as dg
@@ -36,33 +35,31 @@ class LinearTestCase(unittest.TestCase):
         ) else paddle.CPUPlace()
 
     def functional(self, place):
-        with paddle.fluid.dygraph.guard(place):
-            input = paddle.to_variable(self.input)
-            weight = paddle.to_variable(self.weight)
-            bias = paddle.to_variable(self.bias)
-            out = F.linear(input, weight, bias)
+        paddle.disable_static(place)
+        input = paddle.to_tensor(self.input)
+        weight = paddle.to_tensor(self.weight)
+        bias = paddle.to_tensor(self.bias)
+        out = F.linear(input, weight, bias)
         return out.numpy()
 
     def paddle_nn_layer(self, place):
-        with paddle.fluid.dygraph.guard(place):
-            input = paddle.to_variable(self.input)
-            weight_attr = fluid.ParamAttr(
-                name="linear_weight",
-                learning_rate=1.0,
-                trainable=False,
-                regularizer=None,
-                initializer=paddle.fluid.initializer.ConstantInitializer(
-                    value=1.0))
-            bias_attr = fluid.ParamAttr(
-                name="linear_bias",
-                learning_rate=1.0,
-                trainable=False,
-                regularizer=None,
-                initializer=paddle.fluid.initializer.ConstantInitializer(
-                    value=1.0))
-            linear = paddle.nn.Linear(
-                2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
-            y = linear(input)
+        paddle.disable_static(place)
+        input = paddle.to_tensor(self.input)
+        weight_attr = fluid.ParamAttr(
+            name="linear_weight",
+            learning_rate=1.0,
+            trainable=False,
+            regularizer=None,
+            initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0))
+        bias_attr = fluid.ParamAttr(
+            name="linear_bias",
+            learning_rate=1.0,
+            trainable=False,
+            regularizer=None,
+            initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0))
+        linear = paddle.nn.Linear(
+            2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+        y = linear(input)
         return y.numpy()
 
     def numpy_cal(self):
