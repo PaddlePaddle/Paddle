@@ -221,7 +221,7 @@ def run_out(self, p, axis, shape_x, shape_y, dtype):
     with fluid.program_guard(fluid.Program()):
         data1 = fluid.data(name="X", shape=shape_x, dtype=dtype)
         data2 = fluid.data(name="Y", shape=shape_y, dtype=dtype)
-        out = paddle.norm(input=data1, p=p, axis=axis, out=data2)
+        out = paddle.norm(x=data1, p=p, axis=axis, out=data2)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         result = exe.run(feed={"X": np.random.rand(*shape_x).astype(dtype)},
@@ -232,7 +232,7 @@ def run_out(self, p, axis, shape_x, shape_y, dtype):
 def run_fro(self, p, axis, shape_x, dtype):
     with fluid.program_guard(fluid.Program()):
         data = fluid.data(name="X", shape=shape_x, dtype=dtype)
-        out = paddle.norm(input=data, p=p, axis=axis)
+        out = paddle.norm(x=data, p=p, axis=axis)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         all_len = 1
@@ -247,7 +247,7 @@ def run_fro(self, p, axis, shape_x, dtype):
 
 
 def run_pnorm(self, p, axis, shape_x, dtype):
-    with fluid.dygraph.guard():
+    with paddle.disable_static():
         all_len = 1
         for s in shape_x:
             all_len = s * all_len
@@ -255,7 +255,7 @@ def run_pnorm(self, p, axis, shape_x, dtype):
         np_input = np_input.reshape(shape_x)
 
         data = paddle.to_tensor(np_input)
-        out = paddle.norm(input=data, p=p, axis=axis)
+        out = paddle.norm(x=data, p=p, axis=axis)
         expected_result = p_norm(np_input, porder=p, axis=axis).astype(dtype)
         result = out.numpy()
         self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)

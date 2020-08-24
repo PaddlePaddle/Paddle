@@ -172,7 +172,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     return out
 
 
-def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
+def norm(x, p='fro', axis=None, keepdim=False, out=None, name=None):
     """
 	:alias_main: paddle.norm
 	:alias: paddle.norm,paddle.tensor.norm,paddle.tensor.linalg.norm
@@ -181,7 +181,7 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
     or 2-norm, and in general the p-norm for p > 0) of a given tensor.
 
     Args:
-        input (Variable): The input tensor could be N-D tensor, and the input data
+        x (Variable): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
         p (float|string, optional): Order of the norm. Supported values are `fro`, `1`, `2`,
            `inf`,`-inf` and any positive real number yielding the corresponding p-norm.
@@ -212,7 +212,7 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
             
             import paddle
             import numpy as np
-            with fluid.dygraph.guard():
+            with paddle.disable_static()
                 shape=[2, 3, 4]
                 np_input = np.arange(24).astype('float32') - 12
                 x = paddle.to_tensor(np_input)
@@ -460,13 +460,13 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
         if isinstance(p, str):
             if p == "fro":
                 return frobenius_norm(
-                    input, dim=axis, keepdim=keepdim, out=out, name=name)
+                    x, dim=axis, keepdim=keepdim, out=out, name=name)
             else:
                 raise ValueError(
                     "only valid string values are 'fro', found {}".format(p))
         elif isinstance(p, (int, float)):
             return vector_norm(
-                input,
+                x,
                 porder=p,
                 axis=axis,
                 keepdim=keepdim,
@@ -486,7 +486,7 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
     if isinstance(axis, int):
         if isinstance(p, (int, float)):
             return vector_norm(
-                input,
+                x,
                 axis=axis,
                 porder=p,
                 keepdim=keepdim,
@@ -501,16 +501,16 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
     elif isinstance(axis, list) and len(axis) == 2:
         if p == "fro":
             return frobenius_norm(
-                input, dim=axis, keepdim=keepdim, out=out, name=name)
+                x, dim=axis, keepdim=keepdim, out=out, name=name)
         elif p == 0:
             return p0_matrix_norm(
-                input, axis=axis, keepdim=keepdim, out=out, name=name)
+                x, axis=axis, keepdim=keepdim, out=out, name=name)
         elif p == np.inf or p == -np.inf:
             return inf_norm(
-                input, porder=p, axis=axis, keepdim=keepdim, out=out, name=name)
+                x, porder=p, axis=axis, keepdim=keepdim, out=out, name=name)
         else:
             return p_matrix_norm(
-                input, porder=p, axis=axis, keepdim=keepdim, out=out, name=name)
+                x, porder=p, axis=axis, keepdim=keepdim, out=out, name=name)
     else:
         raise ValueError(
             "except axis type int or list (length of list <=2), found {}".
