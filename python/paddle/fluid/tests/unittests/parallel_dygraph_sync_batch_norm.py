@@ -26,7 +26,7 @@ import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.nn import Conv2D, Pool2D, Linear, SyncBatchNorm
+from paddle.nn import Conv2d, Pool2D, Linear, SyncBatchNorm
 from paddle.fluid.dygraph.base import to_variable
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
@@ -42,26 +42,24 @@ class TestLayer(fluid.dygraph.Layer):
                  act=None):
         super(TestLayer, self).__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = Conv2d(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=groups,
-            act=None,
             bias_attr=False)
 
         self._sync_batch_norm = SyncBatchNorm(num_filters)
 
-        self._conv2 = Conv2D(
-            num_channels=num_filters,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv2 = Conv2d(
+            in_channels=num_filters,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=groups,
-            act=None,
             bias_attr=False)
 
         self._sync_batch_norm2 = SyncBatchNorm(
