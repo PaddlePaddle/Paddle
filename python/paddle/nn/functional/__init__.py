@@ -25,6 +25,8 @@ from . import extension
 __all__ += extension.__all__
 from . import common
 __all__ += common.__all__
+from . import pooling
+__all__ += pooling.__all__
 from . import loss
 __all__ += loss.__all__
 from .activation import brelu  #DEFINE_ALIAS
@@ -70,6 +72,7 @@ from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
 from .common import assign  #DEFINE_ALIAS
 from .common import interpolate  #DEFINE_ALIAS
+from .common import bilinear  #DEFINE_ALIAS
 from .conv import conv1d  #DEFINE_ALIAS
 from .conv import conv_transpose1d  #DEFINE_ALIAS
 from .conv import conv2d  #DEFINE_ALIAS
@@ -166,12 +169,20 @@ from .norm import l2_normalize  #DEFINE_ALIAS
 from .norm import lrn  #DEFINE_ALIAS
 from .norm import normalize  #DEFINE_ALIAS
 # from .norm import spectral_norm        #DEFINE_ALIAS
+from .pooling import max_pool1d  #DEFINE_ALIAS
+from .pooling import avg_pool1d  #DEFINE_ALIAS
+from .pooling import adaptive_max_pool1d  #DEFINE_ALIAS
+from .pooling import adaptive_avg_pool1d  #DEFINE_ALIAS
 from .pooling import pool2d  #DEFINE_ALIAS
 from .pooling import pool3d  #DEFINE_ALIAS
 from .pooling import adaptive_pool2d  #DEFINE_ALIAS
 from .pooling import adaptive_pool3d  #DEFINE_ALIAS
 from .rnn import rnn  #DEFINE_ALIAS
 from .rnn import birnn  #DEFINE_ALIAS
+from .pooling import avg_pool2d  #DEFINE_ALIAS
+from .pooling import max_pool2d  #DEFINE_ALIAS
+from .pooling import avg_pool3d  #DEFINE_ALIAS
+from .pooling import max_pool3d  #DEFINE_ALIAS
 from .pooling import adaptive_avg_pool2d  #DEFINE_ALIAS
 from .pooling import adaptive_avg_pool3d  #DEFINE_ALIAS
 # from .rnn import gru_unit        #DEFINE_ALIAS
