@@ -335,7 +335,7 @@ class TestResnet(unittest.TestCase):
     def test_in_static_mode_mkldnn(self):
         fluid.set_flags({'FLAGS_use_mkldnn': True})
         try:
-            train_resnet_in_static_mode()
+            train(to_static=True)
         finally:
             fluid.set_flags({'FLAGS_use_mkldnn': False})
 
