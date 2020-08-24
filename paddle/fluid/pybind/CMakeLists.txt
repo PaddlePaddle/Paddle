@@ -72,10 +72,13 @@ if(WITH_PYTHON)
   set(tmp_impl_file ${impl_file}.tmp)
 
   if(WIN32)
-    add_custom_command(TARGET op_function_generator POST_BUILD
-          COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}/op_function_generator ${impl_file}
+    add_custom_target(op_function_cmd
+          COMMAND "dir ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}"
+          COMMAND "${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}/op_function_generator.exe" 
+                  "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h"
     )
 
+    add_dependencies(op_function_cmd op_function_generator)
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(TARGET op_function_generator
             PRE_LINK
@@ -99,6 +102,15 @@ if(WITH_PYTHON)
     # copy these *.so to current directory and append current directory to
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search 
     # *.dll in current directory automatically.
+    add_custom_target(op_function_cmd
+          COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
+              "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
+              "${tmp_impl_file}"
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
+          COMMENT "copy_if_different ${impl_file}"
+          VERBATIM
+    )
+    add_dependencies(op_function_cmd op_function_generator)
     add_custom_command(TARGET op_function_generator
           POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
@@ -140,5 +152,5 @@ if(WITH_PYTHON)
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})
-  add_dependencies(paddle_pybind op_function_generator)
+  add_dependencies(paddle_pybind op_function_cmd)
 endif(WITH_PYTHON)
