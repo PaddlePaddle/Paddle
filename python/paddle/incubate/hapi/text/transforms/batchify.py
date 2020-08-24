@@ -12,17 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
-import collections
-import functools
-import inspect
-import io
-import json
-import math
-import os
-import six
-import unicodedata
-
 import numpy as np
 
 __all__ = [
