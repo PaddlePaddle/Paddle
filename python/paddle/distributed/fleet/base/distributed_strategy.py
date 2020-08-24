@@ -692,8 +692,38 @@ class DistributedStrategy(object):
     def lars(self):
         """
         Set lars configurations. lars is used to deal with the convergence problems when the global 
-        batch size is larger than 8k.'epsilon' argument is used to avoid potential devision-by-zero 
-        when compute the local lr; 'exclude_from_weight_decay' is a list of name strings of layers which
+        batch size is larger than 8k.  For more details, please refer to 
+        [Large Batch Training of Convolutional Networks](https://arxiv.org/abs/1708.03888).
+
+        Default Value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.lars = True # by default this is false
+        """
+        return self.strategy.lars
+
+    @lars.setter
+    def lars(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.lars = flag
+        else:
+            print("WARNING: lars should have value of bool type")
+
+    @property
+    def lars_configs(self):
+        """
+        Set Lars training configurations.
+
+        **Notes**:
+        **lars_coeff (float)**: trust ratio in lars formula.
+        **lars_weight_decay** (float): weight decay coefficient in lars formula.
+        **epsilon (float)**: argument is used to avoid potential devision-by-zero 
+        when compute the local lr; 
+        **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
         will be exclude from weight decay in lars formula.
 
         Examples:
@@ -708,17 +738,6 @@ class DistributedStrategy(object):
                         "exclude_from_weight_decay": ['batch_norm', '.b_0']
                     }
         """
-        return self.strategy.lars
-
-    @lars.setter
-    def lars(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.lars = flag
-        else:
-            print("WARNING: lars should have value of bool type")
-
-    @property
-    def lars_configs(self):
         return get_msg_dict(self.strategy.lars_configs)
 
     @lars_configs.setter
@@ -730,19 +749,16 @@ class DistributedStrategy(object):
     def lamb(self):
         """
         Set lamb configurations. lamb is used to deal with the convergence problems for large 
-        batch size training. 'exclude_from_weight_decay' is a list of name strings of layers which
-        will be exclude from weight decay in lamb formula.
+        batch size training, specially for attention-related model like BERT.
 
         Examples:
           .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
-            strategy.lamb = True
-            strategy.lamb_configs = {
-                    'lamb_weight_decay': 0.01,
-                    'exclude_from_weight_decay': [],
-                }
+            strategy.lamb = True # by default this is false
         """
+
         return self.strategy.lamb
 
     @lamb.setter
@@ -754,6 +770,23 @@ class DistributedStrategy(object):
 
     @property
     def lamb_configs(self):
+        """
+        Set Lars training configurations.
+
+        **Notes**:
+        **lamb_weight_decay** (float): weight decay coefficient in lamb formula.
+        **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
+        will be exclude from weight decay in lamb formula.
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.lamb = True
+            strategy.lamb_configs = {
+                    'lamb_weight_decay': 0.01,
+                    'exclude_from_weight_decay': [],
+                }
+        """
         return get_msg_dict(self.strategy.lamb_configs)
 
     @lamb_configs.setter
