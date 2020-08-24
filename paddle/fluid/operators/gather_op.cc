@@ -78,6 +78,9 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");
+    AddInput("Axis",
+             "The Tensor which contains the axis that we do gather operation.")
+        .AsDispensable();
     AddOutput("Out", "The output of gather op");
     AddAttr<bool>(
         "overwrite",
@@ -120,6 +123,8 @@ class GatherGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("gather_grad");
     op->SetInput("Index", this->Input("Index"));
+    op->SetInput("Axis", this->Input("Axis"));
+
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
