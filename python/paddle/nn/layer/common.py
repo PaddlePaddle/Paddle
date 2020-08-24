@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the common classes to build a neural network  
+# TODO: define the common classes to build a neural network
 from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Embedding  #DEFINE_ALIAS
@@ -583,8 +583,8 @@ class ReflectionPad1d(layers.Layer):
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -642,8 +642,8 @@ class ReplicationPad1d(layers.Layer):
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -657,7 +657,7 @@ class ReplicationPad1d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -702,8 +702,8 @@ class ConstantPad1d(layers.Layer):
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -718,7 +718,7 @@ class ConstantPad1d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -765,8 +765,8 @@ class ConstantPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -781,7 +781,7 @@ class ConstantPad2d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -830,8 +830,8 @@ class ZeroPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -845,7 +845,7 @@ class ZeroPad2d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -892,8 +892,8 @@ class ReplicationPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -907,7 +907,7 @@ class ReplicationPad2d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -954,8 +954,8 @@ class ReflectionPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -969,7 +969,7 @@ class ReflectionPad2d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -1019,8 +1019,8 @@ class ConstantPad3d(layers.Layer):
            Default is  "NCDHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -1035,7 +1035,7 @@ class ConstantPad3d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -1084,8 +1084,8 @@ class ReplicationPad3d(layers.Layer):
            Default is  "NCDHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -1099,7 +1099,7 @@ class ReplicationPad3d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -1141,7 +1141,7 @@ class CosineSimilarity(layers.Layer):
     Parameters:
         axis (int): Dimension of vectors to compute cosine similarity. Default is 1.
         eps(float): Small value to avoid division by zero. Default is 1e-8.
-    Returns: 
+    Returns:
         None
 
     Examples:
@@ -1162,7 +1162,7 @@ class CosineSimilarity(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
