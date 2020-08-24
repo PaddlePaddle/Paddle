@@ -70,12 +70,11 @@ if(WITH_PYTHON)
 
   set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h)
   set(tmp_impl_file ${impl_file}.tmp)
-
+  
   if(WIN32)
     add_custom_target(op_function_cmd
-          COMMAND "dir ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}"
-          COMMAND "${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}/op_function_generator.exe" 
-                  "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h"
+          COMMAND op_function_generator "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h"
+          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 
     add_dependencies(op_function_cmd op_function_generator)

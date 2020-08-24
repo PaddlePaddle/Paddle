@@ -23,6 +23,9 @@ set work_dir=%cd%
 if exist build rmdir build /s/q
 mkdir build
 cd /d build
+tree .
+dir paddle\fluid\pybind\Release
+taskkill /f /im %cd%\paddle\fluid\pybind\Release\op_function_generator.exe  2>NUL
 
 rem ------initialize the virtual environment------
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
@@ -65,7 +68,6 @@ set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
-    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 )
 
 if "%WITH_TPCACHE%"=="OFF" (
@@ -144,7 +146,7 @@ call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd6
 set build_times=1
 :build_tp
 echo Build third_party for %build_times% time:
-msbuild /m /p:Configuration=Release /verbosity:minimal third_party.vcxproj
+msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
     if %build_times% GTR 3 (
@@ -159,7 +161,7 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 echo Build Paddle for %build_times% time:
-msbuild /m /p:Configuration=Release /verbosity:quiet paddle.sln
+msbuild /m /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 2 (
@@ -330,7 +332,7 @@ taskkill /f /im git-remote-https.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
-taskkill /f /im %cd%\paddle\fluid\pybind\Release\op_function_generator.exe  2>NUL
+taskkill /f /im %work_dir%\build\paddle\fluid\pybind\Release\op_function_generator.exe  2>NUL
 taskkill /f /im python.exe  2>NUL
 call paddle_winci\Scripts\deactivate.bat 2>NUL
 taskkill /f /im python.exe  2>NUL
