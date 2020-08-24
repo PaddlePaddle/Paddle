@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+from .. import framework
 import paddle.dataset.common
 
 __all__ = ["Dataset", "IterableDataset", "TensorDataset"]
@@ -262,6 +263,9 @@ class TensorDataset(Dataset):
     """
 
     def __init__(self, tensors):
+        if not framework.in_dygraph_mode():
+            raise RuntimeError(
+                "TensorDataset con only be used in imperative mode")
         assert all([tensor.shape[0] == tensors[0].shape[0] for tensor in tensors]), \
                 "tensors not have same shape of the 1st dimension"
         self.tensors = tensors

@@ -14,14 +14,10 @@
 
 from __future__ import division
 
-import os
-import sys
-import six
-import time
 import unittest
-import multiprocessing
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.io import TensorDataset, DataLoader
 from paddle.fluid.dygraph.base import to_variable
@@ -47,11 +43,15 @@ class TestTensorDataset(unittest.TestCase):
                 batch_size=1,
                 drop_last=True)
 
-            for input, label in dataloader():
+            for i, (input, label) in enumerate(dataloader()):
                 assert len(input) == 1
                 assert len(label) == 1
                 assert input.shape == [1, 3, 4]
                 assert label.shape == [1, 1]
+                assert isinstance(input, paddle.Tensor)
+                assert isinstance(label, paddle.Tensor)
+                assert np.allclose(input.numpy(), input_np[i])
+                assert np.allclose(label.numpy(), label_np[i])
 
     def test_main(self):
         for p in [fluid.CPUPlace(), fluid.CUDAPlace(0)]:
