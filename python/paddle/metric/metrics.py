@@ -209,7 +209,7 @@ class Accuracy(Metric):
 
         model = hapi.Model(hapi.vision.LeNet(classifier_activation=None))
         optim = paddle.optimizer.Adam(
-            learning_rate=0.001, parameter_list=model.parameters())
+            learning_rate=0.001, parameters=model.parameters())
         model.prepare(
             optim,
             loss=paddle.nn.CrossEntropyLoss(),
@@ -357,7 +357,7 @@ class Precision(Metric):
             nn.Sigmoid()
         ))
         optim = paddle.optimizer.Adam(
-            learning_rate=0.001, parameter_list=model.parameters())
+            learning_rate=0.001, parameters=model.parameters())
         model.prepare(
             optim,
             loss=nn.BCELoss(),
@@ -492,7 +492,7 @@ class Recall(Metric):
             nn.Sigmoid()
         ))
         optim = paddle.optimizer.Adam(
-            learning_rate=0.001, parameter_list=model.parameters())
+            learning_rate=0.001, parameters=model.parameters())
         model.prepare(
             optim,
             loss=nn.BCELoss(),
@@ -637,7 +637,7 @@ class Auc(Metric):
             nn.Linear(10, 2, act='softmax'),
         ))
         optim = paddle.optimizer.Adam(
-            learning_rate=0.001, parameter_list=model.parameters())
+            learning_rate=0.001, parameters=model.parameters())
         
         def loss(x, y):
             return nn.functional.nll_loss(paddle.log(x), y)
