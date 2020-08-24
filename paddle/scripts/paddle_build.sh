@@ -1535,7 +1535,7 @@ function main() {
         exit 1
         ;;
       esac
-      /opt/compiler/gcc-4.8.2/bin/pwd
+      pwd
       python ../../tools/summary_env.py
       echo "paddle_build script finished as expected"
 }
