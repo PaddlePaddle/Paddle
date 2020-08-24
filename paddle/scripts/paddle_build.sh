@@ -1535,6 +1535,7 @@ function main() {
         exit 1
         ;;
       esac
+      python ../../tools/summary_env.py
       echo "paddle_build script finished as expected"
 }
 
