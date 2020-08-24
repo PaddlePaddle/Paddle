@@ -28,36 +28,20 @@ function(inference_download_and_uncompress INSTALL_DIR URL FILENAME)
   string(REGEX REPLACE "[-%.]" "_" FILENAME_EX ${FILENAME})
   set(EXTERNAL_PROJECT_NAME "extern_inference_download_${FILENAME_EX}")
   set(UNPACK_DIR "${INSTALL_DIR}/src/${EXTERNAL_PROJECT_NAME}")
-  if(WIN32)
-      ExternalProject_Add(
-          ${EXTERNAL_PROJECT_NAME}
-	  ${EXTERNAL_PROJECT_LOG_ARGS}
-	  PREFIX                ${INSTALL_DIR}
-	  URL			${URL}/${FILENAME}
-	  DOWNLOAD_DIR          ${INSTALL_DIR}
-	  DOWNLOAD_NO_EXTRACT   1
-	  DOWNLOAD_NO_PROGRESS  1
-	  CONFIGURE_COMMAND     ""
-	  BUILD_COMMAND         ${CMAKE_COMMAND} -E chdir ${INSTALL_DIR}
-	                        ${CMAKE_COMMAND} -E tar xzf ${FILENAME}
-	  UPDATE_COMMAND        ""
-	  INSTALL_COMMAND       ""
-      )
-  else()
-      ExternalProject_Add(
-          ${EXTERNAL_PROJECT_NAME}
-          ${EXTERNAL_PROJECT_LOG_ARGS}
-          PREFIX                ${INSTALL_DIR}
-          DOWNLOAD_COMMAND      wget --no-check-certificate -q -O ${INSTALL_DIR}/${FILENAME} ${URL}/${FILENAME} &&
-                                ${CMAKE_COMMAND} -E tar xzf ${INSTALL_DIR}/${FILENAME}
-          DOWNLOAD_DIR          ${INSTALL_DIR}
-          DOWNLOAD_NO_PROGRESS  1
-          CONFIGURE_COMMAND     ""
-          BUILD_COMMAND         ""
-          UPDATE_COMMAND        ""
-          INSTALL_COMMAND       ""
-      )
-  endif()
+  ExternalProject_Add(
+      ${EXTERNAL_PROJECT_NAME}
+      ${EXTERNAL_PROJECT_LOG_ARGS}
+      PREFIX                ${INSTALL_DIR}
+      URL                   ${URL}/${FILENAME}
+      DOWNLOAD_DIR          ${INSTALL_DIR}
+      DOWNLOAD_NO_EXTRACT   1
+      DOWNLOAD_NO_PROGRESS  1
+      CONFIGURE_COMMAND     ""
+      BUILD_COMMAND         ${CMAKE_COMMAND} -E chdir ${INSTALL_DIR}
+                            ${CMAKE_COMMAND} -E tar xzf ${FILENAME}
+      UPDATE_COMMAND        ""
+      INSTALL_COMMAND       ""
+  )
 endfunction()
 
 set(WORD2VEC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/word2vec")
