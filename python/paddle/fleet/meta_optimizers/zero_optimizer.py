@@ -481,7 +481,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                 if output_name not in tobe_removed_vars:
                     remove_op = False
                     break
-            if remove_op and op.type != "cast":  # and op.type != "elementwise_div":
+            if remove_op:
                 print("%d: main_block remove op %s" %
                       (self.role_maker.worker_index(), op.type))
                 for input_name in op.desc.input_arg_names():
@@ -492,10 +492,6 @@ class ZeroOptimizer(MetaOptimizerBase):
                 block._remove_op(idx)
 
         for var_name in tobe_removed_vars:
-            if "@GRAD" in var_name:
-                continue
-            if "tmp" in var_name:
-                continue
             block._remove_var(var_name)
         block._sync_with_cpp()
         return
@@ -505,20 +501,20 @@ class ZeroOptimizer(MetaOptimizerBase):
                       startup_program=None,
                       parameter_list=None,
                       no_grad_set=None):
-        self._nrings = 10
+        self._nrings = 3
 
         ckpts = list(self.user_defined_strategy.recompute_configs[
             "checkpoints"])
         optimizer = self.inner_opt
-        if len(ckpts) > 0:
-            print("add recompute")
-            print(ckpts)
-            optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
-            optimizer._set_checkpoints(ckpts)
+        # if len(ckpts) > 0:
+        #     print("add recompute")
+        #     print(ckpts)
+        #     optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
+        #     optimizer._set_checkpoints(ckpts)
 
-        optimizer = fluid.contrib.mixed_precision.decorate(
-            optimizer, use_dynamic_loss_scaling=False)
-        print("doing amp optimize...")
+        # optimizer = fluid.contrib.mixed_precision.decorate(
+        #     optimizer, use_dynamic_loss_scaling=False)
+        print("doing zero optimize...")
         optimize_ops, params_grads = optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
