@@ -32,7 +32,8 @@ TEST(test_operator_version, test_operator_version) {
                           "Increased from the original one method to two.", -1)
               .NewAttr("size",
                        "In order to represent a two-dimensional rectangle, the "
-                       "parameter size is added."))
+                       "parameter size is added.",
+                       0))
       .AddCheckpoint(
           R"ROC(
         Add a new attribute [height]
@@ -40,7 +41,8 @@ TEST(test_operator_version, test_operator_version) {
           framework::compatible::OpVersionDesc().NewAttr(
               "height",
               "In order to represent a two-dimensional rectangle, the "
-              "parameter height is added."));
+              "parameter height is added.",
+              0));
 }
 }  // namespace compatible
 }  // namespace framework
