@@ -31,7 +31,8 @@ __all__ = [
     'cholesky',
     #       'tensordot',
     'bmm',
-    'histogram'
+    'histogram',
+    'mv'
 ]
 
 
@@ -818,4 +819,91 @@ def histogram(input, bins=100, min=0, max=0):
         attrs={'bins': bins,
                'min': min,
                'max': max})
+    return out
+
+
+def mv(x, y, name=None):
+    """
+	:alias_main: paddle.mv
+	:alias: paddle.mv,paddle.tensor.mv,paddle.tensor.linalg.mv
+
+    Applies matrix multiplication to two tensors.
+
+    Currently, the input tensors' rank can be any, but when the rank of any
+    inputs is bigger than 3, this two inputs' rank should be equal.
+
+    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
+    flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
+
+    - If a transpose flag is specified, the last two dimensions of the tensor
+      are transposed. If the tensor is rank-1 of shape :math:`[D]`, then for
+      :math:`x` it is treated as :math:`[1, D]` in nontransposed form and as
+      :math:`[D, 1]` in transposed form, whereas for :math:`y` it is the
+      opposite: It is treated as :math:`[D, 1]` in nontransposed form and as
+      :math:`[1, D]` in transposed form.
+
+    - After transpose, the two tensors are 2-D or n-D and matrix multiplication
+      performs in the following way.
+
+      - If both are 2-D, they are multiplied like conventional matrices.
+      - If either is n-D, it is treated as a stack of matrices residing in the
+        last two dimensions and a batched matrix multiply supporting broadcast
+        applies on the two tensors.
+
+    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and
+    nontransposed, the prepended or appended dimension :math:`1` will be
+    removed after matrix multiplication.
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a Tensor or LoDTensor.
+        transpose_x (bool): Whether to transpose :math:`x` before multiplication.
+        transpose_y (bool): Whether to transpose :math:`y` before multiplication.
+        alpha (float): The scale of output. Default 1.0.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The product Tensor (or LoDTensor) variable.
+
+    Examples:
+        .. code-block:: python
+
+            # x: [M, N], y: [N]
+            # paddle.mv(x, y, True, True)  # out: [M, 1]
+
+            import paddle
+            import paddle.fluid as fluid
+            x = fluid.data(name='x', shape=[2, 3], dtype='float32')
+            y = fluid.data(name='y', shape=[3, 2], dtype='float32')
+            out = paddle.mv(x, y)
+    """
+    if in_dygraph_mode():
+        out = _varbase_creator(dtype=x.dtype)
+        out = core.ops.mv(x, y)
+        # out.reshape(out.shape[0])
+        return out
+
+    def __check_input(x, y):
+        var_names = {'x': x, 'y': y}
+        for name, val in var_names.items():
+            check_variable_and_dtype(val, name,
+                                     ['float16', 'float32', 'float64'], 'mv')
+        x_shape = list(x.shape)
+        y_shape = list(y.shape)
+        if len(x_shape) == 1:
+            x_shape = [1] + x_shape
+        if len(y_shape) == 1:
+            y_shape = y_shape + [1]
+
+    __check_input(x, y)
+
+    helper = LayerHelper('mv', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='mv', inputs={'X': x,
+                           'Y': y}, outputs={'Out': out}, attrs=attrs)
+
+    # out.reshape(out.shape[0])
+
     return out

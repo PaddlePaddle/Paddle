@@ -81,6 +81,7 @@ from .tensor.linalg import cholesky  #DEFINE_ALIAS
 # from .tensor.linalg import tensordot        #DEFINE_ALIAS
 from .tensor.linalg import bmm  #DEFINE_ALIAS
 from .tensor.linalg import histogram  #DEFINE_ALIAS
+from .tensor.linalg import mv  #DEFINE_ALIAS
 from .tensor.logic import equal  #DEFINE_ALIAS
 from .tensor.logic import greater_equal  #DEFINE_ALIAS
 from .tensor.logic import greater_than  #DEFINE_ALIAS
