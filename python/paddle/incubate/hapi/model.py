@@ -859,7 +859,7 @@ class Model(object):
         paramters only for inference to path. It depends on the parameter
         `for_inference`.
 
-        If `for_inference` is set to Fasle, the parameters saved contain all 
+        If `for_inference` is set to False, the parameters saved contain all 
         the trainable Variable, will save to a file with suffix ".pdparams".
         The optimizer information contains all the variable used by optimizer.
         For Adam optimizer, contains beta1, beta2, momentum etc. All the
@@ -877,7 +877,8 @@ class Model(object):
             path (str): The file prefix to save model. The format is
                 'dirname/file_prefix' or 'file_prefix'. if empty str. A exception
                  will be raised.
-            for_inference (bool): Whether to save inference model only. Default: False.
+            for_inference (bool, optional): Whether to save inference model only.
+                Default: False.
 
         Returns:
             None
