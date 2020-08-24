@@ -157,9 +157,9 @@ class AdamW(DecoupledWeightDecay, Adam):
             It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
-        weight_decay (float|Tensor): The weight decay coefficient, it can be float or Tensor. The default value is 0.0.
             The default value is 1e-08.
-        apply_decay_param_fun (function|None): If it is not None,
+        weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.0.
+        apply_decay_param_fun (function|None, optional): If it is not None,
             only tensors that makes apply_decay_param_fun(Tensor)==True 
             will be updated. It only works when we want to specify tensors.
             Default: None.
