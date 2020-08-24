@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except jin compliance with the License.
@@ -83,7 +83,7 @@ def _update_env_vars(rank, options):
         raise ValueError("please input current node ip, "
                          "cannot only give `cluster_node_ips`.")
     default_node_ip = os.environ.get("PADDLE_MASTER_IPADDR", None)
-    default_node_ip = "127.0.0.1" if default_node_ip else default_node_ip
+    default_node_ip = "127.0.0.1" if default_node_ip is None else default_node_ip
     if args.node_ip is None:
         args.node_ip = default_node_ip
     if args.cluster_node_ips is None:
@@ -97,8 +97,14 @@ def _update_env_vars(rank, options):
         default_port = os.environ.get("PADDLE_MASTER_PORT", None)
         if default_port is None:
             raise RuntimeError(
-                "please input start port of parallel training by `started_port=**`,"
-                "e.g. started_port=6170")
+                "Data parallel training start failed. If you start data parallel "
+                "training by `paddle.distributed.launch` module, Please ensure "
+                "that one of the following rules is met:\n"
+                "  1. Do not set `paddle.distributed.init_parallel_env` argument "
+                "`rank` or set it to be -1;\n"
+                "  2. Set `paddle.distributed.init_parallel_env` start port for "
+                "parallel training by `started_port=**`, e.g. started_port=6170."
+            )
         args.started_port = int(default_port)
 
     args.use_paddlecloud = options.get('use_paddlecloud', False)
@@ -116,8 +122,14 @@ def _update_env_vars(rank, options):
         args.selected_gpus = os.environ.get("PADDLE_CUDA_VISIBLE_DEVICES", None)
         if args.selected_gpus is None:
             raise ValueError(
-                "please input selected gpus of parallel training by `selected_gpus=**`,"
-                "e.g. selected_gpus='0,1,2,3'.", )
+                "Data parallel training start failed. If you start data parallel "
+                "training by `paddle.distributed.launch` module, Please ensure "
+                "that one of the following rules is met:\n"
+                "  1. Do not set `paddle.distributed.init_parallel_env` argument "
+                "`rank` or set it to be -1;\n"
+                "  2. Set `paddle.distributed.init_parallel_env` selected gpus of "
+                "parallel training by `selected_gpus=**`, e.g. selected_gpus='0,1,2,3'."
+            )
 
     # reuse code of launch.py
     cluster, pod = get_cluster_and_pod(args)
@@ -187,7 +199,7 @@ def init_parallel_env(rank=-1, backend='nccl', **options):
             "backend `%s` is not supported, now only supports `nccl` backend." %
             backend)
 
-    # update or check env
+    # 2. update or check env
     # NOTE(chenweihang): if rank is default value, users should config 
     # parallel environment by module `paddle.distributed.launch`,
     # so here we only check the environment variables

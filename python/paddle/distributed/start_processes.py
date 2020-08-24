@@ -50,9 +50,10 @@ def _set_default_assist_env(nprocs):
         [str(x) for x in range(0, nprocs)])
 
 
-def _func_wrapper(func, i, args, error_queue):
+def _func_wrapper(func, i, args, error_queue, return_queue):
     try:
-        func(i, *args)
+        result = func(i, *args)
+        return_queue.put(result)
     except KeyboardInterrupt:
         pass
     except Exception:
@@ -62,9 +63,15 @@ def _func_wrapper(func, i, args, error_queue):
 
 
 class MultiprocessContext(object):
-    def __init__(self, processes, error_queues):
+    def __init__(self, processes, error_queues, return_queues):
         _py_supported_check()
         self.error_queues = error_queues
+        # NOTE(chenweihang): The `start_processes` method is mainly used 
+        # to wrap the outermost execution function of the program for 
+        # parallel execution. Generally, the return value is not concerned, 
+        # but if the user needs to obtain the return value, users can get  
+        # the return result of each process from context.return_queues
+        self.return_queues = return_queues
         self.processes = processes
         self.sentinels = {
             process.sentinel: index
@@ -145,23 +152,30 @@ def start_processes(func,
     mp = multiprocessing.get_context(start_method)
 
     error_queues = []
+    return_queues = []
     processes = []
     for i in range(nprocs):
         error_queue = mp.SimpleQueue()
+        return_queue = mp.SimpleQueue()
         process = mp.Process(
-            target=_func_wrapper, args=(func, i, args, error_queue))
+            target=_func_wrapper,
+            args=(func, i, args, error_queue, return_queue))
         process.daemon = daemon
         process.start()
         error_queues.append(error_queue)
+        return_queues.append(return_queue)
         processes.append(process)
 
-    context = MultiprocessContext(processes, error_queues)
+    context = MultiprocessContext(processes, error_queues, return_queues)
     if not join:
         return context
 
     # loop until all process end
     while not context.join():
         pass
+
+    # finaly return context
+    return context
 
 
 # NOTE(chenweihang): this method only supports start processes

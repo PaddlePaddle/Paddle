@@ -20,9 +20,9 @@ __all__ += [
     "prepare_context", "init_parallel_env", "ParallelEnv", "DataParallel"
 ]
 
-from . import spawn
-from .spawn import spawn
-from .spawn import start_processes
+from . import start_processes
+from .start_processes import spawn
+from .start_processes import start_processes
 
 from . import parallel
 from .parallel import init_parallel_env
