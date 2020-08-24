@@ -11,22 +11,40 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 
-#include "paddle/fluid/imperative/gloo_context.h"
+#include <string>
+
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 
 namespace paddle {
-namespace imperative {
+namespace platform {
+
 #if defined(PADDLE_WITH_GLOO)
-void GlooParallelContext::Init() {
-  auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
-  gloo_ptr->SetRank(strategy_.rank);
-  gloo_ptr->SetSize(strategy_.rank_num);
-  gloo_ptr->SetPrefix(strategy_.prefix);
-  gloo_ptr->SetIface(strategy_.iface);
-  gloo_ptr->SetTimeoutSeconds(strategy_.init_seconds, strategy_.run_seconds);
-  gloo_ptr->SetHdfsStore(strategy_.path, strategy_.fs_name, strategy_.fs_ugi);
-  gloo_ptr->Init();
-}
+struct GlooParallelStrategy {
+  int rank{0};
+  int rank_num{1};
+  std::string iface;
+  std::string prefix;
+  int init_seconds{9999999};
+  int run_seconds{9999999};
+  std::string path;
+  std::string fs_name;
+  std::string fs_ugi;
+};
+
+class GlooParallelContext {
+ public:
+  explicit GlooParallelContext(const GlooParallelStrategy& strategy)
+      : strategy_(strategy) {}
+
+  virtual ~GlooParallelContext() {}
+
+  virtual void Init();
+
+ protected:
+  GlooParallelStrategy strategy_;
+};
 #endif
 
 }  //  namespace imperative

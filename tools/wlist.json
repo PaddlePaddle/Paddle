@@ -129,12 +129,12 @@
         "Callback.on_test_batch_begin",
         "Callback.on_test_batch_end",
         "Model.prepare",
-        "init_distributed_context",
         "broadcast",
         "all_reduce",
         "reduce",
         "scatter",
-        "all_gather"
+        "all_gather",
+        "barrier"
     ],
     "wlist_no_op_pass":[
         "gelu",

@@ -13,9 +13,6 @@ if(NOT WIN32)
   if (WITH_NCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
   endif()
-  if (WITH_GLOO)
-    set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
-  endif()
 endif(NOT WIN32)
 
 if(WITH_PYTHON)
@@ -56,6 +53,11 @@ if (WITH_NCCL)
   list(APPEND PYBIND_SRCS nccl_wrapper_py.cc)
 endif()
 
+if (WITH_GLOO)
+  set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
+  set(PYBIND_SRCS ${PYBIND_SRCS} gloo_context_py.cc)
+endif()
+
 if(WITH_PYTHON)
   # generate op pybind functions automatically for dygraph.
   set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
@@ -65,10 +67,6 @@ if(WITH_PYTHON)
   if(WITH_NCCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
   endif(WITH_NCCL)
-
-  if(WITH_GLOO)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS gloo_context)
-  endif(WITH_GLOO)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})

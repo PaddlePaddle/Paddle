@@ -33,7 +33,6 @@ limitations under the License. */
 #include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/data_loader.h"
-#include "paddle/fluid/imperative/gloo_context.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/partial_grad_engine.h"
@@ -988,69 +987,6 @@ void BindImperative(py::module *m_ptr) {
                     [](imperative::ParallelStrategy &self,
                        const std::string &ep) { self.current_endpoint_ = ep; });
 
-// define parallel context for gloo
-#if defined(PADDLE_WITH_GLOO)
-  py::class_<imperative::GlooParallelStrategy> gloo_parallel_strategy(
-      m, "GlooParallelStrategy", "");
-  gloo_parallel_strategy.def(py::init())
-      .def_property("rank_num",
-                    [](const imperative::GlooParallelStrategy &self) {
-                      return self.rank_num;
-                    },
-                    [](imperative::GlooParallelStrategy &self, int nranks) {
-                      self.rank_num = nranks;
-                    })
-      .def_property("rank",
-                    [](const imperative::GlooParallelStrategy &self) {
-                      return self.rank;
-                    },
-                    [](imperative::GlooParallelStrategy &self, int rank) {
-                      self.rank = rank;
-                    })
-      .def_property("iface",
-                    [](const imperative::GlooParallelStrategy &self) {
-                      return self.iface;
-                    },
-                    [](imperative::GlooParallelStrategy &self,
-                       const std::string &iface) { self.iface = iface; })
-      .def_property("prefix",
-                    [](const imperative::GlooParallelStrategy &self) {
-                      return self.prefix;
-                    },
-                    [](imperative::GlooParallelStrategy &self,
-                       const std::string &prefix) { self.prefix = prefix; })
-      .def_property("init_seconds",
-                    [](const imperative::GlooParallelStrategy &self) {
-                      return self.init_seconds;
-                    },
-                    [](imperative::GlooParallelStrategy &self,
-                       int init_seconds) { self.init_seconds = init_seconds; })
-      .def_property("run_seconds",
-                    [](const imperative::GlooParallelStrategy &self) {
-                      return self.run_seconds;
-                    },
-                    [](imperative::GlooParallelStrategy &self,
-                       int run_seconds) { self.run_seconds = run_seconds; })
-      .def_property("path",
-                    [](const imperative::GlooParallelStrategy &self) {
-                      return self.path;
-                    },
-                    [](imperative::GlooParallelStrategy &self,
-                       const std::string &path) { self.path = path; })
-      .def_property("fs_name",
-                    [](const imperative::GlooParallelStrategy &self) {
-                      return self.fs_name;
-                    },
-                    [](imperative::GlooParallelStrategy &self,
-                       const std::string &fs_name) { self.fs_name = fs_name; })
-      .def_property("fs_ugi",
-                    [](const imperative::GlooParallelStrategy &self) {
-                      return self.fs_ugi;
-                    },
-                    [](imperative::GlooParallelStrategy &self,
-                       const std::string &fs_ugi) { self.fs_ugi = fs_ugi; });
-#endif
-
   m.def(
       "dygraph_partial_grad",
       [](const std::vector<std::shared_ptr<imperative::VarBase>> &input_targets,
@@ -1078,13 +1014,6 @@ void BindImperative(py::module *m_ptr) {
       .def(py::init<const imperative::ParallelStrategy &,
                     const platform::CUDAPlace &>())
       .def("init", [](imperative::NCCLParallelContext &self) { self.Init(); });
-#endif
-
-#if defined(PADDLE_WITH_GLOO)
-  py::class_<imperative::GlooParallelContext> gloo_ctx(m,
-                                                       "GlooParallelContext");
-  gloo_ctx.def(py::init<const imperative::GlooParallelStrategy &>())
-      .def("init", [](imperative::GlooParallelContext &self) { self.Init(); });
 #endif
 }
 

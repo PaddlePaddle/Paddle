@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import os
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -28,8 +29,8 @@ __all__ = [
     'reduce',
     'all_gather',
     'scatter',
+    'barrier',
     'ReduceOp',
-    'init_distributed_context',
 ]
 
 
@@ -49,80 +50,9 @@ class _Group():
         self.nranks = rank_num
 
 
-_default_group = _Group(0, 1)
-_default_backend = None
-
-
-def init_distributed_context(backend,
-                             rank_num,
-                             rank,
-                             timeout=999999,
-                             group_name='',
-                             group_num=1,
-                             fs_path="",
-                             fs_name="",
-                             fs_ugi=""):
-    """
-
-    Initialize the default distributed context.
-
-    Args:
-        backend (str): The backend to use, one of 'nccl' or 'gloo'.
-        rank_num (int): Number of processes in the group.
-        rank (int): Rank of the current process starting from 0.
-        timeout (int): Timeout in seconds for gloo only. 
-        group_name (str): Name of the group.
-        group_num (int): Number of groups.
-        fs_path (str): A file system path used to initialized gloo.
-        fs_name (str): A file system name used to initialized gloo.
-        fs_ugi (str): A file system ugi (name and password) used to 
-                      initialized gloo.
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: python
-
-        import paddle
-        place = paddle.fluid.CUDAPlace(0)
-        paddle.distributed.init_distributed_context('nccl', 2, 1)
-    """
-    global _default_backend
-    if not backend in ['nccl', 'gloo']:
-        raise ValueError("backend must be on of 'nccl' or 'gloo' in lowcase, "
-                         "but the given one is %s." % backend)
-    if _default_backend:
-        raise RuntimeError("The default process group has been initialized.")
-
-    _default_backend = backend
-    _default_group.rank = rank
-    _default_group.nranks = rank_num
-
-    if rank_num < 2:
-        raise ValueError(
-            "At least 2 ranks are required to use distributed training.")
-
-    if rank >= rank_num or rank < 0:
-        raise ValueError("The value of rank must be in [0, rank_num)")
-
-    if backend == 'nccl':
-        prepare_context()
-    elif backend == 'gloo':
-        strategy = fluid.core.GlooParallelStrategy()
-        strategy.rank = rank
-        strategy.rank_num = rank_num
-        strategy.prefix = ""
-        strategy.iface = "lo"
-        strategy.init_seconds = timeout
-        strategy.run_seconds = timeout
-        strategy.path = '/tmp/tmp0'
-        strategy.fs_name = ""
-        strategy.fs_ugi = ""
-        gloo = fluid.core.GlooParallelContext(strategy)
-        gloo.init()
-    else:
-        raise ValueError("Unknow backend: %s" % backend)
+_default_group = _Group(
+    int(os.getenv("PADDLE_TRAINER_ID", "0")),
+    int(os.getenv("PADDLE_TRAINERS_NUM", "1")))
 
 
 def broadcast(tensor, src, group=0):
@@ -143,19 +73,21 @@ def broadcast(tensor, src, group=0):
         .. code-block:: python
 
         import paddle
+        import paddle.fluid as fluid
+        from fluid.dygraph.parallel import prepare_context
 
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
         with fluid.dygraph.guard(place=place):
-             paddle.distributed.init_distributed_context('nccl', 1000, 2, 1)
-             if fluid.dygraph.ParallelEnv().local_rank == 0:
-                 np_data = np.array([[4, 5, 6], [4, 5, 6]])
-             else:
-                 np_data = np.array([[1, 2, 3], [1, 2, 3]])
-             data = paddle.to_tensor(np_data)
-             paddle.distributed.broadcast(data, 1)
-             out = data.numpy()
-             # [[1, 2, 3], [1, 2, 3]]
+            prepare_context()
+            if fluid.dygraph.ParallelEnv().local_rank == 0:
+                np_data = np.array([[4, 5, 6], [4, 5, 6]])
+            else:
+                np_data = np.array([[1, 2, 3], [1, 2, 3]])
+            data = paddle.to_tensor(np_data)
+            paddle.distributed.broadcast(data, 1)
+            out = data.numpy()
+            # [[1, 2, 3], [1, 2, 3]]
     """
     op_type = 'c_broadcast'
     check_variable_and_dtype(
@@ -196,19 +128,20 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0):
         import paddle
         import paddle.fluid as fluid
         from paddle.distributed import ReduceOp
+        from fluid.dygraph.parallel import prepare_context
 
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
         with fluid.dygraph.guard(place=place):
-             paddle.distributed.init_distributed_context('nccl', 1000, 2, 1)
-             if fluid.dygraph.ParallelEnv().local_rank == 0:
-                 np_data = np.array([[4, 5, 6], [4, 5, 6]])
-             else:
-                 np_data = np.array([[1, 2, 3], [1, 2, 3]])
-             data = paddle.to_tensor(np_data)
-             paddle.distributed.all_reduce(data)
-             out = data.numpy()
-             # [[5, 7, 9], [5, 7, 9]]
+            prepare_context()
+            if fluid.dygraph.ParallelEnv().local_rank == 0:
+                np_data = np.array([[4, 5, 6], [4, 5, 6]])
+            else:
+                np_data = np.array([[1, 2, 3], [1, 2, 3]])
+            data = paddle.to_tensor(np_data)
+            paddle.distributed.all_reduce(data)
+            out = data.numpy()
+            # [[5, 7, 9], [5, 7, 9]]
     """
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -254,19 +187,20 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
 
         import paddle
         import paddle.fluid as fluid
+        from fluid.dygraph.parallel import prepare_context
 
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
         with fluid.dygraph.guard(place=place):
-             paddle.distributed.init_distributed_context('nccl', 1000, 2, 1)
-             if fluid.dygraph.ParallelEnv().local_rank == 0:
-                 np_data = np.array([[4, 5, 6], [4, 5, 6]])
-             else:
-                 np_data = np.array([[1, 2, 3], [1, 2, 3]])
-             data = paddle.to_tensor(np_data)
-             paddle.distributed.reduce(data, 0)
-             out = data.numpy()
-             # [[5, 7, 9], [5, 7, 9]]
+            prepare_context()
+            if fluid.dygraph.ParallelEnv().local_rank == 0:
+                np_data = np.array([[4, 5, 6], [4, 5, 6]])
+            else:
+                np_data = np.array([[1, 2, 3], [1, 2, 3]])
+            data = paddle.to_tensor(np_data)
+            paddle.distributed.reduce(data, 0)
+            out = data.numpy()
+            # [[5, 7, 9], [5, 7, 9]]
     """
     op_type = 'c_reduce'
     check_variable_and_dtype(
@@ -318,24 +252,25 @@ def all_gather(tensor_list, tensor, group=0):
 
         import paddle
         import paddle.fluid as fluid
+        from fluid.dygraph.parallel import prepare_context
 
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
         with fluid.dygraph.guard(place=place):
-             paddle.distributed.init_distributed_context('nccl', 1000, 2, 1)
-             tensor_list = []
-             if fluid.dygraph.ParallelEnv().local_rank == 0:
-                 np_data1 = np.array([[4, 5, 6], [4, 5, 6]])
-                 np_data2 = np.array([[4, 5, 6], [4, 5, 6]])
-                 data1 = paddle.to_tensor(np_data1)
-                 data2 = paddle.to_tensor(np_data2)
-                 paddle.distributed.all_gather(tensor_list, data1)
-             else:
-                 np_data1 = np.array([[1, 2, 3], [1, 2, 3]])
-                 np_data2 = np.array([[1, 2, 3], [1, 2, 3]])
-                 data1 = paddle.to_tensor(np_data1)
-                 data2 = paddle.to_tensor(np_data2)
-                 out = paddle.distributed.all_gather(tensor_list, data2)
+            prepare_context()
+            tensor_list = []
+            if fluid.dygraph.ParallelEnv().local_rank == 0:
+                np_data1 = np.array([[4, 5, 6], [4, 5, 6]])
+                np_data2 = np.array([[4, 5, 6], [4, 5, 6]])
+                data1 = paddle.to_tensor(np_data1)
+                data2 = paddle.to_tensor(np_data2)
+                paddle.distributed.all_gather(tensor_list, data1)
+            else:
+                np_data1 = np.array([[1, 2, 3], [1, 2, 3]])
+                np_data2 = np.array([[1, 2, 3], [1, 2, 3]])
+                data1 = paddle.to_tensor(np_data1)
+                data2 = paddle.to_tensor(np_data2)
+                out = paddle.distributed.all_gather(tensor_list, data2)
     """
     op_type = 'c_allgather'
     if not isinstance(tensor_list, list):
@@ -383,24 +318,25 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
 
         import paddle
         import paddle.fluid as fluid
+        from fluid.dygraph.parallel import prepare_context
 
         paddle.disable_static()
         place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
         with fluid.dygraph.guard(place=place):
-             paddle.distributed.init_distributed_context('nccl', 1000, 2, 1)
-             if fluid.dygraph.ParallelEnv().local_rank == 0:
-                 np_data1 = np.array([7, 8, 9])
-                 np_data2 = np.array([10, 11, 12])
-             else:
-                 np_data1 = np.array([1, 2, 3])
-                 np_data2 = np.array([4, 5, 6])
-             data1 = paddle.to_tensor(np_data1)
-             data2 = paddle.to_tensor(np_data2)
-             if fluid.dygraph.ParallelEnv().local_rank == 0:
-                 paddle.distributed.scatter(data1, src=1)
-             else:
-                 paddle.distributed.scatter(data1, tensor_list=[data1, data2], src=1)
-             out = data1.numpy()
+            prepare_context()
+            if fluid.dygraph.ParallelEnv().local_rank == 0:
+                np_data1 = np.array([7, 8, 9])
+                np_data2 = np.array([10, 11, 12])
+            else:
+                np_data1 = np.array([1, 2, 3])
+                np_data2 = np.array([4, 5, 6])
+            data1 = paddle.to_tensor(np_data1)
+            data2 = paddle.to_tensor(np_data2)
+            if fluid.dygraph.ParallelEnv().local_rank == 0:
+                paddle.distributed.scatter(data1, src=1)
+            else:
+                paddle.distributed.scatter(data1, tensor_list=[data1, data2], src=1)
+            out = data1.numpy()
     """
     op_type = 'c_scatter'
     global _default_group
@@ -435,3 +371,39 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
             'root': src,
             'nranks': nranks,
         })
+
+
+def barrier(group=0):
+    """
+
+    Barrier among all participators in the group.
+
+    Args:
+        group (int): The id of the process group to work on.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        import paddle.fluid as fluid
+        from fluid.dygraph.parallel import prepare_context
+
+        paddle.disable_static()
+        place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+        with fluid.dygraph.guard(place=place):
+            prepare_context()
+            paddle.distributed.barrier()
+    """
+    op_type = 'barrier'
+    if not isinstance(group, int):
+        raise ValueError("The type of 'group' for barrier must be int.")
+    temp = paddle.fill_constant([1], dtype="int32", value="1")
+    helper = LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [temp]},
+        outputs={'Out': [temp]},
+        attrs={'ring_id': group})
