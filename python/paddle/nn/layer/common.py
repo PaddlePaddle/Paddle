@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the common classes to build a neural network  
+# TODO: define the common classes to build a neural network
 from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Embedding  #DEFINE_ALIAS
@@ -20,6 +20,7 @@ from ...fluid.dygraph import Linear  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
 from .. import functional as F
+from ...fluid.framework import _dygraph_tracer
 
 __all__ = [
     'BilinearTensorProduct',
@@ -38,6 +39,11 @@ __all__ = [
     'ConstantPad3d',
     'ReplicationPad3d',
     'CosineSimilarity',
+    'Dropout',
+    'Dropout2D',
+    'Dropout3D',
+    'Bilinear',
+    'AlphaDropout',
 ]
 
 
@@ -348,6 +354,327 @@ class Pad2D(layers.Layer):
             data_format=self._data_format)
 
 
+class Bilinear(layers.Layer):
+    """
+
+    This layer performs bilinear on two inputs.
+
+    .. math::
+      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,size-1
+      out = out + b
+
+    In this formula:
+     - :math:`x1`: the first input contains in1_features elements, shape is [batch_size, in1_features].
+     - :math:`x2`: the second input contains in2_features elements, shape is [batch_size, in2_features].
+     - :math:`W_{i}`: the i-th learned weight, shape is [in1_features, in2_features], and learned weight's shape is [out_features, in1_features, in2_features].
+     - :math:`out_{i}`: the i-th element of out, shape is [batch_size, out_features].
+     - :math:`b`: the learned bias, shape is [1, out_features].
+     - :math:`x2^\mathrm{T}`: the transpose of :math:`x2`.
+
+    Parameters:
+       in1_features (int): The dimension of each first input(`x1`).
+       in2_features (int): The dimension of each second input(`x2`).
+       out_features (int): The dimension of output of this layer.
+       weight_attr (ParamAttr, optional): The parameter attribute for the learnable w, parameters/weights of 
+       this layer. The default value is None.
+       bias_attr (ParamAttr, optional): The parameter attribute for the bias
+           of this layer. If it is set to False, no bias will be added to the output units.
+           If it is set to None, the bias is initialized zero. The default value is None.       
+       name (str, optional): The default value is None. Normally there is no need for user
+           to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
+
+    Attribute:
+        **weight** (Parameter): the learnable weights of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
+
+    Returns:
+       Variable: A 2-D Tensor of shape [batch_size, out_features].
+
+    Examples:
+       .. code-block:: python
+
+        import paddle
+        import numpy
+
+        paddle.disable_static()
+        layer1 = numpy.random.random((5, 5)).astype('float32')
+        layer2 = numpy.random.random((5, 4)).astype('float32')
+        bilinear = paddle.nn.Bilinear(
+            in1_features=5, in2_features=4, out_features=1000)
+        result = bilinear(paddle.to_tensor(layer1),
+                        paddle.to_tensor(layer2))     # result shape [5, 1000]
+
+    """
+
+    def __init__(self,
+                 in1_features,
+                 in2_features,
+                 out_features,
+                 weight_attr=None,
+                 bias_attr=None,
+                 name=None):
+        super(Bilinear, self).__init__()
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+        self._name = name
+        self._in1_features = in1_features
+        self._in2_features = in2_features
+        self._out_features = out_features
+        self._dtype = self._helper.get_default_dtype()
+
+        weight_shape = [
+            self._out_features, self._in1_features, self._in2_features
+        ]
+        self.weight = self.create_parameter(
+            attr=self._weight_attr,
+            shape=weight_shape,
+            dtype=self._dtype,
+            is_bias=False)
+        bias_shape = [1, self._out_features]
+        self.bias = self.create_parameter(
+            attr=self._bias_attr,
+            shape=bias_shape,
+            dtype=self._dtype,
+            is_bias=True)
+
+    def forward(self, x1, x2):
+        return F.bilinear(x1, x2, self.weight, self.bias, self._name)
+
+
+class Dropout(layers.Layer):
+    """
+    Dropout is a regularization technique for reducing overfitting by preventing
+    neuron co-adaption during training as described in the paper:
+    `Improving neural networks by preventing co-adaptation of feature detectors <https://arxiv.org/abs/1207.0580>`_ 
+    The dropout operator randomly sets the outputs of some units to zero, while upscale others
+    according to the given dropout probability.
+
+    See ``paddle.nn.functional.dropout`` for more details.
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
+    Parameters:
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        axis (int | list): The axis along which the dropout is performed. Default None.
+        mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
+
+                               1. upscale_in_train(default), upscale the output at training time
+
+                                  - train: out = input * mask / ( 1.0 - p )
+                                  - inference: out = input
+
+                               2. downscale_in_infer, downscale the output at inference
+
+                                  - train: out = input * mask
+                                  - inference: out = input * (1.0 - p)
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: N-D tensor.
+        - output: N-D tensor, the same shape as input.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.array([[1,2,3], [4,5,6]]).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
+        super(Dropout, self).__init__()
+
+        self.p = p
+        self.axis = axis
+        self.mode = mode
+        self.name = name
+
+    def forward(self, input):
+        out = F.dropout(
+            input,
+            p=self.p,
+            axis=self.axis,
+            training=self.training,
+            mode=self.mode,
+            name=self.name)
+        return out
+
+
+class Dropout2D(layers.Layer):
+    """
+    Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
+    a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
+    on every forward call with probability `p` using samples from a Bernoulli distribution.
+    Dropout2d will help promote independence between feature maps as described in the paper: 
+    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_ 
+
+    See ``paddle.nn.functional.dropout2d`` for more details.
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
+    Parameters:
+        p (float, optional): Probability of setting units to zero. Default: 0.5
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+                                     will be consistent with that of the input. An optional string from:
+                                    `NCHW`, `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is
+                                     stored in the order of: [batch_size, input_channels, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: 4-D tensor.
+        - output: 4-D tensor, the same shape as input.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout2D(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, data_format='NCHW', name=None):
+        super(Dropout2D, self).__init__()
+
+        self.p = p
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, input):
+        out = F.dropout2d(
+            input,
+            p=self.p,
+            training=self.training,
+            data_format=self.data_format,
+            name=self.name)
+        return out
+
+
+class Dropout3D(layers.Layer):
+    """
+    Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
+    a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
+    on every forward call with probability `p` using samples from a Bernoulli distribution.
+    Dropout3d will help promote independence between feature maps as described in the paper: 
+    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_ 
+
+    See ``paddle.nn.functional.dropout3d`` for more details.
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
+    Parameters:
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+                                     will be consistent with that of the input. An optional string from:
+                                    `NCDHW`, `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is
+                                     stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: 5-D tensor.
+        - output: 5-D tensor, the same shape as input.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout3D(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, data_format='NCDHW', name=None):
+        super(Dropout3D, self).__init__()
+
+        self.p = p
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, input):
+        out = F.dropout3d(
+            input,
+            p=self.p,
+            training=self.training,
+            data_format=self.data_format,
+            name=self.name)
+        return out
+
+
+class AlphaDropout(layers.Layer):
+    """
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
+    zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
+    standard deviation of the input. Alpha Dropout fits well to SELU activate function by randomly setting
+    activations to the negative saturation value.
+
+    For more information, please refer to:
+    `Self-Normalizing Neural Networks <https://arxiv.org/abs/1706.02515>`_
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
+    Parameters:
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: N-D tensor.
+        - output: N-D tensor, the same shape as input.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.array([[-1, 1], [-1, 1]]).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.AlphaDropout(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, name=None):
+        super(AlphaDropout, self).__init__()
+        self.p = p
+        self.name = name
+
+    def forward(self, input):
+        out = F.alpha_dropout(
+            input, p=self.p, training=self.training, name=self.name)
+        return out
+
+
 class ReflectionPad1d(layers.Layer):
     """
     This interface is used to construct a callable object of the ``ReflectionPad1d`` class.
@@ -360,8 +687,8 @@ class ReflectionPad1d(layers.Layer):
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -419,8 +746,8 @@ class ReplicationPad1d(layers.Layer):
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -434,7 +761,7 @@ class ReplicationPad1d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -479,8 +806,8 @@ class ConstantPad1d(layers.Layer):
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -495,7 +822,7 @@ class ConstantPad1d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -542,8 +869,8 @@ class ConstantPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -558,7 +885,7 @@ class ConstantPad2d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -607,8 +934,8 @@ class ZeroPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -622,7 +949,7 @@ class ZeroPad2d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -669,8 +996,8 @@ class ReplicationPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -684,7 +1011,7 @@ class ReplicationPad2d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -731,8 +1058,8 @@ class ReflectionPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -746,7 +1073,7 @@ class ReflectionPad2d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -796,8 +1123,8 @@ class ConstantPad3d(layers.Layer):
            Default is  "NCDHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -812,7 +1139,7 @@ class ConstantPad3d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -861,8 +1188,8 @@ class ReplicationPad3d(layers.Layer):
            Default is  "NCDHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -876,7 +1203,7 @@ class ReplicationPad3d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -913,12 +1240,12 @@ class ReplicationPad3d(layers.Layer):
 
 class CosineSimilarity(layers.Layer):
     """
-    This interface is used to compute cosine similarity between x1 and x2 along dim.
+    This interface is used to compute cosine similarity between x1 and x2 along axis.
 
     Parameters:
-        dim (int): Dimension of vectors to compute cosine similarity. Default is 1.
+        axis (int): Dimension of vectors to compute cosine similarity. Default is 1.
         eps(float): Small value to avoid division by zero. Default is 1e-8.
-    Returns: 
+    Returns:
         None
 
     Examples:
@@ -933,13 +1260,13 @@ class CosineSimilarity(layers.Layer):
                      [0.9098952  0.15715368 0.8671125  0.3156102 ]
                      [0.4427798  0.54136837 0.5276275  0.32394758]
                      [0.3769419  0.8535014  0.48041078 0.9256797 ]]
-                dim = 1
+                axis = 1
                 eps = 1e-8
                 Out: [0.5275037  0.8368967  0.75037485 0.9245899]
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -951,16 +1278,16 @@ class CosineSimilarity(layers.Layer):
             x1 = paddle.to_tensor(x1)
             x2 = paddle.to_tensor(x2)
 
-            cos_sim_func = nn.CosineSimilarity(dim=0)
+            cos_sim_func = nn.CosineSimilarity(axis=0)
             result = cos_sim_func(x1, x2)
             print(result.numpy())
             # [0.99806249 0.9817672  0.94987036]
     """
 
-    def __init__(self, dim=1, eps=1e-8):
+    def __init__(self, axis=1, eps=1e-8):
         super(CosineSimilarity, self).__init__()
-        self._dim = dim
+        self._axis = axis
         self._eps = eps
 
     def forward(self, x1, x2):
-        return F.cosine_similarity(x1, x2, dim=self._dim, eps=self._eps)
+        return F.cosine_similarity(x1, x2, axis=self._axis, eps=self._eps)

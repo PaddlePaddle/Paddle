@@ -25,7 +25,7 @@ from paddle import fluid
 from paddle.incubate.hapi import Model, Input, set_device
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.incubate.hapi.vision.models import LeNet
-from paddle.incubate.hapi.metrics import Accuracy
+from paddle.metric import Accuracy
 from paddle.incubate.hapi.callbacks import ProgBarLogger
 from paddle.incubate.hapi.datasets import MNIST
 
@@ -63,8 +63,8 @@ class TestDistTraning(unittest.TestCase):
         im_shape = (-1, 1, 28, 28)
         batch_size = 128
 
-        inputs = [Input('image', im_shape, 'float32')]
-        labels = [Input('label', [None, 1], 'int64')]
+        inputs = [Input(im_shape, 'float32', 'image')]
+        labels = [Input([None, 1], 'int64', 'label')]
 
         model = Model(LeNet(classifier_activation=None), inputs, labels)
         optim = fluid.optimizer.Momentum(
