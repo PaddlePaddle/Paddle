@@ -247,11 +247,22 @@ def interpolate(x,
             import paddle.nn.functional as F
             paddle.disable_static()
             
+            # given out size
             input_data = np.random.rand(2,3,6,10).astype("float32")
             x = paddle.to_tensor(input_data)
-            output = F.interpolate(x=x, size=[12,12])
-    	    print(output.shape)
+            output_1 = F.interpolate(x=x, size=[12,12])
+    	    print(output_1.shape)
 	    # [2L, 3L, 12L, 12L]
+            
+            # given scale
+            output_2 = F.interpolate(x=x, scale_factor=[2,1])
+            print(output_2.shape)
+            # [2L, 3L, 12L, 10L]
+            
+            # bilinear interp
+            output_3 = F.interpolate(x=x, scale_factor=[2,1], mode="bilinear")
+            print(output_2.shape)
+            # [2L, 3L, 12L, 10L]
     """
     data_format = data_format.upper()
     resample = mode.upper()
@@ -290,8 +301,6 @@ def interpolate(x,
         raise ValueError(
             "align_corners option can only be set with the interpolating modes: linear | bilinear | bicubic | trilinear"
         )
-    helper = LayerHelper('{}_interp'.format(resample_type), **locals())
-    dtype = helper.input_dtype()
 
     if len(x.shape) == 3 and data_format not in ['NCW', 'NWC']:
         raise ValueError(
@@ -441,6 +450,9 @@ def interpolate(x,
             out = core.ops.nearest_interp_v2(x, *dy_attr)
         if resample_type == "bicubic":
             out = core.ops.bicubic_interp_v2(x, *dy_attr)
+
+    helper = LayerHelper('{}_interp_v2'.format(resample_type), **locals())
+    dtype = helper.input_dtype()
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
