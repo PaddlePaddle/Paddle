@@ -634,10 +634,9 @@ def unique(x,
             :ref:`api_guide_Name`. Default: None.
 
     Returns: 
-        out(Tensor): The unique tensor for `x`.
-        indices(Tensor, optional): The indices is provided only if `return_index` is True. 
-        inverse(Tensor, optional): The inverse is provided only if `return_inverse` is True. 
-        counts(Tensor, optional): The counts is provided only if `return_counts` is True.
+        tuple: (out, indices, inverse, counts). `out` is the unique tensor for `x`. `indices` is
+            provided only if `return_index` is True. `inverse` is provided only if `return_inverse`
+            is True. `counts` is provided only if `return_counts` is True.
 
     Examples:
         .. code-block:: python
@@ -670,14 +669,14 @@ def unique(x,
         axis = [axis]
 
     if in_dygraph_mode():
-        out, index, inverse, counts = core.ops.unique(
+        out, inverse, indices, counts = core.ops.unique(
             x, 'dtype',
             convert_np_dtype_to_dtype_('int32'), 'return_index', return_index,
             'return_inverse', return_inverse, 'return_counts', return_counts,
             'axis', axis, "is_sorted", True)
         outs = [out]
         if return_index:
-            outs.append(index)
+            outs.append(indices)
         if return_inverse:
             outs.append(inverse)
         if return_counts:
@@ -707,7 +706,9 @@ def unique(x,
     }
     out = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
-    outputs = {"Out": out}
+    inverse = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
+    outputs = {"Out": out, "Index": inverse}
     outs = [out]
     if return_index:
         indices = helper.create_variable_for_type_inference(
@@ -715,9 +716,6 @@ def unique(x,
         outputs["Indices"] = indices
         outs.append(indices)
     if return_inverse:
-        inverse = helper.create_variable_for_type_inference(
-            dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
-        outputs["Index"] = inverse
         outs.append(inverse)
     if return_counts:
         counts = helper.create_variable_for_type_inference(

@@ -95,17 +95,18 @@ class UniqueOp : public framework::OperatorWithKernel {
 class UniqueOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input tensor. It should be a 1-D tensor.");
+    AddInput("X",
+             "Input tensor. It should be a 1-D tensor when Attr(is_sorted)"
+             " is fasle or a N-D tensor when Attr(is_sorted) is true.");
     AddAttr<int>("dtype", "data type for output index");
     AddOutput("Out", "A unique subsequence for input tensor.");
-    AddOutput(
-        "Indices",
-        "The indices of the input tensor that result in the unique tensor.")
-        .AsDispensable();
     AddOutput("Index",
               "Equivalent to inverse in numpy.unique, "
               "the indices for where elements in the original input ended up "
-              "in the returned unique tensor.")
+              "in the returned unique tensor.");
+    AddOutput(
+        "Indices",
+        "The indices of the input tensor that result in the unique tensor.")
         .AsDispensable();
     AddOutput("Counts", "The counts for each unique element.").AsDispensable();
     AddAttr<bool>("return_index",
