@@ -917,6 +917,7 @@ class Optimizer(object):
             .. code-block:: python
  
                 import paddle
+                import numpy as np
 
                 paddle.disable_static()
                 inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
