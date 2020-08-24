@@ -57,7 +57,7 @@ def load_dnn_input_record(sent):
 def load_lr_input_record(sent):
     res = []
     for _ in [x.split(':') for x in sent.split()]:
-        res.append(int(_[0]))
+        res.append(int(_[0]) % 10000)
     return res
 
 
@@ -120,7 +120,36 @@ def prepare_data():
     lr_input_dim = res[1]
     logger.info('dnn input dim: %d' % dnn_input_dim)
     logger.info('lr input dim: %d' % lr_input_dim)
+
     return dnn_input_dim, lr_input_dim, train_file_path
+
+
+def prepare_dataset_data():
+    """
+    load data meta info from path, return (dnn_input_dim, lr_input_dim)
+    """
+    file_dir_name = download_file()
+    meta_file_path = os.path.join(file_dir_name, 'data.meta.txt')
+    train_file_path = os.path.join(file_dir_name, 'train.txt')
+    with open(meta_file_path, "r") as f:
+        lines = f.readlines()
+    err_info = "wrong meta format"
+    assert len(lines) == 2, err_info
+    assert 'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[
+        1], err_info
+    res = map(int, [_.split(':')[1] for _ in lines])
+    res = list(res)
+    dnn_input_dim = res[0]
+    lr_input_dim = res[1]
+    logger.info('dnn input dim: %d' % dnn_input_dim)
+    logger.info('lr input dim: %d' % lr_input_dim)
+
+    # cp train_data for two nodes training
+    bak_train_file_path = os.path.join(file_dir_name, 'train_bak.txt')
+    os.system("cp {} {}".format(train_file_path, bak_train_file_path))
+    file_list = [train_file_path, bak_train_file_path]
+
+    return dnn_input_dim, lr_input_dim, file_list
 
 
 if __name__ == "__main__":

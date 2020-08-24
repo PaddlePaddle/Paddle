@@ -74,12 +74,13 @@ class FleetDistHeterRunnerBase(object):
                 args.current_id)].split(":")[0]
             environs["PADDLE_PORT"] = args.heter_trainer_endpoints.split(",")[
                 int(args.current_id)].split(":")[1]
+            environs["FLAGS_selected_gpus"] = args.current_id
 
         for k, v in environs.items():
             os.environ[k] = str(v)
 
         self.role = role_maker.PaddleCloudRoleMaker()
-        return role
+        return self.role
 
     def build_strategy(self, args):
         if args.mode == "async":
@@ -90,29 +91,7 @@ class FleetDistHeterRunnerBase(object):
         return self.strategy
 
     def build_optimizer(self, avg_cost, strategy):
-        use_grad_clip = int(os.getenv('GRAD_CLIP', 0))
-        if use_grad_clip:
-            # 1: clip_by_value; 2: clip_by_norm; 3:clip_by_global_norm
-            if use_grad_clip == 1:
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByValue(2.0))
-            elif use_grad_clip == 2:
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByNorm(2.0))
-            elif use_grad_clip == 3:
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByGlobalNorm(2.0))
-
-        use_decay = int(os.getenv("DECAY", "0"))
-        if use_decay:
-            optimizer = fluid.optimizer.SGD(
-                learning_rate=fluid.layers.exponential_decay(
-                    learning_rate=LEARNING_RATE,
-                    decay_steps=500,
-                    decay_rate=0.969,
-                    staircase=True))
-        else:
-            optimizer = fluid.optimizer.SGD(LEARNING_RATE)
+        optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -226,14 +205,17 @@ class TestFleetHeterBase(unittest.TestCase):
         tr0_pipe = open(tempfile.gettempdir() + "/tr0_err.log", "wb+")
         tr1_pipe = open(tempfile.gettempdir() + "/tr1_err.log", "wb+")
 
+        tr0_out = open(tempfile.gettempdir() + "/tr0_out.log", "wb+")
+        tr1_out = open(tempfile.gettempdir() + "/tr1_out.log", "wb+")
+
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
+            stdout=tr0_out,
             stderr=tr0_pipe,
             env=required_envs)
         tr1_proc = subprocess.Popen(
             tr1_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
+            stdout=tr1_out,
             stderr=tr1_pipe,
             env=required_envs)
 
@@ -244,15 +226,17 @@ class TestFleetHeterBase(unittest.TestCase):
 
         heter0_pipe = open(tempfile.gettempdir() + "/heter0_err.log", "wb+")
         heter1_pipe = open(tempfile.gettempdir() + "/heter1_err.log", "wb+")
+        heter0_out = open(tempfile.gettempdir() + "/heter0_out.log", "wb+")
+        heter1_out = open(tempfile.gettempdir() + "/heter1_out.log", "wb+")
 
         heter0_proc = subprocess.Popen(
             heter0_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
+            stdout=heter0_out,
             stderr=heter0_pipe,
             env=required_envs)
         heter1_proc = subprocess.Popen(
             heter1_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
+            stdout=heter1_out,
             stderr=heter1_pipe,
             env=required_envs)
 
@@ -304,12 +288,11 @@ class TestFleetHeterBase(unittest.TestCase):
 
         tr0_out, tr0_err = tr0.communicate()
         tr1_out, tr1_err = tr1.communicate()
-
-        heter0_out, heter0_err = heter0.communicate()
-        heter1_out, heter1_err = heter1.communicate()
+        print("tr end communicate")
 
         tr0_ret = tr0.returncode
         tr1_ret = tr0.returncode
+        print("tr get returncode: {}".format(tr0_ret))
         if tr0_ret != 0:
             print(
                 "========================Error tr0_err begin==========================="
@@ -328,34 +311,8 @@ class TestFleetHeterBase(unittest.TestCase):
                 "========================Error tr1_err end==========================="
             )
 
-        heter0_ret = heter0.returncode
-        heter1_ret = heter1.returncode
-        if heter0_ret != 0:
-            print(
-                "========================Error heter0_err begin==========================="
-            )
-            os.system("cat {}".format(tempfile.gettempdir() +
-                                      "/heter0_err.log"))
-            print(
-                "========================Error heter0_err end==========================="
-            )
-
-        if heter1_ret != 0:
-            print(
-                "========================Error heter1_err begin==========================="
-            )
-            os.system("cat {}".format(tempfile.gettempdir() +
-                                      "/heter1_err.log"))
-            print(
-                "========================Error heter1_err end==========================="
-            )
-
         self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")
         self.assertEqual(tr1_ret, 0, "something wrong in tr1, please check")
-        self.assertEqual(heter0_ret, 0,
-                         "something wrong in heter0, please check")
-        self.assertEqual(heter1_ret, 0,
-                         "something wrong in heter1, please check")
 
         # close trainer file
         tr0_pipe.close()

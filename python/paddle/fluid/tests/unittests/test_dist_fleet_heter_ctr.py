@@ -20,10 +20,10 @@ import tempfile
 from test_dist_fleet_heter_base import TestFleetHeterBase
 
 
-class TestDistMnistAsync2x2(TestFleetHeterBase):
+class TestDistHeterAsync2x2(TestFleetHeterBase):
     def _setup_config(self):
         self._mode = "async"
-        self._reader = "pyreader"
+        self._reader = "dataset"
 
     def check_with_place(self,
                          model_file,
