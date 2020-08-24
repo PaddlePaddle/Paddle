@@ -138,7 +138,7 @@ def batch_norm(x,
         bias(Tensor): The bias tensor of batch_norm can not be None. 
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        training(bool, optional): The actual meaning is the opposite of global status. Defalut False.
+        training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Defalut False.
         data_format(str, optional): Specify the input data format. Defalut "NCHW".
         name(str, optional): Default: None.
 
