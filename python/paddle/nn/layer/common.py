@@ -23,28 +23,11 @@ from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 
 __all__ = [
-    'BilinearTensorProduct',
-    'Pool2D',
-    'Embedding',
-    'Linear',
-    'UpSample',
-    'Pad2D',
-    'UpsamplingNearest2d',
-    'UpsamplingBilinear2d',
-    'ReflectionPad1d',
-    'ReplicationPad1d',
-    'ConstantPad1d',
-    'ReflectionPad2d',
-    'ReplicationPad2d',
-    'ConstantPad2d',
-    'ZeroPad2d',
-    'ConstantPad3d',
-    'ReplicationPad3d',
-    'CosineSimilarity',
-    'Dropout',
-    'Dropout2D', 
-    'Dropout3D', 
-    'AlphaDropout'
+    'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
+    'Pad2D', 'UpsamplingNearest2d', 'UpsamplingBilinear2d', 'ReflectionPad1d',
+    'ReplicationPad1d', 'ConstantPad1d', 'ReflectionPad2d', 'ReplicationPad2d',
+    'ConstantPad2d', 'ZeroPad2d', 'ConstantPad3d', 'ReplicationPad3d',
+    'CosineSimilarity', 'Dropout', 'Dropout2D', 'Dropout3D', 'AlphaDropout'
 ]
 
 
@@ -254,7 +237,8 @@ class UpSample(layers.Layer):
                  mode='nearest',
                  align_corners=False,
                  align_mode=0,
-                 data_format='NCHW'):
+                 data_format='NCHW',
+                 name=None):
         super(UpSample, self).__init__()
         self.size = size
         self.scale_factor = scale_factor
@@ -262,6 +246,7 @@ class UpSample(layers.Layer):
         self.align_corners = align_corners
         self.align_mode = align_mode
         self.data_format = data_format
+        self.name = name
 
     def forward(self, x):
         out = F.interpolate(
@@ -271,7 +256,8 @@ class UpSample(layers.Layer):
             mode=self.mode,
             align_corners=self.align_corners,
             align_mode=self.align_mode,
-            data_format=self.data_format)
+            data_format=self.data_format,
+            self.name=name)
 
         return out
 
@@ -334,12 +320,17 @@ class UpsamplingNearest2d(layers.Layer):
 
     """
 
-    def __init__(self, size=None, scale_factor=None, data_format='NCHW'):
+    def __init__(self,
+                 size=None,
+                 scale_factor=None,
+                 data_format='NCHW',
+                 name=None):
         super(UpSample, self).__init__()
         self.size = size
         self.scale_factor = scale_factor
         self.mode = mode.lower()
         self.data_format = data_format
+        self.name = name
 
     def forward(self, x):
         out = F.interpolate(
@@ -349,7 +340,8 @@ class UpsamplingNearest2d(layers.Layer):
             mode='nearest',
             align_corners=False,
             align_mode=0,
-            data_format=self.data_format)
+            data_format=self.data_format,
+            name=self.name)
 
         return out
 
@@ -412,12 +404,17 @@ class UpsamplingBilinear2d(layers.Layer):
             # [2L, 3L, 12L, 12L]
     """
 
-    def __init__(self, size=None, scale_factor=None, data_format='NCHW'):
+    def __init__(self,
+                 size=None,
+                 scale_factor=None,
+                 data_format='NCHW',
+                 name=None):
         super(UpSample, self).__init__()
         self.size = size
         self.scale_factor = scale_factor
         self.mode = mode.lower()
         self.data_format = data_format
+        self.name = name
 
     def forward(self, x):
         out = F.interpolate(
@@ -427,7 +424,8 @@ class UpsamplingBilinear2d(layers.Layer):
             mode='bilinear',
             align_corners=True,
             align_mode=0,
-            data_format=self.data_format)
+            data_format=self.data_format,
+            name=self.name)
 
         return out
 
