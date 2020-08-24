@@ -92,18 +92,6 @@ class TestCollectiveAPIRunnerBase(object):
                 'ring_id': self.global_ring_id
             })
 
-    def initGlooEnv(rank, nranks):
-        strategy = fluid.core.GlooParallelStrategy()
-        strategy.rank = rank
-        strategy.rank_num = nranks
-        strategy.prefix = ""
-        strategy.iface = "lo"
-        strategy.init_seconds = 999999
-        strategy.run_seconds = 999999
-        strategy.path = "/tmp/tmp0"
-        gloo = fluid.core.GlooParallelContext(strategy)
-        gloo.init()
-
     def run_trainer(self, args):
         train_prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -119,7 +107,16 @@ class TestCollectiveAPIRunnerBase(object):
             place = fluid.CUDAPlace(
                 device_id)  #if args.use_gpu else fluid.CPUPlace()
         else:
-            self.initGlooEnv(rank, nranks)
+            strategy = fluid.core.GlooParallelStrategy()
+            strategy.rank = rank
+            strategy.rank_num = nranks
+            strategy.prefix = ""
+            strategy.iface = "lo"
+            strategy.init_seconds = 999999
+            strategy.run_seconds = 999999
+            strategy.path = "/tmp/tmp0"
+            gloo = fluid.core.GlooParallelContext(strategy)
+            gloo.init()
             place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)

@@ -266,7 +266,7 @@ function(parallel_bash_test_modules TARGET_NAME)
         set(timeout ${parallel_bash_test_modules_TIMEOUT})
     endif()
 
-    list(JOIN  parallel_bash_test_modules_UnitTests " " uts_string)
+    #list(JOIN  parallel_bash_test_modules_UnitTests " " uts_string)
 
     if(WITH_COVERAGE)
         add_test(NAME ${TARGET_NAME}

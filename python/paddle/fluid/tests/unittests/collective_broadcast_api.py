@@ -49,5 +49,5 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
-    #runtime_main(TestCollectiveBroadcastAPI, "broadcast", 'gloo')
+    runtime_main(TestCollectiveBroadcastAPI, "broadcast", 'gloo')
     runtime_main(TestCollectiveBroadcastAPI, "broadcast", 'nccl')
