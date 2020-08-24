@@ -20,28 +20,14 @@ from ...fluid.dygraph import Linear  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
 from .. import functional as F
+from ...fluid.framework import _dygraph_tracer
 
 __all__ = [
-    'BilinearTensorProduct',
-    'Pool2D',
-    'Embedding',
-    'Linear',
-    'UpSample',
-    'Pad2D',
-    'ReflectionPad1d',
-    'ReplicationPad1d',
-    'ConstantPad1d',
-    'ReflectionPad2d',
-    'ReplicationPad2d',
-    'ConstantPad2d',
-    'ZeroPad2d',
-    'ConstantPad3d',
-    'ReplicationPad3d',
-    'CosineSimilarity',
-    'AvgPool2d',
-    'MaxPool2d',
-    'AvgPool3d',
-    'MaxPool3d',
+    'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
+    'Pad2D', 'ReflectionPad1d', 'ReplicationPad1d', 'ConstantPad1d',
+    'ReflectionPad2d', 'ReplicationPad2d', 'ConstantPad2d', 'ZeroPad2d',
+    'ConstantPad3d', 'ReplicationPad3d', 'CosineSimilarity', 'Dropout',
+    'Dropout2D', 'Dropout3D', 'AlphaDropout'
 ]
 
 
@@ -352,693 +338,237 @@ class Pad2D(layers.Layer):
             data_format=self._data_format)
 
 
-class AvgPool1d(layers.Layer):
+class Dropout(layers.Layer):
     """
-    This operation applies a 1D average pooling over an input signal composed
-    of several input planes, based on the input, output_size, return_indices parameters.
-    Input(X) and output(Out) are in NCL format, where N is batch
-    size, C is the number of channels, L is the length of the feature.
-    The output tensor shape will be [N, C, output_size].
+    Dropout is a regularization technique for reducing overfitting by preventing
+    neuron co-adaption during training as described in the paper:
+    `Improving neural networks by preventing co-adaptation of feature detectors <https://arxiv.org/abs/1207.0580>`_ 
+    The dropout operator randomly sets the outputs of some units to zero, while upscale others
+    according to the given dropout probability.
 
-    The output value of the layer with input size (N, C, L),
-    output (N, C, L_{out}) and kernel_size k can be precisely described as
-    For average pool1d:
+    See ``paddle.nn.functional.dropout`` for more details.
 
-    ..  math::
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
-       Output(N_i, C_i, l) &= mean(Input[N_i, C_i, stride \times l:stride \times l+k])
+    Parameters:
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        axis (int | list): The axis along which the dropout is performed. Default None.
+        mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
 
+                               1. upscale_in_train(default), upscale the output at training time
 
-    Args:
-        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain one integers.
-        stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
-            it must contain one integers.
-        padding (string|int|list|tuple): The pool padding. If `pool_padding` is a string, either 'VALID' or
-            'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
-            it could be the following forms: `[pad_left, pad_right]`. If padding is non-zero,
-            then the input is implicitly zero-padded on both sides for padding number of points.
-        count_include_pad (bool): Whether to exclude padding points in average pooling
-                          mode, default is `true`.
-        ceil_mode (bool): ${ceil_mode_comment}Whether to use the ceil function to calculate output height and width.
-            If it is set to False, the floor function will be used. Default False
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
+                                  - train: out = input * mask / ( 1.0 - p )
+                                  - inference: out = input
 
-    Returns:
-        None.
+                               2. downscale_in_infer, downscale the output at inference
 
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ValueError: If `padding` is a list or tuple but its length greater than 1.
-        ShapeError: If the input is not a 3-D.
-        ShapeError: If the output's shape calculated is not greater than 0.
+                                  - train: out = input * mask
+                                  - inference: out = input * (1.0 - p)
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
+    Shape:
+        - input: N-D tensor.
+        - output: N-D tensor, the same shape as input.
 
     Examples:
-
         .. code-block:: python
-          import paddle
-          import paddle.nn as nn
-          paddle.disable_static()
+            import paddle
+            import numpy as np
 
-          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
-          AvgPool1d = nn.AvgPool1d(kernel_size=2, stride=2, padding=0)
-          pool_out = AvgPool1d(data)
-          # pool_out shape: [1, 3, 16]
+            paddle.disable_static()
+            x = np.array([[1,2,3], [4,5,6]]).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+   """
 
-    """
+    def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
+        super(Dropout, self).__init__()
 
-    def __init__(self,
-                 kernel_size,
-                 stride=None,
-                 padding=0,
-                 count_include_pad=True,
-                 ceil_mode=False,
-                 name=None):
-        super(AvgPool1d, self).__init__()
-        self.kernel_size = kernel_size
-        self.stride = stride
-        self.padding = padding
-        self.ceil_mode = ceil_mode
-        self.count_include_pad = count_include_pad
+        self.p = p
+        self.axis = axis
+        self.mode = mode
         self.name = name
 
-    def forward(self, x):
-        out = F.avg_pool1d(x, self.kernel_size, self.stride, self.padding,
-                           self.count_include_pad, self.ceil_mode, self.name)
+    def forward(self, input):
+        out = F.dropout(
+            input,
+            p=self.p,
+            axis=self.axis,
+            training=self.training,
+            mode=self.mode,
+            name=self.name)
         return out
 
 
-class MaxPool1d(layers.Layer):
+class Dropout2D(layers.Layer):
     """
-    Applies a 1D max pooling over an input signal composed of several input planes based
-    on the input, output_size, return_indices parameters.
-    Input(X) and output(Out) are in NCL format, where N is batch
-    size, C is the number of channels, L is the length of the feature.
+    Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
+    a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
+    on every forward call with probability `p` using samples from a Bernoulli distribution.
+    Dropout2d will help promote independence between feature maps as described in the paper: 
+    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_ 
 
-    The output value of the layer with input size (N, C, L),
-    output (N, C, L_{out}) and kernel_size k can be precisely described as
-    For average pool1d:
+    See ``paddle.nn.functional.dropout2d`` for more details.
 
-    ..  math::
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
-       Output(N_i, C_i, l) &=  max(Input[N_i, C_i, stride \times l:stride \times l+k])}
+    Parameters:
+        p (float, optional): Probability of setting units to zero. Default: 0.5
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+                                     will be consistent with that of the input. An optional string from:
+                                    `NCHW`, `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is
+                                     stored in the order of: [batch_size, input_channels, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Args:
-        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain one integers.
-        stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
-            it must contain one integers.
-        padding (string|int|list|tuple): The pool padding. If `pool_padding` is a string, either 'VALID' or
-            'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
-            it could be the following forms: `[pad_left, pad_right]`.
-        return_indices (bool): Whether return the max indices along with the outputs. default is `False`.
-        ceil_mode (bool): Whether to use the ceil function to calculate output height and width. False is the default.
-            If it is set to False, the floor function will be used. Default False
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
-
-    Returns:
-        None.
-
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ValueError: If `padding` is a list or tuple but its length greater than 1.
-        ShapeError: If the input is not a 3-D.
-        ShapeError: If the output's shape calculated is not greater than 0.
-
+    Shape:
+        - input: 4-D tensor.
+        - output: 4-D tensor, the same shape as input.
 
     Examples:
-
         .. code-block:: python
+            import paddle
+            import numpy as np
 
-          import paddle
-          import paddle.nn as nn
-          paddle.disable_static()
+            paddle.disable_static()
+            x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout2D(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+   """
 
-          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
-          MaxPool1d = nn.MaxPool1d(kernel_size=2, stride=2, padding=0)
-          pool_out = MaxPool1d(data)
-          # pool_out shape: [1, 3, 16]
+    def __init__(self, p=0.5, data_format='NCHW', name=None):
+        super(Dropout2D, self).__init__()
 
-          MaxPool1d = nn.MaxPool1d(kernel_size=2, stride=2, padding=0, return_indices=True)
-          pool_out, indices = MaxPool1d(data)
-          # pool_out shape: [1, 3, 16], indices shape: [1, 3, 16]
-
-    """
-
-    def __init__(self,
-                 kernel_size,
-                 stride=None,
-                 padding=0,
-                 return_indices=False,
-                 ceil_mode=False,
-                 name=None):
-        super(MaxPool1d, self).__init__()
-        self.kernel_size = kernel_size
-        self.stride = stride
-        self.padding = padding
-        self.ceil_mode = ceil_mode
-        self.return_indices = return_indices
+        self.p = p
+        self.data_format = data_format
         self.name = name
 
     def forward(self, input):
-        out = F.max_pool1d(input, self.kernel_size, self.stride, self.padding,
-                           self.return_indices, self.ceil_mode, self.name)
+        out = F.dropout2d(
+            input,
+            p=self.p,
+            training=self.training,
+            data_format=self.data_format,
+            name=self.name)
         return out
 
 
-class AdaptiveAvgPool1d(layers.Layer):
+class Dropout3D(layers.Layer):
     """
+    Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
+    a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
+    on every forward call with probability `p` using samples from a Bernoulli distribution.
+    Dropout3d will help promote independence between feature maps as described in the paper: 
+    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_ 
 
-    This operation applies a 1D adaptive average pooling over an input signal composed
-    of several input planes, based on the input, output_size, return_indices parameters.
-    Input(X) and output(Out) are in NCL format, where N is batch
-    size, C is the number of channels, L is the length of the feature.
-    The output tensor shape will be [N, C, output_size].
+    See ``paddle.nn.functional.dropout3d`` for more details.
 
-    For average adaptive pool1d:
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
-    ..  math::
+    Parameters:
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+                                     will be consistent with that of the input. An optional string from:
+                                    `NCDHW`, `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is
+                                     stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-       lstart &= floor(i * L_{in} / L_{out})
-
-       lend &= ceil((i + 1) * L_{in} / L_{out})
-
-       Output(i) &= \\frac{sum(Input[lstart:lend])}{(lstart - lend)}
-
-    Args:
-        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain one int.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
-
-    Returns:
-        None.
-
-    Raises:
-        ValueError: 'pool_size' should be a integer or list or tuple with length as 1.
+    Shape:
+        - input: 5-D tensor.
+        - output: 5-D tensor, the same shape as input.
 
     Examples:
         .. code-block:: python
+            import paddle
+            import numpy as np
 
-          # average adaptive pool1d
-          # suppose input data in shape of [N, C, L], `output_size` is m or [m],
-          # output shape is [N, C, m], adaptive pool divide L dimension
-          # of input data into m grids averagely and performs poolings in each
-          # grid to get output.
-          # adaptive max pool performs calculations as follow:
-          #
-          #     for i in range(m):
-          #         lstart = floor(i * L / m)
-          #         lend = ceil((i + 1) * L / m)
-          #         output[:, :, i] = sum(input[:, :, lstart: lend])/(lstart - lend)
-          #
-          import paddle
-          import paddle.nn as nn
-          paddle.disable_static()
+            paddle.disable_static()
+            x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout3D(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+   """
 
-          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
-          AdaptiveAvgPool1d = nn.AdaptiveAvgPool1d(output_size=16)
-          pool_out = AdaptiveAvgPool1d(data)
-          # pool_out shape: [1, 3, 16]
-    """
+    def __init__(self, p=0.5, data_format='NCDHW', name=None):
+        super(Dropout3D, self).__init__()
 
-    def __init__(self, output_size, name=None):
-        super(AdaptiveAvgPool1d, self).__init__()
-        self.output_size = output_size
+        self.p = p
+        self.data_format = data_format
         self.name = name
 
     def forward(self, input):
-        return F.adaptive_avg_pool1d(input, self.output_size, self.name)
+        out = F.dropout3d(
+            input,
+            p=self.p,
+            training=self.training,
+            data_format=self.data_format,
+            name=self.name)
+        return out
 
 
-class AdaptiveMaxPool1d(layers.Layer):
+class AlphaDropout(layers.Layer):
     """
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
+    zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
+    standard deviation of the input. Alpha Dropout fits well to SELU activate function by randomly setting
+    activations to the negative saturation value.
 
-    This operation applies a 1D adaptive max pooling over an input signal composed
-    of several input planes, based on the input, output_size, return_indices parameters.
-    Input(X) and output(Out) are in NCL format, where N is batch
-    size, C is the number of channels, L is the length of the feature.
-    The output tensor shape will be [N, C, output_size].
+    For more information, please refer to:
+    `Self-Normalizing Neural Networks <https://arxiv.org/abs/1706.02515>`_
 
-    For max adaptive pool1d:
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
-    ..  math::
+    Parameters:
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-       lstart &= floor(i * L_{in} / L_{out})
-
-       lend &= ceil((i + 1) * L_{in} / L_{out})
-
-       Output(i) &= max(Input[lstart:lend])}
-
-    Args:
-        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-             it must contain one int.
-        return_indices (bool): If true, the index of max pooling point will be returned along
-            with outputs. It cannot be set in average pooling type. Default False.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
-    Returns:
-        None.
-
-    Raises:
-        ValueError: 'pool_size' should be a integer or list or tuple with length as 1.
+    Shape:
+        - input: N-D tensor.
+        - output: N-D tensor, the same shape as input.
 
     Examples:
         .. code-block:: python
+            import paddle
+            import numpy as np
 
-          # max adaptive pool1d
-          # suppose input data in shape of [N, C, L], `output_size` is m or [m],
-          # output shape is [N, C, m], adaptive pool divide L dimension
-          # of input data into m grids averagely and performs poolings in each
-          # grid to get output.
-          # adaptive max pool performs calculations as follow:
-          #
-          #     for i in range(m):
-          #         lstart = floor(i * L / m)
-          #         lend = ceil((i + 1) * L / m)
-          #         output[:, :, i] = max(input[:, :, lstart: lend])
-          #
-                    import paddle
-          import paddle.nn as nn
-          paddle.disable_static()
+            paddle.disable_static()
+            x = np.array([[-1, 1], [-1, 1]]).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.AlphaDropout(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
+            print(y_test.numpy())
+   """
 
-          data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
-          AdaptiveMaxPool1d = nn.AdaptiveMaxPool1d(output_size=16)
-          pool_out = AdaptiveMaxPool1d(data)
-          # pool_out shape: [1, 3, 16]
-
-          # for return_indices = true
-          AdaptiveMaxPool1d = nn.AdaptiveMaxPool1d(output_size=16, return_indices=True)
-          pool_out, indices = AdaptiveMaxPool1d(data)
-          # pool_out shape: [1, 3, 16], indices shape: [1, 3, 16]
-
-    """
-
-    def __init__(self, output_size, return_indices=False, name=None):
-        super(AdaptiveMaxPool1d, self).__init__()
-        self.output_size = output_size
-        self.return_indices = return_indices
+    def __init__(self, p=0.5, name=None):
+        super(AlphaDropout, self).__init__()
+        self.p = p
         self.name = name
 
     def forward(self, input):
-        return F.adaptive_max_pool1d(input, self.output_size,
-                                     self.return_indices, self.name)
-
-
-class AvgPool2d(layers.Layer):
-    """
-    This operation applies 2D average pooling over input features based on the input,
-    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
-    in NCHW format, where N is batch size, C is the number of channels,
-    H is the height of the feature, and W is the width of the feature.
-
-    Example:
-      Input:
-           X shape: $(N, C, H_{in}, W_{in})$
-      Attr:
-           kernel_size: ksize
-
-      Output:
-           Out shape: $(N, C, H_{out}, W_{out})$
-           $$
-           out(N_i, C_j, h, w)  = \frac{1}{ksize[0] * ksize[1]} \sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
-                               input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)
-           $$
-
-    Args:
-        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain two integers, (pool_size_Height, pool_size_Width).
-            Otherwise, the pool kernel size will be a square of an int.
-        stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
-            it must contain two integers, (pool_stride_Height, pool_stride_Width).
-            Otherwise, the pool stride size will be a square of an int. Default: kernel_size.
-        padding (string|int|list|tuple): The pool padding. If `pool_padding` is a string, either 'VALID' or
-            'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
-            it could be in three forms: `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and when `data_format` is `"NCHW"`,
-            `pool_padding` can be in the form `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NHWC"`, `pool_padding` can be in the form
-            `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-            Otherwise, the pool padding size will be a square of an int.
-        ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
-        count_include_pad (bool): Whether to exclude padding points in average pooling
-                          mode, default is `true`.
-        divisor_override (int|float) if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
-        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
-                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-                        `[batch_size, input_channels, input_height, input_width]`.
-
-    Returns: None.
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ValueError: If `padding` is a list or tuple, but the elements in the batch or channel dimensions are non-zero.
-        ShapeError: If the input is not a 4-D or 5-D Tensor.
-        ShapeError: If the dimension of input minus the size of `kernel_stride` is not 2.
-        ShapeError: If the size of `kernel_size` and `pool_stride` is not equal.
-        ShapeError: If the output's shape calculated is not greater than 0.
-    Examples:
-        .. code-block:: python
-          import paddle
-          import paddle.nn as nn
-          import numpy as np
-          paddle.disable_static()
-
-          # max pool2d
-          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
-          AvgPool2d = nn.AvgPool2d(kernel_size=2,
-                                stride=2, padding=0)
-          output = AvgPoo2d(input)
-          # output.shape [1, 3, 16, 16]
-
-    """
-
-    def __init__(self,
-                 kernel_size,
-                 stride=None,
-                 padding=0,
-                 ceil_mode=False,
-                 count_include_pad=True,
-                 divisor_override=None,
-                 data_format="NCHW",
-                 name=None):
-        super(AvgPool2d, self).__init__()
-        self.ksize = kernel_size
-        self.stride = stride
-        self.padding = padding
-        self.ceil_mode = ceil_mode
-        self.count_include_pad = count_include_pad
-        self.divisor = divisor_override
-        self.data_format = data_format
-        self.name = name
-
-    def forward(self, x):
-        return F.avg_pool2d(
-            x,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            ceil_mode=self.ceil_mode,
-            count_include_pad=self.count_include_pad,
-            divisor_override=self.divisor,
-            data_format=self.data_format,
-            name=self.name)
-
-
-class MaxPool2d(layers.Layer):
-    """
-    This operation applies 2D max pooling over input feature based on the input,
-    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
-    in NCHW format, where N is batch size, C is the number of channels,
-    H is the height of the feature, and W is the width of the feature.
-
-    Example:
-      Input:
-           X shape: $(N, C, H_{in}, W_{in})$
-      Attr:
-           kernel_size: ksize
-
-      Output:
-           Out shape: $(N, C, H_{out}, W_{out})$
-           $$
-           out(N_i, C_j, h, w) ={} & \max_{m=0, \ldots, ksize[0] -1} \max_{n=0, \ldots, ksize[1]-1} \\
-                                    & \text{input}(N_i, C_j, \text{stride[0]} \times h + m,
-                                                   \text{stride[1]} \times w + n)
-           $$
-
-    Args:
-        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain two integers, (pool_size_Height, pool_size_Width).
-            Otherwise, the pool kernel size will be a square of an int.
-        stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
-            it must contain two integers, (pool_stride_Height, pool_stride_Width).
-            Otherwise, the pool stride size will be a square of an int. Default: kernel_size.
-        padding (string|int|list|tuple): The pool padding. If `pool_padding` is a string, either 'VALID' or
-            'SAME' which is the padding algorithm. If pool padding size is a tuple or list,
-            it could be in three forms: `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and when `data_format` is `"NCHW"`,
-            `pool_padding` can be in the form `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NHWC"`, `pool_padding` can be in the form
-            `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-            Otherwise, the pool padding size will be a square of an int.
-        ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
-        return_indices (bool): Whether to return the max indices along with the outputs.
-        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
-                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-                        `[batch_size, input_channels, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
-
-    Returns: None
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ValueError: If `padding` is a list or tuple, but the elements in the batch or channel dimensions are non-zero.
-        ShapeError: If the input is not a 4-D or 5-D Tensor.
-        ShapeError: If the dimension of input minus the size of `stride` is not 2.
-        ShapeError: If the size of `pool_size` and `stride` is not equal.
-        ShapeError: If the output's shape calculated is not greater than 0.
-    Examples:
-        .. code-block:: python
-          import paddle
-          import paddle.nn as nn
-          import numpy as np
-          paddle.disable_static()
-
-          # max pool2d
-          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
-          MaxPool2d = nn.MaxPool2d(kernel_size=2,
-                                   stride=2, padding=0)
-          output = MaxPool2d(input)
-          # output.shape [1, 3, 16, 16]
-
-          # for return_indices=True
-          MaxPool2d = nn.MaxPool2d(kernel_size=2,stride=2, padding=0, return_indices=True)
-          output, max_indices = MaxPool2d(input)
-          # output.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
-    """
-
-    def __init__(self,
-                 kernel_size,
-                 stride=None,
-                 padding=0,
-                 return_indices=False,
-                 ceil_mode=False,
-                 data_format="NCHW",
-                 name=None):
-        super(MaxPool2d, self).__init__()
-        self.ksize = kernel_size
-        self.stride = stride
-        self.padding = padding
-        self.return_indices = return_indices
-        self.ceil_mode = ceil_mode
-        self.data_format = data_format
-        self.name = name
-
-    def forward(self, x):
-        return F.max_pool2d(
-            x,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            return_indices=self.return_indices,
-            data_format=self.data_format,
-            name=self.name)
-
-
-class MaxPool3d(layers.Layer):
-    """
-    This operation applies 3D max pooling over input features based on the input,
-    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
-    in NCDHW format, where N is batch size, C is the number of channels,
-    H is the height of the feature,  D is the depth of the feature, and W is the width of the feature.
-
-    Args:
-        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size
-            is a tuple or list, it must contain three integers,
-            (pool_size_Depth, pool_size_Height, pool_size_Width).
-            Otherwise, the pool kernel size will be the cube of an int.
-        stride (string|int|list|tuple)): The pool padding. If `pool_padding` is a string, either 'VALID' or
-            'SAME' which is the padding algorithm. If pool stride size is a tuple or list,
-            it must contain three integers, `[stride_Depth, stride_Height, stride_Width]`.
-            Otherwise, the pool stride size will be a cube of an int. Default kernel_size.
-        padding (int|list|tuple): The pool padding size. If pool padding size is a tuple or list,
-            it could be in three forms: `[pad_depth, pad_height, pad_width]` or
-            `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `"NCDHW"`, `pool_padding` can be in the form
-            `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
-            `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-        ceil_mode (bool): when True, will use ceil instead of floor to compute the output shape.
-        count_include_pad (bool): Whether to exclude padding points in average pooling
-                          mode, default is True.
-        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
-                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-                        `[batch_size, input_channels, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
-
-
-    Returns:None.
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ValueError: If `padding` is a list or tuple, but the elements in the batch or channel dimensions are non-zero.
-        ShapeError: If the input is not a 4-D or 5-D Tensor.
-        ShapeError: If the dimension of input minus the size of `pool_stride` is not 2.
-        ShapeError: If the size of `kernel_size` and `stride` is not equal.
-        ShapeError: If the output's shape calculated is not greater than 0.
-    Examples:
-        .. code-block:: python
-          import paddle
-          import paddle.nn as nn
-          import numpy as np
-          paddle.disable_static()
-
-          # max pool3d
-          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
-          MaxPool3d = nn.MaxPool3d(kernel_size=2,
-                                   stride=2, padding=0)
-          output = MaxPool3d(input)
-          # output.shape [1, 2, 3, 16, 16]
-
-          # for return_indices=True
-          MaxPool3d = nn.MaxPool3d(kernel_size=2,stride=2, padding=0, return_indices=True)
-          output, max_indices = MaxPool3d(input)
-          # output.shape [1, 2, 3, 16, 16], max_indices.shape [1, 2, 3, 16, 16],
-    """
-
-    def __init__(self,
-                 kernel_size,
-                 stride,
-                 padding,
-                 return_indices=False,
-                 ceil_mode=False,
-                 data_format="NCDHW",
-                 name=None):
-        super(MaxPool3d, self).__init__()
-        self.ksize = kernel_size
-        self.stride = stride
-        self.padding = padding
-        self.return_indices = return_indices
-        self.ceil_mode = ceil_mode
-        self.data_format = data_format
-        self.name = name
-
-    def forward(self, x):
-        return F.max_pool3d(
-            x,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            return_indices=self.return_indices,
-            data_format=self.data_format,
-            name=self.name)
-
-
-class AvgPool3d(layers.Layer):
-    """
-    This operation applies 3D max pooling over input features based on the input,
-    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
-    in NCDHW format, where N is batch size, C is the number of channels,
-    H is the height of the feature,  D is the depth of the feature, and W is the width of the feature.
-
-    Args:
-        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size
-            is a tuple or list, it must contain three integers,
-            (pool_size_Depth, pool_size_Height, pool_size_Width).
-            Otherwise, the pool kernel size will be the cube of an int.
-        stride (string|int|list|tuple)): The pool padding. If `pool_padding` is a string, either 'VALID' or
-            'SAME' which is the padding algorithm. If pool stride size is a tuple or list,
-            it must contain three integers, `[stride_Depth, stride_Height, stride_Width]`.
-            Otherwise, the pool stride size will be a cube of an int.
-        padding (int|list|tuple): The pool padding size. If pool padding size is a tuple or list,
-            it could be in three forms: `[pad_depth, pad_height, pad_width]` or
-            `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `"NCDHW"`, `pool_padding` can be in the form
-            `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
-            `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-        ceil_mode (bool): ${ceil_mode_comment}
-        count_include_pad (bool): Whether to exclude padding points in average pooling
-                          mode, default is True.
-        divisor_override (int|float) if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
-        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
-                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-                        `[batch_size, input_channels, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
-
-    Returns: None.
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ValueError: If `padding` is a list or tuple, but the elements in the batch or channel dimensions are non-zero.
-        ShapeError: If the input is not a 4-D or 5-D Tensor.
-        ShapeError: If the dimension of input minus the size of `pool_stride` is not 2.
-        ShapeError: If the size of `kernel_size` and `stride` is not equal.
-        ShapeError: If the output's shape calculated is not greater than 0.
-    Examples:
-        .. code-block:: python
-          import paddle
-          import paddle.nn as nn
-          import numpy as np
-          paddle.disable_static()
-
-          # avg pool3d
-          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
-          AvgPool3d = nn.AvgPool3d(kernel_size=2,
-                                   stride=2, padding=0)
-          output = AvgPool3d(input)
-          # output.shape [1, 2, 3, 16, 16]
-
-    """
-
-    def __init__(self,
-                 kernel_size,
-                 stride,
-                 padding=0,
-                 ceil_mode=False,
-                 count_include_pad=True,
-                 divisor_override=None,
-                 data_format="NCDHW",
-                 name=None):
-        super(AvgPool3d, self).__init__()
-        self.ksize = kernel_size
-        self.stride = stride
-        self.padding = padding
-        self.ceil_mode = ceil_mode
-        self.count_include_pad = count_include_pad
-        self.divisor = divisor_override
-        self.data_format = data_format
-        self.name = name
-
-    def forward(self, x):
-        return F.avg_pool3d(
-            x,
-            kernel_size=self.ksize,
-            stride=self.stride,
-            padding=self.padding,
-            ceil_mode=self.ceil_mode,
-            count_include_pad=self.count_include_pad,
-            divisor_override=self.divisor,
-            data_format=self.data_format,
-            name=self.name)
+        out = F.alpha_dropout(
+            input, p=self.p, training=self.training, name=self.name)
+        return out
 
 
 class ReflectionPad1d(layers.Layer):
@@ -1606,10 +1136,10 @@ class ReplicationPad3d(layers.Layer):
 
 class CosineSimilarity(layers.Layer):
     """
-    This interface is used to compute cosine similarity between x1 and x2 along dim.
+    This interface is used to compute cosine similarity between x1 and x2 along axis.
 
     Parameters:
-        dim (int): Dimension of vectors to compute cosine similarity. Default is 1.
+        axis (int): Dimension of vectors to compute cosine similarity. Default is 1.
         eps(float): Small value to avoid division by zero. Default is 1e-8.
     Returns:
         None
@@ -1626,7 +1156,7 @@ class CosineSimilarity(layers.Layer):
                      [0.9098952  0.15715368 0.8671125  0.3156102 ]
                      [0.4427798  0.54136837 0.5276275  0.32394758]
                      [0.3769419  0.8535014  0.48041078 0.9256797 ]]
-                dim = 1
+                axis = 1
                 eps = 1e-8
                 Out: [0.5275037  0.8368967  0.75037485 0.9245899]
 
@@ -1644,16 +1174,16 @@ class CosineSimilarity(layers.Layer):
             x1 = paddle.to_tensor(x1)
             x2 = paddle.to_tensor(x2)
 
-            cos_sim_func = nn.CosineSimilarity(dim=0)
+            cos_sim_func = nn.CosineSimilarity(axis=0)
             result = cos_sim_func(x1, x2)
             print(result.numpy())
             # [0.99806249 0.9817672  0.94987036]
     """
 
-    def __init__(self, dim=1, eps=1e-8):
+    def __init__(self, axis=1, eps=1e-8):
         super(CosineSimilarity, self).__init__()
-        self._dim = dim
+        self._axis = axis
         self._eps = eps
 
     def forward(self, x1, x2):
-        return F.cosine_similarity(x1, x2, dim=self._dim, eps=self._eps)
+        return F.cosine_similarity(x1, x2, axis=self._axis, eps=self._eps)

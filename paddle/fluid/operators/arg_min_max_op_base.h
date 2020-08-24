@@ -38,8 +38,9 @@ struct ArgMinMaxFunctor {};
   struct ArgMinMaxFunctor<DeviceContext, T, Tout, Rank,                       \
                           enum_argminmax_value> {                             \
     void operator()(const DeviceContext& ctx, const framework::LoDTensor& in, \
-                    framework::LoDTensor* out, int64_t axis, bool keepdims) { \
-      auto in_eigen = framework::EigenTensor<T, Rank>::From(in);              \
+                    framework::LoDTensor* out, framework::DDim x_dims,        \
+                    int64_t axis, bool keepdims) {                            \
+      auto in_eigen = framework::EigenTensor<T, Rank>::From(in, x_dims);      \
       if (keepdims) {                                                         \
         auto out_eigen = framework::EigenTensor<Tout, Rank>::From(*out);      \
         out_eigen.device(*(ctx.eigen_device())) =                             \
@@ -68,16 +69,26 @@ struct VisitDataArgMinMaxFunctor {
     out.template mutable_data<Tout>(ctx.GetPlace());
     auto axis = ctx.Attr<int64_t>("axis");
     auto keepdims = ctx.Attr<bool>("keepdims");
-    auto x_rank = x.dims().size();
-    if (axis < 0) axis += x_rank;
+    const bool& flatten = ctx.Attr<bool>("flatten");
+
+    // if flatten, will construct the new dims for the cacluate
+    framework::DDim x_dims;
+    if (flatten) {
+      x_dims = framework::make_ddim({x.numel()});
+      // if flatten, the axis just as 0
+      axis = 0;
+    } else {
+      x_dims = x.dims();
+      if (axis < 0) axis += x_dims.size();
+    }
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
 #define CALL_ARG_MINMAX_FUNCTOR(rank)                                \
   ArgMinMaxFunctor<DeviceContext, T, Tout, rank, EnumArgMinMaxValue> \
       functor##rank;                                                 \
-  functor##rank(dev_ctx, x, &out, axis, keepdims)
+  functor##rank(dev_ctx, x, &out, x_dims, axis, keepdims)
 
-    switch (x.dims().size()) {
+    switch (x_dims.size()) {
       case 1:
         CALL_ARG_MINMAX_FUNCTOR(1);
         break;
@@ -141,6 +152,7 @@ class ArgMinMaxOp : public framework::OperatorWithKernel {
     const auto& x_dims = ctx->GetInputDim("X");
     int64_t axis = ctx->Attrs().Get<int64_t>("axis");
     bool keepdims = ctx->Attrs().Get<bool>("keepdims");
+    const bool& flatten = ctx->Attrs().Get<bool>("flatten");
 
     PADDLE_ENFORCE_GE(axis, -x_dims.size(),
                       platform::errors::InvalidArgument(
@@ -152,14 +164,21 @@ class ArgMinMaxOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "'axis'(%d) must be less than Rank(X)(%d).", axis, x_dims.size()));
 
-    auto x_rank = x_dims.size();
-    if (axis < 0) axis += x_rank;
     std::vector<int64_t> vec;
-    for (int64_t i = 0; i < axis; i++) vec.push_back(x_dims[i]);
-    if (keepdims) {
-      vec.push_back(static_cast<int64_t>(1));
+    if (flatten) {
+      // if is flatten, will return the only on element
+      if (keepdims) {
+        vec.emplace_back(static_cast<int64_t>(1));
+      }
+    } else {
+      auto x_rank = x_dims.size();
+      if (axis < 0) axis += x_rank;
+      for (int64_t i = 0; i < axis; i++) vec.emplace_back(x_dims[i]);
+      if (keepdims) {
+        vec.emplace_back(static_cast<int64_t>(1));
+      }
+      for (int64_t i = axis + 1; i < x_rank; i++) vec.emplace_back(x_dims[i]);
     }
-    for (int64_t i = axis + 1; i < x_rank; i++) vec.push_back(x_dims[i]);
     ctx->SetOutputDim("Out", framework::make_ddim(vec));
   }
 };
@@ -176,6 +195,9 @@ class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int64_t>("axis", "The axis in which to compute the arg indics.");
     AddAttr<bool>("keepdims", "Keep the dim that to reduce.").SetDefault(false);
     AddAttr<int>("dtype", "Keep the dim that to reduce.").SetDefault(-1);
+    AddAttr<bool>("flatten",
+                  "Flatten the input value, and search the min or max indices")
+        .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
       %s Operator.
 

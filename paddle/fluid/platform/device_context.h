@@ -43,6 +43,10 @@ limitations under the License. */
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu_header.h"
+#endif
+
 namespace paddle {
 namespace platform {
 
@@ -75,6 +79,35 @@ template <>
 struct DefaultDeviceContextType<platform::CPUPlace> {
   using TYPE = CPUDeviceContext;
 };
+
+#ifdef PADDLE_WITH_XPU
+class XPUDeviceContext : public DeviceContext {
+ public:
+  XPUDeviceContext();
+  explicit XPUDeviceContext(XPUPlace place);
+  virtual ~XPUDeviceContext();
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  Place GetPlace() const override;
+  xpu::Context* x_context() const;
+
+  /*! \brief  Wait for all operations completion in the stream. */
+  void Wait() const override;
+
+ private:
+  XPUPlace place_;
+  xpu::Context* context_;
+
+  // Need to be the same with other DeviceContext,
+  // Eventhough eigen_device_ is not used in XPU
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+  DISABLE_COPY_AND_ASSIGN(XPUDeviceContext);
+};
+
+template <>
+struct DefaultDeviceContextType<platform::XPUPlace> {
+  using TYPE = XPUDeviceContext;
+};
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 
@@ -487,7 +520,10 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   const mkldnn::engine& GetEngine() const { return engine_; }
 
   // Remove all entries from the blob map
-  void ResetBlobMap() const;
+  void ResetBlobMap();
+
+  // Prevent next ResetBlobMap()
+  void BlockNextCacheClearing();
 
   // Get the ShapeBlob size in cur_mkldnn_session_id.
   size_t GetShapeBlobSize() const;
@@ -506,6 +542,7 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   mkldnn::engine engine_;
   std::shared_ptr<BlobMap> p_blobmap_;
   std::shared_ptr<std::mutex> p_mutex_;
+  bool block_next_cache_clearing_ = false;
 };
 #endif
 
