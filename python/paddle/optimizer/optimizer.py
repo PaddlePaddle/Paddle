@@ -54,7 +54,7 @@ class Optimizer(object):
     Args:
         learning_rate (float|LearningRateDecay): The learning rate used to update ``Parameter``.
             It can be a float value or a LearningRateDecay.
-        parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
+        parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
@@ -915,6 +915,8 @@ class Optimizer(object):
 
         Examples:
             .. code-block:: python
+ 
+                import paddle
 
                 paddle.disable_static()
                 inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")

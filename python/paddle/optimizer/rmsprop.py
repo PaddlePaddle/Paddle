@@ -80,7 +80,7 @@ class RMSProp(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
-	parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
+	parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
 	    This parameter is required in dygraph mode. \
 	    The default value is None in static mode, at this time all parameters will be updated.
 	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
