@@ -108,12 +108,12 @@ static void InitTensorForVarBase(imperative::VarBase *self,
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace"));
   }
-  if (stop_gradient != -1) {
-    self->SetOverridedStopGradient(stop_gradient);
-  }
   self->SetPersistable(persistable);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor->type());
+  if (stop_gradient != -1) {
+    self->SetOverridedStopGradient(stop_gradient);
+  }
 }
 
 static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
@@ -161,12 +161,12 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
   new (self) imperative::VarBase(name);
   self->SetPersistable(persistable);
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
-  if (stop_gradient != -1) {
-    self->SetOverridedStopGradient(stop_gradient);
-  }
   SetTensorFromPyArray<P>(tensor, array, place, zero_copy);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor->type());
+  if (stop_gradient != -1) {
+    self->SetOverridedStopGradient(stop_gradient);
+  }
 }
 
 static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,

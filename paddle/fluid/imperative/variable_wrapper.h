@@ -36,6 +36,14 @@ class VariableWrapper {
 
   // This is used for python api
   void SetOverridedStopGradient(bool stop_gradient) {
+    if (DataType() != framework::proto::VarType::FP16 &&
+        DataType() != framework::proto::VarType::FP32 &&
+        DataType() != framework::proto::VarType::FP64) {
+      PADDLE_ENFORCE_EQ(stop_gradient, true,
+                        platform::errors::InvalidArgument(
+                            "Only Tensors of floating point dtype can set "
+                            "stop_gradient=False!"));
+    }
     overrided_stop_gradient_ = static_cast<int>(stop_gradient);
 
     if (auto grad_var = grad_var_.lock()) {
@@ -51,6 +59,14 @@ class VariableWrapper {
 
   // This is used inside C++
   void InnerSetOverridedStopGradient(bool stop_gradient) {
+    if (DataType() != framework::proto::VarType::FP16 &&
+        DataType() != framework::proto::VarType::FP32 &&
+        DataType() != framework::proto::VarType::FP64) {
+      PADDLE_ENFORCE_EQ(stop_gradient, true,
+                        platform::errors::InvalidArgument(
+                            "Only Tensors of floating point dtype can set "
+                            "stop_gradient=False!"));
+    }
     if (overrided_stop_gradient_ == -1) {
       overrided_stop_gradient_ = static_cast<int>(stop_gradient);
     } else {
