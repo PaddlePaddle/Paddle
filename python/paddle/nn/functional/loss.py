@@ -1007,10 +1007,10 @@ def ctc_loss(log_probs,
             label_lengths = np.array([3, 3]).astype("int64")
 
             paddle.disable_static()
-            log_probs = paddle.to_variable(log_probs)
-            labels = paddle.to_variable(labels)
-            input_lengths = paddle.to_variable(input_lengths)
-            label_lengths = paddle.to_variable(label_lengths)
+            log_probs = paddle.to_tensor(log_probs)
+            labels = paddle.to_tensor(labels)
+            input_lengths = paddle.to_tensor(input_lengths)
+            label_lengths = paddle.to_tensor(label_lengths)
 
             loss = F.ctc_loss(log_probs, labels, 
                 input_lengths, 
