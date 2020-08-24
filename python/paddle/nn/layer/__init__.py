@@ -35,7 +35,6 @@ from .activation import Sigmoid  #DEFINE_ALIAS
 # from .activation import Softmax        #DEFINE_ALIAS
 from .activation import LogSoftmax  #DEFINE_ALIAS
 from .activation import HSigmoid  #DEFINE_ALIAS
-from .common import BilinearTensorProduct  #DEFINE_ALIAS
 from .common import Pool2D  #DEFINE_ALIAS
 from .common import Pad2D  #DEFINE_ALIAS
 from .common import ReflectionPad1d  #DEFINE_ALIAS
@@ -55,6 +54,7 @@ from .common import UpSample  #DEFINE_ALIAS
 from .common import Dropout  #DEFINE_ALIAS
 from .common import Dropout2D  #DEFINE_ALIAS
 from .common import Dropout3D  #DEFINE_ALIAS
+from .common import Bilinear  #DEFINE_ALIAS
 from .pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
 from .pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
 from .conv import Conv1d  #DEFINE_ALIAS
