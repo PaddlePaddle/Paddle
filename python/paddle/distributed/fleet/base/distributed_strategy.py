@@ -749,8 +749,12 @@ class DistributedStrategy(object):
     def lamb(self):
         """
         Set lamb configurations. lamb is used to deal with the convergence problems for large 
-        batch size training, specially for attention-related model like BERT.
+        batch size training, specially for attention-related model like BERT. For more details, 
+        please refer to 
+        [Large Batch Optimization for Deep Learning: Training BERT in 76 minutes](https://arxiv.org/abs/1904.00962).
 
+        Default Value: False
+        
         Examples:
           .. code-block:: python
 
@@ -777,6 +781,7 @@ class DistributedStrategy(object):
         **lamb_weight_decay** (float): weight decay coefficient in lamb formula.
         **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
         will be exclude from weight decay in lamb formula.
+
         Examples:
           .. code-block:: python
             import paddle.distributed.fleet as fleet
