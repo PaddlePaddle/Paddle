@@ -1293,7 +1293,7 @@ class Model(object):
                   paddle.vision.LeNet(classifier_activation=None),
                   input, label)
               optim = paddle.optimizer.Adam(
-                  learning_rate=0.001, parameter_list=model.parameters())
+                  learning_rate=0.001, parameters=model.parameters())
               model.prepare(
                   optim,
                   paddle.nn.CrossEntropyLoss(),
@@ -1329,7 +1329,7 @@ class Model(object):
               model = paddle.Model(
                   paddle.vision.LeNet(classifier_activation=None), input, label)
               optim = paddle.optimizer.Adam(
-                  learning_rate=0.001, parameter_list=model.parameters())
+                  learning_rate=0.001, parameters=model.parameters())
               model.prepare(
                   optim,
                   paddle.nn.CrossEntropyLoss(),
