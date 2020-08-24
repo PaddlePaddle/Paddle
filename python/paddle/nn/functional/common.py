@@ -33,6 +33,8 @@ from ...tensor import sqrt
 
 #from ...fluid.layers import fc  #DEFINE_ALIAS
 from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
+from ...fluid.framework import in_dygraph_mode
+from ...fluid import core, dygraph_utils
 from ...fluid import core, layers
 from ...fluid.data_feeder import check_variable_and_dtype
 
@@ -52,6 +54,7 @@ __all__ = [
     #       'bilinear_tensor_product',
     'assign',
     'interpolate',
+    'bilinear',
     'cosine_similarity',
 ]
 
@@ -457,6 +460,70 @@ def interpolate(input,
         inputs=inputs,
         outputs={"Out": out},
         attrs=attrs)
+    return out
+
+
+def bilinear(x1, x2, weight, bias=None, name=None):
+    """
+
+    This layer performs bilinear on two inputs.
+
+    .. math::
+      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,size-1
+      out = out + b
+
+    In this formula:
+     - :math:`x1`: the first input contains in1_features elements, shape is [batch_size, in1_features].
+     - :math:`x2`: the second input contains in2_features elements, shape is [batch_size, in2_features].
+     - :math:`W_{i}`: the i-th learned weight, shape is [in1_features, in2_features], and learned weight's shape is [out_features, in1_features, in2_features].
+     - :math:`out_{i}`: the i-th element of out, shape is [batch_size, out_features].
+     - :math:`b`: the learned bias, shape is [1, out_features].
+     - :math:`x2^\mathrm{T}`: the transpose of :math:`x2`.
+
+    Parameters:
+       x1 (Tensor): the first input tensor, it's data type should be float32, float64.
+       x2 (Tensor): the second input tensor, it's data type should be float32, float64.
+       weight (Parameter): The learnable weights of this layer, shape is [out_features, in1_features, in2_features].
+       bias (Parameter, optional): The learnable bias(Bias) of this layer, shape is [1, out_features]. If it is set to None, no bias will be added to the output units. The default value is None.
+       name (str, optional): The default value is None. Normally there is no need for user
+           to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+       Variable: A 2-D Tensor of shape [batch_size, out_features].
+
+    Examples:
+       .. code-block:: python
+
+        import paddle
+        import numpy
+        import paddle.nn.functional as F
+
+        paddle.disable_static()
+        x1 = numpy.random.random((5, 5)).astype('float32')
+        x2 = numpy.random.random((5, 4)).astype('float32')
+        w = numpy.random.random((1000, 5, 4)).astype('float32')
+        b = numpy.random.random((1, 1000)).astype('float32')
+
+        result = F.bilinear(paddle.to_tensor(x1), paddle.to_tensor(x2), paddle.to_tensor(w), paddle.to_tensor(b))           # result shape [5, 1000]
+
+    """
+
+    if in_dygraph_mode():
+        return core.ops.bilinear_tensor_product(x1, x2, weight, bias)
+
+    check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
+    check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
+
+    inputs = {"X": x1, "Y": x2, "Weight": weight}
+    if bias is not None:
+        inputs["Bias"] = bias
+
+    helper = LayerHelper("bilinear", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x1.dtype)
+
+    helper.append_op(
+        type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out})
+
     return out
 
 

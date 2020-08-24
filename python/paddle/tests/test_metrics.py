@@ -106,7 +106,7 @@ class TestAccuracyDynamic(unittest.TestCase):
                 label_var = paddle.to_tensor(label)
                 pred_var = paddle.to_tensor(pred)
                 state = to_list(acc.compute(pred_var, label_var))
-                acc.update(* [s.numpy() for s in state])
+                acc.update(*[s.numpy() for s in state])
                 res_m = acc.accumulate()
                 res_f = accuracy(pred, label, self.topk)
                 assert np.all(np.isclose(np.array(res_m, dtype='float64'),
