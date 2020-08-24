@@ -17,9 +17,12 @@ __all__ = [
     'append_backward', 'gradients', 'Executor', 'global_scope', 'scope_guard',
     'BuildStrategy', 'CompiledProgram', 'Print', 'py_func', 'ExecutionStrategy',
     'name_scope', 'ParallelExecutor', 'program_guard', 'WeightNormParamAttr',
-    'default_main_program', 'default_startup_program', 'Program', 'save', 'load'
+    'default_main_program', 'default_startup_program', 'Program', 'save',
+    'load', 'data', 'InputSpec'
 ]
 
+from .input import data  #DEFINE_ALIAS
+from .input import InputSpec  #DEFINE_ALIAS
 from ..fluid.executor import Executor  #DEFINE_ALIAS
 from ..fluid.executor import global_scope  #DEFINE_ALIAS
 from ..fluid.executor import scope_guard  #DEFINE_ALIAS

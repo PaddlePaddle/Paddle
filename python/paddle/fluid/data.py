@@ -18,17 +18,14 @@ import six
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_dtype, check_type
+from ..utils import deprecated
 
 __all__ = ['data']
 
 
+@deprecated(since="2.0.0", update_to="paddle.static.data")
 def data(name, shape, dtype='float32', lod_level=0):
     """
-    :api_attr: Static Graph
-	:alias_main: paddle.nn.data
-	:alias: paddle.nn.data,paddle.nn.input.data
-	:old_api: paddle.fluid.data
-
     **Data Layer**
 
     This function creates a variable on the global block. The global variable
@@ -52,7 +49,7 @@ def data(name, shape, dtype='float32', lod_level=0):
 
         The default :code:`stop_gradient` attribute of the Variable created by
         this API is true, which means the gradient won't be passed backward
-        through the data Varaible. Set :code:`var.stop_gradient = False` If
+        through the data Variable. Set :code:`var.stop_gradient = False` If
         user would like to pass backward gradient.
 
     Args:
@@ -88,7 +85,7 @@ def data(name, shape, dtype='float32', lod_level=0):
 
           z = x + y
 
-          # In this example, we will feed x and y with np-ndarry "1"
+          # In this example, we will feed x and y with np-ndarray "1"
           # and fetch z, like implementing "1 + 1 = 2" in PaddlePaddle
           feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
 

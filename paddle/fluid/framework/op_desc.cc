@@ -78,21 +78,37 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   void ShareDim(const std::string &in, const std::string &out, size_t i = 0,
                 size_t j = 0) override {
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    PADDLE_ENFORCE_LT(i, Inputs(in).size(),
+                      platform::errors::InvalidArgument(
+                          "The input variable index is out of range, expected "
+                          "index less than %d, but received index is %d.",
+                          Inputs(in).size(), i));
+    PADDLE_ENFORCE_LT(j, Outputs(out).size(),
+                      platform::errors::InvalidArgument(
+                          "The output variable index is out of range, expected "
+                          "index less than %d, but received index is %d.",
+                          Outputs(out).size(), j));
+
     std::string input_n = Inputs(in)[i];
     std::string output_n = Outputs(out)[j];
 
-    PADDLE_ENFORCE(input_n != framework::kEmptyVarName, "The %s[%d] is @EMPTY@",
-                   in, i);
-    PADDLE_ENFORCE(output_n != framework::kEmptyVarName,
-                   "The %s[%d] is @EMPTY@", out, j);
+    PADDLE_ENFORCE_NE(input_n, framework::kEmptyVarName,
+                      platform::errors::InvalidArgument(
+                          "The input variable %s[%d] is empty.", in, i));
+    PADDLE_ENFORCE_NE(output_n, framework::kEmptyVarName,
+                      platform::errors::InvalidArgument(
+                          "The output variable %s[%d] is empty.", out, j));
 
     auto *in_var = block_.FindVarRecursive(input_n);
     auto *out_var = block_.FindVarRecursive(output_n);
 
-    PADDLE_ENFORCE(in_var->GetType() == out_var->GetType(),
-                   "The type of %s and %s is not the same.", input_n, output_n);
+    PADDLE_ENFORCE_EQ(
+        in_var->GetType(), out_var->GetType(),
+        platform::errors::InvalidArgument(
+            "The type of input %s and output %s do not match. The input type "
+            "is %s, output type is %s.",
+            input_n, output_n, DataTypeToString(in_var->GetType()),
+            DataTypeToString(out_var->GetType())));
 
     SetDim(output_n, GetDim(input_n));
   }
@@ -126,12 +142,22 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
                 size_t j = 0) const override {
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    PADDLE_ENFORCE(Inputs(in)[i] != framework::kEmptyVarName,
-                   "The %s[%d] is @EMPTY@", in, i);
-    PADDLE_ENFORCE(Outputs(out)[j] != framework::kEmptyVarName,
-                   "The %s[%d] is @EMPTY@", out, j);
+    PADDLE_ENFORCE_LT(i, Inputs(in).size(),
+                      platform::errors::InvalidArgument(
+                          "The input variable index is out of range, expected "
+                          "index less than %d, but received index is %d.",
+                          Inputs(in).size(), i));
+    PADDLE_ENFORCE_LT(j, Outputs(out).size(),
+                      platform::errors::InvalidArgument(
+                          "The output variable index is out of range, expected "
+                          "index less than %d, but received index is %d.",
+                          Outputs(out).size(), j));
+    PADDLE_ENFORCE_NE(Inputs(in)[i], framework::kEmptyVarName,
+                      platform::errors::InvalidArgument(
+                          "The input variable %s[%d] is empty.", in, i));
+    PADDLE_ENFORCE_NE(Outputs(out)[j], framework::kEmptyVarName,
+                      platform::errors::InvalidArgument(
+                          "The output variable %s[%d] is empty.", out, j));
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
@@ -144,30 +170,38 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   int32_t GetLoDLevel(const std::string &in, size_t i = 0) const override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size(),
-                      "Input %s of operator %s only has %d elements.", in,
-                      op_.Type(), Inputs(in).size());
+                      platform::errors::InvalidArgument(
+                          "The input variable index is out of range, input "
+                          "variable %s of operator %s only has %d elements.",
+                          in, op_.Type(), Inputs(in).size()));
     PADDLE_ENFORCE_NE(Inputs(in)[i], framework::kEmptyVarName,
-                      "Input %s[%d] of operator %s is @EMPTY@", in, op_.Type(),
-                      i);
+                      platform::errors::InvalidArgument(
+                          "The input variable %s[%d] of operator %s is empty.",
+                          in, i, op_.Type()));
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     PADDLE_ENFORCE_NOT_NULL(
-        in_var, "Input %s[%d] of operator %s should not be nullptr.", in,
-        op_.Type(), i);
+        in_var, platform::errors::NotFound(
+                    "The input variable %s[%d] of operator %s is not found.",
+                    in, i, op_.Type()));
     return in_var->GetLoDLevel();
   }
 
   void SetLoDLevel(const std::string &out, int32_t lod_level,
                    size_t j = 0) const override {
     PADDLE_ENFORCE_LT(j, Outputs(out).size(),
-                      "Output %s of operator %s only has %d elements.", out,
-                      op_.Type(), Outputs(out).size());
+                      platform::errors::InvalidArgument(
+                          "The output variable index is out of range, output "
+                          "variable %s of operator %s only has %d elements.",
+                          out, op_.Type(), Outputs(out).size()));
     PADDLE_ENFORCE_NE(Outputs(out)[j], framework::kEmptyVarName,
-                      "Output %s[%d] of operator %s is @EMPTY@", out,
-                      op_.Type(), j);
+                      platform::errors::InvalidArgument(
+                          "The output variable %s[%d] of operator %s is empty.",
+                          out, j, op_.Type()));
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     PADDLE_ENFORCE_NOT_NULL(
-        out_var, "Output %s[%d] of operator %s should not be nullptr.", out,
-        op_.Type(), j);
+        out_var, platform::errors::NotFound(
+                     "The output variable %s[%d] of operator %s is not found.",
+                     out, j, op_.Type()));
     if (lod_level >= 0) {
       out_var->SetLoDLevel(lod_level);
     }
@@ -200,8 +234,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   DDim GetInputDim(const std::string &name) const override {
     const std::vector<std::string> &arg_names = Inputs(name);
     PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
-                      "Input(%s) should hold one element, but now it holds %d",
-                      name, arg_names.size());
+                      platform::errors::InvalidArgument(
+                          "The input(%s) should hold only one element, but now "
+                          "it holds %d elements.",
+                          name, arg_names.size()));
     return this->GetDim(arg_names[0]);
   }
 
@@ -225,8 +261,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   void SetOutputDim(const std::string &name, const DDim &dim) override {
     auto arg_names = Outputs(name);
     PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
-                      "Output(%s) should hold one element, but now it holds %d",
-                      name, arg_names.size());
+                      platform::errors::InvalidArgument(
+                          "The iutput(%s) should hold only one element, but "
+                          "now it holds %d elements.",
+                          name, arg_names.size()));
     SetDim(arg_names[0], dim);
   }
 
@@ -252,7 +290,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   DDim GetDim(const std::string &name) const {
     auto var = block_.FindVarRecursive(name);
-    PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound("Variable %s is not found.", name));
     DDim res;
     try {
       auto shape = var->GetShape();
@@ -278,7 +317,11 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   void SetDims(const std::vector<std::string> &names,
                const std::vector<DDim> &dims) {
     size_t length = names.size();
-    PADDLE_ENFORCE_EQ(length, dims.size());
+    PADDLE_ENFORCE_EQ(length, dims.size(),
+                      platform::errors::InvalidArgument(
+                          "The input variables number(%d) and input dimensions "
+                          "number(%d) do not match.",
+                          length, dims.size()));
     for (size_t i = 0; i < length; ++i) {
       if (names[i] == framework::kEmptyVarName) {
         continue;
@@ -364,8 +407,10 @@ proto::OpDesc *OpDesc::Proto() {
 
 const std::vector<std::string> &OpDesc::Input(const std::string &name) const {
   auto it = inputs_.find(name);
-  PADDLE_ENFORCE(it != inputs_.end(), "Input %s cannot be found in Op %s", name,
-                 Type());
+  PADDLE_ENFORCE_NE(
+      it, inputs_.end(),
+      platform::errors::NotFound("Input %s cannot be found in operator %s.",
+                                 name, Type()));
   return it->second;
 }
 
@@ -385,8 +430,10 @@ void OpDesc::SetInput(const std::string &param_name,
 
 const std::vector<std::string> &OpDesc::Output(const std::string &name) const {
   auto it = outputs_.find(name);
-  PADDLE_ENFORCE(it != outputs_.end(), "Output %s cannot be found in Op %s",
-                 name, Type());
+  PADDLE_ENFORCE_NE(
+      it, outputs_.end(),
+      platform::errors::NotFound("Output %s cannot be found in operator %s.",
+                                 name, Type()));
   return it->second;
 }
 
@@ -427,7 +474,8 @@ bool OpDesc::HasProtoAttr(const std::string &name) const {
 
 proto::AttrType OpDesc::GetAttrType(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
+  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
+                                          "Attribute %s is not found.", name));
   return static_cast<proto::AttrType>(it->second.which() - 1);
 }
 
@@ -492,7 +540,8 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
         return;
       }
       default:
-        PADDLE_THROW("Wrong attr type %d", attr.type());
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported attribute type (code %d).", attr.type()));
     }
     need_update_ = true;
     return;
@@ -529,7 +578,8 @@ void OpDesc::SetAttrMap(
 
 Attribute OpDesc::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
+  PADDLE_ENFORCE_NE(it, attrs_.end(), platform::errors::NotFound(
+                                          "Attribute %s is not found.", name));
   return it->second;
 }
 
@@ -543,7 +593,8 @@ const proto::OpProto::Attr &OpDesc::GetProtoAttr(
     }
   }
 
-  PADDLE_THROW("Attribute %s is not found in proto %s", name, proto.type());
+  PADDLE_THROW(platform::errors::NotFound(
+      "Attribute %s is not found in proto %s.", name, proto.type()));
 }
 
 Attribute OpDesc::GetNullableAttr(const std::string &name) const {
@@ -557,7 +608,10 @@ Attribute OpDesc::GetNullableAttr(const std::string &name) const {
 
 std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
+  PADDLE_ENFORCE_NE(
+      it, attrs_.end(),
+      platform::errors::NotFound(
+          "Attribute `%s` is not found in operator `%s`.", name, desc_.type()));
   auto blocks = BOOST_GET_CONST(std::vector<BlockDesc *>, it->second);
 
   std::vector<int> ids;
@@ -570,7 +624,10 @@ std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
 
 int OpDesc::GetBlockAttrId(const std::string &name) const {
   auto it = attrs_.find(name);
-  PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
+  PADDLE_ENFORCE_NE(
+      it, attrs_.end(),
+      platform::errors::NotFound(
+          "Attribute `%s` is not found in operator `%s`.", name, desc_.type()));
   return BOOST_GET_CONST(BlockDesc *, it->second)->ID();
 }
 
@@ -657,7 +714,11 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
     VectorToRepeated(v, attr_->mutable_longs());
   }
 
-  void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
+  void operator()(boost::blank) const {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported calling method of SetAttrDescVisitor object for "
+        "`boosst::blank` type."));
+  }
 };
 
 void OpDesc::Flush() {
@@ -691,8 +752,9 @@ void OpDesc::Flush() {
 }
 
 void OpDesc::CheckAttrs() {
-  PADDLE_ENFORCE(!Type().empty(),
-                 "CheckAttr() can not be called before type is set.");
+  PADDLE_ENFORCE_EQ(Type().empty(), false,
+                    platform::errors::PreconditionNotMet(
+                        "CheckAttrs() can not be called before type is set."));
   auto *checker = OpInfoMap::Instance().Get(Type()).Checker();
   if (checker == nullptr) {
     // checker is not configured. That operator could be generated by Paddle,
@@ -707,8 +769,10 @@ void OpDesc::InferShape(const BlockDesc &block) const {
   try {
     VLOG(3) << "CompileTime infer shape on " << Type();
     auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
-    PADDLE_ENFORCE(static_cast<bool>(infer_shape),
-                   "%s's infer_shape has not been registered", this->Type());
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(infer_shape), true,
+        platform::errors::NotFound(
+            "Operator %s's infer_shape is not registered.", this->Type()));
     CompileTimeInferShapeContext ctx(*this, block);
     if (VLOG_IS_ON(10)) {
       std::ostringstream sout;
@@ -758,10 +822,10 @@ bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
   if (length == 0) {
     return false;
   }
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Input(%s) should have only one value, "
-                    "but it have %d now",
-                    name, length);
+  PADDLE_ENFORCE_EQ(length, 1UL, platform::errors::InvalidArgument(
+                                     "Input(%s) should have only one value, "
+                                     "but it has %d values now.",
+                                     name, length));
   return block_.HasVarRecursive(input_names[0]);
 }
 
@@ -774,10 +838,10 @@ bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
   if (length == 0) {
     return false;
   }
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Output(%s) should have only one value, "
-                    "but it have %d now",
-                    name, length);
+  PADDLE_ENFORCE_EQ(length, 1UL, platform::errors::InvalidArgument(
+                                     "Output(%s) should have only one value, "
+                                     "but it has %d values now.",
+                                     name, length));
   return block_.HasVarRecursive(output_names[0]);
 }
 
@@ -826,7 +890,8 @@ std::vector<std::string> CompileTimeInferShapeContext::Outputs(
 std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
     const std::string &name) const {
   auto var = block_.FindVarRecursive(name);
-  PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::NotFound("Variable %s is not found.", name));
   std::vector<DDim> res;
   try {
     auto shapes = var->GetShapes();
@@ -848,7 +913,8 @@ void CompileTimeInferShapeContext::SetDim(const std::string &name,
 void CompileTimeInferShapeContext::SetRepeatedDims(
     const std::string &name, const std::vector<DDim> &dims) {
   auto var = block_.FindVarRecursive(name);
-  PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::NotFound("Variable %s is not found.", name));
   std::vector<std::vector<int64_t>> dim_vec(dims.size());
   std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize<>);
   var->SetShapes(dim_vec);
