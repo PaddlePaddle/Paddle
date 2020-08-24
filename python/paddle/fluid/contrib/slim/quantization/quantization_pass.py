@@ -66,6 +66,8 @@ _out_scale_op_list = [
     "concat",
     "elementwise_mul",
     "scale",
+    "hard_swish",
+    "hard_sigmoid",
 ]
 
 # list op real input and output names, to avoid processing input such as AxisTensor.
@@ -109,6 +111,8 @@ _op_real_in_out_name = {
     "sigmoid": [["X"], ["Out"]],
     "elementwise_mul": [["X", "Y"], ["Out"]],
     "scale": [["X"], ["Out"]],
+    "hard_swish": [["X"], ["Out"]],
+    "hard_sigmoid": [["X"], ["Out"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
