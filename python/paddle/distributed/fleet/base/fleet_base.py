@@ -383,7 +383,7 @@ class Fleet(object):
         context["valid_strategy"] = valid_strategy
 
         self.valid_strategy = valid_strategy
-        self.valid_srrategy._enable_env()
+        self.valid_strategy._enable_env()
 
         optimize_ops = []
         params_grads = []
