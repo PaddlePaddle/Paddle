@@ -71,7 +71,7 @@ from .layer.activation import Softsign  #DEFINE_ALIAS
 from .layer.activation import Tanhshrink  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import HSigmoid  #DEFINE_ALIAS
-from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
+#from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
 from .layer.common import Pool2D  #DEFINE_ALIAS
 from .layer.common import Pad2D  #DEFINE_ALIAS
 from .layer.common import ReflectionPad1d  #DEFINE_ALIAS

@@ -2354,6 +2354,10 @@ class PRelu(layers.Layer):
         return out
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.nn.Bilinear",
+    reason="New name and new args in Bilinear, easier to use.")
 class BilinearTensorProduct(layers.Layer):
     """
     :alias_main: paddle.nn.BilinearTensorProduct
