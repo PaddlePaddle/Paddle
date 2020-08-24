@@ -16,6 +16,7 @@
 from __future__ import print_function
 from multiprocessing import Process, Manager
 import paddle.fluid as fluid
+import warnings
 import os
 import time
 
@@ -86,6 +87,7 @@ class RoleMakerBase(object):
         self._hetet_trainer_endpoints = []
         self._heter_trainer_device = Device.CPU
         self._role_is_generated = False
+        self.is_heter_parameter_server = False
         self._role = None
         self._current_id = -1
 
@@ -206,8 +208,9 @@ class RoleMakerBase(object):
 
         This function only implement in PaddleCloudRoleMaker currently
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        warnings.warn(
+            "No def _is_heter_worker implement, please check your env setting.")
+        return False
 
     def _heter_worker_num(self):
         """
@@ -218,8 +221,9 @@ class RoleMakerBase(object):
         Returns:
             int: worker number
         """
-        raise NotImplementedError(
-            "Please implement this method in child class")
+        warnings.warn(
+            "No def _heter_worker_num implement, please check your env setting.")
+        return 0
 
     def _get_heter_worker_endpoints(self):
         """

@@ -29,14 +29,6 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-template <typename T>
-void ResponseToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
-  ::grpc::Slice slice(proto.ByteSizeLong());
-  proto.SerializeWithCachedSizesToArray(const_cast<uint8_t*>(slice.begin()));
-  ::grpc::ByteBuffer tmp(&slice, 1);
-  result->Swap(&tmp);
-}
-
 enum CallStatus { PROCESS = 0, FINISH };
 
 // reference:

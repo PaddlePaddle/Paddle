@@ -395,6 +395,9 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list,
     comm_info = get_communicate_var_info(program, heter_block_index,
                                          entrance_var, exit_var)
 
+    print("entrance_var: {}".format(entrance_var))
+    print("Block {} create: \ndefault_device_comm_info {}, \ncomm_info {}".format(
+        heter_block_index, default_device_comm_info, comm_info))
     # create reshape op
     for i in range(len(entrance_var)):
         insert_reshape_op(
@@ -542,6 +545,8 @@ def get_communicate_var_info(program, block_index, entrance_var_list,
     output_var_reshape_name = []
     block_output_var_name = "HETER_BLOCK@{}_TO_{}@JOINT_VAR".format(
         block_index, block_index + 1)
+    entrance_var_list.sort()
+    exit_var_list.sort()
     # input
     # HETER_BLOCK_index@JOINT_VAR -> slice -> var@HETER_BLOCK@INPUT_RESHAPE_VAR -> reshape -> var
     for name in entrance_var_list:
@@ -610,7 +615,7 @@ def find_entrance_exit_private(program, program_block_ops_list):
             "private": block_private_vars,
             "persistables": persistables
         }
-        print("block index: {}, block_var_detail: {}".format(index, detail))
+        #print("block index: {}, block_var_detail: {}".format(index, detail))
         block_var_detail.append(detail)
     return block_var_detail
 
@@ -731,6 +736,8 @@ def insert_reshape_op(program,
         out = program.global_block().vars[new_var_name]
         new_var_shape = out.shape
 
+    print("Insert Reshape op for: output var {}, input var {}, shape {}".format(
+        new_var_name, var_name, new_var_shape))
     x_shape = program.global_block().create_var(
         name="{}@XShape".format(var_name), dtype=input_var.dtype)
     block._insert_op(

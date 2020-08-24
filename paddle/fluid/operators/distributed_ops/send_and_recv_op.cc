@@ -29,31 +29,40 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class SendAndRecvOp : public framework::OperatorBase {
+template <typename DeviceContext, typename T>
+class SendAndRecvKernel : public framework::OpKernel<T> {
+  public:
+    void Compute(const framework::ExecutionContext &ctx) const override{
+        auto &scope = ctx.scope();
+        const auto &place = ctx.GetPlace();
+        auto send_var_name = ctx.Attr<std::string>("send_var_name");
+        auto recv_var_name = ctx.Attr<std::string>("recv_var_name");
+        auto epmap = ctx.Attr<std::string>("endpoint");
+        auto trainer_id = ctx.Attr<int>("trainer_id");
+
+        platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+        auto& context = *pool.Get(place);
+
+        distributed::RPCClient* rpc_client =
+            distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
+        VLOG(3) << "SendAndRecvOp Send_var_name: " << send_var_name
+                << " Recv_var_name: " << recv_var_name;
+        distributed::VarHandlePtr rets = rpc_client->AsyncSendAndRecv(
+            epmap, context, scope, send_var_name, recv_var_name);
+        rets->Wait();
+    }
+};
+
+class SendAndRecvOp : public framework::OperatorWithKernel {
  public:
-  SendAndRecvOp(const std::string& type,
-                const framework::VariableNameMap& inputs,
-                const framework::VariableNameMap& outputs,
-                const framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override {}
 
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
-    auto send_var_name = Attr<std::string>("send_var_name");
-    auto recv_var_name = Attr<std::string>("recv_var_name");
-    auto epmap = Attr<std::string>("endpoint");
-    auto trainer_id = Attr<int>("trainer_id");
-
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
-
-    distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
-    VLOG(2) << "SendAndRecvOp Send_var_name: " << send_var_name
-            << " Recv_var_name: " << recv_var_name;
-    distributed::VarHandlePtr rets = rpc_client->AsyncSendAndRecv(
-        epmap, ctx, scope, send_var_name, recv_var_name);
-    rets->Wait();
+  protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };
 
@@ -78,18 +87,15 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class SendAndRecvOpShapeInference : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext* ctx) const override {}
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    send_and_recv, ops::SendAndRecvOp,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::SendAndRecvOpMaker, ops::SendAndRecvOpShapeInference);
+    send_and_recv, ops::SendAndRecvOp,ops::SendAndRecvOpMaker);
+
+REGISTER_OP_CPU_KERNEL(
+    send_and_recv,
+    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, float>
+)
