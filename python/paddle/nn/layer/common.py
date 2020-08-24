@@ -50,8 +50,7 @@ class UpSample(layers.Layer):
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     and the resizing only applies on the three dimensions(depth, height and width).
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
-    future and only use :attr:`out_shape` instead.
+
     Supporting resample methods:
         'linear' : Linear interpolation
         'bilinear' : Bilinear interpolation
@@ -277,8 +276,6 @@ class UpsamplingNearest2d(layers.Layer):
     This op upsamples a batch of images, using nearest neighbours' pixel values.
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w), 
     and the upsampling only applies on the two dimensions(height and width).
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
-    future and only use :attr:`out_shape` instead.
 
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
@@ -357,9 +354,6 @@ class UpsamplingBilinear2d(layers.Layer):
     This op upsamples a batch of images, using bilinear' pixel values.
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w), 
     and the upsampling only applies on the two dimensions(height and width).
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
-    future and only use :attr:`out_shape` instead.
-
 
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
