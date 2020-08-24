@@ -837,9 +837,7 @@ class RNNMixin(LayerList):
         for i, rnn_layer in enumerate(self):
             if i > 0:
                 inputs = F.dropout(
-                    inputs,
-                    self.dropout,
-                    dropout_implementation="upscale_in_train")
+                    inputs, self.dropout, mode="upscale_in_train")
             outputs, final_state = rnn_layer(inputs, states[i], sequence_length)
             final_states.append(final_state)
             inputs = outputs
