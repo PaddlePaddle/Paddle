@@ -16,12 +16,12 @@ import logging
 import numpy as np
 import sys
 from paddle.fluid import dygraph
-from paddle.fluid.dygraph.nn import Conv2D
-from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.dygraph.nn import Conv2D, Linear, BatchNorm, Pool2D, PRelu
+from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid
 from paddle.fluid.log_helper import get_logger
 from . import quant_nn
 
-__all__ = ['ImperativeQuantAware']
+__all__ = ['ImperativeQuantAware', 'ImperativeOutScale']
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -135,7 +135,6 @@ class ImperativeQuantAware(object):
         for name, layer in model.named_sublayers():
             if not isinstance(layer, self._quantizable_layer_type):
                 continue
-
             scopes = name.split('.')
             target = scopes[-1]
             obj = model
@@ -234,3 +233,90 @@ class ImperativeQuantAware(object):
             layer, self._weight_bits, self._activation_bits, self._moving_rate,
             self._weight_quantize_type, self._activation_quantize_type)
         return quantized_layer
+
+
+class ImperativeOutScale(object):
+    def __init__(self,
+                 moving_rate=0.9,
+                 out_scale_layer_type=[
+                     'Conv2D', 'Pool2D', 'ReLU', 'BatchNorm', 'PRelu',
+                     'Sigmoid', 'LeakyReLU'
+                 ]):
+        """
+        Add the logic of calculating and setting output quantization scales of some layers.
+        These output quantization scales may be used by tensorRT or some other inference engines.
+
+        Args:
+            moving_rate(float): the parameter for 'moving_average_abs_max_scale' quantization.
+            quantizable_op_type(list[str]): List the type of layers that will be got out_scale. 
+                Default is ['Conv2D', 'Linear', 'ReLU', 'PRelu', 'LeakyReLU', 'Sigmoid', 'BatchNorm']
+        """
+        super(ImperativeOutScale, self).__init__()
+        self._moving_rate = moving_rate
+        self._out_scale_layers_map = {
+            'Conv2D': Conv2D,
+            'Pool2D': Pool2D,
+            'ReLU': ReLU,
+            'LeakyReLU': LeakyReLU,
+            'Sigmoid': Sigmoid,
+            'PRelu': PRelu,
+            'BatchNorm': BatchNorm
+        }
+        self._out_scale_layer_type = tuple(
+            self._out_scale_layers_map[layer]
+            if layer in self._out_scale_layers_map else layer
+            for layer in out_scale_layer_type)
+        for layer in self._out_scale_layer_type:
+            assert not isinstance(
+                layer, str), "{} is unspported to be out_scaled.".format(layer)
+
+    def get_out_scale(self, model):
+        """
+        Insert the `moving_average_abs_max_scale` op to calculate output scale of Specific layers in model.
+
+        Args:
+            model(fluid.dygraph.Layer): The target model which would be calculate the output quantization scale.
+
+        Returns:
+            None
+        """
+        assert isinstance(
+            model, dygraph.Layer), "model must be the instance of dygraph.Layer"
+        self._out_scale_dict = {}
+        for _, layer in model.named_sublayers():
+            if not isinstance(layer, self._out_scale_layer_type):
+                continue
+            forward_pre_hook_handle = layer.register_forward_post_hook(
+                self._forward_post_hook)
+
+    def set_out_scale(self, model):
+        """
+        Set the output quantization scale to the corresponding Layer of model.
+
+        Args:
+            model(fluid.dygraph.Layer): The output scale would be added to the model.
+
+        Returns:
+            None
+        """
+        assert isinstance(
+            model, dygraph.Layer), "model must be the instance of dygraph.Layer"
+        for _, layer in model.named_sublayers():
+            if not isinstance(layer, self._out_scale_layer_type):
+                continue
+            scale_out_list = self._out_scale_dict[layer.full_name()]
+            for scale_var in scale_out_list:
+                attr_name = 'out_threshold'
+                layer.__setattr__(attr_name, scale_var)
+
+    def _forward_post_hook(self, layer, input, output):
+        dtype = getattr(layer, '_dtype')
+        if not isinstance(output, list):
+            output = [output]
+        scale_out_list = []
+        for var in output:
+            self._out_scale = quant_nn.MovingAverageAbsMaxScale(
+                var.name, self._moving_rate, dtype)
+            scale_out = self._out_scale(var)
+            scale_out_list.append(scale_out)
+        self._out_scale_dict[layer.full_name()] = scale_out_list

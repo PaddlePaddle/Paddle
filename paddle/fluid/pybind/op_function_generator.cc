@@ -41,6 +41,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"X", "InScale", "InAccum", "InState"}},
     {"nll_loss", {"X", "Label", "Weight"}},
+    {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -60,6 +61,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"sync_batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
+    {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -87,6 +89,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
     {"amp_check_finite_and_scale", {"Out", "FoundInfinite"}},
+    {"moving_average_abs_max_scale", {"OutScale", "OutAccum", "OutState"}},
 };
 
 // clang-format off
