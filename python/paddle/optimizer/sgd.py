@@ -16,32 +16,21 @@ from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable, name_scope
+from ..fluid.dygraph import no_grad
+__all__ = ["SGD"]
 
-__all__ = ["Adadelta"]
 
-
-class Adadelta(Optimizer):
+class SGD(Optimizer):
     """
-    **Notes: This API does not support sparse parameter optimization.**
-
-    Adadelta Optimizer. Please refer to this for details:
-    `ADADELTA: AN ADAPTIVE LEARNING RATE METHOD <https://arxiv.org/abs/1212.5701>`_.
-
-    The update is done as follows:
+    Optimizer of the stochastic gradient descent algorithm.
 
     .. math::
 
-        E(g_t^2) &= \\rho * E(g_{t-1}^2) + (1-\\rho) * g^2
+        param\_out = param - learning\_rate * grad
 
-        learning\_rate &= \sqrt{ ( E(dx_{t-1}^2) + \\epsilon ) / ( E(g_t^2) + \\epsilon ) }
-
-        E(dx_t^2) &= \\rho * E(dx_{t-1}^2) + (1-\\rho) * (-g*learning\_rate)^2
-
-    Args:
-	learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
+    Parameters:
+        learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
             It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
-        epsilon (float): a small float number for numeric stability. Default 1.0e-6.
-        rho (float): a floating point value indicating the decay rate. Default 0.95.
         parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
@@ -51,18 +40,20 @@ class Adadelta(Optimizer):
         If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
         the regularization setting here in optimizer will be ignored for this parameter. \
         Otherwise, the regularization setting here in optimizer will take effect. \
-        Default None, meaning there is no regularization. 
+        Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
-                :ref:`api_guide_Name` .
-
+                :ref:`api_guide_Name` . 
+        
     Examples:
         .. code-block:: python
+
             import paddle
+            import paddle.fluid as fluid
             import numpy as np
             paddle.disable_static()
             inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
@@ -72,73 +63,47 @@ class Adadelta(Optimizer):
             loss = paddle.mean(out)
             beta1 = paddle.to_tensor([0.9], dtype="float32")
             beta2 = paddle.to_tensor([0.99], dtype="float32")
-            adadelta = paddle.optimizer.Adadelta(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
+            sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
             back = out.backward()
-            adadelta.step()
-            adadelta.clear_grad()
+            sgd.step()
+            sgd.clear_grad()
 
     """
 
-    _avg_squared_grad_acc_str = "_avg_squared_grad"
-    _avg_squared_update_acc_str = "_avg_squared_update"
-
     def __init__(self,
                  learning_rate=0.001,
-                 epsilon=1.0e-6,
-                 rho=0.95,
                  parameters=None,
                  weight_decay=None,
                  grad_clip=None,
                  name=None):
         if learning_rate is None:
-            raise ValueError("learning_rate is not set.")
-        if epsilon is None:
-            raise ValueError("epsilon is not set.")
-        if rho is None:
-            raise ValueError("rho is not set.")
-        super(Adadelta, self).__init__(
+            raise ValueError("learning_rate is not set")
+        super(SGD, self).__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,
             grad_clip=grad_clip,
             name=name)
-        self.type = "adadelta"
-        self._epsilon = epsilon
-        self._rho = rho
+        self.type = "sgd"
 
-    def _create_accumulators(self, block, parameters):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
-
-        for p in parameters:
-            self._add_accumulator(self._avg_squared_grad_acc_str, p)
-            self._add_accumulator(self._avg_squared_update_acc_str, p)
-
+    @no_grad()
     def _append_optimize_op(self, block, param_and_grad):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+        lr = self._create_param_lr(param_and_grad)
+        if framework.in_dygraph_mode():
+            core.ops.sgd(param_and_grad[0], lr, param_and_grad[1],
+                         param_and_grad[0])
+            return None
 
-        avg_squared_grad_acc = self._get_accumulator(
-            self._avg_squared_grad_acc_str, param_and_grad[0])
-        avg_squared_update_acc = self._get_accumulator(
-            self._avg_squared_update_acc_str, param_and_grad[0])
-
-        # Create the adadelta optimizer op
-        adadelta_op = block.append_op(
+        assert isinstance(block, framework.Block)
+        # create the optimize op
+        sgd_op = block.append_op(
             type=self.type,
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
-                "AvgSquaredGrad": avg_squared_grad_acc,
-                "AvgSquaredUpdate": avg_squared_update_acc
+                "LearningRate": lr
             },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "AvgSquaredGradOut": avg_squared_grad_acc,
-                "AvgSquaredUpdateOut": avg_squared_update_acc
-            },
-            attrs={"epsilon": self._epsilon,
-                   "rho": self._rho},
+            outputs={"ParamOut": param_and_grad[0]},
             stop_gradient=True)
 
-        return adadelta_op
+        return sgd_op

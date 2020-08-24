@@ -110,7 +110,7 @@ class TestAdadeltaOp2(OpTest):
         self.check_output()
 
 
-class TestAdadeltaPropV2(unittest.TestCase):
+class TestAdadeltaV2(unittest.TestCase):
     def test_adadelta_dygraph(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
