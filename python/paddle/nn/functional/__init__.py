@@ -50,10 +50,14 @@ from .activation import softplus  #DEFINE_ALIAS
 from .activation import softshrink  #DEFINE_ALIAS
 from .activation import softsign  #DEFINE_ALIAS
 from .activation import swish  #DEFINE_ALIAS
+from .activation import tanh  #DEFINE_ALIAS
 from .activation import tanhshrink  #DEFINE_ALIAS
 from .activation import thresholded_relu  #DEFINE_ALIAS
 from .activation import log_softmax  #DEFINE_ALIAS
 from .common import dropout  #DEFINE_ALIAS
+from .common import dropout2d  #DEFINE_ALIAS
+from .common import dropout3d  #DEFINE_ALIAS
+from .common import alpha_dropout  #DEFINE_ALIAS
 # from .common import embedding        #DEFINE_ALIAS
 # from .common import fc  #DEFINE_ALIAS
 from .common import label_smooth  #DEFINE_ALIAS
@@ -66,10 +70,12 @@ from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
 from .common import assign  #DEFINE_ALIAS
 from .common import interpolate  #DEFINE_ALIAS
+from .conv import conv1d  #DEFINE_ALIAS
+from .conv import conv_transpose1d  #DEFINE_ALIAS
 from .conv import conv2d  #DEFINE_ALIAS
-from .conv import conv2d_transpose  #DEFINE_ALIAS
+from .conv import conv_transpose2d  #DEFINE_ALIAS
 from .conv import conv3d  #DEFINE_ALIAS
-from .conv import conv3d_transpose  #DEFINE_ALIAS
+from .conv import conv_transpose3d  #DEFINE_ALIAS
 from .extension import add_position_encoding  #DEFINE_ALIAS
 # from .extension import autoincreased_step_counter        #DEFINE_ALIAS
 from .extension import continuous_value_model  #DEFINE_ALIAS
@@ -124,6 +130,7 @@ from .lod import hash  #DEFINE_ALIAS
 # from .lod import dynamic_lstm        #DEFINE_ALIAS
 # from .lod import dynamic_lstmp        #DEFINE_ALIAS
 from .loss import binary_cross_entropy  #DEFINE_ALIAS
+from .loss import binary_cross_entropy_with_logits  #DEFINE_ALIAS
 from .loss import bpr_loss  #DEFINE_ALIAS
 from .loss import center_loss  #DEFINE_ALIAS
 from .loss import cross_entropy  #DEFINE_ALIAS
@@ -187,7 +194,7 @@ from .vision import fsp_matrix  #DEFINE_ALIAS
 from .vision import generate_mask_labels  #DEFINE_ALIAS
 from .vision import generate_proposal_labels  #DEFINE_ALIAS
 from .vision import generate_proposals  #DEFINE_ALIAS
-from .vision import grid_sampler  #DEFINE_ALIAS
+from .vision import grid_sample  #DEFINE_ALIAS
 from .vision import image_resize  #DEFINE_ALIAS
 from .vision import image_resize_short  #DEFINE_ALIAS
 # from .vision import multi_box_head        #DEFINE_ALIAS

@@ -16,7 +16,9 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     huber_loss,
-    ops::HuberLossKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::HuberLossKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::HuberLossKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     huber_loss_grad,
-    ops::HuberLossGradKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::HuberLossGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::HuberLossGradKernel<paddle::platform::CUDADeviceContext, double>);

@@ -24,7 +24,6 @@ import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
 from ..fluid.layers import expand_as  #DEFINE_ALIAS
-from ..fluid.layers import scatter  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
 from ..fluid.layers import strided_slice  #DEFINE_ALIAS
 from ..fluid.layers import transpose  #DEFINE_ALIAS
@@ -111,9 +110,9 @@ def concat(x, axis=0, name=None):
                             [14, 15, 16]])
             in3 = np.array([[21, 22],
                             [23, 24]])
-            x1 = paddle.to_variable(in1)
-            x2 = paddle.to_variable(in2)
-            x3 = paddle.to_variable(in3)
+            x1 = paddle.to_tensor(in1)
+            x2 = paddle.to_tensor(in2)
+            x3 = paddle.to_tensor(in3)
             zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
             # When the axis is negative, the real axis is (axis + Rank(x))
             # As follow, axis is -1, Rank(x) is 2, the real axis is 1
@@ -507,7 +506,7 @@ def split(x, num_or_sections, axis=0, name=None):
             paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.to_variable(x_np)
+            x = paddle.to_tensor(x_np)
 
             out0, out1, out22 = paddle.split(x, num_or_sections=3, axis=1)
             # out0.shape [3, 3, 5]
@@ -659,10 +658,8 @@ def unsqueeze(x, axis, name=None):
     return layers.unsqueeze(x, axis, name)
 
 
-def gather(input, index, overwrite=True):
+def gather(x, index, axis=None, name=None):
     """
-	:alias_main: paddle.gather
-	:alias: paddle.gather,paddle.tensor.gather,paddle.tensor.manipulation.gather
 
     **Gather Layer**
 
@@ -679,30 +676,33 @@ def gather(input, index, overwrite=True):
 
                 Given:
 
-                X = [[1, 2],
+                x = [[1, 2],
                      [3, 4],
                      [5, 6]]
 
-                Index = [1, 2]
+                index = [1, 2]
+                axis=[0]
 
                 Then:
 
-                Out = [[3, 4],
+                out = [[3, 4],
                        [5, 6]]
     Args:
-        input (Variable): The source input tensor with rank>=1. Supported data type is
+        x (Tensor): The source input tensor with rank>=1. Supported data type is
             int32, int64, float32, float64 and uint8 (only for CPU),
             float16 (only for GPU).
-        index (Variable): The index input tensor with rank=1. Data type is int32 or int64.
-        overwrite (bool, optional): The mode that updating the grad when has same index.
-            If True, use the overwrite mode to update the grad of the same index,
-            if False, use the accumulate mode to update the grad of the same index.
-            Default value is True.
-
-
+        index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
+        axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. Default: if None, the axis is 0.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        output (Variable): The output is a tensor with the same rank as input.
+        output (Tensor): The output is a tensor with the same rank as ``x``.
+    
+    Raises:
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must to be one of float16, float32, float64, int32, int64, uint8.
+        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
+        TypeError: ``axis`` must be a Tensor or int and the data type of ``index`` must be int32 or int64 when it's a Tensor.
 
     Examples:
 
@@ -710,26 +710,41 @@ def gather(input, index, overwrite=True):
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
 
-
-            with fluid.dygraph.guard():
-                input_1 = np.array([[1,2],[3,4],[5,6]])
-                index_1 = np.array([0,1])
-                input = fluid.dygraph.to_variable(input_1)
-                index = fluid.dygraph.to_variable(index_1)
-                output = paddle.gather(input, index)
-                # expected output: [[1,2],[3,4]]
+            paddle.disable_static()
+            input_1 = np.array([[1,2],[3,4],[5,6]])
+            index_1 = np.array([0,1])
+            input = fluid.to_tensor(input_1)
+            index = fluid.to_tensor(index_1)
+            output = paddle.gather(input, index, axis=0)
+            # expected output: [[1,2],[3,4]]
     """
+    if axis is None:
+        axis = 0
+    axis_tensor = axis
+    if not isinstance(axis, Variable):
+        axis_tensor = fill_constant(shape=[1], dtype='int64', value=axis)
+    if in_dygraph_mode():
+        return core.ops.gather(x, index, axis_tensor)
+
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+        'gather')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
+    if isinstance(axis, Variable):
+        check_variable_and_dtype(axis, 'axis', ['int32', 'int64'], 'gather')
+    else:
+        check_type(axis, 'axis', (int), 'gather')
+
     helper = LayerHelper('gather', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="gather",
-        inputs={"X": input,
-                "Index": index},
-        outputs={"Out": out},
-        attrs={'overwrite': overwrite})
+        inputs={"X": x,
+                "Index": index,
+                "Axis": axis_tensor},
+        outputs={"Out": out})
     return out
 
 
@@ -790,6 +805,100 @@ def unbind(input, axis=0):
     return outs
 
 
+def scatter(x, index, updates, overwrite=True, name=None):
+    """
+    **Scatter Layer**
+    Output is obtained by updating the input on selected indices based on updates.
+    
+    .. code-block:: python
+        import numpy as np
+        #input:
+        x = np.array([[1, 1], [2, 2], [3, 3]])
+        index = np.array([2, 1, 0, 1])
+        # shape of updates should be the same as x
+        # shape of updates with dim > 1 should be the same as input
+        updates = np.array([[1, 1], [2, 2], [3, 3], [4, 4]])
+        overwrite = False
+        # calculation:
+        if not overwrite:
+            for i in range(len(index)):
+                x[index[i]] = np.zeros((2))
+        for i in range(len(index)):
+            if (overwrite):
+                x[index[i]] = updates[i]
+            else:
+                x[index[i]] += updates[i]
+        # output:
+        out = np.array([[3, 3], [6, 6], [1, 1]])
+        out.shape # [3, 2]
+
+    **NOTICE**: The order in which updates are applied is nondeterministic, 
+    so the output will be nondeterministic if index contains duplicates.
+
+    Args:
+        x (Tensor): The input N-D Tensor with ndim>=1. Data type can be float32, float64.
+        index (Tensor): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
+        updates (Tensor): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
+        overwrite (bool): The mode that updating the output when there are same indices. 
+          If True, use the overwrite mode to update the output of the same index,
+	      if False, use the accumulate mode to update the output of the same index.Default value is True.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+ 
+    Returns:
+        Tensor: The output is a Tensor with the same shape as x.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+
+            x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float32)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float32)
+            
+            x = paddle.to_tensor(x_data)
+            index = paddle.to_tensor(index_data)
+            updates = paddle.to_tensor(updates_data)
+  
+            output1 = paddle.scatter(x, index, updates, overwrite=False)
+            # [[3., 3.],
+            #  [6., 6.],
+            #  [1., 1.]]
+
+            output2 = paddle.scatter(x, index, updates, overwrite=True)
+            # CPU device:
+            # [[3., 3.],
+            #  [4., 4.],
+            #  [1., 1.]]
+            # GPU device maybe have two results because of the repeated numbers in index
+            # result 1:
+            # [[3., 3.],
+            #  [4., 4.],
+            #  [1., 1.]]
+            # result 2:
+            # [[3., 3.],
+            #  [2., 2.],
+            #  [1., 1.]]
+    """
+    if in_dygraph_mode():
+        return core.ops.scatter(x, index, updates, 'overwrite', overwrite)
+
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'scatter')
+    check_type(overwrite, 'overwrite', bool, 'scatter')
+    helper = LayerHelper('scatter', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type="scatter",
+        inputs={"X": x,
+                "Ids": index,
+                "Updates": updates},
+        attrs={'overwrite': overwrite},
+        outputs={"Out": out})
+    return out
+
+
 def chunk(x, chunks, axis=0, name=None):
     """
     Split the input tensor into multiple sub-Tensors.
@@ -817,7 +926,7 @@ def chunk(x, chunks, axis=0, name=None):
             paddle.disable_static()
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.to_variable(x_np)
+            x = paddle.to_tensor(x_np)
 
             out0, out1, out22 = paddle.chunk(x, chunks=3, axis=1)
             # out0.shape [3, 3, 5]
@@ -864,17 +973,17 @@ def tile(x, repeat_times, name=None):
             np_data = np.array([1, 2, 3]).astype('int32')
             data = paddle.to_tensor(np_data)
             out = paddle.tile(data, repeat_times=[2, 1])
-			np_out = out.numpy()
+            np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
 
             out = paddle.tile(data, repeat_times=[2, 2])
-			np_out = out.numpy()
+            np_out = out.numpy()
             # [[1, 2, 3, 1, 2, 3], [1, 2, 3, 1, 2, 3]]
 
             np_repeat_times = np.array([2, 1]).astype("int32")
             repeat_times = paddle.to_tensor(np_repeat_times)
             out = paddle.tile(data, repeat_times=repeat_times)
-			np_out = out.numpy()
+            np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
     check_variable_and_dtype(
@@ -950,7 +1059,7 @@ def expand_as(x, y, name=None):
             data_x = paddle.to_tensor(np_data_x)
             data_y = paddle.to_tensor(np_data_y)
             out = paddle.expand_as(data_x, data_y)
-			np_out = out.numpy()
+            np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
     check_variable_and_dtype(
@@ -1003,13 +1112,7 @@ def expand(x, shape, name=None):
             np_data = np.array([1, 2, 3]).astype('int32')
             data = paddle.to_tensor(np_data)
             out = paddle.expand(data, shape=[2, 3])
-			out = out.numpy()
-            # [[1, 2, 3], [1, 2, 3]]
-
-            np_shape = np.array([2, 3]).astype('int32')
-            shape = paddle.to_tensor(np_shape)
-            out = paddle.expand(data, shape=shape)
-			out = out.numpy()
+            out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
     check_variable_and_dtype(
@@ -1135,3 +1238,88 @@ def reshape(x, shape, name=None):
             # the shape of out_2 is [8, 6].
     """
     return paddle.fluid.layers.reshape(x=x, shape=shape, name=name)
+
+
+def gather_nd(x, index, name=None):
+    """
+    **Gather Nd Layer**
+
+    This function is actually a high-dimensional extension of :code:`gather`
+    and supports for simultaneous indexing by multiple axes. :attr:`index` is a
+    K-dimensional integer tensor, which is regarded as a (K-1)-dimensional
+    tensor of :attr:`index` into :attr:`input`, where each element defines
+    a slice of params:
+
+    .. math::
+
+        output[(i_0, ..., i_{K-2})] = input[index[(i_0, ..., i_{K-2})]]
+
+    Obviously, :code:`index.shape[-1] <= input.rank` . And, the output tensor has
+    shape :code:`index.shape[:-1] + input.shape[index.shape[-1]:]` .
+
+    .. code-block:: text
+
+            Given:
+                input = [[[ 0,  1,  2,  3],
+                          [ 4,  5,  6,  7],
+                          [ 8,  9, 10, 11]],
+                         [[12, 13, 14, 15],
+                          [16, 17, 18, 19],
+                          [20, 21, 22, 23]]]
+                input.shape = (2, 3, 4)
+
+            * Case 1:
+                index = [[1]]
+
+                gather_nd(input, index)
+                         = [input[1, :, :]]
+                         = [[12, 13, 14, 15],
+                            [16, 17, 18, 19],
+                            [20, 21, 22, 23]]
+
+            * Case 2:
+                index = [[0,2]]
+
+                gather_nd(input, index)
+                         = [input[0, 2, :]]
+                         = [8, 9, 10, 11]
+
+            * Case 3:
+                index = [[1, 2, 3]]
+
+                gather_nd(input, index)
+                         = [input[1, 2, 3]]
+                         = [23]
+
+    Args:
+        x (Tensor): The input Tensor which it's data type should be bool, float32, float64, int32, int64.
+        index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
+                        Its dtype should be int32, int64.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+                        For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
+    
+    Raises:
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of float32, float64, int32 and int64.
+        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be one of int32 and int64.
+
+    Examples:
+
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            
+            paddle.disable_static()
+            np_x = np.array([[[1, 2], [3, 4], [5, 6]],
+                             [[7, 8], [9, 10], [11, 12]]])
+            np_index = [[0, 1]]
+            x = paddle.to_tensor(np_x)
+            index = paddle.to_tensor(np_index)
+            
+            output = paddle.gather_nd(x, index) #[[3, 4]]
+
+    """
+
+    return paddle.fluid.layers.gather_nd(input=x, index=index, name=name)
