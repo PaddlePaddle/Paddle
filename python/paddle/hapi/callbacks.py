@@ -292,9 +292,10 @@ class ProgBarLogger(Callback):
         .. code-block:: python
 
             import paddle
+            from paddle.static import InputSpec
 
-            inputs = [paddle.Input('image', [-1, 1, 28, 28], 'float32')]
-            labels = [paddle.Input('label', [None, 1], 'int64')]
+            inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
+            labels = [InputSpec([None, 1], 'int64', 'label')]
 
             train_dataset = paddle.vision.datasets.MNIST(mode='train')
 
@@ -426,9 +427,10 @@ class ModelCheckpoint(Callback):
         .. code-block:: python
 
             import paddle
+            from paddle.static import InputSpec
 
-            inputs = [paddle.Input('image', [-1, 1, 28, 28], 'float32')]
-            labels = [paddle.Input('label', [None, 1], 'int64')]
+            inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
+            labels = [InputSpec([None, 1], 'int64', 'label')]
 
             train_dataset = paddle.vision.datasets.MNIST(mode='train')
 

@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.static import InputSpec
 import paddle.vision.models as models
 
 
@@ -28,7 +29,7 @@ class TestVisonModels(unittest.TestCase):
         else:
             net = models.__dict__[arch](pretrained=pretrained)
 
-        input = paddle.Input('image', [None, 3, 224, 224], 'float32')
+        input = InputSpec([None, 3, 224, 224], 'float32', 'image')
         model = paddle.Model(net, input)
         model.prepare()
 
@@ -71,7 +72,7 @@ class TestVisonModels(unittest.TestCase):
         self.models_infer('resnet152')
 
     def test_lenet(self):
-        input = paddle.Input('x', [None, 1, 28, 28], 'float32')
+        input = InputSpec([None, 1, 28, 28], 'float32', 'x')
         lenet = paddle.Model(models.__dict__['LeNet'](), input)
         lenet.prepare()
 

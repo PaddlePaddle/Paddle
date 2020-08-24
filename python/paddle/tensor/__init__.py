@@ -144,7 +144,11 @@ from .math import maximum  #DEFINE_ALIAS
 from .math import min  #DEFINE_ALIAS
 from .math import minimum  #DEFINE_ALIAS
 from .math import mm  #DEFINE_ALIAS
-from .math import div  #DEFINE_ALIAS
+from .math import divide  #DEFINE_ALIAS
+from .math import floor_divide  #DEFINE_ALIAS
+from .math import remainder  #DEFINE_ALIAS
+from .math import mod  #DEFINE_ALIAS
+from .math import floor_mod  #DEFINE_ALIAS
 from .math import multiply  #DEFINE_ALIAS
 from .math import add  #DEFINE_ALIAS
 from .math import atan  #DEFINE_ALIAS
@@ -154,11 +158,12 @@ from .math import log1p  #DEFINE_ALIAS
 from .math import erf  #DEFINE_ALIAS
 from .math import addcmul  #DEFINE_ALIAS
 from .math import addmm  #DEFINE_ALIAS
-from .math import clamp  #DEFINE_ALIAS
+from .math import clip  #DEFINE_ALIAS
 from .math import trace  #DEFINE_ALIAS
 from .math import kron  #DEFINE_ALIAS
+from .math import prod  #DEFINE_ALIAS
 # from .random import gaussin        #DEFINE_ALIAS
-# from .random import uniform        #DEFINE_ALIAS
+from .random import uniform  #DEFINE_ALIAS
 from .random import shuffle  #DEFINE_ALIAS
 from .random import randn  #DEFINE_ALIAS
 from .random import rand  #DEFINE_ALIAS
@@ -176,9 +181,12 @@ from .search import index_select  #DEFINE_ALIAS
 from .search import nonzero  #DEFINE_ALIAS
 from .search import sort  #DEFINE_ALIAS
 from .search import index_sample  #DEFINE_ALIAS
+from .search import masked_select  #DEFINE_ALIAS
 from .stat import mean  #DEFINE_ALIAS
 from .stat import reduce_mean  #DEFINE_ALIAS
 from .stat import std  #DEFINE_ALIAS
 from .stat import var  #DEFINE_ALIAS
+from .stat import numel  #DEFINE_ALIAS
+# from .tensor import Tensor        #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS

@@ -36,8 +36,8 @@ class ApiMaximumTest(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
-            data_x = paddle.nn.data("x", shape=[10, 15], dtype="float32")
-            data_y = paddle.nn.data("y", shape=[10, 15], dtype="float32")
+            data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
+            data_y = paddle.static.data("y", shape=[10, 15], dtype="float32")
             result_max = paddle.maximum(data_x, data_y)
             exe = paddle.static.Executor(self.place)
             res, = exe.run(feed={"x": self.input_x,
@@ -48,8 +48,8 @@ class ApiMaximumTest(unittest.TestCase):
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
-            data_x = paddle.nn.data("x", shape=[10, 15], dtype="float32")
-            data_z = paddle.nn.data("z", shape=[15], dtype="float32")
+            data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
+            data_z = paddle.static.data("z", shape=[15], dtype="float32")
             result_max = paddle.maximum(data_x, data_z, axis=1)
             exe = paddle.static.Executor(self.place)
             res, = exe.run(feed={"x": self.input_x,

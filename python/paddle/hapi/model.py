@@ -26,6 +26,8 @@ from collections import Iterable
 
 import paddle
 from paddle import fluid
+# Note: Use alias `Input` temporarily before releasing hapi feature.
+from paddle.static import InputSpec as Input
 from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.executor import global_scope
@@ -187,40 +189,6 @@ def prepare_distributed_context(place=None):
 
     _parallel_context_initialized = True
     return strategy
-
-
-class Input(paddle.nn.Layer):
-    """
-    Define inputs the model.
-
-    Args:
-        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
-            for more details.
-        shape (tuple(integers)|list[integers]): List|Tuple of integers
-            declaring the shape. You can set "None" or -1 at a dimension
-            to indicate the dimension can be of any size. For example,
-            it is useful to set changeable batch size as "None" or -1.
-        dtype (np.dtype|VarType|str, optional): The type of the data. Supported
-            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
-            uint8. Default: float32.
-
-    Examples:
-        .. code-block:: python
-
-        import paddle
-
-        input = paddle.Input('x', [None, 784], 'float32')
-        label = paddle.Input('label', [None, 1], 'int64')
-    """
-
-    def __init__(self, name, shape=None, dtype='float32'):
-        super(Input, self).__init__()
-        self.shape = shape
-        self.dtype = dtype
-        self.name = name
-
-    def forward(self):
-        return fluid.data(self.name, shape=self.shape, dtype=self.dtype)
 
 
 class StaticGraphAdapter(object):
@@ -530,8 +498,8 @@ class StaticGraphAdapter(object):
         with fluid.program_guard(prog, self._startup_prog):
             inputs = self.model._inputs
             labels = self.model._labels if self.model._labels else []
-            inputs = [k.forward() for k in to_list(inputs)]
-            labels = [k.forward() for k in to_list(labels)]
+            inputs = [k._create_feed_layer() for k in to_list(inputs)]
+            labels = [k._create_feed_layer() for k in to_list(labels)]
             self._label_vars[mode] = labels
             outputs = to_list(self.model.network.forward(*inputs))
 
@@ -828,6 +796,7 @@ class Model(object):
         .. code-block:: python
 
         import paddle
+        from paddle.static import InputSpec
 
         class MyNet(paddle.nn.Layer):
             def __init__(self, classifier_act=None):
@@ -843,8 +812,8 @@ class Model(object):
         paddle.disable_static(device)
         
         # inputs and labels are not required for dynamic graph.
-        input = paddle.Input('x', [None, 784], 'float32')
-        label = paddle.Input('label', [None, 1], 'int64')
+        input = InputSpec([None, 784], 'float32', 'x')
+        label = InputSpec([None, 1], 'int64', 'label')
         
         model = paddle.Model(MyNet(), input, label)
         optim = paddle.optimizer.SGD(learning_rate=1e-3,
@@ -873,16 +842,8 @@ class Model(object):
             if not isinstance(inputs, (list, dict, Input)):
                 raise TypeError(
                     "'inputs' must be list or dict in static graph mode")
-        if inputs is None:
-            self._inputs = [Input(name=n) \
-                for n in extract_args(self.network.forward) if n != 'self']
-        elif isinstance(input, dict):
-            self._inputs = [inputs[n] \
-                for n in extract_args(self.network.forward) if n != 'self']
-        else:
-            self._inputs = to_list(inputs)
-
-        self._labels = to_list(labels)
+        self._inputs = self._verify_spec(inputs, True)
+        self._labels = self._verify_spec(labels)
 
         # init backend
         if fluid.in_dygraph_mode():
@@ -911,6 +872,7 @@ class Model(object):
             
               import numpy as np
               import paddle
+              from paddle.static import InputSpec
 
               class MyNet(paddle.nn.Layer):
                   def __init__(self, classifier_act=None):
@@ -924,8 +886,8 @@ class Model(object):
               device = paddle.set_device('gpu')
               paddle.disable_static(device)
 
-              input = paddle.Input('x', [None, 784], 'float32')
-              label = paddle.Input('label', [None, 1], 'int64')
+              input = InputSpec([None, 784], 'float32', 'x')
+              label = InputSpec([None, 1], 'int64', 'label')
               model = paddle.Model(MyNet(), input, label)
               optim = paddle.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
@@ -958,6 +920,7 @@ class Model(object):
             
               import numpy as np
               import paddle
+              from paddle.static import InputSpec
 
               class MyNet(paddle.nn.Layer):
                   def __init__(self, classifier_act=None):
@@ -971,8 +934,8 @@ class Model(object):
               device = paddle.set_device('gpu')
               paddle.disable_static(device)
 
-              input = paddle.Input('x', [None, 784], 'float32')
-              label = paddle.Input('label', [None, 1], 'int64')
+              input = InputSpec([None, 784], 'float32', 'x')
+              label = InputSpec([None, 1], 'int64', 'label')
               model = paddle.Model(MyNet(), input, label)
               optim = paddle.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
@@ -1314,6 +1277,7 @@ class Model(object):
             .. code-block:: python
 
               import paddle
+              from paddle.static import InputSpec
 
               dynamic = True
               device = paddle.set_device('gpu')
@@ -1322,8 +1286,8 @@ class Model(object):
               train_dataset = paddle.vision.datasets.MNIST(mode='train')
               val_dataset = paddle.vision.datasets.MNIST(mode='test')
            
-              input = paddle.Input('image', [None, 1, 28, 28], 'float32')
-              label = paddle.Input('label', [None, 1], 'int64')
+              input = InputSpec([None, 1, 28, 28], 'float32', 'image')
+              label = InputSpec([None, 1], 'int64', 'label')
            
               model = paddle.Model(
                   paddle.vision.LeNet(classifier_activation=None),
@@ -1346,6 +1310,7 @@ class Model(object):
             .. code-block:: python
 
               import paddle
+              from paddle.static import InputSpec
 
               dynamic = True
               device = paddle.set_device('gpu')
@@ -1358,8 +1323,8 @@ class Model(object):
               val_loader = paddle.io.DataLoader(val_dataset,
                   places=device, batch_size=64)
            
-              input = paddle.Input('image', [None, 1, 28, 28], 'float32')
-              label = paddle.Input('label', [None, 1], 'int64')
+              input = InputSpec([None, 1, 28, 28], 'float32', 'image')
+              label = InputSpec([None, 1], 'int64', 'label')
            
               model = paddle.Model(
                   paddle.vision.LeNet(classifier_activation=None), input, label)
@@ -1481,15 +1446,15 @@ class Model(object):
         .. code-block:: python
 
             import paddle
+            from paddle.static import InputSpec
 
             # declarative mode
             val_dataset = paddle.vision.datasets.MNIST(mode='test')
 
-            input = paddle.Input('image', [-1, 1, 28, 28], 'float32')
-            label = paddle.Input('label', [None, 1], 'int64')
+            input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
+            label = InputSpec([None, 1], 'int64', 'label')
             model = paddle.Model(paddle.vision.LeNet(), input, label)
             model.prepare(metrics=paddle.metric.Accuracy())
-
             result = model.evaluate(val_dataset, batch_size=64)
             print(result)
 
@@ -1559,12 +1524,13 @@ class Model(object):
             num_workers (int): The number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
                 both the instance of Dataloader, this argument will be ignored. Default: 0.
-            stack_output (bool): Whether stack output field like a batch, as for an output
+            stack_outputs (bool): Whether stack output field like a batch, as for an output
                 filed of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
                 be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
                 is False. stack_outputs as False is used for LoDTensor output situation,
                 it is recommended set as True if outputs contains no LoDTensor. Default: False.
+            callbacks(Callback): A Callback instance, default None.
         Returns:
             list: output of models.
 
@@ -1573,6 +1539,7 @@ class Model(object):
 
             import numpy as np
             import paddle
+            from paddle.static import InputSpec
 
             class MnistDataset(paddle.vision.datasets.MNIST):
                 def __init__(self, mode, return_label=True):
@@ -1591,7 +1558,7 @@ class Model(object):
             test_dataset = MnistDataset(mode='test', return_label=False)
 
             # declarative mode
-            input = paddle.Input('image', [-1, 1, 28, 28], 'float32')
+            input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
             model = paddle.Model(paddle.vision.LeNet(), input)
             model.prepare()
 
@@ -1671,8 +1638,9 @@ class Model(object):
         .. code-block:: python
 
             import paddle
+            from paddle.static import InputSpec
 
-            input = paddle.Input('image', [-1, 1, 28, 28], 'float32')
+            input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
             model = paddle.Model(paddle.vision.LeNet(), input)
             model.prepare()
 
@@ -1762,6 +1730,36 @@ class Model(object):
         if mode == 'test':
             return logs, outputs
         return logs
+
+    def _verify_spec(self, specs, is_input=False):
+        out_specs = []
+
+        if specs is None:
+            # If not specific specs of `Input`, using argument names of `forward` function
+            # to generate `Input`.
+            if is_input:
+                out_specs = [
+                    Input(name=n) for n in extract_args(self.network.forward)
+                    if n != 'self'
+                ]
+            else:
+                out_specs = to_list(specs)
+        elif isinstance(specs, dict):
+            assert is_input == False
+            out_specs = [specs[n] \
+                for n in extract_args(self.network.forward) if n != 'self']
+        else:
+            out_specs = to_list(specs)
+        # Note: checks each element has specificed `name`.
+        if out_specs is not None:
+            for i, spec in enumerate(out_specs):
+                assert isinstance(spec, Input)
+                if spec.name is None:
+                    raise ValueError(
+                        "Requires Input[{}].name != None, but receive `None` with {}.".
+                        format(i, spec))
+
+        return out_specs
 
     def _reset_metrics(self):
         for metric in self._metrics:

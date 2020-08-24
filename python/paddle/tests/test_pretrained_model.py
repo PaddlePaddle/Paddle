@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.static import InputSpec
 import paddle.vision.models as models
 
 
@@ -27,7 +28,7 @@ class TestPretrainedModel(unittest.TestCase):
             paddle.disable_static()
 
         net = models.__dict__[arch](pretrained=True, classifier_activation=None)
-        inputs = [paddle.Input('image', [None, 3, 224, 224], 'float32')]
+        inputs = [InputSpec([None, 3, 224, 224], 'float32', 'image')]
         model = paddle.Model(network=net, inputs=inputs)
         model.prepare()
         res = model.test_batch(x)
