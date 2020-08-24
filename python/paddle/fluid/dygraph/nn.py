@@ -31,6 +31,7 @@ from ..data_feeder import check_variable_and_dtype, check_type
 import numpy as np
 import numbers
 import logging
+import paddle.utils.deprecated as deprecated
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
