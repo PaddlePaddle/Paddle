@@ -183,5 +183,37 @@ class TestPixelShuffleAPI(unittest.TestCase):
         self.run_dygraph(3, "NHWC")
 
 
+class TestPixelShuffleError(unittest.TestCase):
+    def test_error_functional(self):
+        def error_upscale_factor():
+            with paddle.fluid.dygraph.guard():
+                x = np.random.random([2, 9, 4, 4]).astype("float64")
+                pixel_shuffle = F.pixel_shuffle(paddle.to_tensor(x), 3.33)
+
+        self.assertRaises(TypeError, error_upscale_factor)
+
+        def error_data_format():
+            with paddle.fluid.dygraph.guard():
+                x = np.random.random([2, 9, 4, 4]).astype("float64")
+                pixel_shuffle = F.pixel_shuffle(paddle.to_tensor(x), 3, "WOW")
+
+        self.assertRaises(ValueError, error_data_format)
+
+    def test_error_layer(self):
+        def error_upscale_factor_layer():
+            with paddle.fluid.dygraph.guard():
+                x = np.random.random([2, 9, 4, 4]).astype("float64")
+                ps = paddle.nn.PixelShuffle(3.33)
+
+        self.assertRaises(TypeError, error_upscale_factor_layer)
+
+        def error_data_format_layer():
+            with paddle.fluid.dygraph.guard():
+                x = np.random.random([2, 9, 4, 4]).astype("float64")
+                ps = paddle.nn.PixelShuffle(3, "MEOW")
+
+        self.assertRaises(ValueError, error_data_format_layer)
+
+
 if __name__ == '__main__':
     unittest.main()

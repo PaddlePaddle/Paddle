@@ -129,14 +129,9 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
             # (2, 1, 12, 12)
 
     """
-    if in_dygraph_mode():
-        return core.ops.pixel_shuffle(x, "upscale_factor", upscale_factor,
-                                      "data_format", data_format)
-
-    helper = LayerHelper("pixel_shuffle", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_shuffle')
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if not in_dygraph_mode():
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'pixel_shuffle')
 
     if not isinstance(upscale_factor, int):
         raise TypeError("upscale factor must be int type")
@@ -145,6 +140,14 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
         raise ValueError("Attr(data_format) should be 'NCHW' or 'NHWC'."
                          "But recevie Attr(data_format): {} ".format(
                              data_format))
+
+    if in_dygraph_mode():
+        return core.ops.pixel_shuffle(x, "upscale_factor", upscale_factor,
+                                      "data_format", data_format)
+
+    helper = LayerHelper("pixel_shuffle", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="pixel_shuffle",
         inputs={"X": x},
