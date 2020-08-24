@@ -13,15 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 /*
-  The reason why we need the topk v2 is that the difference of dealing with NaN
-  in topk op
-  between paddle and other DL framework. In the paddle framework, the action is
-  undefine that compare with
-  NaN and other values. In other framework, the NaN is bigger.
-  for example, [1, NaN, 1] is the input of topk,
-  paddle output is [1, NaN, 1]
-  other DL framework is [NaN, 1, 1]
-  so we need the v2 topk.
+  The reason why we need the topk v2 is because the compatibility. We redefine
+  the NaN is maximum value
+  in the process of comparing. If do not add the topk v2,  will affect the
+  inference result of model that traing
+  by the older version paddlepaddle.
 */
 
 #pragma once
