@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
-from paddle.fluid.framework import Variable, set_flags
+from paddle.fluid.framework import Variable, set_flags, core
 import google.protobuf.text_format
 
 
@@ -790,21 +790,21 @@ class DistributedStrategy(object):
             )
 
     def _enable_env(self):
-        set_flags({
-            "FLAGS_cudnn_batchnorm_spatial_persistent":
-            self.strategy.cudnn_batchnorm_spatial_persistent
-        })
-        set_flags({
-            "FLAGS_conv_workspace_size_limit":
-            self.strategy.conv_workspace_size_limit
-        })
-        set_flags({
-            "FLAGS_cudnn_exhaustive_search":
-            self.strategy.cudnn_exhaustive_search
-        })
-        set_flags({
-            "FLAGS_sync_nccl_allreduce": self.strategy.sync_nccl_allreduce
-        })
+        strategy = self.strategy
+        keys = [
+            "FLAGS_cudnn_batchnorm_spatial_persistent",
+            "FLAGS_conv_workspace_size_limit", "FLAGS_cudnn_exhaustive_search",
+            "FLAGS_sync_nccl_allreduce"
+        ]
+        values = [
+            strategy.cudnn_batchnorm_spatial_persistent,
+            strategy.conv_workspace_size_limit,
+            strategy.cudnn_exhaustive_search, strategy.sync_nccl_allreduce
+        ]
+
+        for i, key in enumerate(keys):
+            if core.globals().is_public(key):
+                core.globals()[key] = values[i]
 
     def __repr__(self):
         fields = self.strategy.DESCRIPTOR.fields
