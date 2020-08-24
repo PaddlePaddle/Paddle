@@ -11,14 +11,5 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/huber_loss_op.h"
 
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    huber_loss,
-    ops::HuberLossKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::HuberLossKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    huber_loss_grad,
-    ops::HuberLossGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::HuberLossGradKernel<paddle::platform::CUDADeviceContext, double>);
+#include "paddle/fluid/framework/op_version_registry.h"
