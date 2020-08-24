@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
-from paddle.fluid.framework import Variable
+from paddle.fluid.framework import Variable, set_flags
 import google.protobuf.text_format
 
 
@@ -749,6 +749,62 @@ class DistributedStrategy(object):
             self.strategy.auto = flag
         else:
             print("WARNING: auto should have value of bool type")
+
+    @property
+    def cudnn_exhaustive_search(self):
+        return self.strategy.cudnn_exhaustive_search
+
+    @cudnn_exhaustive_search.setter
+    def cudnn_exhaustive_search(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.cudnn_exhaustive_search = flag
+        else:
+            print(
+                "WARNING: cudnn_exhaustive_search should have value of bool type"
+            )
+
+    @property
+    def conv_workspace_size_limit(self):
+        return self.strategy.conv_workspace_size_limit
+
+    @conv_workspace_size_limit.setter
+    def conv_workspace_size_limit(self, value):
+        if isinstance(value, int):
+            self.strategy.conv_workspace_size_limit = value
+        else:
+            print(
+                "WARNING: conv_workspace_size_limit should have value of int type"
+            )
+
+    @property
+    def cudnn_batchnorm_spatial_persistent(self):
+        return self.strategy.cudnn_batchnorm_spatial_persistent
+
+    @cudnn_batchnorm_spatial_persistent.setter
+    def cudnn_batchnorm_spatial_persistent(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.cudnn_batchnorm_spatial_persistent = flag
+        else:
+            print(
+                "WARNING: cudnn_batchnorm_spatial_persistent should have value of bool type"
+            )
+
+    def _enable_env(self):
+        set_flags({
+            "FLAGS_cudnn_batchnorm_spatial_persistent":
+            self.strategy.cudnn_batchnorm_spatial_persistent
+        })
+        set_flags({
+            "FLAGS_conv_workspace_size_limit":
+            self.strategy.conv_workspace_size_limit
+        })
+        set_flags({
+            "FLAGS_cudnn_exhaustive_search":
+            self.strategy.cudnn_exhaustive_search
+        })
+        set_flags({
+            "FLAGS_sync_nccl_allreduce": self.strategy.sync_nccl_allreduce
+        })
 
     def __repr__(self):
         fields = self.strategy.DESCRIPTOR.fields
