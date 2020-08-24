@@ -20,7 +20,7 @@ import shutil
 import cv2
 
 from paddle.vision.datasets import *
-from paddle.vision.datasets.utils import _check_exists_and_download
+from paddle.dataset.common import _check_exists_and_download
 
 
 class TestFolderDatasets(unittest.TestCase):

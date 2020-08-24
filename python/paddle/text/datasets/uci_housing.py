@@ -17,7 +17,6 @@ from __future__ import print_function
 import six
 import numpy as np
 
-import paddle.dataset.common
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 

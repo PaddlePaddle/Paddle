@@ -36,7 +36,6 @@ import tarfile
 import gzip
 from collections import defaultdict
 
-import paddle.dataset.common
 import paddle.compat as cpt
 
 __all__ = [

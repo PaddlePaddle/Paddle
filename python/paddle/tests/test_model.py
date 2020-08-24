@@ -25,7 +25,7 @@ import tempfile
 import paddle
 from paddle import fluid
 from paddle import to_tensor
-from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
+from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential
 
 from paddle import Model, Input
 from paddle.nn.layer.loss import CrossEntropyLoss
