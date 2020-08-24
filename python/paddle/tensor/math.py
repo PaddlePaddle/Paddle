@@ -1639,7 +1639,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     Compute the product of tensor elements over the given axis.
 
     Args:
-        x(Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
+        x(Tensor): The input tensor, its data type should be float32, float64, int32, int64.
         axis(int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
             multiply all elements of `x` and return a Tensor with a single element, 
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
