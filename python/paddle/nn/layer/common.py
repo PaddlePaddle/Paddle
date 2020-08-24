@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the common classes to build a neural network  
+# TODO: define the common classes to build a neural network
 from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Embedding  #DEFINE_ALIAS
@@ -23,11 +23,27 @@ from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 
 __all__ = [
-    'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
-    'Pad2D', 'ReflectionPad1d', 'ReplicationPad1d', 'ConstantPad1d',
-    'ReflectionPad2d', 'ReplicationPad2d', 'ConstantPad2d', 'ZeroPad2d',
-    'ConstantPad3d', 'ReplicationPad3d', 'CosineSimilarity', 'Dropout',
-    'Dropout2D', 'Dropout3D', 'AlphaDropout'
+    'BilinearTensorProduct',
+    'Pool2D',
+    'Embedding',
+    'Linear',
+    'UpSample',
+    'Pad2D',
+    'ReflectionPad1d',
+    'ReplicationPad1d',
+    'ConstantPad1d',
+    'ReflectionPad2d',
+    'ReplicationPad2d',
+    'ConstantPad2d',
+    'ZeroPad2d',
+    'ConstantPad3d',
+    'ReplicationPad3d',
+    'CosineSimilarity',
+    'Dropout',
+    'Dropout2D',
+    'Dropout3D',
+    'Bilinear',
+    'AlphaDropout',
 ]
 
 
@@ -338,6 +354,94 @@ class Pad2D(layers.Layer):
             data_format=self._data_format)
 
 
+class Bilinear(layers.Layer):
+    """
+
+    This layer performs bilinear on two inputs.
+
+    .. math::
+      out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,size-1
+      out = out + b
+
+    In this formula:
+     - :math:`x1`: the first input contains in1_features elements, shape is [batch_size, in1_features].
+     - :math:`x2`: the second input contains in2_features elements, shape is [batch_size, in2_features].
+     - :math:`W_{i}`: the i-th learned weight, shape is [in1_features, in2_features], and learned weight's shape is [out_features, in1_features, in2_features].
+     - :math:`out_{i}`: the i-th element of out, shape is [batch_size, out_features].
+     - :math:`b`: the learned bias, shape is [1, out_features].
+     - :math:`x2^\mathrm{T}`: the transpose of :math:`x2`.
+
+    Parameters:
+       in1_features (int): The dimension of each first input(`x1`).
+       in2_features (int): The dimension of each second input(`x2`).
+       out_features (int): The dimension of output of this layer.
+       weight_attr (ParamAttr, optional): The parameter attribute for the learnable w, parameters/weights of 
+       this layer. The default value is None.
+       bias_attr (ParamAttr, optional): The parameter attribute for the bias
+           of this layer. If it is set to False, no bias will be added to the output units.
+           If it is set to None, the bias is initialized zero. The default value is None.       
+       name (str, optional): The default value is None. Normally there is no need for user
+           to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
+
+    Attribute:
+        **weight** (Parameter): the learnable weights of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
+
+    Returns:
+       Variable: A 2-D Tensor of shape [batch_size, out_features].
+
+    Examples:
+       .. code-block:: python
+
+        import paddle
+        import numpy
+
+        paddle.disable_static()
+        layer1 = numpy.random.random((5, 5)).astype('float32')
+        layer2 = numpy.random.random((5, 4)).astype('float32')
+        bilinear = paddle.nn.Bilinear(
+            in1_features=5, in2_features=4, out_features=1000)
+        result = bilinear(paddle.to_tensor(layer1),
+                        paddle.to_tensor(layer2))     # result shape [5, 1000]
+
+    """
+
+    def __init__(self,
+                 in1_features,
+                 in2_features,
+                 out_features,
+                 weight_attr=None,
+                 bias_attr=None,
+                 name=None):
+        super(Bilinear, self).__init__()
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+        self._name = name
+        self._in1_features = in1_features
+        self._in2_features = in2_features
+        self._out_features = out_features
+        self._dtype = self._helper.get_default_dtype()
+
+        weight_shape = [
+            self._out_features, self._in1_features, self._in2_features
+        ]
+        self.weight = self.create_parameter(
+            attr=self._weight_attr,
+            shape=weight_shape,
+            dtype=self._dtype,
+            is_bias=False)
+        bias_shape = [1, self._out_features]
+        self.bias = self.create_parameter(
+            attr=self._bias_attr,
+            shape=bias_shape,
+            dtype=self._dtype,
+            is_bias=True)
+
+    def forward(self, x1, x2):
+        return F.bilinear(x1, x2, self.weight, self.bias, self._name)
+
+
 class Dropout(layers.Layer):
     """
     Dropout is a regularization technique for reducing overfitting by preventing
@@ -583,8 +687,8 @@ class ReflectionPad1d(layers.Layer):
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -642,8 +746,8 @@ class ReplicationPad1d(layers.Layer):
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -657,7 +761,7 @@ class ReplicationPad1d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -702,8 +806,8 @@ class ConstantPad1d(layers.Layer):
            Default is  "NCL"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -718,7 +822,7 @@ class ConstantPad1d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -765,8 +869,8 @@ class ConstantPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -781,7 +885,7 @@ class ConstantPad2d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -830,8 +934,8 @@ class ZeroPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -845,7 +949,7 @@ class ZeroPad2d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -892,8 +996,8 @@ class ReplicationPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -907,7 +1011,7 @@ class ReplicationPad2d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -954,8 +1058,8 @@ class ReflectionPad2d(layers.Layer):
            Default is  "NCHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -969,7 +1073,7 @@ class ReflectionPad2d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -1019,8 +1123,8 @@ class ConstantPad3d(layers.Layer):
            Default is  "NCDHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -1035,7 +1139,7 @@ class ConstantPad3d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -1084,8 +1188,8 @@ class ReplicationPad3d(layers.Layer):
            Default is  "NCDHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-        
-    Returns: 
+
+    Returns:
         None
 
     Examples:
@@ -1099,7 +1203,7 @@ class ReplicationPad3d(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -1141,7 +1245,7 @@ class CosineSimilarity(layers.Layer):
     Parameters:
         axis (int): Dimension of vectors to compute cosine similarity. Default is 1.
         eps(float): Small value to avoid division by zero. Default is 1e-8.
-    Returns: 
+    Returns:
         None
 
     Examples:
@@ -1162,7 +1266,7 @@ class CosineSimilarity(layers.Layer):
 
     Code Examples:
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
             import numpy as np
