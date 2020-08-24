@@ -283,6 +283,24 @@ class TestLayer(LayerTest):
             with self.assertRaises(ValueError):
                 lm(base.to_variable(inp))
 
+    def test_SyncBatchNorm(self):
+        if core.is_compiled_with_cuda():
+            with self.static_graph():
+                t = layers.data(name='t', shape=[-1, 3, 5, 5], dtype='float32')
+                my_sync_bn = nn.SyncBatchNorm(3)
+                ret = my_sync_bn(t)
+                static_ret = self.get_static_graph_result(
+                    feed={'t': np.ones(
+                        [3, 3, 5, 5], dtype='float32')},
+                    fetch_list=[ret])[0]
+
+            with self.dynamic_graph():
+                t = np.ones([3, 3, 5, 5], dtype='float32')
+                my_syncbn = paddle.nn.SyncBatchNorm(3)
+                dy_ret = my_syncbn(base.to_variable(t))
+                dy_ret_value = dy_ret.numpy()
+            self.assertTrue(np.array_equal(static_ret, static_ret))
+
     def test_relu(self):
         with self.static_graph():
             t = layers.data(name='t', shape=[3, 3], dtype='float32')
@@ -294,21 +312,6 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             t = np.ones([3, 3], dtype='float32')
             dy_ret = layers.relu(base.to_variable(t))
-            dy_ret_value = dy_ret.numpy()
-
-        self.assertTrue(np.allclose(static_ret, dy_ret_value))
-
-    def test_leakyrelu(self):
-        inputs = np.random.uniform(-1, 1, (10, 10)).astype('float32')
-        with self.static_graph():
-            t = layers.data(name='t', shape=[10, 10], dtype='float32')
-            ret = layers.leaky_relu(t, alpha=0.01)
-            static_ret = self.get_static_graph_result(
-                feed={'t': inputs}, fetch_list=[ret])[0]
-
-        with self.dynamic_graph():
-            lrelu = paddle.nn.LeakyReLU(alpha=0.01)
-            dy_ret = lrelu(base.to_variable(inputs))
             dy_ret_value = dy_ret.numpy()
 
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
@@ -2658,13 +2661,6 @@ class TestBook(LayerTest):
                            fluid.default_startup_program()):
             input = self._get_data(name="input", shape=[16], dtype="float32")
             out = layers.brelu(input, t_min=1.0, t_max=20.0, name='brelu')
-            return (out)
-
-    def make_leaky_relu(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.leaky_relu(input, alpha=0.1, name='leaky_relu')
             return (out)
 
     def make_soft_relu(self):

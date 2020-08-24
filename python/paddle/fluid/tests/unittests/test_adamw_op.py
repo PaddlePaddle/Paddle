@@ -19,7 +19,7 @@ import paddle.fluid as fluid
 
 
 class TestAdamWOp(unittest.TestCase):
-    def test_adamw_opi_dygraph(self):
+    def test_adamw_op_dygraph(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_variable(value)
@@ -33,6 +33,18 @@ class TestAdamWOp(unittest.TestCase):
         out.backward()
         adam.step()
         adam.clear_gradients()
+
+    def test_adamw_op_coverage(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_variable(value)
+        linear = paddle.nn.Linear(13, 5, dtype="float32")
+        adam = paddle.optimizer.AdamW(
+            learning_rate=0.0,
+            parameters=linear.parameters(),
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=0.01)
+        assert (adam.__str__() is not None)
 
     def test_adamw_op(self):
         place = fluid.CPUPlace()
