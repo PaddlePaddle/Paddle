@@ -474,9 +474,6 @@ def stack(x, axis=0, name=None):
 
 def split(x, num_or_sections, axis=0, name=None):
     """
-	:alias_main: paddle.split
-        :alias: paddle.tensor.split, paddle.tensor.manipulation.split
-    
     Split the input tensor into multiple sub-Tensors.
     
     Args:
