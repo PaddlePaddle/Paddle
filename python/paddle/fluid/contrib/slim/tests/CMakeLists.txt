@@ -123,6 +123,7 @@ endfunction()
 
 if(WIN32)
 	list(REMOVE_ITEM TEST_OPS test_light_nas)
+	list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mnist)
 	list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
     list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
     list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
@@ -263,6 +264,13 @@ list(REMOVE_ITEM TEST_OPS
 #TODO(wanghaoshuang): Fix this unitest failed on GCC8.
 LIST(REMOVE_ITEM TEST_OPS test_auto_pruning)
 LIST(REMOVE_ITEM TEST_OPS test_filter_pruning)
+
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
+
+# setting timeout value for old unittests
+if(NOT WIN32)
+	set_tests_properties(test_post_training_quantization_mobilenetv1 PROPERTIES TIMEOUT 200)
+	set_tests_properties(test_post_training_quantization_resnet50 PROPERTIES TIMEOUT 200)
+endif()

@@ -48,11 +48,12 @@ class QuantOpKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
 
     bool is_negative = ctx.Attr<bool>("is_negative_input");
-    std::string key = platform::CreateKey(src_tz, scale_data, is_negative,
-                                          ctx.OutputName("Output"));
-    const std::string key_prim = key + "@reorder_p";
-    const std::string key_src_mem = key + "@src_mem";
-    const std::string key_dst_mem = key + "@dst_mem";
+    std::string key =
+        platform::CreateKey(platform::ThreadIDasStr(), src_tz, scale_data,
+                            is_negative, ctx.OutputName("Output"));
+    const std::string key_prim = key + "@r";
+    const std::string key_src_mem = key + "@s";
+    const std::string key_dst_mem = key + "@d";
 
     std::shared_ptr<mkldnn::memory> src_memory;
     std::shared_ptr<mkldnn::memory> dst_memory;

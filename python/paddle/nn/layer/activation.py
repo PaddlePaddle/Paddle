@@ -18,6 +18,7 @@ __all__ = [
     'ELU',
     'GELU',
     'Hardshrink',
+    'Tanh',
     'Hardtanh',
     'PReLU',
     'ReLU',
@@ -180,6 +181,45 @@ class Hardshrink(layers.Layer):
 
     def forward(self, x):
         return F.hardshrink(x, self._threshold, self._name)
+
+
+class Tanh(layers.Layer):
+    """
+    Tanh Activation.
+
+    .. math::
+        Tanh(x) = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+
+            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            m = paddle.nn.Tanh()
+            out = m(x)
+            print(out.numpy())
+            # [-0.37994896 -0.19737532  0.09966799  0.29131261]
+    """
+
+    def __init__(self, name=None):
+        super(Tanh, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.tanh(x, self._name)
 
 
 class Hardtanh(layers.Layer):
@@ -473,7 +513,7 @@ class ReLU6(layers.Layer):
 
     .. math::
 
-        \text{ReLU6}(x) = \min(\max(0,x), 6)
+        ReLU6(x) = min(max(0,x), 6)
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -484,17 +524,16 @@ class ReLU6(layers.Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
-        m = paddle.nn.ReLU6()
-        out = m(x) # [0, 0.3, 6]
+            x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
+            m = paddle.nn.ReLU6()
+            out = m(x) # [0, 0.3, 6]
     """
 
     def __init__(self, name=None):
@@ -511,9 +550,7 @@ class SELU(layers.Layer):
 
     .. math::
 
-        \text{SELU}(x) = scale * (\max(0,x) + \min(0, \alpha * (\exp(x) - 1))), \\
-        with\,alpha=1.6732632423543772848170429916717 and \\
-        scale=1.0507009873554804934193349852946
+        SELU(x) = scale * (max(0,x) + min(0, alpha * (e^{x} - 1)))
 
     Parameters:
         scale (float, optional): The value of scale for SELU. Default is 1.0507009873554804934193349852946
@@ -526,17 +563,16 @@ class SELU(layers.Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([[0, 1],[2, 3]]))
-        m = paddle.nn.SELU()
-        out = m(x) # [[0, 1.050701],[2.101402, 3.152103]]
+            x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
+            m = paddle.nn.SELU()
+            out = m(x) # [[0, 1.050701],[2.101402, 3.152103]]
     """
 
     def __init__(self,
@@ -558,11 +594,17 @@ class LeakyReLU(layers.Layer):
 
     .. math:
 
-        out = max(x, alpha * x)
+        LeakyReLU(x)=
+            \left\{
+            \begin{aligned}
+            &x, & & if \ x >= 0 \\
+            &negative\_slope * x, & & otherwise \\
+            \end{aligned}
+            \right. \\
 
     Parameters:
-        alpha (float, optional): Slope of the activation function at :math:`x < 0` .
-            Default: 0.01.
+        negative_slope (float, optional): Slope of the activation function at
+            :math:`x < 0` . Default is 0.01.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
     
@@ -573,23 +615,23 @@ class LeakyReLU(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        lrelu = paddle.nn.LeakyReLU()
-        x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
-        out = lrelu(x)  # [-0.02, 0., 1.]
+            m = paddle.nn.LeakyReLU()
+            x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
+            out = m(x)  # [-0.02, 0., 1.]
     """
 
-    def __init__(self, alpha=1e-2, name=None):
+    def __init__(self, negative_slope=0.01, name=None):
         super(LeakyReLU, self).__init__()
-        self._alpha = alpha
+        self._negative_slope = negative_slope
         self._name = name
 
     def forward(self, x):
-        return F.leaky_relu(x, self._alpha, self._name)
+        return F.leaky_relu(x, self._negative_slope, self._name)
 
 
 class Sigmoid(layers.Layer):
@@ -638,10 +680,12 @@ class Softplus(layers.Layer):
 
     .. math::
 
-        \text{Softplus}(x) = \frac{1}{\beta} * \log(1 + \exp(\beta * x)) \\
-        \text{For numerical stability, the implementation reverts to the linear function when :}\,x \times \beta > threshold.
+        Softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\
+        \\text{For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.}
 
     Parameters:
+        beta (float, optional): The value of beta for Softplus. Default is 1
+        threshold (float, optional): The value of threshold for Softplus. Default is 20
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -650,18 +694,16 @@ class Softplus(layers.Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-        m = paddle.nn.Softplus()
-        out = m(x) # [0.513015, 0.598139, 0.744397, 0.854355]
-
+            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            m = paddle.nn.Softplus()
+            out = m(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
 
     def __init__(self, beta=1, threshold=20, name=None):
@@ -680,14 +722,14 @@ class Softshrink(layers.Layer):
 
     .. math::
 
-        \text{Softshrink}(x) =
-        \begin{cases}
-        x - threshold, & \text{ if } x > threshold \\
-        x + threshold, & \text{ if } x < -threshold \\
-        0, & \text{ otherwise }
-        \end{cases}
+        Softshrink(x)= \\begin{cases}
+                        x - threshold, \\text{if } x > threshold \\\\
+                        x + threshold, \\text{if } x < -threshold \\\\
+                        0,  \\text{otherwise}
+                      \\end{cases}
 
     Parameters:
+        threshold (float, optional): The value of threshold(must be no less than zero) for softplus. Default is 0.5
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -696,17 +738,16 @@ class Softshrink(layers.Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
-        m = paddle.nn.Softshrink()
-        out = m(x) # [-0.4, 0, 0, 0.3]
+            x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
+            m = paddle.nn.Softshrink()
+            out = m(x) # [-0.4, 0, 0, 0.3]
     """
 
     def __init__(self, threshold=0.5, name=None):
@@ -724,7 +765,7 @@ class Softsign(layers.Layer):
 
     .. math::
 
-        \text{Softsign}(x) = \frac{x}{1 + |x|}
+        Softsign(x) = \\frac{x}{1 + |x|}
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -735,17 +776,16 @@ class Softsign(layers.Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-        m = paddle.nn.Softsign()
-        out = m(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
+            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            m = paddle.nn.Softsign()
+            out = m(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
     """
 
     def __init__(self, name=None):
@@ -762,7 +802,7 @@ class Tanhshrink(layers.Layer):
 
     .. math::
 
-        \text{Tanhshrink}(x) = x - \text{Tanh}(x)
+        Tanhshrink(x) = x - tanh(x)
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -775,14 +815,14 @@ class Tanhshrink(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-        m = paddle.nn.Tanhshrink()
-        out = m(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
+            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            m = paddle.nn.Tanhshrink()
+            out = m(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
     """
 
     def __init__(self, name=None):
