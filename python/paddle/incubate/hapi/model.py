@@ -24,6 +24,7 @@ import six
 import warnings
 from collections import Iterable
 
+import paddle
 from paddle import fluid
 # Note: Use alias `Input` temporarily before releasing hapi feature.
 from paddle.static import InputSpec as Input
@@ -36,9 +37,9 @@ from paddle.fluid.layers.utils import flatten
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.base import role_maker
 from paddle.io import DataLoader, Dataset
+from paddle.metric import Metric
 
 from .distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
-from .metrics import Metric
 from .callbacks import config_callbacks
 from .utils import to_list, to_numpy, flatten_list, restore_flatten_list, extract_args
 from .device import _get_device
@@ -361,8 +362,8 @@ class StaticGraphAdapter(object):
             self._label_vars[mode] = labels
             outputs = to_list(self.model.network.forward(*inputs))
 
-            if mode != 'test' and self.model._loss_function:
-                losses = self.model._loss_function(*(outputs + labels))
+            if mode != 'test' and self.model._loss:
+                losses = self.model._loss(*(outputs + labels))
 
             if self._nranks > 1 and mode != 'train':
                 outputs = [_all_gather(o, self._nranks) for o in outputs]
@@ -371,8 +372,7 @@ class StaticGraphAdapter(object):
 
             if mode != 'test':
                 for metric in self.model._metrics:
-                    metrics.append(
-                        to_list(metric.add_metric_op(*(outputs + labels))))
+                    metrics.append(to_list(metric.compute(*(outputs + labels))))
 
             if mode == 'train' and self.model._optimizer:
                 self._loss_endpoint = fluid.layers.sum(losses)
@@ -477,7 +477,7 @@ class DynamicGraphAdapter(object):
 
         if self._nranks > 1:
             outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
-            losses = self.model._loss_function(*(to_list(outputs) + labels))
+            losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
             final_loss = self.ddp_model.scale_loss(final_loss)
@@ -486,7 +486,7 @@ class DynamicGraphAdapter(object):
         else:
             outputs = self.model.network.forward(
                 * [to_variable(x) for x in inputs])
-            losses = self.model._loss_function(*(to_list(outputs) + labels))
+            losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
             final_loss.backward()
@@ -495,7 +495,7 @@ class DynamicGraphAdapter(object):
         self.model.network.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(*(to_list(outputs) + labels))
+            metric_outs = metric.compute(*(to_list(outputs) + labels))
             m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
@@ -510,8 +510,8 @@ class DynamicGraphAdapter(object):
         labels = [to_variable(l) for l in to_list(labels)]
 
         outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
-        if self.model._loss_function:
-            losses = self.model._loss_function(*(to_list(outputs) + labels))
+        if self.model._loss:
+            losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
 
         if self._nranks > 1:
@@ -539,13 +539,13 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(*(to_list(outputs) + labels))
+            metric_outs = metric.compute(*(to_list(outputs) + labels))
             m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
-        if self.model._loss_function and len(metrics):
+        if self.model._loss and len(metrics):
             return [to_numpy(l) for l in losses], metrics
-        elif self.model._loss_function:
+        elif self.model._loss:
             return [to_numpy(l) for l in losses]
         else:
             return metrics
@@ -633,21 +633,21 @@ class Model(object):
     """
     An Model object is network with training and inference features.
     Dynamic graph and static graph are supported at the same time,
-    switched by `fluid.enable_dygraph()`. The usage is as follows.
+    switched by `paddle.disable_static()`. The usage is as follows.
     But note, the switching between dynamic and static should be before
     instantiating a Model. The input description, i.e, hapi.Input,
     must be required for static graph.
 
     Args:
-        network (fluid.dygraph.Layer): The network is an instance of
-            fluid.dygraph.Layer.
+        network (paddle.nn.Layer): The network is an instance of
+            paddle.nn.Layer.
         inputs (Input|list|dict|None): `inputs`, entry points of network,
             could be a Input layer, or lits of Input layers,
             or dict (name: Input), or None. For static graph,
             inputs must be set. For dynamic graph, it could be None.
         labels (Input|list|None): `labels`, entry points of network,
             could be a Input layer or lits of Input layers, or None.
-            For static graph, if labels is required in loss_function,
+            For static graph, if labels is required in loss,
             labels must be set. Otherwise, it could be None.
 
 
@@ -655,13 +655,12 @@ class Model(object):
         .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
         import paddle.incubate.hapi as hapi
         
-        class MyNet(fluid.dygraph.Layer):
+        class MyNet(paddle.nn.Layer):
             def __init__(self, classifier_act=None):
                 super(MyNet, self).__init__()
-                self._fc1 = fluid.dygraph.Linear(784, 200, act=classifier_act)
+                self._fc1 = paddle.nn.Linear(784, 200, act=classifier_act)
 
             def forward(self, x):
                 y = self._fc1(x)
@@ -669,18 +668,18 @@ class Model(object):
         
         device = hapi.set_device('gpu')
         # if use static graph, do not set
-        fluid.enable_dygraph(device)
+        paddle.disable_static(device)
         
         # inputs and labels are not required for dynamic graph.
         input = hapi.Input([None, 784], 'float32', 'x')
         label = hapi.Input([None, 1], 'int64', 'label')
         
         model = hapi.Model(MyNet(), input, label)
-        optim = fluid.optimizer.SGD(learning_rate=1e-3,
+        optim = paddle.optimizer.SGD(learning_rate=1e-3,
             parameter_list=model.parameters())
         model.prepare(optim,
                       paddle.nn.CrossEntropyLoss(),
-                      hapi.metrics.Accuracy())
+                      paddle.metric.Accuracy())
         
         mnist_data = hapi.datasets.MNIST(mode='train', chw_format=False)
         model.fit(mnist_data, epochs=2, batch_size=32, verbose=1)
@@ -692,7 +691,7 @@ class Model(object):
         self.network = network
         self._inputs = None
         self._labels = None
-        self._loss_function = None
+        self._loss = None
         self._loss_weights = None
         self._optimizer = None
         self._optimizer = None
@@ -732,25 +731,24 @@ class Model(object):
             
               import numpy as np
               import paddle
-              import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
-              class MyNet(fluid.dygraph.Layer):
+              class MyNet(paddle.nn.Layer):
                   def __init__(self, classifier_act=None):
                       super(MyNet, self).__init__()
-                      self._fc = fluid.dygraph.Linear(784, 10, act=classifier_act)
+                      self._fc = paddle.nn.Linear(784, 10, act=classifier_act)
 
                   def forward(self, x):
                       y = self._fc(x)
                       return y
 
               device = hapi.set_device('gpu')
-              fluid.enable_dygraph(device)
+              paddle.disable_static(device)
 
               input = hapi.Input([None, 784], 'float32', 'x')
               label = hapi.Input([None, 1], 'int64', 'label')
               model = hapi.Model(MyNet(), input, label)
-              optim = fluid.optimizer.SGD(learning_rate=1e-3,
+              optim = paddle.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
               model.prepare(optim, paddle.nn.CrossEntropyLoss())
               data = np.random.random(size=(4,784)).astype(np.float32)
@@ -781,25 +779,24 @@ class Model(object):
             
               import numpy as np
               import paddle
-              import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
-              class MyNet(fluid.dygraph.Layer):
+              class MyNet(paddle.nn.Layer):
                   def __init__(self, classifier_act=None):
                       super(MyNet, self).__init__()
-                      self._fc = fluid.dygraph.Linear(784, 10, act=classifier_act)
+                      self._fc = paddle.nn.Linear(784, 10, act=classifier_act)
 
                   def forward(self, x):
                       y = self._fc(x)
                       return y
 
               device = hapi.set_device('gpu')
-              fluid.enable_dygraph(device)
+              paddle.disable_static(device)
 
               input = hapi.Input([None, 784], 'float32', 'x')
               label = hapi.Input([None, 1], 'int64', 'label')
               model = hapi.Model(MyNet(), input, label)
-              optim = fluid.optimizer.SGD(learning_rate=1e-3,
+              optim = paddle.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
               model.prepare(optim,
                             paddle.nn.CrossEntropyLoss())
@@ -827,24 +824,24 @@ class Model(object):
             .. code-block:: python
             
               import numpy as np
-              import paddle.fluid as fluid
+              import paddle
               import paddle.incubate.hapi as hapi
 
-              class MyNet(fluid.dygraph.Layer):
+              class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
-                      self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
+                      self._fc = paddle.nn.Linear(784, 1, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
                       return y
 
               device = hapi.set_device('gpu')
-              fluid.enable_dygraph(device)
+              paddle.disable_static(device)
 
               model = hapi.Model(MyNet())
               model.prepare()
               data = np.random.random(size=(4,784)).astype(np.float32)
-              out = model.eval_batch([data])
+              out = model.test_batch([data])
               print(out)
         """
         return self._adapter.test_batch(inputs)
@@ -875,19 +872,19 @@ class Model(object):
 
             .. code-block:: python
             
-              import paddle.fluid as fluid
+              import paddle
               import paddle.incubate.hapi as hapi
               
-              class MyNet(fluid.dygraph.Layer):
+              class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
-                      self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
+                      self._fc = paddle.nn.Linear(784, 1, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
                       return y
               
               device = hapi.set_device('cpu')
-              fluid.enable_dygraph(device)
+              paddle.disable_static(device)
               model = hapi.Model(MyNet())
               model.save('checkpoint/test')
         """
@@ -927,19 +924,19 @@ class Model(object):
 
             .. code-block:: python
             
-              import paddle.fluid as fluid
+              import paddle
               import paddle.incubate.hapi as hapi
               
-              class MyNet(fluid.dygraph.Layer):
+              class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
-                      self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
+                      self._fc = paddle.nn.Linear(784, 1, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
                       return y
               
               device = hapi.set_device('cpu')
-              fluid.enable_dygraph(device)
+              paddle.disable_static(device)
               model = hapi.Model(MyNet())
               model.load('checkpoint/test')
         """
@@ -1002,24 +999,24 @@ class Model(object):
 
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
               from paddle.incubate.hapi import Model
 
-              class MyNet(fluid.dygraph.Layer):
+              class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
-                      self._fc = fluid.dygraph.Linear(20, 10, act='softmax')
+                      self._fc = paddle.nn.Linear(20, 10, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
                       return y
 
-              fluid.enable_dygraph()
+              paddle.disable_static()
               model = Model(MyNet())
               params = model.parameters()
         """
         return self._adapter.parameters()
 
-    def prepare(self, optimizer=None, loss_function=None, metrics=None):
+    def prepare(self, optimizer=None, loss=None, metrics=None):
         """
         Configures the model before runing.
 
@@ -1027,8 +1024,8 @@ class Model(object):
             optimizer (Optimizer|None): Optimizer must be set in training
                 and should be a Optimizer instance. It can be None in eval
                 and test mode.
-            loss_function (Loss|callable function|None): Loss function can
-                be a `fluid.dygraph.Layer` instance or any callable function
+            loss (Loss|callable function|None): Loss function can
+                be a `paddle.nn.Layer` instance or any callable function
                 taken the predicted values and ground truth values as input.
                 It can be None when there is no loss.
             metrics (Metric|list of Metric|None): If metrics is set, all
@@ -1047,7 +1044,7 @@ class Model(object):
                     startup_prog_seed = fluid.default_startup_program(
                     ).random_seed
                     fluid.disable_dygraph()
-                    fluid.enable_dygraph(self._place)
+                    paddle.disable_static(self._place)
                     # enable_dygraph would create and switch to a new program,
                     # thus also copy seed to the new program
                     fluid.default_main_program().random_seed = main_prog_seed
@@ -1059,12 +1056,11 @@ class Model(object):
                 _parallel_context_initialized = True
 
         self._optimizer = optimizer
-        if loss_function:
-            if not isinstance(loss_function, fluid.dygraph.Layer) or \
-               not callable(loss_function):
-                raise TypeError("'loss_function' must be sub classes of \
-                    `fluid.dygraph.Layer` or any callable function.")
-        self._loss_function = loss_function
+        if loss is not None:
+            if not isinstance(loss, paddle.nn.Layer) and not callable(loss):
+                raise TypeError("'loss' must be sub classes of " \
+                    "`paddle.nn.Layer` or any callable function.")
+        self._loss = loss
 
         metrics = metrics or []
         for metric in to_list(metrics):
@@ -1144,12 +1140,11 @@ class Model(object):
             .. code-block:: python
 
               import paddle
-              import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
               dynamic = True
               device = hapi.set_device('gpu')
-              fluid.enable_dygraph(device) if dynamic else None
+              paddle.disable_static(device) if dynamic else None
            
               train_dataset = hapi.datasets.MNIST(mode='train')
               val_dataset = hapi.datasets.MNIST(mode='test')
@@ -1159,12 +1154,12 @@ class Model(object):
            
               model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
                   input, label)
-              optim = fluid.optimizer.Adam(
-                  learning_rate=0.001, parameter_list=model.parameters())
+              optim = paddle.optimizer.Adam(
+                  learning_rate=0.001, parameters=model.parameters())
               model.prepare(
                   optim,
                   paddle.nn.CrossEntropyLoss(),
-                  hapi.metrics.Accuracy(topk=(1, 2)))
+                  paddle.metric.Accuracy(topk=(1, 2)))
               model.fit(train_dataset,
                         val_dataset,
                         epochs=2,
@@ -1177,18 +1172,17 @@ class Model(object):
             .. code-block:: python
 
               import paddle
-              import paddle.fluid as fluid
               import paddle.incubate.hapi as hapi
 
               dynamic = True
               device = hapi.set_device('gpu')
-              fluid.enable_dygraph(device) if dynamic else None
+              paddle.disable_static(device) if dynamic else None
            
               train_dataset = hapi.datasets.MNIST(mode='train')
-              train_loader = fluid.io.DataLoader(train_dataset,
+              train_loader = paddle.io.DataLoader(train_dataset,
                   places=device, batch_size=64)
               val_dataset = hapi.datasets.MNIST(mode='test')
-              val_loader = fluid.io.DataLoader(val_dataset,
+              val_loader = paddle.io.DataLoader(val_dataset,
                   places=device, batch_size=64)
            
               input = hapi.Input([None, 1, 28, 28], 'float32', 'image')
@@ -1196,12 +1190,12 @@ class Model(object):
            
               model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
                   input, label)
-              optim = fluid.optimizer.Adam(
-                  learning_rate=0.001, parameter_list=model.parameters())
+              optim = paddle.optimizer.Adam(
+                  learning_rate=0.001, parameters=model.parameters())
               model.prepare(
                   optim,
                   paddle.nn.CrossEntropyLoss(),
-                  hapi.metrics.Accuracy(topk=(1, 2)))
+                  paddle.metric.Accuracy(topk=(1, 2)))
               model.fit(train_loader,
                         val_loader,
                         epochs=2,
@@ -1313,7 +1307,7 @@ class Model(object):
         Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
             import paddle.incubate.hapi as hapi
 
             # declarative mode
@@ -1322,15 +1316,15 @@ class Model(object):
             input = hapi.Input([-1, 1, 28, 28], 'float32', 'image')
             label = hapi.Input([None, 1], 'int64', 'label')
             model = hapi.Model(hapi.vision.LeNet(), input, label)
-            model.prepare(metrics=hapi.metrics.Accuracy())
+            model.prepare(metrics=paddle.metric.Accuracy())
 
             result = model.evaluate(val_dataset, batch_size=64)
             print(result)
 
             # imperative mode
-            fluid.enable_dygraph()
+            paddle.disable_static()
             model = hapi.Model(hapi.vision.LeNet())
-            model.prepare(metrics=hapi.metrics.Accuracy())
+            model.prepare(metrics=paddle.metric.Accuracy())
             result = model.evaluate(val_dataset, batch_size=64)
             print(result)
                 
@@ -1407,7 +1401,7 @@ class Model(object):
         .. code-block:: python
 
             import numpy as np
-            import paddle.fluid as fluid
+            import paddle
             import paddle.incubate.hapi as hapi
 
             class MnistDataset(hapi.datasets.MNIST):
@@ -1436,7 +1430,7 @@ class Model(object):
 
             # imperative mode
             device = hapi.set_device('cpu')
-            fluid.enable_dygraph(device)
+            paddle.disable_static(device)
             model = hapi.Model(hapi.vision.LeNet())
             model.prepare()
             result = model.predict(test_dataset, batch_size=64)
@@ -1506,7 +1500,6 @@ class Model(object):
         Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
 
             input = hapi.Input([-1, 1, 28, 28], 'float32', 'image')
@@ -1562,9 +1555,9 @@ class Model(object):
             if mode != 'test':
                 outs = getattr(self, mode + '_batch')(data[:len(self._inputs)],
                                                       data[len(self._inputs):])
-                if self._metrics and self._loss_function:
+                if self._metrics and self._loss:
                     metrics = [[l[0] for l in outs[0]]]
-                elif self._loss_function:
+                elif self._loss:
                     metrics = [[l[0] for l in outs]]
                 else:
                     metrics = []
@@ -1635,7 +1628,7 @@ class Model(object):
             metric.reset()
 
     def _metrics_name(self):
-        metrics_name = ['loss'] if self._loss_function else []
+        metrics_name = ['loss'] if self._loss else []
         for m in self._metrics:
             metrics_name.extend(to_list(m.name()))
         return metrics_name
