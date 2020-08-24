@@ -19,6 +19,7 @@ import pickle
 import warnings
 
 import six
+import paddle
 from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
@@ -127,24 +128,24 @@ def _dygraph_to_static_func_(dygraph_func):
 dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
-def make_decorator(original_func, decorator_func):
+def copy_decorator_attrs(original_func, decorated_obj):
     """
-    Makes a decorator for the original function and copy its attributes.
+    Copies some necessary attributes from original function into decorated function.
 
     Args:
         original_func(callable): the original decorated function.
-        decoretor_func(callable): the target decorator function.
+        decorated_obj(StaticLayer): the target decorated StaticLayer object.
     """
     decorator_name = "declarative"
 
-    decorator_func.__name__ = original_func.__name__
-    decorator_func._decorator_name = decorator_name
-    decorator_func.__wrapped__ = original_func
-    decorator_func.__doc__ = original_func.__doc__
+    decorated_obj.__name__ = original_func.__name__
+    decorated_obj._decorator_name = decorator_name
+    decorated_obj.__wrapped__ = original_func
+    decorated_obj.__doc__ = original_func.__doc__
     if hasattr(original_func, "__module__"):
-        decorator_func.__module__ = original_func.__module__
+        decorated_obj.__module__ = original_func.__module__
 
-    return decorator_func
+    return decorated_obj
 
 
 def declarative(function=None, input_spec=None):
@@ -185,19 +186,27 @@ def declarative(function=None, input_spec=None):
 
     """
 
-    def _decorator_(python_func):
+    def decorated(python_func):
+        """
+        Decorates a python function into a StaticLayer object.
+        """
+        # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
-        return make_decorator(
+
+        # Step 2. copy some attributes from original python function.
+        static_layer = copy_decorator_attrs(
             original_func=python_func,
-            decorator_func=StaticLayer(
+            decorated_obj=StaticLayer(
                 function=python_func, input_spec=input_spec))
+
+        return static_layer
 
     # for usage: `declarative(foo, ...)`
     if function is not None:
-        return _decorator_(function)
+        return decorated(function)
 
     # for usage: `@declarative`
-    return _decorator_
+    return decorated
 
 
 class SaveLoadConfig(object):
@@ -721,9 +730,10 @@ def save(layer, model_path, input_spec=None, configs=None):
                 "The input input_spec should be 'list', but received input_spec's type is %s."
                 % type(input_spec))
         for var in input_spec:
-            if not isinstance(var, (core.VarBase, Variable)):
+            if not isinstance(var, (core.VarBase, Variable,
+                                    paddle.static.InputSpec)):
                 raise TypeError(
-                    "The element in input_spec list should be 'Variable', but received element's type is %s."
+                    "The element in input_spec list should be 'Variable' or `paddle.static.InputSpec`, but received element's type is %s."
                     % type(var))
 
     # 2. get program of declarative Layer.forward

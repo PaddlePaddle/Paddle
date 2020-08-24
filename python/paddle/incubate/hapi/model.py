@@ -1604,12 +1604,13 @@ class Model(object):
         out_specs = []
 
         if specs is None:
-            # If not specific specs of `Input`, using argument names of `forward` function
-            # to generate `Input`.
+            # Note(Aurelius84): If not specific specs of `Input`, using argument names of `forward` function
+            # to generate `Input`. But how can we know the actual shape of each input tensor?
             if is_input:
                 out_specs = [
-                    Input(name=n) for n in extract_args(self.network.forward)
-                    if n != 'self'
+                    Input(
+                        name=n, shape=[None])
+                    for n in extract_args(self.network.forward) if n != 'self'
                 ]
             else:
                 out_specs = to_list(specs)

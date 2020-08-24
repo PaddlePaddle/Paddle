@@ -25,6 +25,7 @@ import os
 import six
 import tempfile
 import textwrap
+import numpy as np
 
 from paddle.fluid import unique_name
 
@@ -92,6 +93,31 @@ def parse_arg_and_kwargs(function):
 
 def type_name(v):
     return type(v).__name__
+
+
+def make_hashable(x, error_msg=None):
+    """
+    Makes input `x` hashable.
+
+    For some unhashable objects, such as `dict/list/np.ndarray`,applying hash function by using their values.
+    """
+    if isinstance(x, (tuple, list)):
+        return tuple(map(make_hashable, x))
+
+    try:
+        hash(x)
+    except TypeError:
+        if isinstance(x, np.ndarray):
+            # Note: `tostring()` will return the binary data from np.ndarray that
+            # means different value will lead to different hash code.
+            return hash(x.tostring())
+        elif isinstance(x, dict):
+            return tuple(map(make_hashable, x.values()))
+
+        error_msg = error_msg or "Requires a hashable object."
+        raise ValueError(error_msg + " But received type: %s" % type_name(x))
+
+    return x
 
 
 def _is_api_in_module_helper(obj, module_prefix):

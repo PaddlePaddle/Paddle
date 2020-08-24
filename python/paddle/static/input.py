@@ -142,7 +142,7 @@ class InputSpec(object):
         label = InputSpec([None, 1], 'int64', 'label')
     """
 
-    def __init__(self, shape=None, dtype='float32', name=None):
+    def __init__(self, shape, dtype='float32', name=None):
         # replace `None` in shape  with -1
         self.shape = self._verify(shape)
         # convert dtype into united represention
@@ -278,9 +278,7 @@ class InputSpec(object):
         """
         Verifies the input shape and modifies `None` into `-1`.
         """
-        if shape is None:
-            shape = [None]
-        elif not isinstance(shape, (list, tuple)):
+        if not isinstance(shape, (list, tuple)):
             raise TypeError(
                 "Type of `shape` in InputSpec should be one of (tuple, list), but received {}.".
                 format(type(shape).__name__))

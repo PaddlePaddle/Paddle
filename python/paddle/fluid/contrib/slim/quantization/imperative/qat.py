@@ -15,6 +15,7 @@
 import logging
 import numpy as np
 import sys
+import paddle
 from paddle.fluid import dygraph
 from paddle.fluid.dygraph.nn import Conv2D
 from paddle.fluid.dygraph.nn import Linear
@@ -195,15 +196,16 @@ class ImperativeQuantAware(object):
         with dygraph.guard():
             model.eval()
             input_vars = []
-            for shape, dtype in zip(input_shape, input_dtype):
-                raw_data = np.random.random(shape)
-                input_data = raw_data[np.newaxis, :].astype(
-                    dtype) if append_batch_size else raw_data.astype(dtype)
-                input_var = dygraph.to_variable(input_data)
-                input_vars.append(input_var)
+            for i, (shape, dtype) in enumerate(zip(input_shape, input_dtype)):
+                if append_batch_size:
+                    shape = [None] + list(shape)
+                # Note(Aurelius84): need a elegant way to name this.
+                in_spec = paddle.static.InputSpec(shape, dtype, 'feed_%d' % i)
+                input_vars.append(in_spec)
             # use `declarative` to convert dygraph into static program
-            model.forward = dygraph.jit.declarative(model.forward)
-            outputs = model(*input_vars)
+            model.forward = dygraph.jit.declarative(
+                model.forward, input_spec=input_vars)
+            outputs = model.forward.concrete_program.outputs
         input_spec = [input_vars[i] for i in feed]
         configs = dygraph.jit.SaveLoadConfig()
         configs.separate_params = True

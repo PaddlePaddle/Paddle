@@ -44,15 +44,16 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
+from paddle.fluid.dygraph.dygraph_to_static.utils import make_hashable
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import get_buffers, get_parameters
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
 
-# For each traced function, we set `max_traced_program_count` = 5 to consider caching performance.
-# Once exceed the threshold, raise warning to users to make sure the conversion is as expected.
-MAX_TRACED_PROGRAM_COUNT = 5
+# For each traced function, we set `max_traced_program_count` = 10 to consider caching performance.
+# Once exceeding the threshold, we will raise warning to users to make sure the conversion is as expected.
+MAX_TRACED_PROGRAM_COUNT = 10
 
 
 class FunctionCache(object):
@@ -147,7 +148,7 @@ class CacheKey(object):
     Cached key for ProgramCache.
     """
 
-    __slot__ = ['function_spec', 'input_with_spec', 'class_instance']
+    __slots__ = ['function_spec', 'input_with_spec', 'class_instance']
 
     def __init__(self, function_spec, input_with_spec, class_instance):
         """
@@ -184,8 +185,10 @@ class CacheKey(object):
         return CacheKey(function_spec, input_with_spec, class_instance)
 
     def __hash__(self):
+        error_msg = "Arguments to a `@declarative` must be a hashable Python objects (or nested structures of these types)."
         return hash((id(self.function_spec),
-                     _make_hashable(self.input_with_spec), self.class_instance))
+                     make_hashable(self.input_with_spec, error_msg),
+                     self.class_instance))
 
     def __eq__(self, other):
         return (type(self) is type(other)) and hash(self) == hash(other)
@@ -196,33 +199,6 @@ class CacheKey(object):
     def __repr__(self):
         return "id(function_spec): {}, input_with_spec: {}, class_instance: {}".format(
             id(self.function_spec), self.input_with_spec, self.class_instance)
-
-
-def _make_hashable(x):
-    """
-    Makes input `x` hashable.
-
-    `inputs_with_spec` may contain some unhashable object, such as `dict/list/np.ndarray`.
-    Apply hash function using their values.
-    """
-    if isinstance(x, (tuple, list)):
-        return tuple(map(_make_hashable, x))
-
-    try:
-        hash(x)
-    except TypeError:
-        if isinstance(x, np.ndarray):
-            # Note: `tostring()` will return the binary data from np.ndarray that
-            # means different value will lead to different hash code.
-            return hash(x.tostring())
-        elif isinstance(x, dict):
-            return tuple(map(_make_hashable, x.values()))
-
-        raise ValueError("Arguments to a `@declarative` must be a hashable"
-                         "Python objects (or nested structures of these types)."
-                         " But received type: %s" % type_name(x))
-
-    return x
 
 
 def unwrap_decorators(func):

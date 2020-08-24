@@ -22,7 +22,6 @@ from paddle.fluid import core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
-from paddle.fluid.framework import convert_np_dtype_to_dtype_, Variable
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
@@ -34,22 +33,21 @@ class FunctionSpec(object):
     Wrapper class for a function for class method.
     """
 
-    def __init__(self, function, input_spec=None, is_method=False):
+    def __init__(self, function, input_spec=None):
         self._dygraph_function = function
         if input_spec is None:
             self._input_spec = None
             self._flat_input_spec = None
         else:
-            self._input_spec = self.verify_input_spec(input_spec)
+            self._input_spec = self._verify_input_spec(input_spec)
             self._flat_input_spec = flatten(self._input_spec)
 
-        self._is_method = is_method
         # parse full argument names list.
         self._arg_names, self._default_kwargs = parse_arg_and_kwargs(function)
 
     def unified_args_and_kwargs(self, args, kwargs):
         """
-        Moves kwargs with default value into arguments list to keep `args` constain the same length
+        Moves kwargs with default value into arguments list to keep `args` contain the same length
         value as function definition.
         
         For example: 
@@ -167,13 +165,13 @@ class FunctionSpec(object):
 
         return pack_sequence_as(input_with_spec, inputs)
 
-    def verify_input_spec(self, input_spec):
+    def _verify_input_spec(self, input_spec):
         """
         Verifies the `input_spec` and its element type is valid.
         """
         if not isinstance(input_spec, (tuple, list)):
             raise TypeError(
-                "The  type(input_spec) should be one of (tuple, list), but received {}.".
+                "The type(input_spec) should be one of (tuple, list), but received {}.".
                 format(type_name(input_spec)))
         input_spec = tuple(input_spec)
         for spec in flatten(input_spec):
@@ -185,9 +183,9 @@ class FunctionSpec(object):
         return input_spec
 
     def __repr__(self):
-        return "function: {}({}), is_method: {},  input_spec: {}".format(
+        return "function: {}({}), input_spec: {}".format(
             self._dygraph_function.__name__, ','.join(self._arg_names),
-            self._is_method, self._input_spec)
+            self._input_spec)
 
     @property
     def dygraph_function(self):
@@ -196,10 +194,6 @@ class FunctionSpec(object):
     @property
     def args_name(self):
         return self._arg_names
-
-    @property
-    def is_method(self):
-        return self._is_method
 
     @property
     def input_spec(self):
