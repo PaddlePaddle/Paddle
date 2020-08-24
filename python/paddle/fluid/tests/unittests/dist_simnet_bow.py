@@ -19,6 +19,8 @@ import argparse
 import time
 import math
 import random
+import shutil
+import tempfile
 
 import paddle
 import paddle.fluid as fluid
@@ -29,7 +31,8 @@ from multiprocessing import Process
 import os
 import signal
 from functools import reduce
-from test_dist_base import TestDistRunnerBase, runtime_main
+from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
+from paddle.distributed.fleet.base.util_factory import fleet_util
 
 DTYPE = "int64"
 DATA_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/simnet.train.1000'
@@ -251,6 +254,110 @@ class TestDistSimnetBow2x2(TestDistRunnerBase):
         # Reader
         train_reader, _ = get_train_reader(batch_size)
         return inference_program, avg_cost, train_reader, train_reader, acc, predict
+
+
+class TestDistSimnetBow2x2(FleetDistRunnerBase):
+    """
+    For test SimnetBow model, use Fleet api
+    """
+
+    def net(self, args, batch_size=4, lr=0.01):
+        avg_cost, acc, predict = \
+            train_network(batch_size=batch_size, is_distributed=False,
+                          is_sparse=True, is_self_contained_lr=False)
+        self.avg_cost = avg_cost
+        self.predict = predict
+
+        return avg_cost
+
+    def check_model_right(self, dirname):
+        model_filename = os.path.join(dirname, "__model__")
+
+        with open(model_filename, "rb") as f:
+            program_desc_str = f.read()
+
+        program = fluid.Program.parse_from_string(program_desc_str)
+        with open(os.path.join(dirname, "__model__.proto"), "w") as wn:
+            wn.write(str(program))
+
+    def do_pyreader_training(self, fleet):
+        """
+        do training using dataset, using fetch handler to catch variable
+        Args:
+            fleet(Fleet api): the fleet object of Parameter Server, define distribute training role
+        """
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        fleet.init_worker()
+        exe.run(fluid.default_startup_program())
+        batch_size = 4
+        # reader
+        self.reader = None
+        # train_reader = paddle.batch(fake_ctr_reader(), batch_size=batch_size)
+        # self.reader.decorate_sample_list_generator(train_reader)
+        for epoch_id in range(1):
+            self.reader.start()
+            try:
+                pass_start = time.time()
+                while True:
+                    loss_val = exe.run(program=fluid.default_main_program(),
+                                       fetch_list=[self.avg_cost.name])
+                    loss_val = np.mean(loss_val)
+                    message = "TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
+                                                                      loss_val)
+                    fleet_util.print_on_rank(message, 0)
+
+                pass_time = time.time() - pass_start
+            except fluid.core.EOFException:
+                self.reader.reset()
+        fleet.stop_worker()
+
+        pass
+
+    def do_dataset_training(self, fleet):
+        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
+        )
+
+        exe = fluid.Executor(fluid.CPUPlace())
+
+        fleet.init_worker()
+        exe.run(fluid.default_startup_program())
+
+        thread_num = 2
+        batch_size = 128
+        filelist = []
+        for _ in range(thread_num):
+            filelist.append(train_file_path)
+
+        # config dataset
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
+        dataset.set_batch_size(batch_size)
+        dataset.set_use_var(self.feeds)
+        pipe_command = 'python ctr_dataset_reader.py'
+        dataset.set_pipe_command(pipe_command)
+
+        dataset.set_filelist(filelist)
+        dataset.set_thread(thread_num)
+
+        for epoch_id in range(1):
+            pass_start = time.time()
+            dataset.set_filelist(filelist)
+            exe.train_from_dataset(
+                program=fluid.default_main_program(),
+                dataset=dataset,
+                fetch_list=[self.avg_cost],
+                fetch_info=["cost"],
+                print_period=2,
+                debug=int(os.getenv("Debug", "0")))
+            pass_time = time.time() - pass_start
+
+        if os.getenv("SAVE_MODEL") == "1":
+            model_dir = tempfile.mkdtemp()
+            # fleet.save_persistables()
+            self.check_model_right(model_dir)
+            shutil.rmtree(model_dir)
+
+        fleet.stop_worker()
 
 
 if __name__ == "__main__":
