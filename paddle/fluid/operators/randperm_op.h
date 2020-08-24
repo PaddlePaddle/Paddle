@@ -19,6 +19,7 @@ limitations under the License. */
 #include <ctime>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -32,9 +33,9 @@ static inline void random_permate(T* data_ptr, int num, unsigned int seed) {
   for (int i = 0; i < num; ++i) {
     data_ptr[i] = static_cast<T>(i);
   }
-  if (framework::Generator::GetInstance()->is_init_py) {
+  if (framework::DefaultCPUGenerator()->GetIsInitPy()) {
     std::shuffle(data_ptr, data_ptr + num,
-                 framework::Generator::GetInstance()->GetCPUEngine());
+                 framework::DefaultCPUGenerator()->GetCPUEngine());
 
   } else {
     if (seed == 0) {

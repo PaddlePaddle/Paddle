@@ -62,8 +62,8 @@ class SamplingIdKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> ids(batch_size);
     for (int i = 0; i < batch_size; ++i) {
-      T r = framework::Generator::GetInstance()->is_init_py
-                ? dist(framework::Generator::GetInstance()->GetCPUEngine())
+      T r = framework::DefaultCPUGenerator()->GetIsInitPy()
+                ? dist(framework::DefaultCPUGenerator()->GetCPUEngine())
                 : dist(engine);
       int idx = width - 1;
       for (int j = 0; j < width; ++j) {

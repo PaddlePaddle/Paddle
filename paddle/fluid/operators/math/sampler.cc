@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/sampler.h"
+
 #include <glog/logging.h>
+
 #include <iostream>
 #include <queue>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/generator.h"
 
 namespace paddle {
@@ -33,8 +36,8 @@ UniformSampler::UniformSampler(int64_t range, unsigned int seed)
 }
 
 int64_t UniformSampler::Sample() const {
-  return framework::Generator::GetInstance()->is_init_py
-             ? (*dist_)(framework::Generator::GetInstance()->GetCPUEngine())
+  return framework::DefaultCPUGenerator()->GetIsInitPy()
+             ? (*dist_)(framework::DefaultCPUGenerator()->GetCPUEngine())
              : (*dist_)(*random_engine_);
   // return (*dist_)(*random_engine_);
 }
@@ -53,8 +56,8 @@ int64_t LogUniformSampler::Sample() const {
   // More details:
   // https://wanghaoshuang.github.io/2017/11/Log-uniform-distribution-sampler/
   auto cur_random =
-      framework::Generator::GetInstance()->is_init_py
-          ? (*dist_)(framework::Generator::GetInstance()->GetCPUEngine())
+      framework::DefaultCPUGenerator()->GetIsInitPy()
+          ? (*dist_)(framework::DefaultCPUGenerator()->GetCPUEngine())
           : (*dist_)(*random_engine_);
   const int64_t value = static_cast<int64_t>(exp(cur_random * log_range_)) - 1;
   // Mathematically, value should be <= range_, but might not be due to some
@@ -85,13 +88,12 @@ CustomSampler::CustomSampler(int64_t range, const float *probabilities,
 
 int64_t CustomSampler::Sample() const {
   auto index =
-      framework::Generator::GetInstance()->is_init_py
-          ? (*int_dist_)(framework::Generator::GetInstance()->GetCPUEngine())
+      framework::DefaultCPUGenerator()->GetIsInitPy()
+          ? (*int_dist_)(framework::DefaultCPUGenerator()->GetCPUEngine())
           : (*int_dist_)(*random_engine_);
-  auto p =
-      framework::Generator::GetInstance()->is_init_py
-          ? (*real_dist_)(framework::Generator::GetInstance()->GetCPUEngine())
-          : (*real_dist_)(*random_engine_);
+  auto p = framework::DefaultCPUGenerator()->GetIsInitPy()
+               ? (*real_dist_)(framework::DefaultCPUGenerator()->GetCPUEngine())
+               : (*real_dist_)(*random_engine_);
   if (p > alias_probs_[index]) {
     int alias = alias_[index];
 

@@ -56,7 +56,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         return;
       }
 
-      bool init_generator_py = framework::Generator::GetInstance()->is_init_py;
+      bool init_generator_py = framework::DefaultCPUGenerator()->GetIsInitPy();
 
       // NOTE: fixed seed should only be used in unittest or for debug.
       // Guarantee to use random seed in training.
@@ -76,7 +76,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < size; ++i) {
         float cur_random =
             init_generator_py
-                ? dist(framework::Generator::GetInstance()->GetCPUEngine())
+                ? dist(framework::DefaultCPUGenerator()->GetCPUEngine())
                 : dist(engine);
         if (cur_random < dropout_prob) {
           mask_data[i] = 0;

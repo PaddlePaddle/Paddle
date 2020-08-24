@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
 #include "paddle/fluid/operators/mean_op.h"
@@ -36,9 +37,9 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
     int64_t size = tensor->numel();
     std::normal_distribution<T> dist(mean, std);
 
-    if (framework::Generator::GetInstance()->is_init_py) {
+    if (framework::DefaultCPUGenerator()->is_init_py) {
       std::mt19937_64& gen_engine =
-          framework::Generator::GetInstance()->GetCPUEngine();
+          framework::DefaultCPUGenerator()->GetCPUEngine();
       for (int64_t i = 0; i < size; ++i) {
         data[i] = dist(gen_engine);
       }

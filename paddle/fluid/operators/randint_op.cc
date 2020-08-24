@@ -47,9 +47,9 @@ class CPURandintKernel : public framework::OpKernel<T> {
     std::uniform_int_distribution<T> dist(ctx.Attr<int>("low"),
                                           ctx.Attr<int>("high") - 1);
 
-    if (framework::Generator::GetInstance()->is_init_py) {
+    if (framework::DefaultCPUGenerator()->GetIsInitPy()) {
       std::mt19937_64& gen_engine =
-          framework::Generator::GetInstance()->GetCPUEngine();
+          framework::DefaultCPUGenerator()->GetCPUEngine();
       for (int64_t i = 0; i < size; ++i) data[i] = dist(gen_engine);
     } else {
       unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));

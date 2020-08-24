@@ -40,9 +40,9 @@ class CPUGaussianRandomKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
-    if (framework::Generator::GetInstance()->is_init_py) {
+    if (framework::DefaultCPUGenerator()->GetIsInitPy()) {
       std::mt19937_64& gen_engine =
-          framework::Generator::GetInstance()->GetCPUEngine();
+          framework::DefaultCPUGenerator()->GetCPUEngine();
       for (int64_t i = 0; i < size; ++i) {
         data[i] = dist(gen_engine);
       }

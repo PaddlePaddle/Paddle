@@ -14,20 +14,19 @@
 
 #pragma once
 
+#include <ThreadPool.h>
 #include <gflags/gflags.h>
 
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
 #include <string>
+#include <thread>  // NOLINT
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
-#include <thread>  // NOLINT
-
-#include <ThreadPool.h>
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/rw_lock.h"
@@ -98,8 +97,8 @@ class UniformInitializer : public Initializer {
   }
 
   float GetValue() override {
-    return framework::Generator::GetInstance()->is_init_py
-               ? dist_(framework::Generator::GetInstance()->GetCPUEngine())
+    return framework::DefaultCPUGenerator()->GetIsInitPy()
+               ? dist_(framework::DefaultCPUGenerator()->GetCPUEngine())
                : dist_(random_engine_);
     // return dist_(random_engine_);
   }
@@ -148,8 +147,8 @@ class GaussianInitializer : public Initializer {
   }
 
   float GetValue() override {
-    return framework::Generator::GetInstance()->is_init_py
-               ? dist_(framework::Generator::GetInstance()->GetCPUEngine())
+    return framework::DefaultCPUGenerator()->GetIsInitPy()
+               ? dist_(framework::DefaultCPUGenerator()->GetCPUEngine())
                : dist_(random_engine_);
     // return dist_(random_engine_);
   }
