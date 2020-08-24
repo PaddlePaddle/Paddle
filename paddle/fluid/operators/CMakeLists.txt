@@ -14,6 +14,8 @@ add_subdirectory(controlflow)
 add_subdirectory(detection)
 add_subdirectory(elementwise)
 add_subdirectory(fused)
+
+# We filter the OPS that will not be using during inference.
 if (NOT (ON_INFER AND NOT WITH_PYTHON))
   add_subdirectory(metrics)
   add_subdirectory(optimizers)
@@ -30,6 +32,7 @@ endif()
 
 add_subdirectory(amp)
 
+# We filter the OPS that will not be using during inference.
 if (NOT (ON_INFER AND NOT WITH_PYTHON))
   add_subdirectory(reader)
 endif()
@@ -147,5 +150,3 @@ cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_o
 if(WITH_MKLDNN)
 include(mkldnn/inplace_op_tests.cmake)
 endif()
-
-#execute_process(COMMAND /usr/local/python2.7.15/bin/python ${PADDLE_SOURCE_DIR}/cmake/filter_grad_op.py ${pybind_file})
