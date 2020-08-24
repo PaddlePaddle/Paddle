@@ -126,7 +126,10 @@ __all__ = [
         'addmm',
         'clip',
         'trace',
-        'kron'
+        'kron',
+        'isfinite',
+        'isinf',
+        'isnan'
 ]
 # yapf: enable.
 
@@ -1669,6 +1672,100 @@ def cumsum(x, axis=None, dtype=None, name=None):
     _cum_sum_ = generate_layer_fn('cumsum')
     return _cum_sum_(**kwargs)
 
+def isfinite(x, name=None):
+    """
+
+    Return whether every element of input tensor is finite number or not.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+            x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            x = paddle.to_tensor(x_np)
+            out = paddle.tensor.isfinite(x)
+            print(out.numpy())  # [False  True  True False  True False False]
+    """
+    if in_dygraph_mode():
+        return core.ops.isfinite_v2(x)
+    helper = LayerHelper("isfinite_v2", **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isfinite')
+    out = helper.create_variable_for_type_inference('bool')
+    helper.append_op(type="isfinite_v2", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+def isinf(x, name=None):
+    """
+
+    Return whether every element of input tensor is `+/-INF` or not.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is `+/-INF` or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+            x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            x = paddle.to_tensor(x_np)
+            out = paddle.tensor.isinf(x)
+            print(out.numpy())  # [ True False False  True False False False]
+    """
+    if in_dygraph_mode():
+        return core.ops.isinf_v2(x)
+    helper = LayerHelper("isinf_v2", **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isinf')
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    helper.append_op(type="isinf_v2", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+def isnan(x, name=None):
+    """
+
+    Return whether every element of input tensor is `NaN` or not.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is `NaN` or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+            x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            x = paddle.to_tensor(x_np)
+            out = paddle.tensor.isnan(x)
+            print(out.numpy())  # [False False False False False  True  True]
+    """
+    if in_dygraph_mode():
+        return core.ops.isnan_v2(x)
+    helper = LayerHelper("isnan_v2", **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isnan')
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    helper.append_op(type="isnan_v2", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
 def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     """
     Compute the product of tensor elements over the given axis.
@@ -1694,7 +1791,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     Raises:
         ValueError: The :attr:`dtype` must be float32, float64, int32 or int64.
         TypeError: The type of :attr:`axis` must be int, list or tuple.
-
+    
     Examples:
         .. code-block:: python
 
