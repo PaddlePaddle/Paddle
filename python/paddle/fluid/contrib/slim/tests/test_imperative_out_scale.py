@@ -22,9 +22,9 @@ import logging
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.optimizer import AdamOptimizer
+from paddle.optimizer import AdamOptimizer
 from paddle.fluid.contrib.slim.quantization import ImperativeOutScale
-from paddle.fluid.dygraph.container import Sequential
+from paddle.fluid.dygraph import Sequential
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid
 from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, PRelu, Pool2D
 from paddle.fluid.log_helper import get_logger
@@ -99,7 +99,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
     def forward(self, inputs):
         x = self.features(inputs)
 
-        x = fluid.layers.flatten(x, 1)
+        x = paddle.reshape(x, [x.shape[0], -1])
         x = self.fc(x)
         return x
 
@@ -116,8 +116,6 @@ class TestImperativeOutScale(unittest.TestCase):
 
         with fluid.dygraph.guard():
             np.random.seed(seed)
-            fluid.default_main_program().random_seed = seed
-            fluid.default_startup_program().random_seed = seed
             lenet = ImperativeLenet()
             fixed_state = {}
             for name, param in lenet.named_parameters():
@@ -144,12 +142,12 @@ class TestImperativeOutScale(unittest.TestCase):
                 y_data = np.array(
                     [x[1] for x in data]).astype('int64').reshape(-1, 1)
 
-                img = fluid.dygraph.to_variable(x_data)
-                label = fluid.dygraph.to_variable(y_data)
+                img = paddle.to_tensor(x_data)
+                label = paddle.to_tensor(y_data)
 
                 out = lenet(img)
-                loss = fluid.layers.cross_entropy(out, label)
-                avg_loss = fluid.layers.mean(loss)
+                loss = paddle.nn.functional.cross_entropy(out, label)
+                avg_loss = paddle.mean(loss)
                 avg_loss.backward()
                 adam.minimize(avg_loss)
                 lenet.clear_gradients()

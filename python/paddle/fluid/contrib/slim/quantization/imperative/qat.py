@@ -280,14 +280,16 @@ class ImperativeOutScale(object):
         Returns:
             None
         """
+        self._register_hook_handle_list = []
         assert isinstance(
             model, dygraph.Layer), "model must be the instance of dygraph.Layer"
         self._out_scale_dict = {}
         for _, layer in model.named_sublayers():
             if not isinstance(layer, self._out_scale_layer_type):
                 continue
-            forward_pre_hook_handle = layer.register_forward_post_hook(
+            forward_post_hook_handle = layer.register_forward_post_hook(
                 self._forward_post_hook)
+            self._register_hook_handle_list.append(forward_post_hook_handle)
 
     def set_out_scale(self, model):
         """
@@ -308,6 +310,8 @@ class ImperativeOutScale(object):
             for scale_var in scale_out_list:
                 attr_name = 'out_threshold'
                 layer.__setattr__(attr_name, scale_var)
+        for handle in self._register_hook_handle_list:
+            handle.remove()
 
     def _forward_post_hook(self, layer, input, output):
         dtype = getattr(layer, '_dtype')
