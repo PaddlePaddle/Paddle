@@ -82,6 +82,7 @@ __all__ = [
         'floor',
         'increment',
         'log',
+        'logsumexp',
         'mul',
         'multiplex',
         'prod',
@@ -125,7 +126,10 @@ __all__ = [
         'addmm',
         'clip',
         'trace',
-        'kron'
+        'kron',
+        'isfinite',
+        'isinf',
+        'isnan'
 ]
 # yapf: enable.
 
@@ -964,69 +968,73 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     return out
 
 
-def logsumexp(x, dim=None, keepdim=False, name=None):
+def logsumexp(x, axis=None, keepdim=False, name=None):
     """
-	:alias_main: paddle.logsumexp
-	:alias: paddle.logsumexp,paddle.tensor.logsumexp,paddle.tensor.math.logsumexp
-
-    This operator calculates the log of the sum of exponentials of the input Tensor.
+    This OP calculates the log of the sum of exponentials of ``x`` along ``axis`` .
 
     .. math::
        logsumexp(x) = \log\sum exp(x)
 
-
-    Parameters:
-       x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
-       dim (list|int, optional): The dimensions along which the sum is performed. If :attr:`None`,
-         sum all elements of :attr:`input` and return a Tensor variable with a single element,
-         otherwise must be in the range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
-         the dimension to reduce is :math:`rank + dim[i]`.
-       keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor.
-         The result tensor will have one fewer dimension than the :attr:`input` unless :attr:`keep_dim`
-         is true, default value is False.
-       name (str, optional): The default value is None.  Normally there is no need for user to
-         set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        axis (int|list|tuple, optional): The axis along which to perform
+            logsumexp calculations. ``axis`` should be int, list(int) or
+            tuple(int). If ``axis`` is a list/tuple of dimension(s), logsumexp
+            is calculated along all element(s) of ``axis`` . ``axis`` or
+            element(s) of ``axis`` should be in range [-D, D), where D is the
+            dimensions of ``x`` . If ``axis`` or element(s) of ``axis`` is
+            less than 0, it works the same way as :math:`axis + D` . If
+            ``axis`` is None, logsumexp is calculated along all elements of
+            ``x``. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
+            in the output Tensor. If ``keep_dim`` is True, the dimensions of
+            the output Tensor is the same as ``x`` except in the reduced
+            dimensions(it is of size 1 in this case). Otherwise, the shape of
+            the output Tensor is squeezed in ``axis`` . Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       Variable: The calcuated result Tensor/LoDTensor.
+        Tensor, results of logsumexp along ``axis`` of ``x``, with the same data
+        type as ``x``.
 
     Examples:
 
     .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
         import numpy as np
 
-        with fluid.dygraph.guard():
-          np_x = np.random.uniform(0.1, 1, [10]).astype(np.float32)
-          x = fluid.dygraph.to_variable(np_x)
-          print(paddle.logsumexp(x).numpy())
+        paddle.disable_static()
 
-    ..  code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        import numpy as np
-
-        with fluid.dygraph.guard():
-            np_x = np.random.uniform(0.1, 1, [2, 3, 4]).astype(np.float32)
-            x = fluid.dygraph.to_variable(np_x)
-            print(paddle.logsumexp(x, dim=1).numpy())
-            print(paddle.logsumexp(x, dim=[0, 2]).numpy())
+        x = np.array([[-1.5, 0., 2.], [3., 1.2, -2.4]])
+        x = paddle.to_tensor(x)
+        out1 = paddle.logsumexp(x) # [3.4691226]
+        out2 = paddle.logsumexp(x, 1) # [2.15317821, 3.15684602]
 
     """
-    op_type = 'logsumexp'
-    assert x is not None, 'x cannot be None in {}'.format(op_type)
+    if isinstance(axis, int):
+        axis = [axis]
+    reduce_all = True if axis is None \
+        or len(axis)==0 \
+        or len(axis) == len(x.shape) else False
+    if axis is None or len(axis) == 0:
+        axis = [0]
 
-    # reduce_sum does not support float16
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
+    if in_dygraph_mode():
+        return core.ops.logsumexp(x, 'dim', axis, 'keep_dim', keepdim,
+                                    'reduce_all', reduce_all)
 
-    exp_out = layers.exp(x)
-    sum_out = layers.reduce_sum(exp_out, dim, keepdim)
+    check_variable_and_dtype(x, 'x',
+                             ['float32', 'float64'],
+                             'logsumexp')
 
-    return layers.log(sum_out, name)
-
+    helper = LayerHelper('logsumexp', **locals())
+    attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='logsumexp', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
+    return out
 
 
 def inverse(x, name=None):
@@ -1664,6 +1672,100 @@ def cumsum(x, axis=None, dtype=None, name=None):
     _cum_sum_ = generate_layer_fn('cumsum')
     return _cum_sum_(**kwargs)
 
+def isfinite(x, name=None):
+    """
+
+    Return whether every element of input tensor is finite number or not.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+            x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            x = paddle.to_tensor(x_np)
+            out = paddle.tensor.isfinite(x)
+            print(out.numpy())  # [False  True  True False  True False False]
+    """
+    if in_dygraph_mode():
+        return core.ops.isfinite_v2(x)
+    helper = LayerHelper("isfinite_v2", **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isfinite')
+    out = helper.create_variable_for_type_inference('bool')
+    helper.append_op(type="isfinite_v2", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+def isinf(x, name=None):
+    """
+
+    Return whether every element of input tensor is `+/-INF` or not.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is `+/-INF` or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+            x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            x = paddle.to_tensor(x_np)
+            out = paddle.tensor.isinf(x)
+            print(out.numpy())  # [ True False False  True False False False]
+    """
+    if in_dygraph_mode():
+        return core.ops.isinf_v2(x)
+    helper = LayerHelper("isinf_v2", **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isinf')
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    helper.append_op(type="isinf_v2", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+def isnan(x, name=None):
+    """
+
+    Return whether every element of input tensor is `NaN` or not.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is `NaN` or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            paddle.disable_static()
+            x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            x = paddle.to_tensor(x_np)
+            out = paddle.tensor.isnan(x)
+            print(out.numpy())  # [False False False False False  True  True]
+    """
+    if in_dygraph_mode():
+        return core.ops.isnan_v2(x)
+    helper = LayerHelper("isnan_v2", **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'isnan')
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    helper.append_op(type="isnan_v2", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
 def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     """
     Compute the product of tensor elements over the given axis.
@@ -1689,7 +1791,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     Raises:
         ValueError: The :attr:`dtype` must be float32, float64, int32 or int64.
         TypeError: The type of :attr:`axis` must be int, list or tuple.
-
+    
     Examples:
         .. code-block:: python
 

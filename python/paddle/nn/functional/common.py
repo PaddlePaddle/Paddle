@@ -40,6 +40,7 @@ __all__ = [
     'dropout',
     'dropout2d',
     'dropout3d',
+    'alpha_dropout',
     #       'embedding',
     #       'fc',
     'label_smooth',
@@ -476,7 +477,6 @@ def dropout(x,
         p (float | int): Probability of setting units to zero. Default 0.5.
         axis (int | list): The axis along which the dropout is performed. Default None.
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         mode(str): ['upscale_in_train'(default) | 'downscale_in_infer']
 
                            1. upscale_in_train(default), upscale the output at training time
@@ -488,6 +488,7 @@ def dropout(x,
 
                               - train: out = input * mask
                               - inference: out = input * (1.0 - dropout_prob)
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor representing the dropout, has same shape and data type as `x` .
@@ -549,7 +550,7 @@ def dropout(x,
                  [4 0 6]]
             (3) What about ``axis=[0, 1]`` ? This means the dropout is performed in all axes of x,
                 which is the same case as default setting ``axis=None`` .
-            (4) You may note that logically `axis=None` means the dropout is performed in no axis of x,
+            (4) You may note that logically `axis=None` means the dropout is performed in none axis of x,
                 We generate mask with the shape 1*1. Whole input is randomly selected or dropped.
                 For example, we may get such mask:
                 [[0]]
@@ -563,8 +564,7 @@ def dropout(x,
             When x is a 4d tensor with shape `NCHW`, we can set ``axis=[0,1]`` and the dropout will be performed
             in channel `N` and `C`, `H` and `W` is tied, i.e.
             paddle.nn.dropout(x, p, axis=[0,1])
-            This is something we called dropout2d. Please refer to ``paddle.nn.functional.dropout2d``
-            for more details.
+            Please refer to ``paddle.nn.functional.dropout2d`` for more details.
             Similarly, when x is a 5d tensor with shape `NCDHW`, we can set ``axis=[0,1]`` to perform
             dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
 
@@ -793,6 +793,80 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
         training=training,
         mode="upscale_in_train",
         name=name)
+
+
+def alpha_dropout(x, p=0.5, training=True, name=None):
+    """
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property.
+    For an input with zero mean and unit standard deviation, the output of Alpha Dropout
+    maintains the original mean and standard deviation of the input.
+    Alpha Dropout fits well to SELU activate function by randomly setting activations to the negative saturation value.
+
+    Args:
+        x (Tensor): The input tensor. The data type is float32 or float64.
+        p (float | int): Probability of setting units to zero. Default 0.5.
+        training (bool): A flag indicating whether it is in train phrase or not. Default True.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor representing the dropout, has same shape and data type as `x`.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.array([[-1, 1], [-1, 1]]).astype('float32')
+            x = paddle.to_tensor(x)
+            y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
+            y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False)
+            print(x.numpy())
+            print(y_train.numpy())
+            # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
+            print(y_test.numpy())
+    """
+    if not isinstance(p, (float, int)):
+        raise TypeError("p argument should be a float or int")
+    if p < 0 or p > 1:
+        raise ValueError("p argument should between 0 and 1")
+
+    if not in_dygraph_mode():
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'alpha_dropout')
+
+    if training:
+        #get transformation params
+        alpha = 1.6732632423543772848170429916717
+        scale = 1.0507009873554804934193349852946
+        alpha_p = -alpha * scale
+        a = ((1 - p) * (1 + p * alpha_p**2))**-0.5
+        b = -a * alpha_p * p
+
+        dtype = x.dtype
+        input_shape = x.shape
+
+        #get mask
+        random_tensor = layers.uniform_random(
+            input_shape, dtype='float32', min=0., max=1.0)
+        p = layers.fill_constant(shape=[1], dtype='float32', value=p)
+        keep_mask = layers.greater_equal(random_tensor, p)
+        keep_mask = layers.cast(keep_mask, dtype)
+        drop_mask = layers.elementwise_sub(
+            layers.fill_constant(
+                shape=input_shape, dtype=dtype, value=1.),
+            keep_mask)
+
+        #apply mask
+        b = layers.fill_constant(shape=[1], dtype=dtype, value=b)
+        y = layers.elementwise_add(
+            paddle.multiply(x, keep_mask),
+            layers.scale(
+                drop_mask, scale=alpha_p))
+        res = layers.elementwise_add(layers.scale(y, scale=a), b, name=name)
+        return res
+    else:  # test
+        return x
 
 
 def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):

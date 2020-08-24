@@ -420,6 +420,61 @@ inline void Any(const framework::Tensor& tensor, Predicate predicate,
   platform::VisitPlace(place, visitor);
 }
 
+template <typename Predicate, typename DevCtx>
+struct AllDTypeVisitor {
+  Predicate predicate_;
+  const Tensor& tensor_;
+  const DevCtx& ctx_;
+  Tensor* out_;
+
+  AllDTypeVisitor(Predicate predicate, const Tensor& tensor, const DevCtx& ctx,
+                  Tensor* out)
+      : predicate_(predicate), tensor_(tensor), ctx_(ctx), out_(out) {}
+
+  template <typename T>
+  void apply() const {
+    auto t = EigenVector<T>::Flatten(tensor_);
+    auto o = EigenVector<bool>::Flatten(*out_);
+    o.device(*ctx_.eigen_device()) = predicate_(t);
+  }
+};
+
+template <typename Predicate, typename DevCtx>
+inline void AllImpl(Predicate predicate, const framework::Tensor& tensor,
+                    const DevCtx& ctx, framework::Tensor* out) {
+  VisitDataType(tensor.type(), AllDTypeVisitor<Predicate, DevCtx>(
+                                   predicate, tensor, ctx, out));
+}
+
+template <typename Predicate>
+class AllOutVisitor : public boost::static_visitor<> {
+ private:
+  const framework::Tensor& tensor_;
+  mutable framework::Tensor* out_;
+  Predicate predicate_;
+
+ public:
+  AllOutVisitor(const framework::Tensor& tensor, Predicate predicate,
+                framework::Tensor* out)
+      : tensor_(tensor), out_(out), predicate_(predicate) {}
+
+  template <typename Place>
+  void operator()(const Place& place) const {
+    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
+    out_->Resize(tensor_.dims());
+    out_->mutable_data<bool>(place);
+    AllImpl(predicate_, tensor_, *ctx, out_);
+  }
+};
+
+template <typename Predicate>
+inline void All(const framework::Tensor& tensor, Predicate predicate,
+                framework::Tensor* out) {
+  AllOutVisitor<Predicate> visitor(tensor, predicate, out);
+  auto place = tensor.place();
+  platform::VisitPlace(place, visitor);
+}
+
 struct ContainsNANPredicate {
   template <typename T>
   auto operator()(const T& eigen_vec) const
@@ -438,6 +493,12 @@ void TensorContainsNAN(const framework::Tensor& tensor,
                        framework::Tensor* out) {
   ContainsNANPredicate predicate;
   Any(tensor, predicate, out);
+}
+
+void TensorContainsNANV2(const framework::Tensor& tensor,
+                         framework::Tensor* out) {
+  ContainsNANPredicate predicate;
+  All(tensor, predicate, out);
 }
 
 struct ContainsInfPredicate {
@@ -460,6 +521,12 @@ void TensorContainsInf(const framework::Tensor& tensor,
   Any(tensor, predicate, out);
 }
 
+void TensorContainsInfV2(const framework::Tensor& tensor,
+                         framework::Tensor* out) {
+  ContainsInfPredicate predicate;
+  All(tensor, predicate, out);
+}
+
 // NOTE(dzhwinter):
 // Isfinite need a AllVisitor to loop through all the elements.
 // We choose two cuda call instead of one allvisitor. The AllVisitor
@@ -472,8 +539,8 @@ bool TensorIsfinite(const framework::Tensor& tensor) {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
-static inline void __global__ BothFalse(const T* cmp, T* out) {
-  out[0] = (!cmp[0]) && (!out[0]);
+static inline void __global__ BothFalse(const T* cmp, T* out, int element_num) {
+  CUDA_KERNEL_LOOP(i, element_num) { out[i] = (!cmp[i]) && (!out[i]); }
 }
 #endif
 
@@ -495,22 +562,40 @@ struct BothFalseVisitor : public boost::static_visitor<> {
   void VisitorImpl(const platform::CUDAPlace& gpu) const {
 #ifdef PADDLE_WITH_CUDA
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(gpu);
-    BothFalse<bool><<<1, 1, 0, ctx->stream()>>>(in_.data<bool>(),
-                                                out_->mutable_data<bool>(gpu));
+    constexpr int MAX_BLOCK_DIM = 512;
+    const int MAX_GRID_DIM = ctx->GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
+    int element_num = in_.numel();
+    int block_size = (element_num >= MAX_BLOCK_DIM)
+                         ? MAX_BLOCK_DIM
+                         : (1 << static_cast<int>(std::log2(element_num)));
+    int grid_size = element_num / block_size;
+    grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
+    BothFalse<bool><<<grid_size, block_size, 0, ctx->stream()>>>(
+        in_.data<bool>(), out_->mutable_data<bool>(gpu), element_num);
 #endif
   }
 
   void VisitorImpl(const platform::CPUPlace& cpu) const {
-    bool lhs = !in_.data<bool>()[0];
-    bool rhs = !out_->mutable_data<bool>(cpu)[0];
-    out_->mutable_data<bool>(cpu)[0] = lhs && rhs;
+    int num = in_.numel();
+    const bool* in_ptr = in_.data<bool>();
+    bool* out_ptr = out_->data<bool>();
+    for (int i = 0; i < num; ++i) {
+      bool lhs = !in_ptr[i];
+      bool rhs = !out_ptr[i];
+      out_ptr[i] = lhs && rhs;
+    }
   }
 
   void VisitorImpl(
       const platform::CUDAPinnedPlace& cpu /* equals to cpu*/) const {
-    bool lhs = !in_.data<bool>()[0];
-    bool rhs = !out_->mutable_data<bool>(cpu)[0];
-    out_->mutable_data<bool>(cpu)[0] = lhs && rhs;
+    int num = in_.numel();
+    const bool* in_ptr = in_.data<bool>();
+    bool* out_ptr = out_->data<bool>();
+    for (int i = 0; i < num; ++i) {
+      bool lhs = !in_ptr[i];
+      bool rhs = !out_ptr[i];
+      out_ptr[i] = lhs && rhs;
+    }
   }
 };
 
@@ -518,6 +603,15 @@ void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out) {
   framework::Tensor tmp;
   TensorContainsInf(tensor, &tmp);
   TensorContainsNAN(tensor, out);
+  BothFalseVisitor visitor(tmp, out);
+  auto place = tensor.place();
+  platform::VisitPlace(place, visitor);
+}
+
+void TensorIsfiniteV2(const framework::Tensor& tensor, framework::Tensor* out) {
+  framework::Tensor tmp;
+  TensorContainsInfV2(tensor, &tmp);
+  TensorContainsNANV2(tensor, out);
   BothFalseVisitor visitor(tmp, out);
   auto place = tensor.place();
   platform::VisitPlace(place, visitor);

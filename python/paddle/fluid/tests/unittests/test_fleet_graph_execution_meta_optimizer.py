@@ -58,7 +58,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             avg_cost = paddle.fluid.layers.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
-            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy)
             optimizer.minimize(avg_cost)
@@ -118,7 +118,126 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.nccl_comm_num = 2
             strategy.sync_nccl_allreduce = True
+            optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = fleet.distributed_optimizer(
+                optimizer, strategy=strategy)
+            optimizer.minimize(avg_cost)
+            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe.run(paddle.fluid.default_startup_program())
+
+            import numpy as np
+
+            def gen_data():
+                return {
+                    "x": np.random.random(size=(128, 32)).astype('float32'),
+                    "y": np.random.randint(
+                        2, size=(128, 1)).astype('int64')
+                }
+
+            for i in range(10):
+                cost_val = exe.run(feed=gen_data(), fetch_list=[avg_cost.name])
+                print("cost of step[{}] = {}".format(i, cost_val))
+
+        proc_a = launch_func(node_func, node_a)
+        proc_a.start()
+        proc_b = launch_func(node_func, node_b)
+        proc_b.start()
+        proc_a.join()
+        proc_b.join()
+
+    def test_graph_execution_optimizer_not_apply_v2(self):
+        node_a = {
+            "PADDLE_TRAINER_ID": "0",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36003",
+            "PADDLE_TRAINERS_NUM": "2",
+            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36003,127.0.0.1:36004",
+            "http_proxy": "",
+            "https_proxy": ""
+        }
+
+        node_b = {
+            "PADDLE_TRAINER_ID": "1",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36004",
+            "PADDLE_TRAINERS_NUM": "2",
+            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36003,127.0.0.1:36004",
+            "http_proxy": "",
+            "https_proxy": ""
+        }
+
+        def node_func():
+            import paddle.distributed.fleet as fleet
+            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            fleet.init(role)
+            input_x = paddle.fluid.layers.data(
+                name="x", shape=[32], dtype='float32')
+            input_y = paddle.fluid.layers.data(
+                name="y", shape=[1], dtype='int64')
+
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+            prediction = paddle.fluid.layers.fc(input=[fc_2],
+                                                size=2,
+                                                act='softmax')
+            cost = paddle.fluid.layers.cross_entropy(
+                input=prediction, label=input_y)
+            avg_cost = paddle.fluid.layers.mean(x=cost)
+
+            strategy = paddle.distributed.fleet.DistributedStrategy()
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            optimizer = fleet.distributed_optimizer(
+                optimizer, strategy=strategy)
+            optimizer.minimize(avg_cost)
+
+        proc_a = launch_func(node_func, node_a)
+        proc_a.start()
+        proc_b = launch_func(node_func, node_b)
+        proc_b.start()
+        proc_a.join()
+        proc_b.join()
+
+    def test_graph_execution_optimizer(self):
+        node_a = {
+            "PADDLE_TRAINER_ID": "0",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36001",
+            "PADDLE_TRAINERS_NUM": "2",
+            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+            "http_proxy": "",
+            "https_proxy": ""
+        }
+
+        node_b = {
+            "PADDLE_TRAINER_ID": "1",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36002",
+            "PADDLE_TRAINERS_NUM": "2",
+            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+            "http_proxy": "",
+            "https_proxy": ""
+        }
+
+        def node_func():
+            import paddle.distributed.fleet as fleet
+            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            fleet.init(role)
+            input_x = paddle.fluid.layers.data(
+                name="x", shape=[32], dtype='float32')
+            input_y = paddle.fluid.layers.data(
+                name="y", shape=[1], dtype='int64')
+
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+            prediction = paddle.fluid.layers.fc(input=[fc_2],
+                                                size=2,
+                                                act='softmax')
+            cost = paddle.fluid.layers.cross_entropy(
+                input=prediction, label=input_y)
+            avg_cost = paddle.fluid.layers.mean(x=cost)
+
+            strategy = paddle.distributed.fleet.DistributedStrategy()
+            strategy.nccl_comm_num = 2
+            strategy.sync_nccl_allreduce = True
+            optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy)
             optimizer.minimize(avg_cost)
