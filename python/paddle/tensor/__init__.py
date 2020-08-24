@@ -58,7 +58,7 @@ from .logic import equal  #DEFINE_ALIAS
 from .logic import greater_equal  #DEFINE_ALIAS
 from .logic import greater_than  #DEFINE_ALIAS
 from .logic import is_empty  #DEFINE_ALIAS
-from .logic import isfinite  #DEFINE_ALIAS
+#from .logic import isfinite  #DEFINE_ALIAS
 from .logic import less_equal  #DEFINE_ALIAS
 from .logic import less_than  #DEFINE_ALIAS
 from .logic import logical_and  #DEFINE_ALIAS
@@ -161,6 +161,9 @@ from .math import addmm  #DEFINE_ALIAS
 from .math import clip  #DEFINE_ALIAS
 from .math import trace  #DEFINE_ALIAS
 from .math import kron  #DEFINE_ALIAS
+from .math import isfinite  #DEFINE_ALIAS
+from .math import isinf  #DEFINE_ALIAS
+from .math import isnan  #DEFINE_ALIAS
 from .math import prod  #DEFINE_ALIAS
 from .random import standard_normal
 from .random import normal
