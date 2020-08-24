@@ -21,6 +21,7 @@ from . import extension
 from . import activation
 from . import norm
 from . import distance
+from . import transformer
 
 from .activation import *
 from .loss import *
@@ -28,6 +29,7 @@ from .conv import *
 from .extension import *
 from .activation import *
 from .norm import *
+from .transformer import *
 # from .activation import PReLU        #DEFINE_ALIAS
 from .activation import ReLU  #DEFINE_ALIAS
 from .activation import LeakyReLU  #DEFINE_ALIAS
@@ -55,11 +57,14 @@ from .common import UpSample  #DEFINE_ALIAS
 from .common import Dropout  #DEFINE_ALIAS
 from .common import Dropout2D  #DEFINE_ALIAS
 from .common import Dropout3D  #DEFINE_ALIAS
+from .common import AlphaDropout  #DEFINE_ALIAS
 from .pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
 from .pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
-from .conv import Conv2D  #DEFINE_ALIAS
+from .conv import Conv1d  #DEFINE_ALIAS
+from .conv import Conv2d  #DEFINE_ALIAS
+from .conv import Conv3d  #DEFINE_ALIAS
+from .conv import ConvTranspose1d  #DEFINE_ALIAS
 from .conv import ConvTranspose2d  #DEFINE_ALIAS
-from .conv import Conv3D  #DEFINE_ALIAS
 from .conv import ConvTranspose3d  #DEFINE_ALIAS
 # from .conv import TreeConv        #DEFINE_ALIAS
 # from .conv import Conv1D        #DEFINE_ALIAS

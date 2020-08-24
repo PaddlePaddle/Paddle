@@ -29,7 +29,7 @@ class Generator(object):
         seed_in = default_rng_seed_val
         if self.device == "CPU":
             self.generator = core.Generator()
-            self.generator.manual_seed(seed_in)
+            # self.generator.manual_seed(seed_in)
         else:
             raise ValueError(
                 "generator class with device %s does not exist, currently only support generator with device 'CPU' "
