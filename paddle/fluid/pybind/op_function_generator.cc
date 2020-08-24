@@ -42,6 +42,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
      {"X", "InScale", "InAccum", "InState"}},
     {"nll_loss", {"X", "Label", "Weight"}},
     {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
+    {"gather", {"X", "Index", "Axis"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.

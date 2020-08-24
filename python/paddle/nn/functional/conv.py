@@ -15,6 +15,7 @@ from __future__ import print_function
 
 __all__ = [
     'conv1d',
+    'conv_transpose1d',
     'conv2d',
     'conv_transpose2d',
     'conv3d',
@@ -29,6 +30,7 @@ from ...fluid.layers import nn, utils
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.param_attr import ParamAttr
 from ...fluid.layer_helper import LayerHelper
+from .common import pad2d
 
 
 def _is_list_or_tuple(input):
@@ -542,6 +544,260 @@ def conv2d(x,
         else:
             out = pre_bias
 
+    return out
+
+
+def conv_transpose1d(x,
+                     weight,
+                     bias=None,
+                     stride=1,
+                     padding=0,
+                     output_padding=0,
+                     groups=1,
+                     dilation=1,
+                     output_size=None,
+                     data_format="NCL",
+                     name=None):
+    """
+    The 1-D convolution transpose layer calculates the output based on the input,
+    filter, and dilation, stride, padding. Input(Input) and output(Output)
+    are in 'NCL' format or 'NLC' where N is batch size, C is the number of channels,
+    L is the length of the feature. The details of convolution transpose
+    layer, please refer to the following explanation and references
+    `therein <https://arxiv.org/pdf/1603.07285.pdf>`_.
+    If bias attribution and activation type are provided, bias is added to
+    the output of the convolution, and the corresponding activation function
+    is applied to the final result.
+
+    For each input :math:`X`, the equation is:
+
+    .. math::
+
+        Out = \sigma (W \\ast X + b)
+
+    Where:
+
+    * :math:`X`: Input value, a 3-D Tensor with 'NCL' format or 'NLC' format.
+    * :math:`W`: Filter value, a 3-D Tensor with 'MCK' format.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
+    * :math:`\\sigma`: Activation function.
+    * :math:`Out`: Output value, a 3-D Tensor with data format 'NCL' or 'NLC', the shape of :math:`Out` and :math:`X` may be different.
+
+    Example:
+
+        - Input:
+
+          Input shape: :math:`(N, C_{in}, L_{in})`
+
+          Filter shape: :math:`(C_{in}, C_{out}, L_f)`
+
+        - Output:
+
+          Output shape: :math:`(N, C_{out}, L_{out})`
+
+        Where
+
+        .. math::
+
+           L^\prime_{out} &= (L_{in} - 1) * stride - pad_top - pad_bottom + dilation * (L_f - 1) + 1 + output_padding \\\\
+           L_{out} &\in [ L^\prime_{out}, L^\prime_{out} + stride ]
+
+    Note:
+          The conv1d_transpose can be seen as the backward of the conv1d. For conv1d,
+          when stride > 1, conv1d maps multiple input shape to the same output shape,
+          so for conv1d_transpose, when stride > 1, input shape maps multiple output shape.
+          If output_size is None, :math:`L_{out} = L^\prime_{out}`;
+          else, the :math:`L_{out}` of the output size must between :math:`L^\prime_{out}`
+          and :math:`L^\prime_{out} + stride`. conv1d_transpose can compute the kernel size automatically.
+
+    Args:
+        x(Tensor): 3-D tensor with [N, C, L] or [N, L, C] format,
+                         its data type is float32 or float64.
+        weight(Tensor): The convolution kernel, a Tensor with shape [C, M/g, K],
+            where M is the number of output channels(filters), g is the number of groups,
+            K is the size of the kernel.
+        bias(Tensor, optional): The bias, a Tensor with shape [M, ].
+        stride(int|tuple|list, optional): The stride size. It means the stride in transposed convolution.
+            If stride is a tuple, it must contain one integer, `(stride_size)`.
+            Default: stride = 1.
+        padding(int|list|str|tuple, optional): The padding size. The padding argument effectively adds
+             `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a
+             string, either 'VALID' or 'SAME' supported, which is the padding algorithm.
+             If `padding` is a tuple or list, it could be in two forms:
+             `[pad]` or `[pad_left, pad_right]`. Default: padding = 0.
+        output_padding(int|list|tuple, optional): The count of zeros to be added to tail of each dimension.
+             If it is a tuple, it must contain one integer. Default: 0.
+        groups(int, optional): The groups number of the conv1d transpose function. Inspired by
+            grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
+            when group=2, the first half of the filters is only connected to the
+            first half of the input channels, while the second half of the
+            filters is only connected to the second half of the input channels.
+            Default: groups = 1.
+        dilation(int|tuple|list, optional): The dilation size. It means the spacing between the kernel points.
+            If dilation is a tuple, it must contain one integer, `(dilation_size)`.
+            Default: dilation = 1.
+        output_size(int|tuple|list, optional): The output image size. If output size is a
+            tuple, it must contain one integer, `(feature_length)`. None if use
+            filter_size, padding, and stride to calculate output_size.
+            If output_size and filter_size are specified at the same time, They
+            should follow the formula above. Default: None. output_size and filter_size
+            should not be None at the same time.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCL"`, `"NLC"`.
+            The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_length]`.
+        name(str, optional): For detailed information, please refer 
+           to :ref:`api_guide_Name`. Usually name is no need to set and 
+           None by default.
+
+    Returns:
+        A  tensor representing the result of 1-D transpose convolution, whose
+        data type is the same with input. And its shape is (num_batches, channels, length)
+        when data_format is `"NCL"` and (num_batches, length, channels) when data_format is
+        `"NLC"`.
+
+    Raises:
+        ValueError: If `data_format` is a string, but not "NCL" or "NLC".
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+            or the element corresponding to the input's channel is not 0.
+        ValueError: If `output_size` and filter_size are None at the same time.
+        ValueError: If `output_padding` is greater than `stride`.
+        ShapeError: If the input is not 3-D Tensor.
+        ShapeError: If the input's dimension size and filter's dimension size not equal.
+        ShapeError: If the dimension size of input minus the size of `stride` is not 1.
+        ShapeError: If the number of input channels is not equal to filter's channels.
+        ShapeError: If the size of `output_size` is not equal to that of `stride`.
+
+    Examples:
+        .. code-block:: python
+
+
+
+          import paddle
+          import paddle.nn.functional as F
+          import numpy as np
+          
+          paddle.disable_static()
+          # shape: (1, 2, 4)
+          x=np.array([[[4, 0, 9, 7],
+                       [8, 0, 9, 2,]]]).astype(np.float32)
+          # shape: (2, 1, 2)
+          y=np.array([[[7, 0]],
+                      [[4, 2]]]).astype(np.float32)
+          x_var = paddle.to_tensor(x)
+          w_var = paddle.to_tensor(w)
+          y_var = F.conv_transpose1d(x_var, w_var)
+          y_np = y_var.numpy()
+          print y_np
+          
+          # [[[60. 16. 99. 75.  4.]]]
+    """
+    cudnn_version = get_cudnn_version()
+    if cudnn_version is not None:
+        use_cudnn = True
+    else:
+        use_cudnn = False
+
+    if data_format not in ['NCL', 'NLC']:
+        raise ValueError(
+            "Attr(data_format) of conv2d_transpose got wrong value: "
+            "received {}, but only 'NCL' or 'NLC' are supported.".format(
+                data_format))
+    channel_last = (data_format == "NLC")
+    channel_dim = -1 if channel_last else 1
+
+    num_channels = x.shape[channel_dim]
+    if num_channels < 0:
+        raise ValueError("The channel dimmention of the input({}) "
+                         "should be defined. Received: {}.".format(
+                             x.shape, num_channels))
+    if num_channels % groups != 0:
+        raise ValueError(
+            "the channel of input must be divisible by groups,"
+            "received: the channel of input is {}, the shape of input is {}"
+            ", the groups is {}".format(num_channels, x.shape, groups))
+
+    # update attrs
+    padding, padding_algorithm = _update_padding_nd(padding, channel_last, 1)
+
+    if len(padding) == 2:
+        padding = padding + [0] * 2
+    elif len(padding) == 1:
+        padding = padding + [0]
+    else:
+        raise ValueError(
+            "The size of padding's dimmention should 1 or 2. But got padding={}".
+            format(padding))
+
+    stride = utils.convert_to_list(stride, 1, 'stride') + [1]
+    dilation = utils.convert_to_list(dilation, 1, 'dilation') + [1]
+    output_padding = utils.convert_to_list(output_padding, 1,
+                                           'output_padding') + [0]
+    if output_padding[0] > stride[0]:
+        raise ValueError(
+            "The size of output_padding should not be greater than stride."
+            "But got output_padding={} and stride={}".format(output_padding[0],
+                                                             stride[0]))
+
+    if output_size is None:
+        output_size = []
+    elif isinstance(output_size, (list, tuple, int)):
+        output_size = utils.convert_to_list(output_size, 1, 'output_size') + [1]
+    else:
+        raise ValueError("output_size should be int, or list, tuple of ints")
+
+    op_type = 'conv2d_transpose'
+    num_filters = weight.shape[1]
+    if (num_channels == groups and num_filters == 1 and not use_cudnn):
+        op_type = 'depthwise_conv2d_transpose'
+        use_cudnn = False
+
+    squeeze_axis = -2 if channel_last else -1
+    conv2d_data_format = "NHWC" if channel_last else "NCHW"
+
+    x = nn.unsqueeze(input=x, axes=[squeeze_axis])
+    weight = nn.unsqueeze(input=weight, axes=[-1])
+
+    if in_dygraph_mode():
+        attrs = ('output_size', output_size, 'strides', stride, 'paddings',
+                 padding, 'padding_algorithm', padding_algorithm, 'dilations',
+                 dilation, 'groups', groups, 'use_cudnn', use_cudnn,
+                 'data_format', conv2d_data_format)
+        out = getattr(core.ops, op_type)(x, weight, *attrs)
+        if bias is not None:
+            out = nn.elementwise_add(out, bias, axis=channel_dim)
+    else:
+        inputs = {'Input': [x], 'Filter': [weight]}
+        attrs = {
+            'output_size': output_size,
+            'strides': stride,
+            'paddings': padding,
+            'padding_algorithm': padding_algorithm,
+            'dilations': dilation,
+            'groups': groups,
+            'use_cudnn': use_cudnn,
+            'data_format': conv2d_data_format
+        }
+        check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
+                                 'conv2d_transpose')
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype()
+        out = helper.create_variable_for_type_inference(dtype)
+        outputs = {"Output": [out]}
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
+        if bias is not None:
+            out = nn.elementwise_add(out, bias, axis=channel_dim)
+
+    if output_size is None:
+        out = pad2d(
+            out,
+            padding=[0, output_padding, 0, 0],
+            data_format=conv2d_data_format,
+            name=name)
+    out = nn.squeeze(input=out, axes=[squeeze_axis])
     return out
 
 

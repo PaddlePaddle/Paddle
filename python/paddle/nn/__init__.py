@@ -92,11 +92,13 @@ from .layer.common import Bilinear  #DEFINE_ALIAS
 from .layer.common import Dropout  #DEFINE_ALIAS
 from .layer.common import Dropout2D  #DEFINE_ALIAS
 from .layer.common import Dropout3D  #DEFINE_ALIAS
+from .layer.common import AlphaDropout  #DEFINE_ALIAS
 from .layer.pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
 from .layer.pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
 from .layer.conv import Conv1d  #DEFINE_ALIAS
 from .layer.conv import Conv2d  #DEFINE_ALIAS
 from .layer.conv import Conv3d  #DEFINE_ALIAS
+from .layer.conv import ConvTranspose1d  #DEFINE_ALIAS
 from .layer.conv import ConvTranspose2d  #DEFINE_ALIAS
 from .layer.conv import ConvTranspose3d  #DEFINE_ALIAS
 # from .layer.conv import TreeConv        #DEFINE_ALIAS

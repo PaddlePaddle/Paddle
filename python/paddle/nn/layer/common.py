@@ -43,6 +43,7 @@ __all__ = [
     'Dropout2D',
     'Dropout3D',
     'Bilinear',
+    'AlphaDropout',
 ]
 
 
@@ -450,12 +451,12 @@ class Dropout(layers.Layer):
     according to the given dropout probability.
 
     See ``paddle.nn.functional.dropout`` for more details.
-    In dygraph mode, please use ``eval()`` to indicate whether it is in test phrase or not.
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
         p (float | int): Probability of setting units to zero. Default: 0.5
         axis (int | list): The axis along which the dropout is performed. Default None.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
 
                                1. upscale_in_train(default), upscale the output at training time
@@ -467,6 +468,7 @@ class Dropout(layers.Layer):
 
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: N-D tensor.
@@ -493,7 +495,6 @@ class Dropout(layers.Layer):
         super(Dropout, self).__init__()
 
         self.p = p
-        self.training = _dygraph_tracer()._train_mode
         self.axis = axis
         self.mode = mode
         self.name = name
@@ -519,7 +520,8 @@ class Dropout2D(layers.Layer):
 
     See ``paddle.nn.functional.dropout2d`` for more details.
 
-    Please use ``eval()`` to indicate whether it is in test phrase or not.
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
     Parameters:
         p (float, optional): Probability of setting units to zero. Default: 0.5
         data_format (str, optional): Specify the data format of the input, and the data format of the output
@@ -576,7 +578,8 @@ class Dropout3D(layers.Layer):
 
     See ``paddle.nn.functional.dropout3d`` for more details.
 
-    Please use ``eval()`` to indicate whether it is in test phrase or not.
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
     Parameters:
         p (float | int): Probability of setting units to zero. Default: 0.5
         data_format (str, optional): Specify the data format of the input, and the data format of the output
@@ -610,7 +613,6 @@ class Dropout3D(layers.Layer):
         super(Dropout3D, self).__init__()
 
         self.p = p
-        self.training = _dygraph_tracer()._train_mode
         self.data_format = data_format
         self.name = name
 
@@ -621,6 +623,55 @@ class Dropout3D(layers.Layer):
             training=self.training,
             data_format=self.data_format,
             name=self.name)
+        return out
+
+
+class AlphaDropout(layers.Layer):
+    """
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
+    zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
+    standard deviation of the input. Alpha Dropout fits well to SELU activate function by randomly setting
+    activations to the negative saturation value.
+
+    For more information, please refer to:
+    `Self-Normalizing Neural Networks <https://arxiv.org/abs/1706.02515>`_
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
+    Parameters:
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: N-D tensor.
+        - output: N-D tensor, the same shape as input.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.array([[-1, 1], [-1, 1]]).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.AlphaDropout(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, name=None):
+        super(AlphaDropout, self).__init__()
+        self.p = p
+        self.name = name
+
+    def forward(self, input):
+        out = F.alpha_dropout(
+            input, p=self.p, training=self.training, name=self.name)
         return out
 
 
