@@ -73,9 +73,8 @@ def one_hot(x, num_classes, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             # Correspond to the first example above, where label.shape is 4 and one_hot_label.shape is [4, 4].
-            label = fluid.data(name="label", shape=[4, 1], dtype="int64")
+            label = paddle.data(name="label", shape=[4, 1], dtype="int64")
             # label.shape = [4]
             # label.data = [1, 1, 3, 0]
             one_hot_label = paddle.nn.functional.one_hot(x=label, num_classes=4)
