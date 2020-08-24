@@ -41,11 +41,11 @@ class LeNetDygraph(paddle.nn.Layer):
         super(LeNetDygraph, self).__init__()
         self.num_classes = num_classes
         self.features = Sequential(
-            Conv2D(
+            Conv2d(
                 1, 6, 3, stride=1, padding=1),
             ReLU(),
             Pool2D(2, 'max', 2),
-            Conv2D(
+            Conv2d(
                 6, 16, 5, stride=1, padding=0),
             ReLU(),
             Pool2D(2, 'max', 2))

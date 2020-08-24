@@ -91,8 +91,8 @@ def enabled():
     """
     This function checks whether the program runs in dynamic graph mode or not.
     You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
-    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
-    and :ref:`api_fluid_dygraph_disable` api .
+    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable_dygraph`
+    and :ref:`api_fluid_dygraph_disable_dygraph` api .
 
     **Note**:
         ``fluid.dygraph.enabled`` is the alias of ``fluid.in_dygraph_mode``, and
