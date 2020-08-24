@@ -955,7 +955,7 @@ void BindImperative(py::module *m_ptr) {
              }
            });
 
-  // define parallel context for nccl
+  // define parallel context
   py::class_<imperative::ParallelStrategy> parallel_strategy(
       m, "ParallelStrategy", "");
   parallel_strategy.def(py::init())

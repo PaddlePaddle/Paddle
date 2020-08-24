@@ -40,8 +40,7 @@ class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
-    def get_model(self, main_prog, startup_program):
-        ring_id = 0
+    def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
             tensor_list = []
             tindata = layers.data(
@@ -51,5 +50,5 @@ class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveAllgatherAPI, "allgather", 'gloo')
+    #runtime_main(TestCollectiveAllgatherAPI, "allgather", 'gloo')
     runtime_main(TestCollectiveAllgatherAPI, "allgather", 'nccl')

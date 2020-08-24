@@ -40,7 +40,7 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
-    def get_model(self, main_prog, startup_program):
+    def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32')
@@ -49,5 +49,5 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveBroadcastAPI, "broadcast", 'gloo')
+    #runtime_main(TestCollectiveBroadcastAPI, "broadcast", 'gloo')
     runtime_main(TestCollectiveBroadcastAPI, "broadcast", 'nccl')

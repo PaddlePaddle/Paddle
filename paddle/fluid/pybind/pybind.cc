@@ -66,6 +66,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/generator_py.h"
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
+#include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
@@ -2499,6 +2500,9 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #ifdef PADDLE_WITH_NCCL
   BindNCCLWrapper(&m);
+#endif
+#ifdef PADDLE_WITH_GLOO
+  BindGlooContext(&m);
 #endif
   BindGraph(&m);
   BindNode(&m);

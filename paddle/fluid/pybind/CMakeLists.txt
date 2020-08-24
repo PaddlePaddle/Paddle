@@ -40,6 +40,11 @@ set(PYBIND_SRCS
   inference_api.cc
   generator_py.cc)
 
+if(WITH_GLOO)
+  set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
+  set(PYBIND_SRCS ${PYBIND_SRCS} gloo_context_py.cc)
+endif(WITH_GLOO)
+
 if (WITH_CRYPTO)
   set(PYBIND_DEPS ${PYBIND_DEPS} paddle_crypto)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
@@ -51,11 +56,6 @@ endif()
 
 if (WITH_NCCL)
   list(APPEND PYBIND_SRCS nccl_wrapper_py.cc)
-endif()
-
-if (WITH_GLOO)
-  set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
-  set(PYBIND_SRCS ${PYBIND_SRCS} gloo_context_py.cc)
 endif()
 
 if(WITH_PYTHON)

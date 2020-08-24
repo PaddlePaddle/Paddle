@@ -344,11 +344,11 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
     nranks = _default_group.nranks
     if rank == src:
         if not isinstance(tensor_list, list):
-            raise ValueError("The type of 'tensor_list' for all_gather "
+            raise ValueError("The type of 'tensor_list' for scatter "
                              "should be list for src.")
     else:
         if tensor_list:
-            raise ValueError("'tensor_list' for all_gather "
+            raise ValueError("'tensor_list' for scatter "
                              "should be None for others.")
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],

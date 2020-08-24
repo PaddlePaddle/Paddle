@@ -47,5 +47,5 @@ class GlooParallelContext {
 };
 #endif
 
-}  //  namespace imperative
+}  //  namespace platform
 }  //  namespace paddle

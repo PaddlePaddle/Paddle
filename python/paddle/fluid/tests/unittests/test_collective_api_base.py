@@ -32,7 +32,7 @@ from paddle.fluid import core
 
 
 class TestCollectiveAPIRunnerBase(object):
-    def get_model(self, train_prog, startup_prog):
+    def get_model(self, train_prog, startup_prog, rank):
         raise NotImplementedError(
             "get model should be implemented by child class.")
 
@@ -95,14 +95,12 @@ class TestCollectiveAPIRunnerBase(object):
     def initGlooEnv(rank, nranks):
         strategy = fluid.core.GlooParallelStrategy()
         strategy.rank = rank
-        strategy.rank_num = nrank
+        strategy.rank_num = nranks
         strategy.prefix = ""
-        strategy.iface = ""
-        strategy.init_seconds = 9999999
-        strategy.run_seconds = 9999999
-        strategy.path = "/tmp/tmpx0"
-        strategy.fs_name = ""
-        strategy.fs_ugi = ""
+        strategy.iface = "lo"
+        strategy.init_seconds = 999999
+        strategy.run_seconds = 999999
+        strategy.path = "/tmp/tmp0"
         gloo = fluid.core.GlooParallelContext(strategy)
         gloo.init()
 
@@ -113,7 +111,7 @@ class TestCollectiveAPIRunnerBase(object):
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        result = self.get_model(train_prog, startup_prog)
+        result = self.get_model(train_prog, startup_prog, rank)
         if args['backend'] == 'nccl':
             self.initCommunicator(startup_prog, rank, nranks, True,
                                   current_endpoint, endpoints)
@@ -255,15 +253,17 @@ class TestDistBase(unittest.TestCase):
         input2 = np.random.random((10, 1000))
         if col_type == "allgather":
             need_result = np.vstack((input1, input2))
-            self.assertTrue(np.allclose(tr0_out, need_result))
-            self.assertTrue(np.allclose(tr1_out, need_result))
+            tr_out0 = np.vstack((tr0_out[0], tr0_out[1]))
+            tr_out1 = np.vstack((tr1_out[0], tr1_out[1]))
+            self.assertTrue(np.allclose(tr_out0, need_result))
+            self.assertTrue(np.allclose(tr_out1, need_result))
         elif col_type == "broadcast":
             need_result = input2
             self.assertTrue(np.allclose(tr0_out, need_result))
             self.assertTrue(np.allclose(tr1_out, need_result))
         elif col_type == "reduce":
             need_result = input1 + input2
-            self.assertTrue(np.allclose(tr1_out, need_result))
+            self.assertTrue(np.allclose(tr0_out, need_result))
         elif col_type == "scatter":
             need_result = input2
             need_result1 = need_result[0:need_result.shape[0] // 2]
