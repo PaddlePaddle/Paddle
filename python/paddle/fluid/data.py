@@ -18,10 +18,12 @@ import six
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_dtype, check_type
+from ..utils import deprecated
 
 __all__ = ['data']
 
 
+@deprecated(since="2.0.0", update_to="paddle.static.data")
 def data(name, shape, dtype='float32', lod_level=0):
     """
     **Data Layer**

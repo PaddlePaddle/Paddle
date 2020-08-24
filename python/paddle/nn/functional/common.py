@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import warnings
-import paddle.fluid.core as core
-from ...fluid.framework import in_dygraph_mode, core
+import paddle
+from ...fluid.framework import in_dygraph_mode, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
 
 # TODO: define the common functions to build a neural network  
-from ...fluid.layers import dropout  #DEFINE_ALIAS
 from ...fluid.layers import label_smooth  #DEFINE_ALIAS
 from ...fluid import one_hot  #DEFINE_ALIAS
 from ...fluid.layers import pad2d  #DEFINE_ALIAS
@@ -34,9 +33,14 @@ from ...tensor import sqrt
 
 #from ...fluid.layers import fc  #DEFINE_ALIAS
 from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
+from ...fluid import core, layers
+from ...fluid.data_feeder import check_variable_and_dtype
 
 __all__ = [
     'dropout',
+    'dropout2d',
+    'dropout3d',
+    'alpha_dropout',
     #       'embedding',
     #       'fc',
     'label_smooth',
@@ -454,6 +458,415 @@ def interpolate(input,
         outputs={"Out": out},
         attrs=attrs)
     return out
+
+
+def dropout(x,
+            p=0.5,
+            axis=None,
+            training=True,
+            mode="upscale_in_train",
+            name=None):
+    """
+    Dropout is a regularization technique for reducing overfitting by preventing
+    neuron co-adaption during training. The dropout operator randomly sets the
+    outputs of some units to zero, while upscale others according to the given
+    dropout probability.
+
+    Args:
+        x (Tensor): The input tensor. The data type is float32 or float64.
+        p (float | int): Probability of setting units to zero. Default 0.5.
+        axis (int | list): The axis along which the dropout is performed. Default None.
+        training (bool): A flag indicating whether it is in train phrase or not. Default True.
+        mode(str): ['upscale_in_train'(default) | 'downscale_in_infer']
+
+                           1. upscale_in_train(default), upscale the output at training time
+
+                              - train: out = input * mask / ( 1.0 - dropout_prob )
+                              - inference: out = input
+
+                           2. downscale_in_infer, downscale the output at inference
+
+                              - train: out = input * mask
+                              - inference: out = input * (1.0 - dropout_prob)
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor representing the dropout, has same shape and data type as `x` .
+
+    Examples:
+        We use ``p=0.5`` in the following description for simplicity.
+        1. When ``axis=None`` , this is commonly used dropout, which dropout each element of x randomly.
+            Let's see a simple case when x is a 2d tensor with shape 2*3:
+            [[1 2 3]
+             [4 5 6]]
+            we generate mask with the same shape as x, which is 2*3. The value of mask is
+            sampled from a Bernoulli distribution randomly. For example, we may get such mask:
+            [[0 1 0]
+             [1 0 1]]
+            So the output is obtained from elementwise multiply of x and mask:
+            [[0 2 0]
+             [4 0 6]]
+            Using default setting, i.e. ``mode='upscale_in_train'`` ,
+            if in training phase, the final upscale output is:
+            [[0 4 0 ]
+             [8 0 12]]
+            if in test phase, the output is the same as input:
+            [[1 2 3]
+             [4 5 6]]
+            we can also set ``mode='downscale_in_infer'`` , then
+            if in training phase, the final output is:
+            [[0 2 0]
+             [4 0 6]]
+            if in test phase, the scale output is:
+            [[0.5 1.  1.5]
+             [2.  2.5 3. ]]
+
+        2. When ``axis!=None`` , this is useful for dropping whole channels from an image or sequence.
+            Let's see the simple case when x is a 2d tensor with shape 2*3 again:
+            [[1 2 3]
+             [4 5 6]]
+            (1) If ``axis=0`` , this means the dropout is only performed in axis `0` .
+                we generate mask with the shape 2*1. Only in axis `0` the value is randomly selected.
+                For example, we may get such mask:
+                [[1]
+                 [0]]
+                The output is obtained from elementwise multiply of x and mask. Doing that the mask will be
+                broadcast from 2*1 to 2*3:
+                [[1 1 1]
+                 [0 0 0]]
+                and the result after elementwise multiply is:
+                [[1 2 3]
+                 [0 0 0]]
+                then we can do upscale or downscale according to the setting of other arguments.
+            (2) If ``axis=1`` , this means the dropout is only performed in axis `1` .
+                we generate mask with the shape 1*3. Only in axis `1` the value is randomly selected.
+                For example, we may get such mask:
+                [[1 0 1]]
+                Doing elementwise multiply the mask will be broadcast from 1*3 to 2*3:
+                [[1 0 1]
+                 [1 0 1]]
+                and the result after elementwise multiply is:
+                [[1 0 3]
+                 [4 0 6]]
+            (3) What about ``axis=[0, 1]`` ? This means the dropout is performed in all axes of x,
+                which is the same case as default setting ``axis=None`` .
+            (4) You may note that logically `axis=None` means the dropout is performed in none axis of x,
+                We generate mask with the shape 1*1. Whole input is randomly selected or dropped.
+                For example, we may get such mask:
+                [[0]]
+                Doing elementwise multiply the mask will be broadcast from 1*1 to 2*3:
+                [[0 0 0]
+                 [0 0 0]]
+                and the result after elementwise multiply is:
+                [[0 0 0]
+                 [0 0 0]]
+                Actually this is not what we want because all elements may set to zero~
+            When x is a 4d tensor with shape `NCHW`, we can set ``axis=[0,1]`` and the dropout will be performed
+            in channel `N` and `C`, `H` and `W` is tied, i.e.
+            paddle.nn.dropout(x, p, axis=[0,1])
+            Please refer to ``paddle.nn.functional.dropout2d`` for more details.
+            Similarly, when x is a 5d tensor with shape `NCDHW`, we can set ``axis=[0,1]`` to perform
+            dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
+
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.array([[1,2,3], [4,5,6]]).astype('float32')
+            x = paddle.to_tensor(x)
+            y_train = paddle.nn.functional.dropout(x, 0.5)
+            y_test = paddle.nn.functional.dropout(x, 0.5, training=False) 
+            y_0 = paddle.nn.functional.dropout(x, axis=0)
+            y_1 = paddle.nn.functional.dropout(x, axis=1)
+            y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+            print(y_0.numpy())
+            print(y_1.numpy())
+            print(y_01.numpy())
+
+    """
+    if not isinstance(p, (float, int)):
+        raise TypeError("p argument should be a number")
+    if p < 0 or p > 1:
+        raise ValueError("p argument should between 0 and 1")
+    if mode not in ('downscale_in_infer', 'upscale_in_train'):
+        raise ValueError(
+            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
+    if axis and not isinstance(axis, (int, list)):
+        raise TypeError("datatype of axis argument should be int or list")
+
+    if axis == None:  # commonly used dropout
+        seed = None
+        mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+
+        def get_attrs(prog, dropout_prob, is_test, seed):
+            if (seed is None or seed == 0) and prog.random_seed != 0:
+                seed = prog.random_seed
+            attrs = {
+                'dropout_prob': dropout_prob,
+                'is_test': is_test,
+                'fix_seed': seed is not None,
+                'seed': seed if seed is not None else 0,
+                'dropout_implementation': mode,
+            }
+            return attrs
+
+        if in_dygraph_mode():
+            if default_main_program().random_seed != 0:
+                seed = default_main_program().random_seed
+            out, mask = core.ops.dropout(
+                x, 'dropout_prob', p, 'is_test', not training, 'fix_seed',
+                seed is not None, 'seed', seed
+                if seed is not None else 0, 'dropout_implementation', mode)
+            return out
+
+        helper = LayerHelper('dropout', **locals())
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 'dropout')
+
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        mask = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+
+        attrs = get_attrs(helper.main_program, p, not training, seed)
+
+        helper.append_op(
+            type='dropout',
+            inputs={'X': [x]},
+            outputs={'Out': [out],
+                     'Mask': [mask]},
+            attrs=attrs)
+        return out
+    else:  #sometimes called dropout_nd #TODO: optimize with c++
+        if not in_dygraph_mode():
+            check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'dropout')
+        dtype = x.dtype
+        keep_prob = 1 - p
+        if training:
+            if p == 1.:
+                return layers.scale(x, scale=0.)
+
+            scale_input = layers.scale(
+                x, scale=1 / keep_prob) if mode == 'upscale_in_train' else x
+
+            #get mask shape
+            input_shape = x.shape
+            drop_axes = [axis] if isinstance(axis, int) else axis
+            if max(drop_axes) > len(input_shape) - 1:
+                raise ValueError("axis value should less than dimensions of x:{}, but get drop_axes value:{} " \
+                                 .format(len(input_shape), max(drop_axes)))
+            if len(drop_axes) > len(input_shape):
+                raise ValueError(
+                    "length of axis should not greater than dimensions of x:{}, but get length of drop axes: {}".
+                    format(len(input_shape), len(drop_axes)))
+            mask_shape = [1] * len(input_shape)
+            for i in drop_axes:
+                mask_shape[i] = input_shape[i]
+
+            #get mask
+            random_tensor = layers.uniform_random(
+                mask_shape, dtype='float32', min=0., max=1.0)
+            p = layers.fill_constant(shape=[1], dtype='float32', value=p)
+            keep_mask = layers.greater_equal(random_tensor, p)
+
+            scale_input = layers.cast(scale_input, dtype)
+            keep_mask = layers.cast(keep_mask, dtype)
+            ret = paddle.multiply(scale_input, keep_mask, name=name)
+            return ret
+        else:  # test
+            ret = layers.scale(
+                x, scale=keep_prob) if mode == 'downscale_in_infer' else x
+            return ret
+
+
+def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
+    """
+    Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
+    a channel is a 2D feature map with the shape `HW` ). Each channel will be zeroed out independently
+    on every forward call with probability `p` using samples from a Bernoulli distribution.
+
+    See ``paddle.nn.functional.dropout`` for more details.
+
+    Args:
+        x (Tensor):  The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C].
+                     The data type is float32 or float64.
+        p (float): Probability of setting units to zero. Default 0.5.
+        training (bool): A flag indicating whether it is in train phrase or not. Default True.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+                                     will be consistent with that of the input. An optional string from:
+                                    `NCHW` , `NHWC` . The default is `NCHW` . When it is `NCHW` , the data is
+                                    stored in the order of: [batch_size, input_channels, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor representing the dropout2d, has same shape and data type as `x` .
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
+            x = paddle.to_tensor(x)
+            y_train = paddle.nn.functional.dropout2d(x)  #train
+            y_test = paddle.nn.functional.dropout2d(x, training=False) #test
+            for i in range(2):
+                for j in range(3):
+                    print(x.numpy()[i,j,:,:])
+                    print(y_train.numpy()[i,j,:,:]) # may all 0
+                    print(y_test.numpy()[i,j,:,:])
+    """
+    input_shape = x.shape
+    if len(input_shape) != 4:
+        raise ValueError("dimensions of x should be 4, but received {} != 4"\
+        .format(len(input_shape)))
+
+    if data_format not in ["NCHW", "NHWC"]:
+        raise ValueError(
+            "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
+            "Attr(data_format): %s." % str(data_format))
+
+    return dropout(
+        x,
+        p=p,
+        axis=[0, 1] if data_format == 'NCHW' else [0, 3],
+        training=training,
+        mode="upscale_in_train",
+        name=name)
+
+
+def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
+    """
+    Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
+    a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
+    on every forward call with probability `p` using samples from a Bernoulli distribution.
+
+    See ``paddle.nn.functional.dropout`` for more details.
+
+    Args:
+        x (Tensor):  The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C].
+                     The data type is float32 or float64.
+        p (float): Probability of setting units to zero. Default 0.5.
+        training (bool): A flag indicating whether it is in train phrase or not. Default True.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+                                     will be consistent with that of the input. An optional string from:
+                                    ``NCDHW``, ``NDHWC``. The default is ``NCDHW`` . When it is ``NCDHW`` , the data is
+                                    stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor representing the dropout3d, has same shape and data type with `x` .
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
+            x = paddle.to_tensor(x)
+            y_train = paddle.nn.functional.dropout3d(x)  #train
+            y_test = paddle.nn.functional.dropout3d(x, training=False) #test
+            print(x.numpy()[0,0,:,:,:])
+            print(y_train.numpy()[0,0,:,:,:]) # may all 0
+            print(y_test.numpy()[0,0,:,:,:])
+    """
+
+    input_shape = x.shape
+    if len(input_shape) != 5:
+        raise ValueError("dimensions of x should be 5, but received {} != 5" \
+        .format(len(input_shape)))
+
+    if data_format not in ["NCDHW", "NDHWC"]:
+        raise ValueError(
+            "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
+            "Attr(data_format): %s." % str(data_format))
+
+    return dropout(
+        x,
+        p=p,
+        axis=[0, 1] if data_format == 'NCDHW' else [0, 4],
+        training=training,
+        mode="upscale_in_train",
+        name=name)
+
+
+def alpha_dropout(x, p=0.5, training=True, name=None):
+    """
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property.
+    For an input with zero mean and unit standard deviation, the output of Alpha Dropout
+    maintains the original mean and standard deviation of the input.
+    Alpha Dropout fits well to SELU activate function by randomly setting activations to the negative saturation value.
+
+    Args:
+        x (Tensor): The input tensor. The data type is float32 or float64.
+        p (float | int): Probability of setting units to zero. Default 0.5.
+        training (bool): A flag indicating whether it is in train phrase or not. Default True.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor representing the dropout, has same shape and data type as `x`.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.array([[-1, 1], [-1, 1]]).astype('float32')
+            x = paddle.to_tensor(x)
+            y_train = paddle.nn.functional.alpha_dropout(x, 0.5)
+            y_test = paddle.nn.functional.alpha_dropout(x, 0.5, training=False)
+            print(x.numpy())
+            print(y_train.numpy())
+            # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
+            print(y_test.numpy())
+    """
+    if not isinstance(p, (float, int)):
+        raise TypeError("p argument should be a float or int")
+    if p < 0 or p > 1:
+        raise ValueError("p argument should between 0 and 1")
+
+    if not in_dygraph_mode():
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'alpha_dropout')
+
+    if training:
+        #get transformation params
+        alpha = 1.6732632423543772848170429916717
+        scale = 1.0507009873554804934193349852946
+        alpha_p = -alpha * scale
+        a = ((1 - p) * (1 + p * alpha_p**2))**-0.5
+        b = -a * alpha_p * p
+
+        dtype = x.dtype
+        input_shape = x.shape
+
+        #get mask
+        random_tensor = layers.uniform_random(
+            input_shape, dtype='float32', min=0., max=1.0)
+        p = layers.fill_constant(shape=[1], dtype='float32', value=p)
+        keep_mask = layers.greater_equal(random_tensor, p)
+        keep_mask = layers.cast(keep_mask, dtype)
+        drop_mask = layers.elementwise_sub(
+            layers.fill_constant(
+                shape=input_shape, dtype=dtype, value=1.),
+            keep_mask)
+
+        #apply mask
+        b = layers.fill_constant(shape=[1], dtype=dtype, value=b)
+        y = layers.elementwise_add(
+            paddle.multiply(x, keep_mask),
+            layers.scale(
+                drop_mask, scale=alpha_p))
+        res = layers.elementwise_add(layers.scale(y, scale=a), b, name=name)
+        return res
+    else:  # test
+        return x
 
 
 def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):

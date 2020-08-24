@@ -20,24 +20,14 @@ from ...fluid.dygraph import Linear  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
 from .. import functional as F
+from ...fluid.framework import _dygraph_tracer
 
 __all__ = [
-    'BilinearTensorProduct',
-    'Pool2D',
-    'Embedding',
-    'Linear',
-    'UpSample',
-    'Pad2D',
-    'ReflectionPad1d',
-    'ReplicationPad1d',
-    'ConstantPad1d',
-    'ReflectionPad2d',
-    'ReplicationPad2d',
-    'ConstantPad2d',
-    'ZeroPad2d',
-    'ConstantPad3d',
-    'ReplicationPad3d',
-    'CosineSimilarity',
+    'BilinearTensorProduct', 'Pool2D', 'Embedding', 'Linear', 'UpSample',
+    'Pad2D', 'ReflectionPad1d', 'ReplicationPad1d', 'ConstantPad1d',
+    'ReflectionPad2d', 'ReplicationPad2d', 'ConstantPad2d', 'ZeroPad2d',
+    'ConstantPad3d', 'ReplicationPad3d', 'CosineSimilarity', 'Dropout',
+    'Dropout2D', 'Dropout3D', 'AlphaDropout'
 ]
 
 
@@ -346,6 +336,239 @@ class Pad2D(layers.Layer):
             mode=self._mode,
             pad_value=self._pad_value,
             data_format=self._data_format)
+
+
+class Dropout(layers.Layer):
+    """
+    Dropout is a regularization technique for reducing overfitting by preventing
+    neuron co-adaption during training as described in the paper:
+    `Improving neural networks by preventing co-adaptation of feature detectors <https://arxiv.org/abs/1207.0580>`_ 
+    The dropout operator randomly sets the outputs of some units to zero, while upscale others
+    according to the given dropout probability.
+
+    See ``paddle.nn.functional.dropout`` for more details.
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
+    Parameters:
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        axis (int | list): The axis along which the dropout is performed. Default None.
+        mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
+
+                               1. upscale_in_train(default), upscale the output at training time
+
+                                  - train: out = input * mask / ( 1.0 - p )
+                                  - inference: out = input
+
+                               2. downscale_in_infer, downscale the output at inference
+
+                                  - train: out = input * mask
+                                  - inference: out = input * (1.0 - p)
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: N-D tensor.
+        - output: N-D tensor, the same shape as input.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.array([[1,2,3], [4,5,6]]).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
+        super(Dropout, self).__init__()
+
+        self.p = p
+        self.axis = axis
+        self.mode = mode
+        self.name = name
+
+    def forward(self, input):
+        out = F.dropout(
+            input,
+            p=self.p,
+            axis=self.axis,
+            training=self.training,
+            mode=self.mode,
+            name=self.name)
+        return out
+
+
+class Dropout2D(layers.Layer):
+    """
+    Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
+    a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
+    on every forward call with probability `p` using samples from a Bernoulli distribution.
+    Dropout2d will help promote independence between feature maps as described in the paper: 
+    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_ 
+
+    See ``paddle.nn.functional.dropout2d`` for more details.
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
+    Parameters:
+        p (float, optional): Probability of setting units to zero. Default: 0.5
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+                                     will be consistent with that of the input. An optional string from:
+                                    `NCHW`, `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is
+                                     stored in the order of: [batch_size, input_channels, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: 4-D tensor.
+        - output: 4-D tensor, the same shape as input.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout2D(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, data_format='NCHW', name=None):
+        super(Dropout2D, self).__init__()
+
+        self.p = p
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, input):
+        out = F.dropout2d(
+            input,
+            p=self.p,
+            training=self.training,
+            data_format=self.data_format,
+            name=self.name)
+        return out
+
+
+class Dropout3D(layers.Layer):
+    """
+    Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
+    a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
+    on every forward call with probability `p` using samples from a Bernoulli distribution.
+    Dropout3d will help promote independence between feature maps as described in the paper: 
+    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_ 
+
+    See ``paddle.nn.functional.dropout3d`` for more details.
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
+    Parameters:
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+                                     will be consistent with that of the input. An optional string from:
+                                    `NCDHW`, `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is
+                                     stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: 5-D tensor.
+        - output: 5-D tensor, the same shape as input.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.Dropout3D(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, data_format='NCDHW', name=None):
+        super(Dropout3D, self).__init__()
+
+        self.p = p
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, input):
+        out = F.dropout3d(
+            input,
+            p=self.p,
+            training=self.training,
+            data_format=self.data_format,
+            name=self.name)
+        return out
+
+
+class AlphaDropout(layers.Layer):
+    """
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
+    zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
+    standard deviation of the input. Alpha Dropout fits well to SELU activate function by randomly setting
+    activations to the negative saturation value.
+
+    For more information, please refer to:
+    `Self-Normalizing Neural Networks <https://arxiv.org/abs/1706.02515>`_
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
+    Parameters:
+        p (float | int): Probability of setting units to zero. Default: 0.5
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: N-D tensor.
+        - output: N-D tensor, the same shape as input.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x = np.array([[-1, 1], [-1, 1]]).astype('float32')
+            x = paddle.to_tensor(x)
+            m = paddle.nn.AlphaDropout(p=0.5)
+            y_train = m(x)
+            m.eval()  # switch the model to test phase
+            y_test = m(x)
+            print(x.numpy())
+            print(y_train.numpy())
+            # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
+            print(y_test.numpy())
+   """
+
+    def __init__(self, p=0.5, name=None):
+        super(AlphaDropout, self).__init__()
+        self.p = p
+        self.name = name
+
+    def forward(self, input):
+        out = F.alpha_dropout(
+            input, p=self.p, training=self.training, name=self.name)
+        return out
 
 
 class ReflectionPad1d(layers.Layer):
@@ -913,10 +1136,10 @@ class ReplicationPad3d(layers.Layer):
 
 class CosineSimilarity(layers.Layer):
     """
-    This interface is used to compute cosine similarity between x1 and x2 along dim.
+    This interface is used to compute cosine similarity between x1 and x2 along axis.
 
     Parameters:
-        dim (int): Dimension of vectors to compute cosine similarity. Default is 1.
+        axis (int): Dimension of vectors to compute cosine similarity. Default is 1.
         eps(float): Small value to avoid division by zero. Default is 1e-8.
     Returns: 
         None
@@ -933,7 +1156,7 @@ class CosineSimilarity(layers.Layer):
                      [0.9098952  0.15715368 0.8671125  0.3156102 ]
                      [0.4427798  0.54136837 0.5276275  0.32394758]
                      [0.3769419  0.8535014  0.48041078 0.9256797 ]]
-                dim = 1
+                axis = 1
                 eps = 1e-8
                 Out: [0.5275037  0.8368967  0.75037485 0.9245899]
 
@@ -951,16 +1174,16 @@ class CosineSimilarity(layers.Layer):
             x1 = paddle.to_tensor(x1)
             x2 = paddle.to_tensor(x2)
 
-            cos_sim_func = nn.CosineSimilarity(dim=0)
+            cos_sim_func = nn.CosineSimilarity(axis=0)
             result = cos_sim_func(x1, x2)
             print(result.numpy())
             # [0.99806249 0.9817672  0.94987036]
     """
 
-    def __init__(self, dim=1, eps=1e-8):
+    def __init__(self, axis=1, eps=1e-8):
         super(CosineSimilarity, self).__init__()
-        self._dim = dim
+        self._axis = axis
         self._eps = eps
 
     def forward(self, x1, x2):
-        return F.cosine_similarity(x1, x2, dim=self._dim, eps=self._eps)
+        return F.cosine_similarity(x1, x2, axis=self._axis, eps=self._eps)
