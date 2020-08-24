@@ -634,8 +634,8 @@ def unique(x,
             :ref:`api_guide_Name`. Default: None.
 
     Returns: 
-        tuple: (out, indices, inverse, counts). `out` is the unique tensor for `x`. `indices` is
-            provided only if `return_index` is True. `inverse` is provided only if `return_inverse`
+        tuple: (out, indices, inverse, counts). `out` is the unique tensor for `x`. `indices` is \
+            provided only if `return_index` is True. `inverse` is provided only if `return_inverse` \
             is True. `counts` is provided only if `return_counts` is True.
 
     Examples:
