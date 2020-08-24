@@ -71,7 +71,7 @@ def distributed_ops_pass(program, config):
 
     def _get_pull_sparse_ops(_program):
         pull_sparse_ops = {}
-        op_types = {"lookup_table": "W"}
+        op_types = {"lookup_table": "W", "lookuo_table_v2": "W"}
         for op in _program.global_block().ops:
             if op.type in op_types.keys() \
                     and op.attr('remote_prefetch') is True:
