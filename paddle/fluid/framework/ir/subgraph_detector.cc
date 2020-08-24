@@ -309,7 +309,8 @@ std::vector<std::vector<Node *>> SubgraphDetector::ExtractSubGraphs() {
     BriefNode *brief_node = itr.second;
 
     if (!Agent(brief_node->node).marked()) {
-      VLOG(4) << brief_node->node->id() << " node not a trt candidate.";
+      VLOG(4) << brief_node->node->id() << " node named "
+              << brief_node->node->Name() << " is not a trt candidate.";
       continue;
     }
 

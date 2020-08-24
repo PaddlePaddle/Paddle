@@ -29,6 +29,8 @@ from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 
+from predictor_utils import PredictorTools
+
 SEED = 2020
 
 
@@ -220,6 +222,10 @@ class TestMNISTWithDeclarative(TestMNIST):
             dygraph_infer_out = self.jit_load_and_run_inference_dygraph(
                 infer_model_path, inputs)
             self.assertTrue(np.allclose(gt_out.numpy(), dygraph_infer_out))
+            # load in Paddle-Inference
+            predictor_infer_out = self.predictor_load_and_run_inference_analysis(
+                infer_model_path, inputs)
+            self.assertTrue(np.allclose(gt_out.numpy(), predictor_infer_out))
 
     @switch_to_static_graph
     def jit_load_and_run_inference_static(self, model_path, inputs):
@@ -240,6 +246,11 @@ class TestMNISTWithDeclarative(TestMNIST):
         infer_net = fluid.dygraph.jit.load(model_path)
         pred = infer_net(inputs[0])
         return pred.numpy()
+
+    def predictor_load_and_run_inference_analysis(self, model_path, inputs):
+        output = PredictorTools(model_path, VARIABLE_FILENAME, inputs)
+        out = output()
+        return out
 
 
 if __name__ == "__main__":

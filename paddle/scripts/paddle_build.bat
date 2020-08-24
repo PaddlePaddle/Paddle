@@ -25,21 +25,28 @@ mkdir build
 cd /d build
 
 rem ------initialize the virtual environment------
-if not defined PYTHON_ROOT set PYTHON_ROOT=c:\Python37
-set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
-%PYTHON_EXECUTABLE% -m pip install virtualenv
-if not exist paddle_winci (%PYTHON_EXECUTABLE% -m virtualenv paddle_winci)
-call paddle_winci\Scripts\activate.bat
-if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
+set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
+
+rem ToDo: virtual environment can't be deleted safely, some process not exit when task is canceled
+rem Now use system python environment temporarily
+rem set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
+rem %PYTHON_EXECUTABLE% -m pip install virtualenv
+rem %PYTHON_EXECUTABLE% -m virtualenv paddle_winci
+rem call paddle_winci\Scripts\activate.bat
 
 rem ------pre install requirement----------
 where python
 where pip
-pip install --upgrade pip
-pip install wheel
-pip install gym
-pip install -r %work_dir%\python\requirements.txt
-if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+pip install --upgrade pip --user
+pip install wheel --user
+pip install gym --user
+pip install -U -r %work_dir%\python\requirements.txt --user
+if %ERRORLEVEL% NEQ 0 (
+    call paddle_winci\Scripts\deactivate.bat 2>NUL
+    echo pip install requirements.txt failed!
+    exit /b 7
+)
 
 rem ------initialize common variable------
 if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
@@ -57,7 +64,7 @@ dir %cache_dir%
 set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
 if not exist %cache_dir%\tools (
-    git clone https://github.com/zhouwei25/tools %cache_dir%\tools
+    git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
     if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 )
 
@@ -123,9 +130,9 @@ cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH
 goto:eof
 
 :cmake_error
-call paddle_winci\Scripts\deactivate.bat
-echo cmake failed!
-exit /b 1
+call paddle_winci\Scripts\deactivate.bat 2>NUL
+echo Cmake failed, will exit!
+exit /b 7
 
 rem ---------------------------------------------------------------------------------------------
 :build
@@ -133,39 +140,41 @@ echo    ========================================
 echo    Step 2. Buile Paddle ...
 echo    ========================================
 call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
-set build_times=1
 
+set build_times=1
 :build_tp
-echo BUILD THIRD_PARTY %build_times%
-msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
-echo BUILD THIRD_PARTY RESULT %ERRORLEVEL%
+echo Build third_party for %build_times% time:
+msbuild /m /p:Configuration=Release /verbosity:minimal third_party.vcxproj
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
     if %build_times% GTR 3 (
-        exit /b 1
+        exit /b 7
     ) else (
+        echo Build third_party failed, will retry!
         goto :build_tp
     )
 )
+echo Build third_party successfully!
 
 set build_times=1
 :build_paddle
-echo BUILD PADDLE %build_times%
+echo Build Paddle for %build_times% time:
 msbuild /m /p:Configuration=Release /verbosity:quiet paddle.sln
-echo BUILD PADDLE RESULT %ERRORLEVEL%
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 2 (
-        exit /b 1
+        exit /b 7
     ) else (
+        echo Build Paddle failed, will retry!
         goto :build_paddle
     )
 )
+echo Build Paddle successfully!
 goto:eof
 
 :build_error
-call paddle_winci\Scripts\deactivate.bat
-echo build paddle failed!
+call paddle_winci\Scripts\deactivate.bat 2>NUL
+echo Build Paddle failed, will exit!
 exit /b 7
 
 rem ---------------------------------------------------------------------------------------------
@@ -176,15 +185,21 @@ echo    ========================================
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 
-pip install -U %PADDLE_WHL_FILE_WIN%
-if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+pip uninstall -y paddlepaddle
+pip uninstall -y paddlepaddle-gpu
+pip install -U %PADDLE_WHL_FILE_WIN% --user
+if %ERRORLEVEL% NEQ 0 (
+    call paddle_winci\Scripts\deactivate.bat 2>NUL
+    echo pip install whl package failed!
+    exit /b 3
+)
 
-echo import paddle.fluid;print(paddle.__version__) > test_whl.py
-python test_whl.py
+python %work_dir%\paddle\scripts\installation_validate.py
 goto:eof
 
 :test_whl_pacakage_error
-call paddle_winci\Scripts\deactivate.bat
+call paddle_winci\Scripts\deactivate.bat 2>NUL
+echo Test import paddle failed, will exit!
 exit /b 3
 
 rem ---------------------------------------------------------------------------------------------
@@ -201,11 +216,12 @@ dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;%THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
-ctest.exe --output-on-failure -C Release -j 7
+ctest.exe --output-on-failure -C Release -j 8
 goto:eof
 
 :unit_test_error
-call paddle_winci\Scripts\deactivate.bat
+call paddle_winci\Scripts\deactivate.bat 2>NUL
+echo Running unit tests failed, will exit!
 exit /b 8
 
 rem ---------------------------------------------------------------------------------------------
@@ -220,7 +236,7 @@ cd %work_dir%\paddle\fluid\inference\api\demo_ci
 goto:eof
 
 :test_inference_error
-call paddle_winci\Scripts\deactivate.bats
+call paddle_winci\Scripts\deactivate.bat 2>NUL
 echo Testing fluid library for inference failed!
 exit /b 5
 
@@ -295,8 +311,8 @@ echo git checkout -f origin_pr >>  check_change_of_unittest.sh
 goto:eof
 
 :check_change_of_unittest_error
-call paddle_winci\Scripts\deactivate.bat
-exit /b 6
+call paddle_winci\Scripts\deactivate.bat 2>NUL
+exit /b 1
 
 
 rem ---------------------------------------------------------------------------------------------
@@ -314,7 +330,10 @@ taskkill /f /im git-remote-https.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
-call paddle_winci\Scripts\deactivate.bat
+taskkill /f /im %cd%\paddle\fluid\pybind\Release\op_function_generator.exe  2>NUL
+taskkill /f /im python.exe  2>NUL
+call paddle_winci\Scripts\deactivate.bat 2>NUL
+taskkill /f /im python.exe  2>NUL
 echo Windows CI run successfully!
 exit /b 0
 

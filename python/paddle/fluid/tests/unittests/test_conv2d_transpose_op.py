@@ -77,8 +77,13 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
         output_size = attrs['output_size']
         out_h = output_size[0] + pad_h_0 + pad_h_1
         out_w = output_size[1] + pad_w_0 + pad_w_1
-
-    out = np.zeros((in_n, out_c, out_h, out_w), dtype=input_.dtype)
+    out_pad_h = 0
+    out_pad_w = 0
+    if 'output_padding' in attrs:
+        out_pad_h = attrs['output_padding'][0]
+        out_pad_w = attrs['output_padding'][1]
+    out = np.zeros(
+        (in_n, out_c, out_h + out_pad_h, out_w + out_pad_w), dtype=input_.dtype)
 
     for n in range(in_n):
         for i in range(in_h):
@@ -99,7 +104,8 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
                         out[n, g * f_out_c + k, i1:i2:dilations[0], j1:j2:
                             dilations[1]] += tmp_out
 
-    out = out[:, :, pad_h_0:out_h - pad_h_1, pad_w_0:out_w - pad_w_1]
+    out = out[:, :, pad_h_0:out_h - pad_h_1 + out_pad_h, pad_w_0:out_w - pad_w_1
+              + out_pad_w]
     if attrs['data_format'] == 'NHWC':
         out = np.transpose(out, [0, 2, 3, 1])
     return out
@@ -114,6 +120,7 @@ class TestConv2dTransposeOp(OpTest):
         self.use_cudnn = False
         self.use_mkldnn = False
         self.output_size = None
+        self.output_padding = []
         self.data_format = "NCHW"
         self.pad = [0, 0]
         self.padding_algorithm = "EXPLICIT"
@@ -137,6 +144,9 @@ class TestConv2dTransposeOp(OpTest):
         }
         if self.output_size is not None:
             self.attrs['output_size'] = self.output_size
+
+        if len(self.output_padding) > 0:
+            self.attrs['output_padding'] = self.output_padding
 
         output = conv2dtranspose_forward_naive(input_, filter_,
                                                self.attrs).astype(self.dtype)
@@ -290,6 +300,18 @@ class TestWithEvenUpsample(TestConv2dTransposeOp):
         self.filter_size = [f_c, 6, 5, 5]
 
 
+class TestWithEvenUpsampleOutputPadding(TestConv2dTransposeOp):
+    def init_test_case(self):
+        self.pad = [2, 2]
+        self.stride = [2, 2]
+        self.groups = 1
+        self.dilations = [1, 1]
+        self.output_padding = [1, 1]
+        self.input_size = [2, 3, 7, 7]  # NCHW
+        f_c = self.input_size[1]
+        self.filter_size = [f_c, 6, 5, 5]
+
+
 class Test_NHWC(TestConv2dTransposeOp):
     def init_test_case(self):
         self.pad = [0, 0]
@@ -369,6 +391,19 @@ class TestWithEvenUpsample_NHWC(TestConv2dTransposeOp):
         self.groups = 1
         self.dilations = [1, 1]
         self.output_size = [14, 14]
+        self.input_size = [2, 7, 7, 3]  # NHWC
+        f_c = self.input_size[-1]
+        self.filter_size = [f_c, 6, 5, 5]
+        self.data_format = 'NHWC'
+
+
+class TestWithEvenUpsample_NHWC_output_padding(TestConv2dTransposeOp):
+    def init_test_case(self):
+        self.pad = [2, 2]
+        self.stride = [2, 2]
+        self.groups = 1
+        self.dilations = [1, 1]
+        self.output_padding = [1, 1]
         self.input_size = [2, 7, 7, 3]  # NHWC
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 6, 5, 5]
