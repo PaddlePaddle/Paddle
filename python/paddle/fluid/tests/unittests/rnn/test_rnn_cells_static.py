@@ -320,8 +320,10 @@ class TestLSTMCell(unittest.TestCase):
 
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
+    devices = ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() \
+        else ["cpu"]
     for bias in [True, False]:
-        for device in ["cpu", "gpu"]:
-            for test_class in [TestSimpleRNNCell, TestLSTMCell, TestGRUCell]:
+        for device in devices:
+            for test_class in [TestSimpleRNNCell, TestGRUCell, TestLSTMCell]:
                 suite.addTest(test_class(bias, device))
     return suite

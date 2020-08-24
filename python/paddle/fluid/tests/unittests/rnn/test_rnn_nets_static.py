@@ -460,9 +460,11 @@ class TestLSTM(unittest.TestCase):
 
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
+    devices = ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() \
+        else ["cpu"]
     for direction in ["forward", "backward", "bidirectional"]:
         for time_major in [True, False]:
-            for device in ["cpu", "gpu"]:
+            for device in devices:
                 for test_class in [TestSimpleRNN, TestLSTM, TestGRU]:
                     suite.addTest(test_class(time_major, direction, device))
     return suite
