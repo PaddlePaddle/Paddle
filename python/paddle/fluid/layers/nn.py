@@ -8333,7 +8333,7 @@ def gather_nd(input, index, name=None):
                          = [23]
 
     Args:
-        input (Tensor): The input Tensor which it's data typeshould be bool, float32, float64, int32, int64.
+        input (Tensor): The input Tensor which it's data type should be bool, float32, float64, int32, int64.
         index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
                         Its dtype should be int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
@@ -8350,6 +8350,7 @@ def gather_nd(input, index, name=None):
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             x = fluid.data(name='x', shape=[3, 4, 5], dtype='float32')
             index = fluid.data(name='index', shape=[2, 2], dtype='int32')

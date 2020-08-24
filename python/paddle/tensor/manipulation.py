@@ -473,9 +473,6 @@ def stack(x, axis=0, name=None):
 
 def split(x, num_or_sections, axis=0, name=None):
     """
-	:alias_main: paddle.split
-        :alias: paddle.tensor.split, paddle.tensor.manipulation.split
-    
     Split the input tensor into multiple sub-Tensors.
     
     Args:
@@ -708,8 +705,8 @@ def gather(x, index, axis=None, name=None):
             paddle.disable_static()
             input_1 = np.array([[1,2],[3,4],[5,6]])
             index_1 = np.array([0,1])
-            input = fluid.to_tensor(input_1)
-            index = fluid.to_tensor(index_1)
+            input = paddle.to_tensor(input_1)
+            index = paddle.to_tensor(index_1)
             output = paddle.gather(input, index, axis=0)
             # expected output: [[1,2],[3,4]]
     """
