@@ -12146,7 +12146,10 @@ def logical_and(x, y, out=None, name=None):
             res = paddle.logical_and(x, y)
             print(res.numpy()) # [True False False False]
     """
-
+    if x.shape != y.shape:
+        raise TypeError(
+            'Input tensors must be same shape, but received x \'s shape: %s, y \'s shape: %s '
+            % (x.shape, y.shape))
     return _logical_op(
         op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12188,7 +12191,10 @@ def logical_or(x, y, out=None, name=None):
             res = paddle.logical_or(x, y)
             print(res.numpy()) # [True  True  True False]
     """
-
+    if x.shape != y.shape:
+        raise TypeError(
+            'Input tensors must be same shape, but received x \'s shape: %s, y \'s shape: %s '
+            % (x.shape, y.shape))
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12230,7 +12236,10 @@ def logical_xor(x, y, out=None, name=None):
             res = paddle.logical_xor(x, y)
             print(res.numpy()) # [False  True  True False]
     """
-
+    if x.shape != y.shape:
+        raise TypeError(
+            'Input tensors must be same shape, but received x \'s shape: %s, y \'s shape: %s '
+            % (x.shape, y.shape))
     return _logical_op(
         op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True)
 

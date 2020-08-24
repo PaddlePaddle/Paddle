@@ -88,6 +88,7 @@ from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
 from .layer.common import Flatten  #DEFINE_ALIAS
 from .layer.common import UpSample  #DEFINE_ALIAS
+from .layer.common import Bilinear  #DEFINE_ALIAS
 from .layer.common import Dropout  #DEFINE_ALIAS
 from .layer.common import Dropout2D  #DEFINE_ALIAS
 from .layer.common import Dropout3D  #DEFINE_ALIAS
