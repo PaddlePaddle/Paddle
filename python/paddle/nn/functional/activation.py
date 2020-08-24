@@ -665,7 +665,7 @@ def selu(x,
 
             paddle.disable_static()
 
-            x = paddle.to_tensor(np.array([[0, 1],[2, 3]]))
+            x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
             out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
     """
     if in_dygraph_mode():
