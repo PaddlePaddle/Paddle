@@ -179,7 +179,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._node_type_comm = None
         self._all_comm = None
 
-        self.single_run = False
+        self._non_distributed = False
 
         if not self._is_collective:
             self._hdfs_name = kwargs.get("hdfs_name", "")
@@ -325,13 +325,14 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self.generate_role()
         return self._server_endpoints
 
-    def is_single_run(self):
+    def _is_non_distributed(self):
         """
-        is run in single card or in single node
+        Return True if indispensable environment for fleetrun is not found 
+        (use python-run to launch fleet-code directly)
         """
         if not self._role_is_generated:
             self.generate_role()
-        return self.single_run
+        return self._non_distributed
 
     def _get_rank(self):
         """
@@ -358,7 +359,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                                                "").split(",")
             if self._server_endpoints is None:
                 self._server_endpoints = ""
-                self.single_run = True
+                self._non_distributed = True
             self._server_endpoints = self._server_endpoints.split(",")
             trainers_num = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
             training_role = os.getenv("TRAINING_ROLE", "TRAINER")
@@ -399,7 +400,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             assert self._cur_endpoint is None, "can't find PADDLE_TRAINER_ENDPOINTS"
             self._worker_endpoints = "127.0.0.1:6170"
             self._cur_endpoint = self._worker_endpoints
-            self.single_run = True
+            self._non_distributed = True
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
         self._node_num = len(

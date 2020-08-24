@@ -253,11 +253,13 @@ class Fleet(object):
         """
         self._runtime_handle._stop_worker()
 
-    def is_single_run(self):
+    def _is_non_distributed(self):
         """
-        is run in single card or in single node
+        Return True if indispensable environment for fleetrun is not found 
+        (use python-run to launch fleet-code directly)
+        Fleet-code will roll back the non_distributed code
         """
-        return self._role_maker.is_single_run()
+        return self._role_maker._is_non_distributed()
 
     def save_inference_model(self,
                              executor,
@@ -394,7 +396,7 @@ class Fleet(object):
         optimize_ops = []
         params_grads = []
 
-        if self.is_single_run():
+        if self._is_non_distributed():
             if self._runtime_handle is None:
                 self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
