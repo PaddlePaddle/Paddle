@@ -358,7 +358,9 @@ class Bilinear(layers.Layer):
     This layer performs bilinear on two inputs.
 
     .. math::
+    
       out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,size-1
+
       out = out + b
 
     In this formula:
