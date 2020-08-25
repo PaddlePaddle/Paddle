@@ -70,7 +70,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                                                          compiled_config)
 
             # for heter program
-            if self.role_maker.is_heter_parameter_server_mode:
+            if self.role_maker.is_heter_parameter_server:
                 from paddle.fluid.incubate.fleet.parameter_server.ir import heter_trainer_pass as heter_worker
                 if self.role_maker._is_heter_worker():
                     # for heter worker
