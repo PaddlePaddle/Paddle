@@ -27,7 +27,6 @@ from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
 from ..fluid.layers import strided_slice  #DEFINE_ALIAS
 from ..fluid.layers import transpose  #DEFINE_ALIAS
-from ..fluid.layers import unique  #DEFINE_ALIAS
 from ..fluid.layers import unstack  #DEFINE_ALIAS
 
 from ..fluid.layers import scatter_nd_add  #DEFINE_ALIAS
@@ -606,6 +605,126 @@ def squeeze(x, axis=None, name=None):
         axis = list(axis)
 
     return layers.squeeze(x, axis, name)
+
+
+def unique(x,
+           return_index=False,
+           return_inverse=False,
+           return_counts=False,
+           axis=None,
+           name=None):
+    """
+    Returns the unique elements of `x` in ascending order.
+
+    Args:
+        x(Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
+        return_index(bool, optional): If True, also return the indices of the input tensor that
+            result in the unique Tensor.
+        return_inverse(bool, optional): If True, also return the indices for where elements in
+            the original input ended up in the returned unique tensor.
+        return_counts(bool, optional): If True, also return the counts for each unique element.
+        axis(int, optional): The axis to apply unique. If None, the input will be flattened.
+            Default: None.
+        name(str, optional): Name for the operation. For more information, please refer to
+            :ref:`api_guide_Name`. Default: None.
+
+    Returns: 
+        tuple: (out, indices, inverse, counts). `out` is the unique tensor for `x`. `indices` is \
+            provided only if `return_index` is True. `inverse` is provided only if `return_inverse` \
+            is True. `counts` is provided only if `return_counts` is True.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            paddle.disable_static()
+            x_data = np.array([2, 3, 3, 1, 5, 3])
+            x = paddle.to_tensor(x_data)
+            unique = paddle.unique(x)
+            np_unique = unique.numpy() # [1 2 3 5]
+            _, indices, inverse, counts = paddle.unique(x, return_index=True, return_inverse=True, return_counts=True)
+            np_indices = indices.numpy() # [3 0 1 4]
+            np_inverse = inverse.numpy() # [1 2 2 0 3 2]
+            np_counts = counts.numpy() # [1 1 3 1]
+
+            x_data = np.array([[2, 1, 3], [3, 0, 1], [2, 1, 3]])
+            unique = paddle.unique(x)
+            np_unique = unique.numpy() # [0 1 2 3]
+
+            unique = paddle.unique(x, axis=0)
+            np_unique = unique.numpy() 
+            # [[2 1 3]
+            #  [3 0 1]]
+    """
+    if axis is None:
+        axis = []
+    else:
+        axis = [axis]
+
+    if in_dygraph_mode():
+        out, inverse, indices, counts = core.ops.unique(
+            x, 'dtype',
+            convert_np_dtype_to_dtype_('int32'), 'return_index', return_index,
+            'return_inverse', return_inverse, 'return_counts', return_counts,
+            'axis', axis, "is_sorted", True)
+        outs = [out]
+        if return_index:
+            outs.append(indices)
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+
+        if len(outs) == 1:
+            return outs[0]
+
+        return tuple(outs)
+
+    check_variable_and_dtype(x, "input",
+                             ['float32', 'float64', 'int32', 'int64'], 'unique')
+    check_type(return_index, 'return_index', bool, 'unique')
+    check_type(return_inverse, 'return_inverse', bool, 'unique')
+    check_type(return_counts, 'return_counts', bool, 'unique')
+    if len(axis) != 0:
+        check_type(axis[0], 'axis', int, 'unique')
+
+    helper = LayerHelper('unique', **locals())
+    attrs = {
+        'dtype': int(core.VarDesc.VarType.INT32),
+        "return_index": return_index,
+        "return_inverse": return_inverse,
+        "return_counts": return_counts,
+        "axis": axis,
+        "is_sorted": True
+    }
+    out = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
+    inverse = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
+    outputs = {"Out": out, "Index": inverse}
+    outs = [out]
+    if return_index:
+        indices = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
+        outputs["Indices"] = indices
+        outs.append(indices)
+    if return_inverse:
+        outs.append(inverse)
+    if return_counts:
+        counts = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
+        outputs["Counts"] = counts
+        outs.append(counts)
+
+    helper.append_op(
+        type="unique", inputs={"X": x}, attrs=attrs, outputs=outputs)
+
+    if len(outs) == 1:
+        return outs[0]
+
+    return tuple(outs)
 
 
 def unsqueeze(x, axis, name=None):
