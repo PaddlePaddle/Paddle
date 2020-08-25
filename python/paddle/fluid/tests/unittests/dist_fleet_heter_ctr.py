@@ -51,7 +51,7 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
         Returns:
             avg_cost: LoDTensor of cost.
         """
-        dnn_input_dim, lr_input_dim = int(62), int(100410)
+        dnn_input_dim, lr_input_dim = int(1e5), int(1e5)
 
         dnn_data = fluid.layers.data(
             name="dnn_data",
@@ -165,27 +165,12 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
             try:
                 pass_start = time.time()
                 while True:
-                    loss_val = exe.run(program=fluid.default_main_program(),
-                                       fetch_list=[self.avg_cost.name])
-                    loss_val = np.mean(loss_val)
-                    # TODO(randomly fail)
-                    #   reduce_output = fleet_util.all_reduce(
-                    #       np.array(loss_val), mode="sum")
-                    #   loss_all_trainer = fleet_util.all_gather(float(loss_val))
-                    #   loss_val = float(reduce_output) / len(loss_all_trainer)
-                    message = "TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
-                                                                      loss_val)
-                    fleet_util.print_on_rank(message, 0)
+                    exe.run(program=fleet.main_program)
 
                 pass_time = time.time() - pass_start
             except fluid.core.EOFException:
                 self.reader.reset()
 
-        model_dir = tempfile.mkdtemp()
-        fleet.save_inference_model(
-            exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
-        self.check_model_right(model_dir)
-        shutil.rmtree(model_dir)
         fleet.stop_worker()
 
     def do_dataset_training(self, fleet):

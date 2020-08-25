@@ -951,6 +951,8 @@ def _get_input_map_from_op(varmap, op):
         for varname in op.input(key):
             if varname == "@EMPTY@":
                 continue
+            if "lod_tensor_blocking_queue" in varname:
+                continue
             vars.append(varmap[varname])
         if len(vars) == 1:
             iomap[key] = vars[0]
@@ -966,6 +968,8 @@ def _get_output_map_from_op(varmap, op):
         vars = []
         for varname in op.output(key):
             if varname == "@EMPTY@":
+                continue
+            if "lod_tensor_blocking_queue" in varname:
                 continue
             vars.append(varmap[varname])
         if len(vars) == 1:
