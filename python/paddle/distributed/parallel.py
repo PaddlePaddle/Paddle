@@ -17,6 +17,7 @@ import six
 
 from paddle import compat as cpt
 from paddle.distributed.launch import get_cluster_and_pod, _print_arguments
+from paddle.distributed.utils import _update_trainer_env
 
 # deprecated module import
 from paddle.fluid import core
@@ -96,7 +97,7 @@ def _update_env_vars(rank, options):
     if args.started_port is None:
         default_port = os.environ.get("PADDLE_MASTER_PORT", None)
         if default_port is None:
-            raise RuntimeError(
+            raise ValueError(
                 "Data parallel training start failed. If you start data parallel "
                 "training by `paddle.distributed.launch` module, Please ensure "
                 "that one of the following rules is met:\n"
@@ -144,15 +145,8 @@ def _update_env_vars(rank, options):
         raise RuntimeError(
             "The expected trainer is not exists, its trainer rank is %d." %
             rank)
-    proc_env = {
-        "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in trainer.gpus]),
-        "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-        "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
-        "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-        "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
-    }
     # no copy, each process will hold env vars itself
-    os.environ.update(proc_env)
+    _update_trainer_env(os.environ, cluster, trainer)
 
     # print config
     if args.print_config and rank == 0:
@@ -164,7 +158,7 @@ def _check_env_vars():
         var = os.environ.get(var_name, None)
         if var is None:
             raise ValueError("paddle.distributed initialize error,"
-                             "environment variable %s is needed, but not set.",
+                             "environment variable %s is needed, but not set." %
                              var_name)
 
     _check_var_exists("FLAGS_selected_gpus")
@@ -186,7 +180,6 @@ def init_parallel_env(rank=-1, backend='nccl', **options):
         backend(str, optional): The backend to communication between multiple devices.
             Now only support ``nccl`` . Default value is ``nccl`` .
         **options(dict, optional): Other initial parallel execution environment configuration options.
-        
             The following options are currently supported:
 
             - cluster_node_ips: Paddle cluster nodes ips, such as "192.168.0.16,192.168.0.17". Default: "127.0.0.1".
@@ -202,7 +195,7 @@ def init_parallel_env(rank=-1, backend='nccl', **options):
             - use_paddlecloud: Wheter to use paddlecloud platform to run your multi-process job. Default: False.
 
     Returns:
-        ParallelStrategy
+        None
         
     Examples:
         .. code-block:: python
@@ -226,11 +219,11 @@ def init_parallel_env(rank=-1, backend='nccl', **options):
                 paddle.disable_static()
                 
                 # 2. initialize parallel environment
-                strategy = dist.init_parallel_env(rank)
+                dist.init_parallel_env(rank)
 
                 # 3. create data parallel layer & optimizer
                 layer = LinearNet()
-                dp_layer = dist.DataParallel(layer, strategy)
+                dp_layer = paddle.DataParallel(layer)
 
                 loss_fn = nn.MSELoss()
                 sgd = opt.SGD(
@@ -293,5 +286,3 @@ def init_parallel_env(rank=-1, backend='nccl', **options):
         parallel_helper._set_parallel_ctx(
             core.NCCLParallelContext(strategy, place))
         parallel_helper._init_parallel_ctx()
-
-    return strategy

@@ -243,61 +243,98 @@ class DataParallel(layers.Layer):
     Run the dygraph module with data parallelism.
 
     Currently, DataParallel class only supports to run the dynamic graph
-    with multi-process. The usage is:
-    `python -m paddle.distributed.launch --selected_gpus=0,1 dynamic_graph_test.py`.
-    And the content of `dynamic_graph_test.py` is the code of examples.
+    with multi-process. 
+    
+    Now supports two ways to start training:
+
+    1. start by ``paddle.distributed.spawn`` method, for example:
+
+        ``python demo.py`` (spawn need to be called in ``__main__`` method)
+    
+    2. start by ``paddle.distributed.launch`` module, for example:
+    
+        ``python -m paddle.distributed.launch --selected_gpus=0,1 demo.py`` .
+
+    And the content of `demo.py` is the code of examples.
 
     Args:
         layers(Layer): The module that should be executed by data parallel.
-        strategy(ParallelStrategy): The strategy of data parallelism, contains 
-            environment configuration related to parallel execution.
-
+        strategy(ParallelStrategy, optional): (deprecated) The strategy of data parallelism, 
+            contains environment configuration related to parallel execution. Default: None.
+            
     Returns:
         Layer: The data paralleled module.
 
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.nn as nn
+            import paddle.optimizer as opt
+            import paddle.distributed as dist
 
-            place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-            with fluid.dygraph.guard(place):
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear1 = nn.Linear(10, 10)
+                    self._linear2 = nn.Linear(10, 1)
+                    
+                def forward(self, x):
+                    return self._linear2(self._linear1(x))
 
-                # prepare the data parallel context
-                strategy = fluid.dygraph.prepare_context()
+            def train(rank):
+                # 1. enable dynamic mode
+                paddle.disable_static()
+                
+                # 2. initialize parallel environment
+                dist.init_parallel_env(rank)
 
-                linear = fluid.dygraph.Linear(1, 10, act="softmax")
-                adam = fluid.optimizer.AdamOptimizer(
-                    learning_rate=0.001, parameter_list=linear.parameters())
+                # 3. create data parallel layer & optimizer
+                layer = LinearNet()
+                dp_layer = paddle.DataParallel(layer)
 
-                # make the module become the data parallelism module
-                linear = fluid.dygraph.DataParallel(linear, strategy)
+                loss_fn = nn.MSELoss()
+                sgd = opt.SGD(
+                    learning_rate=0.001, parameter_list=dp_layer.parameters())
 
-                x_data = np.random.random(size=[10, 1]).astype(np.float32)
-                data = fluid.dygraph.to_variable(x_data)
+                # 4. run layer
+                inputs = paddle.randn([10, 10], 'float32')
+                outputs = dp_layer(inputs)
+                labels = paddle.randn([10, 1], 'float32')
+                loss = loss_fn(outputs, labels)
+                
+                loss = dp_layer.scale_loss(loss)
+                loss.backward()
+                dp_layer.apply_collective_grads()
 
-                hidden = linear(data)
-                avg_loss = fluid.layers.mean(hidden)
+                sgd.minimize(loss)
+                dp_layer.clear_gradients()
 
-                # scale the loss according to the number of trainers.
-                avg_loss = linear.scale_loss(avg_loss)
-
-                avg_loss.backward()
-
-                # collect the gradients of trainers.
-                linear.apply_collective_grads()
-
-                adam.minimize(avg_loss)
-                linear.clear_gradients()
+            if __name__ == '__main__':
+                # 1. start by ``paddle.distributed.spawn`` (default)
+                dist.spawn(train, args=(), nprocs=2)
+                # 2. start by ``paddle.distributed.launch``
+                # train(-1)
     """
 
-    def __init__(self, layers, strategy):
+    def __init__(self, layers, strategy=None):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
         self._layers = layers
-        self._strategy = strategy
+
+        # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
+        # It just stores some environment variables, which can be constructed by 
+        # ParallelEnv. Here it is set as an optional argument.
+        # This parameter is not removed because of compatibility with 1.x writing.
+        if strategy is not None:
+            self._strategy = strategy
+        else:
+            self._strategy = ParallelStrategy()
+            self._strategy.nranks = ParallelEnv().nranks
+            self._strategy.local_rank = ParallelEnv().local_rank
+            self._strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
+            self._strategy.current_endpoint = ParallelEnv().current_endpoint
 
     def forward(self, *inputs, **kwargs):
         return self._layers(*inputs, **kwargs)

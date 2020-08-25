@@ -178,11 +178,11 @@ def start_processes(func,
                 paddle.disable_static()
                 
                 # 2. initialize parallel environment
-                strategy = dist.init_parallel_env(rank)
+                dist.init_parallel_env(rank)
 
                 # 3. create data parallel layer & optimizer
                 layer = LinearNet()
-                dp_layer = dist.DataParallel(layer, strategy)
+                dp_layer = paddle.DataParallel(layer)
 
                 loss_fn = nn.MSELoss()
                 sgd = opt.SGD(
@@ -295,11 +295,11 @@ def spawn(func, args=(), nprocs=1, join=True, daemon=False):
                 paddle.disable_static()
                 
                 # 2. initialize parallel environment
-                strategy = dist.init_parallel_env(rank)
+                dist.init_parallel_env(rank)
 
                 # 3. create data parallel layer & optimizer
                 layer = LinearNet()
-                dp_layer = dist.DataParallel(layer, strategy)
+                dp_layer = paddle.DataParallel(layer)
 
                 loss_fn = nn.MSELoss()
                 sgd = opt.SGD(

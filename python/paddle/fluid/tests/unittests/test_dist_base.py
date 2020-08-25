@@ -460,13 +460,12 @@ class TestParallelDyGraphRunnerBase(object):
 
         # 3. init parallel env
         if args.update_method == "nccl2":
-            strategy = paddle.distributed.init_parallel_env(
-                rank=args.trainer_id)
+            paddle.distributed.init_parallel_env(rank=args.trainer_id)
 
         # 4. train model
         model, train_reader, opt = self.get_model()
         if args.update_method == "nccl2":
-            model = paddle.distributed.DataParallel(model, strategy)
+            model = paddle.DataParallel(model)
 
         out_losses = []
         for step_id, data in enumerate(train_reader()):
