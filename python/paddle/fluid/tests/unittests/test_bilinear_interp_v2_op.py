@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.nn.functional import interpolate
+import paddle
 
 
 def bilinear_interp_np(input,
@@ -582,6 +583,20 @@ class TestBilinearInterpOpAPI(unittest.TestCase):
             x_data, out_h=12, out_w=12, align_corners=True)
         for res in results:
             self.assertTrue(np.allclose(res, expect_res))
+
+
+class TestUpsampleBilinear2dInterpOpAPI2_0(unittest.TestCase):
+    def test_case(self):
+
+        # dygraph
+        x_data = np.random.random((1, 3, 6, 6)).astype("float32")
+        upsample = paddle.nn.UpsamplingBilinear2d(scale_factor=[2, 2])
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(x_data)
+            interp = upsample(x)
+            expect = bilinear_interp_np(
+                x_data, out_h=12, out_w=12, align_corners=True)
+            self.assertTrue(np.allclose(interp.numpy(), expect))
 
 
 class TestBilinearInterpOpAPI_dy(unittest.TestCase):

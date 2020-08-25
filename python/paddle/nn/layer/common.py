@@ -343,10 +343,9 @@ class UpsamplingNearest2d(layers.Layer):
                  scale_factor=None,
                  data_format='NCHW',
                  name=None):
-        super(UpSample, self).__init__()
+        super(UpsamplingNearest2d, self).__init__()
         self.size = size
         self.scale_factor = scale_factor
-        self.mode = mode.lower()
         self.data_format = data_format
         self.name = name
 
@@ -427,10 +426,9 @@ class UpsamplingBilinear2d(layers.Layer):
                  scale_factor=None,
                  data_format='NCHW',
                  name=None):
-        super(UpSample, self).__init__()
+        super(UpsamplingBilinear2d, self).__init__()
         self.size = size
         self.scale_factor = scale_factor
-        self.mode = mode.lower()
         self.data_format = data_format
         self.name = name
 

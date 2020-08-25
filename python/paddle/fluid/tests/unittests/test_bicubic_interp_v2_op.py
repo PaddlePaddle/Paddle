@@ -326,19 +326,24 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
                 scale_factor=scale_tensor,
                 mode='bicubic',
                 align_corners=False)
+            out6 = interpolate(
+                x, scale_factor=2.0, mode='bicubic', align_corners=False)
+            out7 = interpolate(
+                x, scale_factor=[2.0, 2.0], mode='bicubic', align_corners=False)
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            results = exe.run(fluid.default_main_program(),
-                              feed={
-                                  "x": x_data,
-                                  "dim": dim_data,
-                                  "shape_tensor": shape_data,
-                                  "actual_size": actual_size_data,
-                                  "scale_tensor": scale_data
-                              },
-                              fetch_list=[out1, out2, out3, out4, out5],
-                              return_numpy=True)
+            results = exe.run(
+                fluid.default_main_program(),
+                feed={
+                    "x": x_data,
+                    "dim": dim_data,
+                    "shape_tensor": shape_data,
+                    "actual_size": actual_size_data,
+                    "scale_tensor": scale_data
+                },
+                fetch_list=[out1, out2, out3, out4, out5, out6, out7],
+                return_numpy=True)
 
             expect_res = bicubic_interp_np(
                 x_data, out_h=12, out_w=12, align_corners=False)
@@ -452,6 +457,15 @@ class TestBicubicOpError(unittest.TestCase):
                     align_corners=False,
                     scale_factor=None)
 
+            def test_align_corners_and_nearest():
+                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+                out = interpolate(
+                    x,
+                    size=None,
+                    mode='nearest',
+                    align_corners=True,
+                    scale_factor=None)
+
             self.assertRaises(ValueError, test_mode_type)
             self.assertRaises(ValueError, test_input_shape)
             self.assertRaises(TypeError, test_align_corcers)
@@ -463,6 +477,7 @@ class TestBicubicOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_scale_type)
             self.assertRaises(ValueError, test_align_mode)
             self.assertRaises(ValueError, test_outshape_and_scale)
+            self.assertRaises(ValueError, test_align_corners_and_nearest)
 
 
 if __name__ == "__main__":
