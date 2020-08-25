@@ -305,4 +305,14 @@ class DistributedBatchSampler(BatchSampler):
         return num_samples // self.batch_size
 
     def set_epoch(self, epoch):
+        """
+        Sets the epoch number. When :attr:`shuffle=True`, this number is used
+        as seeds of random numbers. By default, users may not set this, all
+        replicas (workers) use a different random ordering for each epoch.
+        If set same number at each epoch, this sampler will yield the same
+        ordering at all epoches.
+
+        Arguments:
+            epoch (int): Epoch number.
+        """
         self.epoch = epoch

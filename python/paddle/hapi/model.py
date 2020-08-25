@@ -1032,13 +1032,13 @@ class Model(object):
 
                 class Mnist(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyNet, self).__init__()
+                        super(Mnist, self).__init__()
                         self._fc = Linear(784, 1, act='softmax')
 
-                  @paddle.jit.to_static # If save for inference in dygraph, need this
-                  def forward(self, x):
-                      y = self._fc(x)
-                      return y
+                    @paddle.jit.to_static # If save for inference in dygraph, need this
+                    def forward(self, x):
+                        y = self._fc(x)
+                        return y
 
                 dynamic = True # False
                 device = paddle.set_device('cpu')
