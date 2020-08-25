@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
 
-# Situation 1: repeat_times is a list(without tensor)
+# Situation 1: repeat_times is a list (without tensor)
 class TestTileOpRank1(OpTest):
     def setUp(self):
         self.op_type = "tile"
@@ -81,7 +81,7 @@ class TestTileOpRank4(TestTileOpRank1):
         self.repeat_times = (3, 2, 1, 2)
 
 
-# Situation 2: repeat_times is a list(with tensor)
+# Situation 2: repeat_times is a list (with tensor)
 class TestTileOpRank1_tensor_attr(OpTest):
     def setUp(self):
         self.op_type = "tile"
@@ -162,7 +162,7 @@ class TestTileOpInteger(OpTest):
         self.op_type = "tile"
         self.inputs = {
             'X': np.random.randint(
-                10, size=(2, 4, 5)).astype("int32")
+                10, size=(4, 4, 5)).astype("int32")
         }
         self.attrs = {'repeat_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
@@ -211,38 +211,40 @@ class TestTileError(unittest.TestCase):
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
             self.assertRaises(TypeError, paddle.tile, x2, repeat_times)
             x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
-            x3.stop_gradient = True
+            x3.stop_gradient = False
             self.assertRaises(ValueError, paddle.tile, x3, repeat_times)
+
+
+class TestTileAPIStatic(unittest.TestCase):
+    def test_api(self):
+        with program_guard(Program(), Program()):
+            repeat_times = [2, 2]
+            x1 = fluid.layers.data(name='x1', shape=[4], dtype="int32")
+            out = paddle.tile(x1, repeat_times)
+            positive_2 = fluid.layers.fill_constant([1], dtype="int32", value=2)
+            out2 = paddle.tile(x1, repeat_times=[positive_2, 2])
 
 
 # Test python API
 class TestTileAPI(unittest.TestCase):
     def test_api(self):
-        input = np.random.random([12, 14]).astype("float32")
-        x = fluid.layers.data(
-            name='x', shape=[12, 14], append_batch_size=False, dtype="float32")
+        with fluid.dygraph.guard():
+            np_x = np.random.random([12, 14]).astype("float32")
+            x = paddle.to_variable(np_x)
 
-        positive_2 = fluid.layers.fill_constant([1], "int32", 2)
-        repeat_times = fluid.layers.data(
-            name="repeat_times", shape=[2], append_batch_size=False)
+            positive_2 = np.array([2]).astype("int32")
+            positive_2 = paddle.to_variable(positive_2)
 
-        out_1 = paddle.tile(x, repeat_times=[2, 3])
-        out_2 = paddle.tile(x, repeat_times=[positive_2, 3])
-        out_3 = paddle.tile(x, repeat_times=repeat_times)
+            repeat_times = np.array([2, 3]).astype("int32")
+            repeat_times = paddle.to_variable(repeat_times)
 
-        g0 = fluid.backward.calc_gradient(out_2, x)
+            out_1 = paddle.tile(x, repeat_times=[2, 3])
+            out_2 = paddle.tile(x, repeat_times=[positive_2, 3])
+            out_3 = paddle.tile(x, repeat_times=repeat_times)
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
-                                      feed={
-                                          "x": input,
-                                          "repeat_times":
-                                          np.array([1, 3]).astype("int32")
-                                      },
-                                      fetch_list=[out_1, out_2, out_3])
-        assert np.array_equal(res_1, np.tile(input, (2, 3)))
-        assert np.array_equal(res_2, np.tile(input, (2, 3)))
-        assert np.array_equal(res_3, np.tile(input, (1, 3)))
+            assert np.array_equal(out_1.numpy(), np.tile(np_x, (2, 3)))
+            assert np.array_equal(out_2.numpy(), np.tile(np_x, (2, 3)))
+            assert np.array_equal(out_3.numpy(), np.tile(np_x, (2, 3)))
 
 
 if __name__ == "__main__":

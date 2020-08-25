@@ -22,6 +22,8 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
+np.random.seed(10)
+
 
 class TestMeanOp(OpTest):
     def setUp(self):
@@ -74,10 +76,105 @@ class TestFP16MeanOp(TestMeanOp):
                 place, ['X'], 'Out', max_relative_error=0.8)
 
 
+def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
+    if isinstance(axis, list):
+        axis = tuple(axis)
+    if reduce_all:
+        axis = None
+    return np.mean(x, axis=axis, keepdims=keepdim)
+
+
+class TestReduceMeanOp(OpTest):
+    def setUp(self):
+        self.op_type = 'reduce_mean'
+        self.dtype = 'float64'
+        self.shape = [2, 3, 4, 5]
+        self.axis = [0]
+        self.keepdim = False
+        self.reduce_all = False
+        self.set_attrs()
+
+        np.random.seed(10)
+        x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out_np = ref_reduce_mean(x_np, self.axis, self.keepdim, self.reduce_all)
+        self.inputs = {'X': x_np}
+        self.outputs = {'Out': out_np}
+        self.attrs = {
+            'dim': self.axis,
+            'keep_dim': self.keepdim,
+            'reduce_all': self.reduce_all
+        }
+
+    def set_attrs(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['Out'])
+
+
+class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
+    def setUp(self):
+        self.op_type = 'reduce_mean'
+        self.dtype = 'float64'
+        self.shape = [2, 3, 4, 5]
+
+        x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out_np = np.mean(x_np, axis=0)
+        self.inputs = {'X': x_np}
+        self.outputs = {'Out': out_np}
+
+
+class TestReduceMeanOpFloat32(TestReduceMeanOp):
+    def set_attrs(self):
+        self.dtype = 'float32'
+
+
+class TestReduceMeanOpShape1D(TestReduceMeanOp):
+    def set_attrs(self):
+        self.shape = [100]
+
+
+class TestReduceMeanOpShape6D(TestReduceMeanOp):
+    def set_attrs(self):
+        self.shape = [2, 3, 4, 5, 6, 7]
+
+
+class TestReduceMeanOpAxisAll(TestReduceMeanOp):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+
+
+class TestReduceMeanOpAxisTuple(TestReduceMeanOp):
+    def set_attrs(self):
+        self.axis = (0, 1, 2)
+
+
+class TestReduceMeanOpAxisNegative(TestReduceMeanOp):
+    def set_attrs(self):
+        self.axis = [-2, -1]
+
+
+class TestReduceMeanOpKeepdimTrue1(TestReduceMeanOp):
+    def set_attrs(self):
+        self.keepdim = True
+
+
+class TestReduceMeanOpKeepdimTrue2(TestReduceMeanOp):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+        self.keepdim = True
+
+
+class TestReduceMeanOpReduceAllTrue(TestReduceMeanOp):
+    def set_attrs(self):
+        self.reduce_all = True
+
+
 class TestMeanAPI(unittest.TestCase):
-    """
-    test paddle.tensor.stat.mean
-    """
+    # test paddle.tensor.stat.mean
 
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
@@ -86,6 +183,7 @@ class TestMeanAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_api_static(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', self.x_shape)
             out1 = paddle.mean(x)
@@ -100,9 +198,11 @@ class TestMeanAPI(unittest.TestCase):
                           fetch_list=[out1, out2, out3, out4, out5])
         out_ref = np.mean(self.x)
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref), True)
+            self.assertEqual(np.allclose(out, out_ref, rtol=1e-04), True)
 
-    def test_api_imperative(self):
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place)
+
         def test_case(x, axis=None, keepdim=False):
             x_tensor = paddle.to_variable(x)
             out = paddle.mean(x_tensor, axis, keepdim)
@@ -111,9 +211,10 @@ class TestMeanAPI(unittest.TestCase):
                 if len(axis) == 0:
                     axis = None
             out_ref = np.mean(x, axis, keepdims=keepdim)
-            self.assertEqual(np.allclose(out.numpy(), out_ref), True)
+            self.assertEqual(
+                np.allclose(
+                    out.numpy(), out_ref, rtol=1e-04), True)
 
-        paddle.disable_static(self.place)
         test_case(self.x)
         test_case(self.x, [])
         test_case(self.x, -1)
@@ -124,9 +225,31 @@ class TestMeanAPI(unittest.TestCase):
         test_case(self.x, [0, 1, 2, 3])
         paddle.enable_static()
 
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x = fluid.data("x", shape=[10, 10], dtype="float32")
+            out = fluid.layers.reduce_mean(input=x, dim=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            x_np = np.random.rand(10, 10).astype(np.float32)
+            res = exe.run(feed={"x": x_np}, fetch_list=[out])
+        self.assertEqual(np.allclose(res[0], np.mean(x_np, axis=1)), True)
+
+        with fluid.dygraph.guard():
+            x_np = np.random.rand(10, 10).astype(np.float32)
+            x = fluid.dygraph.to_variable(x_np)
+            out = fluid.layers.reduce_mean(input=x, dim=1)
+        self.assertEqual(np.allclose(out.numpy(), np.mean(x_np, axis=1)), True)
+
     def test_errors(self):
+        paddle.disable_static()
+        x = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        x = paddle.to_tensor(x)
+        self.assertRaises(Exception, paddle.mean, x, -3)
+        self.assertRaises(Exception, paddle.mean, x, 2)
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.data('X', [10, 12], 'int8')
+            x = paddle.data('X', [10, 12], 'int32')
             self.assertRaises(TypeError, paddle.mean, x)
 
 

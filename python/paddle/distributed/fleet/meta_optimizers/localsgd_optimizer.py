@@ -25,6 +25,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         super(LocalSGDOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = []
+        self.meta_optimizers_black_list = ["GraphExecutionOptimizer"]
         self.snapshot_key = '@SNAPSHOT'
 
     def _can_apply(self):
@@ -39,7 +40,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.localsgd = False
-        dist_strategy.localsgd_configs = {'k_steps': 1}
+        dist_strategy.localsgd_configs = {}
 
     def snapshot_name(self, param_name):
         return param_name + self.snapshot_key

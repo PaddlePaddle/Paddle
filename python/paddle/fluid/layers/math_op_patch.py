@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import warnings
 import inspect
+import paddle
 
 from .. import core
 from ..framework import Variable, unique_name
@@ -45,6 +46,7 @@ EXPRESSION_MAP = {
     "__pow__": "A ** B",
     "__rpow__": "A **= B",
     "__floordiv__": "A //B",
+    "__rfloordiv__": "A //= B",
     "__mod__": "A % B",
     "__eq__": "A == B",
     "__ne__": "A != B",
@@ -53,6 +55,31 @@ EXPRESSION_MAP = {
     "__gt__": "A > B",
     "__ge__": "A >= B"
 }
+
+# method for Tensor from paddle.tensor
+# edit it when paddle.tensor has new method about Tensor operation
+common_methods = [
+    'exp', 'tanh', 'atan', 'sqrt', 'rsqrt', 'abs', 'ceil', 'floor', 'cos',
+    'acos', 'asin', 'sin', 'sinh', 'cosh', 'round', 'reciprocal', 'square',
+    'rank', 'matmul', 'dot', 'norm', 'transpose', 'dist', 't', 'cross',
+    'cholesky', 'bmm', 'histogram', 'equal', 'greater_equal', 'greater_than',
+    'is_empty', 'isfinite', 'less_equal', 'less_than', 'logical_and',
+    'logical_not', 'logical_or', 'logical_xor', 'not_equal', 'reduce_all',
+    'reduce_any', 'allclose', 'equal_all', 'cast', 'expand', 'expand_as',
+    'tile', 'flatten', 'gather', 'gather_nd', 'reshape', 'reverse', 'scatter',
+    'scatter_nd_add', 'scatter_nd', 'shard_index', 'slice', 'split', 'squeeze',
+    'strided_slice', 'unique', 'unique_with_counts', 'unsqueeze', 'flip',
+    'unbind', 'roll', 'cumsum', 'increment', 'log', 'pow', 'reciprocal',
+    'round', 'rsqrt', 'scale', 'sign', 'stanh', 'sum', 'reduce_prod', 'max',
+    'min', 'mm', 'div', 'multiply', 'add', 'logsumexp', 'log1p', 'erf',
+    'addcmul', 'addmm', 'clamp', 'trace', 'kron', 'argmax', 'argmin', 'argsort',
+    'has_inf', 'has_nan', 'topk', 'index_select', 'nonzero', 'sort',
+    'index_sample', 'mean', 'std', 'var', 'elementwise_add', 'elementwise_div',
+    'elementwise_floordiv', 'elementwise_mod', 'elementwise_pow',
+    'elementwise_sub'
+]
+
+_already_patch_variable = False
 
 
 def monkey_patch_variable():
@@ -179,7 +206,7 @@ def monkey_patch_variable():
                    "out_dtype": out.dtype})
         return out
 
-    def _scalar_elementwise_op_(var, scale, bias):
+    def _scalar_op_(var, scale, bias):
         block = current_block(var)
         out = create_new_tmp_var(block, var.dtype)
         block.append_op(
@@ -191,27 +218,46 @@ def monkey_patch_variable():
         return out
 
     def _neg_(var):
-        return _scalar_elementwise_op_(var, -1.0, 0.0)
+        return _scalar_op_(var, -1.0, 0.0)
 
-    def _scalar_elementwise_add_(var, value):
-        return _scalar_elementwise_op_(var, 1.0, value)
+    def _scalar_add_(var, value):
+        return _scalar_op_(var, 1.0, value)
 
-    def _scalar_elementwise_sub_(var, value):
-        return _scalar_elementwise_op_(var, 1.0, -value)
+    def _scalar_sub_(var, value):
+        return _scalar_op_(var, 1.0, -value)
 
-    def _scalar_elementwise_rsub_(var, value):
-        return _scalar_elementwise_op_(var, -1.0, value)
+    def _scalar_rsub_(var, value):
+        return _scalar_op_(var, -1.0, value)
 
-    def _scalar_elementwise_mul_(var, value):
-        return _scalar_elementwise_op_(var, value, 0.0)
+    def _scalar_mul_(var, value):
+        return _scalar_op_(var, value, 0.0)
 
-    def _scalar_elementwise_div_(var, value):
-        return _scalar_elementwise_op_(var, 1.0 / value, 0.0)
+    def _scalar_div_(var, value):
+        return _scalar_op_(var, 1.0 / value, 0.0)
 
-    def _elemwise_method_creator_(method_name,
-                                  op_type,
-                                  reverse=False,
-                                  scalar_method=None):
+    # TODO(shenliang03):  currently, it supports divide, floor_divide, remainder
+    # for binary operator by using the api to achieve the type promotion
+    def _binary_method_creator_(op_type, reverse=False):
+        import paddle
+
+        def __impl__(self, other_var):
+            op = getattr(paddle, op_type)
+            if reverse:
+                return op(other_var, self)
+            else:
+                return op(self, other_var)
+
+        __impl__.__doc__ = """
+
+        See paddle.{}""".format(op_type)
+        __impl__.__name__ = op_type
+
+        return __impl__
+
+    def _binary_creator_(method_name,
+                         op_type,
+                         reverse=False,
+                         scalar_method=None):
         def __impl__(self, other_var):
             # FIXME(zjl): elementwise_div between integers cannot be converted to scale,
             # which may lose accuracy. This is a hot fix for release 1.6.
@@ -296,35 +342,56 @@ def monkey_patch_variable():
         __impl__.__name__ = method_name
         return __impl__
 
-    # inject methods
-    for method_name, op_type, reverse, scalar_method in (
-        ("__add__", "elementwise_add", False, _scalar_elementwise_add_),
-            # a+b == b+a. Do not need to reverse explicitly
-        ("__radd__", "elementwise_add", False, _scalar_elementwise_add_),
-        ("__sub__", "elementwise_sub", False, _scalar_elementwise_sub_),
-        ("__rsub__", "elementwise_sub", True, _scalar_elementwise_rsub_),
-        ("__mul__", "elementwise_mul", False, _scalar_elementwise_mul_),
-            # a*b == b*a. Do not need to reverse explicitly
-        ("__rmul__", "elementwise_mul", False, _scalar_elementwise_mul_),
-        ("__div__", "elementwise_div", False, _scalar_elementwise_div_),
-        ("__truediv__", "elementwise_div", False, _scalar_elementwise_div_),
-        ("__rdiv__", "elementwise_div", True, None),
-        ("__rtruediv__", "elementwise_div", True, None),
-        ("__pow__", "elementwise_pow", False, None),
-        ("__rpow__", "elementwise_pow", True, None),
-        ("__floordiv__", "elementwise_floordiv", False, None),
-        ("__mod__", "elementwise_mod", False, None),
-            # for logical compare
-        ("__eq__", "equal", False, None),
-        ("__ne__", "not_equal", False, None),
-        ("__lt__", "less_than", False, None),
-        ("__le__", "less_equal", False, None),
-        ("__gt__", "greater_than", False, None),
-        ("__ge__", "greater_equal", False, None)):
-        setattr(Variable, method_name,
-                _elemwise_method_creator_(method_name, op_type, reverse,
-                                          scalar_method))
+    variable_methods = [
+        #   b=-a
+        ('__neg__', _neg_),
+        ('astype', astype),
+        ('__add__', _binary_creator_('__add__', 'elementwise_add', False,
+                                     _scalar_add_)),
+        #  a+b == b+a. Do not need to reverse explicitly
+        ('__radd__',
+         _binary_creator_('__radd__', 'elementwise_add', False, _scalar_add_)),
+        ('__sub__', _binary_creator_('__sub__', 'elementwise_sub', False,
+                                     _scalar_sub_)),
+        ('__rsub__', _binary_creator_('__rsub__', 'elementwise_sub', True,
+                                      _scalar_rsub_)),
+        ('__mul__', _binary_creator_('__mul__', 'elementwise_mul', False,
+                                     _scalar_mul_)),
+        #  a*b == b*a. Do not need to reverse explicitly
+        ('__rmul__',
+         _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
+        ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,
+                                     None)),
+        ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
+                                      None)),
+        # These binary use paddle.optype
+        ('__div__', _binary_method_creator_('divide', False)),
+        ('__rdiv__', _binary_method_creator_('divide', True)),
+        ('__truediv__', _binary_method_creator_('divide', False)),
+        ('__rtruediv__', _binary_method_creator_('divide', True)),
+        ('__floordiv__', _binary_method_creator_('floor_divide', False)),
+        ('__rfloordiv__', _binary_method_creator_('floor_divide', True)),
+        ('__mod__', _binary_method_creator_('remainder', False)),
+        #  for logical compare
+        ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
+        ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
+        ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
+        ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
+        ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
+        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None))
+    ]
 
-    # b = -a
-    Variable.__neg__ = _neg_
-    Variable.astype = astype
+    global _already_patch_variable
+    if not _already_patch_variable:
+        for method in variable_methods:
+            method_name = method[0]
+            method_impl = method[1]
+            setattr(Variable, method_name, method_impl)
+    else:
+        import paddle.tensor
+        for method_name in common_methods:
+            if hasattr(Variable, method_name): continue
+            method_impl = getattr(paddle.tensor, method_name, None)
+            if method_impl: setattr(Variable, method_name, method_impl)
+
+    _already_patch_variable = True

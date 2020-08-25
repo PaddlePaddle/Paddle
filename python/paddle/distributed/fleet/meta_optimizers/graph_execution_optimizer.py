@@ -25,6 +25,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
+        self.meta_optimizers_black_list = []
 
     def _is_graph_out(self):
         return True
@@ -119,18 +120,26 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         local_build_strategy.nccl_comm_num = \
                     dist_strategy.nccl_comm_num
 
+        if self.user_defined_strategy.recompute == True:
+            logging.warn(
+                "set enable_sequential_execution=True since you have enable the recompute strategy"
+            )
+            local_build_strategy.enable_sequential_execution = True
+
         exe_strategy = self.user_defined_strategy.execution_strategy
-        node_num = self.role_maker.worker_num()
+        worker_num = self.role_maker.worker_num()
+        node_num = self.role_maker.node_num()
 
         if self.role_maker._is_collective:
-            assert node_num >= 1, "nccl2 node_num must >= 1, now:{}" % node_num
+            assert worker_num >= 1, "nccl2 worker_num must >= 1, now:{}" % worker_num
 
-        if node_num <= 1:
+        if worker_num <= 1:
             # local mode
             if local_build_strategy.nccl_comm_num > 1:
                 logging.warn("set nccl_comm_num=1 since you only have 1 node.")
             local_build_strategy.nccl_comm_num = 1
 
+        if node_num <= 1:
             if local_build_strategy.use_hierarchical_allreduce:
                 logging.warn(
                     "set hierachical_allreduce=False since you only have 1 node."

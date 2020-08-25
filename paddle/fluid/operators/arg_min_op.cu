@@ -12,18 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/arg_min_max_op_base.h"
-
+#include "paddle/fluid/operators/arg_min_max_op_base.cu.h"
 REGISTER_OP_CUDA_KERNEL(
-    arg_min,
-    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext, float>,
-    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext,
-                                    double>,
-    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext,
-                                    int64_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext,
-                                    int32_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext,
-                                    int16_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CUDADeviceContext,
-                                    uint8_t>);
+    arg_min, paddle::operators::ArgMinMaxOpCUDAKernel<float, cub::ArgMin>,
+    paddle::operators::ArgMinMaxOpCUDAKernel<double, cub::ArgMin>,
+    paddle::operators::ArgMinMaxOpCUDAKernel<int64_t, cub::ArgMin>,
+    paddle::operators::ArgMinMaxOpCUDAKernel<int32_t, cub::ArgMin>,
+    paddle::operators::ArgMinMaxOpCUDAKernel<int8_t, cub::ArgMin>);

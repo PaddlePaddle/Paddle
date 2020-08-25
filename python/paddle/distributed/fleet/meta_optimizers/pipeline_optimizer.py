@@ -95,6 +95,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
+        self.meta_optimizers_black_list = []
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
@@ -110,7 +111,7 @@ class PipelineOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.pipeline = False
-        dist_strategy.pipeline_configs = {"micro_batch": 1}
+        dist_strategy.pipeline_configs = {}
 
     def minimize_impl(self,
                       loss,

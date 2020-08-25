@@ -295,8 +295,8 @@ class ProgBarLogger(Callback):
             import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
 
-            inputs = [hapi.Input('image', [-1, 1, 28, 28], 'float32')]
-            labels = [hapi.Input('label', [None, 1], 'int64')]
+            inputs = [hapi.Input([-1, 1, 28, 28], 'float32', 'image')]
+            labels = [hapi.Input([None, 1], 'int64', 'label')]
 
             train_dataset = hapi.datasets.MNIST(mode='train')
 
@@ -305,8 +305,8 @@ class ProgBarLogger(Callback):
 
             optim = fluid.optimizer.Adam(0.001)
             model.prepare(optimizer=optim,
-                        loss_function=paddle.nn.CrossEntropyLoss(),
-                        metrics=hapi.metrics.Accuracy())
+                        loss=paddle.nn.CrossEntropyLoss(),
+                        metrics=paddle.metric.Accuracy())
 
             callback = hapi.callbacks.ProgBarLogger(log_freq=10)
             model.fit(train_dataset, batch_size=64, callbacks=callback)
@@ -431,8 +431,8 @@ class ModelCheckpoint(Callback):
             import paddle.fluid as fluid
             import paddle.incubate.hapi as hapi
 
-            inputs = [hapi.Input('image', [-1, 1, 28, 28], 'float32')]
-            labels = [hapi.Input('label', [None, 1], 'int64')]
+            inputs = [hapi.Input([-1, 1, 28, 28], 'float32', 'image')]
+            labels = [hapi.Input([None, 1], 'int64', 'label')]
 
             train_dataset = hapi.datasets.MNIST(mode='train')
 
@@ -441,8 +441,8 @@ class ModelCheckpoint(Callback):
 
             optim = fluid.optimizer.Adam(0.001)
             model.prepare(optimizer=optim,
-                        loss_function=paddle.nn.CrossEntropyLoss(),
-                        metrics=hapi.metrics.Accuracy())
+                        loss=paddle.nn.CrossEntropyLoss(),
+                        metrics=paddle.metric.Accuracy())
 
             callback = hapi.callbacks.ModelCheckpoint(save_dir='./temp')
             model.fit(train_dataset, batch_size=64, callbacks=callback)
