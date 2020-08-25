@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
-from paddle.fluid.framework import Variable
+from paddle.fluid.framework import Variable, set_flags, core
 import google.protobuf.text_format
 
 
@@ -307,6 +307,30 @@ class DistributedStrategy(object):
 
     @property
     def amp_configs(self):
+        """
+        Set automatic mixed precision training configurations. In general, amp has serveral configurable
+        settings that can be configured through a dict.
+
+        **Notes**:
+            **init_loss_scaling(float)**: The initial loss scaling factor. Default 32768.
+            **use_dynamic_loss_scaling(bool)**: Whether to use dynamic loss scaling. Default True.
+            **incr_every_n_steps(int)**: Increases loss scaling every n consecutive steps with finite gradients. Default 1000.
+            **decr_every_n_nan_or_inf(int)**: Decreases loss scaling every n accumulated steps with nan or inf gradients. Default 2.
+            **incr_ratio(float)**: The multiplier to use when increasing the loss scaling. Default 2.0.
+            **decr_ratio(float)**: The less-than-one-multiplier to use when decreasing the loss scaling. Default 0.5.
+            **custom_white_list(list[str])**: Users' custom white list which always execution fp16.
+            **custom_black_list(list[str])**: Users' custom black list which forbidden execution fp16.
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.amp = True
+            strategy.amp_configs = {
+                "init_loss_scaling": 32768,
+                "custom_white_list": ['conv2d']}
+        """
         return get_msg_dict(self.strategy.amp_configs)
 
     @amp_configs.setter
@@ -333,6 +357,17 @@ class DistributedStrategy(object):
 
     @property
     def sync_nccl_allreduce(self):
+        """
+        Indicating whether we are using synchronized all reduce in each communication thread
+        We note that system overhead is usually lower when sync_nccl_allreduce = True
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.sync_nccl_allreduce = True
+        """
         return self.strategy.sync_nccl_allreduce
 
     @sync_nccl_allreduce.setter
@@ -344,6 +379,18 @@ class DistributedStrategy(object):
 
     @property
     def use_hierarchical_allreduce(self):
+        """
+        Indicating whether we are using hierarchical allreduce in collective communication
+        Hierarchical allreduce often does allreduce within a certain node group and then do
+        allreduce among the leaders of each group
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.use_hierarchical_allreduce = True
+        """
         return self.strategy.use_hierarchical_allreduce
 
     @use_hierarchical_allreduce.setter
@@ -357,6 +404,17 @@ class DistributedStrategy(object):
 
     @property
     def hierarchical_allreduce_inter_nranks(self):
+        """
+        Number of ranks for low level node groups in hierarchical allreduce
+        Default value: number of GPU cards on each single GPU machine
+
+        Example:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.hierarchical_allreduce_inter_nranks = 8
+        """
         return self.strategy.hierarchical_allreduce_inter_nranks
 
     @hierarchical_allreduce_inter_nranks.setter
@@ -370,6 +428,19 @@ class DistributedStrategy(object):
 
     @property
     def sync_batch_norm(self):
+        """
+        Indicating whether we are using sync_batch_norm to do synchronous batch normalization among all training nodes.
+        
+        Default value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.sync_batch_norm = True
+        """
+
         return self.strategy.sync_batch_norm
 
     @sync_batch_norm.setter
@@ -381,6 +452,17 @@ class DistributedStrategy(object):
 
     @property
     def fuse_all_reduce_ops(self):
+        """
+        Indicating whether we are using fuse_all_reduce_ops for gradient fusion during backward phase of training
+        Default value: True
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fuse_all_reduce_ops = False
+        """
         return self.strategy.fuse_all_reduce_ops
 
     @fuse_all_reduce_ops.setter
@@ -392,6 +474,18 @@ class DistributedStrategy(object):
 
     @property
     def fuse_grad_size_in_MB(self):
+        """
+        Specifying the size of gradient to fuse in Mega-Bytes
+
+        Default value: 32
+
+        Examples:
+          .. code-block:: python
+        
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fuse_grad_size_in_MB = 50
+        """
         return self.strategy.fuse_grad_size_in_MB
 
     @fuse_grad_size_in_MB.setter
@@ -416,6 +510,19 @@ class DistributedStrategy(object):
 
     @property
     def nccl_comm_num(self):
+        """
+        Specifying the number of NCCL communicator
+
+        Default value: 1
+
+        Examples:
+          .. code-block:: python
+        
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.nccl_comm_num = 2
+        """
+
         return self.strategy.nccl_comm_num
 
     @nccl_comm_num.setter
@@ -537,6 +644,20 @@ class DistributedStrategy(object):
 
     @property
     def dgc(self):
+        """
+        Indicating whether we are using Deep Gradient Compression training. For more details, please refer to
+        [Deep Gradient Compression](https://arxiv.org/abs/1712.01887).
+
+        Default Value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.dgc = True # by default this is false
+
+        """
         return self.strategy.dgc
 
     @dgc.setter
@@ -548,6 +669,28 @@ class DistributedStrategy(object):
 
     @property
     def dgc_configs(self):
+        """
+        Set Deep Gradient Compression training configurations. In general, dgc has serveral configurable
+        settings that can be configured through a dict.
+
+        **Notes**:
+            **rampup_begin_step(int)**: The beginning step from which gradient compression is implemented. Default 0.
+            **rampup_step(int)**: Time steps used in sparsity warm-up periods. Default is 1.
+                For example, if the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 100,
+                it will use 0.75 at 0~19 steps, and 0.9375 at 20~39 steps, and so on. And when reach sparsity array
+                ends, it will use 0.999 then and after.
+            **sparsity(list[float])**: Get top important element from gradient tensor, the ratio is (1 - sparsity).
+                Default is [0.999]. For example, if the sparsity is [0.99, 0.999], the top [1%, 0.1%] important
+                element will be transmitted.
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.dgc = True
+            strategy.dgc_configs = {"rampup_begin_step": 1252}
+        """
         return get_msg_dict(self.strategy.dgc_configs)
 
     @dgc_configs.setter
@@ -666,6 +809,68 @@ class DistributedStrategy(object):
             self.strategy.auto = flag
         else:
             print("WARNING: auto should have value of bool type")
+
+    @property
+    def cudnn_exhaustive_search(self):
+        return self.strategy.cudnn_exhaustive_search
+
+    @cudnn_exhaustive_search.setter
+    def cudnn_exhaustive_search(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.cudnn_exhaustive_search = flag
+        else:
+            print(
+                "WARNING: cudnn_exhaustive_search should have value of bool type"
+            )
+
+    @property
+    def conv_workspace_size_limit(self):
+        return self.strategy.conv_workspace_size_limit
+
+    @conv_workspace_size_limit.setter
+    def conv_workspace_size_limit(self, value):
+        if isinstance(value, int):
+            self.strategy.conv_workspace_size_limit = value
+        else:
+            print(
+                "WARNING: conv_workspace_size_limit should have value of int type"
+            )
+
+    @property
+    def cudnn_batchnorm_spatial_persistent(self):
+        return self.strategy.cudnn_batchnorm_spatial_persistent
+
+    @cudnn_batchnorm_spatial_persistent.setter
+    def cudnn_batchnorm_spatial_persistent(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.cudnn_batchnorm_spatial_persistent = flag
+        else:
+            print(
+                "WARNING: cudnn_batchnorm_spatial_persistent should have value of bool type"
+            )
+
+    def _enable_env(self):
+        strategy = self.strategy
+        keys = [
+            "FLAGS_cudnn_batchnorm_spatial_persistent",
+            "FLAGS_conv_workspace_size_limit",
+            "FLAGS_cudnn_exhaustive_search",
+            "FLAGS_sync_nccl_allreduce",
+            "FLAGS_fuse_parameter_memory_size",
+            "FLAGS_fuse_parameter_groups_size",
+        ]
+        values = [
+            bool(strategy.cudnn_batchnorm_spatial_persistent),
+            int(strategy.conv_workspace_size_limit),
+            bool(strategy.cudnn_exhaustive_search),
+            bool(strategy.sync_nccl_allreduce),
+            int(strategy.fuse_grad_size_in_MB),
+            int(strategy.fuse_grad_size_in_TFLOPS),
+        ]
+
+        for i, key in enumerate(keys):
+            if core.globals().is_public(key):
+                core.globals()[key] = values[i]
 
     def __repr__(self):
         fields = self.strategy.DESCRIPTOR.fields
