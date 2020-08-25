@@ -904,7 +904,7 @@ class TestLRScheduler(unittest.TestCase):
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle_api(**kwarg)
         sgd = paddle.optimizer.SGD(learning_rate=scheduler,
-                                   parameter_list=linear.parameters())
+                                   parameters=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
