@@ -66,4 +66,3 @@ find ${PADDLE_ROOT}/python/ -name '*.py' \
                 print i"\t"o2n[i];
             }
         }'
-
