@@ -492,7 +492,7 @@ class TestModelFunction(unittest.TestCase):
             tensor_img = np.array(
                 np.random.random((1, 1, 28, 28)), dtype=np.float32)
             ori_results = model.test_batch(tensor_img)
-            model.save(save_dir, for_inference=True)
+            model.save(save_dir, training=False)
             fluid.disable_dygraph() if dynamic else None
 
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(

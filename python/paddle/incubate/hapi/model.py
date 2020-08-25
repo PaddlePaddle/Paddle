@@ -44,7 +44,6 @@ from paddle.io import DataLoader, Dataset
 from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 
-
 from .distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
 from .callbacks import config_callbacks
 from .utils import to_list, to_numpy, flatten_list, restore_flatten_list, extract_args
@@ -852,7 +851,7 @@ class Model(object):
         """
         return self._adapter.test_batch(inputs)
 
-    def save(self, path, for_inference=False):
+    def save(self, path, training=True):
         """  
         This function saves parameters, optimizer information or model and 
         paramters only for inference to path. It depends on the parameter
@@ -876,8 +875,8 @@ class Model(object):
             path (str): The file prefix to save model. The format is
                 'dirname/file_prefix' or 'file_prefix'. if empty str. A exception
                  will be raised.
-            for_inference (bool, optional): Whether to save inference model only.
-                Default: False.
+            training (bool, optional): Whether to save for training. If not, save
+                for inference only. Default: True.
 
         Returns:
             None
@@ -917,8 +916,8 @@ class Model(object):
                                 hapi.metrics.Accuracy())
                 mnist_data = hapi.datasets.MNIST(mode='train', chw_format=False)
                 model.fit(mnist_data, epochs=1, batch_size=32, verbose=0)
-                model.save('checkpoint/test') # save checkpoint
-                model.save('inference_model', True) # save for inference
+                model.save('checkpoint/test') # save for training
+                model.save('inference_model', False) # save for inference
         """
 
         if ParallelEnv().local_rank == 0:
@@ -1564,8 +1563,8 @@ class Model(object):
             paddle.disable_static(device) if dynamic else None
 
             # inputs and labels are not required for dynamic graph.
-            input = InputSpec('x', [None, 784], 'float32')
-            label = InputSpec('label', [None, 1], 'int64')
+            input = InputSpec([None, 784], 'float32', 'x')
+            label = InputSpec([None, 1], 'int64', 'label')
 
             model = hapi.Model(Mnist(), input, label)
             optim = paddle.optimizer.SGD(learning_rate=1e-3,
