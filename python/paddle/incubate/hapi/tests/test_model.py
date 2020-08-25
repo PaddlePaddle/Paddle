@@ -33,6 +33,8 @@ from paddle.metric import Accuracy
 from paddle.incubate.hapi.datasets import MNIST
 from paddle.incubate.hapi.vision.models import LeNet
 from paddle.incubate.hapi.distributed import DistributedBatchSampler, prepare_distributed_context
+from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
@@ -56,6 +58,37 @@ class LeNetDygraph(fluid.dygraph.Layer):
                 Linear(
                     84, 10, act=classifier_activation))
 
+    def forward(self, inputs):
+        x = self.features(inputs)
+
+        if self.num_classes > 0:
+            x = fluid.layers.flatten(x, 1)
+            x = self.fc(x)
+        return x
+
+
+class LeNetDeclarative(fluid.dygraph.Layer):
+    def __init__(self, num_classes=10, classifier_activation=None):
+        super(LeNetDeclarative, self).__init__()
+        self.num_classes = num_classes
+        self.features = Sequential(
+            Conv2d(
+                1, 6, 3, stride=1, padding=1),
+            ReLU(),
+            Pool2D(2, 'max', 2),
+            Conv2d(
+                6, 16, 5, stride=1, padding=0),
+            ReLU(),
+            Pool2D(2, 'max', 2))
+
+        if num_classes > 0:
+            self.fc = Sequential(
+                Linear(400, 120),
+                Linear(120, 84),
+                Linear(
+                    84, 10, act=classifier_activation))
+
+    @declarative
     def forward(self, inputs):
         x = self.features(inputs)
 
@@ -335,7 +368,6 @@ class TestModelFunction(unittest.TestCase):
             model = Model(net, inputs, labels)
             model.prepare(optim2, loss=CrossEntropyLoss(reduction="sum"))
             loss, = model.train_batch([data], [label])
-
             np.testing.assert_allclose(loss.flatten(), ref.flatten())
             fluid.disable_dygraph() if dynamic else None
 
@@ -445,33 +477,38 @@ class TestModelFunction(unittest.TestCase):
             fluid.disable_dygraph() if dynamic else None
 
     def test_export_deploy_model(self):
-        net = LeNet()
-        inputs = [Input([-1, 1, 28, 28], 'float32', 'image')]
-        model = Model(net, inputs)
-        model.prepare()
-        save_dir = tempfile.mkdtemp()
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+        for dynamic in [True, False]:
+            fluid.enable_dygraph() if dynamic else None
+            # paddle.disable_static() if dynamic else None
+            prog_translator = ProgramTranslator()
+            prog_translator.enable(False) if not dynamic else None
+            net = LeNetDeclarative()
+            inputs = [Input([None, 1, 28, 28], 'float32', 'x')]
+            model = Model(net, inputs)
+            model.prepare()
+            save_dir = tempfile.mkdtemp()
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+            tensor_img = np.array(
+                np.random.random((1, 1, 28, 28)), dtype=np.float32)
+            ori_results = model.test_batch(tensor_img)
+            model.save(save_dir, training=False)
+            fluid.disable_dygraph() if dynamic else None
 
-        tensor_img = np.array(
-            np.random.random((1, 1, 28, 28)), dtype=np.float32)
-        ori_results = model.test_batch(tensor_img)
-
-        model.save_inference_model(save_dir)
-
-        place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
-        ) else fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
-        [inference_program, feed_target_names, fetch_targets] = (
-            fluid.io.load_inference_model(
-                dirname=save_dir, executor=exe))
-
-        results = exe.run(inference_program,
-                          feed={feed_target_names[0]: tensor_img},
-                          fetch_list=fetch_targets)
-
-        np.testing.assert_allclose(results, ori_results, rtol=1e-6)
-        shutil.rmtree(save_dir)
+            place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            new_scope = fluid.Scope()
+            with fluid.scope_guard(new_scope):
+                exe = fluid.Executor(place)
+                [inference_program, feed_target_names, fetch_targets] = (
+                    fluid.io.load_inference_model(
+                        dirname=save_dir, executor=exe))
+                results = exe.run(inference_program,
+                                  feed={feed_target_names[0]: tensor_img},
+                                  fetch_list=fetch_targets)
+                np.testing.assert_allclose(
+                    results, ori_results, rtol=1e-5, atol=1e-7)
+                shutil.rmtree(save_dir)
 
 
 class TestRaiseError(unittest.TestCase):
