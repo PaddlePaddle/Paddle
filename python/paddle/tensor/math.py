@@ -1925,7 +1925,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     Compute the product of tensor elements over the given axis.
 
     Args:
-        x(Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        x(Tensor): The input tensor, its data type should be float32, float64, int32, int64.
         axis(int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
             multiply all elements of `x` and return a Tensor with a single element, 
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
@@ -1935,7 +1935,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             This is very useful for avoiding data type overflows. The default value is None, the dtype 
             of output is the same as input Tensor `x`.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
-            tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
+            tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
         name(string, optional): The default value is None. Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
