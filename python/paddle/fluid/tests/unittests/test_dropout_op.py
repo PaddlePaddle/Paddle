@@ -635,5 +635,103 @@ class TestDropout3DCAPI(unittest.TestCase):
                 self.assertTrue(np.allclose(result.numpy(), result_np))
 
 
+class TestAlphaDropoutFAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[40, 40], dtype="float32")
+            res1 = paddle.nn.functional.alpha_dropout(x=input, p=0.)
+            res2 = paddle.nn.functional.alpha_dropout(
+                x=input, p=0., training=False)
+
+            in_np = np.random.random([40, 40]).astype("float32")
+            res_np = in_np
+
+            exe = fluid.Executor(place)
+            res_list = [res1, res2]
+            for res in res_list:
+                fetches = exe.run(fluid.default_main_program(),
+                                  feed={"input": in_np},
+                                  fetch_list=[res])
+                self.assertTrue(np.allclose(fetches[0], res_np))
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                in_np = np.random.random([40, 40]).astype("float32")
+                res_np = in_np
+                input = fluid.dygraph.to_variable(in_np)
+
+                res1 = paddle.nn.functional.alpha_dropout(x=input, p=0.)
+                res2 = paddle.nn.functional.alpha_dropout(
+                    x=input, p=0., training=False)
+
+            res_list = [res1, res2]
+            for res in res_list:
+                self.assertTrue(np.allclose(res.numpy(), res_np))
+
+
+class TestAlphaDropoutFAPIError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_Variable():
+                # the input of dropout must be Variable.
+                x1 = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                paddle.nn.functional.alpha_dropout(x1, p=0.5)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_dtype():
+                # the input dtype of dropout must be float32 or float64
+                xr = fluid.data(name='xr', shape=[3, 4, 5, 6], dtype="int32")
+                paddle.nn.functional.alpha_dropout(xr)
+
+            self.assertRaises(TypeError, test_dtype)
+
+            def test_pdtype():
+                # p should be int or float
+                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
+                paddle.nn.functional.alpha_dropout(x2, p='0.5')
+
+            self.assertRaises(TypeError, test_pdtype)
+
+            def test_pvalue():
+                # p should be 0.<=p<=1.
+                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
+                paddle.nn.functional.alpha_dropout(x2, p=1.2)
+
+            self.assertRaises(ValueError, test_pvalue)
+
+
+class TestAlphaDropoutCAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                input_np = np.random.random([40, 40]).astype("float32")
+                result_np = input_np
+                input = fluid.dygraph.to_variable(input_np)
+                m = paddle.nn.AlphaDropout(p=0.)
+                m.eval()
+                result = m(input)
+                self.assertTrue(np.allclose(result.numpy(), result_np))
+
+
 if __name__ == '__main__':
     unittest.main()

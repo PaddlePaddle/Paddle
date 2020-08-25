@@ -152,7 +152,10 @@ def declarative(function=None, input_spec=None):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
     @declarative handles the Program and Executor of static mode and returns
-    the result as a dygraph VarBase.
+    the result as dygraph Tensor(s). Users could use the returned dygraph
+    Tensor(s) to do imperative training, inference, or other operations. If the
+    decorated function calls other imperative function, the called one will be
+    converted into declarative function as well.
 
     Args:
         function (callable): callable imperative function.
@@ -160,7 +163,7 @@ def declarative(function=None, input_spec=None):
             information of each input Tensor.
 
     Returns:
-        callable object wrapped from the function.
+        Tensor(s): containing the numerical result.
 
     Examples:
         .. code-block:: python
