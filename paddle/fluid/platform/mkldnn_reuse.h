@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "boost/optional.hpp"
@@ -26,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace platform {
@@ -51,7 +53,6 @@ constexpr const char* CYAN() { return "\033[0;36m"; }
 }  // namespace colors
 
 struct OperatorDetails {
- public:
   const std::string name;
   DataLayout layout;
   OperatorDetails(const std::string& _name,
@@ -72,15 +73,6 @@ class SeqInFile {
 
 class TensorDumpConfig {
  protected:
-  std::vector<std::string> split(const std::string& s, char delimiter) {
-    std::vector<std::string> tokens;
-    std::string token;
-    std::istringstream tokenStream(s);
-    while (std::getline(tokenStream, token, delimiter)) {
-      tokens.push_back(token);
-    }
-    return tokens;
-  }
   std::string dirname_;
   bool synchronized_;
 
@@ -89,10 +81,12 @@ class TensorDumpConfig {
   TensorDumpConfig() : dirname_("out/"), synchronized_(false) {
     // Read global required operators
     if (const char* env_ops = std::getenv("TENSOR_DUMP_OPERATORS")) {
-      auto tmp_ops = split(env_ops, ',');
+      auto tmp_ops = string::split_string<std::string>(
+          env_ops, ",");  // split(env_ops, ',');
       auto it = std::back_inserter(ops);
       for (auto& _op : tmp_ops) {
-        auto key_value = split(_op, '=');
+        auto key_value =
+            string::split_string<std::string>(_op, "=");  // split(_op, '=');
         auto size = key_value.size();
         if (!size || size > 2) {
           throw std::runtime_error("incorrect key=env_ops");
@@ -128,7 +122,7 @@ class TensorDumpConfig {
   }
   auto fetchOperatorEnd() -> decltype(ops.end()) { return ops.end(); }
 
-  DataLayout getLayoutForOperator(const char* name) {
+  DataLayout getOperatorLayout(const std::string& name) {
     auto it = std::find_if(
         ops.begin(), ops.end(),
         [name](const OperatorDetails& item) { return item.name == name; });
@@ -150,6 +144,44 @@ class TensorDumpConfig {
 };
 
 class DumpComposit {
+ private:
+  static void reorder_via_mkldnn(void* out, const Tensor* tensor_obj,
+                                 DataLayout layout) {
+    dnnl::engine::kind engine_kind = dnnl::engine::kind::cpu;
+    dnnl::engine engine(engine_kind, 0);
+    // Create dnnl::stream.
+    dnnl::stream engine_stream(engine);
+    dnnl::memory::dims src_dims;
+    auto& paddle_dims = tensor_obj->dims();
+
+    for (decltype(paddle_dims.size()) i = 0; i < paddle_dims.size(); ++i)
+      src_dims.push_back(paddle_dims.at(i));
+    auto current_layout = tensor_obj->layout();
+    auto src_md = dnnl::memory::desc(src_dims, dnnl::memory::data_type::f32,
+                                     framework::ToMKLDNNFormat(current_layout));
+    auto dst_md = dnnl::memory::desc(src_dims, dnnl::memory::data_type::f32,
+                                     framework::ToMKLDNNFormat(layout));
+
+    auto src_mem = dnnl::memory(
+        src_md, engine,
+        reinterpret_cast<void*>(const_cast<float*>(tensor_obj->data<float>())));
+    auto dst_mem = dnnl::memory(dst_md, engine, out);
+
+    // Create primitive descriptor.
+    auto reorder_pd =
+        dnnl::reorder::primitive_desc(engine, src_md, engine, dst_md);
+    // Create the primitive.
+    auto reorder_prim = dnnl::reorder(reorder_pd);
+    // Primitive arguments.
+    std::unordered_map<int, dnnl::memory> reorder_args;
+    reorder_args.insert({DNNL_ARG_SRC, src_mem});
+    reorder_args.insert({DNNL_ARG_DST, dst_mem});
+    // Primitive execution: reorder with scaled sum.
+    reorder_prim.execute(engine_stream, reorder_args);
+    // Wait for the computation to finalize.
+    engine_stream.wait();
+  }
+
  public:
   static void execute(const std::string& label, const std::string& name,
                       const framework::Tensor& _tensor) {
@@ -157,6 +189,17 @@ class DumpComposit {
     if (it == TensorDumpConfig::get().fetchOperatorEnd()) {
       return;
     }
+    framework::Tensor* target_tensor;
+    auto target_layout = TensorDumpConfig::get().getOperatorLayout(name);
+    if (target_layout != DataLayout::kAnyLayout) {
+      // reorder mkldnn layout to paddle layout
+      TensorCopySync(_tensor, platform::CPUPlace(), target_tensor);
+      target_tensor->set_layout(target_layout);
+      reorder_via_mkldnn(target_tensor->data<float>(), &_tensor, target_layout);
+    } else {
+      target_tensor = const_cast<framework::Tensor*>(&_tensor);
+    }
+
     std::string filename =
         TensorDumpConfig::get().getFoldername() + label + name;
     if (TensorDumpConfig::get().is_synchronized()) {
@@ -165,12 +208,12 @@ class DumpComposit {
           TensorDumpConfig::getMutex());
       std::ofstream(filename, std::ios_base::app) << SeqInFile::Access(filename)
                                                   << std::endl
-                                                  << _tensor << std::endl
+                                                  << *target_tensor << std::endl
                                                   << std::endl;
     } else {
       std::ofstream(filename, std::ios_base::app) << SeqInFile::Access(filename)
                                                   << std::endl
-                                                  << _tensor << std::endl
+                                                  << *target_tensor << std::endl
                                                   << std::endl;
     }
   }
