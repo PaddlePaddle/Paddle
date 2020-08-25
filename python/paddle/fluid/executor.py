@@ -850,6 +850,7 @@ class Executor(object):
 
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy, return_merged):
+        from paddle.optimizer.lr_scheduler import _LRScheduler
         exe = program._executor
         # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
         # instead of program. We will add support for checking Vars in Graph
@@ -892,6 +893,16 @@ class Executor(object):
                     res_dict[feed_name] = tensor
                 res.append(res_dict)
             exe.feed_tensors_into_local_scopes(res)
+
+        if hasattr(program._program, 'lr_sheduler'):
+            lr_sheduler = program._program.lr_sheduler
+            assert isinstance(lr_sheduler, _LRScheduler), "must be _LRScheduler"
+            lr_value = lr_sheduler()
+            lr_var = program._program.global_block().vars[lr_sheduler._var_name]
+            lr_tensor = _as_lodtensor(lr_value, core.CPUPlace(), lr_var.dtype)
+            exe.feed_and_split_tensor_into_local_scopes({
+                lr_sheduler._var_name: lr_tensor
+            })
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
         tensors = exe.run(fetch_var_names, return_merged)._move_to_list()
@@ -1222,7 +1233,7 @@ class Executor(object):
 
     def _run_program(self, program, feed, fetch_list, feed_var_name,
                      fetch_var_name, scope, return_numpy, use_program_cache):
-
+        from paddle.optimizer.lr_scheduler import _LRScheduler
         if feed is None:
             feed = {}
         elif isinstance(feed, (list, tuple)):
@@ -1278,6 +1289,16 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
+        if hasattr(program, 'lr_sheduler'):
+            assert isinstance(program.lr_sheduler,
+                              _LRScheduler), "must be _LRScheduler"
+            lr_sheduler = program.lr_sheduler
+            lr_value = lr_sheduler()
+            lr_var = program.global_block().vars[lr_sheduler._var_name]
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+            tensor.set(data, self.place)
+
         if not use_program_cache:
             self._default_executor.run(program.desc, scope, 0, True, True,
                                        fetch_var_name)
