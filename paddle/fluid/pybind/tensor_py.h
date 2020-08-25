@@ -19,6 +19,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -565,10 +566,8 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
   if (!is_gpu_tensor && !is_xpu_tensor) {
     if (!need_deep_copy) {
       auto base = py::cast(std::move(tensor));
-      auto info = py::buffer_info(
-          const_cast<void *>(tensor_buf_ptr), sizeof_dtype, py_dtype_str,
-          static_cast<size_t>(tensor.dims().size()), py_dims, py_strides);
-      return py::array(pybind11::dtype(info), info.shape, info.strides, info.ptr, base);
+      return py::array(py::dtype(py_dtype_str.c_str()), py_dims, py_strides,
+                       const_cast<void *>(tensor_buf_ptr), base);
     } else {
       py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
       PADDLE_ENFORCE_EQ(
