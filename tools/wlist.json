@@ -100,8 +100,6 @@
         "convert_dist_to_sparse_program",
         "load_persistables_for_increment",
         "load_persistables_for_inference",
-        "cache",
-        "buffered",
         "xmap_readers",
         "Metric.reset",
         "Metric.update",
