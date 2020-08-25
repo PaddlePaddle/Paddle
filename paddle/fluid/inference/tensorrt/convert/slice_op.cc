@@ -23,8 +23,9 @@ class SliceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-// This OP is implemented by trt dynamic shpae plugin.
-// Dynamic shape plugin requires TRT version greater than 6.0.
+    // This OP is implemented by trt dynamic shpae plugin.
+    // Dynamic shape plugin requires TRT version greater than 6.0.
+    std::cerr << "slice op converter\n" << std::endl;
 #if IS_TRT_VERSION_GE(6000)
     VLOG(4) << "convert slice op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
@@ -42,7 +43,7 @@ class SliceOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       bool ban_fp16 = engine_->disable_trt_plugin_fp16();
       plugin::SlicePluginDynamic* plugin =
-          new plugin::SlicePluginDynamic(starts, ends, ends, ban_fp16);
+          new plugin::SlicePluginDynamic(starts, ends, axes, ban_fp16);
       layer = engine_->AddPluginV2(&input, 1, plugin);
     } else {
       PADDLE_THROW(platform::errors::Fatal(

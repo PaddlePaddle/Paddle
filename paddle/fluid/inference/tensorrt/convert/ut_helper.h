@@ -183,6 +183,8 @@ class TRTConvertValidation {
     std::vector<void*> buffers(num_bindings);
 
     for (const std::string& name : input_output_names) {
+      // std::cerr << "Binding name: " << name << std::endl;
+      if (name.find("stack_0.tmp_0") != std::string::npos) continue;
       auto* var = scope_.FindVar(name);
       auto* tensor = var->GetMutable<framework::LoDTensor>();
       const int bind_index = engine_->engine()->getBindingIndex(name.c_str());

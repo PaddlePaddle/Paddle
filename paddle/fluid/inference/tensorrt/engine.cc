@@ -71,6 +71,7 @@ void TensorRTEngine::FreezeNetwork() {
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
+  infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
   bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
 #if IS_TRT_VERSION_GE(5000)
   if (enable_fp16) {

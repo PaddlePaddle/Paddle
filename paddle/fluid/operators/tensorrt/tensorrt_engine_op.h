@@ -221,11 +221,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
       num_inputs += 1;
     }
     const int num_bindings = num_inputs + Outputs("Ys").size();
+    // std::cerr << "num bindings: " << num_bindings << std::endl;
     std::vector<void *> buffers(num_bindings);
 
     // Bind input tensor to TRT.
     for (const auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
+      // std::cerr << "runTRT name: " << x << std::endl;
+      if (x.find("stack_0.tmp_0") != std::string::npos) continue;
       // convert input and copy to TRT engine's buffer
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
