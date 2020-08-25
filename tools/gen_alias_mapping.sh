@@ -20,14 +20,14 @@ find ${PADDLE_ROOT}/python/ -name '*.py' \
     | xargs  grep -v '^#' \
     | grep 'DEFINE_ALIAS' \
     | perl -ne '
-        if (/\.\/python\/(.*):from (\.*)(\w.*) import (.*) #DEFINE_ALIAS$/) {
+        if (/\/python\/(.*):from (\.*)(\w.*) import (.*?)\s+#DEFINE_ALIAS\s+$/) {
             my @arr = split(", ", $4); 
             foreach $i (@arr) {
                 printf "%s|%s|%s|%d\n", $3, $i, substr($1, 0, -3), length($2);
             }
         }' \
-    | sort -t '|' -k 2 \
-    | awk -F '[|/]' '{
+    | awk -F '[|/]' '
+        {
             key = "";
             val = "";
             if ($2 ~ /.* as .*/) {
@@ -38,18 +38,32 @@ find ${PADDLE_ROOT}/python/ -name '*.py' \
                 old = $2;
                 new = $2;
             }
-            for (i = 3; i <= (NF - 1 - $NF); ++i)
+            for (i = 3; i <= (NF - 1 - $NF); ++i) {
                 val = val""$i".";
+            }
             val =  val""$1"."old
             for (i = 3; i <= (NF - 1); ++i) {
-                if ($i != "__init__")
+                if ($i != "__init__") {
                     key = key""$i".";
+                }
             }
             key = key""new;
-            dict[key] = val;
-        } END {
-            for (key in dict) {
-                newvalue = dict[key] in dict ? dict[dict[key]] : dict[key];
-                print newvalue"\t"key;
+            n2o[key] = val;
+        } 
+        END {
+            for (new in n2o) {
+                old = n2o[new] in n2o ? n2o[n2o[new]] : n2o[new];
+                print old, length(new), new;
+            }
+        }' \
+    | sort -k 1,1 -k 2n,2 \
+    | awk '
+        {
+            o2n[$1] = o2n[$1] ? o2n[$1]","$3 : $3;
+        }
+        END { 
+            for (i in o2n) {
+                print i"\t"o2n[i];
             }
         }'
+
