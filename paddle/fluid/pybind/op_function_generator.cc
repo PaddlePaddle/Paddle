@@ -103,7 +103,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
     {"check_finite_and_unscale", {"Out", "FoundInfinite"}},
-    {"update_loss_scaling", {"LossScaling", "OutGoodSteps", "OutBadSteps"}},
+    {"update_loss_scaling",
+     {"Out", "LossScaling", "OutGoodSteps", "OutBadSteps"}},
 };
 
 // clang-format off

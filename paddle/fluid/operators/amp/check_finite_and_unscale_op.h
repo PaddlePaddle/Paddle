@@ -24,8 +24,7 @@ namespace operators {
 
 template <typename T>
 inline HOSTDEVICE T Inverse(T s) {
-  T eps = 1e-6;
-  return s <= 1e-30 ? 1.0 / (s + eps) : 1.0 / s;
+  return 1.0 / s;
 }
 
 template <typename DeviceContext, typename T>

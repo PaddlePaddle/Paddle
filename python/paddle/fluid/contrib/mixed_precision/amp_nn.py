@@ -33,14 +33,9 @@ def check_finite_and_unscale(x, scale, name=None):
         x(list|tuple): The input tensors of check_finite_and_unscale operator.
         scale: The scale of check_finite_and_unscale operator.
     """
-    check_type(x, 'x', (Variable, tuple, list), 'check_finite_and_unscale')
-    if isinstance(x, list) or isinstance(x, tuple):
-        if len(x) > 0:
-            for e in x:
-                check_variable_and_dtype(e, "x", ['float32', 'float64'],
-                                         'check_finite_and_unscale')
-    else:
-        check_variable_and_dtype(x, "x", ['float32', 'float64'],
+    check_type(x, 'x', (tuple, list), 'check_finite_and_unscale')
+    for e in x:
+        check_variable_and_dtype(e, "x", ['float32', 'float64'],
                                  'check_finite_and_unscale')
 
     helper = LayerHelper("check_finite_and_unscale", **locals())
@@ -51,10 +46,11 @@ def check_finite_and_unscale(x, scale, name=None):
     helper.append_op(
         type='check_finite_and_unscale', inputs=inputs, outputs=outputs)
 
-    return found_inf
+    return x, found_inf
 
 
-def update_loss_scaling(found_inf,
+def update_loss_scaling(x,
+                        found_inf,
                         prev_loss_scaling,
                         num_good_steps,
                         num_bad_steps,
@@ -70,6 +66,7 @@ def update_loss_scaling(found_inf,
     decr_every_n_nan_or_inf steps and each step some gradients are infinite.
 
     Args:
+        x(list|tuple): The input tensors of update_loss_scaling operator.
         found_inf (Variable): A boolean variable indicates whether 
                                      there is any infinite gradient.
         prev_loss_scaling (Variable): Previous loss scaling.
@@ -91,10 +88,16 @@ def update_loss_scaling(found_inf,
 
     check_variable_and_dtype(prev_loss_scaling, "prev_loss_scaling",
                              ['float32', 'float64'], "update_loss_scaling")
+    check_type(x, 'x', (tuple, list), 'update_loss_scaling')
+    for e in x:
+        check_variable_and_dtype(e, "x", ['float32', 'float64'],
+                                 'update_loss_scaling')
+        assert prev_loss_scaling.dtype == e.dtype, "The dtype of prev_loss_scaling should be equal to the dtype of x."
 
     helper = LayerHelper("update_loss_scaling", **locals())
 
     inputs = {
+        'X': x,
         'FoundInfinite': found_inf,
         'PrevLossScaling': prev_loss_scaling,
         'InGoodSteps': num_good_steps,
@@ -102,6 +105,7 @@ def update_loss_scaling(found_inf,
     }
 
     outputs = {
+        'Out': x,
         'LossScaling': prev_loss_scaling,
         'OutGoodSteps': num_good_steps,
         'OutBadSteps': num_bad_steps
@@ -117,4 +121,4 @@ def update_loss_scaling(found_inf,
     helper.append_op(
         type='update_loss_scaling', inputs=inputs, outputs=outputs, attrs=attrs)
 
-    return prev_loss_scaling, num_good_steps, num_bad_steps
+    return x

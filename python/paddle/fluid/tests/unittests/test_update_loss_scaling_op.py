@@ -23,8 +23,10 @@ class TestUpdateLossScalingOp(OpTest):
         self.op_type = "update_loss_scaling"
         self.init()
         found_inf = np.array([False], dtype=np.bool)
+        x = np.random.random((1024, 1024)).astype(self.dtype)
 
         self.inputs = {
+            'X': [('x0', x)],
             'FoundInfinite': found_inf,
             'PrevLossScaling': self.prev_loss_scaling,
             'InGoodSteps': self.num_good_steps,
@@ -32,6 +34,7 @@ class TestUpdateLossScalingOp(OpTest):
         }
 
         self.outputs = {
+            'Out': [('out0', np.zeros_like(x))],
             'LossScaling': self.prev_loss_scaling * self.incr_ratio,
             'OutGoodSteps': self.zero_steps,
             'OutBadSteps': self.zero_steps
@@ -53,7 +56,7 @@ class TestUpdateLossScalingOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(no_check_set=['Out'])
 
 
 class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
@@ -61,8 +64,11 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
         self.op_type = "update_loss_scaling"
         self.init()
         found_inf = np.array([True], dtype=np.bool)
+        x = np.random.random((1024, 1024)).astype(self.dtype)
+        x[128][128] = np.inf
 
         self.inputs = {
+            'X': [('x0', x)],
             'FoundInfinite': found_inf,
             'PrevLossScaling': self.prev_loss_scaling,
             'InGoodSteps': self.num_good_steps,
@@ -70,10 +76,14 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
         }
 
         self.outputs = {
+            'Out': [('out0', np.zeros_like(x))],
             'LossScaling': self.prev_loss_scaling * self.decr_ratio,
             'OutGoodSteps': self.zero_steps,
             'OutBadSteps': self.zero_steps
         }
+
+    def test_check_output(self):
+        self.check_output()
 
 
 if __name__ == '__main__':

@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <cuda_runtime.h>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 
@@ -44,6 +46,26 @@ class UpdateLossScalingFunctor<platform::CUDADeviceContext, T> {
         found_inf_data, pre_loss_scaling_data, good_in_data, bad_in_data,
         incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
         updated_loss_scaling_data, good_out_data, bad_out_data);
+  }
+};
+
+template <typename T>
+class LazyZeroInputs<platform::CUDADeviceContext, T> {
+ public:
+  void operator()(const platform::CUDADeviceContext& dev_ctx,
+                  const bool* found_inf_data,
+                  const std::vector<const framework::Tensor*>& xs,
+                  const std::vector<framework::Tensor*>& outs) {
+    bool has_inf{false};
+    cudaMemcpy(&has_inf, found_inf_data, sizeof(bool), cudaMemcpyDeviceToHost);
+    if (has_inf) {
+      for (size_t i = 0; i < xs.size(); ++i) {
+        auto* out = outs[i];
+        T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+        int num = out->numel();
+        cudaMemset(out_data, 0, num * sizeof(T));
+      }
+    }
   }
 };
 

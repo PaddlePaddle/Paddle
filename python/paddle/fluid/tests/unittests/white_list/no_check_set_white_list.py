@@ -26,5 +26,6 @@ no_check_set_white_list = [
     'cross_entropy2',
     'seed',
     'check_finite_and_unscale',
+    'update_loss_scaling',
     'cudnn_lstm',
 ]
