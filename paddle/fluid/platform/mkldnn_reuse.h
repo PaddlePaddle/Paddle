@@ -53,22 +53,23 @@ constexpr const char* CYAN() { return "\033[0;36m"; }
 }  // namespace colors
 
 struct OperatorDetails {
-  const std::string name;
+  const std::string label;
   DataLayout layout;
-  OperatorDetails(const std::string& _name,
-                  DataLayout _layout = DataLayout::kAnyLayout)
-      : name{_name}, layout{_layout} {}
+  static DataLayout getDefaultLayout() { return DataLayout::kAnyLayout; }
+  OperatorDetails(const std::string& _label,
+                  DataLayout _layout = getDefaultLayout())
+      : label{_label}, layout{_layout} {}
 };
 
 class SeqInFile {
+ private:
+  static std::map<std::string, int> s_map;
+
  public:
-  static bool Access(std::string name) {
+  static int Access(std::string name) {
     static std::map<std::string, int> s_map;
     return s_map[name]++;
   }
-
- private:
-  static std::map<std::string, int> s_map;
 };
 
 class TensorDumpConfig {
@@ -88,17 +89,18 @@ class TensorDumpConfig {
         auto key_value =
             string::split_string<std::string>(_op, "=");  // split(_op, '=');
         auto size = key_value.size();
+        msg_green(size);
         if (!size || size > 2) {
           throw std::runtime_error("incorrect key=env_ops");
         }
         if (size == 1) {
-          *it++ = {key_value[0]};
+          *it++ = {key_value[0], OperatorDetails::getDefaultLayout()};
           continue;
         }
         *it++ = {key_value[0], framework::StringToDataLayout(key_value[1])};
       }
       for (auto& item : ops) {
-        msg_green("config for operator " << item.name << ","
+        msg_green("config for operator " << item.label << ","
                                          << DataLayoutToString(item.layout));
       }
     }
@@ -118,14 +120,14 @@ class TensorDumpConfig {
   auto fetchOperator(const std::string& name) -> decltype(ops.begin()) {
     return std::find_if(
         ops.begin(), ops.end(),
-        [name](const OperatorDetails& item) { return item.name == name; });
+        [name](const OperatorDetails& item) { return item.label == name; });
   }
   auto fetchOperatorEnd() -> decltype(ops.end()) { return ops.end(); }
 
   DataLayout getOperatorLayout(const std::string& name) {
     auto it = std::find_if(
         ops.begin(), ops.end(),
-        [name](const OperatorDetails& item) { return item.name == name; });
+        [name](const OperatorDetails& item) { return item.label == name; });
     if (it != ops.end()) {
       return it->layout;
     }
@@ -190,18 +192,20 @@ class DumpComposit {
       return;
     }
     framework::Tensor* target_tensor;
-    auto target_layout = TensorDumpConfig::get().getOperatorLayout(name);
-    if (target_layout != DataLayout::kAnyLayout) {
+    auto target_layout = TensorDumpConfig::get().getOperatorLayout(label);
+    if (target_layout != OperatorDetails::getDefaultLayout()) {
+      msg_green("WARNING! GET INTO THE reorder");
       // reorder mkldnn layout to paddle layout
       TensorCopySync(_tensor, platform::CPUPlace(), target_tensor);
       target_tensor->set_layout(target_layout);
       reorder_via_mkldnn(target_tensor->data<float>(), &_tensor, target_layout);
     } else {
+      msg_green("NOT in THE reorder");
       target_tensor = const_cast<framework::Tensor*>(&_tensor);
     }
 
-    std::string filename =
-        TensorDumpConfig::get().getFoldername() + label + name;
+    std::string filename = TensorDumpConfig::get().getFoldername() + label +
+                           name + DataLayoutToString(target_layout);
     if (TensorDumpConfig::get().is_synchronized()) {
       /* in case of parallel executor , io must be synchronized */
       std::lock_guard<decltype(TensorDumpConfig::getMutex())> l(
