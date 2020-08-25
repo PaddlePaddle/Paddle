@@ -123,6 +123,7 @@ class TestAffineChannel2D(TestAffineChannelOp):
         return
 
     def test_check_grad_stopgrad_dscale_dbias(self):
+        print('test jzcs')
         return
 
 
