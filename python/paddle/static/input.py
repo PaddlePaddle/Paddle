@@ -122,6 +122,10 @@ class InputSpec(object):
     """
     Define input specification of the model.
 
+    This interface is often used to specify input tensor information of models in high-level API.
+    It's also used to specify the tensor information for each input parameter of the forward function
+    decorated by `@declarative`.
+
     Args:
         shape (tuple(integers)|list[integers]): List|Tuple of integers
             declaring the shape. You can set "None" or -1 at a dimension
