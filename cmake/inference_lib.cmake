@@ -110,10 +110,12 @@ function(copy_part_of_thrid_party TARGET DST)
             SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
             DSTS ${dst_dir} ${dst_dir}/lib)
 
+    if (WITH_CRYPTO)
         set(dst_dir "${DST}/third_party/install/cryptopp")
         copy(${TARGET}
-        SRCS ${CRYPTOPP_INCLUDE_DIR} ${CRYPTOPP_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib)
+            SRCS ${CRYPTOPP_INCLUDE_DIR} ${CRYPTOPP_LIBRARIES}
+            DSTS ${dst_dir} ${dst_dir}/lib)
+    endif()
 
     set(dst_dir "${DST}/third_party/install/xxhash")
     copy(${TARGET}
