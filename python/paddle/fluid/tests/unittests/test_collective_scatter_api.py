@@ -27,6 +27,9 @@ class TestCollectiveScatterAPI(TestDistBase):
         self.check_with_place("collective_scatter_api.py", "scatter", "gloo",
                               "4")
 
+    def test_scatter_nccl(self):
+        self.check_with_place("collective_scatter_api.py", "scatter", "nccl")
+
 
 if __name__ == '__main__':
     unittest.main()
