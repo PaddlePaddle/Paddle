@@ -28,11 +28,11 @@ class LeNetDygraph(fluid.dygraph.Layer):
         super(LeNetDygraph, self).__init__()
         self.num_classes = num_classes
         self.features = nn.Sequential(
-            nn.Conv2D(
+            nn.Conv2d(
                 1, 6, 3, stride=1, padding=1),
             nn.ReLU(),
             nn.Pool2D(2, 'max', 2),
-            nn.Conv2D(
+            nn.Conv2d(
                 6, 16, 5, stride=1, padding=0),
             nn.ReLU(),
             nn.Pool2D(2, 'max', 2))
@@ -61,7 +61,7 @@ def init_weights(layer):
         new_bias = paddle.fill_constant(
             layer.bias.shape, layer.bias.dtype, value=-0.1)
         layer.bias.set_value(new_bias)
-    elif type(layer) == nn.Conv2D:
+    elif type(layer) == nn.Conv2d:
         new_weight = paddle.fill_constant(
             layer.weight.shape, layer.weight.dtype, value=0.7)
         layer.weight.set_value(new_weight)
@@ -81,7 +81,7 @@ class TestLayerApply(unittest.TestCase):
                 if type(layer) == nn.Linear:
                     np.testing.assert_allclose(layer.weight.numpy(), 0.9)
                     np.testing.assert_allclose(layer.bias.numpy(), -0.1)
-                elif type(layer) == nn.Conv2D:
+                elif type(layer) == nn.Conv2d:
                     np.testing.assert_allclose(layer.weight.numpy(), 0.7)
                     np.testing.assert_allclose(layer.bias.numpy(), -0.2)
 
