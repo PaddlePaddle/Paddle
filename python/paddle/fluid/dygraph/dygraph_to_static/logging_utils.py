@@ -21,7 +21,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
 __all__ = ["TranslatorLogger", "set_verbosity", "set_code_level"]
 
-VERBOSITY_ENV_NAME = 'TRANLATOR_VERBOSITY'
+VERBOSITY_ENV_NAME = 'TRANSLATOR_VERBOSITY'
 DEFAULT_VERBOSITY = 0
 
 
@@ -85,7 +85,7 @@ class TranslatorLogger(object):
         self._transformed_code_level = level
 
     def check_level(self, level, name_to_level_dict):
-        if isinstance(level, six.integer_types):
+        if isinstance(level, (six.integer_types, type(None))):
             rv = level
         elif str(level) == level:
             if level not in name_to_level_dict:
@@ -117,39 +117,11 @@ class TranslatorLogger(object):
     def log_transformed_code(self, level, ast_node, *args, **kwargs):
         if self.has_code_level(level):
             msg = ast_to_source_code(ast_node)
-            msg = "Transformed code \n" + msg
+            msg = "Transformed code: \n" + msg
             self.logger.info(msg, *args, **kwargs)
 
 
 _TRANSLATOR_LOGGER = TranslatorLogger()
-
-
-def set_verbosity(level=0):
-    """
-    Sets the verbosity level for dygraph to static graph.
-
-    There are two means to set the logging verbosity:
-     1. Call function `set_verbosity`
-     2. Set environment variable `verbosity_level`
-    NOTE: `set_verbosity` has higher priority than the environment variable
-
-    Args:
-        level(int): The verbosity level. The larger value idicates more verbosity.
-            The default value is 0, which means no logging.
-    Examples:
-        .. code-block:: python
-
-            import os
-            import paddle.fluid as fluid
-
-            fluid.dygraph.dygraph_to_static.set_verbosity(1)
-            # The verbosity level is now 1
-
-            os.environ['verbosity_level'] = 3
-            # The verbosity level is now 3, but it has no effect
-    """
-    _TRANSLATOR_LOGGER.verbosity_level = level
-
 
 BasicApiTransformer = 1
 TensorShapeTransformer = 2
@@ -182,6 +154,37 @@ _transformer_name_to_level = {
 }
 
 
+def set_verbosity(level=0):
+    """
+    Sets the verbosity level for dygraph to static graph.
+
+    There are two means to set the logging verbosity:
+     1. Call function `set_verbosity`
+     2. Set environment variable `TRANSLATOR_VERBOSITY`
+    NOTE: `set_verbosity` has higher priority than the environment variable
+
+    Args:
+        level(int): The verbosity level. The larger value idicates more verbosity.
+            The default value is 0, which means no logging.
+    Examples:
+        .. code-block:: python
+
+            import os
+            import paddle.fluid as fluid
+
+            fluid.dygraph.dygraph_to_static.set_verbosity(1)
+            # The verbosity level is now 1
+
+            os.environ['TRANSLATOR_VERBOSITY'] = '3'
+            # The verbosity level is now 3, but it has no effect
+    """
+    _TRANSLATOR_LOGGER.verbosity_level = level
+
+
+def get_verbosity():
+    return _TRANSLATOR_LOGGER.verbosity_level
+
+
 def set_code_level(level):
     """
     Sets the level to print code from specific Ast Transformer.
@@ -200,3 +203,23 @@ def set_code_level(level):
             # It will print the transformed code after CastTransformer.
         """
     _TRANSLATOR_LOGGER.transformed_code_level = level
+
+
+def get_code_level():
+    return _TRANSLATOR_LOGGER.transformed_code_level
+
+
+def error(msg, *args, **kwargs):
+    _TRANSLATOR_LOGGER.error(msg, *args, **kwargs)
+
+
+def warn(msg, *args, **kwargs):
+    _TRANSLATOR_LOGGER.warn(msg, *args, **kwargs)
+
+
+def log(level, msg, *args, **kwargs):
+    _TRANSLATOR_LOGGER.log(level, msg, *args, **kwargs)
+
+
+def log_transformed_code(level, ast_node, *args, **kwargs):
+    _TRANSLATOR_LOGGER.log_transformed_code(level, ast_node, *args, **kwargs)

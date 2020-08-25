@@ -14,157 +14,84 @@
 
 from __future__ import print_function
 
+import io
+import logging
+import os
+import sys
 import unittest
 
-import numpy as np
-
-import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph import declarative
+import gast
+import mock
+import six
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 
-program_translator = ProgramTranslator()
 
-SEED = 2020
-np.random.seed(SEED)
-
-logging_utils.set_verbosity(1)
-logging_utils.set_code_level(logging_utils.AllTransformer)
-
-
-# Use a decorator to test exception
-@declarative
-def dyfunc_with_if(x_v):
-    if fluid.layers.mean(x_v).numpy()[0] > 5:
-        x_v = x_v - 1
-    else:
-        x_v = x_v + 1
-    return x_v
-
-
-@declarative
-def nested_func(x_v):
-    x_v = fluid.dygraph.to_variable(x_v)
-
-    def fn1():
-        return x_v
-
-    res = fn1()
-    return res
-
-
-class TestRecursiveCall1(unittest.TestCase):
+class TestLoggingUtils(unittest.TestCase):
     def setUp(self):
-        self.input = np.random.random([10, 16]).astype('float32')
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        self.init_test_func()
+        self.verbosity_level = 1
+        self.code_level = 3
+        self.translator_logger = logging_utils._TRANSLATOR_LOGGER
 
-    def init_test_func(self):
-        self.dyfunc = nested_func
+    def test_verbosity(self):
+        logging_utils.set_verbosity(None)
+        os.environ[logging_utils.VERBOSITY_ENV_NAME] = '3'
+        self.assertEqual(logging_utils.get_verbosity(), 3)
 
-    def get_dygraph_output(self):
-        program_translator.enable(False)
-        with fluid.dygraph.guard():
-            res = self.dyfunc(self.input).numpy()
-            return res
+        logging_utils.set_verbosity(self.verbosity_level)
+        self.assertEqual(self.verbosity_level, logging_utils.get_verbosity())
 
-    def get_static_output(self):
-        program_translator.enable(True)
-        with fluid.dygraph.guard():
-            res = self.dyfunc(self.input).numpy()
-            return res
+        # String is not supported
+        with self.assertRaises(ValueError):
+            logging_utils.set_verbosity("3")
 
-    def test_transformed_static_result(self):
-        static_res = self.get_static_output()
-        dygraph_res = self.get_dygraph_output()
-        self.assertTrue(
-            np.allclose(dygraph_res, static_res),
-            msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,
-                                                             static_res))
+        with self.assertRaises(TypeError):
+            logging_utils.set_verbosity(3.3)
 
+    def test_code_level(self):
 
-lambda_fun = lambda x: x
+        logging_utils.set_code_level(self.code_level)
+        self.assertEqual(logging_utils.get_code_level(), self.code_level)
 
+        logging_utils.set_code_level(logging_utils.AssertTransformer)
+        self.assertEqual(logging_utils.get_code_level(), 9)
 
-class MyConvLayer(fluid.dygraph.Layer):
-    def __init__(self):
-        super(MyConvLayer, self).__init__()
-        self._conv = fluid.dygraph.Conv2D(
-            num_channels=3,
-            num_filters=2,
-            filter_size=3,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)))
+        with self.assertRaises(TypeError):
+            logging_utils.set_code_level(3.3)
 
-    @declarative
-    def forward(self, inputs):
-        y = dyfunc_with_if(inputs)
-        y = lambda_fun(y)
-        y = self.dymethod(y)
-        return y
+    def test_log(self):
+        stream = io.BytesIO() if six.PY2 else io.StringIO()
+        log = self.translator_logger.logger
+        stdout_handler = logging.StreamHandler(stream)
+        log.addHandler(stdout_handler)
 
-    @declarative
-    def dymethod(self, x_v):
-        x_v = fluid.layers.assign(x_v)
-        return x_v
+        warn_msg = "test_warn"
+        error_msg = "test_error"
+        log_msg_1 = "test_log_1"
+        log_msg_2 = "test_log_2"
+        with mock.patch.object(sys, 'stdout', stream):
+            logging_utils.warn(warn_msg)
+            logging_utils.error(error_msg)
+            self.translator_logger.verbosity_level = 2
+            logging_utils.log(1, log_msg_1)
+            logging_utils.log(2, log_msg_2)
 
+        result_msg = '\n'.join([warn_msg, error_msg, log_msg_2, ""])
+        self.assertEqual(result_msg, stream.getvalue())
 
-class MyLayer(fluid.dygraph.Layer):
-    def __init__(self):
-        super(MyLayer, self).__init__()
+    def test_log_transformed_code(self):
+        source_code = "x = 3"
+        ast_code = gast.parse(source_code)
 
-        self.conv = MyConvLayer()
-        self.fc = fluid.dygraph.Linear(
-            input_dim=5,
-            output_dim=1,
-            act='relu',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)))
+        stream = io.BytesIO() if six.PY2 else io.StringIO()
+        log = self.translator_logger.logger
+        stdout_handler = logging.StreamHandler(stream)
+        log.addHandler(stdout_handler)
 
-    @declarative
-    def forward(self, inputs):
-        h = self.conv(inputs)
-        out = self.fc(h)
-        return out
+        with mock.patch.object(sys, 'stdout', stream):
+            logging_utils.set_code_level(1)
+            logging_utils.log_transformed_code(1, ast_code)
 
-
-class TestRecursiveCall2(unittest.TestCase):
-    def setUp(self):
-        self.input = np.random.random((1, 3, 3, 5)).astype('float32')
-        self.Layer = MyLayer
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-
-    def _run(self):
-        with fluid.dygraph.guard():
-            self.dygraph_func = self.Layer()
-            fluid.default_startup_program.random_seed = SEED
-            fluid.default_main_program.random_seed = SEED
-            data = fluid.dygraph.to_variable(self.input)
-            res = self.dygraph_func(data)
-
-            return res.numpy()
-
-    def get_dygraph_output(self):
-        program_translator.enable(False)
-        return self._run()
-
-    def get_static_output(self):
-        program_translator.enable(True)
-        return self._run()
-
-    def test_transformed_static_result(self):
-        dygraph_res = self.get_dygraph_output()
-        static_res = self.get_static_output()
-        self.assertTrue(
-            np.allclose(dygraph_res, static_res),
-            msg='dygraph is {}\n static_res is \n{}'.format(dygraph_res,
-                                                            static_res))
+        self.assertIn(source_code, stream.getvalue())
 
 
 if __name__ == '__main__':
