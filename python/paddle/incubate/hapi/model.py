@@ -855,9 +855,9 @@ class Model(object):
         """  
         This function saves parameters, optimizer information or model and 
         paramters only for inference to path. It depends on the parameter
-        `for_inference`.
+        `training`.
 
-        If `for_inference` is set to False, the parameters saved contain all 
+        If `training` is set to True, the parameters saved contain all 
         the trainable Variable, will save to a file with suffix ".pdparams".
         The optimizer information contains all the variable used by optimizer.
         For Adam optimizer, contains beta1, beta2, momentum etc. All the
@@ -865,7 +865,7 @@ class Model(object):
         have no variable need to save (like SGD), the fill will not generated).
         This function will silently overwrite existing file at the target location.
 
-        If `for_inference` is set to True, only inference model will be saved. It 
+        If `training` is set to False, only inference model will be saved. It 
         should be noted that before using `save`, you should run the model, and 
         the shape of input you saved is as same as the input of its running.
         `@paddle.jit.to_static` must be added on `forward` function of your layer 
@@ -921,7 +921,7 @@ class Model(object):
         """
 
         if ParallelEnv().local_rank == 0:
-            if for_inference:
+            if not training:
                 self._save_inference_model(path)
             else:
                 self._adapter.save(path)
