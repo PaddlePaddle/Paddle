@@ -174,8 +174,7 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
         fleet.stop_worker()
 
     def do_dataset_training(self, fleet):
-        dnn_input_dim, lr_input_dim, train_file_list = ctr_dataset_reader.prepare_dataset_data(
-        )
+        train_file_list = ctr_dataset_reader.prepare_fake_data()
 
         exe = fluid.Executor(fluid.CPUPlace())
 

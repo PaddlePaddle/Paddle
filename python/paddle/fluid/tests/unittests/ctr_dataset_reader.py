@@ -17,8 +17,9 @@ from __future__ import print_function
 import os
 import logging
 import tarfile
-
+import tempfile
 import random
+import warnings
 
 import paddle
 import paddle.fluid.incubate.data_generator as data_generator
@@ -124,32 +125,56 @@ def prepare_data():
     return dnn_input_dim, lr_input_dim, train_file_path
 
 
-def prepare_dataset_data():
-    """
-    load data meta info from path, return (dnn_input_dim, lr_input_dim)
-    """
-    file_dir_name = download_file()
-    meta_file_path = os.path.join(file_dir_name, 'data.meta.txt')
-    train_file_path = os.path.join(file_dir_name, 'train.txt')
-    with open(meta_file_path, "r") as f:
-        lines = f.readlines()
-    err_info = "wrong meta format"
-    assert len(lines) == 2, err_info
-    assert 'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[
-        1], err_info
-    res = map(int, [_.split(':')[1] for _ in lines])
-    res = list(res)
-    dnn_input_dim = res[0]
-    lr_input_dim = res[1]
-    logger.info('dnn input dim: %d' % dnn_input_dim)
-    logger.info('lr input dim: %d' % lr_input_dim)
+def gen_fake_line(dnn_data_num=7,
+                  dnn_data_range=1e5,
+                  lr_data_num=5,
+                  lr_data_range=1e5):
+    line = ""
 
-    # cp train_data for two nodes training
-    bak_train_file_path = os.path.join(file_dir_name, 'train_bak.txt')
-    os.system("cp {} {}".format(train_file_path, bak_train_file_path))
-    file_list = [train_file_path, bak_train_file_path]
+    # for deep data
+    for index in range(dnn_data_num):
+        data = str(random.randint(0, dnn_data_range))
+        if index < dnn_data_num - 1:
+            data += " "
+        line += data
+    line += "\t"
 
-    return dnn_input_dim, lr_input_dim, file_list
+    # for wide data
+    for index in range(lr_data_num):
+        data = str(random.randint(0, lr_data_range)) + ":" + str(1)
+        if index < lr_data_num - 1:
+            data += " "
+        line += data
+    line += "\t"
+
+    # for label
+    line += str(random.randint(0, 1))
+    line += "\n"
+    return line
+
+
+def prepare_fake_data(file_nums=8, file_lines=1000):
+    """
+    Create fake data with same type as avazu_ctr_data
+    """
+    file_dir = tempfile.mkdtemp()
+    warnings.warn("Fake data write in {}".format(file_dir))
+    for file_index in range(file_nums):
+        with open(
+                os.path.join(file_dir,
+                             "ctr_train_data_part_{}".format(file_index)),
+                'w+') as fin:
+            file_str = ""
+            for line_index in range(file_lines):
+                file_str += gen_fake_line()
+            fin.write(file_str)
+            warnings.warn("Write done ctr_train_data_part_{}".format(
+                file_index))
+
+    file_list = [os.path.join(file_dir, x) for x in os.listdir(file_dir)]
+    assert len(file_list) == file_nums
+
+    return file_list
 
 
 if __name__ == "__main__":
