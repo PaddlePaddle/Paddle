@@ -29,7 +29,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_NCCL)
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
-    int numel = out->numel();
+    int numel = x->numel();
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
 
     int nranks = ctx.Attr<int>("nranks");
@@ -61,19 +61,16 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    framework::DDim temp_out_dims = out->dims();
-    temp_out_dims[0] = temp_out_dims[0] * nranks;
+    framework::DDim temp_out_dims = x->dims();
     framework::Tensor temp;
-    numel *= nranks;
     auto out_ptr = temp.mutable_data<T>(temp_out_dims, place);
     if (root_id == comm->rank()) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
           root_id, comm->comm(), stream));
 
-      framework::TensorCopy(*static_cast<const framework::Tensor*>(x), place,
-                            *platform::DeviceContextPool::Instance().Get(place),
-                            static_cast<framework::Tensor*>(&temp));
+      framework::TensorCopySync(*static_cast<const framework::Tensor*>(x),
+                                place, static_cast<framework::Tensor*>(&temp));
     } else {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
           out_ptr, numel, dtype, root_id, comm->comm(), stream));
