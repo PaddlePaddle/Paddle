@@ -21,9 +21,18 @@ from ...fluid.layer_helper import LayerHelper
 from .. import functional as F
 
 __all__ = [
-    'AvgPool1d', 'AvgPool2d', 'AvgPool3d', 'MaxPool1d', 'MaxPool2d',
-    'MaxPool3d', 'AdaptiveAvgPool1d', 'AdaptiveAvgPool2d', 'AdaptiveAvgPool3d',
-    'AdaptiveMaxPool1d', 'AdaptiveMaxPool2d', 'AdaptiveMaxPool3d'
+    'AvgPool1d',
+    'AvgPool2d',
+    'AvgPool3d',
+    'MaxPool1d',
+    'MaxPool2d',
+    'MaxPool3d',
+    'AdaptiveAvgPool1d',
+    'AdaptiveAvgPool2d',
+    'AdaptiveAvgPool3d',
+    'AdaptiveMaxPool1d',
+    'AdaptiveMaxPool2d',
+    'AdaptiveMaxPool3d',
 ]
 
 
