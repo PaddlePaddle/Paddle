@@ -86,7 +86,7 @@ class UpSample(layers.Layer):
     interpolating functions of three variables (e.g. D-direction,
     H-direction and W-direction in this op) on a rectilinear 3D grid.
     The linear interpolation is performed on three directions.
-    Align_corners and align_mode are optional parameters,the calculation method
+    align_corners and align_mode are optional parameters,the calculation method
     of interpolation can be selected by them.
 
     Example:
@@ -275,7 +275,7 @@ class UpSample(layers.Layer):
             align_corners=self.align_corners,
             align_mode=self.align_mode,
             data_format=self.data_format,
-            self.name=name)
+            name=self.name)
 
         return out
 

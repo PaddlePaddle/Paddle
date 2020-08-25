@@ -100,7 +100,7 @@ def interpolate(x,
     interpolating functions of three variables (e.g. D-direction,
     H-direction and W-direction in this op) on a rectilinear 3D grid.
     The linear interpolation is performed on three directions.
-    Align_corners and align_mode are optional parameters,the calculation method
+    align_corners and align_mode are optional parameters,the calculation method
     of interpolation can be selected by them.
 
     Bicubic interpolation is an extension of cubic interpolation for interpolating
@@ -507,7 +507,7 @@ def upsample(x,
     interpolating functions of three variables (e.g. D-direction,
     H-direction and W-direction in this op) on a rectilinear 3D grid.
     The linear interpolation is performed on three directions.
-    Align_corners and align_mode are optional parameters,the calculation method
+    align_corners and align_mode are optional parameters,the calculation method
     of interpolation can be selected by them.
     Example:
     .. code-block:: text
