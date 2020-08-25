@@ -167,6 +167,7 @@ def avg_pool1d(x,
     """ 
     This API implements average pooling 1d operation,
     See more details in :ref:`api_nn_pooling_AvgPool1d` .
+
     Args:
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L]. where `N` is batch size, `C` is the number of channels,
@@ -205,12 +206,12 @@ def avg_pool1d(x,
           import paddle.nn.functional as F
           paddle.disable_static()
           data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
-          pool_out = F.avg_pool1d(data, kernel_size=2, stride=2, padding=0)
-          # pool_out shape: [1, 3, 16]
+          out = F.avg_pool1d(data, kernel_size=2, stride=2, padding=0)
+          # out shape: [1, 3, 16]
     """
     """NCL to NCHW"""
     data_format = "NCHW"
-    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'avg_pool1d')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool1d')
     check_input(x, 3)
     x = unsqueeze(x, [2])
     kernel_size = utils.convert_to_list(kernel_size, 1, 'kernel_size')
@@ -230,7 +231,7 @@ def avg_pool1d(x,
         padding, 1, channel_last=False)
 
     # using 2d to implenment 1d should expand padding.
-    padding = _expanding_low_nd_padding(padding)
+    padding = _expand_low_nd_padding(padding)
 
     if in_dygraph_mode():
         output = core.ops.pool2d(
@@ -279,30 +280,19 @@ def avg_pool2d(x,
     """
     This API implements average pooling 2d operation.
     See more details in :ref:`api_nn_pooling_AvgPool2d` .
-
-    Example:
-      Input:
-           X shape: $(N, C, H_{in}, W_{in})$
-      Attr:
-           kernel_size: ksize
-      Output:
-           Out shape: $(N, C, H_{out}, W_{out})$
-           $$
-           out(N_i, C_j, h, w)  = \frac{1}{ksize[0] * ksize[1]} \sum_{m=0}^{ksize[0]-1} \sum_{n=0}^{ksize[1]-1}
-                               input(N_i, C_j, stride[0] \times h + m, stride[1] \times w + n)
-           $$
+ 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
                           `"NHWC"`, where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
                           feature. The data type if float32 or float64.
-        kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain two integers, (pool_size_Height, pool_size_Width).
+        kernel_size (int|list|tuple): The pool kernel size. If it is a tuple or list,
+            it must contain two integers, (kernel_size_Height, kernel_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
-        stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
-            it must contain two integers, (pool_stride_Height, pool_stride_Width).
-            Otherwise, the pool stride size will be a square of an int.
+        stride (int|list|tuple): The stride size. If it is a tuple or list,
+            it must contain two integers, (stride_Height, stride_Width).
+            Otherwise, the stride size will be a square of an int.
 
         padding (string|int|list|tuple): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
@@ -315,7 +305,7 @@ def avg_pool2d(x,
         count_include_pad (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
         divisor_override (float): if specified, it will be used as divisor, otherwise kernel_size will be used. Default None.
-        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_height, input_width]`.
         name(str, optional): For detailed information, please refer
@@ -334,11 +324,11 @@ def avg_pool2d(x,
           import numpy as np
           paddle.disable_static()
           # avg pool2d
-          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
-          output = F.avg_pool2d(input,
+          x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+          out = F.avg_pool2d(x,
                                 kernel_size=2,
                                 stride=2, padding=0)
-          # output.shape [1, 3, 16, 16]
+          # out.shape [1, 3, 16, 16]
     """
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool2d')
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
@@ -348,8 +338,8 @@ def avg_pool2d(x,
         stride = utils.convert_to_list(stride, 2, 'pool_stride')
 
     channel_last = _channel_last(data_format, 2)
-    #pool_padding = update_padding2d(padding, data_format)
     padding, padding_algorithm = _update_padding_nd(padding, 2, channel_last)
+
     if in_dygraph_mode():
         output = core.ops.pool2d(
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'global_pooling',
@@ -403,16 +393,11 @@ def avg_pool3d(x,
                data_format="NCDHW",
                name=None):
     """
-    This operation applies 3D avg pooling over input features based on the input,
-    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
-    in NCDHW format, where N represents batch size, C represents the number of channels,
-    D, H and W represent the depth, height and width of the feature respectively.
-
     This API implements average pooling 3d operation.
     See more details in :ref:`api_nn_pooling_AvgPool3d` .
 
     Args:
-        input (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
+        x (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
                           shape [N, C, D, H, W], where `N` represents the batch size, `C` represents
                           the number of channels, `D`, `H` and `W` represent the depth, height and width of the feature respectively.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size
@@ -449,14 +434,14 @@ def avg_pool3d(x,
         .. code-block:: python
           import paddle.fluid as fluid
           import paddle
-          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
+          x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
           # avg pool3d
-          pool3d = paddle.nn.functional.avg_pool3d(
-                                            input,
+          out = paddle.nn.functional.avg_pool3d(
+                                            x,
                                             kernel_size = 2,
                                             stride = 2,
                                             padding=0)
-          # pool3d.shape: [1, 3, 16, 16, 16]
+          # out.shape: [1, 3, 16, 16, 16]
     """
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
@@ -568,7 +553,7 @@ def max_pool1d(x,
     """
     """NCL to NCHW"""
     data_format = "NCHW"
-    check_variable_and_dtype(x, 'input', ['float32', 'float64'], 'max_pool1d')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool1d')
     check_input(x, 3)
     x = unsqueeze(x, [2])
     kernel_size = [1] + utils.convert_to_list(kernel_size, 1, 'pool_size')
@@ -639,10 +624,10 @@ def max_pool2d(x,
                           `H` is the height of the feature, and `W` is the width of the
                           feature. The data type if float32 or float64.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain two integers, (pool_size_Height, pool_size_Width).
+            it must contain two integers, (kernel_size_Height, kernel_size_Width).
             Otherwise, the pool kernel size will be a square of an int.
         stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
-            it must contain two integers, (pool_stride_Height, pool_stride_Width).
+            it must contain two integers, (stride_Height, stride_Width).
             Otherwise, the pool stride size will be a square of an int.
         padding (string|int|list|tuple): The padding size. Padding could be in one of the following forms.
             1. A string in ['valid', 'same'].
@@ -653,7 +638,7 @@ def max_pool2d(x,
             The default value is 0.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
         return_indices (bool): Whether to return the max indices along with the outputs.
-        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_height, input_width]`.
         name(str, optional): For detailed information, please refer
@@ -672,18 +657,18 @@ def max_pool2d(x,
           import numpy as np
           paddle.disable_static()
           # max pool2d
-          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
-          output = F.max_pool2d(input,
+          x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+          out = F.max_pool2d(x,
                                 kernel_size=2,
                                 stride=2, padding=0)
           # output.shape [1, 3, 16, 16]
           # for return_indices=True
-          output, max_indices = F.max_pool2d(input,
+          out, max_indices = F.max_pool2d(x,
                                              kernel_size=2,
                                              stride=2,
                                              padding=0,
                                              return_indices=True)
-          # output.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
+          # out.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool2d')
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
@@ -750,11 +735,7 @@ def max_pool3d(x,
     See more details in :ref:`api_nn_pooling_MaxPool3d` .
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
-                          shape [N, C, D, H, W]. The format of
-                          input tensor is `"NCDHW"` or `"NDHWC"`, where `N` is batch size, `C` is
-                          the number of channels, `D` is the depth of the feature,
-                          `H` is the height of the feature, and `W` is the width
-                          of the feature.
+                          shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"` or `"NDHWC"`, where N represents batch size, C represents the number of channels, D, H and W represent the depth, height and width of the feature respectively. 
         kernel_size (int|list|tuple): The pool kernel size. If the kernel size
             is a tuple or list, it must contain three integers,
             (kernel_size_Depth, kernel_size_Height, kernel_size_Width).
@@ -790,14 +771,14 @@ def max_pool3d(x,
           import numpy as np
           paddle.disable_static()
           # max pool3d
-          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
-          output = F.max_pool2d(input,
+          x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
+          output = F.max_pool2d(x,
                                 kernel_size=2,
                                 stride=2, padding=0)
           output.shape [1, 3, 16, 16, 16]
           # for return_indices=True
-          input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
-          output, max_indices = paddle.nn.functional.max_pool3d(input,
+          x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32, 32]).astype(np.float32))
+          output, max_indices = paddle.nn.functional.max_pool3d(x,
                                         kernel_size = 2,
                                         stride = 2,
                                         padding=0,
@@ -892,8 +873,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
               # pool_out shape: [1, 3, 16])
     """
     pool_type = 'avg'
-    check_variable_and_dtype(x, 'input', ['float32', 'float64'],
-                             'adaptive_pool2d')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'adaptive_pool2d')
     check_input(x, 3)
     check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
 
@@ -968,10 +948,10 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             input_data = np.random.rand(2, 3, 32, 32)
             x = paddle.to_tensor(input_data)
             # x.shape is [2, 3, 32, 32]
-            pool_out = paddle.nn.functional.adaptive_avg_pool2d(
+            out = paddle.nn.functional.adaptive_avg_pool2d(
                             x = x,
                             output_size=[3, 3])
-            # pool_out.shape is [2, 3, 3, 3]
+            # out.shape is [2, 3, 3, 3]
     """
     if not in_dygraph_mode():
         check_variable_and_dtype(
@@ -1072,10 +1052,10 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             input_data = np.random.rand(2, 3, 8, 32, 32)
             x = paddle.to_tensor(input_data)
             # x.shape is [2, 3, 8, 32, 32]
-            pool_out = paddle.nn.functional.adaptive_avg_pool3d(
+            out = paddle.nn.functional.adaptive_avg_pool3d(
                             x = x,
                             output_size=[3, 3, 3])
-            # pool_out.shape is [2, 3, 3, 3, 3]
+            # out.shape is [2, 3, 3, 3, 3]
     """
     if not in_dygraph_mode():
         check_variable_and_dtype(
@@ -1176,7 +1156,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
               # pool_out shape: [1, 3, 16] indices  shape: [1, 3, 16]
     """
     pool_type = 'max'
-    check_variable_and_dtype(x, 'input', ['float32', 'float64'],
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                              'adaptive_max_pool1d')
     check_input(x, 3)
     check_type(output_size, 'pool_size', (int), 'adaptive_max_pool1d')
@@ -1248,10 +1228,10 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
               input_data = np.random.rand(2, 3, 32, 32)
               x = paddle.to_tensor(input_data)
               # x.shape is [2, 3, 32, 32]
-              pool_out = paddle.nn.functional.adaptive_max_pool2d(
+              out = paddle.nn.functional.adaptive_max_pool2d(
                             x = x,
                             output_size=[3, 3])
-              # pool_out.shape is [2, 3, 3, 3]
+              # out.shape is [2, 3, 3, 3]
     """
     # In kernel, the input is still named 'input', not 'x'
     if not in_dygraph_mode():
@@ -1333,10 +1313,10 @@ def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
               input_data = np.random.rand(2, 3, 8, 32, 32)
               x = paddle.to_tensor(input_data)
               # x.shape is [2, 3, 8, 32, 32]
-              pool_out = paddle.nn.functional.adaptive_max_pool3d(
+              out = paddle.nn.functional.adaptive_max_pool3d(
                             x = x,
                             output_size=[3, 3, 3])
-              # pool_out.shape is [2, 3, 3, 3, 3]
+              # out.shape is [2, 3, 3, 3, 3]
     """
 
     # In kernel, the input is still named 'input', not 'x'
