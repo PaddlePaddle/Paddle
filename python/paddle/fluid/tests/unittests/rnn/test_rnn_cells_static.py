@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import torch
-torch.set_default_dtype(torch.float64)
-
 import paddle
 paddle.framework.set_default_dtype("float64")
 

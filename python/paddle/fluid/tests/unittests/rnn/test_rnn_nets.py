@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import torch
-
 import paddle
 paddle.set_default_dtype("float64")
 from paddle.fluid.layers import sequence_mask
