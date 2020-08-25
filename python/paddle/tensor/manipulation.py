@@ -612,6 +612,7 @@ def unique(x,
            return_inverse=False,
            return_counts=False,
            axis=None,
+           dtype="int64",
            name=None):
     """
     Returns the unique elements of `x` in ascending order.
@@ -625,6 +626,8 @@ def unique(x,
         return_counts(bool, optional): If True, also return the counts for each unique element.
         axis(int, optional): The axis to apply unique. If None, the input will be flattened.
             Default: None.
+        dtype(np.dtype|str): The date type of `indices` or `inverse` tensor: int32 or int64.
+            Default: int64.
         name(str, optional): Name for the operation. For more information, please refer to
             :ref:`api_guide_Name`. Default: None.
 
@@ -688,6 +691,7 @@ def unique(x,
     check_type(return_index, 'return_index', bool, 'unique')
     check_type(return_inverse, 'return_inverse', bool, 'unique')
     check_type(return_counts, 'return_counts', bool, 'unique')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'unique')
     if len(axis) != 0:
         check_type(axis[0], 'axis', int, 'unique')
 
@@ -700,15 +704,16 @@ def unique(x,
         "axis": axis,
         "is_sorted": True
     }
+    dtype = convert_dtype(dtype)
     out = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
     inverse = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
+        dtype=dtype, stop_gradient=True)
     outputs = {"Out": out, "Index": inverse}
     outs = [out]
     if return_index:
         indices = helper.create_variable_for_type_inference(
-            dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
+            dtype=dtype, stop_gradient=True)
         outputs["Indices"] = indices
         outs.append(indices)
     if return_inverse:

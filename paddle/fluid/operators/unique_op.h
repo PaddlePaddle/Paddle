@@ -131,71 +131,97 @@ static bool Equal(const framework::Tensor& a, const framework::Tensor& b) {
   return true;
 }
 
-template <typename T>
-static void UniqueFlattendTensor(const framework::ExecutionContext& context,
-                                 const framework::Tensor& in,
-                                 framework::Tensor* out, bool return_index,
-                                 bool return_inverse, bool return_counts) {
-  const T* in_data = in.data<T>();
-  std::set<T> unique(in_data, in_data + in.numel());
-  out->Resize(framework::make_ddim({static_cast<int64_t>(unique.size())}));
-  auto out_data = out->mutable_data<T>(context.GetPlace());
-  std::copy(unique.begin(), unique.end(), out_data);
+template <typename DeviceContext, typename InT>
+struct UniqueFlattendTensorFunctor {
+  const DeviceContext& ctx_;
+  framework::Tensor* out_;
+  framework::Tensor* indices_;
+  framework::Tensor* inverse_;
+  framework::Tensor* counts_;
+  const framework::Tensor* in_;
+  const bool return_index_;
+  const bool return_inverse_;
+  const bool return_counts_;
 
-  if (return_index) {
-    auto* indices = context.Output<framework::Tensor>("Indices");
-    indices->Resize(framework::make_ddim({out->numel()}));
-    auto indices_data = indices->mutable_data<int64_t>(context.GetPlace());
-    std::unordered_map<T, int64_t> indices_map;
-    indices_map.reserve(out->numel());
-    for (int64_t i = 0; i < in.numel(); ++i) {
-      if (indices_map.find(in_data[i]) != indices_map.end()) continue;
-      indices_map[in_data[i]] = i;
+  UniqueFlattendTensorFunctor(const framework::ExecutionContext& context,
+                              const framework::Tensor& in,
+                              framework::Tensor* out,
+                              framework::Tensor* indices,
+                              framework::Tensor* inverse,
+                              framework::Tensor* counts, bool return_index,
+                              bool return_inverse, bool return_counts)
+      : ctx_(context),
+        in_(in),
+        out_(out),
+        indices_(indices),
+        inverse_(inverse),
+        counts_(counts),
+        return_index_(return_index),
+        return_inverse_(return_inverse),
+        return_counts_(return_counts) {}
+
+  template <typename IndexT>
+  void apply() const {
+    auto data_type = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("dtype"));
+    const T* in_data = in_.data<InT>();
+    std::set<T> unique(in_data, in_data + in.numel());
+    out->Resize(framework::make_ddim({static_cast<int64_t>(unique.size())}));
+    auto out_data = out_->mutable_data<IndexT>(context.GetPlace());
+    std::copy(unique.begin(), unique.end(), out_data);
+
+    if (return_index) {
+      indices_->Resize(framework::make_ddim({out->numel()}));
+      auto indices_data = indices_->mutable_data<IndexT>(context.GetPlace());
+      std::unordered_map<InT, IndexT> indices_map;
+      indices_map.reserve(out->numel());
+      for (int64_t i = 0; i < in.numel(); ++i) {
+        if (indices_map.find(in_data[i]) != indices_map.end()) continue;
+        indices_map[in_data[i]] = i;
+      }
+      for (int64_t i = 0; i < out->numel(); ++i) {
+        indices_data[i] = indices_map[out_data[i]];
+      }
     }
-    for (int64_t i = 0; i < out->numel(); ++i) {
-      indices_data[i] = indices_map[out_data[i]];
+
+    if (return_inverse) {
+      inverse_->Resize(framework::make_ddim({in.numel()}));
+      auto inverse_data = inverse_->mutable_data<IndexT>(context.GetPlace());
+      std::unordered_map<InT, IndexT> inverse_map;
+      inverse_map.reserve(out->numel());
+      for (int64_t i = 0; i < out->numel(); ++i) {
+        inverse_map[out_data[i]] = i;
+      }
+      for (int64_t i = 0; i < in.numel(); ++i) {
+        inverse_data[i] = inverse_map[in_data[i]];
+      }
+    }
+
+    if (return_counts) {
+      counts_->Resize(framework::make_ddim({out->numel()}));
+      auto count_data = counts_->mutable_data<IndexT>(context.GetPlace());
+      std::unordered_map<InT, IndexT> counts_map;
+      counts_map.reserve(out->numel());
+      for (int64_t i = 0; i < out->numel(); ++i) {
+        counts_map[out_data[i]] = 0;
+      }
+      for (int64_t i = 0; i < in.numel(); i++) {
+        counts_map[in_data[i]] += 1;
+      }
+      for (int64_t i = 0; i < out->numel(); i++) {
+        count_data[i] = counts_map[out_data[i]];
+      }
     }
   }
+};
 
-  if (return_inverse) {
-    auto* inverse = context.Output<framework::Tensor>("Index");
-    inverse->Resize(framework::make_ddim({in.numel()}));
-    auto inverse_data = inverse->mutable_data<int64_t>(context.GetPlace());
-    std::unordered_map<T, int64_t> inverse_map;
-    inverse_map.reserve(out->numel());
-    for (int64_t i = 0; i < out->numel(); ++i) {
-      inverse_map[out_data[i]] = i;
-    }
-    for (int64_t i = 0; i < in.numel(); ++i) {
-      inverse_data[i] = inverse_map[in_data[i]];
-    }
-  }
-
-  if (return_counts) {
-    auto* count = context.Output<framework::Tensor>("Counts");
-    count->Resize(framework::make_ddim({out->numel()}));
-    auto count_data = count->mutable_data<int64_t>(context.GetPlace());
-    std::unordered_map<T, int64_t> counts_map;
-    counts_map.reserve(out->numel());
-    for (int64_t i = 0; i < out->numel(); ++i) {
-      counts_map[out_data[i]] = 0;
-    }
-    for (int64_t i = 0; i < in.numel(); i++) {
-      counts_map[in_data[i]] += 1;
-    }
-    for (int64_t i = 0; i < out->numel(); i++) {
-      count_data[i] = counts_map[out_data[i]];
-    }
-  }
-}
-
-template <class ForwardIt, typename T>
+template <class ForwardIt, typename T, typename IndexT>
 static ForwardIt UniqueDimImpl(const framework::ExecutionContext& context,
                                ForwardIt first, ForwardIt last,
-                               const std::vector<int64_t>& sorted_indices_vec,
-                               std::vector<int64_t>* inverse_vec,
-                               std::vector<int64_t>* counts_vec,
-                               std::vector<int64_t>* indices_vec) {
+                               const std::vector<IndexT>& sorted_indices_vec,
+                               std::vector<IndexT>* inverse_vec,
+                               std::vector<IndexT>* counts_vec,
+                               std::vector<IndexT>* indices_vec) {
   if (first == last) {
     return last;
   }
@@ -223,7 +249,7 @@ static ForwardIt UniqueDimImpl(const framework::ExecutionContext& context,
   return ++result;
 }
 
-template <typename DeviceContext, typename T>
+template <typename DeviceContext, typename InT, typename IndexT>
 static void UniqueDim(const framework::ExecutionContext& context,
                       const framework::Tensor& in, framework::Tensor* out,
                       bool return_index, bool return_inverse,
@@ -241,20 +267,20 @@ static void UniqueDim(const framework::ExecutionContext& context,
   in_trans.Resize(in_trans_dims);
   in_trans.mutable_data<T>(context.GetPlace());
   auto& dev_ctx = context.template device_context<DeviceContext>();
-  TransCompute<DeviceContext, T>(in.dims().size(), dev_ctx, in, &in_trans,
-                                 permute);
+  TransCompute<DeviceContext, InT>(in.dims().size(), dev_ctx, in, &in_trans,
+                                   permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
   framework::DDim in_trans_flat_dims =
       framework::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
 
   // sort indices
-  std::vector<int64_t> sorted_indices_vec(in_trans.dims()[0]);
+  std::vector<IndexT> sorted_indices_vec(in_trans.dims()[0]);
   std::iota(sorted_indices_vec.begin(), sorted_indices_vec.end(), 0);
   int64_t col = in_trans.dims()[1];
   const T* in_trans_data = in_trans.data<T>();
   std::sort(sorted_indices_vec.begin(), sorted_indices_vec.end(),
-            [&](int64_t a, int64_t b) -> bool {
+            [&](IndexT a, IndexT b) -> bool {
               for (int64_t i = 0; i < col; ++i) {
                 T lhs = in_trans_data[i + a * col];
                 T rhs = in_trans_data[i + b * col];
@@ -270,18 +296,18 @@ static void UniqueDim(const framework::ExecutionContext& context,
   // sort tensor according to indices
   framework::Tensor input_sorted;
   input_sorted.Resize(in_trans_dims);
-  input_sorted.mutable_data<T>(context.GetPlace());
-  T* input_sorted_data = input_sorted.data<T>();
+  input_sorted.mutable_data<InT>(context.GetPlace());
+  T* input_sorted_data = input_sorted.data<InT>();
   for (size_t i = 0; i < sorted_indices_vec.size(); ++i) {
     memcpy(input_sorted_data + i * col,
-           in_trans_data + sorted_indices_vec[i] * col, col * sizeof(T));
+           in_trans_data + sorted_indices_vec[i] * col, col * sizeof(InT));
   }
 
   std::vector<framework::Tensor> input_unbind = Unbind(input_sorted);
-  std::vector<int64_t> inverse_vec(sorted_indices_vec.size(), 0);
-  std::vector<int64_t> counts_vec(sorted_indices_vec.size(), 0);
-  std::vector<int64_t> indices_vec(sorted_indices_vec.size(), 0);
-  auto last = UniqueDimImpl<std::vector<framework::Tensor>::iterator, T>(
+  std::vector<IndexT> inverse_vec(sorted_indices_vec.size(), 0);
+  std::vector<IndexT> counts_vec(sorted_indices_vec.size(), 0);
+  std::vector<IndexT> indices_vec(sorted_indices_vec.size(), 0);
+  auto last = UniqueDimImpl<std::vector<framework::Tensor>::iterator, InT>(
       context, input_unbind.begin(), input_unbind.end(), sorted_indices_vec,
       &inverse_vec, &counts_vec, &indices_vec);
   input_unbind.erase(last, input_unbind.end());
@@ -289,7 +315,7 @@ static void UniqueDim(const framework::ExecutionContext& context,
   indices_vec.erase(indices_vec.begin() + input_unbind.size(),
                     indices_vec.end());
 
-  math::ConcatFunctor<DeviceContext, T> concat_functor;
+  math::ConcatFunctor<DeviceContext, InT> concat_functor;
   framework::Tensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();
@@ -297,10 +323,10 @@ static void UniqueDim(const framework::ExecutionContext& context,
   out_trans.mutable_data<T>(context.GetPlace());
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
   out->Resize(framework::make_ddim(out_trans_dims_vec));
-  out->mutable_data<T>(context.GetPlace());
+  out->mutable_data<InT>(context.GetPlace());
   concat_functor(dev_ctx, input_unbind, 0, &out_trans);
-  TransCompute<DeviceContext, T>(out_trans.dims().size(), dev_ctx, out_trans,
-                                 out, permute);
+  TransCompute<DeviceContext, InT>(out_trans.dims().size(), dev_ctx, out_trans,
+                                   out, permute);
 
   if (return_inverse) {
     auto* inverse = context.Output<framework::Tensor>("Index");
@@ -318,33 +344,76 @@ static void UniqueDim(const framework::ExecutionContext& context,
   }
 }
 
+template <typename DeviceContext, typename InT>
+struct UniqueDimFunctor {
+  const DeviceContext& ctx_;
+  framework::Tensor* out_;
+  framework::Tensor* indices_;
+  framework::Tensor* inverse_;
+  framework::Tensor* counts_;
+  const framework::Tensor* in_;
+  const int axis_;
+  const bool return_index_;
+  const bool return_inverse_;
+  const bool return_counts_;
+
+  UniqueDimFunctor(const framework::ExecutionContext& context,
+                   const framework::Tensor& in, framework::Tensor* out,
+                   framework::Tensor* indices, framework::Tensor* inverse,
+                   framework::Tensor* counts, const int axis, bool return_index,
+                   bool return_inverse, bool return_counts)
+      : ctx_(context),
+        in_(in),
+        out_(out),
+        indices_(indices),
+        inverse_(inverse),
+        counts_(counts),
+        axis_(axis),
+        return_index_(return_index),
+        return_inverse_(return_inverse),
+        return_counts_(return_counts) {}
+
+  template <typename IndexT>
+  void apply() const {
+    UniqueDim<DeviceContext, InT, IndexT>(context, *x, out, return_index,
+                                          return_inverse, return_counts, axis);
+  }
+};
+
 template <typename DeviceContext, typename T>
 class UniqueKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
+    auto data_type = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("dtype"));
     if (!context.Attr<bool>("is_sorted")) {
-      auto data_type = static_cast<framework::proto::VarType::Type>(
-          context.Attr<int>("dtype"));
       auto* index = context.Output<framework::Tensor>("Index");
 
       framework::VisitDataType(data_type, UniqueOpFunctor<T>(out, index, x));
       return;
     }
 
+    auto* indices = context.Output<framework::Tensor>("Indices");
+    auto* inverse = context.Output<framework::Tensor>("Index");
+    auto* counts = context.Output<framework::Tensor>("Counts");
     std::vector<int> axis_vec = context.Attr<std::vector<int>>("axis");
     bool return_index = context.Attr<bool>("return_index");
     bool return_inverse = context.Attr<bool>("return_inverse");
     bool return_counts = context.Attr<bool>("return_counts");
 
     if (axis_vec.empty()) {
-      UniqueFlattendTensor<T>(context, *x, out, return_index, return_inverse,
-                              return_counts);
+      framework::VisitDataType(
+          data_type,
+          UniqueFlattendTensor<T>(context, *x, out, indices, inverse, counts,
+                                  return_index, return_inverse, return_counts));
     } else {
       int axis = axis_vec[0];
-      UniqueDim<DeviceContext, T>(context, *x, out, return_index,
-                                  return_inverse, return_counts, axis);
+      framework::VisitDataType(
+          data_type,
+          UniqueDimFunctor<T>(context, *x, out, indices, inverse, counts, axis,
+                              return_index, return_inverse, return_counts));
     }
   }
 };
