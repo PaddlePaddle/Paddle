@@ -327,13 +327,8 @@ class ZeroOptimizer(MetaOptimizerBase):
                       sub_prog._end_idx)):
             op = block.ops[op_idx]
             for input_name in op.desc.input_arg_names():
-                if input_name in sub_prog._param2broadcast:
-                    print("param2broadcast: ", input_name,
-                          sub_prog._param2broadcast[input_name])
                 if input_name in sub_prog._param2broadcast and \
                     input_name != sub_prog._param2broadcast[input_name]:
-                    print("rename {} -> {}".format(
-                        input_name, sub_prog._param2broadcast[input_name]))
                     op._rename_input(input_name,
                                      sub_prog._param2broadcast[input_name])
 
@@ -411,11 +406,11 @@ class ZeroOptimizer(MetaOptimizerBase):
         ckpts = list(self.user_defined_strategy.recompute_configs[
             "checkpoints"])
         optimizer = self.inner_opt
-        # if len(ckpts) > 0:
-        #     print("add recompute")
-        #     print(ckpts)
-        #     optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
-        #     optimizer._set_checkpoints(ckpts)
+        if len(ckpts) > 0:
+            print("add recompute")
+            print(ckpts)
+            optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
+            optimizer._set_checkpoints(ckpts)
 
         # optimizer = fluid.contrib.mixed_precision.decorate(
         #     optimizer, use_dynamic_loss_scaling=False)
@@ -451,8 +446,6 @@ class ZeroOptimizer(MetaOptimizerBase):
         # step2: add broadcast and reduce ops
         print("insert broadcast and allreduce")
         self._split_program(main_block)
-        for prog in self._sub_progs:
-            print("param2broadcast: ", prog._param2broadcast)
         inserted_op_num = 0
         for idx, subprog in enumerate(self._sub_progs):
             print("subprog_{}: ({}-{})".format(idx, subprog._start_idx,
