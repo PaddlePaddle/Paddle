@@ -287,7 +287,7 @@ class TestLayer(LayerTest):
         if core.is_compiled_with_cuda():
             with self.static_graph():
                 t = layers.data(name='t', shape=[-1, 3, 5, 5], dtype='float32')
-                my_sync_bn = nn.SyncBatchNorm(3)
+                my_sync_bn = paddle.nn.SyncBatchNorm(3)
                 ret = my_sync_bn(t)
                 static_ret = self.get_static_graph_result(
                     feed={'t': np.ones(
@@ -3680,6 +3680,33 @@ class TestBook(LayerTest):
                         dropout_prob=0.5,
                         bidirectional=bidirectional,
                         batch_first=batch_first)
+
+
+class TestMetricsDetectionMap(unittest.TestCase):
+    def test_detection_map(self):
+        program = fluid.Program()
+        with program_guard(program):
+            detect_res = fluid.layers.data(
+                name='detect_res',
+                shape=[10, 6],
+                append_batch_size=False,
+                dtype='float32')
+            label = fluid.layers.data(
+                name='label',
+                shape=[10, 1],
+                append_batch_size=False,
+                dtype='float32')
+            box = fluid.layers.data(
+                name='bbox',
+                shape=[10, 4],
+                append_batch_size=False,
+                dtype='float32')
+            map_eval = fluid.metrics.DetectionMAP(
+                detect_res, label, box, class_num=21)
+            cur_map, accm_map = map_eval.get_map_var()
+            self.assertIsNotNone(cur_map)
+            self.assertIsNotNone(accm_map)
+        print(str(program))
 
 
 if __name__ == '__main__':

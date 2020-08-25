@@ -28,6 +28,7 @@
 #include <thread>  // NOLINT
 
 #include <ThreadPool.h>
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/selected_rows.h"
@@ -96,7 +97,12 @@ class UniformInitializer : public Initializer {
     dist_ = std::uniform_real_distribution<float>(min_, max_);
   }
 
-  float GetValue() override { return dist_(random_engine_); }
+  float GetValue() override {
+    return framework::Generator::GetInstance()->is_init_py
+               ? dist_(framework::Generator::GetInstance()->GetCPUEngine())
+               : dist_(random_engine_);
+    // return dist_(random_engine_);
+  }
 
  private:
   float min_;
@@ -141,7 +147,12 @@ class GaussianInitializer : public Initializer {
     dist_ = std::normal_distribution<float>(mean_, std_);
   }
 
-  float GetValue() override { return dist_(random_engine_); }
+  float GetValue() override {
+    return framework::Generator::GetInstance()->is_init_py
+               ? dist_(framework::Generator::GetInstance()->GetCPUEngine())
+               : dist_(random_engine_);
+    // return dist_(random_engine_);
+  }
 
  private:
   float std_;

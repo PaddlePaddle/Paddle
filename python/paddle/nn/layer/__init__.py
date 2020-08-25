@@ -20,7 +20,9 @@ from . import conv
 from . import extension
 from . import activation
 from . import norm
+from . import vision
 from . import distance
+from . import transformer
 
 from .activation import *
 from .loss import *
@@ -28,6 +30,9 @@ from .conv import *
 from .extension import *
 from .activation import *
 from .norm import *
+from .vision import *
+
+from .transformer import *
 # from .activation import PReLU        #DEFINE_ALIAS
 from .activation import ReLU  #DEFINE_ALIAS
 from .activation import LeakyReLU  #DEFINE_ALIAS
@@ -58,6 +63,14 @@ from .common import Dropout3D  #DEFINE_ALIAS
 from .common import AlphaDropout  #DEFINE_ALIAS
 from .pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
 from .pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
+from .pooling import AvgPool1d  #DEFINE_ALIAS
+from .pooling import MaxPool1d  #DEFINE_ALIAS
+from .pooling import AdaptiveAvgPool1d  #DEFINE_ALIAS
+from .pooling import AdaptiveMaxPool1d  #DEFINE_ALIAS
+from .pooling import AvgPool2d  #DEFINE_ALIAS
+from .pooling import MaxPool2d  #DEFINE_ALIAS
+from .pooling import AvgPool3d  #DEFINE_ALIAS
+from .pooling import MaxPool3d  #DEFINE_ALIAS
 from .conv import Conv1d  #DEFINE_ALIAS
 from .conv import Conv2d  #DEFINE_ALIAS
 from .conv import Conv3d  #DEFINE_ALIAS
@@ -94,4 +107,6 @@ from .norm import InstanceNorm  #DEFINE_ALIAS
 # from .rnn import RNNCell        #DEFINE_ALIAS
 # from .rnn import GRUCell        #DEFINE_ALIAS
 # from .rnn import LSTMCell        #DEFINE_ALIAS
+
+from .vision import PixelShuffle  #DEFINE_ALIAS
 from .distance import PairwiseDistance  #DEFINE_ALIAS

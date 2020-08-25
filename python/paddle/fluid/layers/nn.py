@@ -3362,6 +3362,15 @@ def data_norm(input,
         "BatchSum": batch_sum,
         "BatchSquareSum": batch_square_sum
     }
+    attrs = {
+        "epsilon": epsilon,
+        "sync_stats": sync_stats,
+        "summary_decay_rate": summary_decay_rate,
+    }
+    if slot_dim > 0:
+        attrs["slot_dim"] = slot_dim
+    if enable_scale_and_shift:
+        attrs["enable_scale_and_shift"] = enable_scale_and_shift
     if enable_scale_and_shift:
         inputs["scale_w"] = scale_w
         inputs["bias"] = bias
@@ -3376,13 +3385,7 @@ def data_norm(input,
             "BatchSum": batch_sum,
             "BatchSquareSum": batch_square_sum
         },
-        attrs={
-            "epsilon": epsilon,
-            "slot_dim": slot_dim,
-            "sync_stats": sync_stats,
-            "summary_decay_rate": summary_decay_rate,
-            "enable_scale_and_shift": enable_scale_and_shift
-        })
+        attrs=attrs)
 
     return helper.append_activation(data_norm_out)
 
@@ -8207,9 +8210,9 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
     return image_resize(input=input, out_shape=out_shape, resample=resample)
 
 
+@deprecated(since="2.0.0", update_to="paddle.gather")
 def gather(input, index, overwrite=True):
     """
-    **Gather Layer**
 
     Output is obtained by gathering entries of the outer-most dimension
     of X indexed by `index` and concatenate them together.
@@ -8281,6 +8284,7 @@ def gather(input, index, overwrite=True):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.gather_nd")
 def gather_nd(input, index, name=None):
     """
     **Gather Nd Layer**
@@ -8333,7 +8337,7 @@ def gather_nd(input, index, name=None):
                          = [23]
 
     Args:
-        input (Tensor): The source input. Its dtype should be bool, float32, float64, int32, int64.
+        input (Tensor): The input Tensor which it's data type should be bool, float32, float64, int32, int64.
         index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
                         Its dtype should be int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
@@ -12144,7 +12148,10 @@ def logical_and(x, y, out=None, name=None):
             res = paddle.logical_and(x, y)
             print(res.numpy()) # [True False False False]
     """
-
+    if x.shape != y.shape:
+        raise TypeError(
+            'Input tensors must be same shape, but received x \'s shape: %s, y \'s shape: %s '
+            % (x.shape, y.shape))
     return _logical_op(
         op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12186,7 +12193,10 @@ def logical_or(x, y, out=None, name=None):
             res = paddle.logical_or(x, y)
             print(res.numpy()) # [True  True  True False]
     """
-
+    if x.shape != y.shape:
+        raise TypeError(
+            'Input tensors must be same shape, but received x \'s shape: %s, y \'s shape: %s '
+            % (x.shape, y.shape))
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -12228,7 +12238,10 @@ def logical_xor(x, y, out=None, name=None):
             res = paddle.logical_xor(x, y)
             print(res.numpy()) # [False  True  True False]
     """
-
+    if x.shape != y.shape:
+        raise TypeError(
+            'Input tensors must be same shape, but received x \'s shape: %s, y \'s shape: %s '
+            % (x.shape, y.shape))
     return _logical_op(
         op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True)
 
