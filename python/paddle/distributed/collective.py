@@ -104,6 +104,7 @@ def broadcast(tensor, src, group=0):
         outputs={'Out': [tensor]},
         attrs={
             'root': src,
+            'use_calc_stream': True,
             'ring_id': group,
         })
 
@@ -164,7 +165,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0):
         type=op_type,
         inputs={'X': [tensor]},
         outputs={'Out': [tensor]},
-        attrs={'ring_id': group, })
+        attrs={'ring_id': group,
+               'use_calc_stream': True})
 
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
@@ -228,6 +230,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
         outputs={'Out': [tensor]},
         attrs={
             'ring_id': group,
+            'use_calc_stream': True,
             'root_id': dst,
         })
 
@@ -291,8 +294,11 @@ def all_gather(tensor_list, tensor, group=0):
         type=op_type,
         inputs={'X': [tensor]},
         outputs={'Out': [out]},
-        attrs={'ring_id': group,
-               'nranks': _default_group.nranks})
+        attrs={
+            'ring_id': group,
+            'use_calc_stream': True,
+            'nranks': _default_group.nranks
+        })
 
     tensor_list.extend(paddle.split(out, _default_group.nranks, 0))
 
@@ -369,6 +375,7 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
         attrs={
             'ring_id': group,
             'root': src,
+            'use_calc_stream': True,
             'nranks': nranks,
         })
 
