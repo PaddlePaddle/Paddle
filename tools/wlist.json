@@ -142,13 +142,7 @@
         "Callback.on_eval_batch_end",
         "Callback.on_test_batch_begin",
         "Callback.on_test_batch_end",
-        "Model.prepare",
-        "broadcast",
-        "all_reduce",
-        "reduce",
-        "scatter",
-        "all_gather",
-        "barrier"
+        "Model.prepare"
     ],
     "wlist_no_op_pass":[
         "gelu",
