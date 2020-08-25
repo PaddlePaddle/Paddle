@@ -148,9 +148,9 @@ class LayerHelper(LayerHelperBase):
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')
 
-        use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
-        if 'use_mkldnn' in self.kwargs:
-            use_mkldnn = self.kwargs.get('use_mkldnn')
+        # priority use_mkldnn in kwargs then global
+        use_mkldnn = self.kwargs.get(
+            'use_mkldnn', core.globals().get("FLAGS_use_mkldnn", False))
         if (use_mkldnn is not None) and use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
 
