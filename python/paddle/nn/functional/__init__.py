@@ -196,7 +196,7 @@ from .vision import box_clip  #DEFINE_ALIAS
 from .vision import box_coder  #DEFINE_ALIAS
 from .vision import box_decoder_and_assign  #DEFINE_ALIAS
 from .vision import collect_fpn_proposals  #DEFINE_ALIAS
-# from .vision import deformable_conv        #DEFINE_ALIAS
+# from .vision import deformable_conv  #DEFINE_ALIAS
 from .vision import deformable_roi_pooling  #DEFINE_ALIAS
 from .vision import density_prior_box  #DEFINE_ALIAS
 from .vision import detection_output  #DEFINE_ALIAS
@@ -208,7 +208,7 @@ from .vision import generate_proposals  #DEFINE_ALIAS
 from .vision import grid_sample  #DEFINE_ALIAS
 from .vision import image_resize  #DEFINE_ALIAS
 from .vision import image_resize_short  #DEFINE_ALIAS
-# from .vision import multi_box_head        #DEFINE_ALIAS
+# from .vision import multi_box_head  #DEFINE_ALIAS
 from .vision import pixel_shuffle  #DEFINE_ALIAS
 from .vision import prior_box  #DEFINE_ALIAS
 from .vision import prroi_pool  #DEFINE_ALIAS

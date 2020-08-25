@@ -21,6 +21,7 @@ from . import extension
 from . import activation
 from . import norm
 from . import rnn
+from . import vision
 from . import distance
 from . import transformer
 
@@ -31,6 +32,8 @@ from .extension import *
 from .activation import *
 from .norm import *
 from .rnn import *
+from .vision import *
+
 from .transformer import *
 # from .activation import PReLU        #DEFINE_ALIAS
 from .activation import ReLU  #DEFINE_ALIAS
@@ -106,4 +109,6 @@ from .norm import InstanceNorm  #DEFINE_ALIAS
 # from .rnn import RNNCell        #DEFINE_ALIAS
 # from .rnn import GRUCell        #DEFINE_ALIAS
 # from .rnn import LSTMCell        #DEFINE_ALIAS
+
+from .vision import PixelShuffle  #DEFINE_ALIAS
 from .distance import PairwiseDistance  #DEFINE_ALIAS
