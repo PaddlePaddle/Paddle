@@ -183,7 +183,7 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
 
         thread_num = 2
         batch_size = 128
-        filelist = fleet.split_files(train_file_list)
+        filelist = fleet_util.get_file_shard(train_file_list)
         print("filelist: {}".format(filelist))
 
         # config dataset

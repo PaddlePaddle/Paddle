@@ -13,12 +13,12 @@
 
 from paddle import fluid
 from paddle.fluid import compiler
-from .async_optimizer import AsyncMetaOptimizer
+from .parameter_server_optimizer import ParameterServerOptimizer
 
 
-class AsyncGraphExecutionOptimizer(AsyncMetaOptimizer):
+class ParameterServerGraphOptimizer(ParameterServerOptimizer):
     def __init__(self, optimizer):
-        super(AsyncGraphExecutionOptimizer, self).__init__(optimizer)
+        super(ParameterServerGraphOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []

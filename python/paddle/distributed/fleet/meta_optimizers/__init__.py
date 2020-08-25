@@ -15,11 +15,11 @@ from .amp_optimizer import AMPOptimizer
 from .recompute_optimizer import RecomputeOptimizer
 from .gradient_merge_optimizer import GradientMergeOptimizer
 from .graph_execution_optimizer import GraphExecutionOptimizer
-from .async_optimizer import AsyncMetaOptimizer
+from .parameter_server_optimizer import ParameterServerOptimizer
 from .pipeline_optimizer import PipelineOptimizer
 from .localsgd_optimizer import LocalSGDOptimizer
 from .lars_optimizer import LarsOptimizer
-from .async_graph_execution_optimizer import AsyncGraphExecutionOptimizer
+from .parameter_server_graph_optimizer import ParameterServerGraphOptimizer
 from .dgc_optimizer import DGCOptimizer
 from .lamb_optimizer import LambOptimizer
 
@@ -27,12 +27,12 @@ __all__ = [
     'AMPOptimizer',
     'RecomputeOptimizer',
     'GradientMergeOptimizer',
-    'AsyncMetaOptimizer',
+    'ParameterServerOptimizer',
     'GraphExecutionOptimizer',
     'PipelineOptimizer',
     'LocalSGDOptimizer',
     'LarsOptimizer',
-    'AsyncGraphExecutionOptimizer',
+    'ParameterServerGraphOptimizer',
     'DGCOptimizer',
     'LambOptimizer',
 ]
