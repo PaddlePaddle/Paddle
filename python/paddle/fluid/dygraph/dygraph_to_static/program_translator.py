@@ -291,10 +291,9 @@ class StaticLayer(object):
                 "We will just return dygraph output.")
             return self._call_dygraph_function(*args, **kwargs)
 
+        # 2. trace ops from dygraph layers and cache the generated program.
+        args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
         try:
-            # 2. trace ops from dygraph layers and cache the generated program.
-            args, kwargs = self._function_spec.unified_args_and_kwargs(args,
-                                                                       kwargs)
             concrete_program, partial_program_layer = self.get_concrete_program(
                 *args, **kwargs)
 
