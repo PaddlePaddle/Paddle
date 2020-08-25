@@ -25,7 +25,6 @@ from paddle import fluid
 from paddle import Model, Input, set_device
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
-from paddle.callbacks import ProgBarLogger
 from paddle.vision.models import LeNet
 from paddle.vision.datasets import MNIST
 
@@ -76,7 +75,7 @@ class TestDistTraning(unittest.TestCase):
         val_dataset = MnistDataset(mode='test')
         test_dataset = MnistDataset(mode='test', return_label=False)
 
-        cbk = ProgBarLogger(50)
+        cbk = paddle.callbacks.ProgBarLogger(50)
         model.fit(train_dataset,
                   val_dataset,
                   epochs=2,
