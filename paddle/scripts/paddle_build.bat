@@ -19,10 +19,14 @@ rem =================================================
 rem       Paddle CI Task On Windows Platform
 rem =================================================
 
+rem -------clean up environment-----------
 set work_dir=%cd%
 if exist build rmdir build /s/q
 mkdir build
 cd /d build
+tree .
+dir paddle\fluid\pybind\Release
+taskkill /f /im %cd%\paddle\fluid\pybind\Release\op_function_generator.exe  2>NUL
 
 rem ------initialize the virtual environment------
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
@@ -55,7 +59,7 @@ if not defined WITH_AVX set WITH_AVX=ON
 if not defined WITH_TESTING set WITH_TESTING=ON
 if not defined WITH_PYTHON set WITH_PYTHON=ON
 if not defined ON_INFER set ON_INFER=ON
-if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
+if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=OFF
 if not defined WITH_TPCACHE set WITH_TPCACHE=ON
 
 rem ------set cache third_party------
@@ -65,7 +69,6 @@ set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
-    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 )
 
 if "%WITH_TPCACHE%"=="OFF" (
@@ -124,7 +127,7 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
-
+set start=%time%-%date%
 echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH%
 cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% -DON_INFER=%ON_INFER% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH%
 goto:eof
@@ -143,7 +146,7 @@ call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd6
 
 set build_times=1
 :build_tp
-echo Build third_party for %build_times% time:
+echo Build third_party the %build_times% time:
 msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
@@ -158,7 +161,7 @@ echo Build third_party successfully!
 
 set build_times=1
 :build_paddle
-echo Build Paddle for %build_times% time:
+echo Build Paddle the %build_times% time:
 msbuild /m /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
@@ -169,7 +172,9 @@ if %ERRORLEVEL% NEQ 0 (
         goto :build_paddle
     )
 )
+
 echo Build Paddle successfully!
+
 goto:eof
 
 :build_error
@@ -182,9 +187,20 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 3. Test pip install whl package ...
 echo    ========================================
+
+set end=%time%-%date%
+call :timestamp "%start%" "%end%" "Build"
+tree %cd%\fluid_inference_install_dir
+%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\fluid_inference_install_dir\paddle\lib > lib_size.txt
+set /p libsize=< lib_size.txt
+for /F %%i in ("%libsize%") do echo "Windows FLuid_Inference Size: %%i"
+%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
+set /p whlsize=< whl_size.txt
+for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 
+set start=%time%-%date%
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
 pip install -U %PADDLE_WHL_FILE_WIN% --user
@@ -230,8 +246,10 @@ echo    ========================================
 echo    Step 5. Testing fluid library for inference ...
 echo    ========================================
 
-cd %work_dir%\paddle\fluid\inference\api\demo_ci
+set end=%time%-%date%
+call :timestamp "%start%" "%end%" "TestCases Total"
 
+cd %work_dir%\paddle\fluid\inference\api\demo_ci
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo
 goto:eof
 
@@ -246,7 +264,6 @@ echo    ========================================
 echo    Step 6. Check whether deleting a unit test ...
 echo    ========================================
 
-set PATH=%PYTHON_ROOT%;%PATH%
 cd /d %work_dir%\build
 echo set -ex>  check_change_of_unittest.sh
 echo GITHUB_API_TOKEN=%GITHUB_API_TOKEN% >>  check_change_of_unittest.sh
@@ -313,6 +330,42 @@ goto:eof
 :check_change_of_unittest_error
 call paddle_winci\Scripts\deactivate.bat 2>NUL
 exit /b 1
+
+:timestamp
+echo on
+setlocal enabledelayedexpansion
+set start=%~1
+set dd=%start:~20,2%
+set /a dd=100%dd%%%100
+set hh=%start:~0,2%
+set /a hh=100%hh%%%100
+set nn=%start:~3,2%
+set /a nn=100%nn%%%100
+set ss=%start:~6,2%
+set /a ss=100%ss%%%100
+set /a start_sec=dd*86400+hh*3600+nn*60+ss
+echo %start_sec%
+
+set end=%~2
+set dd=%end:~20,2%
+set /a dd=100%dd%%%100
+if %start:~17,2% NEQ %end:~17,2% (
+    set month_day=0
+    for %%i in (01 03 05 07 08 10 12) DO if %%i EQU %start:~17,2% set month_day=31
+    for %%i in (04 06 09 11) DO if %%i EQU %start:~17,2% set month_day=30
+    for %%i in (02) DO if %%i EQU %start:~17,2% set month_day=28
+    set /a dd=%dd%+!month_day!
+)
+set hh=%end:~0,2%
+set /a hh=100%hh%%%100
+set nn=%end:~3,2%
+set /a nn=100%nn%%%100
+set ss=%end:~6,2%
+set /a ss=100%ss%%%100
+set /a end_secs=dd*86400+hh*3600+nn*60+ss
+set /a cost_secs=end_secs-start_sec
+echo "Windows %~3 Time: %cost_secs%s"
+goto:eof
 
 
 rem ---------------------------------------------------------------------------------------------
