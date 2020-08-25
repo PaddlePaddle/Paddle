@@ -53,7 +53,6 @@ class SGD(Optimizer):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
             paddle.disable_static()
             inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
