@@ -304,7 +304,8 @@ def interpolate(x,
         raise ValueError(
             "align_corners option can only be set with the interpolating modes: linear | bilinear | bicubic | trilinear"
         )
-
+    helper = LayerHelper('{}_interp_v2'.format(resample_type), **locals())
+    dtype = helper.input_dtype()
     if len(x.shape) == 3 and data_format not in ['NCW', 'NWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
@@ -453,9 +454,6 @@ def interpolate(x,
             out = core.ops.nearest_interp_v2(x, *dy_attr)
         if resample_type == "bicubic":
             out = core.ops.bicubic_interp_v2(x, *dy_attr)
-
-    helper = LayerHelper('{}_interp_v2'.format(resample_type), **locals())
-    dtype = helper.input_dtype()
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(

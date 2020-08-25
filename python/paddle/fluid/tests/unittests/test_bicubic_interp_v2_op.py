@@ -136,9 +136,10 @@ class TestBicubicInterpOp(OpTest):
             in_h = self.input_shape[1]
             in_w = self.input_shape[2]
 
-        if self.scale > 0:
+        if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
-                scale_h = scale_w = float(self.scale)
+                if self.scale > 0.:
+                    scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 scale_w = scale_h = self.scale[0]
             elif isinstance(self.scale, list) and len(self.scale) > 1:
@@ -166,9 +167,10 @@ class TestBicubicInterpOp(OpTest):
             'align_corners': self.align_corners,
             'data_layout': self.data_layout
         }
-        if self.scale > 0:
+        if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
-                self.scale = [self.scale]
+                if self.scale > 0.:
+                    self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0]]
             self.attrs['scale'] = self.scale
