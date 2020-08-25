@@ -24,10 +24,10 @@ from ...fluid.data_feeder import check_type, check_variable_and_dtype, check_dty
 from ...fluid.layers import unsqueeze, squeeze
 
 __all__ = [
-    'pool2d',  #d
-    'pool3d',  #d
-    'adaptive_pool2d',  #d
-    'adaptive_pool3d',  #d
+    'pool2d',
+    'pool3d',
+    'adaptive_pool2d',
+    'adaptive_pool3d',
     'avg_pool1d',
     'avg_pool2d',
     'avg_pool3d',

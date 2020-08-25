@@ -1858,6 +1858,7 @@ def conv3d(input,
     return helper.append_activation(pre_act)
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.pool2d")
 @templatedoc()
 def pool2d(input,
            pool_size=-1,
@@ -2075,6 +2076,7 @@ def pool2d(input,
     return pool_out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.pool3d")
 @templatedoc()
 def pool3d(input,
            pool_size=-1,
@@ -2303,6 +2305,7 @@ def pool3d(input,
     return pool_out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.adaptive_pool2d")
 @templatedoc(op_type="pool2d")
 def adaptive_pool2d(input,
                     pool_size,
@@ -2450,6 +2453,7 @@ def adaptive_pool2d(input,
     return (pool_out, mask) if require_index else pool_out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.adaptive_pool3d")
 @templatedoc(op_type="pool3d")
 def adaptive_pool3d(input,
                     pool_size,

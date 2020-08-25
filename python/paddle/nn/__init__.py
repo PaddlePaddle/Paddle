@@ -94,10 +94,19 @@ from .layer.common import Dropout2D  #DEFINE_ALIAS
 from .layer.common import Dropout3D  #DEFINE_ALIAS
 from .layer.common import AlphaDropout  #DEFINE_ALIAS
 
-from .layer.pooling import AdaptiveMaxPool2d  #DEFINE_ALIAS
-from .layer.pooling import AdaptiveMaxPool3d  #DEFINE_ALIAS
+from .layer.pooling import AvgPool1d  #DEFINE_ALIAS
+from .layer.pooling import AvgPool2d  #DEFINE_ALIAS
+from .layer.pooling import AvgPool3d  #DEFINE_ALIAS
+from .layer.pooling import MaxPool1d  #DEFINE_ALIAS
+from .layer.pooling import MaxPool2d  #DEFINE_ALIAS
+from .layer.pooling import MaxPool3d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool1d  #DEFINE_ALIAS
 from .layer.pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
 from .layer.pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
+
+from .layer.pooling import AdaptiveMaxPool1d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveMaxPool2d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveMaxPool3d  #DEFINE_ALIAS
 from .layer.conv import Conv1d  #DEFINE_ALIAS
 from .layer.conv import Conv2d  #DEFINE_ALIAS
 from .layer.conv import Conv3d  #DEFINE_ALIAS
