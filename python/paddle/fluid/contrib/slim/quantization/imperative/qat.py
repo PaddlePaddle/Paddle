@@ -16,8 +16,8 @@ import logging
 import numpy as np
 import sys
 from paddle.fluid import dygraph
-from paddle.fluid.dygraph.nn import Conv2D
-from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
+from paddle.nn.layer import ReLU, LeakyReLU
 from paddle.fluid.log_helper import get_logger
 from . import quant_nn
 
@@ -58,7 +58,7 @@ class ImperativeQuantAware(object):
                 'moving_average_abs_max', the static quantization scale will be calculated
                 during training and used in inference.
             moving_rate(float): the parameter for 'moving_average_abs_max' quantization.
-            quantizable_op_type(list[str]): List the type of layers that will be quantized. 
+            quantizable_layer_type(list[str]): List the type of layers that will be quantized. 
                 Default is ['Conv2D', 'Linear']. The quantizable_op_type in
                 QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
 
@@ -97,7 +97,6 @@ class ImperativeQuantAware(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._moving_rate = moving_rate
-
         quant_type = {
             'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max'
         }
@@ -114,7 +113,13 @@ class ImperativeQuantAware(object):
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
 
-        self._quant_layers_map = {'Conv2D': Conv2D, 'Linear': Linear}
+        self._quant_layers_map = {
+            'Conv2D': Conv2D,
+            'Linear': Linear,
+            'Pool2D': Pool2D,
+            'ReLU': ReLU,
+            'LeakyReLU': LeakyReLU
+        }
         self._quantizable_layer_type = tuple(
             self._quant_layers_map[layer]
             if layer in self._quant_layers_map else layer
@@ -137,7 +142,6 @@ class ImperativeQuantAware(object):
         for name, layer in model.named_sublayers():
             if not isinstance(layer, self._quantizable_layer_type):
                 continue
-
             scopes = name.split('.')
             target = scopes[-1]
             obj = model
@@ -231,8 +235,14 @@ class ImperativeQuantAware(object):
             _logger.fatal("The layer {} is unsupported to be quantized.".format(
                 layer.full_name()))
             sys.exit(-1)
-
-        quantized_layer = quant_nn.__dict__[quantized_counterpart[index]](
+        no_weight_layer = [
+            'QuantizedPool2D', 'QuantizedReLU', 'QuantizedLeakyReLU'
+        ]
+        if quantized_counterpart[index] in no_weight_layer:
+            quant_layer_class_name = 'QuantizedNoweightLayer'
+        else:
+            quant_layer_class_name = quantized_counterpart[index]
+        quantized_layer = quant_nn.__dict__[quant_layer_class_name](
             layer, self._weight_bits, self._activation_bits, self._moving_rate,
             self._weight_quantize_type, self._activation_quantize_type)
         return quantized_layer
