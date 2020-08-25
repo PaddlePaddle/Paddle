@@ -198,8 +198,6 @@ def embedding(input, weight, padding_idx=None, is_sparse=True, name=None):
         dtype = helper.input_dtype()
 
         check_variable_and_dtype(input, 'input', ['int64'], 'embedding')
-        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
-                    'embedding')
 
         is_distributed = False
         remote_prefetch = is_sparse and (not is_distributed)

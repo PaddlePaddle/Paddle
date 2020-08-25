@@ -15,20 +15,43 @@
 from __future__ import print_function
 
 import unittest
+import numpy as np
 import paddle.fluid as fluid
 import paddle.nn.functional as functional
 
 
-class BadInputTestOnehotV2(unittest.TestCase):
-    def test_error(self):
-        with fluid.program_guard(fluid.Program()):
+class EmbeddingUT(unittest.TestCase):
+    def test_1(self):
+        prog = fluid.Program()
+        with fluid.program_guard(prog):
 
             def test_bad_x():
+                initializer = fluid.initializer.NumpyArrayInitializer(
+                    np.random.random(size=(128, 100)))
+
+                param_attr = fluid.ParamAttr(
+                    name="emb_weight",
+                    learning_rate=0.5,
+                    initializer=initializer,
+                    trainable=True)
+
+                weight = prog.global_block().create_parameter(
+                    (128, 100), attr=param_attr, dtype="float32")
+
                 label = fluid.layers.data(
                     name="label",
                     shape=[4],
                     append_batch_size=False,
-                    dtype="float32")
-                emb = functional.embedding(x=label, num_classes=4)
+                    dtype="int64")
 
-            self.assertRaises(TypeError, test_bad_x)
+                emb = functional.embedding(
+                    input=label,
+                    weight=weight,
+                    is_sparse=True,
+                    name="embedding")
+
+            test_bad_x()
+
+
+if __name__ == '__main__':
+    unittest.main()
