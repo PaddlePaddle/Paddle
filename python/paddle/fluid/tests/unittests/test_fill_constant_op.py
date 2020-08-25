@@ -359,7 +359,7 @@ class TestFillConstantOpError(unittest.TestCase):
                 out=x1)
 
             self.assertRaises(
-                ValueError,
+                TypeError,
                 fluid.layers.fill_constant,
                 shape=[-1],
                 value=5,

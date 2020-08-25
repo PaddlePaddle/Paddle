@@ -27,6 +27,7 @@ from .layer_function_generator import templatedoc
 from . import utils
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.utils import deprecated
+from .utils import check_shape
 import numpy
 import warnings
 
@@ -660,8 +661,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     Raises:
         TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32 and int64
             and the data type of ``out`` must be the same as the ``dtype``. 
-        TypeError: The ``shape`` must be one of list, tuple and Tensor.  The type of it's element  must be int
-            when it's list or tuple, the data type of ``shape`` must be int32 or int64 when ``shape`` is a Tensor.
+        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape``
+            must be int32 or int64 when ``shape`` is a Tensor.
         ValueError: All elements in the ``shape`` must be positive.
 
     Examples:
@@ -724,17 +725,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
 
-    if isinstance(shape, Variable):
-        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
-    else:
-        for ele in shape:
-            if not isinstance(ele, Variable):
-                check_type(ele, 'shape', (int), "fill_constant")
-                if ele <= 0:
-                    raise ValueError(
-                        "All eleement is the shape must be positive when it's a tuple or list"
-                    )
-
+    check_shape(shape)
     if out is not None:
         check_variable_and_dtype(out, 'out', [convert_dtype(dtype)],
                                  'fill_constant')
@@ -1061,8 +1052,8 @@ def ones(shape, dtype, force_cpu=False):
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
     Raises:
         TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor.  The type of it's element  must be int
-            when it's list or tuple, the data type of ``shape`` must be int32 or int64 when ``shape`` is a Tensor.
+        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape``
+            must be int32 or int64 when ``shape`` is a Tensor.
         ValueError: All elements in the ``shape`` must be positive.
 
     Examples:
@@ -1098,8 +1089,8 @@ def zeros(shape, dtype, force_cpu=False, name=None):
 
     Raises:
         TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor.  The type of it's element  must be int
-            when it's list or tuple, the data type of ``shape`` must be int32 or int64 when ``shape`` is a Tensor.
+        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape``
+            must be int32 or int64 when ``shape`` is a Tensor.
         ValueError: All elements in the ``shape`` must be positive.
     Examples:
         .. code-block:: python

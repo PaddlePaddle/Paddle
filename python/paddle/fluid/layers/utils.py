@@ -358,3 +358,16 @@ def _convert_shape_to_list(shape):
     else:
         shape = list(shape.numpy().astype(int))
     return shape
+
+
+def check_shape(shape):
+    if isinstance(shape, Variable):
+        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
+    else:
+        for ele in shape:
+            if not isinstance(ele, Variable):
+                check_type(ele, 'shape', (int), "fill_constant")
+                if ele <= 0:
+                    raise ValueError(
+                        "All eleement is the shape must be positive when it's a tuple or list"
+                    )
