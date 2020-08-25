@@ -247,17 +247,14 @@ def run_fro(self, p, axis, shape_x, dtype):
 
 
 def run_pnorm(self, p, axis, shape_x, dtype):
-    with paddle.disable_static():
-        all_len = 1
-        for s in shape_x:
-            all_len = s * all_len
-        np_input = np.arange(all_len).astype(dtype) - all_len / 2
-        np_input = np_input.reshape(shape_x)
-
-        data = paddle.to_tensor(np_input)
+    with fluid.program_guard(fluid.Program()):
+        data = fluid.data(name="X", shape=shape_x, dtype=dtype)
         out = paddle.norm(x=data, p=p, axis=axis)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
         expected_result = p_norm(np_input, porder=p, axis=axis).astype(dtype)
-        result = out.numpy()
+        result, = exe.run(feed={"X": np_input}, fetch_list=[out])
         self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
 
 
