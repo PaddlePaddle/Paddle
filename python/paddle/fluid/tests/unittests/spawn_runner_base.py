@@ -35,7 +35,7 @@ class SpawnAssistTestArgs(object):
 def run_dygraph_model(rank, model, args):
     args.with_spawn = True
     args.trainer_id = rank
-    return model.run_trainer(args)
+    return model.run_trainer_with_spawn(args)
 
 
 class TestDistSpawnRunner(unittest.TestCase):

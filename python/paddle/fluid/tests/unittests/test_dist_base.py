@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
+from __future__ import print_function
 import time
 
 import unittest
@@ -23,6 +23,7 @@ import subprocess
 import six
 import argparse
 import pickle
+import random
 import numpy as np
 import time
 
@@ -384,108 +385,97 @@ class TestParallelDyGraphRunnerBase(object):
         raise NotImplementedError(
             "train_one_loop should be implemented by the child classes.")
 
-    def _parse_launch_args(self, args):
-        cluster_node_ips = None
-        node_ip = None
-        started_port = None
-        # [ Adapt `runtime_main` arguments ]
-        # Why can't we keep the arguments here consistent with launch.py?
-        ips_dict = dict()
-        trainer_endpoints = args.endpoints.split(
-            ",") if args.endpoints else None
-        if trainer_endpoints is not None:
-            for endpoint in trainer_endpoints:
-                ip_port = endpoint.split(":")
-                ip_str = ip_port[0]
-                port = int(ip_port[1])
-                cur_port = ips_dict.get(ip_str, 0)
-                if cur_port != 0:
-                    if port < cur_port:
-                        ips_dict[ip_str] = port
-                else:
-                    ips_dict[ip_str] = port
-            cur_ip_port = args.current_endpoint.split(
-                ":") if args.current_endpoint else None
-            if cur_ip_port is None:
-                raise RuntimeError("the current endpoint is not set.")
-            endpoint_num = len(trainer_endpoints)
-            node_num = len(ips_dict.keys())
-            # TODO(chenweihang): Don't consider this situation for now
-            if endpoint_num % node_num != 0:
-                raise RuntimeError(
-                    "not check when the number of cards used by each machine is different."
-                )
-            node_gpu_num = endpoint_num // node_num
-
-            cluster_node_ips = ",".join(ips_dict.keys())
-            node_ip = cur_ip_port[0]
-            started_port = ips_dict[node_ip]
-            selected_gpus = ",".join([str(x) for x in range(0, node_gpu_num)])
-
-        return cluster_node_ips, node_ip, started_port, selected_gpus
+    def _get_data(self, batch, args):
+        if args.update_method != "local":
+            new_batch = []
+            for offset, item in enumerate(batch):
+                if offset % 2 == args.trainer_id:
+                    new_batch.append(item)
+            return new_batch
+        else:
+            return batch
 
     def run_trainer(self, args):
-        def _get_data(batch):
-            if args.update_method != "local":
-                new_batch = []
-                for offset, item in enumerate(batch):
-                    if offset % 2 == args.trainer_id:
-                        new_batch.append(item)
-                return new_batch
-            else:
-                return batch
 
+        seed = 90
+        device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        place = fluid.CUDAPlace(device_id)
+
+        with fluid.dygraph.guard(place):
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            np.random.seed(seed)
+            import random
+            random.seed = seed
+            model, train_reader, opt = self.get_model()
+            nranks = len(args.endpoints.split(",")) if args.endpoints else 1
+
+            if args.update_method == "nccl2":
+                strategy = dygraph.parallel.ParallelStrategy()
+                strategy.nranks = nranks
+                strategy.local_rank = args.trainer_id
+                strategy.trainer_endpoints = args.endpoints.split(",")
+                strategy.current_endpoint = args.current_endpoint
+                print_to_err(
+                    type(self).__name__,
+                    "begin to prepare context in dygraph with nccl2")
+                dygraph.parallel.prepare_context(strategy)
+                model = dygraph.parallel.DataParallel(model, strategy)
+                print_to_err(type(self).__name__, "model built in dygraph")
+            out_losses = []
+            print_to_err(type(self).__name__, "begin to run dygraph training")
+            for step_id, data in enumerate(train_reader()):
+                data = self._get_data(data, args)
+                if step_id == RUN_STEP:
+                    break
+                loss = self.run_one_loop(model, opt, data)
+                if step_id % 10 == 0:
+                    print_to_err(
+                        type(self).__name__,
+                        "loss at step %d: %f" % (step_id, loss.numpy()))
+                out_losses.append(loss.numpy())
+
+                # FIXME(Yancey1989): scale the loss inplace
+                if args.update_method == "nccl2":
+                    loss = model.scale_loss(loss)
+
+                loss.backward()
+                if args.update_method == "nccl2":
+                    model.apply_collective_grads()
+
+                opt.minimize(loss)
+                model.clear_gradients()
+        print_to_out(out_losses)
+
+    def run_trainer_with_spawn(self, args):
         # 1. enable dygraph
-        fluid.enable_dygraph()
+        paddle.disable_static()
 
         # 2. init seed
         seed = 90
-        fluid.default_startup_program().random_seed = seed
-        fluid.default_main_program().random_seed = seed
+        paddle.static.default_startup_program().random_seed = seed
+        paddle.static.default_main_program().random_seed = seed
         np.random.seed(seed)
-        import random
         random.seed = seed
 
         # 3. init parallel env
         if args.update_method == "nccl2":
-            print_to_err(
-                type(self).__name__,
-                "begin to prepare context in dygraph with nccl2")
-            if args.with_spawn is True:
-                strategy = paddle.distributed.init_parallel_env(
-                    rank=args.trainer_id)
-            else:
-                cluster_node_ips, node_ip, started_port, selected_gpus = self._parse_launch_args(
-                    args)
-                strategy = paddle.distributed.init_parallel_env(
-                    rank=args.trainer_id,
-                    backend='nccl',
-                    cluster_node_ips=cluster_node_ips,
-                    node_ip=node_ip,
-                    started_port=started_port,
-                    selected_gpus=selected_gpus,
-                    print_config=False)
+            strategy = paddle.distributed.init_parallel_env(
+                rank=args.trainer_id)
 
         # 4. train model
         model, train_reader, opt = self.get_model()
         if args.update_method == "nccl2":
-            model = dygraph.parallel.DataParallel(model, strategy)
-            print_to_err(type(self).__name__, "model built in dygraph")
+            model = paddle.distributed.DataParallel(model, strategy)
 
         out_losses = []
-        print_to_err(type(self).__name__, "begin to run dygraph training")
         for step_id, data in enumerate(train_reader()):
-            data = _get_data(data)
+            data = self._get_data(data, args)
             if step_id == RUN_STEP:
                 break
             loss = self.run_one_loop(model, opt, data)
-            if step_id % 10 == 0:
-                print_to_err(
-                    type(self).__name__,
-                    "loss at step %d: %f" % (step_id, loss.numpy()))
             out_losses.append(loss.numpy())
 
-            # FIXME(Yancey1989): scale the loss inplace
             if args.update_method == "nccl2":
                 loss = model.scale_loss(loss)
 
@@ -495,7 +485,6 @@ class TestParallelDyGraphRunnerBase(object):
 
             opt.minimize(loss)
             model.clear_gradients()
-        print_to_out(out_losses)
         return out_losses
 
 
@@ -540,8 +529,6 @@ def runtime_main(test_class):
         type=bool,
         default=False)
     parser.add_argument('--sync_batch_norm', action='store_true')
-    parser.add_argument(
-        '--with_spawn', type=bool, required=False, default=False)
 
     args = parser.parse_args()
 
@@ -862,6 +849,7 @@ class TestDistBase(unittest.TestCase):
         if self.__use_cuda:
             tr_cmd += " --use_cuda"
             env.update({
+                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id % 2),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
