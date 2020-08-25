@@ -142,7 +142,20 @@
         "Callback.on_eval_batch_end",
         "Callback.on_test_batch_begin",
         "Callback.on_test_batch_end",
-        "Model.prepare"
+        "Model.prepare",
+        "SimpleRNNCell",
+        "SimpleRNNCell.forward",
+        "LSTMCell",
+        "LSTMCell.forward",
+        "GRUCell",
+        "GRUCell.forward",
+        "SimpleRNN",
+        "GRU",
+        "LSTM",
+        "RNN",
+        "BiRNN",
+        "RNNCellBase",
+        "RNNCellBase.get_initial_states"
     ],
     "wlist_no_op_pass":[
         "gelu",
