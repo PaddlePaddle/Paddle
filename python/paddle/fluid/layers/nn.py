@@ -367,6 +367,7 @@ def fc(input,
     return helper.append_activation(pre_activation)
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.embedding")
 def embedding(input,
               size,
               is_sparse=False,

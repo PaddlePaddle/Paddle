@@ -224,3 +224,4 @@ from .vision import space_to_depth  #DEFINE_ALIAS
 from .vision import yolo_box  #DEFINE_ALIAS
 from .vision import yolov3_loss  #DEFINE_ALIAS
 from .input import one_hot  #DEFINE_ALIAS
+from .input import embedding  #DEFINE_ALIAS
