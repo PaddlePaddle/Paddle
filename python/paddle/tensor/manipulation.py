@@ -30,7 +30,6 @@ from ..fluid.layers import transpose  #DEFINE_ALIAS
 from ..fluid.layers import unique  #DEFINE_ALIAS
 from ..fluid.layers import unstack  #DEFINE_ALIAS
 
-from ..fluid.layers import gather_nd  #DEFINE_ALIAS
 from ..fluid.layers import scatter_nd_add  #DEFINE_ALIAS
 from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
 from ..fluid.layers import shard_index  #DEFINE_ALIAS
@@ -474,9 +473,6 @@ def stack(x, axis=0, name=None):
 
 def split(x, num_or_sections, axis=0, name=None):
     """
-	:alias_main: paddle.split
-        :alias: paddle.tensor.split, paddle.tensor.manipulation.split
-    
     Split the input tensor into multiple sub-Tensors.
     
     Args:
@@ -663,13 +659,8 @@ def gather(x, index, axis=None, name=None):
 
     **Gather Layer**
 
-    Output is obtained by gathering entries of the outer-most dimension
-    of X indexed by `index` and concatenate them together.
-
-    .. math::
-
-        Out = X[Index]
-
+    Output is obtained by gathering entries of ``axis``
+    of ``x`` indexed by ``index`` and concatenate them together.
 
     .. code-block:: text
 
@@ -692,7 +683,7 @@ def gather(x, index, axis=None, name=None):
             int32, int64, float32, float64 and uint8 (only for CPU),
             float16 (only for GPU).
         index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
-        axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. Default: if None, the axis is 0.
+        axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. The default value is None, if None, the ``axis`` is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -714,8 +705,8 @@ def gather(x, index, axis=None, name=None):
             paddle.disable_static()
             input_1 = np.array([[1,2],[3,4],[5,6]])
             index_1 = np.array([0,1])
-            input = fluid.to_tensor(input_1)
-            index = fluid.to_tensor(index_1)
+            input = paddle.to_tensor(input_1)
+            index = paddle.to_tensor(index_1)
             output = paddle.gather(input, index, axis=0)
             # expected output: [[1,2],[3,4]]
     """
@@ -1242,7 +1233,6 @@ def reshape(x, shape, name=None):
 
 def gather_nd(x, index, name=None):
     """
-    **Gather Nd Layer**
 
     This function is actually a high-dimensional extension of :code:`gather`
     and supports for simultaneous indexing by multiple axes. :attr:`index` is a
@@ -1260,19 +1250,19 @@ def gather_nd(x, index, name=None):
     .. code-block:: text
 
             Given:
-                input = [[[ 0,  1,  2,  3],
-                          [ 4,  5,  6,  7],
-                          [ 8,  9, 10, 11]],
-                         [[12, 13, 14, 15],
-                          [16, 17, 18, 19],
-                          [20, 21, 22, 23]]]
-                input.shape = (2, 3, 4)
+                x =  [[[ 0,  1,  2,  3],
+                       [ 4,  5,  6,  7],
+                       [ 8,  9, 10, 11]],
+                      [[12, 13, 14, 15],
+                       [16, 17, 18, 19],
+                       [20, 21, 22, 23]]]
+                x.shape = (2, 3, 4)
 
             * Case 1:
                 index = [[1]]
 
-                gather_nd(input, index)
-                         = [input[1, :, :]]
+                gather_nd(x, index)
+                         = [x[1, :, :]]
                          = [[12, 13, 14, 15],
                             [16, 17, 18, 19],
                             [20, 21, 22, 23]]
@@ -1280,15 +1270,15 @@ def gather_nd(x, index, name=None):
             * Case 2:
                 index = [[0,2]]
 
-                gather_nd(input, index)
-                         = [input[0, 2, :]]
+                gather_nd(x, index)
+                         = [x[0, 2, :]]
                          = [8, 9, 10, 11]
 
             * Case 3:
                 index = [[1, 2, 3]]
 
-                gather_nd(input, index)
-                         = [input[1, 2, 3]]
+                gather_nd(x, index)
+                         = [x[1, 2, 3]]
                          = [23]
 
     Args:
@@ -1308,6 +1298,7 @@ def gather_nd(x, index, name=None):
     Examples:
 
         .. code-block:: python
+            
             import paddle
             import numpy as np
             
