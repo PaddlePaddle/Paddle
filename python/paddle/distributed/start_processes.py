@@ -26,9 +26,9 @@ from paddle.distributed.utils import find_free_ports
 def _py_supported_check():
     if not sys.version_info >= (3, 4):
         raise RuntimeError(
-            "Use `paddle.distributed.run` to start parallel training "
-            "requires python version greater than 3.4, if your python "
-            "is lower than this version, please use "
+            "Use `paddle.distributed.spawn` or `paddle.distributed.start_processes` "
+            "to start parallel training requires python version greater than 3.4, "
+            "if your python is lower than this version, please use "
             "`paddle.distributed.launch` instead.")
 
 
@@ -40,11 +40,11 @@ def _set_default_assist_env(nprocs):
     if port_set is None:
         raise RuntimeError("no free port can be used to parallel training now.")
     os.environ['PADDLE_MASTER_PORT'] = str(list(port_set)[0])
-    # set default selected_gpus
-    # e.g. if the nprocs is 4, the selected_gpus="0,1,2,3"
+    # set default selected gpus
+    # e.g. if the nprocs is 4, the selected gpus is "0,1,2,3"
     # NOTE(chenweihang): [ why not use FLAGS_selected_gpus directly? ]
     # because the FLAGS_selected_gpus may be used in other place,
-    # if we set FLAGS_selected_gpus are `0,1,2,3`, it may cause error
+    # if we set FLAGS_selected_gpus to be `0,1,2,3`, it may cause error
     # when using `ParallelEnv`
     os.environ['PADDLE_CUDA_VISIBLE_DEVICES'] = ",".join(
         [str(x) for x in range(0, nprocs)])
@@ -204,18 +204,18 @@ def start_processes(func,
             if __name__ == '__main__':
                 dist.start_processes(train, args=(), nprocs=2)
     """
-    # NOTE(chenweihang): [ why only supports python3.4+? ]
-    # Python has only supported setting the child process startup method
+    # NOTE(chenweihang): [ why only supports python3.4+ ? ]
+    # Python supported setting the child process startup method
     # since 3.4. The previous version can only use the default startup 
     # method, while the default startup method of Unix is fork, which 
     # cannot support CUDA runtime multi-process
     _py_supported_check()
 
     # NOTE(chenweihang): [ why need set default master info before run? ]
-    # when using `paddle.distributed.run` start parallel training,
-    # users need use `init_parallel_env` to config some cluster info
-    # inner subprocess, if each process find free port for itself,
-    # the started port may be different, it will cause endpoints is
+    # when using `paddle.distributed.spawn/start_processes` start 
+    # parallel training, users need use `init_parallel_env` to config 
+    # cluster info inner subprocess, if each process find free port for 
+    # itself, the started port may be different, it will cause endpoints is
     # different in different subprocesses
     _set_default_assist_env(nprocs)
 

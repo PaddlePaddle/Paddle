@@ -29,11 +29,9 @@ class SpawnAssistTestArgs(object):
     trainer_id = 0
     current_endpoint = None
     endpoints = None
-    with_spawn = True
 
 
 def run_dygraph_model(rank, model, args):
-    args.with_spawn = True
     args.trainer_id = rank
     return model.run_trainer_with_spawn(args)
 

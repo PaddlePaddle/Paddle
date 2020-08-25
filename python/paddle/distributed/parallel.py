@@ -142,7 +142,8 @@ def _update_env_vars(rank, options):
     trainer = pod.get_trainer(rank)
     if trainer is None:
         raise RuntimeError(
-            "The expected trainer is not exists, its trainer rank is %d" % rank)
+            "The expected trainer is not exists, its trainer rank is %d." %
+            rank)
     proc_env = {
         "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in trainer.gpus]),
         "PADDLE_TRAINER_ID": "%d" % trainer.rank,
@@ -163,7 +164,7 @@ def _check_env_vars():
         var = os.environ.get(var_name, None)
         if var is None:
             raise ValueError("paddle.distributed initialize error,"
-                             "Environment variable %s is needed, but not set.",
+                             "environment variable %s is needed, but not set.",
                              var_name)
 
     _check_var_exists("FLAGS_selected_gpus")
@@ -184,7 +185,8 @@ def init_parallel_env(rank=-1, backend='nccl', **options):
             are configured by ``paddle.disstributed.launch`` module.
         backend(str, optional): The backend to communication between multiple devices.
             Now only support ``nccl`` . Default value is ``nccl`` .
-        **options(dict, optional): Other initial parallel execution environment configuration options. 
+        **options(dict, optional): Other initial parallel execution environment configuration options.
+        
             The following options are currently supported:
 
             - cluster_node_ips: Paddle cluster nodes ips, such as "192.168.0.16,192.168.0.17". Default: "127.0.0.1".

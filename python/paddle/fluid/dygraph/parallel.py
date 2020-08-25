@@ -124,43 +124,46 @@ class ParallelEnv(object):
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
-        self.__aliases__ = {'local_rank': 'rank', }
+        self.__aliases__ = {
+            'local_rank': 'rank',
+            'nranks': 'world_size',
+        }
 
     @property
     def rank(self):
         """
-        The current trainer number.
+        Rank of current trainer.
 
-        Its value is equal to the value of the environment variable PADDLE_TRAINER_ID. The default value is 0.
+        Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ID`` . The default value is 0.
 
         Examples:
           .. code-block:: python
 
             # execute this command in terminal: export PADDLE_TRAINER_ID=0
-            import paddle.fluid as fluid
+            import paddle.distributed as dist
             
-            env = fluid.dygraph.ParallelEnv()
+            env = dist.ParallelEnv()
             print("The rank is %d" % env.rank)
             # The rank is 0
         """
         return self._local_rank
 
     @property
-    def nranks(self):
+    def world_size(self):
         """
-        The number of trainers, generally refers to the number of GPU cards used in training.
+        The number of trainers (number of processes participating in current job).
 
-        Its value is equal to the value of the environment variable PADDLE_TRAINERS_NUM. The default value is 1.
+        Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` . The default value is 1.
 
         Examples:
           .. code-block:: python
 
             # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
-            import paddle.fluid as fluid
+            import paddle.distributed as dist
             
-            env = fluid.dygraph.ParallelEnv()
-            print("The nranks is %d" % env.nranks)
-            # The nranks is 4
+            env = dist.ParallelEnv()
+            print("The world_size is %d" % env.world_size)
+            # The world_size is 4
         """
         return self._nranks
 
@@ -169,15 +172,15 @@ class ParallelEnv(object):
         """
         The ID of selected GPU card for parallel training.
 
-        Its value is equal to the value of the environment variable FLAGS_selected_gpus. The default value is 0.
+        Its value is equal to the value of the environment variable ``FLAGS_selected_gpus`` . The default value is 0.
 
         Examples:
           .. code-block:: python
 
             # execute this command in terminal: export FLAGS_selected_gpus=1
-            import paddle.fluid as fluid
+            import paddle.distributed as dist
             
-            env = fluid.dygraph.ParallelEnv()
+            env = dist.ParallelEnv()
             print("The device id are %d" % env.dev_id)
             # The device id are 1
         """
@@ -188,15 +191,15 @@ class ParallelEnv(object):
         """
         The endpoint of current trainer, it is in the form of (node IP + port).
 
-        Its value is equal to the value of the environment variable PADDLE_CURRENT_ENDPOINT. The default value is "".
+        Its value is equal to the value of the environment variable ``PADDLE_CURRENT_ENDPOINT`` . The default value is "".
 
         Examples:
           .. code-block:: python
             
             # execute this command in terminal: export PADDLE_CURRENT_ENDPOINT=127.0.0.1:6170
-            import paddle.fluid as fluid
+            import paddle.distributed as dist
             
-            env = fluid.dygraph.ParallelEnv()
+            env = dist.ParallelEnv()
             print("The current endpoint are %s" % env.current_endpoint)
             # The current endpoint are 127.0.0.1:6170
         """
@@ -208,15 +211,15 @@ class ParallelEnv(object):
         The endpoints of all trainer nodes in the task, 
         which are used to broadcast the NCCL ID when NCCL2 is initialized.
 
-        Its value is equal to the value of the environment variable PADDLE_TRAINER_ENDPOINTS. The default value is "".
+        Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ENDPOINTS`` . The default value is "".
 
         Examples:
           .. code-block:: python
 
             # execute this command in terminal: export PADDLE_TRAINER_ENDPOINTS=127.0.0.1:6170,127.0.0.1:6171
-            import paddle.fluid as fluid
+            import paddle.distributed as dist
             
-            env = fluid.dygraph.ParallelEnv()
+            env = dist.ParallelEnv()
             print("The trainer endpoints are %s" % env.trainer_endpoints)
             # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
         """
