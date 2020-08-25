@@ -57,7 +57,6 @@ def is_paddle_func(func):
 
 
 def is_unsupported(func):
-    # Other built-in modules
     # TODO(liym27): A better way to do this.
     if any(func in m.__dict__.values()
            for m in (collections, pdb, copy, inspect, re, six, numpy)):
@@ -202,7 +201,8 @@ def convert_call(func):
                 # it doesn't need to be transformed
                 func_self = None if func_self else func_self
     else:
-        raise NotImplementedError
+        raise NotImplementedError(
+            "Callable {} can not be transformed at present.".format(func))
 
     if converted_call is None:
         translator_logger.warn(

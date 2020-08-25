@@ -64,7 +64,7 @@ class CallTransformer(gast.NodeTransformer):
         func_str = ast_to_source_code(node.func).strip()
 
         # NOTE(liym27): Don't convert `pad.set_trace` even if the convertion doesn't work finally, because
-        # it is clearer to see where it is called from.git
+        # it is clearer to see where it is called from.
         if "pdb.set_trace" in func_str:
             return node
 
