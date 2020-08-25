@@ -221,12 +221,14 @@ class ZeroOptimizer(MetaOptimizerBase):
         """
         # string: var_name -> int: deps
         reduce_var_deps = {}
+        var_as_output_op = {}
         for idx, op in enumerate(block.ops):
             if op.type == "c_allreduce_sum":
                 output_names = op.desc.output_arg_names()
                 assert (len(output_names) == 1)
                 output_name = output_names[0]
                 reduce_var_deps[output_name] = 0
+                var_as_output_op[output_name] = idx
             elif op.type in ["c_sync_comm_stream", "c_calc_comm_stream"]:
                 continue
             else:
@@ -238,6 +240,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                 if deps_reduce:
                     for output_name in op.desc.output_arg_names():
                         reduce_var_deps[output_name] = 0
+                        var_as_output_op[output_name] = idx
 
         tobe_removed_vars = set()
         for var_name, _ in block.vars.items():
@@ -245,40 +248,91 @@ class ZeroOptimizer(MetaOptimizerBase):
                 self._var_device_id(var_name) != self.role_maker.worker_index():
                 tobe_removed_vars.add(var_name)
 
+        gradient_clip_sum_op = None
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type == "c_allreduce_sum":
-                # do something
+                # stop back search
                 output_names = op.desc.output_arg_names()
                 assert (len(output_names) == 1)
                 output_name = output_names[0]
                 del (reduce_var_deps[output_name])
                 if output_name in tobe_removed_vars:
                     tobe_removed_vars.remove(output_name)
-                continue
-            if op.type in [
+            elif op.type in [
                     "c_sync_comm_stream", "c_calc_comm_stream", "c_gen_nccl_id",
                     "c_comm_init"
             ]:
-                continue
-            remove_op = True
-            for output_name in op.desc.output_arg_names():
-                if output_name not in tobe_removed_vars:
-                    remove_op = False
-                    break
-            if remove_op:
-                print("%d: block remove op %s" %
-                      (self.role_maker.worker_index(), op.type))
+                pass
+            elif op.type == "sum" and op.desc.has_attr("op_namescope") \
+                and op.desc.attr("op_namescope").startswith("/gradient_clip_@CLIP"):
+                print("find gradient clip sum op")
+                print(_pretty_op_desc_(op.desc, "gradient clip op"))
+                gradient_clip_sum_op = op
                 for input_name in op.desc.input_arg_names():
-                    if input_name in reduce_var_deps:
+                    gradient_var = input_name
+                    while gradient_var in var_as_output_op:
+                        before_op = block.ops[var_as_output_op[gradient_var]]
+                        assert (len(before_op.desc.input_arg_names()) == 1)
+                        if before_op.desc.input_arg_names()[0] == gradient_var:
+                            break
+                        gradient_var = before_op.desc.input_arg_names()[0]
+                    if reduce_var_deps[gradient_var] == 1:
                         reduce_var_deps[input_name] -= 1
                         if reduce_var_deps[input_name] == 0:
                             tobe_removed_vars.add(input_name)
-                block._remove_op(idx)
+            else:
+                remove_op = True
+                for output_name in op.desc.output_arg_names():
+                    if output_name not in tobe_removed_vars:
+                        remove_op = False
+                        break
+                if remove_op:
+                    print("%d: block remove op %s" %
+                          (self.role_maker.worker_index(), op.type))
+                    for input_name in op.desc.input_arg_names():
+                        if input_name in reduce_var_deps:
+                            reduce_var_deps[input_name] -= 1
+                            if reduce_var_deps[input_name] == 0:
+                                tobe_removed_vars.add(input_name)
+                    block._remove_op(idx)
 
         for var_name in tobe_removed_vars:
             print("%d: block remove var %s" %
                   (self.role_maker.worker_index(), var_name))
             block._remove_var(var_name)
+
+        if gradient_clip_sum_op is not None:
+            # gradient clip got sum op
+            print("remove gradient clip sum op")
+            sum_vars = [
+                x for x in gradient_clip_sum_op.desc.input_arg_names()
+                if block.has_var(x)
+            ]
+            gradient_clip_sum_op.desc.set_input("X", sum_vars)
+            op_idx = block.ops.index(gradient_clip_sum_op)
+            assert (len(gradient_clip_sum_op.desc.output_arg_names()) == 1)
+            sum_res = gradient_clip_sum_op.desc.output_arg_names()[0]
+            block._insert_op(
+                op_idx + 1,
+                type='c_sync_calc_stream',
+                inputs={'X': sum_res},
+                outputs={'Out': sum_res},
+                attrs={OP_ROLE_KEY: OpRole.Optimize})
+            block._insert_op(
+                op_idx + 2,
+                type='c_allreduce_sum',
+                inputs={'X': sum_res},
+                outputs={'Out': sum_res},
+                attrs={'ring_id': 0,
+                       OP_ROLE_KEY: OpRole.Optimize})
+            block._insert_op(
+                op_idx + 3,
+                type='c_sync_comm_stream',
+                inputs={'X': sum_res},
+                outputs={'Out': sum_res},
+                attrs={'ring_id': 0,
+                       OP_ROLE_KEY: OpRole.Optimize})
+
         block._sync_with_cpp()
         return
 
