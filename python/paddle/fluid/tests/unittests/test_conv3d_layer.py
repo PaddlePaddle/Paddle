@@ -32,9 +32,7 @@ class Conv3DTestCase(unittest.TestCase):
                  stride=1,
                  dilation=1,
                  groups=1,
-                 act=None,
                  no_bias=False,
-                 use_cudnn=True,
                  data_format="NCDHW",
                  dtype="float32"):
         super(Conv3DTestCase, self).__init__(methodName)
@@ -48,9 +46,7 @@ class Conv3DTestCase(unittest.TestCase):
         self.stride = stride
         self.dilation = dilation
         self.groups = groups
-        self.act = act
         self.no_bias = no_bias
-        self.use_cudnn = use_cudnn
         self.data_format = data_format
         self.dtype = dtype
 
@@ -101,8 +97,6 @@ class Conv3DTestCase(unittest.TestCase):
                     groups=self.groups,
                     param_attr=weight_attr,
                     bias_attr=bias_attr,
-                    use_cudnn=self.use_cudnn,
-                    act=self.act,
                     data_format=self.data_format)
         feed_dict = {"input": self.input}
         exe = fluid.Executor(place)
@@ -130,8 +124,6 @@ class Conv3DTestCase(unittest.TestCase):
                     stride=self.stride,
                     dilation=self.dilation,
                     groups=self.groups,
-                    act=self.act,
-                    use_cudnn=self.use_cudnn,
                     data_format=self.data_format)
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
@@ -143,7 +135,7 @@ class Conv3DTestCase(unittest.TestCase):
 
     def paddle_nn_layer(self):
         x_var = dg.to_variable(self.input)
-        conv = nn.Conv3D(
+        conv = nn.Conv3d(
             self.num_channels,
             self.num_filters,
             self.filter_size,
@@ -151,10 +143,7 @@ class Conv3DTestCase(unittest.TestCase):
             stride=self.stride,
             dilation=self.dilation,
             groups=self.groups,
-            act=self.act,
-            use_cudnn=self.use_cudnn,
-            data_format=self.data_format,
-            dtype=self.dtype)
+            data_format=self.data_format)
         conv.weight.set_value(self.weight)
         if not self.no_bias:
             conv.bias.set_value(self.bias)
@@ -225,15 +214,10 @@ def add_cases(suite):
             num_filters=6,
             num_channels=3,
             groups=3,
-            use_cudnn=False,
-            act="sigmoid",
             padding="valid"))
 
 
 def add_error_cases(suite):
-    suite.addTest(
-        Conv3DErrorTestCase(
-            methodName='runTest', use_cudnn="not_valid"))
     suite.addTest(
         Conv3DErrorTestCase(
             methodName='runTest', num_channels=5, groups=2))

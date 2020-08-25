@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <vector>
@@ -651,6 +652,26 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
     auto *Bk = &B[k * strideB];
     auto *Ck = &C[k * M * N];
     this->template GEMM<T>(transA, transB, M, N, K, alpha, Ak, Bk, beta, Ck);
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::BatchedGEMM(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    T alpha, const T **A, const T **B, T beta, T **C, int batchCount) const {
+#ifdef PADDLE_WITH_MKLML
+  const int lda = std::max((transA == CblasNoTrans) ? K : M, 1);
+  const int ldb = std::max((transB == CblasNoTrans) ? N : K, 1);
+  const int ldc = std::max(N, 1);
+  CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha, A,
+                       &lda, B, &ldb, &beta, C, &ldc, 1 /* group_count */,
+                       &batchCount);
+#else
+  for (int k = 0; k < batchCount; ++k) {
+    this->template GEMM<T>(transA, transB, M, N, K, alpha, A[k], B[k], beta,
+                           C[k]);
   }
 #endif
 }
