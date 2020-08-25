@@ -884,7 +884,6 @@ class Model(object):
         Examples:
 
             .. code-block:: python
-
                 import paddle
                 import paddle.incubate.hapi as hapi
                 from paddle.nn import Linear
