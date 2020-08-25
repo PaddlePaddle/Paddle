@@ -158,7 +158,7 @@ def conv1d(x,
         bias (Tensor, optional): The bias with shape [M,]. Default: None.
         stride (int or tuple, optional): The stride size. If stride is a tuple, it must
             contain one integers, (stride_size). Default: 1.
-        padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
+        padding(int|str|tuple|list, optional): The padding size. Padding could be in one of the following forms.
             1. a string in ['valid', 'same'].
             2. an int, which means the feature map is zero paded by size of `padding` on both sides.
             3. a list[int] or tuple[int] whose length is 1, which means the feature map is zero paded by size of `padding[0]` on both sides.
@@ -185,7 +185,7 @@ def conv1d(x,
         same with input.
 
     Raises:
-        ValueError: If the channel dimmention of the input is less than or equal to zero.
+        ValueError: If the channel dimension of the input is less than or equal to zero.
         ValueError: If `data_format` is not "NCL" or "NLC".
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
@@ -238,7 +238,7 @@ def conv1d(x,
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[0]
     if num_channels < 0:
-        raise ValueError("The channel dimmention of the input({}) "
+        raise ValueError("The channel dimension of the input({}) "
                          "should be defined. Received: {}.".format(
                              x.shape, num_channels))
     if num_channels % groups != 0:
@@ -260,7 +260,7 @@ def conv1d(x,
         padding = padding + [0]
     else:
         raise ValueError(
-            "The size of padding's dimmention should 1 or 2. But got padding={}".
+            "The size of padding's dimension should be 1 or 2. But got padding={}".
             format(padding))
 
     stride = utils.convert_to_list(stride, 1, 'stride') + [1]
@@ -424,7 +424,7 @@ def conv2d(x,
 
     Raises:
         ValueError: If `data_format` is not "NCHW" or "NHWC".
-        ValueError: If the channel dimmention of the input is less than or equal to zero.
+        ValueError: If the channel dimension of the input is less than or equal to zero.
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
@@ -465,7 +465,7 @@ def conv2d(x,
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[0]
     if num_channels < 0:
-        raise ValueError("The channel dimmention of the input({}) "
+        raise ValueError("The channel dimension of the input({}) "
                          "should be defined. Received: {}.".format(
                              x.shape, num_channels))
     if num_channels % groups != 0:
@@ -710,7 +710,7 @@ def conv_transpose1d(x,
 
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
-        raise ValueError("The channel dimmention of the input({}) "
+        raise ValueError("The channel dimension of the input({}) "
                          "should be defined. Received: {}.".format(
                              x.shape, num_channels))
     if num_channels % groups != 0:
@@ -728,7 +728,7 @@ def conv_transpose1d(x,
         padding = padding + [0]
     else:
         raise ValueError(
-            "The size of padding's dimmention should 1 or 2. But got padding={}".
+            "The size of padding's dimension should 1 or 2. But got padding={}".
             format(padding))
 
     stride = utils.convert_to_list(stride, 1, 'stride') + [1]
@@ -966,7 +966,7 @@ def conv_transpose2d(x,
     channel_dim = -1 if channel_last else 1
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
-        raise ValueError("The channel dimmention of the input({}) "
+        raise ValueError("The channel dimension of the input({}) "
                          "should be defined. Received: {}.".format(
                              x.shape, num_channels))
     if num_channels % groups != 0:
@@ -1147,7 +1147,7 @@ def conv3d(x,
 
     Raises:
         ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If the channel dimmention of the input is less than or equal to zero.
+        ValueError: If the channel dimension of the input is less than or equal to zero.
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
@@ -1190,7 +1190,7 @@ def conv3d(x,
     num_filters = weight.shape[0]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input({}) should be defined. "
+            "The channel dimension of the input({}) should be defined. "
             "Received: {}.".format(x.shape, num_channels))
     if num_channels % groups != 0:
         raise ValueError(
@@ -1425,7 +1425,7 @@ def conv_transpose3d(x,
     num_filters = weight.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input({}) should be defined. "
+            "The channel dimension of the input({}) should be defined. "
             "Received: {}.".format(x.shape, num_channels))
     if num_channels % groups != 0:
         raise ValueError(
