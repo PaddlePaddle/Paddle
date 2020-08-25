@@ -288,7 +288,9 @@ class SimpleRNNCell(RNNCellBase):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
+
         .. code-block:: python
+
             import paddle
             paddle.disable_static()
 
@@ -413,6 +415,7 @@ class LSTMCell(RNNCellBase):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
+
         .. code-block:: python
 
             import paddle
@@ -546,6 +549,7 @@ class GRUCell(RNNCellBase):
             None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
+
         .. code-block:: python
 
             import paddle
@@ -688,6 +692,7 @@ class RNN(Layer):
             shape and dtype as the corresponding tensor in initial states.
 
     Examples:
+
         .. code-block:: python
 
             import paddle
@@ -767,6 +772,7 @@ class BiRNN(Layer):
                 cell and backward cell. 
 
     Examples:
+
         .. code-block:: python
 
             import paddle
@@ -911,6 +917,7 @@ class SimpleRNN(RNNMixin):
             `[num_lauers * num_directions, batch_size, hidden_size]`.
 
     Examples:
+
         .. code-block:: python
 
             import paddle
@@ -1047,6 +1054,7 @@ class LSTM(RNNMixin):
             the shape of each is `[num_lauers * num_directions, batch_size, hidden_size]`.
 
     Examples:
+    
         .. code-block:: python
 
             import paddle
@@ -1175,6 +1183,7 @@ class GRU(RNNMixin):
             `[num_lauers * num_directions, batch_size, hidden_size]`.
 
     Examples:
+
         .. code-block:: python
 
             import paddle
