@@ -361,7 +361,7 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
         tensor_list = []
         for _ in range(nranks):
             tensor_list.append(tensor)
-    temp = paddle.concat(tensor_list)
+    temp = paddle.concat(tensor_list, axis=0)
     helper.append_op(
         type=op_type,
         inputs={'X': [temp]},

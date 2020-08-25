@@ -59,6 +59,8 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_collective_reduce)
     LIST(REMOVE_ITEM TEST_OPS test_collective_scatter)
     LIST(REMOVE_ITEM TEST_OPS test_collective_reduce_api)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_scatter_api)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_barrier_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_allreduce_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_broadcast_api)
     LIST(REMOVE_ITEM TEST_OPS test_collective_allgather_api)
@@ -266,7 +268,7 @@ function(parallel_bash_test_modules TARGET_NAME)
         set(timeout ${parallel_bash_test_modules_TIMEOUT})
     endif()
 
-    #list(JOIN  parallel_bash_test_modules_UnitTests " " uts_string)
+    list(JOIN  parallel_bash_test_modules_UnitTests " " uts_string)
 
     if(WITH_COVERAGE)
         add_test(NAME ${TARGET_NAME}

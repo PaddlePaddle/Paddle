@@ -39,26 +39,27 @@ class CScatterOpCPUKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::Tensor>("Out");
     auto root_id = ctx.Attr<int>("root");
 
-    int64_t send_numel = in->numel();
-    auto out_dims = in->dims();
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
-    auto nranks = gloo->Size();
-    out_dims[0] = out_dims[0] / nranks;
-    auto place = ctx.GetPlace();
-    T* send_buff = const_cast<T*>(in->data<T>());
-    T* recv_buff = out->mutable_data<T>(out_dims, place);
-    send_numel /= nranks;
-    std::vector<T*> ptrs(nranks);
-    for (int i = 0; i < nranks; i++) {
-      ptrs[i] = send_buff;
-      send_buff += send_numel;
-    }
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(), true,
         platform::errors::InvalidArgument(
             "You must initialize the gloo environment first to use it."));
+
+    int64_t send_numel = out->numel();
+    VLOG(0) << "send_numel:" << send_numel;
+    auto nranks = gloo->Size();
+    auto rank = gloo->Rank();
+    T* recv_buff = out->data<T>();
     gloo::ScatterOptions opts(gloo->GetContext());
-    opts.setInputs(ptrs, send_numel);
+    if (root_id == rank) {
+      T* send_buff = const_cast<T*>(in->data<T>());
+      std::vector<T*> ptrs(nranks);
+      for (int i = 0; i < nranks; ++i) {
+        ptrs[i] = send_buff;
+        send_buff += send_numel;
+      }
+      opts.setInputs(ptrs, send_numel);
+    }
     opts.setOutput(recv_buff, send_numel);
     opts.setRoot(root_id);
 

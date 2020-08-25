@@ -29,7 +29,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_NCCL)
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
-    int numel = x->numel();
+    int numel = out->numel();
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
 
     int nranks = ctx.Attr<int>("nranks");
@@ -61,10 +61,11 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    framework::DDim x_dims = x->dims();
-    framework::DDim out_dims(x_dims);
+    framework::DDim temp_out_dims = out->dims();
+    temp_out_dims[0] = temp_out_dims[0] * nranks;
     framework::Tensor temp;
-    auto out_ptr = temp.mutable_data<T>(out_dims, place);
+    numel *= nranks;
+    auto out_ptr = temp.mutable_data<T>(temp_out_dims, place);
     if (root_id == comm->rank()) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
@@ -78,7 +79,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
           out_ptr, numel, dtype, root_id, comm->comm(), stream));
     }
 
-    out_dims[0] = out_dims[0] / nranks;
+    auto out_dims = out->dims();
     auto start_index = out_dims[0] * comm->rank();
     auto end_index = start_index + out_dims[0];
     temp = temp.Slice(start_index, end_index);
