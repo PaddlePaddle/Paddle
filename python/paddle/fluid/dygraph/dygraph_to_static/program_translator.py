@@ -17,14 +17,12 @@ import gast
 import collections
 import logging
 import inspect
-import warnings
 import six
 import textwrap
 import threading
 import warnings
 
 import gast
-import numpy as np
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
 from paddle.fluid.data_feeder import check_type
@@ -288,19 +286,23 @@ class StaticLayer(object):
         """
         # 1. call dygraph function directly if not enable `declarative`
         if not self._program_trans.enable_declarative:
+            warnings.warn(
+                "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
+                "We will just return dygraph output.")
             return self._call_dygraph_function(*args, **kwargs)
 
-        # 2. trace ops from dygraph layers and cache the generated program.
-        args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
-        concrete_program, partial_program_layer = self.get_concrete_program(
-            *args, **kwargs)
-
-        # 3. synchronize self.training attribute.
-        if isinstance(self._class_instance, layers.Layer):
-            partial_program_layer.training = self._class_instance.training
-
-        # 4. return outputs.
         try:
+            # 2. trace ops from dygraph layers and cache the generated program.
+            args, kwargs = self._function_spec.unified_args_and_kwargs(args,
+                                                                       kwargs)
+            concrete_program, partial_program_layer = self.get_concrete_program(
+                *args, **kwargs)
+
+            # 3. synchronize self.training attribute.
+            if isinstance(self._class_instance, layers.Layer):
+                partial_program_layer.training = self._class_instance.training
+
+            # 4. return outputs.
             return partial_program_layer(args)
         except Exception as e:
             if not hasattr(e, ERROR_DATA):
