@@ -42,7 +42,14 @@ TEST(test_operator_version, test_operator_version) {
               "height",
               "In order to represent a two-dimensional rectangle, the "
               "parameter height is added.",
-              0));
+              0))
+      .AddCheckpoint(
+          R"ROC(
+        Add a input [X2] and a output [Y2]
+      )ROC",
+          framework::compatible::OpVersionDesc()
+              .NewInput("X2", "The second input.")
+              .NewOutput("Y2", "The second output."));
 }
 }  // namespace compatible
 }  // namespace framework
