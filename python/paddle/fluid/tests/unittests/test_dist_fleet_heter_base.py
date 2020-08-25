@@ -33,12 +33,9 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
-#import paddle.distributed.fleet.base.role_maker as role_maker
-# from paddle.distributed.fleet.base.util_factory import fleet_util
-# from paddle.distributed.fleet import fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet.base.util_factory import fleet_util
+from paddle.distributed.fleet import fleet
 
 __all__ = ['FleetDistHeterRunnerBase', 'TestFleetHeterBase', 'runtime_main']
 
@@ -83,10 +80,8 @@ class FleetDistHeterRunnerBase(object):
         return self.role
 
     def build_strategy(self, args):
-        if args.mode == "async":
-            self.strategy = StrategyFactory.create_async_strategy()
-        elif args.mode == "geo":
-            self.strategy = StrategyFactory.create_geo_strategy()
+        self.strategy = paddle.distributed.fleet.DistributedStrategy()
+        self.strategy.a_sync = True
 
         return self.strategy
 
@@ -381,6 +376,9 @@ def runtime_main(test_class):
     strategy = model.build_strategy(args)
     avg_cost = model.net(args)
     model.build_optimizer(avg_cost, strategy)
+    fleet_util._set_strategy(strategy)
+    fleet_util._set_role_maker(role)
+
     if args.role == "pserver" or args.role == "heter_trainer":
         model.run_pserver(args)
     else:

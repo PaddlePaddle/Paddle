@@ -44,7 +44,7 @@ class RoleMakerBase(object):
 
         # for heter parameter server mode
         self._heter_trainer_endpoints = []
-        self._heter_trainer_device = "cpu"
+        self._heter_trainer_device = "CPU"
         self.is_heter_parameter_server = False
 
         self._node_type = None
