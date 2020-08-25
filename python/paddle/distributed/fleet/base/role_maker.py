@@ -43,7 +43,7 @@ class RoleMakerBase(object):
         self._current_id = -1
 
         # for heter parameter server mode
-        self._hetet_trainer_endpoints = []
+        self._heter_trainer_endpoints = []
         self._heter_trainer_device = "cpu"
         self.is_heter_parameter_server = False
 
@@ -173,8 +173,6 @@ class RoleMakerBase(object):
     def _is_heter_worker(self):
         """
         Return is_heter_worker() of current process
-
-        This function only implement in PaddleCloudRoleMaker currently
         """
         warnings.warn("RoleMakerBase does not have function: _is_heter_worker.")
         return False
