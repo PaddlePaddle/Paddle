@@ -175,19 +175,28 @@ def _check_env_vars():
 
 def init_parallel_env(rank=-1, backend='nccl', **options):
     """
-    Initialize parallel environments.
+    Initialize parallel training environments in dynamic mode.
 
     Args:
-        rank(int, optional): Rank of current process. Default vaule is -1.
+        rank(int, optional): Rank of current process. Default vaule is -1. 
+            When it is the default value -1, you should use ``paddle.disstributed.launch`` 
+            module to start training, the environment variables for parallel training 
+            are configured by ``paddle.disstributed.launch`` module.
         backend(str, optional): The backend to communication between multiple devices.
             Now only support ``nccl`` . Default value is ``nccl`` .
         **options(dict, optional): Other initial parallel execution environment configuration options. 
             The following options are currently supported:
-            - cluster_node_ips: Paddle cluster nodes ips, such as "192.168.0.16,192.168.0.17". Default: "127.0.0.1"
-            - node_ip: The current node ip, such as "192.168.0.16". Default: "127.0.0.1"
-            - started_port: The trainer's started port on a single node, such as 6170. Default: None
-            - selected_gpus: The training process will run on the selected_gpus, such as "0,1,2,3". Default: None
+
+            - cluster_node_ips: Paddle cluster nodes ips, such as "192.168.0.16,192.168.0.17". Default: "127.0.0.1".
+
+            - node_ip: The current node ip, such as "192.168.0.16". Default: "127.0.0.1".
+
+            - started_port: The trainer's started port on a single node, such as 6170. Default: None.
+
+            - selected_gpus: The training process will run on the selected_gpus, such as "0,1,2,3". Default: None.
+
             - print_config: Print current parallel training config. Default: True.
+
             - use_paddlecloud: Wheter to use paddlecloud platform to run your multi-process job. Default: False.
 
     Returns:

@@ -134,7 +134,7 @@ def start_processes(func,
                     daemon=False,
                     start_method='spawn'):
     """
-    Start multiple rocesses for parallel training.
+    Start multiple processes for parallel training.
 
     Args:
         func (function): The targert function is called by started process.
@@ -151,7 +151,7 @@ def start_processes(func,
             can be ``spawn`` , ``fork`` , ``forkserver`` . Because the CUDA 
             runtime does not support the ``fork`` start method, when use 
             CUDA in subprocesses, we should start process by ``spawn`` or
-            ``forkserver`` method.
+            ``forkserver`` method. Default: 'spawn'.
 
     Returns:
         ``MultiprocessContext`` object, it hold the started processes.
@@ -254,9 +254,9 @@ def start_processes(func,
 # method, they can use start_processes
 def spawn(func, args=(), nprocs=1, join=True, daemon=False):
     """
-    Start multiple rocesses with ``spawn`` method for parallel training.
+    Start multiple processes with ``spawn`` method for parallel training.
     
-    This is specialized method of method ``paddle.distributed.start_processes`` .
+    This is a specialized method of ``paddle.distributed.start_processes`` .
 
     Args:
         func (function): The targert function is called by spawned process.
