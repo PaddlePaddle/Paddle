@@ -207,6 +207,18 @@ bool PD_MkldnnQuantizerEnabled(const PD_AnalysisConfig* config) {
   return config->config.mkldnn_quantizer_enabled();
 }
 
+void PD_EnableMkldnnBfloat16(PD_AnalysisConfig* config) {
+  PADDLE_ENFORCE_NOT_NULL(config, paddle::platform::errors::NotFound(
+                                      "PD_AnalysisConfig should not be null"));
+  config->config.EnableMkldnnBfloat16();
+}
+
+bool PD_MkldnnBfloat16Enabled(const PD_AnalysisConfig* config) {
+  PADDLE_ENFORCE_NOT_NULL(config, paddle::platform::errors::NotFound(
+                                      "PD_AnalysisConfig should not be null"));
+  return config->config.mkldnn_bfloat16_enabled();
+}
+
 void PD_SetModelBuffer(PD_AnalysisConfig* config, const char* prog_buffer,
                        size_t prog_buffer_size, const char* params_buffer,
                        size_t params_buffer_size) {
