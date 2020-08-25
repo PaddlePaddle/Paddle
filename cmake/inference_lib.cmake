@@ -187,7 +187,7 @@ copy(inference_lib_dist
         SRCS  ${CMAKE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
         DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/internal)
 copy(inference_lib_dist
-        SRCS  ${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io/crypto/cipher.h
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io/crypto/cipher.h
         DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/crypto/)
 include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 
