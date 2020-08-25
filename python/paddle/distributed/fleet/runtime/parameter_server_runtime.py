@@ -196,6 +196,18 @@ class ParameterServerRuntime(RuntimeBase):
         else:
             warnings.warn("communicator has been initialized, skip")
 
+    def _get_executor(self):
+        if self.role_maker._is_heter_worker():
+            if self.role_maker._get_heter_worker_device() == "GPU":
+                gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+                executor = Executor(fluid.CUDAPlace(gpu_id))
+            else:
+                raise ValueError("Not Support Device {}".format(
+                    self.role_maker._get_heter_worker_device()))
+        else:
+            executor = fluid.Executor(fluid.CPUPlace())
+        return executor
+
     def _init_server(self, *args, **kwargs):
         if len(args) > 1:
             raise ValueError("init server can only accept 1 args: `dirname`")
@@ -204,8 +216,14 @@ class ParameterServerRuntime(RuntimeBase):
         else:
             model_dirname = None
 
-        executor = fluid.Executor(fluid.CPUPlace())
+        if self.role_maker._is_heter_worker():
+            self._init_worker()
+
+        executor = self._get_executor()
         executor.run(fluid.default_startup_program())
+
+        if self.role_maker._is_heter_worker():
+            return
 
         if not model_dirname:
             return
@@ -237,7 +255,7 @@ class ParameterServerRuntime(RuntimeBase):
         # self._load_sparse_params(dirname=model_dir, varnames=distribtued_varnames)
 
     def _run_server(self):
-        executor = fluid.Executor(fluid.CPUPlace())
+        executor = self._get_executor()
         executor.run(fluid.default_main_program())
 
     def _stop_worker(self):

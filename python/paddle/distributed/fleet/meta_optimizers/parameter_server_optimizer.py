@@ -15,9 +15,9 @@ from paddle import fluid
 from .meta_optimizer_base import MetaOptimizerBase
 
 
-class AsyncMetaOptimizer(MetaOptimizerBase):
+class ParameterServerOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(AsyncMetaOptimizer, self).__init__(optimizer)
+        super(ParameterServerOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
@@ -68,6 +68,21 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
             _startup = worker.init_from_server_pass(_startup, compiled_config)
             _startup = worker.delet_extra_optimizes_pass(_startup,
                                                          compiled_config)
+
+            # for heter program
+            if self.role_maker.is_heter_parameter_server_mode:
+                from paddle.fluid.incubate.fleet.parameter_server.ir import heter_trainer_pass as heter_worker
+                if self.role_maker._is_heter_worker():
+                    # for heter worker
+                    _main = heter_worker.split_heter_worker_ops_pass(
+                        _main, compiled_config)
+                else:
+                    # for default worker
+                    _main = heter_worker.split_trainer_ops_pass(_main,
+                                                                compiled_config)
+                # for startup change
+                _startup = heter_worker.delete_startup_useless_ops_var_pass(
+                    _startup, _main, compiled_config)
         else:
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
@@ -129,9 +144,12 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
                                                      _origin_startup_program,
                                                      strategy, self.role_maker)
 
-        main_program, startup_program = \
-            self._build_trainer_programs(compiled_config) if self.role_maker.is_worker() \
-                else self._build_pserver_programs(compiled_config)
+        if self.role_maker.is_worker() or self.role_maker._is_heter_worker():
+            main_program, startup_program = self._build_trainer_programs(
+                compiled_config)
+        elif self.role_maker.is_server():
+            main_program, startup_program = self._build_pserver_programs(
+                compiled_config)
 
         loss.block.program = main_program
         fluid.framework.switch_startup_program(startup_program)
