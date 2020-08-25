@@ -1031,6 +1031,38 @@ set -ex
     fi
 }
 
+function precision_test() {
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running precision unit tests  ...
+    ========================================
+EOF
+
+set +x
+        EXIT_CODE=0
+        testcases=$1
+        if [[ "$testcases" == "" ]]; then
+            return 0
+        fi
+        card_test "$testcases"
+        collect_failed_tests
+        if [ -n "${failed_test_lists}" ];then
+            failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+            echo "========================================"
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failed_test_lists_ult}"
+        fi
+        rm -f $tmp_dir/*
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+set -ex
+    fi
+}
+
 function parallel_test_base_cpu() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -1055,10 +1087,14 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    if [ "$WITH_GPU" == "ON" ];then
-        parallel_test_base_gpu
+    if [ "${CASES}" != "" ]; then
+	precision_test $CASES
     else
-        parallel_test_base_cpu ${PROC_RUN:-1}
+        if [ "$WITH_GPU" == "ON" ];then
+            parallel_test_base_gpu
+        else
+            parallel_test_base_cpu ${PROC_RUN:-1}
+        fi
     fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
