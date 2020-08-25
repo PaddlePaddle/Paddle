@@ -61,22 +61,24 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    framework::DDim temp_out_dims = x->dims();
+    framework::DDim x_dims = x->dims();
+    framework::DDim out_dims(x_dims);
     framework::Tensor temp;
-    auto out_ptr = temp.mutable_data<T>(temp_out_dims, place);
+    auto out_ptr = temp.mutable_data<T>(out_dims, place);
     if (root_id == comm->rank()) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
           reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
           root_id, comm->comm(), stream));
 
-      framework::TensorCopySync(*static_cast<const framework::Tensor*>(x),
-                                place, static_cast<framework::Tensor*>(&temp));
+      framework::TensorCopy(*static_cast<const framework::Tensor*>(x), place,
+                            *platform::DeviceContextPool::Instance().Get(place),
+                            static_cast<framework::Tensor*>(&temp));
     } else {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
           out_ptr, numel, dtype, root_id, comm->comm(), stream));
     }
 
-    auto out_dims = out->dims();
+    out_dims[0] = out_dims[0] / nranks;
     auto start_index = out_dims[0] * comm->rank();
     auto end_index = start_index + out_dims[0];
     temp = temp.Slice(start_index, end_index);
