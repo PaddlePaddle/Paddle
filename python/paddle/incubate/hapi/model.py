@@ -884,6 +884,7 @@ class Model(object):
         Examples:
 
             .. code-block:: python
+
                 import paddle
                 import paddle.incubate.hapi as hapi
                 from paddle.nn import Linear
@@ -891,18 +892,21 @@ class Model(object):
 
                 class Mnist(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyNet, self).__init__()
-                        self._fc = Linear(784, 1, act='softmax')
+                        super(Mnist, self).__init__()
+                        self._fc = Linear(784, 10, act='softmax')
 
-                  @paddle.jit.to_static # If save for inference in dygraph, need this
-                  def forward(self, x):
-                      y = self._fc(x)
-                      return y
+                    # If save for inference in dygraph, need this
+                    @paddle.fluid.dygraph.jit.declarative
+                    def forward(self, x):
+                        y = self._fc(x)
+                        return y
 
-                dynamic = True # False
+                dynamic = True  # False
                 device = hapi.set_device('cpu')
+
                 # if use static graph, do not set
                 paddle.disable_static(device) if dynamic else None
+                model = hapi.Model(Mnist())
 
                 # inputs and labels are not required for dynamic graph.
                 input = hapi.Input([None, 784], 'float32', 'x')
@@ -910,14 +914,13 @@ class Model(object):
 
                 model = hapi.Model(Mnist(), input, label)
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
-                    parameter_list=model.parameters())
-                model.prepare(optim,
-                                paddle.nn.CrossEntropyLoss(),
-                                hapi.metrics.Accuracy())
+                                            parameter_list=model.parameters())
+                model.prepare(optim, paddle.nn.CrossEntropyLoss())
                 mnist_data = hapi.datasets.MNIST(mode='train', chw_format=False)
                 model.fit(mnist_data, epochs=1, batch_size=32, verbose=0)
-                model.save('checkpoint/test') # save for training
-                model.save('inference_model', False) # save for inference
+                model.save('checkpoint/test')  # save for training
+                model.save('inference_model', False)  # save for inference
+
         """
 
         if ParallelEnv().local_rank == 0:
@@ -1534,47 +1537,6 @@ class Model(object):
 
         Returns:
             list: The fetch variables' name list
-
-        Examples:
-        .. code-block:: python
-            import numpy as np
-            import paddle
-            from paddle.static import InputSpec
-
-            import paddle.incubate.hapi as hapi
-            from paddle.nn import Linear
-            from paddle.incubate.hapi.datasets.mnist import MNIST as MnistDataset
-
-            class Mnist(Layer):
-                def __init__(self, classifier_act=None):
-                    super(Mnist, self).__init__()
-
-                    self.fc = Linear(input_dim=784, output_dim=10, act="softmax")
-
-                @paddle.jit.to_static # In static mode, you need to delete this.
-                def forward(self, inputs):
-                    outputs = self.fc(inputs)
-                    return outputs
-
-            dynamic = True # False
-            device = hapi.set_device('gpu')
-
-            # if use static graph, do not set
-            paddle.disable_static(device) if dynamic else None
-
-            # inputs and labels are not required for dynamic graph.
-            input = InputSpec([None, 784], 'float32', 'x')
-            label = InputSpec([None, 1], 'int64', 'label')
-
-            model = hapi.Model(Mnist(), input, label)
-            optim = paddle.optimizer.SGD(learning_rate=1e-3,
-                parameter_list=model.parameters())
-            model.prepare(optim,
-                            paddle.nn.CrossEntropyLoss(),
-                            hapi.metrics.Accuracy())
-            mnist_data = hapi.datasets.MNIST(mode='train', chw_format=False)
-            model.fit(mnist_data, epochs=1, batch_size=32, verbose=0)
-            model.save_inference_model('inference_model')
         """
 
         def get_inout_spec(all_vars, return_name=False):
