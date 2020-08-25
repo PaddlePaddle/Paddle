@@ -235,12 +235,7 @@ def run_fro(self, p, axis, shape_x, dtype):
         out = paddle.norm(x=data, p=p, axis=axis)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        all_len = 1
-        for s in shape_x:
-            all_len = s * all_len
         np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
-        np_input = np.arange(all_len).astype(dtype) - all_len / 2
-        np_input = np_input.reshape(shape_x)
         expected_result = frobenius_norm(np_input, axis=axis)
         result, = exe.run(feed={"X": np_input}, fetch_list=[out])
     self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
