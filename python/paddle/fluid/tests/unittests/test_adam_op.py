@@ -508,6 +508,6 @@ class TestAdamOpV2(unittest.TestCase):
             lr = int(1)
             adam.set_lr(lr)
 
-            
+
 if __name__ == "__main__":
     unittest.main()
