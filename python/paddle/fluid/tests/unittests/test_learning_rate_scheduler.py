@@ -657,7 +657,7 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.ReduceLROnPlateau(**kwargs)
         sgd = paddle.optimizer.SGD(learning_rate=scheduler,
-                                   parameter_list=linear.parameters())
+                                   parameters=linear.parameters())
 
         for epoch in range(20):
             for batch_id in range(1):
@@ -678,7 +678,7 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
         state_dict = sgd.state_dict()
         scheduler1 = paddle.optimizer.ReduceLROnPlateau(**kwargs)
         sgd1 = paddle.optimizer.SGD(learning_rate=scheduler1,
-                                    parameter_list=linear.parameters())
+                                    parameters=linear.parameters())
         sgd1.set_dict(state_dict)
         self.assertEqual(scheduler.cooldown_counter,
                          scheduler1.cooldown_counter)
