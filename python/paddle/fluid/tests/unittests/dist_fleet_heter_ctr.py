@@ -165,7 +165,7 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
             try:
                 pass_start = time.time()
                 while True:
-                    exe.run(program=fleet.main_program)
+                    exe.run(program=fluid.default_main_program())
 
                 pass_time = time.time() - pass_start
             except fluid.core.EOFException:
@@ -200,7 +200,7 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
             pass_start = time.time()
             dataset.set_filelist(filelist)
             exe.train_from_dataset(
-                program=fleet.main_program,
+                program=fluid.default_main_program(),
                 dataset=dataset,
                 fetch_list=[self.avg_cost],
                 fetch_info=["cost"],
