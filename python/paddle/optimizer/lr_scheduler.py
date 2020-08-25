@@ -153,7 +153,7 @@ class NoamLR(_LRScheduler):
         warmup_steps(int): The number of warmup steps. A super parameter. It is a python int number
         learning_rate (float): The initial learning rate. It is a python float number. Default: 1.0.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
-        verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
         ``NoamLR`` instance to schedule learning rate.
@@ -250,7 +250,7 @@ class PiecewiseLR(_LRScheduler):
         values(list): A list of learning rate values that will be picked during different epoch boundaries. 
             The type of element in the list is python float.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
-        verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
         ``PiecewiseLR`` instance to schedule learning rate.
@@ -334,7 +334,7 @@ class NaturalExpLR(_LRScheduler):
         learning_rate (float): The initial learning rate. It is a python float number.
         gamma (float, optional): A Ratio to update the learning rate. Default: 0.1.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
-        verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
         ``NaturalExpLR`` instance to schedule learning rate.
@@ -413,7 +413,7 @@ class InverseTimeLR(_LRScheduler):
         gamma (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * gamma`` . 
             It should be less than 1.0. Default: 0.1.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
-        verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
         ``InverseTimeLR`` instance to schedule learning rate.
@@ -509,7 +509,7 @@ class PolynomialLR(_LRScheduler):
         cycle(bool, optional): Whether the learning rate rises again. If True, then the learning rate will rise when it decrease 
             to ``end_lr`` .  If False, the learning rate is monotone decreasing. Default: False.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
-        verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
         ``PolynomialLR`` instance to schedule learning rate.
@@ -537,7 +537,7 @@ class PolynomialLR(_LRScheduler):
                     linear.clear_gradients()
                 scheduler.step()
 
-            # train on statich mode
+            # train on static mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -624,7 +624,7 @@ class LinearLrWarmup(_LRScheduler):
         start_lr (float): Initial learning rate of warm up.
         end_lr (float): Final learning rate of warm up.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
-        verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
         ``LinearLrWarmup`` instance to schedule learning rate.
@@ -653,7 +653,7 @@ class LinearLrWarmup(_LRScheduler):
                     linear.clear_gradients()
                 scheduler.step()
 
-            # train on statich mode
+            # train on static mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -727,10 +727,10 @@ class ExponentialLR(_LRScheduler):
 
     Args:
         learning_rate (float): The initial learning rate. It is a python float number.
-        gamma (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * gamma`` . 
-            It should be less than 1.0. Default: 0.1.
+        gamma (float): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * gamma`` . 
+            It should be less than 1.0.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
-        verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
         ``ExponentialLR`` instance to schedule learning rate.
@@ -758,7 +758,7 @@ class ExponentialLR(_LRScheduler):
                     linear.clear_gradients()
                 scheduler.step()
 
-            # train on statich mode
+            # train on static mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -817,7 +817,7 @@ class MultiStepLR(_LRScheduler):
         gamma (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * gamma`` . 
             It should be less than 1.0. Default: 0.1.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
-        verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
         
 
     Returns:
@@ -846,7 +846,7 @@ class MultiStepLR(_LRScheduler):
                     linear.clear_gradients()
                 scheduler.step()
 
-            # train on statich mode
+            # train on static mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -926,7 +926,7 @@ class StepLR(_LRScheduler):
         gamma (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * gamma`` . 
             It should be less than 1.0. Default: 0.1.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
-        verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
         ``StepLR`` instance to schedule learning rate.
@@ -955,7 +955,7 @@ class StepLR(_LRScheduler):
                     linear.clear_gradients()
                 scheduler.step()
 
-            # train on statich mode
+            # train on static mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -1023,7 +1023,7 @@ class LambdaLR(_LRScheduler):
         learning_rate (float): The initial learning rate. It is a python float number.
         lr_lambda (function): A function which computes a factor by ``epoch`` , and then multiply the initial learning rate by this factor.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
-        verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
     
     Returns:
         ``LambdaLR`` instance to schedule learning rate.
@@ -1051,7 +1051,7 @@ class LambdaLR(_LRScheduler):
                     linear.clear_gradients()
                 scheduler.step()
 
-            # train on statich mode
+            # train on static mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -1120,8 +1120,8 @@ class ReduceLROnPlateau(_LRScheduler):
             change of ``loss`` is ``threshold`` . Default: ``'rel'`` .
         cooldown (int, optional): The number of epochs to wait before resuming normal operation. Default: 0.
         min_lr (float, optional): The lower bound of the learning rate after reduction. Default: 0.
-        epsilon (float, optional): Minimal decay applied to lr. If the difference between new and old lr is smaller than eps, the update is
-            ignored. Default: 1e-8.
+        epsilon (float, optional): Minimal decay applied to lr. If the difference between new and old lr is smaller than epsilon, 
+            the update is ignored. Default: 1e-8.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False``.
 
     
@@ -1151,7 +1151,7 @@ class ReduceLROnPlateau(_LRScheduler):
                     linear.clear_gradients()
                 scheduler.step(loss)
 
-            # train on statich mode
+            # train on static mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -1340,7 +1340,7 @@ class CosineAnnealingLR(_LRScheduler):
         T_max (int): Maximum number of iterations. It is half of the decay cycle of learning rate.
         eta_min (float|int, optional): Minimum learning rate, that is :math:`\eta_{min}` . Default: 0.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
-        verbose (bool): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
         ``CosineAnnealingLR`` instance to schedule learning rate.
@@ -1368,7 +1368,7 @@ class CosineAnnealingLR(_LRScheduler):
                     linear.clear_gradients()
                 scheduler.step()
 
-            # train on statich mode
+            # train on static mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
