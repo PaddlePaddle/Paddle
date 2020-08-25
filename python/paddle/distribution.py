@@ -275,8 +275,6 @@ class Uniform(Distribution):
             ub_bool = value < self.high
 
             dtype = value.dtype
-            if not isinstance(dtype, core.VarDesc.VarType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
             lb = core.ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
                                dtype)
             ub = core.ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
@@ -309,8 +307,6 @@ class Uniform(Distribution):
             ub_bool = value < self.high
 
             dtype = value.dtype
-            if not isinstance(dtype, core.VarDesc.VarType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
             lb = core.ops.cast(lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype',
                                dtype)
             ub = core.ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
