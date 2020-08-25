@@ -52,28 +52,28 @@ class VOC2012(Dataset):
 
         .. code-block:: python
 
-	    import paddle
-	    from paddle.incubate.hapi.datasets import VOC2012
+            import paddle
+            from paddle.incubate.hapi.datasets import VOC2012
 
-	    class SimpleNet(paddle.nn.Layer):
-		def __init__(self):
-		    super(SimpleNet, self).__init__()
+            class SimpleNet(paddle.nn.Layer):
+                def __init__(self):
+                    super(SimpleNet, self).__init__()
 
-		def forward(self, image, label):
-		    return paddle.sum(image), label
+                def forward(self, image, label):
+                    return paddle.sum(image), label
 
-	    paddle.disable_static()
+            paddle.disable_static()
 
-	    voc2012 = VOC2012(mode='train')
+            voc2012 = VOC2012(mode='train')
 
-	    for i in range(10):
-		image, label= voc2012[i]
-		image = paddle.cast(paddle.to_tensor(image), 'float32')
-		label = paddle.to_tensor(label)
+            for i in range(10):
+                image, label= voc2012[i]
+                image = paddle.cast(paddle.to_tensor(image), 'float32')
+                label = paddle.to_tensor(label)
 
-		model = SimpleNet()
-		image, label= model(image, label)
-		print(image.numpy().shape, label.numpy().shape)
+                model = SimpleNet()
+                image, label= model(image, label)
+                print(image.numpy().shape, label.numpy().shape)
 
     """
 

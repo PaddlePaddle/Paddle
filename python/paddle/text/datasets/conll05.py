@@ -75,10 +75,10 @@ class Conll05st(Dataset):
 	    from paddle.text.datasets import Conll05st
 
 	    class SimpleNet(paddle.nn.Layer):
-		def __init__(self):
-		    super(SimpleNet, self).__init__()
+                def __init__(self):
+                    super(SimpleNet, self).__init__()
 
-		def forward(self, pred_idx, mark, label):
+                def forward(self, pred_idx, mark, label):
 		    return paddle.sum(pred_idx), paddle.sum(mark), paddle.sum(label)
 
 	    paddle.disable_static()

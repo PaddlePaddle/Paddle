@@ -195,7 +195,7 @@ class DistributedBatchSampler(BatchSampler):
 
             import numpy as np
 
-            from paddle.io import DistributedBatchSampler
+            from paddle.io import Dataset, DistributedBatchSampler
 
             # init with dataset
             class RandomDataset(Dataset):
@@ -210,10 +210,10 @@ class DistributedBatchSampler(BatchSampler):
                 def __len__(self):
                     return self.num_samples
   
-            train_dataset = RandomDataset(mode='train')
-            dist_train_dataloader = DistributedBatchSampler(train_dataset, batch_size=64)
+            dataset = RandomDataset(100)
+            sampler = DistributedBatchSampler(dataset, batch_size=64)
 
-            for data in dist_train_dataloader:
+            for data in sampler:
                 # do something
                 break
     """

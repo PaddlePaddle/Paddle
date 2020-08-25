@@ -77,29 +77,29 @@ class WMT16(Dataset):
 
         .. code-block:: python
 
-	    import paddle
-	    from paddle.text.datasets import WMT16
+            import paddle
+            from paddle.text.datasets import WMT16
 
-	    class SimpleNet(paddle.nn.Layer):
-		def __init__(self):
-		    super(SimpleNet, self).__init__()
+            class SimpleNet(paddle.nn.Layer):
+                def __init__(self):
+                    super(SimpleNet, self).__init__()
 
-		def forward(self, src_ids, trg_ids, trg_ids_next):
-		    return paddle.sum(src_ids), paddle.sum(trg_ids), paddle.sum(trg_ids_next)
+                def forward(self, src_ids, trg_ids, trg_ids_next):
+                    return paddle.sum(src_ids), paddle.sum(trg_ids), paddle.sum(trg_ids_next)
 
-	    paddle.disable_static()
+            paddle.disable_static()
 
-	    wmt16 = WMT16(mode='train', src_dict_size=50, trg_dict_size=50)
+            wmt16 = WMT16(mode='train', src_dict_size=50, trg_dict_size=50)
 
-	    for i in range(10):
-		src_ids, trg_ids, trg_ids_next = wmt16[i]
-		src_ids = paddle.to_tensor(src_ids)
-		trg_ids = paddle.to_tensor(trg_ids)
-		trg_ids_next = paddle.to_tensor(trg_ids_next)
+            for i in range(10):
+                src_ids, trg_ids, trg_ids_next = wmt16[i]
+                src_ids = paddle.to_tensor(src_ids)
+                trg_ids = paddle.to_tensor(trg_ids)
+                trg_ids_next = paddle.to_tensor(trg_ids_next)
 
-		model = SimpleNet()
-		src_ids, trg_ids, trg_ids_next = model(src_ids, trg_ids, trg_ids_next)
-		print(src_ids.numpy(), trg_ids.numpy(), trg_ids_next.numpy())
+                model = SimpleNet()
+                src_ids, trg_ids, trg_ids_next = model(src_ids, trg_ids, trg_ids_next)
+                print(src_ids.numpy(), trg_ids.numpy(), trg_ids_next.numpy())
 
     """
 
@@ -222,20 +222,20 @@ class WMT16(Dataset):
 
     def get_dict(self, lang, reverse=False):
         """
-	return the word dictionary for the specified language.
+        return the word dictionary for the specified language.
 
-	Args:
-	    lang(string): A string indicating which language is the source
-			  language. Available options are: "en" for English
-			  and "de" for Germany.
-	    reverse(bool): If reverse is set to False, the returned python
-			   dictionary will use word as key and use index as value.
-			   If reverse is set to True, the returned python
-			   dictionary will use index as key and word as value.
+        Args:
+            lang(string): A string indicating which language is the source
+                          language. Available options are: "en" for English
+                          and "de" for Germany.
+            reverse(bool): If reverse is set to False, the returned python
+                           dictionary will use word as key and use index as value.
+                           If reverse is set to True, the returned python
+                           dictionary will use index as key and word as value.
 
-	Returns:
-	    dict: The word dictionary for the specific language.
-	"""
+        Returns:
+            dict: The word dictionary for the specific language.
+        """
 
         dict_size = self.src_dict_size if lang == self.lang else self.trg_dict_size
 

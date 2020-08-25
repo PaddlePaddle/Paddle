@@ -117,10 +117,10 @@ class Callback(object):
 
         .. code-block:: python
             
-            import paddle.callbacks.Callback as Callback
+            import paddle
 
             # build a simple model checkpoint callback
-            class ModelCheckpoint(Callback):
+            class ModelCheckpoint(paddle..callbacks.Callback):
                 def __init__(self, save_freq=1, save_dir=None):
                     self.save_freq = save_freq
                     self.save_dir = save_dir

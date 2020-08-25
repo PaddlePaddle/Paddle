@@ -807,7 +807,7 @@ class Model(object):
                 y = self._fc1(x)
                 return y
         
-        device = paddle.set_device('gpu')
+        device = paddle.set_device('cpu') # or 'gpu'
         # if use static graph, do not set
         paddle.disable_static(device)
         
@@ -883,7 +883,7 @@ class Model(object):
                       y = self._fc(x)
                       return y
 
-              device = paddle.set_device('gpu')
+              device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device)
 
               input = InputSpec([None, 784], 'float32', 'x')
@@ -931,7 +931,7 @@ class Model(object):
                       y = self._fc(x)
                       return y
 
-              device = paddle.set_device('gpu')
+              device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device)
 
               input = InputSpec([None, 784], 'float32', 'x')
@@ -975,7 +975,7 @@ class Model(object):
                       y = self._fc(x)
                       return y
 
-              device = paddle.set_device('gpu')
+              device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device)
 
               model = paddle.Model(MyNet())
@@ -1280,7 +1280,7 @@ class Model(object):
               from paddle.static import InputSpec
 
               dynamic = True
-              device = paddle.set_device('gpu')
+              device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device) if dynamic else None
            
               train_dataset = paddle.vision.datasets.MNIST(mode='train')
@@ -1313,7 +1313,7 @@ class Model(object):
               from paddle.static import InputSpec
 
               dynamic = True
-              device = paddle.set_device('gpu')
+              device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device) if dynamic else None
            
               train_dataset = paddle.vision.datasets.MNIST(mode='train')

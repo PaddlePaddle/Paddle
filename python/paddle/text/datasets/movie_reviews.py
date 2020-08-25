@@ -54,28 +54,28 @@ class MovieReviews(Dataset):
 
         .. code-block:: python
 
-	    import paddle
-	    from paddle.text.datasets import MovieReviews
+            import paddle
+            from paddle.text.datasets import MovieReviews
 
-	    class SimpleNet(paddle.nn.Layer):
-		def __init__(self):
-		    super(SimpleNet, self).__init__()
+            class SimpleNet(paddle.nn.Layer):
+                def __init__(self):
+                    super(SimpleNet, self).__init__()
 
-		def forward(self, word, category):
-		    return paddle.sum(word), category
+                def forward(self, word, category):
+                    return paddle.sum(word), category
 
-	    paddle.disable_static()
+            paddle.disable_static()
 
-	    movie_reviews = MovieReviews(mode='train')
+            movie_reviews = MovieReviews(mode='train')
 
-	    for i in range(10):
-		word_list, category = movie_reviews[i]
-		word_list = paddle.to_tensor(word_list)
-		category = paddle.to_tensor(category)
+            for i in range(10):
+                word_list, category = movie_reviews[i]
+                word_list = paddle.to_tensor(word_list)
+                category = paddle.to_tensor(category)
 
-		model = SimpleNet()
-		word_list, category = model(word_list, category)
-		print(word_list.numpy().shape, category.numpy())
+                model = SimpleNet()
+                word_list, category = model(word_list, category)
+                print(word_list.numpy().shape, category.numpy())
 
     """
 
@@ -91,10 +91,10 @@ class MovieReviews(Dataset):
 
     def _get_word_dict(self):
         """
-	Sorted the words by the frequency of words which occur in sample
-	:return:
-	    words_freq_sorted
-	"""
+        Sorted the words by the frequency of words which occur in sample
+        :return:
+            words_freq_sorted
+        """
         words_freq_sorted = list()
         word_freq_dict = collections.defaultdict(int)
 
@@ -110,10 +110,10 @@ class MovieReviews(Dataset):
 
     def _sort_files(self):
         """
-	Sorted the sample for cross reading the sample
-	:return:
-	    files_list
-	"""
+        Sorted the sample for cross reading the sample
+        :return:
+            files_list
+        """
         files_list = list()
         neg_file_list = movie_reviews.fileids('neg')
         pos_file_list = movie_reviews.fileids('pos')
@@ -123,10 +123,10 @@ class MovieReviews(Dataset):
 
     def _load_sentiment_data(self):
         """
-	Load the data set
-	:return:
-	    data_set
-	"""
+        Load the data set
+        :return:
+            data_set
+        """
         self.data = []
         words_ids = dict(self._get_word_dict())
         for sample_file in self._sort_files():
@@ -138,8 +138,8 @@ class MovieReviews(Dataset):
 
     def _download_data_if_not_yet(self):
         """
-	Download the data set, if the data set is not download.
-	"""
+        Download the data set, if the data set is not download.
+        """
         try:
             # download and extract movie_reviews.zip
             paddle.dataset.common.download(
