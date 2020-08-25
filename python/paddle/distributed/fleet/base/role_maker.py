@@ -331,10 +331,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         get index of current node
         """
-        if self.is_server():
-            return self.server_index()
-        elif self.is_worker():
-            return self.worker_index()
+        return self._current_id
 
     def worker_num(self):
         """

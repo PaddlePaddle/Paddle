@@ -28,7 +28,7 @@ class ParameterServerGraphOptimizer(ParameterServerOptimizer):
         if k_steps < 0:
             return False
 
-        if self.role_maker.is_server():
+        if self.role_maker.is_server() or self.role_maker._is_heter_worker():
             return False
 
         return True
