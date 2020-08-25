@@ -26,7 +26,7 @@ from .fluid.layers import tensor
 from .fluid.layers import ops
 from .fluid.layers import nn
 from .fluid import core
-from .fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
+from .fluid.framework import in_dygraph_mode
 from .tensor.math import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
 import math
 import numpy as np
