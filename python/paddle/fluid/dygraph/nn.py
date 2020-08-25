@@ -2355,10 +2355,6 @@ class PRelu(layers.Layer):
         return out
 
 
-@deprecated(
-    since="2.0.0",
-    update_to="paddle.nn.Bilinear",
-    reason="New name and new args in Bilinear, easier to use.")
 class BilinearTensorProduct(layers.Layer):
     """
     :alias_main: paddle.nn.BilinearTensorProduct
@@ -2450,6 +2446,10 @@ class BilinearTensorProduct(layers.Layer):
             dtype=self._dtype,
             is_bias=True)
 
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.nn.Bilinear",
+        reason="New name and new args in Bilinear, easier to use.")
     def forward(self, x, y):
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'BilinearTensorProduct')
