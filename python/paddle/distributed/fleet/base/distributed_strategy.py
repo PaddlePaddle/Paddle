@@ -800,10 +800,12 @@ class DistributedStrategy(object):
             "FLAGS_fuse_parameter_groups_size",
         ]
         values = [
-            strategy.cudnn_batchnorm_spatial_persistent,
-            strategy.conv_workspace_size_limit,
-            strategy.cudnn_exhaustive_search, strategy.sync_nccl_allreduce,
-            strategy.fuse_grad_size_in_MB, strategy.fuse_grad_size_in_TFLOPS
+            bool(strategy.cudnn_batchnorm_spatial_persistent),
+            int(strategy.conv_workspace_size_limit),
+            bool(strategy.cudnn_exhaustive_search),
+            bool(strategy.sync_nccl_allreduce),
+            int(strategy.fuse_grad_size_in_MB),
+            int(strategy.fuse_grad_size_in_TFLOPS),
         ]
 
         for i, key in enumerate(keys):
