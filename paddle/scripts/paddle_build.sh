@@ -1108,22 +1108,6 @@ EOF
       esac
 }
 
-function gen_html() {
-    cat <<EOF
-    ========================================
-    Converting C++ source code into HTML ...
-    ========================================
-EOF
-    export WOBOQ_OUT=${PADDLE_ROOT}/build/woboq_out
-    mkdir -p $WOBOQ_OUT
-    cp -rv /woboq/data $WOBOQ_OUT/../data
-    /woboq/generator/codebrowser_generator \
-    	-b ${PADDLE_ROOT}/build \
-    	-a \
-    	-o $WOBOQ_OUT \
-    	-p paddle:${PADDLE_ROOT}
-    /woboq/indexgenerator/codebrowser_indexgenerator $WOBOQ_OUT
-}
 
 function gen_dockerfile() {
     # Set BASE_IMAGE according to env variables
@@ -1445,9 +1429,6 @@ function main() {
         ;;
       gen_doc_lib)
         gen_doc_lib $2
-        ;;
-      html)
-        gen_html
         ;;
       dockerfile)
         gen_dockerfile ${PYTHON_ABI:-""}
