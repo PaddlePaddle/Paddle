@@ -650,6 +650,7 @@ def unique(x,
             np_counts = counts.numpy() # [1 1 3 1]
 
             x_data = np.array([[2, 1, 3], [3, 0, 1], [2, 1, 3]])
+            x = paddle.to_tensor(x_data)
             unique = paddle.unique(x)
             np_unique = unique.numpy() # [0 1 2 3]
 
