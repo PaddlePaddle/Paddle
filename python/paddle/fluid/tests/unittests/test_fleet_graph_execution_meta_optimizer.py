@@ -40,9 +40,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
         def node_func():
             import paddle.distributed.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-            fleet.init(role)
+            fleet.init(is_collective=True)
             input_x = paddle.fluid.layers.data(
                 name="x", shape=[32], dtype='float32')
             input_y = paddle.fluid.layers.data(
@@ -98,9 +96,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
         def node_func():
             import paddle.distributed.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-            fleet.init(role)
+            fleet.init(is_collective=True)
             input_x = paddle.fluid.layers.data(
                 name="x", shape=[32], dtype='float32')
             input_y = paddle.fluid.layers.data(
@@ -166,9 +162,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
         def node_func():
             import paddle.distributed.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-            fleet.init(role)
+            fleet.init(is_collective=True)
             input_x = paddle.fluid.layers.data(
                 name="x", shape=[32], dtype='float32')
             input_y = paddle.fluid.layers.data(
@@ -217,9 +211,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
         def node_func():
             import paddle.distributed.fleet as fleet
-            import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-            fleet.init(role)
+            fleet.init(is_collective=True)
             input_x = paddle.fluid.layers.data(
                 name="x", shape=[32], dtype='float32')
             input_y = paddle.fluid.layers.data(
