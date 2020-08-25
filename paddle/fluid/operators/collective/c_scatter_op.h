@@ -46,7 +46,6 @@ class CScatterOpCPUKernel : public framework::OpKernel<T> {
             "You must initialize the gloo environment first to use it."));
 
     int64_t send_numel = out->numel();
-    VLOG(0) << "send_numel:" << send_numel;
     auto nranks = gloo->Size();
     auto rank = gloo->Rank();
     T* recv_buff = out->data<T>();
