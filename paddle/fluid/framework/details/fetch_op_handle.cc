@@ -110,11 +110,12 @@ void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
 }
 
 static void TransData(const framework::LoDTensor &src_item,
-                      framework::LoDTensor *dst_item) {
+                      framework::LoDTensor *dst_item,
+                      const platform::DeviceContext &ctx) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
     if (platform::is_gpu_place(src_item.place())) {
 #ifdef PADDLE_WITH_CUDA
-      TensorCopy(src_item, platform::CPUPlace(), dst_item);
+      TensorCopy(src_item, platform::CUDAPinnedPlace(), ctx, dst_item);
 #endif
     } else {
       dst_item->ShareDataWith(src_item);
@@ -128,7 +129,7 @@ static void TransData(const framework::LoDTensor &src_item,
 
 void FetchOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name());
-  WaitInputVarGenerated(platform::CPUPlace());
+  WaitInputVarGenerated();
 
   tensors_.resize(inputs_.size());
   auto &scopes = *local_exec_scopes_;
@@ -143,27 +144,18 @@ void FetchOpHandle::RunImpl() {
     if (var->IsType<LoDTensor>()) {
       auto &t = var->Get<framework::LoDTensor>();
       auto &item = BOOST_GET(LoDTensor, tensors_[i]);
-      TransData(t, &item);
+      TransData(t, &item, *dev_ctxes_[t.place()]);
     } else {
       auto &t = var->Get<framework::LoDTensorArray>();
       LoDTensorArray tmp(t.size());
       tensors_[i] = tmp;
       auto &item = BOOST_GET(LoDTensorArray, tensors_[i]);
       for (size_t j = 0; j < t.size(); ++j) {
-        TransData(t[j], &item[j]);
+        TransData(t[j], &item[j], *dev_ctxes_[t[j].place()]);
       }
     }
   }
   this->WaitAndMergeCPUFetchVars();
-}
-
-void FetchOpHandle::WaitInputVarGenerated(const platform::Place &place) {
-  auto cpu_ctx = platform::DeviceContextPool::Instance().Get(place);
-  for (auto *input : inputs_) {
-    if (input->GeneratedOp()) {
-      input->GeneratedOp()->RecordWaitEventOnCtx(cpu_ctx);
-    }
-  }
 }
 
 bool FetchOpHandle::IsMultiDeviceTransfer() { return true; }

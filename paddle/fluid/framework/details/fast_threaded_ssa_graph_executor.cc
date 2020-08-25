@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -120,6 +121,11 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
   }
   // Wait FetchOps.
   ClearFetchOp(graph_, &fetch_ops);
+
+  for (auto &place : places_) {
+    fetch_ctxs_.Get(place)->Wait();
+  }
+
   return fetches;
 }
 
@@ -172,6 +178,14 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 
     for (auto *var : vars) {
       op->AddInput(var);
+    }
+
+    for (auto *var : vars) {
+      auto *op = var->GeneratedOp();
+      auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
+      if (compute_op) {
+        compute_op->SetLockAndRecordEventFree(false);
+      }
     }
 
     int dep = static_cast<int>(op->NotReadyInputSize());

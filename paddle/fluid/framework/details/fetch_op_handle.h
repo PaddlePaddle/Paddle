@@ -47,8 +47,6 @@ struct FetchOpHandle : public OpHandleBase {
 
   std::vector<Scope *> GetLocalScopes() override { return *local_scopes_; }
 
-  void WaitInputVarGenerated(const platform::Place &place) override;
-
  private:
   FetchResultType *data_;
   size_t offset_;
