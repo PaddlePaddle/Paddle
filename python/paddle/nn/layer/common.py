@@ -358,7 +358,7 @@ class Bilinear(layers.Layer):
     This layer performs bilinear on two inputs.
 
     .. math::
-    
+
       out_{i} = x1 * W_{i} * {x2^\mathrm{T}}, i=0,1,...,size-1
 
       out = out + b
@@ -389,7 +389,7 @@ class Bilinear(layers.Layer):
         **bias** (Parameter): the learnable bias of this layer.
 
     Returns:
-       Variable: A 2-D Tensor of shape [batch_size, out_features].
+       Tensor: A 2-D Tensor of shape [batch_size, out_features].
 
     Examples:
        .. code-block:: python
