@@ -110,6 +110,14 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
+    def node_num(self):
+        """
+        Get the training node number
+        Returns:
+            int: node num
+        """
+        raise NotImplementedError("Please implement this method in child class")
+
     def get_trainer_endpoints(self):
         """
         return trainer endpoints
@@ -157,10 +165,10 @@ class RoleMakerBase(object):
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
-    def __init__(self, is_collective=False, init_gloo=True, **kwargs):
+    def __init__(self, is_collective=False, **kwargs):
         super(PaddleCloudRoleMaker, self).__init__()
         self._is_collective = is_collective
-        self._init_gloo = init_gloo
+        self._init_gloo = False  #default no init gloo
         self._kwargs = kwargs
 
         self._role_is_generated = False
@@ -196,30 +204,35 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._prefix = os.getenv("SYS_JOB_ID", "")
 
     def _barrier(self, comm_world):
-        if comm_world:
+        if isinstance(comm_world, fluid.core.Gloo):
             comm_world.barrier()
+        else:
+            print("warning: must init Gloo before using _barrier() function")
 
     def _all_gather(self, comm_world, input):
-        if comm_world:
+        if isinstance(comm_world, fluid.core.Gloo):
             self._barrier(comm_world)
             output = comm_world.all_gather(input)
             return output
         else:
+            print("warning: must init Gloo before using _all_gather() function")
             return None
 
     def _all_reduce(self, comm_world, input, mode="sum"):
-        if not comm_world:
+        if isinstance(comm_world, fluid.core.Gloo):
+
+            input = np.array(input)
+
+            input_shape = input.shape
+            input_list = input.reshape(-1).tolist()
+
+            self._barrier(comm_world)
+            ans = comm_world.all_reduce(input_list, mode)
+            output = np.array(ans).reshape(input_shape)
+            return output
+        else:
+            print("warning: must init Gloo before using _all_reduce() function")
             return None
-
-        input = np.array(input)
-
-        input_shape = input.shape
-        input_list = input.reshape(-1).tolist()
-
-        self._barrier(comm_world)
-        ans = comm_world.all_reduce(input_list, mode)
-        output = np.array(ans).reshape(input_shape)
-        return output
 
     def is_worker(self):
         """
@@ -285,6 +298,14 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             self.generate_role()
         return self._trainers_num
+
+    def node_num(self):
+        """
+        return the training node number
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._node_num
 
     def get_trainer_endpoints(self):
         """
@@ -353,6 +374,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._trainers_num = trainers_num
         self._role = role
         self._current_id = current_id
+        self._node_num = len(
+            set([x.split(':')[0] for x in self._worker_endpoints]))
 
     def _collective_env(self):
         self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
@@ -363,6 +386,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
+        self._node_num = len(
+            set([x.split(':')[0] for x in self._worker_endpoints]))
 
     def _init_gloo_env(self):
         def init_gloo_instance(role="trainer"):
@@ -440,6 +465,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             if not self._is_collective:
                 self._ps_env()
+                if "PADDLE_WITH_GLOO" in os.environ:
+                    self._init_gloo = bool(os.environ["PADDLE_WITH_GLOO"])
                 if self._init_gloo:
                     self._init_gloo_env()
             else:
@@ -513,12 +540,16 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
             self._cur_endpoint = self._worker_endpoints[self._current_id]
         elif self._role == Role.SERVER:
             self._cur_endpoint = self._server_endpoints[self._current_id]
+        self._node_num = len(
+            set([x.split(':')[0] for x in self._worker_endpoints]))
 
     def _user_defined_collective_env(self):
         self._worker_endpoints = self._kwargs.get("worker_endpoints")
         self._current_id = self._kwargs.get("current_id")
         self._trainers_num = len(self._worker_endpoints)
         self._training_role = Role.Worker
+        self._node_num = len(
+            set([x.split(':')[0] for x in self._worker_endpoints]))
 
     def generate_role(self):
         """

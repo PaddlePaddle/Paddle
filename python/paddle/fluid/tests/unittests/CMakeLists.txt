@@ -33,6 +33,8 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_checkpoint)
 list(APPEND MIXED_DIST_TEST_OPS test_collective_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_recompute_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_execution_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
@@ -44,6 +46,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_lamb_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_dgc_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_private_function)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_executor)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_meta_optimizer_base)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -53,6 +56,8 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_allgather)
     LIST(REMOVE_ITEM TEST_OPS test_allreduce)
     LIST(REMOVE_ITEM TEST_OPS test_broadcast)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_reduce)
+    LIST(REMOVE_ITEM TEST_OPS test_collective_scatter)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
@@ -90,10 +95,16 @@ endif()
 
 
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint1)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint3)
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint_multiple)
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint_dist_basic)
+LIST(REMOVE_ITEM TEST_OPS test_hdfs1)
+LIST(REMOVE_ITEM TEST_OPS test_hdfs2)
+LIST(REMOVE_ITEM TEST_OPS test_hdfs3)
 LIST(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 if(APPLE OR WIN32)
-    LIST(REMOVE_ITEM TEST_OPS test_hdfs)
     LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
     LIST(REMOVE_ITEM TEST_OPS test_fleet_metric)
 endif()
@@ -106,6 +117,7 @@ if (NOT ${WITH_GPU})
     list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_se_resnext)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sync_batch_norm)
     LIST(REMOVE_ITEM TEST_OPS test_imperative_auto_mixed_precision)
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -191,6 +203,7 @@ function(py_test_modules TARGET_NAME)
   endif()
 endfunction()
 
+
 function(bash_test_modules TARGET_NAME)
     if(NOT WITH_TESTING)
         return()
@@ -233,6 +246,51 @@ function(bash_test_modules TARGET_NAME)
     endif()
 endfunction()
 
+function(parallel_bash_test_modules TARGET_NAME)
+    if(NOT WITH_TESTING)
+        return()
+    endif()
+
+    set(options SERIAL)
+    set(oneValueArgs TIMEOUT START_BASH)
+    set(multiValueArgs DEPS ENVS LABELS UnitTests)
+    cmake_parse_arguments(parallel_bash_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+
+    set(timeout 120)
+    if(${parallel_bash_test_modules_TIMEOUT})
+        set(timeout ${parallel_bash_test_modules_TIMEOUT})
+    endif()
+
+    list(JOIN  parallel_bash_test_modules_UnitTests " " uts_string)
+
+    if(WITH_COVERAGE)
+        add_test(NAME ${TARGET_NAME}
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${parallel_bash_test_modules_ENVS} UnitTests=${uts_string}
+            WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${parallel_bash_test_modules_START_BASH}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+        add_test(NAME ${TARGET_NAME}
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${parallel_bash_test_modules_ENVS} UnitTests=${uts_string}
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${parallel_bash_test_modules_START_BASH}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+
+    if (parallel_bash_test_modules_SERIAL)
+        set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
+    endif()
+
+    if(parallel_bash_test_modules_LABELS)
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout} LABELS ${parallel_bash_test_modules_LABELS})
+    else()
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout})
+    endif()
+endfunction()
+
+
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
@@ -267,6 +325,9 @@ list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
+list(REMOVE_ITEM TEST_OPS test_sampling_id_op)
+
+
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
@@ -359,16 +420,20 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_base")
 
-    # FIXME(seiriosX) will readd after PR 22957  Merged
+
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_ctr")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_lars")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_train")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_save_load")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_simnet_bow")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_simnet_bow")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ctr")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_text_classification")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
+
+    # FIXME(seiriosX) will fix this
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_sparse_embedding_ctr")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
     py_test_modules(test_transpiler_ops MODULES test_transpiler_ops ENVS ${dist_ENVS})
@@ -379,6 +444,8 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_collective_optimizer MODULES test_collective_optimizer)
     if(NOT APPLE)
     	   py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
+    	   py_test_modules(test_fleet_base_2 MODULES test_fleet_base_2 ENVS ${dist_ENVS})
+    	   py_test_modules(test_fleet_base_3 MODULES test_fleet_base_3 ENVS ${dist_ENVS})
     	   py_test_modules(test_fleet_recompute_meta_optimizer MODULES test_fleet_recompute_meta_optimizer ENVS ${dist_ENVS})
 	   py_test_modules(test_fleet_graph_execution_meta_optimizer MODULES test_fleet_graph_execution_meta_optimizer ENVS ${dist_ENVS})
 	   py_test_modules(test_fleet_graph_executor MODULES test_fleet_graph_executor ENVS ${dist_ENVS})
@@ -386,6 +453,7 @@ if(WITH_DISTRIBUTE)
            py_test_modules(test_fleet_amp_meta_optimizer MODULES test_fleet_amp_meta_optimizer ENVS ${dist_ENVS})
     	   py_test_modules(test_fleet_pipeline_meta_optimizer MODULES test_fleet_pipeline_meta_optimizer ENVS ${dist_ENVS})
     	   py_test_modules(test_fleet_private_function MODULES test_fleet_private_function ENVS ${dist_ENVS})
+	   py_test_modules(test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS ${dist_ENVS})
         if(NOT WIN32)
             py_test_modules(test_fleet_localsgd_meta_optimizer MODULES test_fleet_localsgd_meta_optimizer ENVS ${dist_ENVS})
             py_test_modules(test_fleet_lars_meta_optimizer MODULES test_fleet_lars_meta_optimizer ENVS ${dist_ENVS})
@@ -454,9 +522,9 @@ if(NOT WIN32)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
-    bash_test_modules(test_auto_checkpoint START_BASH dist_test.sh TIMEOUT 600)
-    bash_test_modules(test_auto_checkpoint2 START_BASH dist_test.sh TIMEOUT 600)
-    bash_test_modules(test_checkpoint_saver START_BASH dist_test.sh TIMEOUT 600)
+    parallel_bash_test_modules(test_acp START_BASH parallel_test.sh TIMEOUT 140 UnitTests test_auto_checkpoint test_auto_checkpoint1 test_auto_checkpoint2 test_auto_checkpoint3)
+    parallel_bash_test_modules(test_acp2 START_BASH parallel_test.sh TIMEOUT 140 UnitTests test_auto_checkpoint_multiple test_auto_checkpoint_dist_basic)
+    parallel_bash_test_modules(test_hdfs START_BASH parallel_test.sh TIMEOUT 120 UnitTests test_hdfs1 test_hdfs2 test_hdfs3)
 endif()
 
 add_subdirectory(sequence)
@@ -501,3 +569,11 @@ if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
     set_tests_properties(test_multiprocess_dataloader_iterable_dataset_dynamic PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 endif()
+
+# setting timeout value for old unittests
+# set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT 200)
+set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 150)
+set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
+set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
+set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
+set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)

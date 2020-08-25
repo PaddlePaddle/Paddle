@@ -63,7 +63,6 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
       for_range(matrix_band_part_functor);
     }
 
-    // TODO(guosheng): Add callback to check info
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_count);
     auto* info_ptr = reinterpret_cast<int*>(info->ptr());
 
@@ -96,6 +95,20 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
 #if CUDA_VERSION >= 9020 && !defined(_WIN32)
     }
 #endif
+    // check the info
+    std::vector<int> error_info;  // only for checking positive matrix
+    error_info.resize(batch_count);
+
+    memory::Copy(platform::CPUPlace(), error_info.data(),
+                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
+                 info_ptr, sizeof(int) * batch_count, dev_ctx.stream());
+
+    for (int i = 0; i < batch_count; ++i) {
+      PADDLE_ENFORCE_EQ(error_info[i], 0,
+                        platform::errors::PreconditionNotMet(
+                            "For batch [%d]: U(%d, %d) is zero, singular U.", i,
+                            error_info[i], error_info[i]));
+    }
   }
 
   void Potrf(const platform::CUDADeviceContext& dev_ctx, cublasFillMode_t uplo,
