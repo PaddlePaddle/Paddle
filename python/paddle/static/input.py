@@ -120,7 +120,7 @@ def data(name, shape, dtype=None, lod_level=0):
 
 class InputSpec(object):
     """
-    Define input specification of the model.
+    InputSpec describes the signature information of the model input, such as ``shape`` , ``dtype`` , ``name`` .
 
     This interface is often used to specify input tensor information of models in high-level API.
     It's also used to specify the tensor information for each input parameter of the forward function
@@ -140,10 +140,10 @@ class InputSpec(object):
     Examples:
         .. code-block:: python
 
-        from paddle.static import InputSpec
+            from paddle.static import InputSpec
 
-        input = InputSpec([None, 784], 'float32', 'x')
-        label = InputSpec([None, 1], 'int64', 'label')
+            input = InputSpec([None, 784], 'float32', 'x')
+            label = InputSpec([None, 1], 'int64', 'label')
     """
 
     def __init__(self, shape, dtype='float32', name=None):
@@ -177,15 +177,15 @@ class InputSpec(object):
         Examples:
             .. code-block:: python
 
-            import numpy as np
-            import paddle.fluid as fluid
-            from paddle.static import InputSpec
+                import numpy as np
+                import paddle.fluid as fluid
+                from paddle.static import InputSpec
 
-            fluid.enable_dygraph()
+                fluid.enable_dygraph()
 
-            x = fluid.dygraph.to_variable(np.ones([2, 2], np.float32))
-            x_spec = InputSpec.from_tensor(x, name='x')
-            print(x_spec)  # InputSpec(shape=(2, 2), dtype=VarType.FP32, name=x)
+                x = fluid.dygraph.to_variable(np.ones([2, 2], np.float32))
+                x_spec = InputSpec.from_tensor(x, name='x')
+                print(x_spec)  # InputSpec(shape=(2, 2), dtype=VarType.FP32, name=x)
 
         """
         if isinstance(tensor, (Variable, core.VarBase)):
@@ -209,12 +209,12 @@ class InputSpec(object):
         Examples:
             .. code-block:: python
 
-            import numpy as np
-            from paddle.static import InputSpec
+                import numpy as np
+                from paddle.static import InputSpec
 
-            x = np.ones([2, 2], np.float32)
-            x_spec = InputSpec.from_numpy(x, name='x')
-            print(x_spec)  # InputSpec(shape=(2, 2), dtype=VarType.FP32, name=x)
+                x = np.ones([2, 2], np.float32)
+                x_spec = InputSpec.from_numpy(x, name='x')
+                print(x_spec)  # InputSpec(shape=(2, 2), dtype=VarType.FP32, name=x)
 
         """
         return cls(ndarray.shape, ndarray.dtype, name)
@@ -232,11 +232,11 @@ class InputSpec(object):
         Examples:
             .. code-block:: python
 
-            from paddle.static import InputSpec
+                from paddle.static import InputSpec
 
-            x_spec = InputSpec(shape=[64], dtype='float32', name='x')
-            x_spec.batch(4)
-            print(x_spec) # InputSpec(shape=(4, 64), dtype=VarType.FP32, name=x)
+                x_spec = InputSpec(shape=[64], dtype='float32', name='x')
+                x_spec.batch(4)
+                print(x_spec) # InputSpec(shape=(4, 64), dtype=VarType.FP32, name=x)
 
         """
         if isinstance(batch_size, (list, tuple)):
@@ -264,11 +264,11 @@ class InputSpec(object):
         Examples:
             .. code-block:: python
 
-            from paddle.static import InputSpec
+                from paddle.static import InputSpec
 
-            x_spec = InputSpec(shape=[4, 64], dtype='float32', name='x')
-            x_spec.unbatch()
-            print(x_spec) # InputSpec(shape=(64,), dtype=VarType.FP32, name=x)
+                x_spec = InputSpec(shape=[4, 64], dtype='float32', name='x')
+                x_spec.unbatch()
+                print(x_spec) # InputSpec(shape=(64,), dtype=VarType.FP32, name=x)
 
         """
         if len(self.shape) == 0:
