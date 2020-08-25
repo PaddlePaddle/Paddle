@@ -98,27 +98,6 @@ def check_instance(x, x_name, types=(int, float)):
                          format(types, x_name, type(x)))
 
 
-"""
-def update_padding1d(padding, pool_type='avg'):
-    def is_list_or_tuple(ele):
-        if isinstance(ele, list) or isinstance(ele, tuple):
-            return True
-        return False
-
-    if is_list_or_tuple(padding):
-        if padding.__len__() == 1 and not is_list_or_tuple(padding[0]):
-            return [0, padding[0]]
-        else:
-            raise ValueError(
-                "{}_pool1d() argument 'padding' should contain one int (got {})".
-                format(pool_type, padding.__len__()))
-    else:
-        padding = [0, padding]
-
-    return padding
-"""
-
-
 def _update_padding_nd(padding, num_dims, channel_last=False):
     if isinstance(padding, str):
         padding = padding.upper()
@@ -185,18 +164,9 @@ def avg_pool1d(x,
                count_include_pad=True,
                ceil_mode=False,
                name=None):
-    """
-    This operation applies a 1D average pooling over an input signal composed
-    of several input planes, based on the input, output_size, return_indices parameters.
-    Input(X) and output(Out) are in NCL format, where N is batch
-    size, C is the number of channels, L is the length of the feature.
-    The output tensor shape will be [N, C, output_size].
-    The output value of the layer with input size (N, C, L),
-    output (N, C, L_{out}) and kernel_size k can be precisely described as
-    For average pool1d:
-    ..  math::
-       Output(N_i, C_i, l) &= mean(Input[N_i, C_i, stride \times l:stride \times l+k])
-
+    """ 
+    This API implements average pooling 1d operation,
+    See more details in :ref:`api_nn_pooling_AvgPool1d` .
     Args:
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L]. where `N` is batch size, `C` is the number of channels,
@@ -250,29 +220,7 @@ def avg_pool1d(x,
     else:
         stride = utils.convert_to_list(stride, 1, 'pool_stride')
         stride = [1] + stride
-    """
 
-    padding_algorithm = "EXPLICIT"
-    if isinstance(padding, str):
-        padding = padding.upper()
-        if padding not in ["SAME", "VALID"]:
-            raise ValueError(
-                "Unknown Attr(padding): '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding))
-        if padding == "VALID":
-            padding_algorithm = "VALID"
-            padding = [0]
-            if ceil_mode != False:
-                raise ValueError(
-                    "When Attr(padding) is \"VALID\", Attr(ceil_mode) must be False. "
-                    "Received ceil_mode: True.")
-        elif padding == "SAME":
-            padding_algorithm = "SAME"
-            padding = [0]
-
-    padding = update_padding1d(padding, "avg")
-
-    """
     if padding.upper() == "VALID" and ceil_mode != False:
         raise ValueError(
             "When Attr(padding) is \"VALID\", Attr(ceil_mode) must be False. "
@@ -329,10 +277,9 @@ def avg_pool2d(x,
                data_format="NCHW",
                name=None):
     """
-    This operation applies 2D average pooling over input features based on the input,
-    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
-    in NCHW format, where N is batch size, C is the number of channels,
-    H is the height of the feature, and W is the width of the feature.
+    This API implements average pooling 2d operation.
+    See more details in :ref:`api_nn_pooling_AvgPool2d` .
+
     Example:
       Input:
            X shape: $(N, C, H_{in}, W_{in})$
@@ -399,30 +346,7 @@ def avg_pool2d(x,
         stride = kernel_size
     else:
         stride = utils.convert_to_list(stride, 2, 'pool_stride')
-    """
-    padding_algorithm = "EXPLICIT"
-    if isinstance(padding, str):
-        padding = padding.upper()
-        if padding not in ["SAME", "VALID"]:
-            raise ValueError(
-                "Unknown Attr(pool_padding): '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding))
-        if padding == "VALID":
-            padding_algorithm = "VALID"
-            padding = [0, 0]
-            if ceil_mode != False:
-                raise ValueError(
-                    "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode) must be False. "
-                    "Received ceil_mode: True.")
-        elif padding == "SAME":
-            padding_algorithm = "SAME"
-            padding = [0, 0]
 
-    if data_format not in ["NCHW", "NHWC"]:
-        raise ValueError(
-            "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
-            "Attr(data_format): %s." % str(data_format))
-    """
     channel_last = _channel_last(data_format, 2)
     #pool_padding = update_padding2d(padding, data_format)
     padding, padding_algorithm = _update_padding_nd(padding, 2, channel_last)
@@ -484,6 +408,9 @@ def avg_pool3d(x,
     in NCDHW format, where N represents batch size, C represents the number of channels,
     D, H and W represent the depth, height and width of the feature respectively.
 
+    This API implements average pooling 3d operation.
+    See more details in :ref:`api_nn_pooling_AvgPool3d` .
+
     Args:
         input (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
                           shape [N, C, D, H, W], where `N` represents the batch size, `C` represents
@@ -537,31 +464,7 @@ def avg_pool3d(x,
         stride = kernel_size
     else:
         stride = utils.convert_to_list(stride, 3, 'pool_stride')
-    """
-    padding_algorithm = "EXPLICIT"
-    if isinstance(padding, str):
-        padding = padding.upper()
-        if padding not in ["SAME", "VALID"]:
-            raise ValueError(
-                "Unknown Attr(pool_padding): '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding))
-        if padding == "VALID":
-            padding_algorithm = "VALID"
-            padding = [0, 0, 0]
-            if ceil_mode != False:
-                raise ValueError(
-                    "When Attr(pool_padding) is \"VALID\", ceil_mode must be False. "
-                    "Received ceil_mode: True.")
-        elif padding == "SAME":
-            padding_algorithm = "SAME"
-            padding = [0, 0, 0]
 
-    if data_format not in ["NCDHW", "NDHWC"]:
-        raise ValueError(
-            "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
-            "Attr(data_format): %s" % str(data_format))
-    padding = update_padding3d(padding, data_format)
-    """
     channel_last = _channel_last(data_format, 3)
     padding, padding_algorithm = _update_padding_nd(padding, 3, channel_last)
 
@@ -619,15 +522,8 @@ def max_pool1d(x,
                ceil_mode=False,
                name=None):
     """
-    Applies a 1D max pooling over an input signal composed of several input planes based
-    on the input, output_size, return_indices parameters.
-    Input(X) and output(Out) are in NCL format, where N is batch
-    size, C is the number of channels, L is the length of the feature.
-    The output value of the layer with input size (N, C, L),
-    output (N, C, L_{out}) and kernel_size k can be precisely described as
-    For average pool1d:
-    ..  math::
-       Output(N_i, C_i, l) &=  max(Input[N_i, C_i, stride \times l:stride \times l+k])}
+    This API implements max pooling 1d opereation.
+    See more details in :ref:`api_nn_pooling_MaxPool1d` .
 
     Args:
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
@@ -680,27 +576,6 @@ def max_pool1d(x,
         stride = kernel_size
     else:
         stride = [1] + utils.convert_to_list(stride, 1, 'pool_stride')
-    """
-    padding_algorithm = "EXPLICIT"
-    if isinstance(padding, str):
-        padding = padding.upper()
-        if padding not in ["SAME", "VALID"]:
-            raise ValueError(
-                "Unknown Attr(padding): '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding))
-        if padding == "VALID":
-            padding_algorithm = "VALID"
-            padding = [0]
-            if ceil_mode != False:
-                raise ValueError(
-                    "When Attr(padding) is \"VALID\", Attr(ceil_mode) must be False. "
-                    "Received ceil_mode: True.")
-        elif padding == "SAME":
-            padding_algorithm = "SAME"
-            padding = [0]
-
-    padding = update_padding1d(padding, 'max')
-    """
 
     padding, padding_algorithm = _update_pooling_type(padding, 1)
 
@@ -754,23 +629,9 @@ def max_pool2d(x,
                data_format="NCHW",
                name=None):
     """
-    This operation applies 2D max pooling over input feature based on the input,
-    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
-    in NCHW format, where N represents batch size, C represents the number of channels,
-    H represents the height of the feature, and W represents the width of the feature.
-    Example:
-      Input:
-           X shape: $(N, C, H_{in}, W_{in})$
-      Attr:
-           kernel_size: ksize
-           stride: stride
-      Output:
-           Out shape: $(N, C, H_{out}, W_{out})$
-           $$
-           out(N_i, C_j, h, w) ={} & \max_{m=0, \ldots, ksize[0] -1} \max_{n=0, \ldots, ksize[1]-1} \\
-                                    & \text{input}(N_i, C_j, \text{stride[0]} \times h + m,
-                                                   \text{stride[1]} \times w + n)
-           $$
+    This API implements max pooling 2d operation.
+    See more details in :ref:`api_nn_pooling_MaxPool2d` .
+
     Args:
         x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
@@ -837,28 +698,6 @@ def max_pool2d(x,
             "Attr(data_format): %s." % str(data_format))
 
     channel_last = True if data_format == "NHWC" else False
-    """
-
-    padding_algorithm = "EXPLICIT"
-    if isinstance(padding, str):
-        padding = padding.upper()
-        if padding not in ["SAME", "VALID"]:
-            raise ValueError(
-                "Unknown Attr(padding): '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding))
-        if padding == "VALID":
-            padding_algorithm = "VALID"
-            padding = [0, 0]
-            if ceil_mode != False:
-                raise ValueError(
-                    "When Attr(padding) is \"VALID\", Attr(ceil_mode) must be False. "
-                    "Received ceil_mode: True.")
-        elif padding == "SAME":
-            padding_algorithm = "SAME"
-            padding = [0, 0]
-
-    padding = update_padding2d(padding, data_format)
-    """
 
     padding, padding_algorithm = _update_padding_nd(
         padding, num_dims=2, channel_last=channel_last)
@@ -907,22 +746,8 @@ def max_pool3d(x,
                data_format="NCDHW",
                name=None):
     """
-    This operation applies 3D max pooling over input features based on the input,
-    and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
-    in NCDHW format, where N is batch size, C is the number of channels,
-    H is the height of the feature,  D is the depth of the feature, and W is the width of the feature.
-    Example:
-      Input:
-           X shape: $(N, C, D_{in}, H_{in}, W_{in})$
-      Attr:
-           kernel_size: ksize
-      Output:
-           Out shape: $(N, C, D_{out}, H_{out}, W_{out})$
-           $$
-           \text{out}(N_i, C_j, d, h, w) ={} & \max_{k=0, \ldots, ksize[0]-1} \max_{m=0, \ldots, ksize[1]-1} \max_{n=0, \ldots, ksize[2]-1} \\
-                                              & \text{input}(N_i, C_j, \text{stride[0]} \times d + k,
-                                                             \text{stride[1]} \times h + m, \text{stride[2]} \times w + n)
-           $$
+    This API implements max pooling 2d operation.
+    See more details in :ref:`api_nn_pooling_MaxPool3d` .
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
                           shape [N, C, D, H, W]. The format of
@@ -985,33 +810,9 @@ def max_pool3d(x,
         stride = kernel_size
     else:
         stride = utils.convert_to_list(stride, 3, 'pool_stride')
-    """
-    padding_algorithm = "EXPLICIT"
-    if isinstance(padding, str):
-        padding = padding.upper()
-        if padding not in ["SAME", "VALID"]:
-            raise ValueError(
-                "Unknown Attr(pool_padding): '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding))
-        if padding == "VALID":
-            padding_algorithm = "VALID"
-            padding = [0, 0, 0]
-            if ceil_mode != False:
-                raise ValueError(
-                    "When Attr(pool_padding) is \"VALID\", ceil_mode must be False. "
-                    "Received ceil_mode: True.")
-        elif padding == "SAME":
-            padding_algorithm = "SAME"
-            padding = [0, 0, 0]
 
-    if data_format not in ["NCDHW", "NDHWC"]:
-        raise ValueError(
-            "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
-            "Attr(data_format): %s" % str(data_format))
-    """
     channel_last = _channel_last(data_format, 3)
     padding, padding_algorithm = _update_padding_nd(padding, 3, channel_last)
-    #padding = update_padding3d(padding, data_format)
 
     if in_dygraph_mode():
         output = core.ops.max_pool3d_with_index(
@@ -1051,16 +852,9 @@ def max_pool3d(x,
 
 def adaptive_avg_pool1d(x, output_size, name=None):
     """
-    This operation applies a 1D adaptive average pooling over an input signal composed
-    of several input planes, based on the input, output_size, return_indices parameters.
-    Input(X) and output(Out) are in NCL format, where N is batch
-    size, C is the number of channels, L is the length of the feature.
-    The output tensor shape will be [N, C, output_size].
-    For average adaptive pool1d:
-    ..  math::
-        lstart &= floor(i * L_{in} / L_{out})
-        lend &= ceil((i + 1) * L_{in} / L_{out})
-        Output(i) &= \\frac{sum(Input[lstart:lend])}{(lstart - lend)}
+    This API implements adaptive average pooling 1d operation.
+    See more details in :ref:`api_nn_pooling_AdaptiveAvgPool1d` .
+    
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 3-D tensor
                               with shape [N, C, L].  The format of input tensor is NCL,
@@ -1132,16 +926,9 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
 def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     """
-    This operation applies 2D adaptive avg pooling on input tensor. The h and w dimensions
-    of the output tensor are determined by the parameter output_size.
-    See more detail in :ref:`api_nn_pooling_AdaptiveAvgPool2d` .
-    For avg adaptive pool2d:
-    ..  math::
-       hstart &= floor(i * H_{in} / H_{out})
-       hend &= ceil((i + 1) * H_{in} / H_{out})
-       wstart &= floor(j * W_{in} / W_{out})
-       wend &= ceil((j + 1) * W_{in} / W_{out})
-       Output(i ,j) &= \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
+    This API implements adaptive average pooling 2d operation.
+    See more details in :ref:`api_nn_pooling_AdaptiveAvgPool2d` .
+
     Args:
         x (Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor.
                           The data type can be float16, float32, float64, int32 or int64.
@@ -1240,18 +1027,9 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
 def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     """
-    This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
-    of the output tensor are determined by the parameter output_size.
-    See more detail in :ref:`api_nn_pooling_AdaptiveAvgPool3d` .
-    For avg adaptive pool3d:
-    ..  math::
-      dstart &= floor(i * D_{in} / D_{out})
-      dend &= ceil((i + 1) * D_{in} / D_{out})
-      hstart &= floor(j * H_{in} / H_{out})
-      hend &= ceil((j + 1) * H_{in} / H_{out})
-      wstart &= floor(k * W_{in} / W_{out})
-      wend &= ceil((k + 1) * W_{in} / W_{out})
-      Output(i ,j, k) &= \\frac{sum(Input[dstart:dend, hstart:hend, wstart:wend])}{(dend - dstart) * (hend - hstart) * (wend - wstart)}
+    This API implements adaptive average pooling 3d operation.
+    See more details in :ref:`api_nn_pooling_AdaptiveAvgPool3d` .
+
     Args:
         x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
                           The data type can be float16, float32, float64, int32 or int64.
@@ -1354,16 +1132,9 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
 
 def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
     """
-    This operation applies a 1D adaptive max pooling over an input signal composed
-    of several input planes, based on the input, output_size, return_indices parameters.
-    Input(X) and output(Out) are in NCL format, where N is batch
-    size, C is the number of channels, L is the length of the feature.
-    The output tensor shape will be [N, C, output_size].
-    For max adaptive pool1d:
-    ..  math::
-        lstart &= floor(i * L_{in} / L_{out})
-        lend &= ceil((i + 1) * L_{in} / L_{out})
-        Output(i) &= max(Input[lstart:lend])}
+    This API implements adaptive max pooling 1d operation.
+    See more details in :ref:`api_nn_pooling_AdaptiveMaxPool1d` .
+
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 3-D tensor
                               with shape [N, C, L].  The format of input tensor is NCL,
