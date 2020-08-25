@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 import paddle
+import paddle.nn.functional as F
 
 np.random.seed(10)
 
@@ -32,6 +33,15 @@ def stable_softmax(x):
     shiftx = (x - np.max(x)).clip(-64.)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
+
+
+def ref_softmax(x, axis=None, dtype=None):
+    x_t = x.copy()
+    if dtype is not None:
+        x_t = x_t.astype(dtype)
+    if axis is None:
+        axis = -1
+    return np.apply_along_axis(stable_softmax, axis, x_t)
 
 
 class TestSoftmaxOp(OpTest):
@@ -90,20 +100,6 @@ class TestSoftmaxOp(OpTest):
                 "Out",
                 max_relative_error=0.01,
                 check_dygraph=(self.use_mkldnn == False))
-
-
-class TestSoftmaxOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The input type of softmax_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.softmax, x1)
-            # The input dtype of softmax_op must be float16, float32 or float64.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.softmax, x2)
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype="float16")
-            fluid.layers.softmax(x3)
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):
@@ -223,42 +219,59 @@ class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
         return [2, 3, 4, 5]
 
 
-class TestNnFunctionalSoftmaxApi(unittest.TestCase):
+class TestSoftmaxAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
         self.x_np = np.random.uniform(-1., 1., [2, 3, 4, 5]).astype('float32')
         self.out_ref = np.apply_along_axis(stable_softmax, -1, self.x_np)
 
-    def test_api_static(self):
-        train_program = Program()
-        startup_program = Program()
-        with program_guard(train_program, startup_program):
+    def test_static_check(self):
+        with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', self.x_np.shape, 'float32')
-            out = paddle.nn.functional.softmax(x)
+            out1 = F.softmax(x)
+            m = paddle.nn.Softmax()
+            out2 = m(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
 
-        exe = paddle.Executor(self.place)
-        res = exe.run(train_program, feed={'X': self.x_np}, fetch_list=[out])
+    def test_dygraph_check(self):
+        paddle.disable_static(self.place)
 
-        assert np.allclose(self.out_ref, res[0])
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.softmax(x)
+        m = paddle.nn.Softmax()
+        out2 = m(x)
+        out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
 
-    def test_api_imperative(self):
-        with paddle.imperative.guard(self.place):
-            x = paddle.imperative.to_variable(self.x_np)
-            out = paddle.nn.functional.softmax(x)
-            assert np.allclose(self.out_ref, out.numpy())
+        out1 = F.softmax(x, axis=0)
+        m = paddle.nn.Softmax(axis=0)
+        out2 = m(x)
+        out_ref = ref_softmax(self.x_np, axis=0, dtype=None)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
 
-            out = paddle.nn.functional.softmax(x, axis=0)
-            out_ref = np.apply_along_axis(stable_softmax, 0, self.x_np)
-            assert np.allclose(out_ref, out.numpy())
+        out = F.softmax(x, dtype=np.float64)
+        out_ref = ref_softmax(self.x_np, axis=-1, dtype=np.float64)
+        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+
+        paddle.enable_static()
 
     def test_error(self):
-        with program_guard(Program(), Program()):
-            # The x should be variable and its dtype should be float32, float64.
-            self.assertRaises(TypeError, paddle.nn.functional.softmax, [1])
-
-            x = paddle.data(name='x', shape=[2, 3], dtype='int32')
-            self.assertRaises(TypeError, paddle.nn.functional.softmax, x)
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.softmax, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.data(name='x_int32', shape=[2, 3], dtype='int32')
+            self.assertRaises(TypeError, F.softmax, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[2, 3], dtype='float16')
+            F.softmax(x_fp16)
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ import shutil
 import tempfile
 
 from paddle import fluid
-from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
+from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential
 from paddle.fluid.dygraph.base import to_variable
 
 import paddle.incubate.hapi as hapi
@@ -40,11 +40,11 @@ class LeNetDygraph(fluid.dygraph.Layer):
         super(LeNetDygraph, self).__init__()
         self.num_classes = num_classes
         self.features = Sequential(
-            Conv2D(
+            Conv2d(
                 1, 6, 3, stride=1, padding=1),
             ReLU(),
             Pool2D(2, 'max', 2),
-            Conv2D(
+            Conv2d(
                 6, 16, 5, stride=1, padding=0),
             ReLU(),
             Pool2D(2, 'max', 2))
@@ -150,8 +150,8 @@ class TestModel(unittest.TestCase):
 
         cls.acc1 = dynamic_evaluate(dy_lenet, cls.val_loader)
 
-        cls.inputs = [Input('image', [-1, 1, 28, 28], 'float32')]
-        cls.labels = [Input('label', [None, 1], 'int64')]
+        cls.inputs = [Input([-1, 1, 28, 28], 'float32', 'image')]
+        cls.labels = [Input([None, 1], 'int64', 'label')]
 
         cls.save_dir = tempfile.mkdtemp()
         cls.weight_path = os.path.join(cls.save_dir, 'lenet')
@@ -169,6 +169,12 @@ class TestModel(unittest.TestCase):
     def test_fit_static(self):
         self.fit(False)
 
+    def test_fit_dynamic_with_rank(self):
+        self.fit(True, 2, 0)
+
+    def test_fit_static_with_rank(self):
+        self.fit(False, 2, 0)
+
     def test_evaluate_dygraph(self):
         self.evaluate(True)
 
@@ -184,7 +190,7 @@ class TestModel(unittest.TestCase):
     def test_prepare_context(self):
         prepare_distributed_context()
 
-    def fit(self, dynamic):
+    def fit(self, dynamic, num_replicas=None, rank=None):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
         fluid.default_startup_program().random_seed = seed
@@ -204,9 +210,17 @@ class TestModel(unittest.TestCase):
         np.testing.assert_allclose(result['acc'], self.acc1)
 
         train_sampler = DistributedBatchSampler(
-            self.train_dataset, batch_size=64, shuffle=False)
+            self.train_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_replicas=num_replicas,
+            rank=rank)
         val_sampler = DistributedBatchSampler(
-            self.val_dataset, batch_size=64, shuffle=False)
+            self.val_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_replicas=num_replicas,
+            rank=rank)
 
         train_loader = fluid.io.DataLoader(
             self.train_dataset,
@@ -316,8 +330,8 @@ class TestModelFunction(unittest.TestCase):
             optim2 = fluid.optimizer.SGD(learning_rate=0.001,
                                          parameter_list=net.parameters())
 
-            inputs = [Input('x', [None, dim], 'float32')]
-            labels = [Input('label', [None, 1], 'int64')]
+            inputs = [Input([None, dim], 'float32', 'x')]
+            labels = [Input([None, 1], 'int64', 'label')]
             model = Model(net, inputs, labels)
             model.prepare(
                 optim2, loss_function=CrossEntropyLoss(reduction="sum"))
@@ -345,7 +359,7 @@ class TestModelFunction(unittest.TestCase):
             fluid.enable_dygraph(device) if dynamic else None
             self.set_seed()
             net = MyModel()
-            inputs = [Input('x', [None, dim], 'float32')]
+            inputs = [Input([None, dim], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
             out, = model.test_batch([data])
@@ -359,8 +373,8 @@ class TestModelFunction(unittest.TestCase):
             device = hapi.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             net = MyModel(classifier_activation=None)
-            inputs = [Input('x', [None, 20], 'float32')]
-            labels = [Input('label', [None, 1], 'int64')]
+            inputs = [Input([None, 20], 'float32', 'x')]
+            labels = [Input([None, 1], 'int64', 'label')]
             optim = fluid.optimizer.SGD(learning_rate=0.001,
                                         parameter_list=net.parameters())
             model = Model(net, inputs, labels)
@@ -385,8 +399,8 @@ class TestModelFunction(unittest.TestCase):
         model.save(path + '/test')
         fluid.disable_dygraph()
 
-        inputs = [Input('x', [None, 20], 'float32')]
-        labels = [Input('label', [None, 1], 'int64')]
+        inputs = [Input([None, 20], 'float32', 'x')]
+        labels = [Input([None, 1], 'int64', 'label')]
         model = Model(MyModel(classifier_activation=None), inputs, labels)
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
@@ -399,8 +413,8 @@ class TestModelFunction(unittest.TestCase):
         path = tempfile.mkdtemp()
 
         net = MyModel(classifier_activation=None)
-        inputs = [Input('x', [None, 20], 'float32')]
-        labels = [Input('label', [None, 1], 'int64')]
+        inputs = [Input([None, 20], 'float32', 'x')]
+        labels = [Input([None, 1], 'int64', 'label')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=net.parameters())
         model = Model(net, inputs, labels)
@@ -412,8 +426,8 @@ class TestModelFunction(unittest.TestCase):
         fluid.enable_dygraph(device)  #if dynamic else None
 
         net = MyModel(classifier_activation=None)
-        inputs = [Input('x', [None, 20], 'float32')]
-        labels = [Input('label', [None, 1], 'int64')]
+        inputs = [Input([None, 20], 'float32', 'x')]
+        labels = [Input([None, 1], 'int64', 'label')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=net.parameters())
         model = Model(net, inputs, labels)
@@ -428,7 +442,7 @@ class TestModelFunction(unittest.TestCase):
             device = hapi.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             net = MyModel()
-            inputs = [Input('x', [None, 20], 'float32')]
+            inputs = [Input([None, 20], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
             params = model.parameters()
@@ -438,7 +452,7 @@ class TestModelFunction(unittest.TestCase):
 
     def test_export_deploy_model(self):
         net = LeNet()
-        inputs = [Input('image', [-1, 1, 28, 28], 'float32')]
+        inputs = [Input([-1, 1, 28, 28], 'float32', 'image')]
         model = Model(net, inputs)
         model.prepare()
         save_dir = tempfile.mkdtemp()
@@ -464,6 +478,16 @@ class TestModelFunction(unittest.TestCase):
 
         np.testing.assert_allclose(results, ori_results, rtol=1e-6)
         shutil.rmtree(save_dir)
+
+
+class TestRaiseError(unittest.TestCase):
+    def test_input_without_name(self):
+        net = MyModel(classifier_activation=None)
+
+        inputs = [Input([None, 10], 'float32')]
+        labels = [Input([None, 1], 'int64', 'label')]
+        with self.assertRaises(ValueError):
+            model = Model(net, inputs, labels)
 
 
 if __name__ == '__main__':

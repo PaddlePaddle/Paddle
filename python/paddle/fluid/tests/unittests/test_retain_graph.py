@@ -20,13 +20,13 @@ import unittest
 paddle.disable_static()
 SEED = 2020
 np.random.seed(SEED)
-fluid.default_main_program().random_seed = SEED
+paddle.manual_seed(SEED)
 
 
 class Generator(fluid.dygraph.Layer):
     def __init__(self):
         super(Generator, self).__init__()
-        self.conv1 = paddle.nn.Conv2D(3, 3, 3, 1)
+        self.conv1 = paddle.nn.Conv2d(3, 3, 3, padding=1)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -37,7 +37,7 @@ class Generator(fluid.dygraph.Layer):
 class Discriminator(fluid.dygraph.Layer):
     def __init__(self):
         super(Discriminator, self).__init__()
-        self.convd = paddle.nn.Conv2D(6, 3, 1)
+        self.convd = paddle.nn.Conv2d(6, 3, 1)
 
     def forward(self, x):
         x = self.convd(x)
@@ -60,8 +60,10 @@ class TestRetainGraph(unittest.TestCase):
                 interpolatesv = fake_data
             elif type == 'mixed':
                 alpha = paddle.rand((real_data.shape[0], 1))
-                alpha = paddle.expand(
-                    alpha, [1, np.prod(real_data.shape) // real_data.shape[0]])
+                alpha = paddle.expand(alpha, [
+                    real_data.shape[0],
+                    np.prod(real_data.shape) // real_data.shape[0]
+                ])
                 alpha = paddle.reshape(alpha, real_data.shape)
                 interpolatesv = alpha * real_data + ((1 - alpha) * fake_data)
             else:
@@ -90,12 +92,12 @@ class TestRetainGraph(unittest.TestCase):
         else:
             return 0.0, None
 
-    def test_retain(self):
+    def run_retain(self, need_retain):
         g = Generator()
         d = Discriminator()
 
-        optim_g = paddle.optimizer.Adam(parameter_list=g.parameters())
-        optim_d = paddle.optimizer.Adam(parameter_list=d.parameters())
+        optim_g = paddle.optimizer.Adam(parameters=g.parameters())
+        optim_d = paddle.optimizer.Adam(parameters=d.parameters())
 
         gan_criterion = paddle.nn.MSELoss()
         l1_criterion = paddle.nn.L1Loss()
@@ -117,7 +119,7 @@ class TestRetainGraph(unittest.TestCase):
             d, realA, fakeB, lambda_gp=10.0)
         loss_d = gan_criterion(G_pred_fake, false_target) + G_gradient_penalty
 
-        loss_d.backward(retain_graph=True)
+        loss_d.backward(retain_graph=need_retain)
         optim_d.minimize(loss_d)
 
         optim_g.clear_gradients()
@@ -129,6 +131,11 @@ class TestRetainGraph(unittest.TestCase):
 
         loss_g.backward()
         optim_g.minimize(loss_g)
+
+    def test_retain(self):
+        self.run_retain(need_retain=True)
+        self.assertRaises(
+            fluid.core.EnforceNotMet, self.run_retain, need_retain=False)
 
 
 if __name__ == '__main__':

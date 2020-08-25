@@ -68,7 +68,7 @@ from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
-from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
+from .core import LoDTensor, LoDTensorArray, CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
 from .incubate import fleet
 from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
@@ -89,6 +89,7 @@ from .dygraph.base import enable_dygraph, disable_dygraph
 from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
+from . import generator
 Tensor = LoDTensor
 enable_imperative = enable_dygraph
 disable_imperative = disable_dygraph
@@ -96,7 +97,7 @@ disable_imperative = disable_dygraph
 __all__ = framework.__all__ + executor.__all__ + \
     trainer_desc.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + compiler.__all__ + backward.__all__  + [
+    data_feed_desc.__all__ + compiler.__all__ + backward.__all__  + generator.__all__ + [
         'io',
         'initializer',
         'embedding',
@@ -118,6 +119,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'LoDTensor',
         'LoDTensorArray',
         'CPUPlace',
+        'XPUPlace',
         'CUDAPlace',
         'CUDAPinnedPlace',
         'Tensor',

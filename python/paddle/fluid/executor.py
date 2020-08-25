@@ -31,6 +31,7 @@ from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
+from . import framework
 from .incubate.checkpoint import auto_checkpoint as acp
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
@@ -544,10 +545,8 @@ class Executor(object):
 
     def __init__(self, place=None):
         if place is None:
-            if core.is_compiled_with_cuda():
-                self.place = core.CUDAPlace(0)
-            else:
-                self.place = core.CPUPlace()
+            expected_place = framework._current_expected_place()
+            self.place = expected_place
         else:
             self.place = place
         self.program_caches = dict()
@@ -1156,6 +1155,26 @@ class Executor(object):
             program = pruned_program
 
         compiled = isinstance(program, compiler.CompiledProgram)
+
+        # Check if fluid.data() variable no feed data
+        if use_prune:
+            if compiled:
+                global_block = program._program.global_block()
+            else:
+                global_block = program.global_block()
+            for varname in global_block.vars:
+                vardesc = global_block.desc.find_var(cpt.to_bytes(varname))
+                varobj = global_block.vars[varname]
+
+                # Can not check var build by fluid.layers.data(), bucause fluid.layers.data() had not set need_check_feed
+                if vardesc.persistable() == False and \
+                    vardesc.type() == core.VarDesc.VarType.LOD_TENSOR and \
+                    vardesc.need_check_feed() == True and \
+                    varobj._stop_gradient == True and \
+                    varobj.is_data == True and \
+                    varobj.belong_to_optimizer == False and \
+                    varname not in feed:
+                    raise ValueError('Need feed data for variable %s' % varname)
 
         acp._auto_checkpoint(self, program)
 

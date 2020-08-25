@@ -17,9 +17,171 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import Program, program_guard
+
+
+class TestDiagV2Op(OpTest):
+    def setUp(self):
+        self.op_type = "diag_v2"
+        self.x = np.random.rand(10, 10)
+        self.offset = 0
+        self.padding_value = 0.0
+        self.out = np.diag(self.x, self.offset)
+
+        self.init_config()
+        self.inputs = {'X': self.x}
+        self.attrs = {
+            'offset': self.offset,
+            'padding_value': self.padding_value
+        }
+        self.outputs = {'Out': self.out}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def init_config(self):
+        pass
+
+
+class TestDiagV2OpCase1(TestDiagV2Op):
+    def init_config(self):
+        self.offset = 1
+        self.out = np.diag(self.x, self.offset)
+
+
+class TestDiagV2OpCase2(TestDiagV2Op):
+    def init_config(self):
+        self.offset = -1
+        self.out = np.diag(self.x, self.offset)
+
+
+class TestDiagV2OpCase3(TestDiagV2Op):
+    def init_config(self):
+        self.x = np.random.randint(-10, 10, size=(10, 10))
+        self.out = np.diag(self.x, self.offset)
+
+
+class TestDiagV2OpCase4(TestDiagV2Op):
+    def init_config(self):
+        self.x = np.random.rand(100)
+        self.padding_value = 8
+        n = self.x.size
+        self.out = self.padding_value * np.ones((n, n)) + np.diag(
+            self.x, self.offset) - np.diag(self.padding_value * np.ones(n))
+
+
+class TestDiagV2Error(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_diag_v2_type():
+                x = [1, 2, 3]
+                output = paddle.diag(x)
+
+            self.assertRaises(TypeError, test_diag_v2_type)
+
+
+class TestDiagV2API(unittest.TestCase):
+    def setUp(self):
+        self.input_np = np.random.random(size=(10, 10)).astype(np.float32)
+        self.expected0 = np.diag(self.input_np)
+        self.expected1 = np.diag(self.input_np, k=1)
+        self.expected2 = np.diag(self.input_np, k=-1)
+
+        self.input_np2 = np.random.rand(100)
+        self.offset = 0
+        self.padding_value = 8
+        n = self.input_np2.size
+        self.expected3 = self.padding_value * np.ones(
+            (n, n)) + np.diag(self.input_np2, self.offset) - np.diag(
+                self.padding_value * np.ones(n))
+
+        self.input_np3 = np.random.randint(-10, 10, size=(100)).astype(np.int64)
+        self.padding_value = 8.0
+        n = self.input_np3.size
+        self.expected4 = self.padding_value * np.ones(
+            (n, n)) + np.diag(self.input_np3, self.offset) - np.diag(
+                self.padding_value * np.ones(n))
+
+        self.padding_value = -8
+        self.expected5 = self.padding_value * np.ones(
+            (n, n)) + np.diag(self.input_np3, self.offset) - np.diag(
+                self.padding_value * np.ones(n))
+
+    def run_imperative(self):
+        x = paddle.to_tensor(self.input_np)
+        y = paddle.diag(x)
+        self.assertTrue(np.allclose(y.numpy(), self.expected0))
+
+        y = paddle.diag(x, offset=1)
+        self.assertTrue(np.allclose(y.numpy(), self.expected1))
+
+        y = paddle.diag(x, offset=-1)
+        self.assertTrue(np.allclose(y.numpy(), self.expected2))
+
+        x = paddle.to_tensor(self.input_np2)
+        y = paddle.diag(x, padding_value=8)
+        self.assertTrue(np.allclose(y.numpy(), self.expected3))
+
+        x = paddle.to_tensor(self.input_np3)
+        y = paddle.diag(x, padding_value=8.0)
+        self.assertTrue(np.allclose(y.numpy(), self.expected4))
+
+        y = paddle.diag(x, padding_value=-8)
+        self.assertTrue(np.allclose(y.numpy(), self.expected5))
+
+    def run_static(self, use_gpu=False):
+        x = paddle.data(name='input', shape=[10, 10], dtype='float32')
+        x2 = paddle.data(name='input2', shape=[100], dtype='float64')
+        x3 = paddle.data(name='input3', shape=[100], dtype='int64')
+        result0 = paddle.diag(x)
+        result1 = paddle.diag(x, offset=1)
+        result2 = paddle.diag(x, offset=-1)
+        result3 = paddle.diag(x, name='aaa')
+        result4 = paddle.diag(x2, padding_value=8)
+        result5 = paddle.diag(x3, padding_value=8.0)
+        result6 = paddle.diag(x3, padding_value=-8)
+
+        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        res0, res1, res2, res4, res5, res6 = exe.run(
+            feed={
+                "input": self.input_np,
+                "input2": self.input_np2,
+                'input3': self.input_np3
+            },
+            fetch_list=[result0, result1, result2, result4, result5, result6])
+
+        self.assertTrue(np.allclose(res0, self.expected0))
+        self.assertTrue(np.allclose(res1, self.expected1))
+        self.assertTrue(np.allclose(res2, self.expected2))
+        self.assertTrue('aaa' in result3.name)
+        self.assertTrue(np.allclose(res4, self.expected3))
+        self.assertTrue(np.allclose(res5, self.expected4))
+        self.assertTrue(np.allclose(res6, self.expected5))
+
+    def test_cpu(self):
+        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        self.run_imperative()
+        paddle.enable_static()
+
+        with fluid.program_guard(fluid.Program()):
+            self.run_static()
+
+    def test_gpu(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
+
+        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        self.run_imperative()
+        paddle.enable_static()
+
+        with fluid.program_guard(fluid.Program()):
+            self.run_static(use_gpu=True)
 
 
 class TestDiagOp(OpTest):

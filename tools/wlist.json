@@ -63,7 +63,6 @@
         "Compressor",
         "Compressor.config",
         "Compressor.run",
-        "run_check",
         "HDFSClient.upload",
         "HDFSClient.download",
         "HDFSClient.is_exist",
