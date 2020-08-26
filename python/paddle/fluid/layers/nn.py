@@ -8259,7 +8259,6 @@ def gather(input, index, overwrite=True):
 
         .. code-block:: python
 
-            import paddle
             import paddle.fluid as fluid
             x = fluid.data(name='x', shape=[-1, 5], dtype='float32')
             index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
