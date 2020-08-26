@@ -1581,8 +1581,6 @@ def clip(x, min=None, max=None, name=None):
             # [[4.5, 6.4]
     """
 
-    assert min is not None or max is not None, "either min or max should be defined."
-
     if in_dygraph_mode():
         return core.ops.clip(x, "min", min, "max", max)
 

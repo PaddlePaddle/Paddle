@@ -109,6 +109,13 @@ class TestCase6(TestClipOp):
         self.min = None
 
 
+class TestCase7(TestClipOp):
+    def initTestCase(self):
+        self.shape = (4, 8, 16)
+        self.max = None
+        self.min = None
+
+
 class TestClipOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
@@ -179,10 +186,8 @@ class TestClipAPI(unittest.TestCase):
         paddle.enable_static()
         x1 = fluid.data(name='x1', shape=[1], dtype="int16")
         x2 = fluid.data(name='x2', shape=[1], dtype="int8")
-        x3 = fluid.data(name='x3', shape=[1], dtype="float32")
         self.assertRaises(TypeError, paddle.clip, x=x1, min=0.2, max=0.8)
         self.assertRaises(TypeError, paddle.clip, x=x2, min=0.2, max=0.8)
-        self.assertRaises(Exception, paddle.clip, x=x3)
 
 
 if __name__ == '__main__':
