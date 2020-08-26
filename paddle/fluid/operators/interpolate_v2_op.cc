@@ -67,10 +67,12 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
         scale_tensor[0], 1,
         platform::errors::InvalidArgument(
             "Scale's shape must be 1, but got shape = %d .", scale_tensor[0]));
-    out_w = -1;
+    // out_w = -1;
   } else {
     if (ctx->HasInput("scale")) {
-      float scale_w = ctx->Attrs().Get<std::vector<float>>("scale")[0];
+      float scale_w;
+      auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
+      scale_w = scale[0];
       PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
                                                "scale  of Op(interpolate) "
                                                "should be greater than 0."));
@@ -157,12 +159,15 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
                       platform::errors::InvalidArgument(
                           "Scale's shape must be 2 or 1, but got shape = %d .",
                           scale_tensor[0]));
-    out_h = -1;
-    out_w = -1;
+    // out_h = -1;
+    // out_w = -1;
   } else {
     if (ctx->HasInput("scale")) {
-      float scale_h = ctx->Attrs().Get<std::vector<float>>("scale")[0];
-      float scale_w = ctx->Attrs().Get<std::vector<float>>("scale")[1];
+      float scale_h;
+      float scale_w;
+      auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
+      scale_h = scale[0];
+      scale_w = scale[1];
       PADDLE_ENFORCE_EQ(
           scale_w > 0 && scale_h > 0, true,
           platform::errors::InvalidArgument("scale  of Op(interpolate) "
@@ -259,14 +264,18 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
                       platform::errors::InvalidArgument(
                           "Scale's shape must be 3 or 1, but got shape = %d .",
                           scale_tensor[0]));
-    out_d = -1;
-    out_h = -1;
-    out_w = -1;
+    // out_d = -1;
+    // out_h = -1;
+    // out_w = -1;
   } else {
     if (ctx->HasInput("scale")) {
-      float scale_d = ctx->Attrs().Get<std::vector<float>>("scale")[0];
-      float scale_h = ctx->Attrs().Get<std::vector<float>>("scale")[1];
-      float scale_w = ctx->Attrs().Get<std::vector<float>>("scale")[2];
+      float scale_d;
+      float scale_h;
+      float scale_w;
+      auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
+      scale_d = scale[0];
+      scale_h = scale[1];
+      scale_w = scale[2];
       PADDLE_ENFORCE_EQ(
           scale_w > 0 && scale_h > 0 && scale_d > 0, true,
           platform::errors::InvalidArgument("scale  of Op(interpolate) "
