@@ -913,10 +913,20 @@ std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
   auto element_num = tensor.numel();
 
   os << "  - data: [";
-  if (element_num > 0) {
-    os << inspect[0];
-    for (int j = 1; j < element_num; ++j) {
-      os << " " << inspect[j];
+  // Note: int8_t && uint8_t is typedf of char, ostream unable to print properly
+  if (typeid(int8_t) == typeid(T) || typeid(uint8_t) == typeid(T)) {
+    if (element_num > 0) {
+      os << signed(inspect[0]);
+      for (int j = 1; j < element_num; ++j) {
+        os << " " << signed(inspect[j]);
+      }
+    }
+  } else {
+    if (element_num > 0) {
+      os << inspect[0];
+      for (int j = 1; j < element_num; ++j) {
+        os << " " << inspect[j];
+      }
     }
   }
   os << "]";
