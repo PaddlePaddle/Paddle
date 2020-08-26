@@ -1879,6 +1879,19 @@ PDNode *patterns::MultipleQuantize::operator()() {
   return prev_out;
 }
 
+PDNode *patterns::QuantizePlacement::operator()(
+    const std::unordered_set<std::string> &quantize_enabled_op_types) {
+  std::unordered_set<std::string> supported_op_types =
+      std::unordered_set<std::string>({"concat", "conv2d", "elementwise_add",
+                                       "fc", "matmul", "pool2d", "prior_box",
+                                       "relu", "reshape2", "transpose2"});
+  if (!quantize_enabled_op_types.empty()) {
+    supported_op_types = quantize_enabled_op_types;
+  }
+  auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
+  return op;
+}
+
 PDNode *patterns::MKLDNNInPlace::operator()() {
   const std::unordered_set<std::string> &supported_op_types = {
       "abs",
