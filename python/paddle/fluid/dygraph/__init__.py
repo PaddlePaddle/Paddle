@@ -56,6 +56,11 @@ from .dygraph_to_static import ProgramTranslator
 from . import rnn
 from .rnn import *
 
+from . import amp
+from .amp import *
+
+from .math_op_patch import monkey_patch_math_varbase
+
 __all__ = []
 __all__ += layers.__all__
 __all__ += base.__all__
@@ -69,3 +74,4 @@ __all__ += jit.__all__
 __all__ += io.__all__
 __all__ += rnn.__all__
 __all__ += ['ProgramTranslator']
+__all__ += amp.__all__

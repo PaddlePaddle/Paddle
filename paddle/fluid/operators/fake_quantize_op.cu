@@ -244,10 +244,12 @@ struct ClipAndFakeQuantDequantFunctor<platform::CUDADeviceContext, T> {
 template struct ClipAndFakeQuantDequantFunctor<platform::CUDADeviceContext,
                                                float>;
 
+// ChannelClipAndQuantKernel for quant_axis is 0
 template <typename T>
-__global__ void ChannelClipAndQuantKernel(const T* in, const T* scale,
-                                          const int bin_cnt, const int n,
-                                          const int c, T* out) {
+__global__ void ChannelClipAndQuantKernelQuantAxis0(const T* in, const T* scale,
+                                                    const int bin_cnt,
+                                                    const int n, const int c,
+                                                    T* out) {
   int tid = threadIdx.x;
 
   int channel_size = n / c;
@@ -266,22 +268,57 @@ __global__ void ChannelClipAndQuantKernel(const T* in, const T* scale,
   }
 }
 
+// ChannelClipAndQuantKernel for quant_axis is 1
+template <typename T>
+__global__ void ChannelClipAndQuantKernelQuantAxis1(const T* in, const T* scale,
+                                                    const int bin_cnt,
+                                                    const int n, const int cin,
+                                                    const int cout, T* out) {
+  T s = scale[blockIdx.x % cout];
+  T inv_s = inverse(s);
+
+  int wh_size = n / (cin * cout);
+  const T* in_c = in + blockIdx.x * wh_size;
+  T* out_c = out + blockIdx.x * wh_size;
+
+  for (int i = threadIdx.x; i < wh_size; i += blockDim.x) {
+    T x = in_c[i];
+    T v = x > s ? s : x;
+    v = v < -s ? -s : v;
+    v = bin_cnt * inv_s * v;
+    out_c[i] = round(v);
+  }
+}
+
 template <typename T>
 struct ChannelClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& ctx,
                   const framework::Tensor& in, const framework::Tensor& scale,
-                  const int bin_cnt, const int channel,
+                  const int bin_cnt, const int quant_axis,
                   framework::Tensor* out) {
-    int num = in.numel();
-    int block = 1024;
-    int grid = channel;
+    PADDLE_ENFORCE_EQ(
+        quant_axis == 0 || quant_axis == 1, true,
+        platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                          "the received is %d",
+                                          quant_axis));
 
+    int num = in.numel();
+    auto in_dims = in.dims();
     const T* in_data = in.data<T>();
     const T* scale_data = scale.data<T>();
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
 
-    ChannelClipAndQuantKernel<T><<<grid, block, 0, ctx.stream()>>>(
-        in_data, scale_data, bin_cnt, num, channel, out_data);
+    if (quant_axis == 0) {
+      int grid = in_dims[0];
+      int block = 1024;
+      ChannelClipAndQuantKernelQuantAxis0<T><<<grid, block, 0, ctx.stream()>>>(
+          in_data, scale_data, bin_cnt, num, in_dims[0], out_data);
+    } else if (quant_axis == 1) {
+      int grid = in_dims[0] * in_dims[1];
+      int block = 1024;
+      ChannelClipAndQuantKernelQuantAxis1<T><<<grid, block, 0, ctx.stream()>>>(
+          in_data, scale_data, bin_cnt, num, in_dims[0], in_dims[1], out_data);
+    }
   }
 };
 

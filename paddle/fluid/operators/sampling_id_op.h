@@ -21,6 +21,7 @@
 #include <sstream>
 #include <vector>
 
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -61,7 +62,9 @@ class SamplingIdKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> ids(batch_size);
     for (int i = 0; i < batch_size; ++i) {
-      T r = dist(engine);
+      T r = framework::Generator::GetInstance()->is_init_py
+                ? dist(framework::Generator::GetInstance()->GetCPUEngine())
+                : dist(engine);
       int idx = width - 1;
       for (int j = 0; j < width; ++j) {
         if ((r -= ins_vector[i * width + j]) < 0) {

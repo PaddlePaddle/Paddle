@@ -3,7 +3,7 @@ set -e
 # use default values
 # FIXME: random fails on Unknown command lines -c (or -m).
 launch_py=${PADDLE_BINARY_DIR}/python/paddle/distributed/launch.py
-python ${launch_py} multi_process.py
+python ${launch_py} multi_process.py launch
 
 # use paddlecloud
 echo "begin test use paddlecloud"
@@ -18,12 +18,12 @@ export PADDLE_PORT=35019
 export TRAINER_PORTS_NUM=2
 
 distributed_args="--use_paddlecloud --cluster_node_ips=${cluster_node_ips} --node_ip=${node_ip} --selected_gpus=0,1 --log_dir=testlog"
-CUDA_VISIBLE_DEVICES=0,1 python ${launch_py} ${distributed_args} multi_process.py
+CUDA_VISIBLE_DEVICES=0,1 python ${launch_py} ${distributed_args} multi_process.py launch
 
 str1="selected_gpus:0 worker_endpoints:127.0.0.1:35019,127.0.0.1:35020,127.0.0.2:35019,127.0.0.2:35020 trainers_num:4 current_endpoint:127.0.0.1:35019 trainer_id:0"
 str2="selected_gpus:1 worker_endpoints:127.0.0.1:35019,127.0.0.1:35020,127.0.0.2:35019,127.0.0.2:35020 trainers_num:4 current_endpoint:127.0.0.1:35020 trainer_id:1"
-file_0="multi_process.check_0.log"
-file_1="multi_process.check_1.log"
+file_0="multi_process_launch.check_0.log"
+file_1="multi_process_launch.check_1.log"
 
 echo "paddlecloud params test"
 if grep -q "$str1" "$file_0"; then
@@ -54,7 +54,7 @@ unset TRAINER_PORTS_NUM
 
 echo ""
 echo "paddle.distributed.launch async poll process test"
-if ! CUDA_VISIBLE_DEVICES=0,1 python ${launch_py} ${distributed_args} multi_process.py abort; then
+if ! CUDA_VISIBLE_DEVICES=0,1 python ${launch_py} ${distributed_args} multi_process.py launch abort; then
     echo "train abort as planned"
 fi
 

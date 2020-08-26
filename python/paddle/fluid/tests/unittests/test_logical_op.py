@@ -17,8 +17,9 @@ from __future__ import print_function
 import op_test
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from paddle.static import Program, program_guard
 
 
 def create_test_class(op_type, callback, binary_op=True):
@@ -42,6 +43,8 @@ def create_test_class(op_type, callback, binary_op=True):
 
         def test_error(self):
             with program_guard(Program(), Program()):
+
+                # test 1 type error, x, y must be bool type
                 x = fluid.layers.data(name='x', shape=[2], dtype='bool')
                 y = fluid.layers.data(name='y', shape=[2], dtype='bool')
                 a = fluid.layers.data(name='a', shape=[2], dtype='int32')
@@ -54,7 +57,16 @@ def create_test_class(op_type, callback, binary_op=True):
                     self.assertRaises(TypeError, op, x=x, out=1)
                     self.assertRaises(TypeError, op, x=a)
 
-    Cls.__name__ = op_type
+                # test 2 type error, x, y must be same shape
+                x_data = fluid.layers.data(
+                    name='x_data', shape=[2], dtype='bool')
+                y_data = fluid.layers.data(
+                    name='y_data', shape=[2, 2], dtype='bool')
+
+                if self.op_type != "logical_not":
+                    self.assertRaises(TypeError, op, x=x_data, y=y_data, out=1)
+                    self.assertRaises(TypeError, op, x=y_data, y=x_data)
+
     globals()[op_type] = Cls
 
 

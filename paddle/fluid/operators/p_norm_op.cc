@@ -25,34 +25,49 @@ class PnormOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor) A tensor of rank >= axis.");
     AddAttr<float>("porder",
-                   "The porder is the p order vector norm to calculate.")
+                   "(float, default 2) The porder is the p order vector norm "
+                   "to calculate. Available for porder=0, inf, -inf and any "
+                   "real number.")
         .SetDefault(2.0f);
     AddAttr<int>("axis",
-                 "The axis on which to apply normalization. If axis < 0, "
+                 "The axis on which to apply norm operation. If axis < 0, "
                  "the dimension to pnorm is rank(X) + axis. -1 is "
                  "the last dimension.")
         .SetDefault(-1);
     AddAttr<float>("epsilon",
-                   "(float, default 1e-10) The epsilon value is used "
+                   "(float, default 1e-12) The epsilon value is used "
                    "to avoid division by zero.")
         .SetDefault(1.0e-12f);
     AddAttr<bool>(
         "keepdim",
-        "(bool, default false) Whether to keep the dimensions as the input")
+        "(bool, default false) Whether to keep the dimensions as the input.")
         .SetDefault(false);
-    AddOutput(
-        "Out",
-        "(Tensor) Output tensor for the `(sum(x.pow(p)) + epsion).pow(1/p)`");
+    AddOutput("Out", "(Tensor) Output result tensor of p-norm");
     AddComment(R"DOC(
+Pnorm Operator.
+Given a tensor X, compute Lp-norm of X.
 
-Given a tensor, apply 2-normalization along the provided axis.
-
+When p = 0, defining $0^0 = 0$, the zero-norm of X is simply the number of non-zero elements of X.
 $$
-pnorm = \(\sum_i {abs\(x_i\)^p}  \)^{1/p}
+||X||_{0} = \lim_{p \rightarrow 0} \sum_i |x_i|^p
 $$
 
-where, $\sum_i{x_i^p}$ is calculated along the `axis` dimension.
-        
+When p = inf, the inf-norm of X is the maximum element of X.
+$$
+||X||_\infty = \max_i |x_i|
+$$
+
+When p = -inf, the negative-inf-norm of X is the minimum element of X.
+$$
+||X||_{-\infty} = \min_i |x_i|
+$$
+
+Otherwise, the p-norm of X follows the formula,
+$$
+||X||_{p} = (\sum_i |x_i|^p)^{1/p}
+$$
+where, $\sum_i $ is calculated along the `axis` dimension.
+
 )DOC");
   }
 };
@@ -63,31 +78,33 @@ class PnormOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "p_norm");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "p_norm");
-    auto porder = ctx->Attrs().Get<float>("porder");
-    PADDLE_ENFORCE_NE(porder, INFINITY,
-                      platform::errors::Unimplemented(
-                          "The input porder of p_norm is not support for "
-                          "porder == 0, INFINITY, -INFINITY now."));
-    PADDLE_ENFORCE_NE(porder, -INFINITY,
-                      platform::errors::Unimplemented(
-                          "The input porder of p_norm is not support for "
-                          "porder == 0, INFINITY, -INFINITY now."));
-    PADDLE_ENFORCE_GT(porder, 0.0f,
-                      platform::errors::InvalidArgument(
-                          "The input porder of p_norm is not support for "
-                          "porder <= 0, But received porder=%f.",
-                          porder));
-    auto xdim = ctx->GetInputDim("X");
+    auto x_dim = ctx->GetInputDim("X");
+    auto x_rank = x_dim.size();
     int axis = ctx->Attrs().Get<int>("axis");
     bool keepdim = ctx->Attrs().Get<bool>("keepdim");
-    if (axis < 0) axis = xdim.size() + axis;
+
+    PADDLE_ENFORCE_GE(axis, -x_rank,
+                      platform::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], R is "
+                          "the rank of Input(X). But received axis: %d, R: %d. "
+                          "Current Input(X)'s shape is=[%s].",
+                          axis, x_rank, x_dim));
+    PADDLE_ENFORCE_LT(axis, x_rank,
+                      platform::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], R is "
+                          "the rank of Input(X). But received axis: %d, R: %d. "
+                          "Current Input(X)'s shape is=[%s].",
+                          axis, x_rank, x_dim));
+
+    if (axis < 0) axis = x_dim.size() + axis;
     std::vector<int> reduce_dims;
-    for (int i = 0; i < xdim.size(); ++i) {
-      if (i != axis) reduce_dims.emplace_back(xdim[i]);
+    for (int i = 0; i < x_dim.size(); ++i) {
+      if (i != axis) reduce_dims.emplace_back(x_dim[i]);
     }
-    xdim[axis] = 1;
+    x_dim[axis] = 1;
+
     if (keepdim) {
-      ctx->SetOutputDim("Out", xdim);
+      ctx->SetOutputDim("Out", x_dim);
     } else {
       ctx->SetOutputDim("Out", framework::make_ddim(reduce_dims));
     }

@@ -38,25 +38,25 @@ class TestDataset(unittest.TestCase):
     def test_dataset_create(self):
         """ Testcase for dataset create. """
         try:
-            dataset = paddle.fleet.DatasetFactory().create_dataset(
+            dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
                 "InMemoryDataset")
         except:
             self.assertTrue(False)
 
         try:
-            dataset = paddle.fleet.DatasetFactory().create_dataset(
+            dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
                 "QueueDataset")
         except:
             self.assertTrue(False)
 
         try:
-            dataset = paddle.fleet.DatasetFactory().create_dataset(
+            dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
                 "FileInstantDataset")
         except:
             self.assertTrue(False)
 
         try:
-            dataset = paddle.fleet.DatasetFactory().create_dataset(
+            dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
                 "MyOwnDataset")
             self.assertTrue(False)
         except:
@@ -95,7 +95,7 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset(
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
             "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
@@ -176,7 +176,7 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset(
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
             "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
@@ -228,7 +228,7 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset(
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
             "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
@@ -300,7 +300,7 @@ class TestDataset(unittest.TestCase):
                     name=slot, shape=[1], dtype="float32", lod_level=1)
                 slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset(
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
             "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(1)
@@ -367,7 +367,7 @@ class TestDataset(unittest.TestCase):
                 name="slot4", shape=[1], dtype="float32", lod_level=0)
             slots_vars = [var1, var2, var3, var4]
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset(
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
             "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(1)
@@ -423,7 +423,7 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="float32", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset(
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
             "InMemoryDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
@@ -517,7 +517,8 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset("QueueDataset")
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
+            "QueueDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
         dataset.set_filelist(
@@ -542,7 +543,8 @@ class TestDataset(unittest.TestCase):
                 except Exception as e:
                     self.assertTrue(False)
 
-        dataset2 = paddle.fleet.DatasetFactory().create_dataset("QueueDataset")
+        dataset2 = paddle.distributed.fleet.DatasetFactory().create_dataset(
+            "QueueDataset")
         dataset2.set_use_var(slots_vars)
         dataset2.set_batch_size(32)
         dataset2.set_thread(3)
@@ -583,7 +585,8 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[1], dtype="float32", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset("QueueDataset")
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
+            "QueueDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
         dataset.set_filelist(
@@ -638,7 +641,7 @@ class TestDataset(unittest.TestCase):
                 name=slot, shape=[None, 1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.fleet.DatasetFactory().create_dataset(
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
             "InMemoryDataset")
         dataset.set_input_type(1)
         dataset.set_batch_size(1)
@@ -718,7 +721,8 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             inputs(list): inputs of get_dataset
             files(list): files of  get_dataset
         """
-        dataset = paddle.fleet.DatasetFactory().create_dataset("QueueDataset")
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
+            "QueueDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
         dataset.set_filelist(files)
@@ -875,7 +879,7 @@ class TestDataset2(unittest.TestCase):
             except ImportError as e:
                 print("warning: no mpi4py")
             exe.run(startup_program)
-            dataset = paddle.fleet.DatasetFactory().create_dataset(
+            dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
                 "InMemoryDataset")
             dataset.set_batch_size(32)
             dataset.set_thread(3)
@@ -945,7 +949,7 @@ class TestDataset2(unittest.TestCase):
             except ImportError as e:
                 print("warning: no mpi4py")
             exe.run(startup_program)
-            dataset = paddle.fleet.DatasetFactory().create_dataset(
+            dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
                 "InMemoryDataset")
             dataset.set_batch_size(32)
             dataset.set_thread(3)
@@ -962,12 +966,12 @@ class TestDataset2(unittest.TestCase):
                 print("warning: catch expected error")
             fleet._opt_info = None
             fleet._fleet_ptr = None
-            dataset = paddle.fleet.DatasetFactory().create_dataset(
+            dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
                 "InMemoryDataset")
             dataset.set_rank_offset("")
             dataset.set_pv_batch_size(1)
             dataset.set_hdfs_config("", "")
-            d = paddle.fleet.DatasetBase()
+            d = paddle.distributed.fleet.DatasetBase()
             try:
                 dataset.set_feed_type("MultiSlotInMemoryDataFeed")
             except:
@@ -1000,7 +1004,7 @@ class TestDataset2(unittest.TestCase):
             dataset.get_pv_data_size()
             dataset.get_memory_data_size()
             dataset.get_shuffle_data_size()
-            dataset = paddle.fleet.DatasetFactory().create_dataset(
+            dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
                 "QueueDataset")
             try:
                 dataset.local_shuffle()
@@ -1010,7 +1014,7 @@ class TestDataset2(unittest.TestCase):
                 dataset.global_shuffle()
             except:
                 print("warning: catch expected error")
-            dataset = paddle.fleet.FileInstantDataset()
+            dataset = paddle.distributed.fleet.FileInstantDataset()
             try:
                 dataset.local_shuffle()
             except:

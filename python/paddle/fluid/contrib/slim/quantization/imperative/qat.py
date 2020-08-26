@@ -101,6 +101,9 @@ class ImperativeQuantAware(object):
         quant_type = {
             'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max'
         }
+
+        assert activation_quantize_type != 'channel_wise_abs_max', \
+            "The activation quantization type does not support 'channel_wise_abs_max'."
         if activation_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown activation_quantize_type : '%s'. It can only be "

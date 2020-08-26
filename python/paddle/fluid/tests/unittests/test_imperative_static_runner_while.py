@@ -27,6 +27,8 @@ from test_imperative_base import new_program_scope
 
 import paddle.fluid.transpiler.details.program_utils as pu
 
+LOADED_VAR_SUFFIX = ".load_0"
+
 
 def while_softmax_regression(img):
     def cond(i, times, pred):
@@ -219,13 +221,13 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
 
         # Phase 3. compare
         for key, value in six.iteritems(static_param_init_value):
-            key += core.loaded_var_suffix()
+            key += LOADED_VAR_SUFFIX
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
 
         self.assertTrue(np.allclose(static_out, dy_out))
 
         for key, value in six.iteritems(static_param_value):
-            key += core.loaded_var_suffix()
+            key += LOADED_VAR_SUFFIX
             self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
 
 

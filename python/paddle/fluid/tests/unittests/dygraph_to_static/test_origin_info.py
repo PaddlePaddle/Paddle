@@ -90,7 +90,8 @@ class TestOriginInfo(unittest.TestCase):
 
         # step3
         self.static_func, _ = ast_to_func(transformed_ast, self.dygraph_func)
-        info_map = create_origin_info_map(dygraph_ast, self.static_func)
+        info_map = create_and_update_origin_info_map(dygraph_ast,
+                                                     self.static_func)
 
         return info_map
 

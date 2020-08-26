@@ -20,6 +20,7 @@ from op_test import OpTest
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
+import paddle
 
 
 class TestAdamOp1(OpTest):
@@ -401,46 +402,111 @@ class TestAdamOpBetaVariable(OpTest):
         self.check_output()
 
 
-class TestAdamOptimizerBetaVariable(unittest.TestCase):
-    def test_adam_optimizer(self):
-        def test_with_place(place, shape):
-            exe = fluid.Executor(place)
-
-            train_prog = fluid.Program()
-            startup = fluid.Program()
-            with fluid.program_guard(train_prog, startup):
-                with fluid.unique_name.guard():
-                    data = fluid.data(name="data", shape=shape)
-                    conv = fluid.layers.conv2d(data, 8, 3)
-                    loss = fluid.layers.reduce_mean(conv)
-
-                    beta1 = fluid.layers.create_global_var(
-                        shape=[1],
-                        value=0.85,
-                        dtype='float32',
-                        persistable=True)
-                    beta2 = fluid.layers.create_global_var(
-                        shape=[1],
-                        value=0.95,
-                        dtype='float32',
-                        persistable=True)
-                    opt = fluid.optimizer.Adam(
-                        learning_rate=1e-5, beta1=beta1, beta2=beta2)
-                    opt.minimize(loss)
-
-            exe.run(startup)
-            data_np = np.random.random(shape).astype('float32')
-            rets = exe.run(train_prog,
-                           feed={"data": data_np},
-                           fetch_list=[loss])
-            assert rets[0] is not None
-
+class TestAdamOpV2(unittest.TestCase):
+    def test_adam_op(self):
+        place = fluid.CPUPlace()
         shape = [2, 3, 8, 8]
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for place in places:
-            test_with_place(place, shape)
+        exe = fluid.Executor(place)
+        train_prog = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(train_prog, startup):
+            with fluid.unique_name.guard():
+                data = fluid.data(name="data", shape=shape)
+                conv = fluid.layers.conv2d(data, 8, 3)
+                loss = fluid.layers.reduce_mean(conv)
+
+                beta1 = fluid.layers.create_global_var(
+                    shape=[1], value=0.85, dtype='float32', persistable=True)
+                beta2 = fluid.layers.create_global_var(
+                    shape=[1], value=0.95, dtype='float32', persistable=True)
+                betas = [beta1, beta2]
+                opt = paddle.optimizer.Adam(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8)
+                opt.minimize(loss)
+
+        exe.run(startup)
+        data_np = np.random.random(shape).astype('float32')
+        rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
+        assert rets[0] is not None
+
+    def test_adam_op_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = fluid.dygraph.to_variable(value)
+        linear = fluid.Linear(13, 5, dtype="float32")
+
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=linear.parameters())
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+    def test_adam_op_with_state_dict(self):
+
+        import paddle
+        paddle.disable_static()
+        emb = paddle.nn.Embedding([10, 10])
+
+        adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
+        state_dict = adam.state_dict()
+        adam.set_state_dict(state_dict)
+
+        #learning_rate is Decay
+        learning_rate = fluid.dygraph.CosineDecay(0.1, 10000, 120)
+        adam = paddle.optimizer.Adam(
+            learning_rate=learning_rate,
+            weight_decay=fluid.regularizer.L2Decay(0.001),
+            parameters=emb.parameters())
+        lr = adam.get_lr()
+        state_dict = adam.state_dict()
+        adam.set_state_dict(state_dict)
+
+        #leanrning_rate is Tensor
+        with self.assertRaises(TypeError):
+            learning_rate = np.array([0.01]).astype("float32")
+            learning_rate = paddle.to_tensor(learning_rate)
+            adam = paddle.optimizer.Adam(
+                learning_rate=learning_rate, parameters=emb.parameters())
+
+        params = adam.get_opti_var_name_list()
+        assert (params is not None)
+
+    def test_adam_with_grad_clip(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = fluid.dygraph.to_variable(value)
+        linear = fluid.Linear(13, 5, dtype="float32")
+        clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+        adam = paddle.optimizer.Adam(
+            0.1, parameters=linear.parameters(), grad_clip=clip)
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+    def test_adam_op_with_set_lr(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
+
+        lr = 0.01
+        adam.set_lr(lr)
+        cur_lr = adam.get_lr()
+        assert (lr == cur_lr)
+
+        lr_var = paddle.create_global_var(shape=[1], value=lr, dtype='float32')
+        adam.set_lr(lr_var)
+        cur_lr = adam.get_lr()
+        assert (np.float32(lr) == cur_lr)
+
+        with self.assertRaises(TypeError):
+            lr = int(1)
+            adam.set_lr(lr)
 
 
 if __name__ == "__main__":

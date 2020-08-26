@@ -483,3 +483,28 @@ DEFINE_double(local_exe_sub_scope_limit, 256.0,  // MBytes
  * Note:
  */
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+
+/**
+ * Debug related FLAG
+ * Name: FLAGS_call_stack_level
+ * Since Version: 2.0.0
+ * Value Range: int, default=2
+ * Example:
+ * Note: Used to debug. Determine the call stack to print when error or
+ * exeception happens.
+ * If FLAGS_call_stack_level == 0, only the error message summary will be shown.
+ * If FLAGS_call_stack_level == 1, the python stack and  error message summary
+ * will be shown.
+ * If FLAGS_call_stack_level == 2, the python stack, c++ stack, and error
+ * message summary will be shown.
+ */
+DEFINE_int32(
+    call_stack_level, 2,
+    "Determine the call stack to print when error or exeception happens."
+    // TODO(zhiqiu): implement logic of FLAGS_call_stack_level==0
+    // "If FLAGS_call_stack_level == 0, only the error message summary will be "
+    // "shown. "
+    "If FLAGS_call_stack_level == 1, the python stack and error message "
+    "summary will be shown."
+    "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
+    "error message summary will be shown.");

@@ -54,14 +54,43 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
   }
+#ifdef PADDLE_WITH_XPU
+  else if (platform::is_xpu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
+  } else if (platform::is_cpu_place(src_place) &&
+             platform::is_xpu_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
+  } else if (platform::is_xpu_place(src_place) &&
+             platform::is_xpu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
+  }
+#endif
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::CUDAPinnedPlace, src_place), src_ptr,
                  size);
-  } else if (platform::is_gpu_place(src_place) &&  // NOLINT
-             platform::is_cpu_place(dst_place)) {
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_cuda_pinned_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPinnedPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
+  }
+  else if (platform::is_gpu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
     auto src_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
     auto dst_cpu_place = BOOST_GET_CONST(platform::CPUPlace, dst_place);
     auto ctx_place = ctx.GetPlace();
@@ -71,8 +100,9 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
-  } else if (platform::is_cpu_place(src_place) &&
-             platform::is_gpu_place(dst_place)) {
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_gpu_place(dst_place)) {
     auto src_cpu_place = BOOST_GET_CONST(platform::CPUPlace, src_place);
     auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dst_place);
     auto ctx_place = ctx.GetPlace();
@@ -82,8 +112,32 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
-  } else if (platform::is_cuda_pinned_place(src_place) &&
-             platform::is_gpu_place(dst_place)) {
+  }
+  else if (platform::is_gpu_place(src_place) &&  // NOLINT
+           platform::is_cuda_pinned_place(dst_place)) {
+    auto src_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
+    auto dst_cuda_pinned_place =
+        BOOST_GET_CONST(platform::CUDAPinnedPlace, dst_place);
+    auto ctx_place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Device context place mismatch. When copying Tensor "
+                          "data from GPU memory to CUDA Pinned memory, current "
+                          "device context place should be GPU."));
+    auto ctx_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx_place);
+    PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place,
+                      platform::errors::PreconditionNotMet(
+                          "The source GPU device and current device context do "
+                          "not match. The source GPU device number is %d, but "
+                          "device context GPU number is %d.",
+                          src_gpu_place.device, ctx_gpu_place.device));
+    auto stream =
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    memory::Copy(dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size,
+                 stream);
+  }
+  else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
+           platform::is_gpu_place(dst_place)) {
     auto src_cuda_pinned_place =
         BOOST_GET_CONST(platform::CUDAPinnedPlace, src_place);
     auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dst_place);
@@ -104,8 +158,9 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     memory::Copy(dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size,
                  stream);
-  } else if (platform::is_gpu_place(src_place) &&
-             platform::is_gpu_place(dst_place)) {
+  }
+  else if (platform::is_gpu_place(src_place) &&  // NOLINT
+           platform::is_gpu_place(dst_place)) {
     auto src_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
     auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dst_place);
     auto ctx_place = ctx.GetPlace();
@@ -128,7 +183,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
         PADDLE_THROW("ctx is not belong to dst_gpu_place or src_gpu_place.");
       }
     }
-  } else {
+  }
+  else {  // NOLINT
     PADDLE_THROW("Copy from %s to %s is not supported.", src_place, dst_place);
   }
 #endif
@@ -174,35 +230,74 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
   }
+#ifdef PADDLE_WITH_XPU
+  else if (platform::is_xpu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
+  } else if (platform::is_cpu_place(src_place) &&  // NOLINT
+             platform::is_xpu_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
+  } else if (platform::is_xpu_place(src_place) &&  // NOLINT
+             platform::is_xpu_place(dst_place)) {
+    if (src_ptr == dst_ptr) {
+      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+              << dst_place;
+      return;
+    }
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
+  } else {  // NOLINT
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
+  }
+#endif
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::CUDAPinnedPlace, src_place), src_ptr,
                  size);
-  } else if (platform::is_gpu_place(src_place) &&  // NOLINT
-             platform::is_cpu_place(dst_place)) {
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_cuda_pinned_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPinnedPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
+  }
+  else if (platform::is_gpu_place(src_place) &&  // NOLINT
+           platform::is_cuda_pinned_place(dst_place)) {
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPinnedPlace, dst_place), dst_ptr,
+                 BOOST_GET_CONST(platform::CUDAPlace, src_place), src_ptr, size,
+                 nullptr);
+  }
+  else if (platform::is_gpu_place(src_place) &&  // NOLINT
+           platform::is_cpu_place(dst_place)) {
     auto src_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
     auto dst_cpu_place = BOOST_GET_CONST(platform::CPUPlace, dst_place);
     memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
-  } else if (platform::is_cpu_place(src_place) &&
-             platform::is_gpu_place(dst_place)) {
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_gpu_place(dst_place)) {
     auto src_cpu_place = BOOST_GET_CONST(platform::CPUPlace, src_place);
     auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, nullptr);
-  } else if (platform::is_gpu_place(src_place) &&
-             platform::is_gpu_place(dst_place)) {
+  }
+  else if (platform::is_gpu_place(src_place) &&  // NOLINT
+           platform::is_gpu_place(dst_place)) {
     auto src_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
     auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
-  } else if (platform::is_cuda_pinned_place(src_place) &&
-             platform::is_gpu_place(dst_place)) {
+  }
+  else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
+           platform::is_gpu_place(dst_place)) {
     auto src_pinned_place =
         BOOST_GET_CONST(platform::CUDAPinnedPlace, src_place);
     auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
                  nullptr);
-  } else {
+  }
+  else {  // NOLINT
     PADDLE_THROW("Copy from %s to %s is not supported.", src_place, dst_place);
   }
 #endif
@@ -241,6 +336,19 @@ class AnyVisitor : public boost::static_visitor<bool> {
   const framework::Tensor& tensor_;
   Predicate predicate_;
 
+  bool GetResultHelper(const framework::Tensor& out,
+                       const platform::Place& place) const {
+    platform::CPUPlace cpu;
+    framework::Tensor tmp;
+    tmp.Resize({1});
+    tmp.mutable_data<bool>(cpu);
+    auto ctx = platform::DeviceContextPool::Instance().Get(place);
+    ctx->Wait();
+    TensorCopy(out, cpu, *ctx, &tmp);
+    ctx->Wait();
+    return GetResult(tmp, cpu);
+  }
+
  public:
   AnyVisitor(const framework::Tensor& tensor, Predicate predicate)
       : tensor_(tensor), predicate_(std::move(predicate)) {}
@@ -256,16 +364,13 @@ class AnyVisitor : public boost::static_visitor<bool> {
   }
 
   bool GetResult(const framework::Tensor& out,
+                 const platform::XPUPlace& xpu) const {
+    return GetResultHelper(out, xpu);
+  }
+
+  bool GetResult(const framework::Tensor& out,
                  const platform::CUDAPlace& gpu) const {
-    platform::CPUPlace cpu;
-    framework::Tensor tmp;
-    tmp.Resize({1});
-    tmp.mutable_data<bool>(cpu);
-    auto gpuctx = platform::DeviceContextPool::Instance().Get(gpu);
-    gpuctx->Wait();
-    TensorCopy(out, cpu, *gpuctx, &tmp);
-    gpuctx->Wait();
-    return GetResult(tmp, cpu);
+    return GetResultHelper(out, gpu);
   }
 
   bool GetResult(const framework::Tensor& out,
@@ -315,6 +420,61 @@ inline void Any(const framework::Tensor& tensor, Predicate predicate,
   platform::VisitPlace(place, visitor);
 }
 
+template <typename Predicate, typename DevCtx>
+struct AllDTypeVisitor {
+  Predicate predicate_;
+  const Tensor& tensor_;
+  const DevCtx& ctx_;
+  Tensor* out_;
+
+  AllDTypeVisitor(Predicate predicate, const Tensor& tensor, const DevCtx& ctx,
+                  Tensor* out)
+      : predicate_(predicate), tensor_(tensor), ctx_(ctx), out_(out) {}
+
+  template <typename T>
+  void apply() const {
+    auto t = EigenVector<T>::Flatten(tensor_);
+    auto o = EigenVector<bool>::Flatten(*out_);
+    o.device(*ctx_.eigen_device()) = predicate_(t);
+  }
+};
+
+template <typename Predicate, typename DevCtx>
+inline void AllImpl(Predicate predicate, const framework::Tensor& tensor,
+                    const DevCtx& ctx, framework::Tensor* out) {
+  VisitDataType(tensor.type(), AllDTypeVisitor<Predicate, DevCtx>(
+                                   predicate, tensor, ctx, out));
+}
+
+template <typename Predicate>
+class AllOutVisitor : public boost::static_visitor<> {
+ private:
+  const framework::Tensor& tensor_;
+  mutable framework::Tensor* out_;
+  Predicate predicate_;
+
+ public:
+  AllOutVisitor(const framework::Tensor& tensor, Predicate predicate,
+                framework::Tensor* out)
+      : tensor_(tensor), out_(out), predicate_(predicate) {}
+
+  template <typename Place>
+  void operator()(const Place& place) const {
+    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
+    out_->Resize(tensor_.dims());
+    out_->mutable_data<bool>(place);
+    AllImpl(predicate_, tensor_, *ctx, out_);
+  }
+};
+
+template <typename Predicate>
+inline void All(const framework::Tensor& tensor, Predicate predicate,
+                framework::Tensor* out) {
+  AllOutVisitor<Predicate> visitor(tensor, predicate, out);
+  auto place = tensor.place();
+  platform::VisitPlace(place, visitor);
+}
+
 struct ContainsNANPredicate {
   template <typename T>
   auto operator()(const T& eigen_vec) const
@@ -333,6 +493,12 @@ void TensorContainsNAN(const framework::Tensor& tensor,
                        framework::Tensor* out) {
   ContainsNANPredicate predicate;
   Any(tensor, predicate, out);
+}
+
+void TensorContainsNANV2(const framework::Tensor& tensor,
+                         framework::Tensor* out) {
+  ContainsNANPredicate predicate;
+  All(tensor, predicate, out);
 }
 
 struct ContainsInfPredicate {
@@ -355,6 +521,12 @@ void TensorContainsInf(const framework::Tensor& tensor,
   Any(tensor, predicate, out);
 }
 
+void TensorContainsInfV2(const framework::Tensor& tensor,
+                         framework::Tensor* out) {
+  ContainsInfPredicate predicate;
+  All(tensor, predicate, out);
+}
+
 // NOTE(dzhwinter):
 // Isfinite need a AllVisitor to loop through all the elements.
 // We choose two cuda call instead of one allvisitor. The AllVisitor
@@ -367,8 +539,8 @@ bool TensorIsfinite(const framework::Tensor& tensor) {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
-static inline void __global__ BothFalse(const T* cmp, T* out) {
-  out[0] = (!cmp[0]) && (!out[0]);
+static inline void __global__ BothFalse(const T* cmp, T* out, int element_num) {
+  CUDA_KERNEL_LOOP(i, element_num) { out[i] = (!cmp[i]) && (!out[i]); }
 }
 #endif
 
@@ -383,25 +555,47 @@ struct BothFalseVisitor : public boost::static_visitor<> {
     VisitorImpl(place);
   }
 
+  void VisitorImpl(const platform::XPUPlace& xpu) const {
+    PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
+  }
+
   void VisitorImpl(const platform::CUDAPlace& gpu) const {
 #ifdef PADDLE_WITH_CUDA
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(gpu);
-    BothFalse<bool><<<1, 1, 0, ctx->stream()>>>(in_.data<bool>(),
-                                                out_->mutable_data<bool>(gpu));
+    constexpr int MAX_BLOCK_DIM = 512;
+    const int MAX_GRID_DIM = ctx->GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
+    int element_num = in_.numel();
+    int block_size = (element_num >= MAX_BLOCK_DIM)
+                         ? MAX_BLOCK_DIM
+                         : (1 << static_cast<int>(std::log2(element_num)));
+    int grid_size = element_num / block_size;
+    grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
+    BothFalse<bool><<<grid_size, block_size, 0, ctx->stream()>>>(
+        in_.data<bool>(), out_->mutable_data<bool>(gpu), element_num);
 #endif
   }
 
   void VisitorImpl(const platform::CPUPlace& cpu) const {
-    bool lhs = !in_.data<bool>()[0];
-    bool rhs = !out_->mutable_data<bool>(cpu)[0];
-    out_->mutable_data<bool>(cpu)[0] = lhs && rhs;
+    int num = in_.numel();
+    const bool* in_ptr = in_.data<bool>();
+    bool* out_ptr = out_->data<bool>();
+    for (int i = 0; i < num; ++i) {
+      bool lhs = !in_ptr[i];
+      bool rhs = !out_ptr[i];
+      out_ptr[i] = lhs && rhs;
+    }
   }
 
   void VisitorImpl(
       const platform::CUDAPinnedPlace& cpu /* equals to cpu*/) const {
-    bool lhs = !in_.data<bool>()[0];
-    bool rhs = !out_->mutable_data<bool>(cpu)[0];
-    out_->mutable_data<bool>(cpu)[0] = lhs && rhs;
+    int num = in_.numel();
+    const bool* in_ptr = in_.data<bool>();
+    bool* out_ptr = out_->data<bool>();
+    for (int i = 0; i < num; ++i) {
+      bool lhs = !in_ptr[i];
+      bool rhs = !out_ptr[i];
+      out_ptr[i] = lhs && rhs;
+    }
   }
 };
 
@@ -409,6 +603,15 @@ void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out) {
   framework::Tensor tmp;
   TensorContainsInf(tensor, &tmp);
   TensorContainsNAN(tensor, out);
+  BothFalseVisitor visitor(tmp, out);
+  auto place = tensor.place();
+  platform::VisitPlace(place, visitor);
+}
+
+void TensorIsfiniteV2(const framework::Tensor& tensor, framework::Tensor* out) {
+  framework::Tensor tmp;
+  TensorContainsInfV2(tensor, &tmp);
+  TensorContainsNANV2(tensor, out);
   BothFalseVisitor visitor(tmp, out);
   auto place = tensor.place();
   platform::VisitPlace(place, visitor);
@@ -464,6 +667,28 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
       PADDLE_THROW(platform::errors::Unimplemented(
           "CUDAPlace is not supported when not compiled with CUDA"));
 #endif
+    } else if (platform::is_xpu_place(tensor.place())) {
+#ifdef PADDLE_WITH_XPU
+      constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
+      std::unique_ptr<char[]> buf(new char[kBufSize]);
+      auto& xpu_dev_ctx =
+          static_cast<const platform::XPUDeviceContext&>(dev_ctx);
+      platform::CPUPlace cpu;
+      uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
+      while (size != 0) {
+        size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
+        memory::Copy(cpu, buf.get(),
+                     BOOST_GET_CONST(platform::XPUPlace, tensor.place()),
+                     reinterpret_cast<const void*>(data), size_to_write);
+        xpu_dev_ctx.Wait();
+        os.write(buf.get(), size_to_write);
+        data += size_to_write;
+        size -= size_to_write;
+      }
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "XPUPlace is not supported when not compiled with XPU"));
+#endif
     } else {
       os.write(static_cast<const char*>(data_ptr),
                static_cast<std::streamsize>(size));
@@ -517,8 +742,9 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     void* buf;
     auto ctx = platform::CPUDeviceContext();
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
-    if (platform::is_gpu_place(dev_ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
+        platform::is_xpu_place(dev_ctx.GetPlace())) {
+#if defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU
       Tensor cpu_tensor;
       cpu_tensor.Resize(framework::make_ddim(shape));
       framework::VisitDataType(
@@ -528,8 +754,13 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
 #else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "CUDAPlace is not supported when not compiled with CUDA"));
+      if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "CUDAPlace is not supported when not compiled with CUDA"));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "XPUPlace is not supported when not compiled with XPU"));
+      }
 #endif
     } else {
       framework::VisitDataType(
@@ -568,8 +799,9 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     void* buf;
     auto ctx = platform::CPUDeviceContext();
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
-    if (platform::is_gpu_place(dev_ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
+        platform::is_xpu_place(dev_ctx.GetPlace())) {
+#if defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU
       Tensor cpu_tensor;
       cpu_tensor.Resize(framework::make_ddim(dims));
       framework::VisitDataType(
@@ -579,8 +811,13 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
 #else
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "CUDAPlace is not supported when not compiled with CUDA"));
+      if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "CUDAPlace is not supported when not compiled with CUDA"));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "XPUPlace is not supported when not compiled with XPU"));
+      }
 #endif
     } else {
       framework::VisitDataType(
@@ -664,6 +901,9 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
         dst_place, dst_ptr, src_place, src_ptr, size,
         reinterpret_cast<const platform::CUDADeviceContext&>(*ctx).stream());
   }
+#endif
+#ifdef PADDLE_WITH_XPU
+  PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
 #endif
 }
 

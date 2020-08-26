@@ -142,7 +142,7 @@ class TestBasicLSTM(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -168,7 +168,7 @@ class TestBasicGRU(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -219,8 +219,8 @@ class TestBeamSearch(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input("init_hidden", [None, self.inputs[0].shape[-1]], "float32"),
-            Input("init_cell", [None, self.inputs[1].shape[-1]], "float32"),
+            Input([None, self.inputs[0].shape[-1]], "float32", "init_hidden"),
+            Input([None, self.inputs[1].shape[-1]], "float32", "init_cell"),
         ]
         return inputs
 
@@ -272,10 +272,10 @@ class TestTransformerEncoder(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input("enc_input", [None, None, self.inputs[0].shape[-1]],
-                  "float32"),
-            Input("attn_bias", [None, self.inputs[1].shape[1], None, None],
-                  "float32"),
+            Input([None, None, self.inputs[0].shape[-1]], "float32",
+                  "enc_input"),
+            Input([None, self.inputs[1].shape[1], None, None], "float32",
+                  "attn_bias"),
         ]
         return inputs
 
@@ -336,14 +336,14 @@ class TestTransformerDecoder(TestTransformerEncoder):
 
     def make_inputs(self):
         inputs = [
-            Input("dec_input", [None, None, self.inputs[0].shape[-1]],
-                  "float32"),
-            Input("enc_output", [None, None, self.inputs[0].shape[-1]],
-                  "float32"),
-            Input("self_attn_bias",
-                  [None, self.inputs[-1].shape[1], None, None], "float32"),
-            Input("cross_attn_bias",
-                  [None, self.inputs[-1].shape[1], None, None], "float32"),
+            Input([None, None, self.inputs[0].shape[-1]], "float32",
+                  "dec_input"),
+            Input([None, None, self.inputs[0].shape[-1]], "float32",
+                  "enc_output"),
+            Input([None, self.inputs[-1].shape[1], None, None], "float32",
+                  "self_attn_bias"),
+            Input([None, self.inputs[-1].shape[1], None, None], "float32",
+                  "cross_attn_bias"),
         ]
         return inputs
 
@@ -431,10 +431,10 @@ class TestTransformerBeamSearchDecoder(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input("enc_output", [None, None, self.inputs[0].shape[-1]],
-                  "float32"),
-            Input("trg_src_attn_bias",
-                  [None, self.inputs[1].shape[1], None, None], "float32"),
+            Input([None, None, self.inputs[0].shape[-1]], "float32",
+                  "enc_output"),
+            Input([None, self.inputs[1].shape[1], None, None], "float32",
+                  "trg_src_attn_bias"),
         ]
         return inputs
 
@@ -473,9 +473,9 @@ class TestSequenceTagging(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input("word", [None, None], "int64"),
-            Input("lengths", [None], "int64"),
-            Input("target", [None, None], "int64"),
+            Input([None, None], "int64", "word"),
+            Input([None], "int64", "lengths"),
+            Input([None, None], "int64", "target"),
         ]
         return inputs
 
@@ -517,7 +517,7 @@ class TestStackedRNN(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -543,7 +543,7 @@ class TestLSTM(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -579,7 +579,7 @@ class TestBiLSTM(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -609,7 +609,7 @@ class TestGRU(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -645,7 +645,7 @@ class TestBiGRU(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input("input", [None, None, self.inputs[-1].shape[-1]], "float32"),
+            Input([None, None, self.inputs[-1].shape[-1]], "float32", "input"),
         ]
         return inputs
 
@@ -680,7 +680,7 @@ class TestCNNEncoder(ModuleApiTest):
 
     def make_inputs(self):
         inputs = [
-            Input("input", [None, self.inputs[-1].shape[1], None], "float32"),
+            Input([None, self.inputs[-1].shape[1], None], "float32", "input"),
         ]
         return inputs
 

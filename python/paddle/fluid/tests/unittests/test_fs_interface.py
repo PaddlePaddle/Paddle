@@ -15,14 +15,12 @@
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet, TrainStatus
+from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
 import os
 import sys
 import inspect
 
-from paddle.fluid.incubate.fleet.utils.fs import LocalFS, FS
-from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
-from paddle.fluid.incubate.fleet.utils.hdfs import FSTimeOut, FSFileExistsError, FSFileNotExistsError
+from paddle.distributed.fleet.utils import LocalFS, FS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
 
 
 class FSTest(unittest.TestCase):
@@ -40,6 +38,8 @@ class FSTest(unittest.TestCase):
                 func(a)
             elif len(args) == 3:
                 func(a, a)
+            elif len(args) == 5:
+                func(a, a, a, a)
             print("args:", args, len(args), "func:", func)
             self.assertFalse(True)
         except NotImplementedError as e:

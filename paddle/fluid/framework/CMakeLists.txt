@@ -122,6 +122,10 @@ cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor
 cc_library(attribute SRCS attribute.cc DEPS framework_proto boost)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
 device_context)
+
+cc_library(op_version_registry SRCS op_version_registry.cc DEPS framework_proto boost)
+cc_test(op_version_registry_test SRCS op_version_registry_test.cc DEPS op_version_registry)
+
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute glog)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(no_need_buffer_vars_inference SRCS no_need_buffer_vars_inference.cc DEPS attribute device_context)
@@ -164,23 +168,23 @@ if(WITH_PYTHON)
   if (NOT WIN32)
     add_custom_command(TARGET framework_py_proto POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto
-      COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto/__init__.py
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+      COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
-      COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto
+      COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   else(NOT WIN32)
     string(REPLACE "/" "\\" proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
-    string(REPLACE "/" "\\" fleet_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fleet/proto/")
+    string(REPLACE "/" "\\" fleet_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
     add_custom_command(TARGET framework_py_proto POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-	  COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto
-	  COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/fleet/proto/__init__.py
+	  COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+	  COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
           COMMAND copy /Y *.py ${proto_dstpath}
 	  COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
           COMMENT "Copy generated python proto into directory paddle/fluid/proto."
-	  COMMENT "Copy generated python proto into directory paddle/fleet/proto."
+	  COMMENT "Copy generated python proto into directory paddle/distributed/fleet/proto."
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif(NOT WIN32)
 endif()
@@ -268,6 +272,7 @@ cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatib
 
 cc_library(save_load_util SRCS save_load_util DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
+cc_library(generator SRCS generator.cc)
 
 # Get the current working branch
 execute_process(

@@ -66,7 +66,7 @@ TEST(AnalysisPredictor, use_gpu) {
   float* data_o = static_cast<float*>(outputs[0].data.data());
   for (size_t j = 0; j < outputs[0].data.length() / sizeof(float); j += 10) {
     EXPECT_NEAR((data_o[j] - truth_values[j / 10]) / truth_values[j / 10], 0.,
-                10e-5);
+                12e-5);
   }
 }
 
