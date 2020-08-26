@@ -12136,7 +12136,7 @@ def logical_and(x, y, out=None, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. It’s dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. It’s dimension equals with ``x``.
 
     Examples:
         .. code-block:: python
@@ -12176,7 +12176,7 @@ def logical_or(x, y, out=None, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. It’s dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. It’s dimension equals with ``x``.
 
     Examples:
         .. code-block:: python
@@ -12216,7 +12216,7 @@ def logical_xor(x, y, out=None, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. It’s dimension equals with $x$.
+        N-D Tensor. A location into which the result is stored. It’s dimension equals with ``x``.
 
     Examples:
         .. code-block:: python
