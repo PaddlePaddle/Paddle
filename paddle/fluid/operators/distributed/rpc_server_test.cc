@@ -198,13 +198,14 @@ TEST(SENDANDRECV, CPU) {
                               distributed::kRequestSendAndRecv);
     g_rpc_service->WaitServerReady();
     int port = g_rpc_service->GetSelectedPort();
+    std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
 
     framework::Scope scope;
     platform::CPUPlace place;
     platform::CPUDeviceContext ctx(place);
 
     // create var on local scope
-    int64_t rows_numel = 5;
+    int64_t rows_numel = 10;
     InitTensorsOnClient(&scope, &place, rows_numel);
     std::string in_var_name("x");
     std::string out_var_name("out");
