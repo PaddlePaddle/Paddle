@@ -15,6 +15,7 @@
 from ... import default_main_program
 from ... import default_startup_program
 from ... import layers
+from ... import framework
 from ... import unique_name
 from . import fp16_utils
 from .fp16_utils import update_loss_scaling, rewrite_program
@@ -132,7 +133,8 @@ class OptimizerWithMixedPrecision(object):
             gradient respectively, and the scaled loss.
         """
         rewrite_program(self._train_program, self._amp_lists)
-        self._scaled_loss = loss * self._loss_scaling
+        with framework.name_scope('mixed_precision'):
+            self._scaled_loss = loss * self._loss_scaling
         self._params_grads = self._optimizer.backward(
             self._scaled_loss, startup_program, parameter_list, no_grad_set,
             callbacks)
@@ -140,10 +142,11 @@ class OptimizerWithMixedPrecision(object):
         # transferred across GPUs can be FP16.
         update_role_var_grad(self._train_program, self._params_grads)
         scaled_params_grads = []
-        for p, g in self._params_grads:
-            with self._train_program._optimized_guard([p, g]):
-                scaled_g = g / self._loss_scaling
-                scaled_params_grads.append([p, scaled_g])
+        with framework.name_scope('mixed_precision'):
+            for p, g in self._params_grads:
+                with self._train_program._optimized_guard([p, g]):
+                    scaled_g = g / self._loss_scaling
+                    scaled_params_grads.append([p, scaled_g])
 
         return scaled_params_grads
 
@@ -159,27 +162,30 @@ class OptimizerWithMixedPrecision(object):
             A list of optimize operators.
         """
 
-        if self._use_dynamic_loss_scaling:
+        if self._use_dynamic_loss_scaling and len(scaled_params_grads) > 0:
+            with framework.name_scope('mixed_precision'):
+                with self._train_program._optimized_guard(scaled_params_grads[
+                        0]):
+                    grads = [
+                        layers.reduce_sum(g) for [_, g] in scaled_params_grads
+                    ]
+                    all_grads_sum = layers.sums(grads)
+                    is_overall_finite = layers.isfinite(all_grads_sum)
 
-            grads = [layers.reduce_sum(g) for [_, g] in scaled_params_grads]
-            all_grads = layers.concat(grads)
-            all_grads_sum = layers.reduce_sum(all_grads)
-            is_overall_finite = layers.isfinite(all_grads_sum)
+                    update_loss_scaling(
+                        is_overall_finite, self._loss_scaling,
+                        self._num_good_steps, self._num_bad_steps,
+                        self._incr_every_n_steps, self._decr_every_n_nan_or_inf,
+                        self._incr_ratio, self._decr_ratio)
 
-            update_loss_scaling(is_overall_finite, self._loss_scaling,
-                                self._num_good_steps, self._num_bad_steps,
-                                self._incr_every_n_steps,
-                                self._decr_every_n_nan_or_inf, self._incr_ratio,
-                                self._decr_ratio)
-
-            # apply_gradient append all ops in global block, thus we shouldn't
-            # apply gradient in the switch branch.
-            with layers.Switch() as switch:
-                with switch.case(is_overall_finite):
-                    pass
-                with switch.default():
-                    for _, g in scaled_params_grads:
-                        layers.assign(layers.zeros_like(g), g)
+                    # apply_gradient append all ops in global block, thus we shouldn't
+                    # apply gradient in the switch branch.
+                    with layers.Switch() as switch:
+                        with switch.case(is_overall_finite):
+                            pass
+                        with switch.default():
+                            for _, g in scaled_params_grads:
+                                layers.assign(layers.zeros_like(g), g)
 
         optimize_ops = self._optimizer.apply_gradients(scaled_params_grads)
 

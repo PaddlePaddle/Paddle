@@ -51,6 +51,113 @@ class SubProgram(object):
         self._param_mem = 0.0
 
 
+class ProgramDeps(object):
+    def __init__(self, block, start_vars, end_vars):
+        self._block = block
+        # vars where to start to build the deps
+        self._start_vars = start_vars
+        # vars where to stop to build the deps
+        self._end_vars = end_vars
+        # var name -> op idxs which depends on this var
+        self._var_deps = {}
+        # sub block deps which is a subset of this topo
+        self._sub_block_deps = {}
+        # var name -> op idxs which generate var
+        self._var_to_generate_op = {}
+        self._should_removed_var = set()
+        self._father_block_deps = None
+        self._build_deps()
+
+    def get_sub_block_deps(self, idx):
+        if idx in self._sub_block_deps:
+            return self._sub_block_deps[idx]
+        else:
+            return None
+
+    def get_var_deps(self, var_name):
+        if var_name in self._var_deps:
+            return self._var_deps[var_name]
+        else:
+            return None
+
+    def _build_deps(self, ):
+        for var_name in self._start_vars:
+            self._var_deps[var_name] = [-1]
+            self._var_to_generate_op[var_name] = [-1]
+
+        for idx, op in enumerate(self._block.ops):
+            if op.type in [
+                    "c_allreduce_sum", "c_sync_comm_stream",
+                    "c_calc_comm_stream"
+            ]:
+                continue
+            input_vars = op.desc.input_arg_names()
+            output_vars = op.desc.output_arg_names()
+            deps_reduce = False
+            for input_name in input_vars:
+                if input_name in self._var_deps:
+                    deps_reduce = True
+            if deps_reduce:
+                for input_name in input_vars:
+                    if input_name in self._var_deps:
+                        self._var_deps[input_name].append(idx)
+                for output_name in output_vars:
+                    self._var_deps[output_name] = []
+                    if output_name not in self._var_to_generate_op:
+                        self._var_to_generate_op[output_name] = [idx]
+                    else:
+                        self._var_to_generate_op[output_name].append(idx)
+                if op.type == "conditional_block":
+                    # subblock
+                    assert (op.desc.has_attr("sub_block"))
+                    subblock_idx = op.desc.attr("sub_block").id
+                    subblock_deps = ProgramDeps(
+                        self._block.program.block(subblock_idx),
+                        op.desc.input_arg_names(), op.desc.output_arg_names())
+                    self._sub_block_deps[subblock_idx] = subblock_deps
+                    subblock_deps._father_block_deps = self
+
+    def crop_input_var_from_op(self, op_idx, var_name):
+        if var_name in self._var_deps:
+            if self._var_deps[var_name] != []:
+                assert (self._var_deps[var_name][-1] == op_idx)
+                self._var_deps[var_name].pop()
+            if self._var_deps[var_name] == []:  # no more deps of this var
+                self._should_removed_var.add(var_name)
+            elif self._var_to_generate_op[var_name][-1] >= self._var_deps[
+                    var_name][-1]:
+                self._should_removed_var.add(
+                    var_name)  # there are circle in the graph
+            else:  # input_name should not be deleted
+                if var_name in self._should_removed_var:
+                    self._should_removed_var.remove(var_name)
+
+    def crop_output_var_from_op(self, op_idx, var_name):
+        if var_name in self._var_to_generate_op:
+            assert (self._var_to_generate_op[var_name][-1] == op_idx)
+            self._var_to_generate_op[var_name].pop()
+        if self._block.has_var(var_name) and self._var_to_generate_op[
+                var_name] == []:
+            self._block._remove_var(var_name)
+
+    def remove_op(self, op_idx):
+        # update deps
+        op = self._block.ops[op_idx]
+        print("block remove op %s" % op.type)
+        for input_name in op.desc.input_arg_names():
+            self.crop_input_var_from_op(op_idx, input_name)
+        for output_name in op.desc.output_arg_names():
+            self.crop_output_var_from_op(op_idx, output_name)
+        self._block._remove_op(op_idx)
+
+    def should_remove_op(self, op_idx):
+        op = self._block.ops[op_idx]
+        for output_name in op.desc.output_arg_names():
+            if output_name not in self._should_removed_var:
+                return False
+        return True
+
+
 class ZeroOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(ZeroOptimizer, self).__init__(optimizer)
@@ -65,6 +172,8 @@ class ZeroOptimizer(MetaOptimizerBase):
         self._varname2param = {}
         # varname(str) -> grad(Variable)
         self._varname2grad = {}
+        # reduced grads to param name
+        self._reduced_grads_to_param = {}
         # self._nrings(int) is for nccl communicate
         self._nrings = 1
         # self._sub_progs
@@ -207,136 +316,245 @@ class ZeroOptimizer(MetaOptimizerBase):
                 if len(op_role_var) != 0:
                     assert len(op_role_var) % 2 == 0
                     for i in range(0, len(op_role_var), 2):
-                        sub_prog._allreduce_vars.append(op_role_var[i + 1])
+                        param, reduced_grad = op_role_var[i], op_role_var[i + 1]
+                        sub_prog._allreduce_vars.append(reduced_grad)
+                        assert (
+                            reduced_grad not in self._reduced_grads_to_param)
+                        self._reduced_grads_to_param[reduced_grad] = param
 
         if sub_prog._param_mem > 0:
             sub_prog._start_idx = 0
             self._sub_progs.insert(0, sub_prog)
         return
 
+    def _is_gradient_clip_sum_op(self, op):
+        return op.type == "sum" and op.desc.has_attr("op_namescope") \
+            and op.desc.attr("op_namescope").startswith("/gradient_clip_@CLIP")
+
+    def _is_amp_sum_op(self, op):
+        return op.type == "sum" and op.desc.has_attr("op_namescope") \
+            and op.desc.attr("op_namescope").startswith("/mixed_precision")
+
     def _remove_optimize_ops(self, block):
         """
         calculate deps from allredce op to optimize op,
         remove ops and vars not needed in this worker
         """
-        # string: var_name -> int: deps
-        reduce_var_deps = {}
-        var_as_output_op = {}
+        with open("debug_program", 'w') as f:
+            f.write(str(block.program))
+        # build prog deps
+        reduced_grads = []
+        var_to_reduce_var = {}
         for idx, op in enumerate(block.ops):
+            input_names = op.desc.input_arg_names()
+            output_names = op.desc.output_arg_names()
             if op.type == "c_allreduce_sum":
-                output_names = op.desc.output_arg_names()
                 assert (len(output_names) == 1)
                 output_name = output_names[0]
-                reduce_var_deps[output_name] = 0
-                var_as_output_op[output_name] = idx
-            elif op.type in ["c_sync_comm_stream", "c_calc_comm_stream"]:
-                continue
+                reduced_grads.append(output_name)
+                var_to_reduce_var[output_name] = output_name
             else:
-                deps_reduce = False
-                for input_name in op.desc.input_arg_names():
-                    if input_name in reduce_var_deps:
-                        reduce_var_deps[input_name] += 1
-                        deps_reduce = True
-                if deps_reduce:
-                    for output_name in op.desc.output_arg_names():
-                        reduce_var_deps[output_name] = 0
-                        var_as_output_op[output_name] = idx
+                non_persistable_input = [
+                    x for x in input_names if not block.var(x).persistable
+                ]
+                if len(non_persistable_input) == 1 and len(
+                        output_names) == 1 and non_persistable_input[
+                            0] in var_to_reduce_var:
+                    var_to_reduce_var[output_names[0]] = var_to_reduce_var[
+                        non_persistable_input[0]]
 
-        tobe_removed_vars = set()
+        params = []
         for var_name, _ in block.vars.items():
             if self._is_opti_var(var_name) and \
                 self._var_device_id(var_name) != self.role_maker.worker_index():
-                tobe_removed_vars.add(var_name)
+                params.append(var_name)
+        program_deps = ProgramDeps(block, reduced_grads, params)
+        print("start_vars: ", reduced_grads)
+        print("var_to_reduce_var: ", var_to_reduce_var)
+        print("var_deps: ", program_deps._var_deps)
+        print("_var_to_generate_op: ", program_deps._var_to_generate_op)
 
-        gradient_clip_sum_op = None
+        # Init
+        for var_name in program_deps._end_vars:
+            program_deps._should_removed_var.add(var_name)
+
+        # Prune
         for idx, op in reversed(list(enumerate(block.ops))):
-            if op.type == "c_allreduce_sum":
-                # stop back search
-                output_names = op.desc.output_arg_names()
-                assert (len(output_names) == 1)
-                output_name = output_names[0]
-                del (reduce_var_deps[output_name])
-                if output_name in tobe_removed_vars:
-                    tobe_removed_vars.remove(output_name)
-            elif op.type in [
-                    "c_sync_comm_stream", "c_calc_comm_stream", "c_gen_nccl_id",
-                    "c_comm_init"
+            if op.type in [
+                    "c_allreduce_sum", "c_sync_comm_stream",
+                    "c_calc_comm_stream", "c_gen_nccl_id", "c_comm_init"
             ]:
                 pass
-            elif op.type == "sum" and op.desc.has_attr("op_namescope") \
-                and op.desc.attr("op_namescope").startswith("/gradient_clip_@CLIP"):
-                print("find gradient clip sum op")
-                print(_pretty_op_desc_(op.desc, "gradient clip op"))
-                gradient_clip_sum_op = op
+            elif self._is_gradient_clip_sum_op(op) or self._is_amp_sum_op(op):
+                print("sum op: ")
+                print(op)
+                reversed_input_vars = []
                 for input_name in op.desc.input_arg_names():
-                    gradient_var = input_name
-                    while gradient_var in var_as_output_op:
-                        before_op = block.ops[var_as_output_op[gradient_var]]
-                        assert (len(before_op.desc.input_arg_names()) == 1)
-                        if before_op.desc.input_arg_names()[0] == gradient_var:
-                            break
-                        gradient_var = before_op.desc.input_arg_names()[0]
-                    if reduce_var_deps[gradient_var] == 1:
-                        reduce_var_deps[input_name] -= 1
-                        if reduce_var_deps[input_name] == 0:
-                            tobe_removed_vars.add(input_name)
+                    assert (input_name in var_to_reduce_var)
+                    reduce_var = var_to_reduce_var[input_name]
+                    param_name = self._reduced_grads_to_param[reduce_var]
+                    if self._param2device[
+                            param_name] != self.role_maker.worker_index():
+                        program_deps.crop_input_var_from_op(idx, input_name)
+                    else:
+                        reversed_input_vars.append(input_name)
+                op.desc.set_input("X", reversed_input_vars)
+                assert (len(op.desc.output_arg_names()) == 1)
+                sum_res = op.desc.output_arg_names()[0]
+                block._insert_op(
+                    idx + 1,
+                    type='c_sync_comm_stream',
+                    inputs={'X': sum_res},
+                    outputs={'Out': sum_res},
+                    attrs={'ring_id': 0,
+                           OP_ROLE_KEY: OpRole.Optimize})
+                block._insert_op(
+                    idx + 1,
+                    type='c_allreduce_sum',
+                    inputs={'X': sum_res},
+                    outputs={'Out': sum_res},
+                    attrs={'ring_id': 0,
+                           OP_ROLE_KEY: OpRole.Optimize})
+                block._insert_op(
+                    idx + 1,
+                    type='c_sync_calc_stream',
+                    inputs={'X': sum_res},
+                    outputs={'Out': sum_res},
+                    attrs={OP_ROLE_KEY: OpRole.Optimize})
+            elif op.type == "conditional_block":
+                assert (op.desc.has_attr("sub_block"))
+                subblock_idx = op.desc.attr("sub_block").id
+                subblock_deps = program_deps.get_sub_block_deps(subblock_idx)
+                if subblock_deps is None:
+                    continue
+                # init
+                reversed_output_vars = []
+                for output_name in op.desc.output("Out"):
+                    if output_name in program_deps._should_removed_var:
+                        subblock_deps._should_removed_var.add(output_name)
+                        program_deps.crop_output_var_from_op(idx, output_name)
+                    else:
+                        reversed_output_vars.append(output_name)
+                # prune
+                for sub_op_idx, _ in reversed(
+                        list(enumerate(subblock_deps._block.ops))):
+                    if subblock_deps.should_remove_op(sub_op_idx):
+                        subblock_deps.remove_op(sub_op_idx)
+                reversed_input_vars = []
+                for input_name in op.desc.input('Input'):
+                    if input_name not in subblock_deps._should_removed_var:
+                        reversed_input_vars.append(input_name)
+                    else:
+                        program_deps.crop_input_var_from_op(idx, input_name)
+                op.desc.set_input('Input', reversed_input_vars)
+                op.desc.set_output('Out', reversed_output_vars)
             else:
-                remove_op = True
-                for output_name in op.desc.output_arg_names():
-                    if output_name not in tobe_removed_vars:
-                        remove_op = False
-                        break
-                if remove_op:
-                    print("%d: block remove op %s" %
-                          (self.role_maker.worker_index(), op.type))
-                    for input_name in op.desc.input_arg_names():
-                        if input_name in reduce_var_deps:
-                            reduce_var_deps[input_name] -= 1
-                            if reduce_var_deps[input_name] == 0:
-                                tobe_removed_vars.add(input_name)
-                    block._remove_op(idx)
+                if program_deps.should_remove_op(idx):
+                    program_deps.remove_op(idx)
 
-        for var_name in tobe_removed_vars:
-            print("%d: block remove var %s" %
-                  (self.role_maker.worker_index(), var_name))
-            block._remove_var(var_name)
+        # for idx, op in enumerate(block.ops):
+        #     if op.type == "c_allreduce_sum":
+        #         output_names = op.desc.output_arg_names()
+        #         assert (len(output_names) == 1)
+        #         output_name = output_names[0]
+        #         reduce_var_deps[output_name] = 0
+        #         var_to_reduce_var[output_name] = output_name
+        #     elif op.type in ["c_sync_comm_stream", "c_calc_comm_stream"]:
+        #         continue
+        #     else:
+        #         input_vars = [x for x in op.desc.input_arg_names()]
+        #         output_vars = [x for x in op.desc.output_arg_names()]
+        #         deps_reduce = False
+        #         for input_name in input_vars:
+        #             if input_name in reduce_var_deps:
+        #                 reduce_var_deps[input_name] += 1
+        #                 deps_reduce = True
+        #         if deps_reduce:
+        #             for output_name in output_vars:
+        #                 reduce_var_deps[output_name] = 0
 
-        if gradient_clip_sum_op is not None:
-            # gradient clip got sum op
-            print("remove gradient clip sum op")
-            sum_vars = [
-                x for x in gradient_clip_sum_op.desc.input_arg_names()
-                if block.has_var(x)
-            ]
-            gradient_clip_sum_op.desc.set_input("X", sum_vars)
-            op_idx = block.ops.index(gradient_clip_sum_op)
-            assert (len(gradient_clip_sum_op.desc.output_arg_names()) == 1)
-            sum_res = gradient_clip_sum_op.desc.output_arg_names()[0]
-            block._insert_op(
-                op_idx + 1,
-                type='c_sync_calc_stream',
-                inputs={'X': sum_res},
-                outputs={'Out': sum_res},
-                attrs={OP_ROLE_KEY: OpRole.Optimize})
-            block._insert_op(
-                op_idx + 2,
-                type='c_allreduce_sum',
-                inputs={'X': sum_res},
-                outputs={'Out': sum_res},
-                attrs={'ring_id': 0,
-                       OP_ROLE_KEY: OpRole.Optimize})
-            block._insert_op(
-                op_idx + 3,
-                type='c_sync_comm_stream',
-                inputs={'X': sum_res},
-                outputs={'Out': sum_res},
-                attrs={'ring_id': 0,
-                       OP_ROLE_KEY: OpRole.Optimize})
+        #         non_persistable_input = [x for x in input_vars if not block.var(x).persistable]
+        #         if len(non_persistable_input) == 1 and len(output_vars) == 1 and input_vars[0] in var_to_reduce_var:
+        #             var_to_reduce_var[output_vars[0]] = var_to_reduce_var[input_vars[0]]
+
+        # print("var_to_reduce_var: ", var_to_reduce_var)
+
+        # for idx, op in reversed(list(enumerate(block.ops))):
+        #     if op.type == "c_allreduce_sum":
+        #         # stop back search
+        #         output_names = op.desc.output_arg_names()
+        #         assert (len(output_names) == 1)
+        #         output_name = output_names[0]
+        #         del (reduce_var_deps[output_name])
+        #         if output_name in tobe_removed_vars:
+        #             tobe_removed_vars.remove(output_name)
+        #     elif op.type in [
+        #             "c_sync_comm_stream", "c_calc_comm_stream", "c_gen_nccl_id",
+        #             "c_comm_init"
+        #     ]:
+        #         pass
+        #     elif self._is_gradient_clip_sum_op(op) or self._is_amp_sum_op(op):
+        #         print("sum op: ")
+        #         print(op)
+        #         reversed_input_vars = []
+        #         for input_name in op.desc.input_arg_names():
+        #             assert(input_name in var_to_reduce_var)
+        #             reduce_var = var_to_reduce_var[input_name]
+        #             param_name = self._reduced_grads_to_param[reduce_var]
+        #             if self._param2device[param_name] != self.role_maker.worker_index():
+        #                 reduce_var_deps[input_name] -= 1
+        #                 if reduce_var_deps[input_name] == 0:
+        #                     tobe_removed_vars.add(input_name)
+        #             else:
+        #                 reversed_input_vars.append(input_name)
+        #         op.desc.set_input("X", reversed_input_vars)
+        #         assert (len(op.desc.output_arg_names()) == 1)
+        #         sum_res = op.desc.output_arg_names()[0]
+        #         block._insert_op(
+        #             idx+1,
+        #             type='c_sync_comm_stream',
+        #             inputs={'X': sum_res},
+        #             outputs={'Out': sum_res},
+        #             attrs={'ring_id': 0,
+        #                 OP_ROLE_KEY: OpRole.Optimize})
+        #         block._insert_op(
+        #             idx+1,
+        #             type='c_allreduce_sum',
+        #             inputs={'X': sum_res},
+        #             outputs={'Out': sum_res},
+        #             attrs={'ring_id': 0,
+        #                 OP_ROLE_KEY: OpRole.Optimize})
+        #         block._insert_op(
+        #             idx+1,
+        #             type='c_sync_calc_stream',
+        #             inputs={'X': sum_res},
+        #             outputs={'Out': sum_res},
+        #             attrs={OP_ROLE_KEY: OpRole.Optimize})
+        #     else:
+        #         remove_op = True
+        #         for output_name in op.desc.output_arg_names():
+        #             if output_name not in tobe_removed_vars:
+        #                 remove_op = False
+        #                 break
+        #         if remove_op:
+        #             print("%d: block remove op %s" %
+        #                   (self.role_maker.worker_index(), op.type))
+        #             for input_name in op.desc.input_arg_names():
+        #                 if input_name in reduce_var_deps:
+        #                     reduce_var_deps[input_name] -= 1
+        #                     if reduce_var_deps[input_name] == 0:
+        #                         tobe_removed_vars.add(input_name)
+        #             block._remove_op(idx)
+
+        # for var_name in tobe_removed_vars:
+        #     print("%d: block remove var %s" %
+        #           (self.role_maker.worker_index(), var_name))
+        #     block._remove_var(var_name)
 
         block._sync_with_cpp()
         return
 
-    def add_broadcast_allreduce(self, block, sub_prog, offset):
+    def _add_broadcast_allreduce(self, block, sub_prog, offset):
         """
         add broadcast and allreduce
         """
@@ -460,14 +678,14 @@ class ZeroOptimizer(MetaOptimizerBase):
         ckpts = list(self.user_defined_strategy.recompute_configs[
             "checkpoints"])
         optimizer = self.inner_opt
-        if len(ckpts) > 0:
-            print("add recompute")
-            print(ckpts)
-            optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
-            optimizer._set_checkpoints(ckpts)
+        # if len(ckpts) > 0:
+        #     print("add recompute")
+        #     print(ckpts)
+        #     optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
+        #     optimizer._set_checkpoints(ckpts)
 
         # optimizer = fluid.contrib.mixed_precision.decorate(
-        #     optimizer, use_dynamic_loss_scaling=False)
+        #     optimizer, use_dynamic_loss_scaling=True)
         print("doing zero optimize...")
         optimize_ops, params_grads = optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
@@ -504,8 +722,8 @@ class ZeroOptimizer(MetaOptimizerBase):
         for idx, subprog in enumerate(self._sub_progs):
             print("subprog_{}: ({}-{})".format(idx, subprog._start_idx,
                                                subprog._end_idx))
-            inserted_op_num += self.add_broadcast_allreduce(main_block, subprog,
-                                                            inserted_op_num)
+            inserted_op_num += self._add_broadcast_allreduce(
+                main_block, subprog, inserted_op_num)
 
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
@@ -516,12 +734,29 @@ class ZeroOptimizer(MetaOptimizerBase):
         main_block._sync_with_cpp()
 
         # step4: remove unneeded ops and vars from block
-        print("startup_block remove ops and vars")
-        self._remove_optimize_ops(startup_block)
         print("main_block remove ops and vars")
         self._remove_optimize_ops(main_block)
-        startup_block._sync_with_cpp()
         main_block._sync_with_cpp()
+        print("startup_block remove ops and vars")
+        for idx, op in reversed(list(enumerate(startup_block.ops))):
+            for output_name in op.desc.output_arg_names():
+                var_device_id = self._var_device_id(output_name)
+                if var_device_id == -1 or var_device_id == self.role_maker.worker_index(
+                ):
+                    continue
+                print("%d: startup_block remove op %s" %
+                      (self.role_maker.worker_index(), op.type))
+                startup_block._remove_op(idx)
+                break
+        for var_name, var in startup_block.vars.items():
+            var_device_id = self._var_device_id(var_name)
+            if var_device_id == -1 or var_device_id == self.role_maker.worker_index(
+            ):
+                continue
+            print("%d: startup_block remove %s" %
+                  (self.role_maker.worker_index(), var_name))
+            startup_block._remove_var(var_name)
+        startup_block._sync_with_cpp()
 
         # check op dependecy for broadcast
         self._check_broadcast(main_block)
