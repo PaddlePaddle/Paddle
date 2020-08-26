@@ -31,6 +31,33 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator() {
   return default_cpu_generator;
 }
 
+const std::shared_ptr<std::mt19937_64>& OpDefaultCPUEngine() {
+  static auto op_default_cpu_engine = std::make_shared<std::mt19937_64>();
+  return op_default_cpu_engine;
+}
+
+// NOTE(zhiqiu): there are 3 conditions:
+// (1) op seed is not set and DefaultCPUGenerator is inited, use
+// DefaultCPUGenerator
+// (2) op seed is not set and DefaultCPUGenerator is not inited, use se
+// OpDefaultCPUEngine() and set a radnom seed
+// (3) op seed is set, use OpDefaultCPUEngine() and set the seed
+const std::mt19937_64& GetCPURandomEngine(uint64_t seed) {
+  if (DefaultCPUGenerator()->GetIsInitPy() && seed == 0) {
+    return DefaultCPUGenerator()->GetCPUEngine();
+  } else {
+    if (seed == 0) {
+      seed = GetRandomSeed();
+    }
+    static std::mutex mu_;
+    {
+      std::lock_guard<std::mutex> lock(mu_);
+      OpDefaultCPUEngine()->seed(seed);
+    }
+    return *OpDefaultCPUEngine();
+  }
+}
+
 GeneratorState* Generator::GetState() {
   std::lock_guard<std::mutex> lock(this->mutex);
   return this->state_.get();

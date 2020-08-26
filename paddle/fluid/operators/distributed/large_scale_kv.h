@@ -88,26 +88,17 @@ class UniformInitializer : public Initializer {
     min_ = std::stof(attrs[2]);
     max_ = std::stof(attrs[3]);
 
-    if (seed_ == 0) {
-      seed_ = std::random_device()();
-    }
-
-    random_engine_.seed(seed_);
     dist_ = std::uniform_real_distribution<float>(min_, max_);
+    random_engine_ = framework::GetCPURandomEngine(seed_);
   }
 
-  float GetValue() override {
-    return framework::DefaultCPUGenerator()->GetIsInitPy()
-               ? dist_(framework::DefaultCPUGenerator()->GetCPUEngine())
-               : dist_(random_engine_);
-    // return dist_(random_engine_);
-  }
+  float GetValue() override { return dist_(random_engine_); }
 
  private:
   float min_;
   float max_;
 
-  std::minstd_rand random_engine_;
+  std::mt19937_64 random_engine_;
   std::uniform_real_distribution<float> dist_;
 };
 
@@ -138,26 +129,18 @@ class GaussianInitializer : public Initializer {
     mean_ = std::stof(attrs[2]);
     std_ = std::stof(attrs[3]);
 
-    if (seed_ == 0) {
-      seed_ = std::random_device()();
-    }
+    random_engine_ = framework::GetCPURandomEngine(seed_);
 
-    random_engine_.seed(seed_);
     dist_ = std::normal_distribution<float>(mean_, std_);
   }
 
-  float GetValue() override {
-    return framework::DefaultCPUGenerator()->GetIsInitPy()
-               ? dist_(framework::DefaultCPUGenerator()->GetCPUEngine())
-               : dist_(random_engine_);
-    // return dist_(random_engine_);
-  }
+  float GetValue() override { return dist_(random_engine_); }
 
  private:
   float std_;
   float mean_;
 
-  std::minstd_rand random_engine_;
+  std::mt19937_64 random_engine_;
   std::normal_distribution<float> dist_;
 };
 

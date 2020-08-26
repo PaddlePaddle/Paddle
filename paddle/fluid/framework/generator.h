@@ -95,7 +95,13 @@ struct Generator {
   bool is_init_py_ = false;
 };
 
+// The DefaultCPUGenerator is used in manual_seed()
 const std::shared_ptr<Generator>& DefaultCPUGenerator();
+
+// If op seed is set or global is not set, the OpDefaultCPUEngine is used.
+const std::shared_ptr<std::mt19937_64>& OpDefaultCPUEngine();
+
+const std::mt19937_64& GetCPURandomEngine(uint64_t);
 
 }  // namespace framework
 }  // namespace paddle

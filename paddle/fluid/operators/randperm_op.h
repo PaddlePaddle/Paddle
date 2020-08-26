@@ -30,20 +30,12 @@ namespace operators {
 
 template <typename T>
 static inline void random_permate(T* data_ptr, int num, unsigned int seed) {
+  auto engine = framework::GetCPURandomEngine(seed);
   for (int i = 0; i < num; ++i) {
     data_ptr[i] = static_cast<T>(i);
   }
-  if (framework::DefaultCPUGenerator()->GetIsInitPy()) {
-    std::shuffle(data_ptr, data_ptr + num,
-                 framework::DefaultCPUGenerator()->GetCPUEngine());
 
-  } else {
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    std::srand(seed);
-    std::random_shuffle(data_ptr, data_ptr + num);
-  }
+  std::shuffle(data_ptr, data_ptr + num, engine);
 }
 
 template <typename DeviceContext, typename T>

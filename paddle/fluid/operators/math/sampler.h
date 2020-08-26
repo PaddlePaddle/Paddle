@@ -26,8 +26,8 @@ namespace math {
 // TODO(wanghaoshuang): Support for GPU
 
 /**
-* Sample integers from [0, range).
-*/
+ * Sample integers from [0, range).
+ */
 class Sampler {
  public:
   explicit Sampler(int64_t range, unsigned int seed = 0UL) : range_(range) {
@@ -72,8 +72,8 @@ class UniformSampler : public Sampler {
 
  private:
   const float inv_range_;
-  std::shared_ptr<std::mt19937_64> random_engine_;
-  std::shared_ptr<std::uniform_int_distribution<>> dist_;
+  std::mt19937_64 random_engine_;
+  std::shared_ptr<std::uniform_int_distribution<uint64_t>> dist_;
 };
 
 /**
@@ -93,8 +93,8 @@ class LogUniformSampler : public Sampler {
 
  private:
   const float log_range_;
-  std::shared_ptr<std::mt19937_64> random_engine_;
-  std::shared_ptr<std::uniform_real_distribution<>> dist_;
+  std::mt19937_64 random_engine_;
+  std::shared_ptr<std::uniform_real_distribution<double>> dist_;
 };
 
 /**
@@ -117,9 +117,9 @@ class CustomSampler : public Sampler {
   const int* alias_;
   const float* probs_;
   const int exceptional_val = -1;
-  std::shared_ptr<std::mt19937> random_engine_;
-  std::shared_ptr<std::uniform_real_distribution<>> real_dist_;
-  std::shared_ptr<std::uniform_int_distribution<>> int_dist_;
+  std::mt19937_64 random_engine_;
+  std::shared_ptr<std::uniform_real_distribution<double>> real_dist_;
+  std::shared_ptr<std::uniform_int_distribution<uint64_t>> int_dist_;
 };
 
 }  // namespace math

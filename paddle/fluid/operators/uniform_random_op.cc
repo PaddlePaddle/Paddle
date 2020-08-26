@@ -64,22 +64,11 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     std::uniform_real_distribution<T> dist(
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
-    auto gen_ptr = framework::DefaultCPUGenerator();
-    if (gen_ptr->GetIsInitPy()) {
-      std::mt19937_64 &gen_engine = gen_ptr->GetCPUEngine();
-      for (int64_t i = 0; i < size; ++i) {
-        data[i] = dist(gen_engine);
-      }
-    } else {
-      unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-      std::minstd_rand engine;
-      if (seed == 0) {
-        seed = std::random_device()();
-      }
-      engine.seed(seed);
-      for (int64_t i = 0; i < size; ++i) {
-        data[i] = dist(engine);
-      }
+    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
+    auto engine = framework::GetCPURandomEngine(seed);
+
+    for (int64_t i = 0; i < size; ++i) {
+      data[i] = dist(engine);
     }
 
     unsigned int diag_num =
@@ -130,12 +119,12 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     if (ctx->HasInputs("ShapeTensorList")) {
       // top prority shape
       auto inputs_name = ctx->Inputs("ShapeTensorList");
-      PADDLE_ENFORCE_GT(
-          inputs_name.size(), 0,
-          platform::errors::InvalidArgument(
-              "Input(ShapeTensorList)'size of Op(uniform_random) can't be zero."
-              "Please check the Attr(shape)'s size of"
-              "Op(fluid.layers.uniform_random).)"));
+      PADDLE_ENFORCE_GT(inputs_name.size(), 0,
+                        platform::errors::InvalidArgument(
+                            "Input(ShapeTensorList)'size of "
+                            "Op(uniform_random) can't be zero."
+                            "Please check the Attr(shape)'s size of"
+                            "Op(fluid.layers.uniform_random).)"));
       auto out_dims = std::vector<int>(inputs_name.size(), -1);
       ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
 

@@ -56,29 +56,21 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         return;
       }
 
-      bool init_generator_py = framework::DefaultCPUGenerator()->GetIsInitPy();
-
       // NOTE: fixed seed should only be used in unittest or for debug.
       // Guarantee to use random seed in training.
-      std::random_device rnd;
-      std::minstd_rand engine;
       int seed_data;
       if (seed) {
         seed_data = *(seed->data<int>());
       } else {
-        seed_data =
-            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+        seed_data = context.Attr<int>("seed");
       }
+      auto engine = framework::GetCPURandomEngine(seed_data);
       engine.seed(seed_data);
 
       std::uniform_real_distribution<float> dist(0, 1);
 
       for (size_t i = 0; i < size; ++i) {
-        float cur_random =
-            init_generator_py
-                ? dist(framework::DefaultCPUGenerator()->GetCPUEngine())
-                : dist(engine);
-        if (cur_random < dropout_prob) {
+        if (dist(engine) < dropout_prob) {
           mask_data[i] = 0;
           y_data[i] = 0;
         } else {

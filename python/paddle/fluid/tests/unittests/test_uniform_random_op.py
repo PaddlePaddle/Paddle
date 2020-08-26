@@ -350,7 +350,8 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 class TestUniformRandomOp_API_seed(unittest.TestCase):
     def test_attr_tensor_API(self):
         _seed = 10
-        paddle.manual_seed(_seed)
+        gen = paddle.manual_seed(_seed)
+        gen._is_init_py = False
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):

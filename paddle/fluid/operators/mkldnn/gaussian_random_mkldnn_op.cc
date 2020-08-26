@@ -36,23 +36,11 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
     T* data = tensor->mutable_data<T>(context.GetPlace());
     int64_t size = tensor->numel();
     std::normal_distribution<T> dist(mean, std);
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    auto engine = framework::GetCPURandomEngine(seed);
 
-    if (framework::DefaultCPUGenerator()->is_init_py) {
-      std::mt19937_64& gen_engine =
-          framework::DefaultCPUGenerator()->GetCPUEngine();
-      for (int64_t i = 0; i < size; ++i) {
-        data[i] = dist(gen_engine);
-      }
-    } else {
-      unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-      std::minstd_rand engine;
-      if (seed == 0) {
-        seed = std::random_device()();
-      }
-      engine.seed(seed);
-      for (int64_t i = 0; i < size; ++i) {
-        data[i] = dist(engine);
-      }
+    for (int64_t i = 0; i < size; ++i) {
+      data[i] = dist(gen_engine);
     }
 
     tensor->set_layout(DataLayout::kMKLDNN);

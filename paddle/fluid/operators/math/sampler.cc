@@ -31,23 +31,18 @@ Sampler::~Sampler() {}
 
 UniformSampler::UniformSampler(int64_t range, unsigned int seed)
     : Sampler(range, seed), inv_range_(1.0 / (range + 1)) {
-  random_engine_ = std::make_shared<std::mt19937_64>(seed_);
-  dist_ = std::make_shared<std::uniform_int_distribution<>>(0, range);
+  random_engine_ = framework::GetCPURandomEngine(seed_);
+  dist_ = std::make_shared<std::uniform_int_distribution<uint64_t>>(0, range);
 }
 
-int64_t UniformSampler::Sample() const {
-  return framework::DefaultCPUGenerator()->GetIsInitPy()
-             ? (*dist_)(framework::DefaultCPUGenerator()->GetCPUEngine())
-             : (*dist_)(*random_engine_);
-  // return (*dist_)(*random_engine_);
-}
+int64_t UniformSampler::Sample() const { return (*dist_)(random_engine_); }
 
 float UniformSampler::Probability(int64_t value) const { return inv_range_; }
 
 LogUniformSampler::LogUniformSampler(int64_t range, unsigned int seed)
     : Sampler(range, seed), log_range_(log(range + 1)) {
-  random_engine_ = std::make_shared<std::mt19937_64>(seed_);
-  dist_ = std::make_shared<std::uniform_real_distribution<>>(0, 1);
+  random_engine_ = framework::GetCPURandomEngine(seed_);
+  dist_ = std::make_shared<std::uniform_real_distribution<double>>(0, 1);
 }
 
 int64_t LogUniformSampler::Sample() const {
@@ -55,10 +50,7 @@ int64_t LogUniformSampler::Sample() const {
   // inverse_transform_sampling method
   // More details:
   // https://wanghaoshuang.github.io/2017/11/Log-uniform-distribution-sampler/
-  auto cur_random =
-      framework::DefaultCPUGenerator()->GetIsInitPy()
-          ? (*dist_)(framework::DefaultCPUGenerator()->GetCPUEngine())
-          : (*dist_)(*random_engine_);
+  auto cur_random = (*dist_)(random_engine_);
   const int64_t value = static_cast<int64_t>(exp(cur_random * log_range_)) - 1;
   // Mathematically, value should be <= range_, but might not be due to some
   // floating point roundoff, so we mod by range_.
@@ -77,9 +69,10 @@ CustomSampler::CustomSampler(int64_t range, const float *probabilities,
                              const int *alias, const float *alias_probabilities,
                              unsigned int seed)
     : Sampler(range, seed) {
-  random_engine_ = std::make_shared<std::mt19937>(seed_);
-  real_dist_ = std::make_shared<std::uniform_real_distribution<>>(0, 1);
-  int_dist_ = std::make_shared<std::uniform_int_distribution<>>(0, range);
+  random_engine_ = framework::GetCPURandomEngine(seed_);
+  real_dist_ = std::make_shared<std::uniform_real_distribution<double>>(0, 1);
+  int_dist_ =
+      std::make_shared<std::uniform_int_distribution<uint64_t>>(0, range);
 
   alias_probs_ = alias_probabilities;
   probs_ = probabilities;
@@ -87,13 +80,8 @@ CustomSampler::CustomSampler(int64_t range, const float *probabilities,
 }
 
 int64_t CustomSampler::Sample() const {
-  auto index =
-      framework::DefaultCPUGenerator()->GetIsInitPy()
-          ? (*int_dist_)(framework::DefaultCPUGenerator()->GetCPUEngine())
-          : (*int_dist_)(*random_engine_);
-  auto p = framework::DefaultCPUGenerator()->GetIsInitPy()
-               ? (*real_dist_)(framework::DefaultCPUGenerator()->GetCPUEngine())
-               : (*real_dist_)(*random_engine_);
+  auto index = (*int_dist_)(random_engine_);
+  auto p = (*real_dist_)(random_engine_);
   if (p > alias_probs_[index]) {
     int alias = alias_[index];
 
