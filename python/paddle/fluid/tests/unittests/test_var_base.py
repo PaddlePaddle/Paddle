@@ -32,6 +32,30 @@ class TestVarBase(unittest.TestCase):
     def test_to_tensor(self):
         def _test_place(place):
             with fluid.dygraph.guard():
+                paddle.set_default_dtype('float32')
+                x = paddle.to_tensor(1, place=place, stop_gradient=False)
+                self.assertTrue(np.array_equal(x.numpy(), [1]))
+                self.assertNotEqual(x.dtype, core.VarDesc.VarType.FP32)
+
+                x = paddle.to_tensor(1.2, place=place, stop_gradient=False)
+                self.assertTrue(
+                    np.array_equal(x.numpy(), np.array([1.2]).astype(
+                        'float32')))
+                self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
+
+                x = paddle.to_tensor(1 + 2j, place=place, stop_gradient=False)
+                self.assertTrue(np.array_equal(x.numpy(), [1 + 2j]))
+                self.assertEqual(x.dtype, 'complex64')
+
+                paddle.set_default_dtype('float64')
+                x = paddle.to_tensor(1.2, place=place, stop_gradient=False)
+                self.assertTrue(np.array_equal(x.numpy(), [1.2]))
+                self.assertEqual(x.dtype, core.VarDesc.VarType.FP64)
+
+                x = paddle.to_tensor(1 + 2j, place=place, stop_gradient=False)
+                self.assertTrue(np.array_equal(x.numpy(), [1 + 2j]))
+                self.assertEqual(x.dtype, 'complex128')
+
                 x = paddle.to_tensor(
                     1, dtype='float32', place=place, stop_gradient=False)
                 self.assertTrue(np.array_equal(x.numpy(), [1.]))

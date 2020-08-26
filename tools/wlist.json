@@ -234,6 +234,7 @@
         "prroi_pool"
     ],
     "wlist_temp":[
+        "to_tensor",
         "ChunkEvaluator",
         "EditDistance",
         "ErrorClipByValue",
