@@ -270,7 +270,7 @@ endif(WITH_PSLIB)
 
 if(WITH_GLOO)
     if(NOT WIN32 AND NOT APPLE)
-	include(external/gloo)
+        include(external/gloo)
         list(APPEND third_party_deps extern_gloo)
     endif()
 endif()
