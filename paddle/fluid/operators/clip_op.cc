@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/clip_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include <limits>
 #include <memory>
 
@@ -125,3 +126,10 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     clip_grad, ops::ClipGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ClipGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_VERSION(clip)
+.AddCheckpoint(
+  R"ROC(Upgrade clip, add default value for max and min attributes.)ROC",
+  OpVersionDesc()
+  .ModifyAttr("min", std::numeric_limits<float>::min())
+  .ModifyAttr("max", std::numeric_limits<float>::max()));
