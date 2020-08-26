@@ -552,7 +552,11 @@ class SELU(layers.Layer):
 
     .. math::
 
-        SELU(x) = scale * (max(0,x) + min(0, alpha * (e^{x} - 1)))
+        SELU(x)= scale *
+                 \\begin{cases}
+                   x, \\text{if } x > 0 \\\\
+                   alpha * e^{x} - alpha, \\text{if } x <= 0
+                 \\end{cases}
 
     Parameters:
         scale (float, optional): The value of scale for SELU. Default is 1.0507009873554804934193349852946
