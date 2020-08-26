@@ -24,6 +24,11 @@ from paddle.dataset.common import DATA_HOME, md5file
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.incubate.hapi.download import get_path_from_url
 
+__all__ = [
+    'SimpleDataset',
+    'TSVDataset',
+]
+
 
 class SimpleDataset(Dataset):
     """
@@ -131,6 +136,7 @@ class TSVDataset(SimpleDataset):
     """
     Common tab separated text dataset that reads text fields based on provided
     sample splitter and field separator.
+
     The returned dataset includes samples, each of which can either be a list
     of text fields if field_separator is specified, or otherwise a single
     string segment produced by the sample_splitter.
@@ -140,10 +146,11 @@ class TSVDataset(SimpleDataset):
             paths to the input text files.
         encoding (str): File encoding format. Default: 'utf8'.
         sample_splitter (function): A function that splits the dataset string
-            into samples.Default: str.splitlines
+            into samples. Default: str.splitlines
         field_separator (function|None): A function that splits each sample
             string into list of text fields. If None, raw samples are returned
-            according to `sample_splitter`. Default: Splitter('\t').
+            according to `sample_splitter`. Default: split method of str with
+            tab as separator.
         num_discard_samples (int): Number of samples discarded at the head of
             the first file. Default: 0.
         field_indices (list|int|None): If set, for each sample, only fields

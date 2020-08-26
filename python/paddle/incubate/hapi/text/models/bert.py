@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.incubate.hapi.model import Model
+from paddle.fluid.dygraph import Layer
 
-# from .model_utils import PreTrainedModel
-from paddle.incubate.hapi.text.model_utils import PreTrainedModel
+from ..utils import PreTrainedModel
 
 
 class BertModel(PreTrainedModel):

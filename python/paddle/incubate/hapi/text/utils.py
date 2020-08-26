@@ -21,27 +21,31 @@ import os
 import six
 
 import paddle
+from paddle.fluid.dygraph import Layer
 from paddle.dataset.common import DATA_HOME
 from paddle.incubate.hapi.download import get_path_from_url
 
 from .vocab import Vocab
+from ..model import Model
+
+__all__ = [
+    'PreTrainedTokenizer',
+    'PreTrainedModel',
+]
 
 
-class InitTrackerMeta(type(paddle.fluid.dygraph.Layer)):
+class InitTrackerMeta(type(Layer)):
     """
-    Since InitTrackerMeta would be used as metaclass for model, thus use
-    type(Layer) rather than type to avoid multiple inheritance metaclass
-    conflicts temporarily.
-    
-    """
+    This metaclass wraps the `__init__` method of a class to add `init_config`
+    attribute for instances of that class, and `init_config` use a dict to track
+    the initial configuration. If the class has `_wrap_init` method, it would be
+    hooked after `__init__` and called as `_wrap_init(self, init_fn, init_args)`.
 
-    # def __new__(cls, name, bases, attrs):
-    #     if '__init__' in attrs:
-    #         init_func = attrs['__init__']
-    #         help_func = attrs.get('_wrap_init', None)
-    #         attrs['__init__'] = cls.wrap_with_conf_tracker(
-    #             init_func, help_func)
-    #     return type.__new__(cls, name, bases, attrs)
+    Since InitTrackerMeta would be used as metaclass for pretrained model classes,
+    which always are Layer and `type(Layer)` is not `type`, thus use `type(Layer)`
+    rather than `type` as base class for it to avoid inheritance metaclass
+    conflicts.
+    """
 
     def __init__(cls, name, bases, attrs):
         init_func = cls.__init__
@@ -50,12 +54,25 @@ class InitTrackerMeta(type(paddle.fluid.dygraph.Layer)):
         # TODO: remove reduplicated tracker if using super cls `__init__`
         help_func = getattr(cls, '_wrap_init',
                             None) if '__init__' in attrs else None
-        cls.__init__ = InitTrackerMeta.init_then_track_conf(init_func,
-                                                            help_func)
+        cls.__init__ = InitTrackerMeta.init_and_track_conf(init_func, help_func)
         super(InitTrackerMeta, cls).__init__(name, bases, attrs)
 
     @staticmethod
-    def init_then_track_conf(init_func, help_func=None):
+    def init_and_track_conf(init_func, help_func=None):
+        """
+        wraps `init_func` which is `__init__` method of a class to add `init_config`
+        attribute for instances of that class.
+
+        Args:
+            init_func (callable): It should be the `__init__` method of a class.
+            help_func (callable, optional): If provided, it would be hooked after
+                `init_func` and called as `_wrap_init(self, init_func, *init_args, **init_args)`.
+                Default None.
+        
+        Returns:
+            function: the wrapped function
+        """
+
         @functools.wraps(init_func)
         def __impl__(self, *args, **kwargs):
             args_bak = copy.deepcopy(args)
@@ -64,7 +81,7 @@ class InitTrackerMeta(type(paddle.fluid.dygraph.Layer)):
             # TODO: Add class info into config
             # any need to use inspect.getfullargspec to rearrange
             if args_bak:
-                kwargs_bak['init_inputs'] = args_bak
+                kwargs_bak['init_args'] = args_bak
             self.init_config = kwargs_bak
             # registed helper by `_wrap_init`
             if help_func:
@@ -76,8 +93,26 @@ class InitTrackerMeta(type(paddle.fluid.dygraph.Layer)):
 @six.add_metaclass(InitTrackerMeta)
 class PreTrainedTokenizer(object):
     """
-    The base class of the BertTokenizer, which provides the interface for 
-    loading and saving the tokenzier used in the pre-raining.
+    The base class for all pretrained tokenizers. It provides some attributes
+    and common methods for all pretrained tokenizers, including attributes for
+    and special tokens (arguments of `__init__` whose name ends with `_token`)
+    and methods for saving and loading.
+
+    It also includes some class attributes (should be set by derived classes):
+
+    - `tokenizer_config_file` (str): represents the file name for saving and loading
+      tokenizer configuration, it's value is `tokenizer_config.json`.
+
+    - `resource_files_names` (dict): use this to map resource related arguments
+      of `__init__` to specific file names for saving and loading.
+
+    - `pretrained_resource_files_map` (dict): The dict has the same keys as
+      `resource_files_names`, the values are also dict mapping specific pretrained
+      model name to URL linking to vocabulary or other resources.
+
+    - `pretrained_init_configuration` (dict): The dict has pretrained model names
+      as keys, and the values are also dict preserving corresponding configuration
+      for tokenizer initialization.
     """
     tokenizer_config_file = "tokenizer_config.json"
     pretrained_init_configuration = {}
@@ -85,6 +120,11 @@ class PreTrainedTokenizer(object):
     pretrained_resource_files_map = {}
 
     def _wrap_init(self, original_init, *args, **kwargs):
+        """
+        It would be hooked after `__init__` to add specials tokens (arguments of
+        `__init__` whose name ends with `_token`) as attributes of the tokenizer
+        instance.
+        """
         # expose tokens as attributes
         if hasattr(inspect, 'getfullargspec'):
             (spec_args, spec_varargs, spec_varkw, spec_defaults, _, _,
@@ -104,9 +144,12 @@ class PreTrainedTokenizer(object):
 
     def convert_tokens_to_ids(self, tokens):
         """
-        Converts a sequence of tokens into ids using the vocab.
+        Converts a sequence of tokens into ids using the vocab. The tokenizer
+        should has the `vocab` attribute.
+
         Args：
             tokens (list(str)): List of tokens.
+
         Returns:
             list: Converted id list.
 
@@ -115,27 +158,35 @@ class PreTrainedTokenizer(object):
 
     def convert_tokens_to_string(self, tokens):
         """ 
-        Converts a sequence of tokens (string) in a single string.
-        The most simple way to do it is ' '.join(self.convert_ids_to_tokens(token_ids))
-        but we often want to remove sub-word tokenization artifacts at the same time.
+        Converts a sequence of tokens (list of string) to a single string by
+        using :code:`' '.join(tokens)` .
+
         Args:
             tokens (list(str)): List of tokens.
+
         Returns:
             str: Converted string.
         """
         return " ".join(tokens)
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path, *init_inputs,
-                        **kwargs):
+    def from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
         """
-        Load tokenizer from pretrained model.
+        Instantiate an instance of `PreTrainedTokenizer` from a predefined
+        tokenizer specified by name or path., and it always corresponds to a
+        pretrained model.
+
         Args:
-            pretrained_model_name_or_path (str): A name or a path of pre-trained model.
-            *init_inputs (tuple): The additional init inputs.
-            **kwargs (dict): The additional inputs.
+            pretrained_model_name_or_path (str): A name of or a file path to a
+                pretrained model.
+            *args (tuple): position arguments for `__init__`. If provide, use
+                this as position argument values for tokenizer initialization.
+            **kwargs (dict): keyword arguments for `__init__`. If provide, use
+                this to update pre-defined keyword argument values for tokenizer
+                initialization.
+
         Returns:
-            PreTrainedTokenizer
+            PreTrainedTokenizer: An instance of PreTrainedTokenizer.
         """
         pretrained_models = list(cls.pretrained_init_configuration.keys())
         vocab_files = {}
@@ -180,9 +231,8 @@ class PreTrainedTokenizer(object):
             init_kwargs = init_configuration
 
         # position args are stored in kwargs, maybe better not include
-        saved_init_inputs = init_kwargs.pop("init_inputs", ())
-        if not init_inputs:
-            init_inputs = saved_init_inputs
+        saved_init_args = init_kwargs.pop("init_args", ())
+        init_args = saved_init_args if not args else args
 
         # Update with newly provided kwargs
         init_kwargs.update(kwargs)
@@ -192,20 +242,23 @@ class PreTrainedTokenizer(object):
         for args_name, file_path in resolved_vocab_files.items():
             if args_name not in init_kwargs:
                 init_kwargs[args_name] = file_path
-        tokenizer = cls(*init_inputs, **init_kwargs)
+        tokenizer = cls(*init_args, **init_kwargs)
         return tokenizer
 
     def save_pretrained(self, save_directory):
         """
-        Save tokenizer config and resources to files.
+        Save tokenizer configuration and related resources to files under
+        `save_directory`.
+
         Args:
-            save_directory (str): Directory to store token configuration file and vocab.
+            save_directory (str): Directory to save files into.
         """
         assert os.path.isdir(
             save_directory
         ), "Saving directory ({}) should be a directory".format(save_directory)
         tokenizer_config_file = os.path.join(save_directory,
                                              self.tokenizer_config_file)
+        # init_config is set in metaclass created `__init__`,
         tokenizer_config = self.init_config
         with io.open(tokenizer_config_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(tokenizer_config, ensure_ascii=False))
@@ -214,9 +267,10 @@ class PreTrainedTokenizer(object):
 
     def save_resources(self, save_directory):
         """
-        Save resources to a file.
+        Save tokenizer related resources to files under `save_directory`.
+
         Args:
-            save_directory (str): Directory to store resources.
+            save_directory (str): Directory to save files into.
         """
         assert hasattr(self, 'vocab') and len(
             self.resource_files_names) == 1, "Must overwrite `save_resources`"
@@ -225,18 +279,23 @@ class PreTrainedTokenizer(object):
         self.save_vocabulary(file_name, self.vocab)
 
     @staticmethod
-    def load_vocabulary(filename, unk_token=None, **kwargs):
+    def load_vocabulary(filepath, unk_token=None, **kwargs):
         """
-        Loads a vocabulary file into a dictionary.
+        Instantiate an instance of `Vocab` from a file reserving all tokens
+        by using `Vocab.from_dict`. The file contains a token per line, and the
+        line number would be the index of corresponding token.
+
         Args:
-            filename (str): File path to load.
-            unk_token (str, optional): UNK token. Default: None.
-            **kwargs (dict): The additional inputs for Vocab.from_dict.
+            filepath (str): path of file to construct vocabulary.
+            unk_token (str, optional): the unknown token for this vocabulary.
+                Default: None.
+            **kwargs (dict): keyword arguments for `Vocab.from_dict`.
+
         Returns:
-            Vocab: vocab.
+            Vocab: An instance of `Vocab`.
         """
         token_to_idx = {}
-        with io.open(filename, 'r', encoding='utf-8') as f:
+        with io.open(filepath, 'r', encoding='utf-8') as f:
             for index, line in enumerate(f):
                 token = line.rstrip('\n')
                 token_to_idx[token] = int(index)
@@ -244,48 +303,72 @@ class PreTrainedTokenizer(object):
         return vocab
 
     @staticmethod
-    def save_vocabulary(filename, vocab):
+    def save_vocabulary(filepath, vocab):
         """
-        Save all tokens to a vocabulary file.
+        Save all tokens to a vocabulary file. The file contains a token per line,
+        and the line number would be the index of corresponding token.
+
         Agrs:
-            filename (str): File path to be saved.
-            vocab (Vocab|dict): Vocab to be saved.
+            filepath (str): File path to be saved to.
+            vocab (Vocab|dict): the Vocab or dict instance to be saved.
         """
         if isinstance(vocab, Vocab):
             tokens = vocab.idx_to_token
         else:
             tokens = sorted(vocab.keys(), key=lambda token: vocab[token])
-        with io.open(filename, 'w', encoding='utf-8') as f:
+        with io.open(filepath, 'w', encoding='utf-8') as f:
             for token in tokens:
                 f.write(token + '\n')
 
 
 @six.add_metaclass(InitTrackerMeta)
-class PreTrainedModel(Model):
+class PreTrainedModel(Layer):
     """
-    The base class of the pre-training model, which provides the interface for 
-    loading and saving models used in the pre-training.
+    The base class for all pretrained models. It provides some attributes and
+    common methods for all pretrained models, including methods for saving and
+    loading.
+
+    It also includes some class attributes (should be set by derived classes):
+
+    - `model_config_file` (str): represents the file name for saving and loading
+      model configuration, it's value is `model_config.json`.
+
+    - `resource_files_names` (dict): use this to map resources to specific file
+      names for saving and loading.
+
+    - `pretrained_resource_files_map` (dict): The dict has the same keys as
+      `resource_files_names`, the values are also dict mapping specific pretrained
+      model name to URL linking to pretrained model.
+
+    - `pretrained_init_configuration` (dict): The dict has pretrained model names
+      as keys, and the values are also dict preserving corresponding configuration
+      for model initialization.
     """
     model_config_file = "model_config.json"
     pretrained_init_configuration = {}
     # TODO: more flexible resource handle, namedtuple with fileds as:
     # resource_name, saved_file, handle_name_for_load(None for used as __init__
     # arguments), handle_name_for_save
-    resource_files_names = {"model_ckpt": "model_ckpt"}
+    resource_files_names = {"model_state": "model_state"}
     pretrained_resource_files_map = {}
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path, *init_inputs,
-                        **kwargs):
+    def from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
         """
-        Load model from pre-trained model.
+        Instantiate an instance of `PreTrainedModel` from a predefined
+        model specified by name or path.
 
         Args:
-            pretrained_model_name_or_path: A name or a path of pre-trained model.
-            *init_inputs: he additional init inputs.
-            **kwargs: The Additional inputs.
+            pretrained_model_name_or_path (str): A name of or a file path to a
+                pretrained model.
+            *args (tuple): position arguments for `__init__`. If provide, use
+                this as position argument values for model initialization.
+            **kwargs (dict): keyword arguments for `__init__`. If provide, use
+                this to update pre-defined keyword argument values for model
+                initialization.
+
         Returns:
-            PreTrainedModel
+            PreTrainedModel: An instance of PreTrainedModel.
         """
         pretrained_models = list(cls.pretrained_init_configuration.keys())
         resource_files = {}
@@ -329,26 +412,29 @@ class PreTrainedModel(Model):
             init_kwargs = init_configuration
 
         # position args are stored in kwargs, maybe better not include
-        saved_init_inputs = init_kwargs.pop("init_inputs", ())
-        if not init_inputs:
-            init_inputs = saved_init_inputs
+        saved_init_args = init_kwargs.pop("init_args", ())
+        init_args = saved_init_args if not args else args
 
         # Update with newly provided kwargs
         init_kwargs.update(kwargs)
 
         # Instantiate model.
         # Maybe need more ways to load resources.
-        model = cls(*init_inputs, **init_kwargs)
-        model.load(list(resolved_resource_files.values())[0])
+        model = cls(*init_args, **init_kwargs)
+        weight_path = list(resolved_resource_files.values())[0]
+        assert weight_path.endswith(
+            ".pdparams"), "suffix of weight must be .pdparams"
+        param, _ = paddle.fluid.load_dygraph(weight_path)
+        model.load_dict(param)
         return model
 
     def save_pretrained(self, save_directory):
         """
-        Save pre-trained model into files.
+        Save model configuration and related resources (model state) to files
+        under `save_directory`.
+
         Args:
-            save_directory (str): The directory to save the pre-trained model.
-        Returns:
-            None
+            save_directory (str): Directory to save files into.
         """
         assert os.path.isdir(
             save_directory
@@ -361,7 +447,8 @@ class PreTrainedModel(Model):
         # save model
         file_name = os.path.join(save_directory,
                                  list(self.resource_files_names.values())[0])
-        self.save(os.path.join(save_directory, file_name))
+        paddle.fluid.save_dygraph(self.state_dict(),
+                                  os.path.join(save_directory, file_name))
 
 
 class SamplerHelper(object):

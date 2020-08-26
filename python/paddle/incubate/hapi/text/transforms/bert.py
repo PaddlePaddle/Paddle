@@ -18,12 +18,16 @@ import unicodedata
 
 from ..utils import PreTrainedTokenizer
 
+__all__ = ['BertTokenizer', ]
+
 
 def convert_to_unicode(text):
     """
     Converts `text` to Unicode (if it's not already), assuming utf-8 input.
+
     Args:
         text (str|bytes): Text to be converted to unicode.
+
     Returns: 
         str: converted text.
     """
@@ -48,8 +52,10 @@ def convert_to_unicode(text):
 def whitespace_tokenize(text):
     """
     Runs basic whitespace cleaning and splitting on a peice of text.
+
     Args:
         text (str): Text to be tokened.
+
     Returns:
         list(str): Token list.
     """
@@ -234,6 +240,7 @@ class BertBasicTokenizer(object):
 class WordpieceTokenizer(object):
     """
     Runs WordPiece tokenization.
+
     Args:
         vocab (Vocab): Vocab of the word piece tokenizer.
         unk_token (str):  A specific token to replace all unkown tokens.
@@ -301,15 +308,30 @@ class WordpieceTokenizer(object):
 
 class BertTokenizer(PreTrainedTokenizer):
     """
-    Runs bert tokenization, including BertBasicTokenize and WordpieceTokenizer.
+    Constructs a BERT tokenizer. It uses a basic tokenizer to do punctuation
+    splitting, lower casing and so on, and follows a WordPiece tokenizer to
+    tokenize as subwords.
+
     Args:
-        vocab_file (str): filename of the vocab
+        vocab_file (str): file path of the vocabulary
         do_lower_case (bool): Whether to convert the input to lowercase. Default: True.
-        unk_token (str): A specific token for unkown words. Default: "[UNK]".
-        sep_token (str): A specific token for separator token . Default: "[SEP]".
-        pad_token (str): A specific token for padding. Default: "[PAD]".
-        cls_token (str): A specific token for cls. Default: "[CLS]".
-        mask_token (str): A specific token for mask. Default: "[MASK]".
+        unk_token (str): The special token for unkown words. Default: "[UNK]".
+        sep_token (str): The special token for separator token . Default: "[SEP]".
+        pad_token (str): The special token for padding. Default: "[PAD]".
+        cls_token (str): The special token for cls. Default: "[CLS]".
+        mask_token (str): The special token for mask. Default: "[MASK]".
+    
+    Examples:
+
+        .. code-block:: python
+
+            from paddle.hapi.text import BertTokenizer
+
+            tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+            # the following line get: ['he', 'was', 'a', 'puppet', '##eer']
+            tokens = tokenizer('He was a puppeteer')
+            # the following line get: 'he was a puppeteer'
+            tokenizer.convert_tokens_to_string(tokens)
 
     """
     resource_files_names = {"vocab_file": "vocab.txt"}  # for save_pretrained
@@ -362,8 +384,7 @@ class BertTokenizer(PreTrainedTokenizer):
                  sep_token="[SEP]",
                  pad_token="[PAD]",
                  cls_token="[CLS]",
-                 mask_token="[MASK]",
-                 **kwargs):
+                 mask_token="[MASK]"):
 
         if not os.path.isfile(vocab_file):
             raise ValueError(
@@ -379,11 +400,23 @@ class BertTokenizer(PreTrainedTokenizer):
     @property
     def vocab_size(self):
         """
-        return size of the vocab.
+        return the size of vocabulary.
+
+        Returns:
+            int: the size of vocabulary.
         """
         return len(self.vocab)
 
     def _tokenize(self, text):
+        """
+        End-to-end tokenization for BERT models.
+
+        Args:
+            text (str): The text to be tokenized.
+        
+        Returns:
+            list: A list of string representing converted tokens.
+        """
         split_tokens = []
         for token in self.basic_tokenizer.tokenize(text):
             for sub_token in self.wordpiece_tokenizer.tokenize(token):
@@ -392,15 +425,25 @@ class BertTokenizer(PreTrainedTokenizer):
 
     def __call__(self, text):
         """
-        Return list of tokens of text.
+        End-to-end tokenization for BERT models.
+
+        Args:
+            text (str): The text to be tokenized.
+        
+        Returns:
+            list: A list of string representing converted tokens.
         """
         return self._tokenize(text)
 
     def convert_tokens_to_string(self, tokens):
         """
-        Converts a sequence of tokens (string) in a single string.
+        Converts a sequence of tokens (list of string) in a single string. Since
+        the usage of WordPiece introducing `##` to concat subwords, also remove
+        `##` when converting.
+
         Args:
-            tokens (list): Tokens to be converted.
+            tokens (list): A list of string representing tokens to be converted.
+
         Returns:
             str: Converted string from tokens.
         """

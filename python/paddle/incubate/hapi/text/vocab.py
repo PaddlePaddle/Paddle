@@ -20,25 +20,33 @@ import os
 
 class Vocab(object):
     """
-    Vocab is indexing for text tokens.
+    Vocab is for mapping between text tokens and ids.
 
     Args:
-        counter (collections.Counter|dict, optional): A dict describes the tokens
-            and their frequencies. If None, `token_to_idx` must be provided. 
+        counter (collections.Counter, optional): A Counter intance describes
+            the tokens and their frequencies. Its keys will be indexed accroding
+            to the order of frequency sorting to construct mapping relationship. 
+            If None, `token_to_idx` must be provided as the mapping relationship.
             Default: None.
         max_size (int, optional): Max size of vocab, not including special tokens.
             Default: None.
         min_freq (int): Ignore tokens whose frequencies are less than `min_freq`.
             Default: 1.
-        token_to_idx (dict, optional): A dict describes the mapping relationship
-            between tokens and indices. If provided, justify the mapping between
-            tokens and indices according to it. If None, counter must be provided.
+        token_to_idx (dict, optional): A dict specifies the mapping relationship
+            between tokens and indices to be used. If provided, adjust the tokens
+            and indices mapping according to it. If None, counter must be provided.
             Default: None.
-        unk_token (str): special token for unknow token. Default: '<unk>'.
-        pad_token (str): special token for padding token. Default: '<pad>'.
-        bos_token (str): special token for bos token. Default: <bos>'.
-        eos_token (str): special token for eos token. Default: '<eos>'.
-        **kwargs (dict): The additional inputs.
+        unk_token (str): special token for unknow token. If no need, it also
+            could be None. Default: '<unk>'.
+        pad_token (str): special token for padding token. If no need, it also
+            could be None. Default: '<pad>'.
+        bos_token (str): special token for bos token. If no need, it also
+            could be None. Default: <bos>'.
+        eos_token (str): special token for eos token. If no need, it also
+            could be None. Default: '<eos>'.
+        **kwargs (dict): Keyword arguments ending with `_token`. It can be used
+            to specify further special tokens that will be exposed as attribute
+            of the vocabulary and associated with an index.
     """
 
     def __init__(self,
@@ -158,8 +166,10 @@ class Vocab(object):
     def to_tokens(self, indices):
         """
         Map the input indices to token list.
+
         Args:
             indices (list|tuple|int): input indices for mapping.
+
         Returns:
             list|str: obtained token(s).
         """
@@ -183,8 +193,10 @@ class Vocab(object):
     def to_indices(self, tokens):
         """
         Map the input tokens into indices
+
         Args:
             tokens (list|tuple, optional): input tokens for mapping.
+
         Returns:
             list|int: obationed indice list.
         """
@@ -246,8 +258,10 @@ class Vocab(object):
     def from_json(cls, json_str):
         """
         Load vocab from JSON string or JSON file.
+
         Args:
             json_str (str): JSON string or file path of JSON string.
+
         Returns:
             Vocab: vocab generated from information contained in JSON string.
         """
@@ -268,13 +282,19 @@ class Vocab(object):
     @classmethod
     def from_dict(cls, token_to_idx, unk_token=None, **kwargs):
         """
-        Generate vocab from dict information.
+        Generate vocab from a dict.
+
         Args:
-            token_to_idx (dict): A dict describes the mapping relationship between tokens to indices.
-            unk_token (str): Special token for unkown tokens. If None, '<unk>' will be set. Default: None
-            **kwargs (dict): The additional inputs.
+            token_to_idx (dict): A dict describes the mapping relationship between
+                tokens to indices.
+            unk_token (str): special token for unknow token. If no need, it also
+                could be None. Default: None.
+            **kwargs (dict): Keyword arguments ending with `_token`. It can be used
+                to specify further special tokens that will be exposed as attribute
+                of the vocabulary and associated with an index.
+
         Returns:
-            Vocab: vocab generated from given dict and unk token.
+            Vocab: vocab generated from the given dict and special tokens.
         """
         vocab = cls(counter=None,
                     token_to_idx=token_to_idx,
@@ -293,18 +313,29 @@ class Vocab(object):
                     eos_token='<eos>',
                     **kwargs):
         """
-        Building vocab accoring to given iterator and other information.
+        Building vocab accoring to given iterator and other information. Iterate
+        over the `iterator` to construct a `Counter` and as `__init__`
+
         Args:
             iterator (collections.Iterable): Iterator of tokens.
             max_size (int, optional): Max size of vocab, not including special tokens. Default: None.
             min_freq (int): Ignore tokens whose frequencies are less than `min_freq`. Default: 1.
-            token_to_idx (dict, optional): A dict describes the mapping relationship between tokens
-                and indices. Default: None.
-            unk_token (str): special token for unknow token. Default: '<unk>'.
-            pad_token (str): special token for padding token. Default: '<pad>'.
-            bos_token (str): special token for bos token. Default: <bos>'.
-            eos_token (str): special token for eos token. Default: '<eos>'.
-            **kwargs (dict): The additional inputs.
+            token_to_idx (dict, optional): A dict specifies the mapping relationship
+                between tokens and indices to be used. If provided, adjust the tokens
+                and indices mapping according to it. If None, counter must be provided.
+                Default: None.
+            unk_token (str): special token for unknow token. If no need, it also
+                could be None. Default: '<unk>'.
+            pad_token (str): special token for padding token. If no need, it also
+                could be None. Default: '<pad>'.
+            bos_token (str): special token for bos token. If no need, it also
+                could be None. Default: <bos>'.
+            eos_token (str): special token for eos token. If no need, it also
+                could be None. Default: '<eos>'.
+            **kwargs (dict): Keyword arguments ending with `_token`. It can be used
+                to specify further special tokens that will be exposed as attribute
+                of the vocabulary and associated with an index.
+
         Returns:
             Vocab: Generated vocab from given iterator and other informations.
         """

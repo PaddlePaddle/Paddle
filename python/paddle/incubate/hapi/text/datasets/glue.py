@@ -24,6 +24,18 @@ from paddle.incubate.hapi.download import get_path_from_url
 
 from .dataset import TSVDataset
 
+__all__ = [
+    'GlueCoLA',
+    'GlueSST2',
+    'GlueMRPC',
+    'GlueSTSB',
+    'GlueQQP',
+    'GlueMNLI',
+    'GlueQNLI',
+    'GlueRTE',
+    'GlueWNLI',
+]
+
 
 class _GlueDataset(TSVDataset):
     URL = None
