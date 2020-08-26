@@ -69,9 +69,9 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
             "Scale's shape must be 1, but got shape = %d .", scale_tensor[0]));
     // out_w = -1;
   } else {
-    if (ctx->HasInput("scale")) {
+    auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
+    if (scale.size() > 0) {
       float scale_w = -1;
-      auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
       scale_w = scale[0];
       PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
                                                "scale  of Op(interpolate) "
@@ -162,10 +162,10 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     // out_h = -1;
     // out_w = -1;
   } else {
-    if (ctx->HasInput("scale")) {
+    auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
+    if (scale.size() > 0) {
       float scale_h = -1;
       float scale_w = -1;
-      auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
       scale_h = scale[0];
       scale_w = scale[1];
       PADDLE_ENFORCE_EQ(
@@ -268,11 +268,11 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     // out_h = -1;
     // out_w = -1;
   } else {
-    if (ctx->HasInput("scale")) {
+    auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
+    if (scale.size() > 0) {
       float scale_d = -1;
       float scale_h = -1;
       float scale_w = -1;
-      auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
       scale_d = scale[0];
       scale_h = scale[1];
       scale_w = scale[2];
