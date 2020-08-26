@@ -236,8 +236,8 @@ class ReduceGradKernel : public framework::OpKernel<T> {
 
     if (reduce_all) {
       auto x = EigenVector<T>::Flatten(*input0);
-      auto x_reduce = EigenVector<T>::From(*input1);
-      auto x_reduce_grad = EigenVector<T>::From(*input2);
+      auto x_reduce = EigenVector<T>::Flatten(*input1);
+      auto x_reduce_grad = EigenVector<T>::Flatten(*input2);
       auto x_grad = EigenVector<T>::Flatten(*output);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
@@ -329,6 +329,12 @@ class ReduceOp : public framework::OperatorWithKernel {
 
     for (size_t i = 0; i < dims.size(); ++i) {
       PADDLE_ENFORCE_LT(dims[i], x_rank,
+                        platform::errors::InvalidArgument(
+                            "The reduce dim index %d should be in the "
+                            "range [-dimension(X), dimension(X)] "
+                            "which dimesion = %d. But received dim index = %d.",
+                            i, x_rank, dims[i]));
+      PADDLE_ENFORCE_GE(dims[i], -x_rank,
                         platform::errors::InvalidArgument(
                             "The reduce dim index %d should be in the "
                             "range [-dimension(X), dimension(X)] "
