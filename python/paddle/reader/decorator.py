@@ -52,14 +52,14 @@ def cache(reader):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
             def reader():
                 for i in range(3):
                     yield i
 
             # All data is cached into memory
-            cached_reader = fluid.io.cache(reader)
+            cached_reader = paddle.io.cache(reader)
 
             for i in cached_reader():
                 print(i)
@@ -97,7 +97,7 @@ def map_readers(func, *readers):
 
         .. code-block:: python
 
-         import paddle.fluid as fluid
+         import paddle
 
          d = {"h": 0, "i": 1}
 
@@ -108,7 +108,7 @@ def map_readers(func, *readers):
              yield "h"
              yield "i"
 
-         map_reader_result = fluid.io.map_readers(func, reader)
+         map_reader_result = paddle.io.map_readers(func, reader)
     """
 
     def reader():
@@ -141,12 +141,12 @@ def shuffle(reader, buf_size):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
             def reader():
                 for i in range(5):
                     yield i
-            shuffled_reader = fluid.io.shuffle(reader, 3)
+            shuffled_reader = paddle.io.shuffle(reader, 3)
             for e in shuffled_reader():
                 print(e)
             # outputs are 0~4 unordered arrangement
@@ -196,7 +196,7 @@ def chain(*readers):
     Examples:
         ..  code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
             def reader_creator_3(start):
                 def reader():
@@ -204,7 +204,8 @@ def chain(*readers):
                         yield [i, i, i]
                 return reader
 
-            c = fluid.io.chain(reader_creator_3(0), reader_creator_3(10), reader_creator_3(20))
+            c = paddle.io.chain(reader_creator_3(0), reader_creator_3(10), reader_creator_3(20))
+
             for e in c():
                 print(e)
 
@@ -261,13 +262,13 @@ def compose(*readers, **kwargs):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
           def reader_creator_10(dur):
               def reader():
                  for i in range(10):
                      yield i
               return reader
-          reader = fluid.io.compose(reader_creator_10(0), reader_creator_10(0))
+          reader = paddle.io.compose(reader_creator_10(0), reader_creator_10(0))
     """
     check_alignment = kwargs.pop('check_alignment', True)
 
@@ -315,14 +316,14 @@ def buffered(reader, size):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
             def reader():
                 for i in range(3):
                     yield i
 
             # Create a buffered reader, and the buffer size is 2.
-            buffered_reader = fluid.io.buffered(reader, 2)
+            buffered_reader = paddle.io.buffered(reader, 2)
 
             for i in buffered_reader():
                 print(i)
@@ -375,12 +376,12 @@ def firstn(reader, n):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
             def reader():
                 for i in range(100):
                     yield i
-            firstn_reader = fluid.io.firstn(reader, 5)
+            firstn_reader = paddle.io.firstn(reader, 5)
             for e in firstn_reader():
                 print(e)
             # the outputs are: 0 1 2 3 4  
