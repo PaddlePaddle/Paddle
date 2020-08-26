@@ -14102,7 +14102,7 @@ def unique(x, dtype='int32'):
 
     Args:
         x(Tensor): A 1-D input tensor, it's data type should be float32, float64, int32, int64.
-        dtype(np.dtype|str): The type of index tensor: int32, int64.
+        dtype(np.dtype|str, optional): The type of index tensor: int32, int64. Default: int32.
 
     Returns:
         tuple: (out, index). `out` is the unique tensor for `x`, with identical dtype to `x`, and \
