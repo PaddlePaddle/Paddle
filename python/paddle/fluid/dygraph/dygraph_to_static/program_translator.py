@@ -183,7 +183,7 @@ class CacheKey(object):
         return CacheKey(function_spec, input_with_spec, class_instance)
 
     def __hash__(self):
-        error_msg = "Arguments to a `@declarative` must be a hashable Python objects (or nested structures of these types)."
+        error_msg = "Arguments to a `@paddle.jit.to_static` must be a hashable Python objects (or nested structures of these types)."
         return hash((id(self.function_spec),
                      make_hashable(self.input_with_spec, error_msg),
                      self.class_instance))
@@ -258,7 +258,7 @@ class StaticLayer(object):
                 def __init__(self):
                     pass
                 
-                @declarative
+                @paddle.jit.to_static
                 def forward(self, x, y):
                     return x + y
 
@@ -267,7 +267,7 @@ class StaticLayer(object):
             '''
         
         In above case, `net(x, y)` will call `net.forward(x, y)` firstly that is a bound method
-        of `Net` instance. After decorated by `@declarative`, it will firstly to call `__get__`
+        of `Net` instance. After decorated by `@paddle.jit.to_static`, it will firstly to call `__get__`
         to parse the class instance correctly instead of the `StaticLayer` instance.
         """
         self._class_instance = instance
@@ -287,7 +287,7 @@ class StaticLayer(object):
         # 1. call dygraph function directly if not enable `declarative`
         if not self._program_trans.enable_declarative:
             warnings.warn(
-                "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
+                "The decorator '@paddle.jit.to_static' doesn't work when setting ProgramTranslator.enable=False. "
                 "We will just return dygraph output.")
             return self._call_dygraph_function(*args, **kwargs)
 
@@ -604,7 +604,7 @@ class ProgramCache(object):
                 type_name(item))
         if item not in self._caches:
             raise RuntimeError(
-                "Failed to find program for input item, please decorate input function by `@declarative`."
+                "Failed to find program for input item, please decorate input function by `@paddle.jit.to_static`."
             )
         return self._caches[item]
 

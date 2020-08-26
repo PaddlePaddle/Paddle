@@ -224,7 +224,7 @@ def get_parameters(layer_instance, include_sublayer=True):
                 params = layer_instance._parameters
         else:
             raise TypeError(
-                "Type of `layer_instance` should be layer.Layer, but received {}".
+                "Type of `layer_instance` should be nn.Layer, but received {}".
                 format(type_name(layer_instance)))
 
     return params
@@ -246,7 +246,7 @@ def get_buffers(layer_instance, include_sublayer=True):
                 buffers = layer_instance._buffers
         else:
             raise TypeError(
-                "Type of `layer_instance` should be layer.Layer, but received {}".
+                "Type of `layer_instance` should be nn.Layer, but received {}".
                 format(type_name(layer_instance)))
     return buffers
 
