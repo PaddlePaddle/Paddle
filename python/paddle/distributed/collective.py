@@ -74,8 +74,7 @@ def broadcast(tensor, src, group=0):
         .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
-        from paddle.fluid.dygraph.parallel import prepare_context
+        import paddle.prepare_context as prepare_context
 
         paddle.disable_static()
         paddle.set_device('gpu:%d'%paddle.ParallelEnv().dev_id)
@@ -131,9 +130,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0):
         .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
         from paddle.distributed import ReduceOp
-        from paddle.fluid.dygraph.parallel import prepare_context
+        import paddle.prepare_context as prepare_context
 
         paddle.disable_static()
         paddle.set_device('gpu:%d'%paddle.ParallelEnv().dev_id)
@@ -207,8 +205,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
         .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
-        from paddle.fluid.dygraph.parallel import prepare_context
+        import paddle.prepare_context as prepare_context
 
         paddle.disable_static()
         paddle.set_device('gpu:%d'%paddle.ParallelEnv().dev_id)
@@ -290,8 +287,7 @@ def all_gather(tensor_list, tensor, group=0):
         .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
-        from paddle.fluid.dygraph.parallel import prepare_context
+        import paddle.prepare_context as prepare_context
 
         paddle.disable_static()
         paddle.set_device('gpu:%d'%paddle.ParallelEnv().dev_id)
@@ -364,8 +360,7 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
         .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
-        from paddle.fluid.dygraph.parallel import prepare_context
+        import paddle.prepare_context as prepare_context
 
         paddle.disable_static()
         paddle.set_device('gpu:%d'%paddle.ParallelEnv().dev_id)
@@ -431,8 +426,7 @@ def barrier(group=0):
         .. code-block:: python
 
         import paddle
-        import paddle.fluid as fluid
-        from paddle.fluid.dygraph.parallel import prepare_context
+        import paddle.prepare_context as prepare_context
 
         paddle.disable_static()
         paddle.set_device('gpu:%d'%paddle.ParallelEnv().dev_id)
