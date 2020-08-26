@@ -641,7 +641,7 @@ class TestDygraphUtils(unittest.TestCase):
             res2 = fluid.layers.sigmoid(a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
-    def test_append_activation_in_dygraph4(self):
+    def test_append_activation_in_dygraph_use_mkldnn(self):
         a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
         helper = LayerHelper(
             fluid.unique_name.generate("test"), act="relu", use_mkldnn=True)
@@ -651,6 +651,20 @@ class TestDygraphUtils(unittest.TestCase):
             res1 = func(a)
             res2 = fluid.layers.relu(a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_activation_in_dygraph_global_use_mkldnn(self):
+        a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
+        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        try:
+            helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
+            func = helper.append_activation
+            with fluid.dygraph.guard():
+                a = fluid.dygraph.to_variable(a_np)
+                res1 = func(a)
+                res2 = fluid.layers.relu(a)
+        finally:
+            fluid.set_flags({'FLAGS_use_mkldnn': False})
+        self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
     def test_append_bias_in_dygraph_exception(self):
         with new_program_scope():
