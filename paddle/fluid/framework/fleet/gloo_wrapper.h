@@ -106,9 +106,7 @@ enum GlooStoreType { HDFS, HTTP };
 class GlooWrapper {
  public:
   static std::shared_ptr<GlooWrapper> GetInstance() {
-    if (nullptr == s_instance_) {
-      s_instance_.reset(new GlooWrapper());
-    }
+    static auto s_instance = std::make_shared<GlooWrapper>();
     return s_instance_;
   }
 

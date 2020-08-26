@@ -66,7 +66,7 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(), true,
-        platform::errors::InvalidArgument(
+        platform::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
     gloo::AllreduceOptions opts(gloo->GetContext());
     opts.setInput(const_cast<T*>(send_buff), send_numel);
@@ -99,10 +99,8 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
     }
     gloo::allreduce(opts);
 #else
-    PADDLE_ENFORCE_EQ(
-        true, false,
-        platform::errors::Unavailable(
-            "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
+    PADDLE_THROW(
+        "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON");
 #endif
   }
 };

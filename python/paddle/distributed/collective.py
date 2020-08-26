@@ -78,9 +78,9 @@ def broadcast(tensor, src, group=0):
         from paddle.fluid.dygraph.parallel import prepare_context
 
         paddle.disable_static()
-        paddle.set_device('gpu:%d'%fluid.dygraph.ParallelEnv().dev_id)
+        paddle.set_device('gpu:%d'%paddle.ParallelEnv().dev_id)
         prepare_context()
-        if fluid.dygraph.ParallelEnv().local_rank == 0:
+        if paddle.ParallelEnv().local_rank == 0:
             np_data = np.array([[4, 5, 6], [4, 5, 6]])
         else:
             np_data = np.array([[1, 2, 3], [1, 2, 3]])
@@ -89,13 +89,14 @@ def broadcast(tensor, src, group=0):
         out = data.numpy()
         # [[1, 2, 3], [1, 2, 3]]
     """
+    if in_dygraph_mode():
+        return core.ops.c_broadcast(tensor, tensor, 'root', src,
+                                    'use_calc_stream', True, 'ring_id', group)
+
     op_type = 'c_broadcast'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'broadcast')
-    if in_dygraph_mode():
-        return core.ops.c_broadcast(tensor, tensor, 'root', src,
-                                    'use_calc_stream', True, 'ring_id', group)
     if not isinstance(src, int) or not isinstance(group, int):
         raise ValueError("Both the type of 'src' and 'group' for broadcast "
                          "should be int.")
@@ -135,9 +136,9 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0):
         from paddle.fluid.dygraph.parallel import prepare_context
 
         paddle.disable_static()
-        paddle.set_device('gpu:%d'%fluid.dygraph.ParallelEnv().dev_id)
+        paddle.set_device('gpu:%d'%paddle.ParallelEnv().dev_id)
         prepare_context()
-        if fluid.dygraph.ParallelEnv().local_rank == 0:
+        if paddle.ParallelEnv().local_rank == 0:
             np_data = np.array([[4, 5, 6], [4, 5, 6]])
         else:
             np_data = np.array([[1, 2, 3], [1, 2, 3]])
@@ -146,15 +147,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0):
         out = data.numpy()
         # [[5, 7, 9], [5, 7, 9]]
     """
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'all_reduce')
-    if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
-        raise ValueError("The op for all_reduce must be one of educeOp.PROD, "
-                         "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
     if in_dygraph_mode():
         if op == ReduceOp.SUM:
-            op_type = 'c_allreduce_sum'
             return core.ops.c_allreduce_sum(tensor, tensor, 'use_calc_stream',
                                             True, 'ring_id', group)
         elif op == ReduceOp.MAX:
@@ -166,9 +160,17 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0):
         elif op == ReduceOp.PROD:
             return core.ops.c_allreduce_prod(tensor, tensor, 'use_calc_stream',
                                              True, 'ring_id', group)
+        else:
+            raise ValueError("Unknown parameter: {}.".format(op))
 
     if op == ReduceOp.SUM:
         op_type = 'c_allreduce_sum'
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'all_reduce')
+    if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
+        raise ValueError("The op for all_reduce must be one of educeOp.PROD, "
+                         "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
     elif op == ReduceOp.MAX:
         op_type = 'c_allreduce_max'
     elif op == ReduceOp.MIN:
@@ -209,9 +211,9 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
         from paddle.fluid.dygraph.parallel import prepare_context
 
         paddle.disable_static()
-        paddle.set_device('gpu:%d'%fluid.dygraph.ParallelEnv().dev_id)
+        paddle.set_device('gpu:%d'%paddle.ParallelEnv().dev_id)
         prepare_context()
-        if fluid.dygraph.ParallelEnv().local_rank == 0:
+        if paddle.ParallelEnv().local_rank == 0:
             np_data = np.array([[4, 5, 6], [4, 5, 6]])
         else:
             np_data = np.array([[1, 2, 3], [1, 2, 3]])
@@ -220,16 +222,8 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
         out = data.numpy()
         # [[5, 7, 9], [5, 7, 9]]
     """
-    op_type = 'c_reduce'
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'all_reduce')
-    if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
-        raise ValueError("The op for reduce must be one of educeOp.PROD, "
-                         "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
     if in_dygraph_mode():
         if op == ReduceOp.SUM:
-            op_type = 'c_allreduce_sum'
             return core.ops.c_reduce_sum(tensor, tensor, 'use_calc_stream',
                                          True, 'ring_id', group, 'root_id', dst)
         elif op == ReduceOp.MAX:
@@ -242,6 +236,16 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
             return core.ops.c_reduce_prod(tensor, tensor, 'use_calc_stream',
                                           True, 'ring_id', group, 'root_id',
                                           dst)
+        else:
+            raise ValueError("Unknown parameter: {}.".format(op))
+
+    op_type = 'c_reduce'
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'all_reduce')
+    if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
+        raise ValueError("The op for reduce must be one of educeOp.PROD, "
+                         "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
 
     if op == ReduceOp.SUM:
         op_type = 'c_reduce_sum'
@@ -290,10 +294,10 @@ def all_gather(tensor_list, tensor, group=0):
         from paddle.fluid.dygraph.parallel import prepare_context
 
         paddle.disable_static()
-        paddle.set_device('gpu:%d'%fluid.dygraph.ParallelEnv().dev_id)
+        paddle.set_device('gpu:%d'%paddle.ParallelEnv().dev_id)
         prepare_context()
         tensor_list = []
-        if fluid.dygraph.ParallelEnv().local_rank == 0:
+        if paddle.ParallelEnv().local_rank == 0:
             np_data1 = np.array([[4, 5, 6], [4, 5, 6]])
             np_data2 = np.array([[4, 5, 6], [4, 5, 6]])
             data1 = paddle.to_tensor(np_data1)
@@ -306,25 +310,27 @@ def all_gather(tensor_list, tensor, group=0):
             data2 = paddle.to_tensor(np_data2)
             out = paddle.distributed.all_gather(tensor_list, data2)
     """
-    op_type = 'c_allgather'
-    if not isinstance(tensor_list, list):
-        raise ValueError("The type of 'tensor_list' for all_gather "
-                         "should be list.")
-    for elem in tensor_list:
-        check_variable_and_dtype(
-            elem, 'tensor_list',
-            ['float16', 'float32', 'float64', 'int32', 'int64'], 'all_gather')
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'all_gather')
-    if not isinstance(group, int):
-        raise ValueError("The type of 'group' for all_gather " "should be int.")
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
     if in_dygraph_mode():
         core.ops.c_allgather(tensor, out, 'use_calc_stream', True, 'ring_id',
                              group, 'nranks', _default_group.nranks)
     else:
+        op_type = 'c_allgather'
+        if not isinstance(tensor_list, list):
+            raise ValueError("The type of 'tensor_list' for all_gather "
+                             "should be list.")
+        for elem in tensor_list:
+            check_variable_and_dtype(
+                elem, 'tensor_list',
+                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                'all_gather')
+        check_variable_and_dtype(
+            tensor, 'tensor',
+            ['float16', 'float32', 'float64', 'int32', 'int64'], 'all_gather')
+        if not isinstance(group, int):
+            raise ValueError("The type of 'group' for all_gather "
+                             "should be int.")
         helper.append_op(
             type=op_type,
             inputs={'X': [tensor]},
@@ -362,9 +368,9 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
         from paddle.fluid.dygraph.parallel import prepare_context
 
         paddle.disable_static()
-        paddle.set_device('gpu:%d'%fluid.dygraph.ParallelEnv().dev_id)
+        paddle.set_device('gpu:%d'%paddle.ParallelEnv().dev_id)
         prepare_context()
-        if fluid.dygraph.ParallelEnv().local_rank == 0:
+        if paddle.ParallelEnv().local_rank == 0:
             np_data1 = np.array([7, 8, 9])
             np_data2 = np.array([10, 11, 12])
         else:
@@ -372,7 +378,7 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
             np_data2 = np.array([4, 5, 6])
         data1 = paddle.to_tensor(np_data1)
         data2 = paddle.to_tensor(np_data2)
-        if fluid.dygraph.ParallelEnv().local_rank == 0:
+        if paddle.ParallelEnv().local_rank == 0:
             paddle.distributed.scatter(data1, src=1)
         else:
             paddle.distributed.scatter(data1, tensor_list=[data1, data2], src=1)
@@ -382,20 +388,6 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
     global _default_group
     rank = _default_group.rank
     nranks = _default_group.nranks
-    if rank == src:
-        if not isinstance(tensor_list, list):
-            raise ValueError("The type of 'tensor_list' for scatter "
-                             "should be list for src.")
-    else:
-        if tensor_list:
-            raise ValueError("'tensor_list' for scatter "
-                             "should be None for others.")
-    check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'scatter')
-    if not isinstance(group, int) or not isinstance(src, int):
-        raise ValueError("Both the type of 'src' and 'group' for scatter "
-                         "should be int.")
     helper = LayerHelper(op_type, **locals())
     if rank != src:
         tensor_list = []
@@ -407,6 +399,20 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
                                   'ring_id', group, 'nranks',
                                   _default_group.nranks, 'root', src)
     else:
+        check_variable_and_dtype(
+            tensor, 'tensor',
+            ['float16', 'float32', 'float64', 'int32', 'int64'], 'scatter')
+        if rank == src:
+            if not isinstance(tensor_list, list):
+                raise ValueError("The type of 'tensor_list' for scatter "
+                                 "should be list for src.")
+        else:
+            if tensor_list:
+                raise ValueError("'tensor_list' for scatter "
+                                 "should be None for others.")
+        if not isinstance(group, int) or not isinstance(src, int):
+            raise ValueError("Both the type of 'src' and 'group' for scatter "
+                             "should be int.")
         helper.append_op(
             type=op_type,
             inputs={'X': [temp]},
@@ -438,16 +444,16 @@ def barrier(group=0):
         from paddle.fluid.dygraph.parallel import prepare_context
 
         paddle.disable_static()
-        paddle.set_device('gpu:%d'%fluid.dygraph.ParallelEnv().dev_id)
+        paddle.set_device('gpu:%d'%paddle.ParallelEnv().dev_id)
         prepare_context()
         paddle.distributed.barrier()
     """
     op_type = 'barrier'
-    if not isinstance(group, int):
-        raise ValueError("The type of 'group' for barrier must be int.")
     temp = paddle.fill_constant([1], dtype="int32", value="1")
     if in_dygraph_mode():
         return core.ops.barrier(temp, temp, 'ring_id', group)
+    if not isinstance(group, int):
+        raise ValueError("The type of 'group' for barrier must be int.")
     helper = LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,

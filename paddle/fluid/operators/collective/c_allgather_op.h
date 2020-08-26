@@ -50,17 +50,15 @@ class CAllGatherOpCPUKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(), true,
-        platform::errors::InvalidArgument(
+        platform::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
     gloo::AllgatherOptions opts(gloo->GetContext());
     opts.setInput(const_cast<T*>(send_buff), send_numel);
     opts.setOutput(recv_buff, send_numel * nranks);
     gloo::allgather(opts);
 #else
-    PADDLE_ENFORCE_EQ(
-        true, false,
-        platform::errors::Unavailable(
-            "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
+    PADDLE_THROW(
+        "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON");
 #endif
   }
 };
