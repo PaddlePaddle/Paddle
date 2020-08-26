@@ -214,4 +214,13 @@ TEST(SENDANDRECV, CPU) {
     auto var = scope.Var(out_var_name);
     auto value = var->GetMutable<framework::LoDTensor>();
     auto ptr = value->mutable_data<float>(place);
+
+    for (int64_t i = 0; i < rows_numel; ++i) {
+      EXPECT_EQ(ptr[0 + i * value->dims()[1]], 0.5);
+    }
+    g_rpc_service->ShutDown();
+    server_thread.join();
+    LOG(INFO) << "begin reset";
+    g_rpc_service.reset(nullptr);
+    g_req_handler.reset(nullptr);
 }
