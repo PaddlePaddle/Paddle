@@ -268,6 +268,13 @@ if(WITH_PSLIB)
     endif()
 endif(WITH_PSLIB)
 
+if(WITH_GLOO)
+    if(NOT WIN32 AND NOT APPLE)
+	include(external/gloo)
+        list(APPEND third_party_deps extern_gloo)
+    endif()
+endif()
+
 
 if(WITH_BOX_PS)
     include(external/box_ps)
@@ -275,11 +282,6 @@ if(WITH_BOX_PS)
 endif(WITH_BOX_PS)
 
 if(WITH_DISTRIBUTE)
-    if(WITH_GLOO)
-        include(external/gloo)
-        list(APPEND third_party_deps extern_gloo)
-    endif()
-
     if(WITH_GRPC)
         list(APPEND third_party_deps extern_grpc)
     else()
