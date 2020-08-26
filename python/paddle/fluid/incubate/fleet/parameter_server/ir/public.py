@@ -1009,9 +1009,20 @@ class MergedVariable:
         self.offsets = offsets
 
 
+def Singleton(cls):
+    _instance = {}
+
+    def _singleton(*args, **kargs):
+        if cls not in _instance:
+            _instance[cls] = cls(*args, **kargs)
+        return _instance[cls]
+
+    return _singleton
+
+
+@Singleton
 class CompileTimeStrategy(object):
     def __init__(self, main_program, startup_program, strategy, role_maker):
-
         self.min_block_size = 8192
 
         self.origin_main_program = main_program
