@@ -45,7 +45,7 @@ class RoleMakerBase(object):
         # for heter parameter server mode
         self._heter_trainer_endpoints = []
         self._heter_trainer_device = "CPU"
-        self.is_heter_parameter_server = False
+        self._is_heter_parameter_server = False
 
         self._node_type = None
         self._node_type_comm = None
@@ -436,7 +436,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                         "Can not Find PADDLE_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
                     )
 
-                self.is_heter_parameter_server = True
+                self._is_heter_parameter_server = True
                 heter_trainers_num = len(heter_trainer_eplist)
                 current_node_device = heter_trainer_device.upper()
                 if current_node_device not in ["CPU", "GPU", "XPU"]:
@@ -445,7 +445,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                         format(heter_trainer_device))
                 self._heter_trainer_device = current_node_device
             else:
-                self.is_heter_parameter_server = False
+                self._is_heter_parameter_server = False
                 heter_trainers_num = 0
 
             if training_role == "TRAINER":
