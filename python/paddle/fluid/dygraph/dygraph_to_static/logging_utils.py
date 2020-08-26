@@ -22,7 +22,9 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 __all__ = ["TranslatorLogger", "set_verbosity", "set_code_level"]
 
 VERBOSITY_ENV_NAME = 'TRANSLATOR_VERBOSITY'
-DEFAULT_VERBOSITY = 0
+CODE_LEVEL_ENV_NAME = 'TRANSLATOR_CODE_LEVEL'
+DEFAULT_VERBOSITY = -1
+DEFAULT_CODE_LEVEL = -1
 
 
 def synchronized(func):
@@ -77,7 +79,7 @@ class TranslatorLogger(object):
         if self._transformed_code_level is not None:
             return self._transformed_code_level
         else:
-            return -1
+            return int(os.getenv(CODE_LEVEL_ENV_NAME, DEFAULT_CODE_LEVEL))
 
     @transformed_code_level.setter
     def transformed_code_level(self, level):
@@ -88,8 +90,7 @@ class TranslatorLogger(object):
         if isinstance(level, (six.integer_types, type(None))):
             rv = level
         else:
-            raise TypeError("Level not an integer or a valid string: %r" %
-                            level)
+            raise TypeError("Level is not an integer: {}".format(level))
         return rv
 
     def has_code_level(self, level):
@@ -131,7 +132,7 @@ def set_verbosity(level=0):
     There are two means to set the logging verbosity:
      1. Call function `set_verbosity`
      2. Set environment variable `TRANSLATOR_VERBOSITY`
-    NOTE: `set_verbosity` has higher priority than the environment variable
+    NOTE: `set_verbosity` has a higher priority than the environment variable
 
     Args:
         level(int): The verbosity level. The larger value idicates more verbosity.
@@ -140,13 +141,13 @@ def set_verbosity(level=0):
         .. code-block:: python
 
             import os
-            import paddle.fluid as fluid
+            import paddle
 
-            fluid.dygraph.dygraph_to_static.set_verbosity(1)
+            paddle.jit.set_verbosity(1)
             # The verbosity level is now 1
 
             os.environ['TRANSLATOR_VERBOSITY'] = '3'
-            # The verbosity level is now 3, but it has no effect
+            # The verbosity level is now 3, but it has no effect because it has a lower priority than `set_verbosity`
     """
     _TRANSLATOR_LOGGER.verbosity_level = level
 
@@ -162,18 +163,25 @@ def set_code_level(level=LOG_AllTransformer):
     """
     Sets the level to print code from specific level of Ast Transformer.
 
+    There are two means to set the code level:
+     1. Call function `set_code_level`
+     2. Set environment variable `TRANSLATOR_CODE_LEVEL`
+
+    NOTE: `set_code_level` has a higher priority than the environment variable
+
     Args:
-        level(int): The level to print code.
+        level(int): The level to print code. Default is 100, which means to print the code after all AST Transformers
 
     Examples:
         .. code-block:: python
+            import paddle
 
-            import os
-            import paddle.fluid as fluid
-            from paddle.fluid.dygraph.dygraph_to_static import logging_utils
+            paddle.jit.set_code_level(2)
+            # It will print the transformed code at level 2, which means to print the code after CastTransformer.
 
-            logging_utils.set_code_level(2)
-            # It will print the transformed code after CastTransformer.
+            os.environ['TRANSLATOR_CODE_LEVEL'] = '3'
+            # The code level is now 3, but it has no effect because it has a lower priority than `set_code_level`
+
         """
     _TRANSLATOR_LOGGER.transformed_code_level = level
 

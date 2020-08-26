@@ -24,6 +24,7 @@ from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrat
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
+from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import FunctionSpec, ProgramTranslator
 from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
 from paddle.fluid.dygraph.layers import Layer
@@ -33,7 +34,10 @@ from paddle.fluid.framework import _current_expected_place, _dygraph_guard, _dyg
 from paddle.fluid.framework import dygraph_only, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
-__all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
+__all__ = [
+    'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
+    'set_verbosity'
+]
 
 
 def create_program_from_desc(program_desc):
