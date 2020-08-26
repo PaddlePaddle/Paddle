@@ -644,7 +644,11 @@ def selu(x,
 
     .. math::
 
-        selu(x) = scale * (max(0,x) + min(0, alpha * (e^{x} - 1)))
+        selu(x)= scale *
+                 \\begin{cases}
+                   x, \\text{if } x > 0 \\\\
+                   alpha * e^{x} - alpha, \\text{if } x <= 0
+                 \\end{cases}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -665,7 +669,7 @@ def selu(x,
 
             paddle.disable_static()
 
-            x = paddle.to_tensor(np.array([[0, 1],[2, 3]]))
+            x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
             out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
     """
     if in_dygraph_mode():
