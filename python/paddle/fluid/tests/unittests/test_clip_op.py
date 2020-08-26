@@ -93,6 +93,13 @@ class TestCase4(TestClipOp):
         self.inputs['Min'] = np.array([0.3]).astype('float32')
 
 
+class TestCase5(TestClipOp):
+    def initTestCase(self):
+        self.shape = (4, 8, 16)
+        self.max = 0.5
+        self.min = 0.5
+
+
 class TestClipOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):

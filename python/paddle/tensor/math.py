@@ -1600,7 +1600,7 @@ def clip(x, min=None, max=None, name=None):
             check_dtype(max.dtype, 'max', ['float32', 'float64', 'int32'],
                         'clip', '(When the type of max in clip is Variable.)')
 
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'clip')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'clip')
 
     inputs = {'X': x}
     attrs = {'min': sys.float_info.min, 'max': sys.float_info.max}
