@@ -36,7 +36,6 @@ from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
 from ...fluid.dygraph import SpectralNorm  #DEFINE_ALIAS
 
 from ...fluid.dygraph import layers
-
 from ...framework import get_default_dtype, set_default_dtype
 from ...fluid.framework import in_dygraph_mode
 
@@ -50,6 +49,7 @@ from ..functional import batch_norm, layer_norm, instance_norm
 import numpy as np
 import numbers
 import warnings
+from ...fluid.dygraph.base import no_grad
 
 __all__ = [
     'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'InstanceNorm',
@@ -611,6 +611,7 @@ class _BatchNormBase(layers.Layer):
         self._epsilon = epsilon
         self._fuse_with_relu = False
         self._track_running_stats = track_running_stats
+        self._name = name
 
     def _check_input_dim(self, input):
         raise NotImplementedError("BatchNorm Base error")
@@ -1073,7 +1074,7 @@ class SyncBatchNorm(layers.Layer):
             return sync_batch_norm_out
 
         check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
-                                 'BatchNorm')
+                                 'SyncBatchNorm')
 
         attrs = {
             "momentum": self._momentum,
@@ -1112,3 +1113,45 @@ class SyncBatchNorm(layers.Layer):
         self._helper.append_op(
             type="sync_batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
         return sync_batch_norm_out
+
+    @classmethod
+    def convert_sync_batchnorm(cls, layer):
+        """
+        Helper function to convert :class: `paddle.nn.BatchNorm*d` layers in the model to :class: `paddle.nn.SyncBatchNorm` layers.
+
+        Parameters:
+            layer(paddle.fluid.dygraph.Layer): model containing one or more `BatchNorm*d` layers.
+
+        Returns:
+            The original model with converted SyncBatchNorm layers. If BatchNorm*d layer in the model, use SyncBatchNorm layer instead.
+
+        Examples:
+
+            .. code-block:: python
+                import paddle
+                import paddle.nn as nn
+
+                paddle.disable_static()
+                model = nn.Sequential(nn.Conv2d(3, 5, 3), nn.BatchNorm2d(5))
+                sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
+        """
+        layer_output = layer
+        if isinstance(layer, _BatchNormBase):
+            layer_output = SyncBatchNorm(layer._num_features, layer._epsilon,
+                                         layer._momentum, layer._weight_attr,
+                                         layer._bias_attr, layer._data_format,
+                                         layer._name)
+
+            if layer._weight_attr != False and layer._bias_attr != False:
+                with no_grad():
+                    layer_output.weight = layer.weight
+                    layer_output.bias = layer.bias
+            layer_output._mean = layer._mean
+            layer_output._variance = layer._variance
+
+        for name, sublayer in layer.named_sublayers():
+            layer_output.add_sublayer(name,
+                                      cls.convert_sync_batchnorm(sublayer))
+        del layer
+        return layer_output
