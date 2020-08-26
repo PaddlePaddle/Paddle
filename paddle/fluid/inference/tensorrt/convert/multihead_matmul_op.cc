@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/cast_int_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
 
 namespace paddle {
@@ -114,29 +113,32 @@ class MultiheadMatMulOpConverter : public OpConverter {
                              static_cast<void*>(bias_data),
                              static_cast<int32_t>(bias_t->numel())};
 
-      nvinfer1::Permutation permutation{1, 0, 2, 3, 4};
+      nvinfer1::Permutation permutation{0, 1, 2, 3, 4};
       auto trans_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
       trans_layer->setFirstTranspose(permutation);
 
       auto* fc_layer = TRT_ENGINE_ADD_LAYER(
           engine_, FullyConnected, *trans_layer->getOutput(0), n, weight, bias);
+      /*
+            auto pos_tensor = engine_->GetITensor("eval_placeholder_2");
+            plugin::CastIntPluginDynamic* cast_plugin =
+                new plugin::CastIntPluginDynamic();
+            auto cast_layer = engine_->AddPluginV2(&pos_tensor, 1, cast_plugin);
 
-      auto pos_tensor = engine_->GetITensor("eval_placeholder_2");
-      plugin::CastIntPluginDynamic* cast_plugin =
-          new plugin::CastIntPluginDynamic();
-      auto cast_layer = engine_->AddPluginV2(&pos_tensor, 1, cast_plugin);
+            auto casted_pos_tensor = cast_layer->getOutput(0);
+            auto reshape_layer =
+                TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *casted_pos_tensor);
 
-      auto casted_pos_tensor = cast_layer->getOutput(0);
-      auto reshape_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *casted_pos_tensor);
-
-      nvinfer1::Dims2 reshape_dim(0, 0);
-      nvinfer1::Permutation perm{1, 0, 2};
-      reshape_layer->setFirstTranspose(perm);
-      reshape_layer->setReshapeDimensions(reshape_dim);
-      auto reduce_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Reduce, *reshape_layer->getOutput(0),
-                               nvinfer1::ReduceOperation::kMAX, 1, false);
+            nvinfer1::Dims2 reshape_dim(0, 0);
+            nvinfer1::Permutation perm{1, 0, 2};
+            reshape_layer->setFirstTranspose(perm);
+            reshape_layer->setReshapeDimensions(reshape_dim);
+            auto reduce_layer =
+                TRT_ENGINE_ADD_LAYER(engine_, Reduce,
+         *reshape_layer->getOutput(0),
+                                     nvinfer1::ReduceOperation::kMAX, 1, false);
+      */
+      auto imask_tensor = engine_->GetITensor("imask_tensor");
 
       auto creator = GetPluginRegistry()->getPluginCreator(
           "CustomQKVToContextPluginDynamic", "1");
@@ -149,8 +151,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
           {"hidden_size", &hidden, nvinfer1::PluginFieldType::kINT32, 1},
           {"num_heads", &head_number, nvinfer1::PluginFieldType::kINT32, 1},
-          {"has_mask", &has_mask, nvinfer1::PluginFieldType::kINT32,
-           1},  // no bool type
+          {"has_mask", &has_mask, nvinfer1::PluginFieldType::kINT32, 1},
       };
       nvinfer1::PluginFieldCollection* pluginPtr =
           static_cast<nvinfer1::PluginFieldCollection*>(
@@ -164,7 +165,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
           creator->createPlugin("CustomQKVToContextPluginDynamic", pluginPtr);
       std::vector<nvinfer1::ITensor*> plugin_inputs;
       plugin_inputs.push_back(fc_layer->getOutput(0));
-      plugin_inputs.push_back(reduce_layer->getOutput(0));
+      // plugin_inputs.push_back(reduce_layer->getOutput(0));
+      plugin_inputs.push_back(imask_tensor);
       auto plugin_layer = engine_->network()->addPluginV2(
           plugin_inputs.data(), plugin_inputs.size(), *pluginObj);
       assert(plugin_layer != nullptr);

@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/plugin/cast_int_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/emb_eltwise_layernorm_plugin.h"
 
 namespace paddle {
@@ -80,11 +81,35 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
 
     if (engine_->with_dynamic_shape()) {
+      auto pos_tensor = engine_->GetITensor("eval_placeholder_2");
+      plugin::CastIntPluginDynamic* cast_plugin =
+          new plugin::CastIntPluginDynamic();
+      auto cast_layer = engine_->AddPluginV2(&pos_tensor, 1, cast_plugin);
+
+      auto casted_pos_tensor = cast_layer->getOutput(0);
+      auto reshape_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *casted_pos_tensor);
+
+      nvinfer1::Dims2 reshape_dim(0, 0);
+      nvinfer1::Permutation perm{1, 0, 2};
+      reshape_layer->setFirstTranspose(perm);
+      reshape_layer->setReshapeDimensions(reshape_dim);
+      auto imask_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Reduce, *reshape_layer->getOutput(0),
+                               nvinfer1::ReduceOperation::kMAX, 1, false);
+      engine_->SetITensor("imask_tensor", imask_layer->getOutput(0));
+
       plugin::DynamicPluginTensorRT* plugin = nullptr;
       plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
           input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
           eps);
-      layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
+      auto plugin_layer =
+          engine_->AddPluginV2(input_ids.data(), input_num, plugin);
+      nvinfer1::Permutation permutation{1, 0, 2, 3, 4};
+      auto trans_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *plugin_layer->getOutput(0));
+      trans_layer->setFirstTranspose(permutation);
+      layer = trans_layer;
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "You are running the Ernie(Bert) model in static"

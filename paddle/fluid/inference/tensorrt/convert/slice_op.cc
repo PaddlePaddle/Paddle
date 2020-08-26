@@ -23,9 +23,8 @@ class SliceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    // This OP is implemented by trt dynamic shpae plugin.
-    // Dynamic shape plugin requires TRT version greater than 6.0.
-    std::cerr << "slice op converter\n" << std::endl;
+// This OP is implemented by trt dynamic shpae plugin.
+// Dynamic shape plugin requires TRT version greater than 6.0.
 #if IS_TRT_VERSION_GE(6000)
     VLOG(4) << "convert slice op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
@@ -41,10 +40,17 @@ class SliceOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
+      nvinfer1::Permutation permutation{1, 0, 2, 3, 4};
+      auto trans_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+      trans_layer->setFirstTranspose(permutation);
+      std::vector<nvinfer1::ITensor*> plugin_inputs;
+      plugin_inputs.emplace_back(trans_layer->getOutput(0));
+
       bool ban_fp16 = engine_->disable_trt_plugin_fp16();
       plugin::SlicePluginDynamic* plugin =
           new plugin::SlicePluginDynamic(starts, ends, axes, ban_fp16);
-      layer = engine_->AddPluginV2(&input, 1, plugin);
+      layer = engine_->AddPluginV2(plugin_inputs.data(), plugin_inputs.size(),
+                                   plugin);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "You are running the Ernie(Bert) model in static"
