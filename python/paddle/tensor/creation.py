@@ -1041,18 +1041,13 @@ def empty(shape, dtype=None, name=None):
     if dtype is None:
         dtype = 'float32'
 
-    # print('dtype: ', dtype)
     dtype = convert_dtype(dtype)
-    # print('dtype: ', dtype)
 
     if in_dygraph_mode():
         shape = utils._convert_shape_to_list(shape)
-        # print('shape: ', shape)
 
-        out = _varbase_creator(dtype=dtype)
-
-        # print('out.dtype: ', out.dtype)
-        out = core.ops.empty('shape', shape, 'dtype', out.dtype)
+        out = core.ops.empty('shape', shape, 'dtype',
+                             convert_np_dtype_to_dtype_(dtype))
 
         out.stop_gradient = True
 
@@ -1071,7 +1066,7 @@ def empty(shape, dtype=None, name=None):
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
     attrs = {}
-    attrs['dtype'] = out.dtype
+    attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
     attrs['shape'] = shape
 
     helper.append_op(
