@@ -127,9 +127,6 @@ def map_readers(func, *readers):
 
 def shuffle(reader, buf_size):
     """
-    paddle.fluid.io.shuffle ( :ref:`api_fluid_io_shuffle` ) is recommended to use,
-    and paddle.reader.shuffle is an alias.
-
     This API creates a decorated reader that outputs the shuffled data.
 
     The output data from the origin reader will be saved into a buffer, 
@@ -179,10 +176,6 @@ def chain(*readers):
     Use the input data readers to create a chained data reader. The new created reader
     chains the outputs of input readers together as its output, and it do not change
     the format of the outputs.
-
-    **Note**:
-        ``paddle.reader.chain`` is the alias of ``paddle.fluid.io.chain``, and
-        ``paddle.fluid.io.chain`` is recommended to use.
 
     For example, if three input readers' outputs are as follows:
     [0, 0, 0],
@@ -364,9 +357,6 @@ def buffered(reader, size):
 
 def firstn(reader, n):
     """
-    paddle.fluid.io.firstn ( :ref:`api_fluid_io_firstn` ) is recommended to use,
-    and paddle.reader.firstn is an alias.
-    
     This API creates a decorated reader, and limits the max number of 
     samples that reader could return.
 
