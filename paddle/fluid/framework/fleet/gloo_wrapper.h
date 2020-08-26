@@ -107,7 +107,7 @@ class GlooWrapper {
  public:
   static std::shared_ptr<GlooWrapper> GetInstance() {
     static auto s_instance = std::make_shared<GlooWrapper>();
-    return s_instance_;
+    return s_instance;
   }
 
   GlooWrapper() {}
@@ -210,9 +210,6 @@ class GlooWrapper {
 #endif
     return std::move(ret);
   }
-
- private:
-  static std::shared_ptr<GlooWrapper> s_instance_;
 
  protected:
   bool is_initialized_ = false;
