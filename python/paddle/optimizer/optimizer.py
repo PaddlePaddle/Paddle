@@ -21,6 +21,7 @@ from collections import defaultdict
 
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+import paddle
 
 from ..fluid import framework
 from ..fluid import layers
@@ -308,7 +309,8 @@ class Optimizer(object):
                         name=unique_name.generate("learning_rate"),
                         shape=[1],
                         value=float(self._learning_rate),
-                        dtype='float32' if self._dtype is None else self._dtype,
+                        dtype=paddle.get_default_dtype()
+                        if self._dtype is None else self._dtype,
                         persistable=True)
             # get learning rate Tensor from LearningRateDecay
             elif isinstance(self._learning_rate, LearningRateDecay):
@@ -336,7 +338,8 @@ class Optimizer(object):
                 name=unique_name.generate("learning_rate"),
                 shape=[1],
                 value=float(self._learning_rate),
-                dtype='float32' if self._dtype is None else self._dtype,
+                dtype=paddle.get_default_dtype()
+                if self._dtype is None else self._dtype,
                 persistable=True)
 
     @framework.dygraph_only
