@@ -1607,10 +1607,7 @@ class Model(object):
                     % type(layer))
 
             # 2. get program of declarative Layer.forward
-            prog_cache = prog_translator.get_program_cache()
-            # make dummy args & kwargs, to get excepted FunctionSpec
-            layer_func = FunctionSpec(type(layer).forward, [layer], {})
-            concrete_program, _ = prog_cache.get_program(layer_func)
+            concrete_program = layer.forward.concrete_program
 
             # NOTE: we maintain the mapping of variable name to
             # structured name, the buffer variable (non-persistable)
