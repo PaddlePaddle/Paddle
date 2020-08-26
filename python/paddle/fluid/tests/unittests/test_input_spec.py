@@ -95,12 +95,18 @@ class TestInputSpec(unittest.TestCase):
     def test_eq_and_hash(self):
         tensor_spec_1 = InputSpec([10, 16], dtype='float32')
         tensor_spec_2 = InputSpec([10, 16], dtype='float32')
-        self.assertTrue(tensor_spec_1 == tensor_spec_2)
-
         tensor_spec_3 = InputSpec([10, 16], dtype='float32', name='x')
-        self.assertFalse(tensor_spec_2 == tensor_spec_3)
+        tensor_spec_4 = InputSpec([16], dtype='float32', name='x')
 
+        # override ``__eq__`` according to [shape, dtype, name]
+        self.assertTrue(tensor_spec_1 == tensor_spec_2)
+        self.assertTrue(tensor_spec_1 != tensor_spec_3)  # different name
+        self.assertTrue(tensor_spec_3 != tensor_spec_4)  # different shape
+
+        # override ``__hash__``  according to [shape, dtype]
+        self.assertTrue(hash(tensor_spec_1) == hash(tensor_spec_2))
         self.assertTrue(hash(tensor_spec_1) == hash(tensor_spec_3))
+        self.assertTrue(hash(tensor_spec_3) != hash(tensor_spec_4))
 
 
 if __name__ == '__main__':

@@ -41,7 +41,7 @@ def data(name, shape, dtype=None, lod_level=0):
            size. For example, it is useful to set changeable batch size as "None" or -1.
        dtype (np.dtype|str, optional): The type of the data. Supported
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
-           uint8. Default: None. When `dtype` is not set, the dtype will get 
+           uint8. Default: None. When `dtype` is not set, the dtype will get
            from the global dtype by `paddle.get_default_dtype()`.
        lod_level (int, optional): The LoD level of the LoDTensor. Usually users
            don't have to set this value. For more details about when and how to
@@ -60,7 +60,7 @@ def data(name, shape, dtype=None, lod_level=0):
           # Creates a variable with fixed size [3, 2, 1]
           # User can only feed data of the same shape to x
           # the dtype is not set, so it will set "float32" by
-          # paddle.get_default_dtype(). You can use paddle.get_default_dtype() to 
+          # paddle.get_default_dtype(). You can use paddle.get_default_dtype() to
           # change the global dtype
           x = paddle.static.data(name='x', shape=[3, 2, 1])
 
@@ -166,11 +166,11 @@ class InputSpec(object):
     @classmethod
     def from_tensor(cls, tensor, name=None):
         """
-        Generates a InputSpec based on the description of input tensor. 
+        Generates a InputSpec based on the description of input tensor.
 
         Args:
             tensor(Tensor): the source tensor to generate a InputSpec instance
-        
+
         Returns:
             A InputSpec instance generated from Tensor.
 
@@ -198,11 +198,11 @@ class InputSpec(object):
     @classmethod
     def from_numpy(cls, ndarray, name=None):
         """
-        Generates a InputSpec based on the description of input np.ndarray. 
+        Generates a InputSpec based on the description of input np.ndarray.
 
         Args:
             tensor(Tensor): the source numpy ndarray to generate a InputSpec instance
-        
+
         Returns:
             A InputSpec instance generated from Tensor.
 
@@ -225,7 +225,7 @@ class InputSpec(object):
 
         Args:
             batch_size(int): the inserted integer value of batch size.
-        
+
         Returns:
             The original InputSpec instance by inserting `batch_size` in front of `shape`.
 
@@ -257,7 +257,7 @@ class InputSpec(object):
     def unbatch(self):
         """
         Removes the first element of `shape`.
-        
+
         Returns:
             The original InputSpec instance by removing the first element of `shape` .
 
@@ -303,6 +303,20 @@ class InputSpec(object):
         return tuple(shape)
 
     def __hash__(self):
+        # Note(Aurelius84): `name` is not considered as a field to compute hashkey.
+        # Because it's no need to generate a new program in following cases while using
+        # @paddle.jit.to_static.
+        #
+        # Case 1:
+        #      foo(x_var)
+        #      foo(y_var)
+        #  x_var and y_var hold same shape and dtype, they should share a same program.
+        #
+        #
+        # Case 2:
+        #      foo(x_var)
+        #      foo(x_np)  # x_np is a numpy.ndarray.
+        #  x_var and x_np hold same shape and dtype, they should also share a same program.
         return hash((tuple(self.shape), self.dtype))
 
     def __eq__(self, other):
