@@ -1403,7 +1403,9 @@ function main() {
     local CMD=$1 
     local parallel_number=$2
     init
-    python ${PADDLE_ROOT}/tools/summary_env.py
+    if [ "$CMD" != "assert_file_approvals" ];then
+      python ${PADDLE_ROOT}/tools/summary_env.py
+    fi
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
