@@ -163,14 +163,14 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0):
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
-    if op == ReduceOp.SUM:
-        op_type = 'c_allreduce_sum'
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'all_reduce')
     if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
         raise ValueError("The op for all_reduce must be one of educeOp.PROD, "
                          "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
+    if op == ReduceOp.SUM:
+        op_type = 'c_allreduce_sum'
     elif op == ReduceOp.MAX:
         op_type = 'c_allreduce_max'
     elif op == ReduceOp.MIN:
@@ -310,13 +310,13 @@ def all_gather(tensor_list, tensor, group=0):
             data2 = paddle.to_tensor(np_data2)
             out = paddle.distributed.all_gather(tensor_list, data2)
     """
+    op_type = 'c_allgather'
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
     if in_dygraph_mode():
         core.ops.c_allgather(tensor, out, 'use_calc_stream', True, 'ring_id',
                              group, 'nranks', _default_group.nranks)
     else:
-        op_type = 'c_allgather'
         if not isinstance(tensor_list, list):
             raise ValueError("The type of 'tensor_list' for all_gather "
                              "should be list.")
