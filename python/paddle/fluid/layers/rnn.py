@@ -50,6 +50,7 @@ __all__ = [
     'gru_unit',
     'lstm_unit',
     'lstm',
+    'cudnn_rnn_flatten_weight',
     'beam_search',
     'beam_search_decode',
 ]
@@ -2280,24 +2281,19 @@ def lstm(input,
     dtype = input.dtype
     input_shape = list(input.shape)
     input_size = input_shape[-1]
+    n_direction = 2 if is_bidirec else 1
+    gate_size = hidden_size * 4
     weight_size = 0
     for i in range(num_layers):
         if i == 0:
-            input_weight_size = (input_size * hidden_size) * 4
+            input_weight_size = gate_size * input_size
         else:
-            if is_bidirec:
-                input_weight_size = (hidden_size * 2 * hidden_size) * 4
-            else:
-                input_weight_size = (hidden_size * hidden_size) * 4
+            input_weight_size = gate_size * hidden_size * n_direction
 
-        hidden_weight_size = (hidden_size * hidden_size) * 4
+        hidden_weight_size = gate_size * hidden_size * n_direction
 
-        if is_bidirec:
-            weight_size += (input_weight_size + hidden_weight_size) * 2
-            weight_size += hidden_size * 8 * 2
-        else:
-            weight_size += input_weight_size + hidden_weight_size
-            weight_size += hidden_size * 8
+        weight_size += input_weight_size + hidden_weight_size
+        weight_size += gate_size * 2
 
     weight = helper.create_parameter(
         attr=helper.param_attr,
@@ -2339,6 +2335,39 @@ def lstm(input,
             'seed': seed,
         })
     return out, last_h, last_c
+
+
+def cudnn_rnn_flatten_weight(weight,
+                             hidden_size,
+                             input_size,
+                             num_layers,
+                             is_bidirec=False):
+
+    helper = LayerHelper("cudnn_rnn_flatten_weight", **locals())
+    dtype = helper.input_dtype()
+
+    weight_ih = helper.create_variable_for_type_inference(dtype)
+    weight_hh = helper.create_variable_for_type_inference(dtype)
+    bias_ih = helper.create_variable_for_type_inference(dtype)
+    bias_hh = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type='cudnn_rnn_flatten_weight',
+        inputs={'Weight': weight},
+        attrs={
+            'is_bidirec': is_bidirec,
+            'input_size': input_size,
+            'hidden_size': hidden_size,
+            'num_layers': num_layers
+        },
+        outputs={
+            'WeightIh': weight_ih,
+            'WeightHh': weight_hh,
+            'BiasIh': bias_ih,
+            'BiasHh': bias_hh
+        })
+
+    return weight_ih, weight_hh, bias_ih, bias_hh
 
 
 def dynamic_lstmp(input,
