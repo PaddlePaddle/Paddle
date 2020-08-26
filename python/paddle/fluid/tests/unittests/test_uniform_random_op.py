@@ -536,5 +536,63 @@ class TestUniformDygraphMode(unittest.TestCase):
                 self.assertTrue((x_np[i] > 0 and x_np[i] < 1.0))
 
 
+class TestUniformDtype(unittest.TestCase):
+    def test_default_dtype(self):
+        paddle.disable_static()
+
+        def test_default_fp_16():
+            paddle.framework.set_default_dtype('float16')
+            paddle.tensor.random.uniform([2, 3])
+
+        self.assertRaises(TypeError, test_default_fp_16)
+
+        def test_uniform_random_default_fp_16():
+            paddle.framework.set_default_dtype('float16')
+            fluid.layers.nn.uniform_random([2, 3])
+
+        self.assertRaises(TypeError, test_uniform_random_default_fp_16)
+
+        def test_uniform_random_batch_size_like_default_fp_16():
+            paddle.framework.set_default_dtype('float16')
+            x = paddle.to_tensor(np.random.rand(1, 3))
+            fluid.layers.nn.uniform_random_batch_size_like(x, [2, 4])
+
+        self.assertRaises(TypeError,
+                          test_uniform_random_batch_size_like_default_fp_16)
+
+        def test_default_fp_32():
+            paddle.framework.set_default_dtype('float32')
+            out = paddle.tensor.random.uniform([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP32)
+
+            out_uniform_random = fluid.layers.nn.uniform_random([2, 3])
+            self.assertEqual(out_uniform_random.dtype,
+                             fluid.core.VarDesc.VarType.FP32)
+
+            x = paddle.to_tensor(np.random.rand(1, 3))
+            out_batch = fluid.layers.nn.uniform_random_batch_size_like(x,
+                                                                       [2, 4])
+            self.assertEqual(out_batch.dtype, fluid.core.VarDesc.VarType.FP32)
+
+        def test_default_fp_64():
+            paddle.framework.set_default_dtype('float64')
+            out = paddle.tensor.random.uniform([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+
+            out_uniform_random = fluid.layers.nn.uniform_random([2, 3])
+            self.assertEqual(out_uniform_random.dtype,
+                             fluid.core.VarDesc.VarType.FP64)
+
+            x = paddle.to_tensor(np.random.rand(1, 3))
+            out_batch = fluid.layers.nn.uniform_random_batch_size_like(x,
+                                                                       [2, 4])
+            self.assertEqual(out_batch.dtype, fluid.core.VarDesc.VarType.FP64)
+
+        test_default_fp_64()
+        test_default_fp_32()
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

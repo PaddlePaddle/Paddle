@@ -245,15 +245,46 @@ class TestGaussianRandomAPI(unittest.TestCase):
 
         self.assertRaises(TypeError, test_default_fp_16)
 
+        def test_fluid_gaussian_default_fp_16():
+            paddle.framework.set_default_dtype('float16')
+            fluid.layers.gaussian_random([2, 3])
+
+        self.assertRaises(TypeError, test_fluid_gaussian_default_fp_16)
+
+        def test_fluid_gaussian_batch_default_fp_16():
+            paddle.framework.set_default_dtype('float16')
+            x = paddle.to_tensor(np.random.rand(13, 11))
+            fluid.layers.gaussian_random_batch_size_like(x, [-1, 11])
+
+        self.assertRaises(TypeError, test_fluid_gaussian_batch_default_fp_16)
+
         def test_default_fp_32():
             paddle.framework.set_default_dtype('float32')
             out = paddle.tensor.random.gaussian_random([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP32)
 
+            out_fluid = fluid.layers.gaussian_random([2, 3])
+            self.assertEqual(out_fluid.dtype, fluid.core.VarDesc.VarType.FP32)
+
+            x = paddle.to_tensor(np.random.rand(13, 11))
+            out_fluid_batch = fluid.layers.gaussian_random_batch_size_like(
+                x, [-1, 11])
+            self.assertEqual(out_fluid_batch.dtype,
+                             fluid.core.VarDesc.VarType.FP32)
+
         def test_default_fp_64():
             paddle.framework.set_default_dtype('float64')
             out = paddle.tensor.random.gaussian_random([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+
+            out_fluid = fluid.layers.gaussian_random([2, 3])
+            self.assertEqual(out_fluid.dtype, fluid.core.VarDesc.VarType.FP64)
+
+            x = paddle.to_tensor(np.random.rand(13, 11))
+            out_fluid_batch = fluid.layers.gaussian_random_batch_size_like(
+                x, [-1, 11])
+            self.assertEqual(out_fluid_batch.dtype,
+                             fluid.core.VarDesc.VarType.FP64)
 
         test_default_fp_64()
         test_default_fp_32()
