@@ -1125,6 +1125,44 @@ class MiniBatchGpuPack {
   double pack_time_span(void) { return pack_timer_.ElapsedSec(); }
   double trans_time_span(void) { return trans_timer_.ElapsedSec(); }
 
+  // tensor gpu memory reused
+  void resize_tensor(void) {
+    if (used_float_num_ > 0) {
+      int float_total_len = buf_.h_float_lens.back();
+      if (float_total_len > 0) {
+        float_tensor_.mutable_data<float>({float_total_len, 1}, this->place_);
+      }
+    }
+    if (used_uint64_num_ > 0) {
+      int uint64_total_len = buf_.h_uint64_lens.back();
+      if (uint64_total_len > 0) {
+        uint64_tensor_.mutable_data<int64_t>({uint64_total_len, 1},
+                                             this->place_);
+      }
+    }
+    //    fprintf(stdout, "float total: %d, uint64: %d\n", float_total_len,
+    //          uint64_total_len);
+  }
+  LoDTensor& float_tensor(void) { return float_tensor_; }
+  LoDTensor& uint64_tensor(void) { return uint64_tensor_; }
+
+  HostBuffer<size_t>& offsets(void) { return offsets_; }
+  HostBuffer<void*>& h_tensor_ptrs(void) { return h_tensor_ptrs_; }
+
+  void* gpu_slot_offsets(void) { return gpu_slot_offsets_->ptr(); }
+
+  void* slot_buf_ptr(void) { return slot_buf_ptr_->ptr(); }
+
+  void resize_gpu_slot_offsets(const size_t slot_total_bytes) {
+    if (gpu_slot_offsets_ == nullptr) {
+      gpu_slot_offsets_ = memory::AllocShared(place_, slot_total_bytes);
+    } else if (gpu_slot_offsets_->size() < slot_total_bytes) {
+      auto buf = memory::AllocShared(place_, slot_total_bytes);
+      gpu_slot_offsets_.swap(buf);
+      buf = nullptr;
+    }
+  }
+
  private:
   void transfer_to_gpu(void);
   void pack_all_data(const SlotRecord* ins_vec, int num);
@@ -1165,6 +1203,19 @@ class MiniBatchGpuPack {
 
   platform::Timer pack_timer_;
   platform::Timer trans_timer_;
+
+  // uint64 tensor
+  LoDTensor uint64_tensor_;
+  // float tensor
+  LoDTensor float_tensor_;
+  // batch
+  HostBuffer<size_t> offsets_;
+  HostBuffer<void*> h_tensor_ptrs_;
+
+  std::shared_ptr<paddle::memory::allocation::Allocation> gpu_slot_offsets_ =
+      nullptr;
+  std::shared_ptr<paddle::memory::allocation::Allocation> slot_buf_ptr_ =
+      nullptr;
 };
 class MiniBatchGpuPackMgr {
   static const int MAX_DEIVCE_NUM = 16;
@@ -1215,7 +1266,9 @@ class SlotPaddleBoxDataFeed : public DataFeed {
       LOG(WARNING) << "pack batch total time: " << batch_timer_.ElapsedSec()
                    << "[copy:" << pack_->trans_time_span()
                    << ",fill:" << fill_timer_.ElapsedSec()
-                   << ",tensor:" << offset_timer_.ElapsedSec()
+                   << ",memory:" << offset_timer_.ElapsedSec()
+                   << ",offset:" << copy_timer_.ElapsedSec()
+                   << ",tensor:" << data_timer_.ElapsedSec()
                    << ",trans:" << trans_timer_.ElapsedSec()
                    << "], batch cpu build mem: " << pack_->pack_time_span()
                    << "sec";
@@ -1333,14 +1386,13 @@ class SlotPaddleBoxDataFeed : public DataFeed {
   std::vector<AllSlotInfo> all_slots_info_;
   std::vector<UsedSlotInfo> used_slots_info_;
   std::string parser_so_path_;
-  std::shared_ptr<paddle::memory::allocation::Allocation> gpu_slot_offsets_ =
-      nullptr;
-  std::shared_ptr<paddle::memory::allocation::Allocation> slot_buf_ptr_ =
-      nullptr;
+
   platform::Timer batch_timer_;
   platform::Timer fill_timer_;
   platform::Timer offset_timer_;
+  platform::Timer data_timer_;
   platform::Timer trans_timer_;
+  platform::Timer copy_timer_;
 };
 
 template <class AR, class T>
