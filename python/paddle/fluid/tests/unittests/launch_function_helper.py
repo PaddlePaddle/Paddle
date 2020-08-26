@@ -25,13 +25,13 @@ def launch_func(func, env_dict):
     return proc
 
 
-def wait(procs, timeout=30):
+def wait(procs, timeout=None):
     # wait
     decents = []
     for child in psutil.Process(os.getpid()).children(recursive=True):
         decents.append(child)
 
-    gone, alive = psutil.wait_procs(decents, timeout=30)
+    gone, alive = psutil.wait_procs(decents, timeout=timeout)
     for p in alive:
         p.kill()
     for p in gone:
