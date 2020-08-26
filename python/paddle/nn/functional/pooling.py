@@ -47,6 +47,20 @@ def _is_list_or_tuple(input):
     return isinstance(input, (list, tuple))
 
 
+def _check_input(x, dimension):
+    if len(x.shape) != dimension:
+        raise ValueError(
+            "Excepted Input X is {}-D tensor, but received {}-D {}".format(
+                dimension, len(x.shape), type(x)))
+
+
+def _check_instance(x, x_name, types=(int, float)):
+
+    if not isinstance(x, types):
+        raise ValueError("Excepted {} type for {} but received type: {}. ".
+                         format(types, x_name, type(x)))
+
+
 def _zero_padding_in_batch_and_channel(padding, channel_last):
     if channel_last:
         return list(padding[0]) == [0, 0] and list(padding[-1]) == [0, 0]
@@ -82,20 +96,6 @@ def _channel_last(data_format, num_dims):
                 "Attr(data_format): %s" % str(data_format))
         else:
             return True if data_format == "NDHWC" else False
-
-
-def check_input(x, dimension):
-    if len(x.shape) != dimension:
-        raise ValueError(
-            "Excepted Input X is {}-D tensor, but received {}-D {}".format(
-                dimension, len(x.shape), type(x)))
-
-
-def check_instance(x, x_name, types=(int, float)):
-
-    if not isinstance(x, types):
-        raise ValueError("Excepted {} type for {} but received type: {}. ".
-                         format(types, x_name, type(x)))
 
 
 def _update_padding_nd(padding, num_dims, channel_last=False):
@@ -212,7 +212,7 @@ def avg_pool1d(x,
     """NCL to NCHW"""
     data_format = "NCHW"
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool1d')
-    check_input(x, 3)
+    _check_input(x, 3)
     x = unsqueeze(x, [2])
     kernel_size = utils.convert_to_list(kernel_size, 1, 'kernel_size')
     kernel_size = [1] + kernel_size
@@ -350,7 +350,7 @@ def avg_pool2d(x,
         if divisor_override is None:
             return output
         else:
-            check_instance(divisor_override, "divisor_override")
+            _check_instance(divisor_override, "divisor_override")
             return output * (kernel_size[0] * kernel_size[1]) / divisor_override
 
     op_type = 'pool2d'
@@ -379,7 +379,7 @@ def avg_pool2d(x,
     if divisor_override is None:
         return pool_out
     else:
-        check_instance(divisor_override, "divisor_override")
+        _check_instance(divisor_override, "divisor_override")
         return pool_out * (kernel_size[0] * kernel_size[1]) / divisor_override
 
 
@@ -463,7 +463,7 @@ def avg_pool3d(x,
         if divisor_override is None:
             return output
         else:
-            check_instance(divisor_override, "divisor_override")
+            _check_instance(divisor_override, "divisor_override")
             return output * (kernel_size[0] * kernel_size[1] *
                              kernel_size[2]) / divisor_override
 
@@ -494,7 +494,7 @@ def avg_pool3d(x,
     if divisor_override is None:
         return pool_out
     else:
-        check_instance(divisor_override, "divisor_override")
+        _check_instance(divisor_override, "divisor_override")
         return pool_out * (kernel_size[0] * kernel_size[1] *
                            kernel_size[2]) / divisor_override
 
@@ -554,7 +554,7 @@ def max_pool1d(x,
     """NCL to NCHW"""
     data_format = "NCHW"
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool1d')
-    check_input(x, 3)
+    _check_input(x, 3)
     x = unsqueeze(x, [2])
     kernel_size = [1] + utils.convert_to_list(kernel_size, 1, 'pool_size')
     if stride is None:
@@ -562,7 +562,7 @@ def max_pool1d(x,
     else:
         stride = [1] + utils.convert_to_list(stride, 1, 'pool_stride')
 
-    padding, padding_algorithm = _update_pooling_type(padding, 1)
+    padding, padding_algorithm = _update_padding_nd(padding, 1)
 
     # using 2d to implenment 1d should expand padding.
     padding = _expand_low_nd_padding(padding)
@@ -874,7 +874,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     """
     pool_type = 'avg'
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'adaptive_pool2d')
-    check_input(x, 3)
+    _check_input(x, 3)
     check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
 
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
@@ -1158,7 +1158,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
     pool_type = 'max'
     check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                              'adaptive_max_pool1d')
-    check_input(x, 3)
+    _check_input(x, 3)
     check_type(output_size, 'pool_size', (int), 'adaptive_max_pool1d')
     check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool1d')
 
@@ -1237,7 +1237,7 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
     if not in_dygraph_mode():
         check_variable_and_dtype(x, 'input', ['float32', 'float64'],
                                  'adaptive_max_pool2d')
-    check_input(x, 4)
+    _check_input(x, 4)
     check_type(output_size, 'pool_size', (int), 'adaptive_max_pool2d')
     check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool2d')
 
@@ -1323,7 +1323,7 @@ def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
     if not in_dygraph_mode():
         check_variable_and_dtype(x, 'input', ['float32', 'float64'],
                                  'adaptive_max_pool3d')
-    check_input(x, 5)
+    _check_input(x, 5)
     check_type(output_size, 'pool_size', (int), 'adaptive_max_pool3d')
     check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool3d')
 
