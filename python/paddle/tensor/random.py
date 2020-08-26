@@ -23,7 +23,6 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layers import utils
 from ..fluid.layers.tensor import fill_constant
-from ..framework import get_default_dtype
 import paddle
 import warnings
 
@@ -122,7 +121,7 @@ def gaussian_random(shape, mean=0.0, std=1.0, dtype=None, name=None):
         distribution, with ``shape`` and ``dtype``. 
     """
     if dtype is None:
-        dtype = get_default_dtype()
+        dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
                 "gaussian_random only supports [float32, float64], but the default dtype is %s"
@@ -224,7 +223,7 @@ def standard_normal(shape, dtype=None, name=None):
 
     """
     if dtype is None:
-        dtype = get_default_dtype()
+        dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
                 "standard_normal only supports [float32, float64], but the default dtype is %s"
@@ -414,7 +413,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
     """
     if dtype is None:
-        dtype = get_default_dtype()
+        dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
                 "uniform only supports [float32, float64], but the default dtype is %s"
@@ -687,7 +686,7 @@ def rand(shape, dtype=None, name=None):
 
     """
     if dtype is None:
-        dtype = get_default_dtype()
+        dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
                 "rand only supports [float32, float64], but the default dtype is %s"

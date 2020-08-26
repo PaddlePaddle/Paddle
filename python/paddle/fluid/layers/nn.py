@@ -39,7 +39,6 @@ from ...utils import deprecated
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
 from paddle.utils import deprecated
-from paddle.framework import get_default_dtype
 
 __all__ = [
     'fc',
@@ -10465,7 +10464,7 @@ def uniform_random_batch_size_like(input,
 
     """
     if dtype is None:
-        dtype = get_default_dtype()
+        dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
                 "uniform_random_batch_size_like only supports [float32, float64], but the default dtype is %s"
@@ -10590,7 +10589,7 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
     """
     if dtype is None:
-        dtype = get_default_dtype()
+        dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
                 "gaussian_random only supports [float32, float64], but the default dtype is %s"
@@ -10710,7 +10709,7 @@ def gaussian_random_batch_size_like(input,
                 input, shape=[-1, 11], mean=1.0, std=2.0)
     """
     if dtype is None:
-        dtype = get_default_dtype()
+        dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
                 "gaussian_random_batch_size_like only supports [float32, float64], but the default dtype is %s"
@@ -15020,6 +15019,7 @@ def gather_tree(ids, parents):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.uniform")
 @templatedoc()
 def uniform_random(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     """
@@ -15095,7 +15095,7 @@ def uniform_random(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
     """
     if dtype is None:
-        dtype = get_default_dtype()
+        dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
                 "uniform_random only supports [float32, float64], but the default dtype is %s"

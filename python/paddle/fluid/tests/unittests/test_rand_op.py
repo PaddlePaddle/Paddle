@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 from paddle import rand
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+import paddle
 
 
 class TestRandOpError(unittest.TestCase):
