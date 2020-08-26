@@ -29,7 +29,8 @@ namespace framework {
 
 struct Generator;
 
-Generator& getDefaultCUDAGenerator(int64_t device_id);
+const std::shared_ptr<Generator>& getDefaultCUDAGenerator(
+    int64_t device_id = -1);
 
 struct GeneratorState {
   int64_t device = -1;
@@ -70,6 +71,10 @@ struct Generator {
 
   uint64_t Random64();
 
+  void SetIsInitPyCUDA(bool);
+
+  bool GetIsInitPyCUDA() const;
+
   std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t total_numel,
                                                 uint64_t grid_size,
                                                 uint64_t block_size,
@@ -98,6 +103,7 @@ struct Generator {
   static std::shared_ptr<Generator> gen_instance_;
   std::shared_ptr<GeneratorState> state_;
   mutable std::mutex mutex;
+  bool is_init_py_cuda_ = false;
 
   Generator(const Generator& other, const std::lock_guard<std::mutex>&)
       : state_(std::make_shared<GeneratorState>(*(other.state_))) {}

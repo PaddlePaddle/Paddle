@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/generator.h"
+
+#include <glog/logging.h>
+
 #include <deque>
 #include <memory>
 #include <unordered_map>
@@ -19,11 +23,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/generator.h"
-
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
-
 namespace paddle {
 namespace framework {
 
@@ -51,7 +52,7 @@ static void initGlobalCUDAGeneratorState(int64_t device = -1) {
       std::make_shared<Generator>(default_gen_state_cuda);
 }
 
-Generator& getDefaultCUDAGenerator(int64_t device_id) {
+const std::shared_ptr<Generator>& getDefaultCUDAGenerator(int64_t device_id) {
   std::call_once(num_devices_init_flag, InitCUDAGenerators);
   platform::Place place;
   if (device_id == -1)
@@ -59,7 +60,7 @@ Generator& getDefaultCUDAGenerator(int64_t device_id) {
 
   std::call_once(cuda_device_flags[device_id], initGlobalCUDAGeneratorState,
                  device_id);
-  return *default_cuda_generators[device_id];
+  return default_cuda_generators[device_id];
 }
 
 GeneratorState* Generator::GetState() {
@@ -140,6 +141,12 @@ std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
       "Increment Offset only support in CUDA place"));
 #endif
 }
+
+void Generator::SetIsInitPyCUDA(bool is_init_py_cuda) {
+  this->is_init_py_cuda_ = is_init_py_cuda;
+  VLOG(4) << "SetIsInitPy:" << this->is_init_py_cuda_;
+}
+bool Generator::GetIsInitPyCUDA() const { return this->is_init_py_cuda_; }
 
 }  // namespace framework
 }  // namespace paddle

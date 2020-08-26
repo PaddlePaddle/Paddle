@@ -189,15 +189,18 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       }
 
       int64_t device_id = -1;
-      auto& gen_cuda = framework::getDefaultCUDAGenerator(device_id);
-      auto seed_offset = gen_cuda.IncrementOffset(1);
-      RandomGeneratorWithGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
-          size, seed_offset.first, dropout_prob, x_data, mask_data, y_data,
-          upscale_in_train, seed_offset.second);
+      auto gen_cuda = framework::getDefaultCUDAGenerator(device_id);
+      auto seed_offset = gen_cuda->IncrementOffset(1);
+      if (gen_cuda->GetIsInitPyCUDA()) {
+        RandomGeneratorWithGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
+            size, seed_offset.first, dropout_prob, x_data, mask_data, y_data,
+            upscale_in_train, seed_offset.second);
+      } else {
+        RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
+            size, seed_data, dropout_prob, x_data, mask_data, y_data,
+            upscale_in_train);
+      }
 
-      // RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
-      //     size, seed_data, dropout_prob, x_data, mask_data, y_data,
-      //     upscale_in_train);
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
