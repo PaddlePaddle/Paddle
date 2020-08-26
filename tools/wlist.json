@@ -1,4 +1,10 @@
 {
+    "wlist_file" : [
+        "../python/paddle/fluid/contrib", 
+        "../python/paddle/verison.py",
+        "../python/paddle/fluid/core_avx.py",
+        "../python/paddle/distributed"
+    ],
     "wlist_inneed":[
         "append_LARS",
         "BuildStrategy.debug_graphviz_path",

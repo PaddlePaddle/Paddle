@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/affine_grid_op.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_info.h"
+
 namespace paddle {
 namespace operators {
 
@@ -84,14 +86,14 @@ __global__ void affine_grid_grad_kernel(const int count, int n, int out_h,
 
     int theta_offset = n * 6;  // 2 * 3;
     T out_grad_x = out_grad[index * 2];
-    atomicAdd(theta_grad + theta_offset, out_grad_x * h_coor);
-    atomicAdd(theta_grad + theta_offset + 1, out_grad_x * w_coor);
-    atomicAdd(theta_grad + theta_offset + 2, out_grad_x);
+    platform::CudaAtomicAdd(theta_grad + theta_offset, out_grad_x * h_coor);
+    platform::CudaAtomicAdd(theta_grad + theta_offset + 1, out_grad_x * w_coor);
+    platform::CudaAtomicAdd(theta_grad + theta_offset + 2, out_grad_x);
 
     T out_grad_y = out_grad[index * 2 + 1];
-    atomicAdd(theta_grad + theta_offset + 3, out_grad_y * h_coor);
-    atomicAdd(theta_grad + theta_offset + 4, out_grad_y * w_coor);
-    atomicAdd(theta_grad + theta_offset + 5, out_grad_y);
+    platform::CudaAtomicAdd(theta_grad + theta_offset + 3, out_grad_y * h_coor);
+    platform::CudaAtomicAdd(theta_grad + theta_offset + 4, out_grad_y * w_coor);
+    platform::CudaAtomicAdd(theta_grad + theta_offset + 5, out_grad_y);
   }
 }
 

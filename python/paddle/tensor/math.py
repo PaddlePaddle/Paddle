@@ -562,34 +562,52 @@ floor_mod = remainder  #DEFINE_ALIAS
 
 def multiply(x, y, axis=-1, name=None):
     """
-	:alias_main: paddle.multiply
-	:alias: paddle.multiply,paddle.tensor.multiply,paddle.tensor.math.multiply
+    multiply two tensors element-wise. The equation is:
 
-Examples:
+    .. math::
+        out = x * y
 
-    .. code-block:: python
+    **Note**:
+    ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
-        import paddle
-        import numpy as np
+    Args:
+        x (Tensor): the input tensor, its data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, its data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-        paddle.disable_static()
-        x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
-        y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
-        res = paddle.multiply(x, y)
-        print(res.numpy()) # [[5, 12], [21, 32]]
+    Returns:
+        N-D Tensor. A location into which the result is stored. Its dimension equals with $x$.
 
-        x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
-        y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
-        res = paddle.multiply(x, y, axis=1)
-        print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
+            y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
+            res = paddle.multiply(x, y)
+            print(res.numpy()) # [[5, 12], [21, 32]]
+
+            x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
+            y_data = np.array([1, 2], dtype=np.float32)
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
+            res = paddle.multiply(x, y, axis=1)
+            print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
 
     """
     op_type = 'elementwise_mul'
     act = None
+    if x.dtype != y.dtype:
+        raise TypeError(
+            'Input tensors must be same type, but received type of x: %s, type of y: %s '
+            % (x.dtype, y.dtype))
+
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
@@ -2072,6 +2090,7 @@ def tanh(x, name=None):
         return core.ops.tanh(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'tanh')
+    check_type(x, 'x', (Variable), 'tanh')
     helper = LayerHelper('tanh', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
