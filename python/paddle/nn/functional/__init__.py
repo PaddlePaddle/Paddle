@@ -160,12 +160,12 @@ from .loss import square_error_cost  #DEFINE_ALIAS
 from .loss import ssd_loss  #DEFINE_ALIAS
 from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 from .loss import ctc_loss  #DEFINE_ALIAS
-# from .norm import batch_norm        #DEFINE_ALIAS
 # from .norm import data_norm        #DEFINE_ALIAS
 # from .norm import group_norm        #DEFINE_ALIAS
-# from .norm import instance_norm        #DEFINE_ALIAS
 from .norm import l2_normalize  #DEFINE_ALIAS
-# from .norm import layer_norm        #DEFINE_ALIAS
+from .norm import batch_norm  #DEFINE_ALIAS
+from .norm import instance_norm  #DEFINE_ALIAS
+from .norm import layer_norm  #DEFINE_ALIAS
 from .norm import lrn  #DEFINE_ALIAS
 from .norm import normalize  #DEFINE_ALIAS
 # from .norm import spectral_norm        #DEFINE_ALIAS
