@@ -388,7 +388,6 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
     global _default_group
     rank = _default_group.rank
     nranks = _default_group.nranks
-    helper = LayerHelper(op_type, **locals())
     if rank != src:
         tensor_list = []
         for _ in range(nranks):
@@ -401,17 +400,10 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'scatter')
-    if rank == src:
-        if not isinstance(tensor_list, list):
-            raise ValueError("The type of 'tensor_list' for scatter "
-                             "should be list for src.")
-    else:
-        if tensor_list:
-            raise ValueError("'tensor_list' for scatter "
-                             "should be None for others.")
     if not isinstance(group, int) or not isinstance(src, int):
         raise ValueError("Both the type of 'src' and 'group' for scatter "
                          "should be int.")
+    helper = LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
         inputs={'X': [temp]},
