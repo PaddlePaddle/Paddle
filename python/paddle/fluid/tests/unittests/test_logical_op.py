@@ -181,11 +181,13 @@ def test_type_error(unit_test, use_gpu, type_str_map):
         if binary_op:
             if type_str_map['x'] != 'bool' or type_str_map['y'] != 'bool':
                 unit_test.assertRaises(error_type, op, x=x, y=y)
-            unit_test.assertRaises(error_type, op, x=x, y=y, out=1)
+            if not fluid.in_dygraph_mode():
+                unit_test.assertRaises(error_type, op, x=x, y=y, out=1)
         else:
             if type_str_map['x'] != 'bool':
                 unit_test.assertRaises(error_type, op, x=x)
-            unit_test.assertRaises(error_type, op, x=x, out=1)
+            if not fluid.in_dygraph_mode():
+                unit_test.assertRaises(error_type, op, x=x, out=1)
 
     place = paddle.CPUPlace()
     if use_gpu and fluid.core.is_compiled_with_cuda():
