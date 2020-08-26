@@ -86,7 +86,7 @@ class TestFleetUtil(unittest.TestCase):
         dirs, files = fs.ls_dir("test_tmp")
         dirs, files = fs.ls_dir("./")
         self.assertFalse(fs.need_upload_download())
-        fleet_util.set_file_system(fs)
+        fleet_util._set_file_system(fs)
 
     def test_barrier(self):
         try:

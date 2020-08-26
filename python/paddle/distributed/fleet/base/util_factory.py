@@ -16,20 +16,18 @@
 """basic collective operations in python"""
 """remote file system"""
 
-__all__ = ['UtilBase']
-
-import numpy as np
-import os
-
-import subprocess
-from paddle.fluid import core
-from collections import OrderedDict
-import paddle.fluid as fluid
-from google.protobuf import text_format
-from paddle.fluid import debugger
-from paddle.fluid.framework import Program
-from paddle.fluid.proto import framework_pb2
 from ..utils.fs import FS, LocalFS, HDFSClient
+from paddle.fluid.proto import framework_pb2
+from paddle.fluid.framework import Program
+from paddle.fluid import debugger
+from google.protobuf import text_format
+import paddle.fluid as fluid
+from collections import OrderedDict
+from paddle.fluid import core
+import subprocess
+import os
+import numpy as np
+__all__ = ['UtilBase']
 
 
 class UtilFactory(object):
@@ -53,7 +51,7 @@ class UtilBase(object):
     def _set_role_maker(self, role_maker):
         self.role_maker = role_maker
 
-    def set_file_system(self, fs_client):
+    def _set_file_system(self, fs_client):
         assert isinstance(
             fs_client, FS
         ), "fs_client must be the instance of paddle.distributed.fleet.utils.FS"
@@ -87,26 +85,70 @@ class UtilBase(object):
         return _comm_world
 
     def all_reduce(self, input, mode, comm_world="worker"):
+        """
+        All reduce `input` between specified collection. This is a distributed API.
+        Args:
+            input (list|numpy.array): The input variable to do all_reduce between specified collection.
+            mode (string): "sum" or "min" or "max".
+            comm_world (String, optional): Collection used to execute all_reduce operation. Currently, supported
+            collection incudes `worker` , `server` and `all` . The default is `worker` .
+
+        Returns:
+            output (numpy.array|None): A numpy array with the same shape as the `input` .
+
+        Examples:
+            from paddle.distributed.fleet.base.util_factory import fleet_util
+            # 
+            input = [1, 2]
+            output = fleet_util.all_reduce(input, "sum", "worker")
+            # output = None
+        """
         _comm_world = self.__check_comm_world(comm_world)
         return self.role_maker._all_reduce(_comm_world, input, mode)
 
     def barrier(self, comm_world="worker"):
+        """
+        Barrier between specified collection.
+        Args:
+            comm_world (String, optional): Collection used to execute barrier operation. Currently, supported
+            collection incudes `worker` , `server` and `all` . The default is `worker` .
+
+        Examples:
+            from paddle.distributed.fleet.base.util_factory import fleet_util
+            fleet_util.barrier("worker")
+        """
         _comm_world = self.__check_comm_world(comm_world)
         self.role_maker._barrier(_comm_world)
 
     def all_gather(self, input, comm_world="worker"):
+        """
+        All gather `input` between specified collection.
+        Args:
+            input (list|numpy.array): The input variable to do all_gather between specified collection.
+            comm_world (String, optional): Collection used to execute all_reduce operation. Currently, supported
+            collection incudes `worker` , `server` and `all` . The default is `worker` .
+
+        Returns:
+            output (list): A list of gathered values.
+
+        Examples:
+            from paddle.distributed.fleet.base.util_factory import fleet_util
+            input = [1, 2]
+            output = fleet_util.all_gather(input, "worker")
+            # output = None
+        """
         _comm_world = self.__check_comm_world(comm_world)
         return self.role_maker._all_gather(_comm_world, input)
 
-    def broadcast(self):
+    def _broadcast(self):
         pass
 
-    def scatter(self):
+    def _scatter(self):
         pass
 
     def get_file_shard(self, files):
         """
-        split files before distributed training,
+        split files before distributed training, and return filelist assigned to the current trainer.
         example 1: files is [a, b, c ,d, e]  and trainer_num = 2, then trainer
                    0 gets [a, b, c] and trainer 1 gets [d, e].
         example 2: files is [a, b], and trainer_num = 3, then trainer 0 gets
@@ -117,6 +159,21 @@ class UtilBase(object):
 
         Returns:
             list: files belongs to this worker.
+
+        Examples:
+            from paddle.distributed.fleet.base.util_factory import fleet_util
+            import paddle.distributed.fleet.base.role_maker as role_maker
+
+            role = role_maker.UserDefinedRoleMaker(
+                is_collective=False,
+                init_gloo=False,
+                current_id=0,
+                role=role_maker.Role.WORKER,
+                worker_endpoints=["127.0.0.1:6003", "127.0.0.1:6004"],
+                server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+            fleet_util._set_role_maker(role)
+            files = fleet_util.get_file_shard(["file1", "file2", "file3"])
+            # files = ["file1", "file2"]
         """
         if not isinstance(files, list):
             raise TypeError("files should be a list of file need to be read.")
@@ -140,6 +197,29 @@ class UtilBase(object):
         return trainer_files[trainer_id]
 
     def print_on_rank(self, message, rank_id):
+        """
+        Woker of rank `rank_id` print some message. 
+        Args:
+            message(String): Log to be printed.
+            rank_id(int): trainer id.
+
+        Returns:
+            None.
+
+        Examples:
+            from paddle.distributed.fleet.base.util_factory import fleet_util
+            import paddle.distributed.fleet.base.role_maker as role_maker
+
+            role = role_maker.UserDefinedRoleMaker(
+                is_collective=False,
+                init_gloo=False,
+                current_id=0,
+                role=role_maker.Role.WORKER,
+                worker_endpoints=["127.0.0.1:6003", "127.0.0.1:6004"],
+                server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+            fleet_util._set_role_maker(role)
+            fleet_util.print_on_rank("I'm worker 0", 0)
+        """
         if self.role_maker.worker_index() != rank_id:
             return
         print(message)
@@ -297,7 +377,7 @@ class UtilBase(object):
         with fluid.scope_guard(scope):
             inference_program, feed_target_names, fetch_targets = \
                 fluid.io.load_inference_model(config.dump_model_dir, exe, model_filename=model_filename,
-                                            params_filename=config.save_params_filename)
+                                              params_filename=config.save_params_filename)
 
             # check program vars and saved vars shape
             orig_para_shape = {
