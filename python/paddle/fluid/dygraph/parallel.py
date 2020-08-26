@@ -44,7 +44,7 @@ def prepare_context(strategy=None):
     if strategy.nranks < 2:
         return
     assert framework.in_dygraph_mode() is True, \
-        "dygraph.prepare_context should be used with dygrahp mode."
+        "dygraph.prepare_context should be used with dygraph mode."
     place = framework._current_expected_place()
     assert place is not None, \
         "dygraph.prepare_context should be used in fluid.dygraph.guard(place) guard."
@@ -227,7 +227,7 @@ class ParallelEnv(object):
 
     def __getattr__(self, name):
         if name == "__aliases__":
-            raise AttributeError("Attribue `__aliases__` can not be accessed.")
+            raise AttributeError("Attribute `__aliases__` can not be accessed.")
         name = self.__aliases__.get(name, name)
         return object.__getattribute__(self, name)
 

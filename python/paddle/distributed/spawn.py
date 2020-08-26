@@ -117,7 +117,7 @@ class MultiprocessContext(object):
 
         original_trace = self.error_queues[error_index].get()
         msg = "\n\n----------------------------------------------\n" \
-              "Procces %d terminated with the following error:\n" \
+              "Process %d terminated with the following error:\n" \
               "----------------------------------------------\n\n" % error_index
         msg += original_trace
         raise Exception(msg)
@@ -137,7 +137,7 @@ def start_processes(func,
     Start multiple processes for parallel training.
 
     Args:
-        func (function): The targert function is called by started process.
+        func (function): The target function is called by started process.
             This function need to be able to pickled, so it must be defined
             at the top level of a module.
             This function should be called as ``func(i, *args)`` , ``i`` is
@@ -245,7 +245,7 @@ def start_processes(func,
     while not context.join():
         pass
 
-    # finaly return context
+    # finally return context
     return context
 
 
@@ -259,7 +259,7 @@ def spawn(func, args=(), nprocs=1, join=True, daemon=False):
     This is a specialized method of ``paddle.distributed.start_processes`` .
 
     Args:
-        func (function): The targert function is called by spawned process.
+        func (function): The target function is called by spawned process.
             This function need to be able to pickled, so it must be defined
             at the top level of a module.
             This function should be called as ``func(i, *args)``, ``i`` is

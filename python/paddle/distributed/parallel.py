@@ -42,7 +42,7 @@ class ParallelEnvArgs(object):
         # The current node ip.
         self.node_ip = None
 
-        # wheter to use paddlecloud platform to run your multi-process job.
+        # whether to use paddlecloud platform to run your multi-process job.
         # If false, no need to set this argument.
         self.use_paddlecloud = None
 
@@ -112,7 +112,7 @@ def _update_env_vars(rank, options):
     args.print_config = options.get('print_config', True)
 
     # set default `selected_gpus`
-    # TODO(chenweihang): if users gived number of `selected_gpus`
+    # TODO(chenweihang): if users given number of `selected_gpus`
     # is not equal to the spawn's nprocs, it will cause error, 
     # and because we remove the `proc num` argument of 
     # `init_parallel_env`, when above error occured, we do not 
@@ -173,10 +173,10 @@ def init_parallel_env(rank=-1, backend='nccl', **options):
     Initialize parallel training environments in dynamic mode.
 
     Args:
-        rank(int, optional): Rank of current process. Default vaule is -1. 
-            When it is the default value -1, you should use ``paddle.disstributed.launch`` 
+        rank(int, optional): Rank of current process. Default value is -1. 
+            When it is the default value -1, you should use ``paddle.distributed.launch`` 
             module to start training, the environment variables for parallel training 
-            are configured by ``paddle.disstributed.launch`` module.
+            are configured by ``paddle.distributed.launch`` module.
         backend(str, optional): The backend to communication between multiple devices.
             Now only support ``nccl`` . Default value is ``nccl`` .
         **options(dict, optional): Other initial parallel execution environment configuration options.
@@ -192,7 +192,7 @@ def init_parallel_env(rank=-1, backend='nccl', **options):
 
             - print_config: Print current parallel training config. Default: True.
 
-            - use_paddlecloud: Wheter to use paddlecloud platform to run your multi-process job. Default: False.
+            - use_paddlecloud: Whether to use paddlecloud platform to run your multi-process job. Default: False.
 
     Returns:
         None
@@ -267,16 +267,16 @@ def init_parallel_env(rank=-1, backend='nccl', **options):
     # 3. init ParallelStrategy
     strategy = ParallelStrategy()
     if cpt.to_text(backend) == 'nccl':
-        strategy.nranks = ParallelEnv().nranks
-        strategy.local_rank = ParallelEnv().local_rank
+        strategy.world_size = ParallelEnv().world_size
+        strategy.rank = ParallelEnv().rank
         strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
         strategy.current_endpoint = ParallelEnv().current_endpoint
-        if strategy.nranks < 2:
+        if strategy.world_size < 2:
             return
         # NOTE(chenweihang): [ why config global place here? ]
         # the dygraph mode will be set to default mode, 
         # users will not call `dygraph.guard` or `enable_dygraph`
-        # directly, if they want to switch detault place,
+        # directly, if they want to switch default place,
         # they need to call a function to change default place,
         # here just set correctly place to users
         place = core.CUDAPlace(ParallelEnv().dev_id)
