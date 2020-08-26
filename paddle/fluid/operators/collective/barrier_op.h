@@ -44,10 +44,8 @@ class BarrierOpCPUKernel : public framework::OpKernel<T> {
     gloo::BarrierOptions opts(gloo->GetContext());
     gloo::barrier(opts);
 #else
-    PADDLE_THROW(
-        platform::errors
-        : Unavailable(
-            "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
+    PADDLE_THROW(platform::errors::Unavailable(
+        "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
 #endif
   }
 };

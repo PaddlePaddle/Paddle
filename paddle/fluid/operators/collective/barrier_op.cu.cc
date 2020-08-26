@@ -49,8 +49,8 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
         platform::NCCLCommContext::Instance().Get(rid, place)->stream();
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(comm_stream));
 #else
-    PADDLE_THROW(platform::errors
-                 : Unavailable("PaddlePaddle should compile with NCCL."));
+    PADDLE_THROW(platform::errors::Unavailable(
+        "PaddlePaddle should compile with NCCL."));
 #endif
   }
 };

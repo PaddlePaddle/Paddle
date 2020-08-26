@@ -52,10 +52,8 @@ class CBroadcastOpCPUKernel : public framework::OpKernel<T> {
     opts.setRoot(root);
     gloo::broadcast(opts);
 #else
-    PADDLE_THROW(
-        platform::errors
-        : Unavailable(
-            "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
+    PADDLE_THROW(platform::errors::Unavailable(
+        "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
 #endif
   }
 };
