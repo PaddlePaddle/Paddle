@@ -2090,6 +2090,7 @@ def tanh(x, name=None):
         return core.ops.tanh(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'tanh')
+    check_type(x, 'x', (Variable), 'tanh')
     helper = LayerHelper('tanh', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})
