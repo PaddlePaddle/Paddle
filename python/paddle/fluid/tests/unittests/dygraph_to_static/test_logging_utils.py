@@ -21,9 +21,13 @@ import sys
 import unittest
 
 import gast
-import mock
 import six
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
+
+if six.PY2:
+    import mock
+else:
+    from unittest import mock
 
 
 class TestLoggingUtils(unittest.TestCase):
