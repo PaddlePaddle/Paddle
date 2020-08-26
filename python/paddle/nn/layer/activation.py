@@ -560,7 +560,7 @@ class SELU(layers.Layer):
 
     Parameters:
         scale (float, optional): The value of scale(must be greater than 1.0) for SELU. Default is 1.0507009873554804934193349852946
-        alpha (float, optional): The value of alpha for SELU. Default is 1.6732632423543772848170429916717
+        alpha (float, optional): The value of alpha(must be no less than zero) for SELU. Default is 1.6732632423543772848170429916717
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 

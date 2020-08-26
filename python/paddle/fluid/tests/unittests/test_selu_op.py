@@ -133,6 +133,8 @@ class TestSeluAPI(unittest.TestCase):
             # The scale must be greater than 1.0
             x_fp32 = paddle.data(name='x_fp32', shape=[12, 10], dtype='float32')
             self.assertRaises(ValueError, F.selu, x_fp32, -1.0)
+            # The alpha must be no less than 0
+            self.assertRaises(ValueError, F.selu, x_fp32, 1.6, -1.0)
             # support the input dtype is float16
             x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
             F.selu(x_fp16)

@@ -653,7 +653,7 @@ def selu(x,
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         scale (float, optional): The value of scale(must be greater than 1.0) for selu. Default is 1.0507009873554804934193349852946
-        alpha (float, optional): The value of alpha for selu. Default is 1.6732632423543772848170429916717
+        alpha (float, optional): The value of alpha(must be no less than zero) for selu. Default is 1.6732632423543772848170429916717
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -675,6 +675,10 @@ def selu(x,
     if scale <= 1.0:
         raise ValueError(
             "The scale must be greater than 1.0. Received: {}.".format(scale))
+
+    if alpha < 0:
+        raise ValueError(
+            "The alpha must be no less than zero. Received: {}.".format(alpha))
 
     if in_dygraph_mode():
         return core.ops.selu(x, 'scale', scale, 'alpha', alpha)
