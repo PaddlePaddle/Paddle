@@ -142,10 +142,10 @@ class TestAdaptiveMaxPool3dAPI(unittest.TestCase):
                 x=x, output_size=[None, 3, None])
 
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3, res_4, res_5] = exe.run(
+            [res_1, res_2, res_3, res_5] = exe.run(
                 fluid.default_main_program(),
                 feed={"x": self.x_np},
-                fetch_list=[out_1, out_2, out_3, out_4, out_5])
+                fetch_list=[out_1, out_2, out_3, out_5])
 
             assert np.allclose(res_1, self.res_1_np)
 
@@ -237,10 +237,10 @@ class TestAdaptiveMaxPool3dClassAPI(unittest.TestCase):
             out_5 = adaptive_max_pool(x=x)
 
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3, res_4, res_5] = exe.run(
+            [res_1, res_2, res_3, res_5] = exe.run(
                 fluid.default_main_program(),
                 feed={"x": self.x_np},
-                fetch_list=[out_1, out_2, out_3, out_4, out_5])
+                fetch_list=[out_1, out_2, out_3, out_5])
 
             assert np.allclose(res_1, self.res_1_np)
 

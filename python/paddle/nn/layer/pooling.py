@@ -1035,7 +1035,7 @@ class AdaptiveMaxPool3d(layers.Layer):
             
     """
 
-    def __init__(self, output_size, return_indices="NCDHW", name=None):
+    def __init__(self, output_size, return_indices=False, name=None):
         super(AdaptiveMaxPool3d, self).__init__()
         self._output_size = output_size
         self._return_indices = return_indices

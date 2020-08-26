@@ -1236,7 +1236,7 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'adaptive_max_pool2d')
     _check_input(x, 4)
-    check_type(output_size, 'pool_size', (int), 'adaptive_max_pool2d')
+    #check_type(output_size, 'pool_size', (int), 'adaptive_max_pool2d')
     check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool2d')
 
     in_h, in_w = x.shape[2:4]
@@ -1249,8 +1249,9 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
             output_size[1] = in_w
 
     if in_dygraph_mode():
-        return core.ops.max_pool2d_with_index(x, 'pooling_type', 'max', 'ksize',
-                                              output_size, 'adaptive', True)
+        pool_out = core.ops.max_pool2d_with_index(
+            x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True)
+        return pool_out if return_indices else pool_out[0]
 
     l_type = 'max_pool2d_with_index'
 
@@ -1270,8 +1271,8 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
             "ksize": output_size,
             "adaptive": True,
         })
-
-    return (pool_out, mask) if return_indices else pool_out
+    #return (pool_out, mask) if return_indices else pool_out
+    return pool_out
 
 
 def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
@@ -1321,7 +1322,7 @@ def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'adaptive_max_pool3d')
     _check_input(x, 5)
-    check_type(output_size, 'pool_size', (int), 'adaptive_max_pool3d')
+    #check_type(output_size, 'pool_size', (int), 'adaptive_max_pool3d')
     check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool3d')
 
     in_l, in_h, in_w = x.shape[2:5]
@@ -1336,8 +1337,9 @@ def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
             output_size[2] = in_w
 
     if in_dygraph_mode():
-        return core.ops.max_pool3d_with_index(x, 'pooling_type', 'max', 'ksize',
-                                              output_size, 'adaptive', True)
+        pool_out = core.ops.max_pool3d_with_index(
+            x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True)
+        return pool_out if return_indices else pool_out[0]
 
     l_type = 'max_pool3d_with_index'
 
