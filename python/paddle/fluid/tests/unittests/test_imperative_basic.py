@@ -19,6 +19,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import Linear
+from paddle.fluid.layer_helper import LayerHelper
 from test_imperative_base import new_program_scope
 import paddle.fluid.dygraph_utils as dygraph_utils
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
@@ -638,6 +639,17 @@ class TestDygraphUtils(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             res1 = func(a, act="sigmoid", use_cudnn=True)
             res2 = fluid.layers.sigmoid(a)
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_activation_in_dygraph4(self):
+        a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
+        helper = LayerHelper(
+            fluid.unique_name.generate("test"), act="relu", use_mkldnn=True)
+        func = helper.append_activation
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a)
+            res2 = fluid.layers.relu(a)
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
     def test_append_bias_in_dygraph_exception(self):
