@@ -21,7 +21,6 @@ from ..fluid import core, layers
 from ..fluid.layers import argmin  #DEFINE_ALIAS
 from ..fluid.layers import has_inf  #DEFINE_ALIAS
 from ..fluid.layers import has_nan  #DEFINE_ALIAS
-from ..fluid.layers import topk  #DEFINE_ALIAS
 
 __all__ = [
     'argmax',
@@ -756,3 +755,100 @@ def masked_select(x, mask, name=None):
         type='masked_select', inputs={'X': x,
                                       'Mask': mask}, outputs={'Y': out})
     return out
+
+
+def topk(x, k, axis=None, largest=True, sorted=True, name=None):
+    """
+    This OP is used to find values and indices of the k largest or smallest at the optional axis.
+    If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
+    If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`axis`.
+
+    Args:
+        x(Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
+        k(int, Tensor): The number of top elements to look for along the axis.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
+            as axis + R. Default is -1.
+        largest(bool, optional) : largest is a flag, if set to true,
+            algorithm will sort by descending order, otherwise sort by
+            ascending order. Default is True.
+        sorted(bool, optional): controls whether to return the elements in sorted order, default value is True. In gpu device, it always return the sorted value. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
+
+    Examples:
+
+        .. code-block:: python
+
+           import numpy as np
+           import paddle
+
+           paddle.disable_static()
+
+           data_1 = np.array([1, 4, 5, 7])
+           tensor_1 = paddle.to_tensor(data_1)
+           value_1, indices_1 = paddle.topk(tensor_1, k=1)
+           print(value_1.numpy())
+           # [7]
+           print(indices_1.numpy())
+           # [3] 
+           data_2 = np.array([[1, 4, 5, 7], [2, 6, 2, 5]])
+           tensor_2 = paddle.to_tensor(data_2)
+           value_2, indices_2 = paddle.topk(tensor_2, k=1)
+           print(value_2.numpy())
+           # [[7]
+           #  [6]]
+           print(indices_2.numpy())
+           # [[3]
+           #  [1]]
+           value_3, indices_3 = paddle.topk(tensor_2, k=1, axis=-1)
+           print(value_3.numpy())
+           # [[7]
+           #  [6]]
+           print(indices_3.numpy())
+           # [[3]
+           #  [1]]
+           value_4, indices_4 = paddle.topk(tensor_2, k=1, axis=0)
+           print(value_4.numpy())
+           # [[2 6 5 7]]
+           print(indices_4.numpy())
+           # [[1 1 0 0]]
+
+    """
+    if in_dygraph_mode():
+        k = k.numpy().item(0) if isinstance(k, Variable) else k
+        if axis is None:
+            out, indices = core.ops.top_k_v2(x, 'k',
+                                             int(k), 'largest', largest,
+                                             'sorted', sorted)
+        else:
+            out, indices = core.ops.top_k_v2(x, 'k',
+                                             int(k), 'axis', axis, 'largest',
+                                             largest, 'sorted', sorted)
+        return out, indices
+
+    helper = LayerHelper("top_k_v2", **locals())
+    inputs = {"X": [x]}
+    attrs = {}
+    if isinstance(k, Variable):
+        inputs['K'] = [k]
+    else:
+        attrs = {'k': k}
+    attrs['largest'] = largest
+    attrs['sorted'] = sorted
+    if axis is not None:
+        attrs['axis'] = axis
+
+    values = helper.create_variable_for_type_inference(dtype=x.dtype)
+    indices = helper.create_variable_for_type_inference(dtype="int64")
+
+    helper.append_op(
+        type="top_k_v2",
+        inputs=inputs,
+        outputs={"Out": [values],
+                 "Indices": [indices]},
+        attrs=attrs)
+    indices.stop_gradient = True
+    return values, indices
