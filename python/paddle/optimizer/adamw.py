@@ -61,9 +61,9 @@ class DecoupledWeightDecay(object):
 
             with param.block.program._optimized_guard(
                 [param, grad]), framework.name_scope('weight decay'):
-                assert param.name not in self._params_name
-                scaled_params.append((param, grad, param * self._coeff))
-                self._params_name.add(param.name)
+                if param.name not in self._params_name:
+                    scaled_params.append((param, grad, param * self._coeff))
+                    self._params_name.add(param.name)
         return scaled_params
 
     def backward(self, **kargs):
