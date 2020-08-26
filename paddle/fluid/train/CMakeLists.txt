@@ -29,8 +29,10 @@ function(train_test TARGET_NAME)
                 PROPERTIES DEPENDS test_${TARGET_NAME})
         set_tests_properties(test_train_${TARGET_NAME}${arg}
                 PROPERTIES LABELS "RUN_TYPE=DIST")
-        set_tests_properties(test_train_${TARGET_NAME}${arg}
-                PROPERTIES TIMEOUT 150)
+        if(NOT WIN32 AND NOT APPLE)
+            set_tests_properties(test_train_${TARGET_NAME}${arg}
+                    PROPERTIES TIMEOUT 150)
+        endif()
     endforeach()
 endfunction(train_test)
 

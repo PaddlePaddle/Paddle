@@ -12,8 +12,9 @@ endforeach()
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
-set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 150) 
-
+if(NOT WIN32 AND NOT APPLE)
+    set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 150) 
+endif()
 
 function(py_dist_test TARGET_NAME)
   if(WITH_TESTING)
