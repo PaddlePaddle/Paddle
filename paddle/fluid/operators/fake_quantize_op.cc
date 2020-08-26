@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fake_quantize_op.h"
+#include <algorithm>
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/clip_op.h"
@@ -39,13 +40,41 @@ template struct FindAbsMaxFunctor<platform::CPUDeviceContext, float>;
 
 template <typename T>
 struct FindChannelAbsMaxFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& ctx, const T* in,
-                  const int num, const int channel, T* out) {
-    const int channel_size = num / channel;
-    for (int i = 0; i < channel; i++) {
-      auto* start = in + i * channel_size;
-      auto* end = in + (i + 1) * channel_size;
-      out[i] = std::abs(*(std::max_element(start, end, Compare<T>())));
+  void operator()(const platform::CPUDeviceContext& ctx,
+                  const framework::Tensor& in_tensor, const int quant_axis,
+                  T* out_abs_max) {
+    // At present, channelwise quantization supports conv2d, depthwise_conv2d
+    // conv2d_transpose and mul
+    PADDLE_ENFORCE_EQ(
+        quant_axis == 0 || quant_axis == 1, true,
+        platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                          "the received is %d",
+                                          quant_axis));
+    auto* in_data = in_tensor.data<T>();
+    auto in_dims = in_tensor.dims();
+    const int64_t channel = in_dims[quant_axis];
+    if (quant_axis == 0) {
+      const int64_t channel_size = in_tensor.numel() / channel;
+      for (int64_t i = 0; i < channel; i++) {
+        auto* start = in_data + i * channel_size;
+        auto* end = in_data + (i + 1) * channel_size;
+        out_abs_max[i] =
+            std::abs(*(std::max_element(start, end, Compare<T>())));
+      }
+    } else if (quant_axis == 1) {
+      for (int64_t i = 0; i < channel; i++) {
+        out_abs_max[i] = 0;
+      }
+      const int64_t step_i = in_tensor.numel() / in_dims[0];
+      const int64_t step_j = in_tensor.numel() / (in_dims[0] * in_dims[1]);
+      for (int64_t i = 0; i < in_dims[0]; i++) {
+        for (int64_t j = 0; j < in_dims[1]; j++) {
+          auto* start = in_data + i * step_i + j * step_j;
+          auto* end = in_data + i * step_i + (j + 1) * step_j;
+          T abs_max = std::abs(*(std::max_element(start, end, Compare<T>())));
+          out_abs_max[j] = std::max(out_abs_max[j], abs_max);
+        }
+      }
     }
   }
 };
@@ -355,6 +384,18 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxOpMaker
               "(Tensor) Output of quantized and dequantized low level tensor, "
               "saved as float data type.");
     AddOutput("OutScale", "(Tensor) Current channel wise scale");
+    AddAttr<int>("quant_axis",
+                 "(int, default 0) The axis for quantization. "
+                 "For conv2d, depthwise_conv2d, conv2d_transpose "
+                 "and mul, the quant_axis is equal to the cout axis.")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& quant_axis) {
+          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1, true,
+                            platform::errors::InvalidArgument(
+                                "'quant_axis' should be 0 or 1, but "
+                                "the received is %d",
+                                quant_axis));
+        });
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
@@ -370,7 +411,7 @@ In detail, each channel of the input X has a scale value.
 
 $$scale_c = max(abs(X_c))$$
 $$range = 2^{bit\_length - 1} - 1$$
-$$Out_c = round(\frac{X_c * range} {scale_c})$$
+$$Out_c = round(\frac{X_c * range} {scale_c}) * \frac{scale_c} {range}$$
 In above three formulas, the range value of c is as follow:
 $$0 \leq c \lt \ the\ channel\ number\ of\ X$$
 )DOC");

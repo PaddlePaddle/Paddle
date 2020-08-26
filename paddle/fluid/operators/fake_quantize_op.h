@@ -62,7 +62,7 @@ struct FindRangeAbsMaxFunctor {
 template <typename DeviceContext, typename T>
 struct FindChannelAbsMaxFunctor {
   void operator()(const DeviceContext& ctx, const T* in, const int num,
-                  const int channel, T* out);
+                  const int quant_axis, T* out_abs_max);
 };
 
 template <typename DeviceContext, typename T>
@@ -168,18 +168,19 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxKernel
     auto* in = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     auto* out_scale = context.Output<framework::Tensor>("OutScale");
-    T* scale_data = out_scale->mutable_data<T>(context.GetPlace());
+    T* out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
     out->mutable_data<T>(dev_ctx.GetPlace());
 
     int bit_length = context.Attr<int>("bit_length");
     int bin_cnt = std::pow(2, bit_length - 1) - 1;
+    int quant_axis = context.Attr<int>("quant_axis");
 
-    FindChannelAbsMaxFunctor<DeviceContext, T>()(
-        dev_ctx, in->data<T>(), in->numel(), in->dims()[0], scale_data);
+    FindChannelAbsMaxFunctor<DeviceContext, T>()(dev_ctx, *in, in->numel(),
+                                                 quant_axis, out_scale_data);
 
     ChannelClipFakeQuantDequantFunctor<DeviceContext, T>()(
-        dev_ctx, *in, *out_scale, bin_cnt, in->dims()[0], out);
+        dev_ctx, *in, *out_scale, bin_cnt, quant_axis, out);
   }
 };
 
