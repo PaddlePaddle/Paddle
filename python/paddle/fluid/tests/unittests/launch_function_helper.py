@@ -28,8 +28,9 @@ def launch_func(func, env_dict):
 def wait(procs, timeout=None):
     # wait
     decents = []
-    for child in psutil.Process(os.getpid()).children(recursive=True):
-        decents.append(child)
+    for p in procs:
+        for child in psutil.Process(p.pid).children(recursive=True):
+            decents.append(child)
 
     gone, alive = psutil.wait_procs(decents, timeout=timeout)
     for p in alive:
