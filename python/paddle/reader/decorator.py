@@ -97,22 +97,22 @@ def map_readers(func, *readers):
 
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        d = {"h": 0, "i": 1}
+            d = {"h": 0, "i": 1}
 
-        def func(x):
-            return d[x]
+            def func(x):
+                return d[x]
 
-        def reader():
-            yield "h"
-            yield "i"
+            def reader():
+                yield "h"
+                yield "i"
 
-        map_reader_result = paddle.io.map_readers(func, reader)
+            map_reader_result = paddle.io.map_readers(func, reader)
 
-        for i in map_reader_result():
-            print(i)
-        # Output: 0 1
+            for i in map_reader_result():
+                print(i)
+            # Output: 0 1
     """
 
     def reader():
