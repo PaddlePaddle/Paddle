@@ -50,7 +50,7 @@ class FCPrimitiveFactory {
     // If primitive has already been created and cached, don't create new one,
     // but update input and output data pointers and return it.
     if (fc_) {
-      UpdateDataPointers(dev_ctx, ctx, output, input);
+      UpdateDataPointers(ctx, output, input);
       this->Execute();
       return;
     }  // Otherwise, create a new one.
@@ -172,22 +172,10 @@ class FCPrimitiveFactory {
     }
   }
 
-  void UpdateDataPointers(const MKLDNNDeviceContext& dev_ctx,
-                          const ExecutionContext& ctx, Tensor* out,
+  void UpdateDataPointers(const ExecutionContext& ctx, Tensor* out,
                           const Tensor* in) {
     input_->set_data_handle(to_void_cast(in->data<T_in>()));
     output_->set_data_handle(out->mutable_data<T_out>(ctx.GetPlace()));
-
-    const std::string key = platform::CreateKey(platform::ThreadIDasStr());
-    const std::string weights_key = key + ctx.InputName("W");
-    const std::string bias_key = key + ctx.InputName("Bias");
-    weights_ =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx.GetBlob(weights_key));
-    PADDLE_ENFORCE_NOT_NULL(
-        weights_, platform::errors::InvalidArgument(
-                      "Weights memory is missing in the MKLDNN cache."));
-    bias_ = std::static_pointer_cast<mkldnn::memory>(dev_ctx.GetBlob(bias_key));
-
     // If the primitive exists, but the output tensor has changed its
     // variable, update its format to what has been determined in first
     // call to CreateFcPrimitive method.
