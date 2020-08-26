@@ -67,7 +67,8 @@ class TestInitParallelEnv(unittest.TestCase):
             dist.init_parallel_env()
 
     def test_update_env(self):
-        dist.init_parallel_env(rank=0, started_port=6170, selected_gpus="0")
+        device = os.getenv("CUDA_VISIBLE_DEVICES")
+        dist.init_parallel_env(rank=0, started_port=6170, selected_gpus=device)
         self.assertIsNotNone(os.environ.get('PADDLE_TRAINER_ID', None))
         self.assertIsNotNone(os.environ.get('PADDLE_CURRENT_ENDPOINT', None))
         self.assertIsNotNone(os.environ.get('PADDLE_TRAINERS_NUM', None))

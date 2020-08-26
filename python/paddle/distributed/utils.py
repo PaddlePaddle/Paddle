@@ -371,7 +371,7 @@ def start_local_trainers(cluster,
 
     procs = []
     for idx, t in enumerate(pod.trainers):
-        proc_env = _update_trainer_env(current_env)
+        proc_env = _update_trainer_env(current_env, cluster, t)
 
         logger.debug("trainer proc env:{}".format(current_env))
 
