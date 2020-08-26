@@ -69,8 +69,8 @@ class RMSProp(Optimizer):
 
 
     Parameters:
-        learning_rate (float|LearningRateDecay): The learning rate used to update ``Parameter``.
-            It can be a float value or a LearningRateDecay.
+        learning_rate (float|_LRScheduler): The learning rate used to update ``Parameter``.
+            It can be a float value or a _LRScheduler.
         rho(float): rho is :math: `\\rho` in equation, default is 0.95.
         epsilon(float): :math: `\\epsilon` in equation is smoothing term to
             avoid division by zero, default is 1e-6.
@@ -147,6 +147,12 @@ class RMSProp(Optimizer):
             raise ValueError("epsilon is not set.")
         if momentum is None:
             raise ValueError("momentum is not set.")
+        if not 0.0 <= epsilon:
+            raise ValueError("Invalid value of epsilon, expect epsilon >= 0.")
+        if not 0.0 <= momentum:
+            raise ValueError("Invalid value of momentum, expect momentum >= 0.")
+        if not 0.0 <= alpha:
+            raise ValueError("Invalid value of alpha, expect alpha >= 0.")
 
         super(RMSProp, self).__init__(
             learning_rate=learning_rate,

@@ -41,6 +41,7 @@ from paddle.fluid.layers import tensor
 from functools import reduce
 from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
+from paddle.optimizer.lr_scheduler import _LRScheduler
 
 __all__ = ['Optimizer']
 
@@ -53,8 +54,8 @@ class Optimizer(object):
     but need to use one of it's implementation.
 
     Args:
-        learning_rate (float|LearningRateDecay): The learning rate used to update ``Parameter``.
-            It can be a float value or a LearningRateDecay.
+        learning_rate (float|LearningRateScheduler): The learning rate used to update ``Parameter``.
+            It can be a float value or a LearningRateScheduler.
         parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
@@ -110,9 +111,9 @@ class Optimizer(object):
         self._name = name
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
-                    not isinstance(learning_rate, LearningRateDecay):
+                    not isinstance(learning_rate, _LRScheduler):
                 raise TypeError(
-                    "learning rate should be float or LearningRateDecay, got %s here"
+                    "learning rate should be float or _LRScheduler, got %s here"
                     % type(learning_rate))
             if self._parameter_list is None:
                 raise AttributeError(
@@ -167,7 +168,7 @@ class Optimizer(object):
     @framework.dygraph_only
     def state_dict(self):
         '''
-        Get state dict information from optimizer. It contain all the tensor used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
+        Get state dict information from optimizer. It contain all the tensor used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. If _LRScheduler have been used, global_step will be include in state dict.
         If the optimizer never be called(minimize function), the state_dict is empty.
 
         Args: 
@@ -192,24 +193,15 @@ class Optimizer(object):
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
         # global step if use lr decay
-        if isinstance(self._learning_rate, LearningRateDecay):
+        if isinstance(self._learning_rate, _LRScheduler):
             state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
-
-            if not isinstance(self._learning_rate, _LearningRateEpochDecay):
-                var_tmp = None
-                var_temp = framework._varbase_creator(
-                    None, name='global_step', dtype='int32')
-
-                tensor.fill_constant(
-                    [1], "int32", self._learning_rate.step_num, out=var_temp)
-
-                state_dict['global_step'] = var_temp
+            return state_dict
         return state_dict
 
     @framework.dygraph_only
     def set_state_dict(self, state_dict):
         '''
-        Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
+        Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If _LRScheduler have been used, global_step will be changed.
 
         Args: 
             state_dict(dict) : Dict contains all the Tensor needed by optimizer
@@ -236,6 +228,8 @@ class Optimizer(object):
                 adam.set_state_dict(opti_state_dict)
 
         '''
+        if isinstance(self._learning_rate, _LRScheduler):
+            self._learning_rate.set_dict(state_dict["LR_Scheduler"])
 
         if isinstance(self._learning_rate, LearningRateDecay):
             self._learning_rate.set_dict(state_dict["LR_Scheduler"])
@@ -296,6 +290,29 @@ class Optimizer(object):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
+        if isinstance(self._learning_rate, _LRScheduler):
+            lr_var = self._global_learning_rate()
+            # only create global lr_var once
+            if not isinstance(lr_var, framework.Variable):
+                lr_name = unique_name.generate('learning_rate')
+                self._learning_rate._var_name = lr_name
+                lr_var = self.helper.create_global_variable(
+                    name=lr_name,
+                    shape=[1],
+                    persistable=True,
+                    stop_gradient=True,
+                    dtype='float32' if self._dtype is None else self._dtype)
+                main_prog = framework.default_main_program()
+                main_prog.lr_sheduler = self._learning_rate
+                main_prog.lr_var = lr_var
+                self._learning_rate_map[framework.default_main_program(
+                )] = lr_var
+
+            lr_value = float(self._learning_rate())
+            self.helper.set_variable_initializer(
+                lr_var, initializer=Constant(value=lr_value))
+            return
+
         if imperative_base.enabled():
             # create learning rate tensor
             if isinstance(self._learning_rate, float):
@@ -347,7 +364,7 @@ class Optimizer(object):
         """
         :api_attr: imperative
         
-        Set the value of the learning rate manually in the optimizer. If the optimizer use LearningRateDecay,
+        Set the value of the learning rate manually in the optimizer. If the optimizer use _LRScheduler,
         this API cannot be invoked, because it will lead to conflict.
 
         Args:
@@ -395,9 +412,9 @@ class Optimizer(object):
             raise TypeError(
                 "The type of 'value' in optimizer.set_lr must be (float, Tensor), but received %s."
                 % (type(value)))
-        if isinstance(self._learning_rate, LearningRateDecay):
+        if isinstance(self._learning_rate, _LRScheduler):
             raise RuntimeError(
-                "optimizer's learning rate can't be LearningRateDecay when invoke this API, because this will lead to conflict."
+                "optimizer's learning rate can't be _LRScheduler when invoke this API, because this will lead to conflict."
             )
         if isinstance(value, float):
             self._learning_rate = value
@@ -423,7 +440,7 @@ class Optimizer(object):
         """
         :api_attr: imperative
         
-        Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
+        Get current step learning rate. The return value is all the same When _LRScheduler is not used,
         otherwise return the step learning rate.
 
         Returns:
@@ -434,14 +451,14 @@ class Optimizer(object):
 
                 import numpy as np
                 import paddle
-                # example1: LearningRateDecay is not used, return value is all the same
+                # example1: _LRScheduler is not used, return value is all the same
                 paddle.disable_static()
                 emb = paddle.nn.Embedding([10, 10])
                 adam = paddle.optimizer.Adam(0.001, parameters = emb.parameters())
                 lr = adam.get_lr()
                 print(lr) # 0.001
 
-                # example2: PiecewiseDecay is used, return the step learning rate
+                # example2: PiecewiseLR is used, return the step learning rate
                 paddle.disable_static()
                 inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
                 linear = paddle.nn.Linear(10, 10)
@@ -449,9 +466,8 @@ class Optimizer(object):
                 out = linear(inp)
                 loss = paddle.reduce_mean(out)
                 
-                bd = [2, 4, 6, 8]
-                value = [0.2, 0.4, 0.6, 0.8, 1.0]
-                adam = paddle.optimizer.Adam(paddle.PiecewiseDecay(bd, value, 0),
+                scheduler = paddle.optimizer.PiecewiseLR(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
+                adam = paddle.optimizer.Adam(learning_rate=scheduler,
                                        parameters=linear.parameters())
 
                 # first step: learning rate is 0.2
@@ -471,8 +487,8 @@ class Optimizer(object):
 
         if isinstance(self._learning_rate, float):
             return self._learning_rate
-        elif isinstance(self._learning_rate, _LearningRateEpochDecay):
-            step_lr = self._learning_rate()
+        elif isinstance(self._learning_rate, _LRScheduler):
+            step_lr = self._learning_rate.get_lr()
             return step_lr.numpy()[0]
         else:
             step_lr = self._learning_rate.step()

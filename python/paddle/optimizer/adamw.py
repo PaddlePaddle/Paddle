@@ -145,8 +145,8 @@ class AdamW(DecoupledWeightDecay, Adam):
 
 
     Args:
-        learning_rate (float|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
-            It can be a float value or a LearningRateDecay. The default value is 0.001.
+        learning_rate (float|_LRScheduler, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a _LRScheduler. The default value is 0.001.
 	parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
 	    This parameter is required in dygraph mode. \
 	    The default value is None in static mode, at this time all parameters will be updated.
@@ -217,6 +217,16 @@ class AdamW(DecoupledWeightDecay, Adam):
                  grad_clip=None,
                  name=None,
                  lazy_mode=False):
+        assert learning_rate is not None
+        assert beta1 is not None
+        assert beta2 is not None
+        assert epsilon is not None
+        if not 0 <= beta1 < 1:
+            raise ValueError("Invaild value of beta1, expect beta1 in [0,1).")
+        if not 0 <= beta1 < 1:
+            raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
+        if not 0 <= epsilon:
+            raise ValueError("Invaild value of beta2, expect epsilon >= 0.")
         args_dict = {
             "learning_rate": learning_rate,
             "parameters": parameters,

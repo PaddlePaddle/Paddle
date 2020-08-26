@@ -45,8 +45,8 @@ class Adam(Optimizer):
     Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 
     Args:
-        learning_rate (float|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
-            It can be a float value or a LearningRateDecay. The default value is 0.001.
+        learning_rate (float|_LRScheduler, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a _LRScheduler. The default value is 0.001.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
             It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 0.9.
@@ -143,6 +143,12 @@ class Adam(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
+        if not 0 <= beta1 < 1:
+            raise ValueError("Invaild value of beta1, expect beta1 in [0,1).")
+        if not 0 <= beta1 < 1:
+            raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
+        if not 0 <= epsilon:
+            raise ValueError("Invaild value of beta2, expect epsilon >= 0.")
         super(Adam, self).__init__(
             learning_rate=learning_rate,
             parameters=parameters,
