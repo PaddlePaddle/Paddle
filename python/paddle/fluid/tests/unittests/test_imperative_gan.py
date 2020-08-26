@@ -57,6 +57,7 @@ class TestDygraphGAN(unittest.TestCase):
     def test_gan_float32(self):
         seed = 90
         paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
         startup = fluid.Program()
         discriminate_p = fluid.Program()
         generate_p = fluid.Program()
@@ -131,6 +132,7 @@ class TestDygraphGAN(unittest.TestCase):
         dy_params = dict()
         with fluid.dygraph.guard():
             paddle.manual_seed(1)
+            paddle.framework.random._manual_program_seed(1)
 
             discriminator = Discriminator()
             generator = Generator()
@@ -175,6 +177,7 @@ class TestDygraphGAN(unittest.TestCase):
         with fluid.dygraph.guard():
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             paddle.manual_seed(1)
+            paddle.framework.random._manual_program_seed(1)
             discriminator2 = Discriminator()
             generator2 = Generator()
             sgd2 = SGDOptimizer(

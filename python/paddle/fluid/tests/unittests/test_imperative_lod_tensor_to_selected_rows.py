@@ -96,6 +96,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
             for is_sort_sum_gradient in [True, False]:
                 with fluid.dygraph.guard(place):
                     paddle.manual_seed(seed)
+                    paddle.framework.random._manual_program_seed(seed)
 
                     simple_net = SimpleNet(
                         hidden_size=hidden_size,
@@ -140,6 +141,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
 
                 with new_program_scope():
                     paddle.manual_seed(seed)
+                    paddle.framework.random._manual_program_seed(seed)
 
                     simple_net = SimpleNet(
                         hidden_size=hidden_size,

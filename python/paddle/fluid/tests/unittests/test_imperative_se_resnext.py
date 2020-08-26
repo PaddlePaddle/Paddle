@@ -309,6 +309,7 @@ class TestImperativeResneXt(unittest.TestCase):
         epoch_num = 1
         with fluid.dygraph.guard():
             paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             se_resnext = SeResNeXt()
             optimizer = optimizer_setting(
@@ -367,6 +368,7 @@ class TestImperativeResneXt(unittest.TestCase):
 
         with new_program_scope():
             paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))

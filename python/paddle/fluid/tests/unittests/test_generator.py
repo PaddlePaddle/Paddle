@@ -34,7 +34,6 @@ class TestGenerator(unittest.TestCase):
         st = gen.get_state()
         gen.set_state(st)
         gen.random()
-        gen.set_cpu_engine(gen.get_cpu_engine())
 
     def test_basic_generator_error(self):
         self.assertRaises(ValueError, generator.Generator, device="CUDA")

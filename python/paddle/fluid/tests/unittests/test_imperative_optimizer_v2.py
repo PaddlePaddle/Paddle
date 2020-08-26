@@ -75,6 +75,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         with fluid.dygraph.guard(place):
             try:
                 paddle.manual_seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
                 mlp = MLP()
                 optimizer = self.get_optimizer_dygraph(
                     parameter_list=mlp.parameters())
@@ -91,6 +92,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         with fluid.dygraph.guard(place):
             paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             mlp = MLP()
             optimizer = self.get_optimizer_dygraph(
@@ -131,6 +133,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         with new_program_scope():
             paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             if place == None:
                 place = fluid.CPUPlace() if not core.is_compiled_with_cuda(

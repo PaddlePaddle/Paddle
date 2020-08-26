@@ -65,6 +65,7 @@ class TestImperativeMnist(unittest.TestCase):
 
         with fluid.dygraph.guard():
             paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             policy = Policy(input_size=4)
 
@@ -105,6 +106,7 @@ class TestImperativeMnist(unittest.TestCase):
 
         with new_program_scope():
             paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))

@@ -58,6 +58,7 @@ class LayerTest(unittest.TestCase):
     def static_graph(self):
         with new_program_scope():
             paddle.manual_seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
             yield
 
     def get_static_graph_result(self,
@@ -77,6 +78,7 @@ class LayerTest(unittest.TestCase):
         with fluid.dygraph.guard(
                 self._get_place(force_to_use_cpu=force_to_use_cpu)):
             paddle.manual_seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
             yield
 
 

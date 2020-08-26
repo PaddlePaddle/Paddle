@@ -227,6 +227,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
         with fluid.dygraph.guard():
             paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -294,6 +295,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
         with new_program_scope():
             paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,

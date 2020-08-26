@@ -469,6 +469,7 @@ def build_optimizer(layer, cfg, loss=None):
 class DyGraphTrainModel(object):
     def __init__(self, cfg):
         paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
 
         self.generator = Generator(cfg)
         self.discriminator = Discriminator(cfg)
@@ -529,6 +530,7 @@ class StaticGraphTrainModel(object):
             return image_real, label_org, label_trg
 
         paddle.manual_seed(cfg.seed)
+        paddle.framework.random._manual_program_seed(cfg.seed)
         self.gen_program = fluid.Program()
         gen_startup_program = fluid.Program()
 

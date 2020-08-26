@@ -42,10 +42,24 @@ def manual_seed(seed):
 
     seed = int(seed)
 
+    core.default_cpu_generator()._is_init_py = True
+    return core.default_cpu_generator().manual_seed(seed)
+
+
+def _manual_program_seed(seed):
+    """
+    Sets global seed for generating random numbers.
+  
+    NOTE(zhiqiu): This is the original implemention of manual_seed. Keeps it temporally 
+    since CUDA generator is not developed, so we need it in the unittest.
+
+    Args:
+        seed(int): The random seed to set. It is recommend to set a large int number.
+    
+    Returns:
+        None
+    """
     fluid.default_main_program().random_seed = seed
     fluid.default_startup_program().random_seed = seed
     program = fluid.Program()
     program.global_seed(seed)
-
-    core.default_cpu_generator()._is_init_py = True
-    return core.default_cpu_generator().manual_seed(seed)

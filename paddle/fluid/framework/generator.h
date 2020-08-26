@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <glog/logging.h>
 #include <stdint.h>
 
 #include <atomic>
@@ -37,36 +38,38 @@ static uint64_t GetRandomSeed() {
 struct GeneratorState {
   int64_t device = -1;
   uint64_t current_seed = 34342423252;
-  std::shared_ptr<std::mt19937_64> cpu_engine;
+  std::mt19937_64 cpu_engine;
 };
 
 struct Generator {
   Generator() {
-    GeneratorState default_gen_state_cpu;
-    default_gen_state_cpu.device = -1;
-    default_gen_state_cpu.current_seed = GetRandomSeed();
-    std::seed_seq seq({default_gen_state_cpu.current_seed});
-    default_gen_state_cpu.cpu_engine = std::make_shared<std::mt19937_64>(seq);
-    this->state_ = std::make_shared<GeneratorState>(default_gen_state_cpu);
+    auto seed = GetRandomSeed();
+    std::seed_seq seq({seed});
+    auto engine = std::make_shared<std::mt19937_64>(seq);
+    this->state_.cpu_engine = *engine;
+    this->state_.device = -1;
+    this->state_.current_seed = seed;
+    this->engine_ = engine;
+    VLOG(4) << "initial seed: " << this->state_.current_seed
+            << ", cpu engine: " << &this->state_.cpu_engine;
   }
   explicit Generator(uint64_t seed) {
-    GeneratorState default_gen_state_cpu;
-    default_gen_state_cpu.device = -1;
-    default_gen_state_cpu.current_seed = seed;
     std::seed_seq seq({seed});
-    default_gen_state_cpu.cpu_engine = std::make_shared<std::mt19937_64>(seq);
-    this->state_ = std::make_shared<GeneratorState>(default_gen_state_cpu);
+    auto engine = std::make_shared<std::mt19937_64>(seq);
+    this->state_.cpu_engine = *engine;
+    this->state_.device = -1;
+    this->state_.current_seed = seed;
+    this->engine_ = engine;
+    VLOG(4) << "initial seed: " << this->state_.current_seed
+            << ", cpu engine: " << &this->state_.cpu_engine;
     this->is_init_py_ = true;  // TODO(zhiqiu): remove it in future
   }
-  explicit Generator(GeneratorState state_in)
-      : state_{std::make_shared<GeneratorState>(state_in)} {}
-  Generator(const Generator& other)
-      : Generator(other, std::lock_guard<std::mutex>(other.mutex)) {}
+  Generator(const Generator& other) = delete;
 
   // get random state
-  GeneratorState* GetState();
+  GeneratorState GetState();
   // set random state
-  void SetState(GeneratorState* state_in);
+  void SetState(const GeneratorState&);
   // get current seed
   uint64_t GetCurrentSeed();
   // random a seed and get
@@ -84,14 +87,13 @@ struct Generator {
   bool GetIsInitPy() const;
 
  private:
-  std::shared_ptr<GeneratorState> state_;
-  mutable std::mutex mutex;
+  GeneratorState state_;
+  std::shared_ptr<std::mt19937_64> engine_;
+  mutable std::mutex mu_;
 
-  Generator(const Generator& other, const std::lock_guard<std::mutex>&)
-      : state_(std::make_shared<GeneratorState>(*(other.state_))) {}
-  // NOTE(zhiqiu): is_init_py_ is used to make generator be compatible with old
-  // seed, and it should be removed after all random-related operators and
-  // unittests upgrades to use generator.
+  // NOTE(zhiqiu): is_init_py_ is used to make generator be compatible with
+  // old seed, and it should be removed after all random-related operators
+  // and unittests upgrades to use generator.
   bool is_init_py_ = false;
 };
 

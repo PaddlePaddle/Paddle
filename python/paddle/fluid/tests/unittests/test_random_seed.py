@@ -26,9 +26,9 @@ import paddle.fluid.core as core
 
 
 class TestGeneratorSeed(unittest.TestCase):
-    """
-    Test cases for cpu generator seed.
-    """
+    #     """
+    #     Test cases for cpu generator seed.
+    #     """
 
     def test_generator_uniform_random_dygraph(self):
         """Test Generator seed."""

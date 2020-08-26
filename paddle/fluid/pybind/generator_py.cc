@@ -44,8 +44,7 @@ void BindGenerator(py::module* m_ptr) {
            [](framework::Generator& self) {
              new (&self) framework::Generator();
            })
-      .def("get_state", &framework::Generator::GetState,
-           py::return_value_policy::move)
+      .def("get_state", &framework::Generator::GetState)
       .def("set_state", &framework::Generator::SetState)
       .def("manual_seed",
            [](std::shared_ptr<framework::Generator>& self, uint64_t seed) {
@@ -55,9 +54,8 @@ void BindGenerator(py::module* m_ptr) {
       .def("seed", &framework::Generator::Seed)
       .def("initial_seed", &framework::Generator::GetCurrentSeed)
       .def("random", &framework::Generator::Random64)
-      .def("get_cpu_engine", &framework::Generator::GetCPUEngine,
-           py::return_value_policy::move)
-      .def("set_cpu_engine", &framework::Generator::SetCPUEngine)
+      //  .def("get_cpu_engine", &framework::Generator::GetCPUEngine)
+      //  .def("set_cpu_engine", &framework::Generator::SetCPUEngine)
       .def_property("_is_init_py", &framework::Generator::GetIsInitPy,
                     &framework::Generator::SetIsInitPy);
   m.def("default_cpu_generator", &framework::DefaultCPUGenerator);

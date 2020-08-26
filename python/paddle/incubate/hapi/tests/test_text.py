@@ -89,6 +89,7 @@ class ModuleApiTest(unittest.TestCase):
         else:
             fluid.disable_dygraph()
         paddle.manual_seed(self._random_seed)
+        paddle.framework.random._manual_program_seed(self._random_seed)
 
         layer = self.model_cls(**self.attrs) if isinstance(
             self.attrs, dict) else self.model_cls(*self.attrs)

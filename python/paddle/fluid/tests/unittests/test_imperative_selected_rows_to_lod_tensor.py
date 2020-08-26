@@ -103,6 +103,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                 traced_layer = None
                 with fluid.dygraph.guard(place):
                     paddle.manual_seed(seed)
+                    paddle.framework.random._manual_program_seed(seed)
 
                     simple_net = SimpleNet(
                         hidden_size=hidden_size,
@@ -146,6 +147,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
 
                 with new_program_scope():
                     paddle.manual_seed(seed)
+                    paddle.framework.random._manual_program_seed(seed)
 
                     simple_net = SimpleNet(
                         hidden_size=hidden_size,
