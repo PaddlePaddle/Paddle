@@ -69,7 +69,7 @@ class TranslatorLogger(object):
 
     @verbosity_level.setter
     def verbosity_level(self, level):
-        self.check_level(level, {})
+        self.check_level(level)
         self._verbosity_level = level
 
     @property
@@ -81,27 +81,23 @@ class TranslatorLogger(object):
 
     @transformed_code_level.setter
     def transformed_code_level(self, level):
-        self.check_level(level, _transformer_name_to_level)
+        self.check_level(level)
         self._transformed_code_level = level
 
-    def check_level(self, level, name_to_level_dict):
+    def check_level(self, level):
         if isinstance(level, (six.integer_types, type(None))):
             rv = level
-        elif str(level) == level:
-            if level not in name_to_level_dict:
-                raise ValueError("Unknown level: %r" % level)
-            rv = name_to_level_dict[level]
         else:
             raise TypeError("Level not an integer or a valid string: %r" %
                             level)
         return rv
 
     def has_code_level(self, level):
-        level = self.check_level(level, _transformer_name_to_level)
+        level = self.check_level(level)
         return level == self.transformed_code_level
 
     def has_verbosity(self, level):
-        level = self.check_level(level, {})
+        level = self.check_level(level)
         return level >= self.verbosity_level
 
     def error(self, msg, *args, **kwargs):
@@ -114,44 +110,18 @@ class TranslatorLogger(object):
         if self.has_verbosity(level):
             self.logger.log(level, msg, *args, **kwargs)
 
-    def log_transformed_code(self, level, ast_node, *args, **kwargs):
+    def log_transformed_code(self, level, ast_node, transformer_name, *args,
+                             **kwargs):
         if self.has_code_level(level):
-            msg = ast_to_source_code(ast_node)
-            msg = "Transformed code: \n" + msg
+            source_code = ast_to_source_code(ast_node)
+            header_msg = "After the level {} ast transformer: '{}', the transformed code:\n"\
+                .format(level, transformer_name)
+
+            msg = header_msg + source_code
             self.logger.info(msg, *args, **kwargs)
 
 
 _TRANSLATOR_LOGGER = TranslatorLogger()
-
-BasicApiTransformer = 1
-TensorShapeTransformer = 2
-ListTransformer = 3
-BreakContinueTransformer = 4
-ReturnTransformer = 5
-LogicalTransformer = 6
-LoopTransformer = 7
-IfElseTransformer = 8
-AssertTransformer = 9
-PrintTransformer = 10
-CallTransformer = 11
-CastTransformer = 12
-AllTransformer = 12
-
-_transformer_name_to_level = {
-    'BasicApiTransformer': BasicApiTransformer,
-    'TensorShapeTransformer': TensorShapeTransformer,
-    'ListTransformer': ListTransformer,
-    'BreakContinueTransformer': BreakContinueTransformer,
-    'ReturnTransformer': ReturnTransformer,
-    'LogicalTransformer': LogicalTransformer,
-    'LoopTransformer': LoopTransformer,
-    'IfElseTransformer': IfElseTransformer,
-    'AssertTransformer': AssertTransformer,
-    'PrintTransformer': PrintTransformer,
-    'CallTransformer': CallTransformer,
-    'CastTransformer': CastTransformer,
-    'AllTransformer': AllTransformer
-}
 
 
 def set_verbosity(level=0):
@@ -185,9 +155,12 @@ def get_verbosity():
     return _TRANSLATOR_LOGGER.verbosity_level
 
 
-def set_code_level(level):
+LOG_AllTransformer = 100
+
+
+def set_code_level(level=LOG_AllTransformer):
     """
-    Sets the level to print code from specific Ast Transformer.
+    Sets the level to print code from specific level of Ast Transformer.
 
     Args:
         level(int): The level to print code.
@@ -199,7 +172,7 @@ def set_code_level(level):
             import paddle.fluid as fluid
             from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 
-            logging_utils.set_code_level(logging_utils.CastTransformer)
+            logging_utils.set_code_level(2)
             # It will print the transformed code after CastTransformer.
         """
     _TRANSLATOR_LOGGER.transformed_code_level = level
@@ -221,5 +194,6 @@ def log(level, msg, *args, **kwargs):
     _TRANSLATOR_LOGGER.log(level, msg, *args, **kwargs)
 
 
-def log_transformed_code(level, ast_node, *args, **kwargs):
-    _TRANSLATOR_LOGGER.log_transformed_code(level, ast_node, *args, **kwargs)
+def log_transformed_code(level, ast_node, transformer_name, *args, **kwargs):
+    _TRANSLATOR_LOGGER.log_transformed_code(level, ast_node, transformer_name,
+                                            *args, **kwargs)

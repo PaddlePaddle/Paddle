@@ -26,13 +26,14 @@ from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransfor
 from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import CastTransformer
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
-from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import LogicalTransformer
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
 from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransformer
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import ReturnTransformer
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
+
+from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 
@@ -57,7 +58,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         return self.static_analysis_root
 
     def transfer_from_node_type(self, node_wrapper):
-        translator_logger = TranslatorLogger()
+        translator_logger = logging_utils.TranslatorLogger()
         translator_logger.log(
             1, "   Source code: \n{}".format(ast_to_source_code(self.root)))
         # Generic transformation
@@ -65,53 +66,62 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
         # Transform basic api of dygraph to static graph and get feed_name_to_arg_name
         BasicApiTransformer(node_wrapper).transform()
-        translator_logger.log_transformed_code("BasicApiTransformer", self.root)
+        translator_logger.log_transformed_code(1, self.root,
+                                               "BasicApiTransformer")
 
         # Transform Tensor.shape into fluid.layers.shape(Tensor)
         TensorShapeTransformer(node_wrapper).transform()
-        translator_logger.log_transformed_code("TensorShapeTransformer",
-                                               self.root)
+        translator_logger.log_transformed_code(2, self.root,
+                                               "TensorShapeTransformer")
 
         # Transform list used in control flow
         ListTransformer(node_wrapper).transform()
-        translator_logger.log_transformed_code("ListTransformer", self.root)
+        translator_logger.log_transformed_code(3, self.root, "ListTransformer")
 
         # Transform break/continue in loops
         BreakContinueTransformer(node_wrapper).transform()
-        translator_logger.log_transformed_code("BreakContinueTransformer",
-                                               self.root)
+        translator_logger.log_transformed_code(4, self.root,
+                                               "BreakContinueTransformer")
 
         # Transform return in functions
         ReturnTransformer(node_wrapper).transform()
-        translator_logger.log_transformed_code("ReturnTransformer", self.root)
+        translator_logger.log_transformed_code(5, self.root,
+                                               "ReturnTransformer")
 
         # Transform logical and/or/not
         LogicalTransformer(node_wrapper).transform()
-        translator_logger.log_transformed_code("LogicalTransformer", self.root)
+        translator_logger.log_transformed_code(6, self.root,
+                                               "LogicalTransformer")
 
         # Transform for loop and while loop
         LoopTransformer(node_wrapper).transform()
-        translator_logger.log_transformed_code("LoopTransformer", self.root)
+        translator_logger.log_transformed_code(7, self.root, "LoopTransformer")
 
         # Transform all if/else statement of Dygraph into Static Graph.
         IfElseTransformer(node_wrapper).transform()
-        translator_logger.log_transformed_code("IfElseTransformer", self.root)
+        translator_logger.log_transformed_code(8, self.root,
+                                               "IfElseTransformer")
 
         # Transform python assert statement
         AssertTransformer(node_wrapper).transform()
-        translator_logger.log_transformed_code("AssertTransformer", self.root)
+        translator_logger.log_transformed_code(9, self.root,
+                                               "AssertTransformer")
 
         # Transform all python print statement
         PrintTransformer(node_wrapper).transform()
-        translator_logger.log_transformed_code("PrintTransformer", self.root)
+        translator_logger.log_transformed_code(10, self.root,
+                                               "PrintTransformer")
 
         # Transform call recursively
         CallTransformer(node_wrapper).transform()
-        translator_logger.log_transformed_code("CallTransformer", self.root)
+        translator_logger.log_transformed_code(11, self.root, "CallTransformer")
 
         # Transform python type casting statement
         CastTransformer(node_wrapper).transform()
-        translator_logger.log_transformed_code("CastTransformer", self.root)
+        translator_logger.log_transformed_code(12, self.root, "CastTransformer")
+
+        translator_logger.log_transformed_code(logging_utils.LOG_AllTransformer,
+                                               self.root, "All Transformers")
 
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:
