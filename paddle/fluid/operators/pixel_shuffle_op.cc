@@ -28,25 +28,44 @@ class PixelShuffleOp : public framework::OperatorWithKernel {
                           "Output(Out) of PixelShuffleOp should not be null."));
 
     auto input_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(
-        input_dims.size(), 4,
-        platform::errors::InvalidArgument(
-            "Input should be a 4-D tensor of format [N, C, H, W], but got %u.",
-            input_dims.size()));
+    PADDLE_ENFORCE_EQ(input_dims.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "Input should be a 4-D tensor of format [N, C, H, W] "
+                          "or [N, H, W, C], but got %u.",
+                          input_dims.size()));
 
     auto upscale_factor = ctx->Attrs().Get<int>("upscale_factor");
 
-    PADDLE_ENFORCE_EQ(input_dims[1] % (upscale_factor * upscale_factor), 0,
-                      platform::errors::InvalidArgument(
-                          "The square of upscale_factor[%u] should divide the "
-                          "number of channel[%u]",
-                          input_dims[1], upscale_factor * upscale_factor));
+    const std::string data_format =
+        ctx->Attrs().Get<std::string>("data_format");
+    const bool channel_last = (data_format == "NHWC");
 
+    if (!channel_last) {
+      PADDLE_ENFORCE_EQ(
+          input_dims[1] % (upscale_factor * upscale_factor), 0,
+          platform::errors::InvalidArgument(
+              "The square of upscale_factor[%u] should divide the "
+              "number of channel[%u]",
+              input_dims[1], upscale_factor * upscale_factor));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          input_dims[3] % (upscale_factor * upscale_factor), 0,
+          platform::errors::InvalidArgument(
+              "The square of upscale_factor[%u] should divide the "
+              "number of channel[%u]",
+              input_dims[3], upscale_factor * upscale_factor));
+    }
     auto output_dims = input_dims;
     output_dims[0] = input_dims[0];
-    output_dims[1] = input_dims[1] / (upscale_factor * upscale_factor);
-    output_dims[2] = input_dims[2] * upscale_factor;
-    output_dims[3] = input_dims[3] * upscale_factor;
+    if (!channel_last) {
+      output_dims[1] = input_dims[1] / (upscale_factor * upscale_factor);
+      output_dims[2] = input_dims[2] * upscale_factor;
+      output_dims[3] = input_dims[3] * upscale_factor;
+    } else {
+      output_dims[1] = input_dims[1] * upscale_factor;
+      output_dims[2] = input_dims[2] * upscale_factor;
+      output_dims[3] = input_dims[3] / (upscale_factor * upscale_factor);
+    }
     ctx->SetOutputDim("Out", output_dims);
   }
 };
@@ -54,14 +73,14 @@ class PixelShuffleOp : public framework::OperatorWithKernel {
 class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "X",
-        "(Tensor, default Tensor<float>), "
-        "the input feature data of PixelShuffleOp, the layout is [N C H W].");
-    AddOutput(
-        "Out",
-        "(Tensor, default Tensor<float>), the output of "
-        "PixelShuffleOp. The layout is [N,C/factor^2,H*factor,W*factor].");
+    AddInput("X",
+             "(Tensor, default Tensor<float>), "
+             "the input feature data of PixelShuffleOp, the layout is [N, C, "
+             "H, W] or [N, H, W, C].");
+    AddOutput("Out",
+              "(Tensor, default Tensor<float>), the output of "
+              "PixelShuffleOp. The layout is [N, C/factor^2, H*factor, "
+              "W*factor] or [N, H*factor, W*factor, C/factor^2].");
     AddAttr<int>("upscale_factor",
                  "the factor to increase spatial resolution by.")
         .SetDefault(1)
@@ -70,6 +89,11 @@ class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
                             platform::errors::InvalidArgument(
                                 "upscale_factor should be larger than 0."));
         });
+    AddAttr<std::string>(
+        "data_format",
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\", Specify the data format of the input data.")
+        .SetDefault("NCHW");
 
     AddComment(R"DOC(
 		Pixel Shuffle operator
@@ -114,19 +138,30 @@ class PixelShuffleGradOp : public framework::OperatorWithKernel {
         platform::errors::NotFound("Output(X@Grad) should not be null"));
 
     auto do_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(
-        do_dims.size(), 4,
-        platform::errors::InvalidArgument(
-            "Input should be a 4-D tensor of format [N, C, H, W], but got %u.",
-            do_dims.size()));
+    PADDLE_ENFORCE_EQ(do_dims.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "Input should be a 4-D tensor of format [N, C, H, W] "
+                          "or [N, H, W, C], but got %u.",
+                          do_dims.size()));
 
     auto upscale_factor = ctx->Attrs().Get<int>("upscale_factor");
 
+    const std::string data_format =
+        ctx->Attrs().Get<std::string>("data_format");
+    const bool channel_last = (data_format == "NHWC");
+
     auto dx_dims = do_dims;
     dx_dims[0] = do_dims[0];
-    dx_dims[1] = do_dims[1] * (upscale_factor * upscale_factor);
-    dx_dims[2] = do_dims[2] / upscale_factor;
-    dx_dims[3] = do_dims[3] / upscale_factor;
+
+    if (!channel_last) {
+      dx_dims[1] = do_dims[1] * (upscale_factor * upscale_factor);
+      dx_dims[2] = do_dims[2] / upscale_factor;
+      dx_dims[3] = do_dims[3] / upscale_factor;
+    } else {
+      dx_dims[1] = do_dims[1] / upscale_factor;
+      dx_dims[2] = do_dims[2] / upscale_factor;
+      dx_dims[3] = do_dims[3] * (upscale_factor * upscale_factor);
+    }
     ctx->SetOutputDim(framework::GradVarName("X"), dx_dims);
   }
 };
