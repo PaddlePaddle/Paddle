@@ -259,13 +259,13 @@ def compose(*readers, **kwargs):
     Examples:
         .. code-block:: python
 
-          import paddle
-          def reader_creator_10(dur):
-              def reader():
-                 for i in range(10):
-                     yield i
-              return reader
-          reader = paddle.io.compose(reader_creator_10(0), reader_creator_10(0))
+            import paddle
+            def reader_creator_10(dur):
+                def reader():
+                    for i in range(10):
+                        yield i
+                return reader
+            reader = paddle.io.compose(reader_creator_10(0), reader_creator_10(0))
     """
     check_alignment = kwargs.pop('check_alignment', True)
 
