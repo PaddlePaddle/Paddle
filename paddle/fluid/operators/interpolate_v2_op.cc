@@ -70,7 +70,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
     // out_w = -1;
   } else {
     if (ctx->HasInput("scale")) {
-      float scale_w;
+      float scale_w = -1;
       auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
       scale_w = scale[0];
       PADDLE_ENFORCE_EQ(scale_w > 0, true, platform::errors::InvalidArgument(
@@ -163,8 +163,8 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     // out_w = -1;
   } else {
     if (ctx->HasInput("scale")) {
-      float scale_h;
-      float scale_w;
+      float scale_h = -1;
+      float scale_w = -1;
       auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
       scale_h = scale[0];
       scale_w = scale[1];
@@ -269,9 +269,9 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     // out_w = -1;
   } else {
     if (ctx->HasInput("scale")) {
-      float scale_d;
-      float scale_h;
-      float scale_w;
+      float scale_d = -1;
+      float scale_h = -1;
+      float scale_w = -1;
       auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
       scale_d = scale[0];
       scale_h = scale[1];

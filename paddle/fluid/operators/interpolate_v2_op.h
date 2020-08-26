@@ -788,7 +788,7 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
     auto new_size = get_new_shape(list_new_size_tensor);
     out_w = new_size[0];
   } else {
-    float scale_w;
+    float scale_w = -1;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
     auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor != nullptr) {
@@ -864,8 +864,8 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
     out_h = new_size[0];
     out_w = new_size[1];
   } else {
-    float scale_h;
-    float scale_w;
+    float scale_h = -1;
+    float scale_w = -1;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
     auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor != nullptr) {
@@ -970,9 +970,9 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
     out_h = new_size[1];
     out_w = new_size[2];
   } else {
-    float scale_d;
-    float scale_h;
-    float scale_w;
+    float scale_d = -1;
+    float scale_h = -1;
+    float scale_w = -1;
     auto scale_tensor = ctx.Input<Tensor>("Scale");
     auto scale = ctx.Attr<std::vector<float>>("scale");
     if (scale_tensor != nullptr) {
@@ -1151,8 +1151,8 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
 
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale_h;
-  float scale_w;
+  float scale_h = -1;
+  float scale_w = -1;
   auto scale_tensor = ctx.Input<Tensor>("Scale");
   auto scale = ctx.Attr<std::vector<float>>("scale");
   if (scale_tensor != nullptr) {
@@ -1255,9 +1255,9 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
   int out_d = ctx.Attr<int>("out_d");
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
-  float scale_d;
-  float scale_h;
-  float scale_w;
+  float scale_d = -1;
+  float scale_h = -1;
+  float scale_w = -1;
   auto scale_tensor = ctx.Input<Tensor>("Scale");
   auto scale = ctx.Attr<std::vector<float>>("scale");
   if (scale_tensor != nullptr) {
