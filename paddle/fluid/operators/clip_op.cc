@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/clip_op.h"
-#include "paddle/fluid/framework/op_version_registry.h"
-#include <limits>
 #include <memory>
 
 namespace paddle {
@@ -52,10 +50,8 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
         "Out",
         "Tensor, the clipped tensor, with the same shape and data type as "
         "input(x)");
-    AddAttr<AttrType>("min", "float number, the minimum value to clip by.")
-      .SetDefault(std::numeric_limits<AttrType>::min());
-    AddAttr<AttrType>("max", "float number, the maximum value to clip by.")
-      .SetDefault(std::numeric_limits<AttrType>::max());
+    AddAttr<AttrType>("min", "float number, the minimum value to clip by.");
+    AddAttr<AttrType>("max", "float number, the maximum value to clip by.");
     AddComment(R"DOC(
 Clip Operator.
 
@@ -126,10 +122,3 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     clip_grad, ops::ClipGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ClipGradKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_VERSION(clip)
-.AddCheckpoint(
-  R"ROC(Upgrade clip, add default value for max and min attributes.)ROC",
-  OpVersionDesc()
-  .ModifyAttr("min", std::numeric_limits<float>::min())
-  .ModifyAttr("max", std::numeric_limits<float>::max()));

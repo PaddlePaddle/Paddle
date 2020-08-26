@@ -15,6 +15,7 @@
 math functions
 """
 from __future__ import print_function
+import numpy as np
 
 from paddle.common_ops_import import *
 from ..fluid import layers
@@ -1581,7 +1582,15 @@ def clip(x, min=None, max=None, name=None):
             # [[4.5, 6.4]
     """
 
+    np_dtype = np.float32
+    if x.dtype == VarDesc.VarType.FP64:
+        np_dtype = np.float64
+    fmin = float(np.finfo(np_dtype).min)
+    fmax = float(np.finfo(np_dtype).max)
+
     if in_dygraph_mode():
+        min = fmin if min is None else min
+        max = fmax if max is None else max
         return core.ops.clip(x, "min", min, "max", max)
 
     if min is not None:
@@ -1598,7 +1607,7 @@ def clip(x, min=None, max=None, name=None):
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'clip')
 
     inputs = {'X': x}
-    attrs = {'min': None, 'max': None}
+    attrs = {'min': fmin, 'max': fmax}
 
     if isinstance(min, Variable):
         min.stop_gradient = True
