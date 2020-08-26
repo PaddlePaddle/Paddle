@@ -1160,7 +1160,6 @@ def conv3d(x,
     Examples:
         .. code-block:: python
 
-            from paddle import fluid
             import paddle.nn.functional as F
             import paddle.fluid.dygraph as dg
             import numpy as np

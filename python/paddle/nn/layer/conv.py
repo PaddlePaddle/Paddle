@@ -99,7 +99,8 @@ class _ConvNd(layers.Layer):
                 raise ValueError("in_channels must be divisible by groups.")
 
             if padding_mode in {'reflect', 'replicate', 'circular'}:
-                _paired_padding = utils.convert_to_list(padding, 2, 'padding')
+                _paired_padding = utils.convert_to_list(padding, dims,
+                                                        'padding')
                 self._reversed_padding_repeated_twice = _reverse_repeat_list(
                     _paired_padding, 2)
 
@@ -673,8 +674,9 @@ class ConvTranspose2d(_ConvNd):
         kernel_size(int|list|uple): The kernel size. If kernel_size is a tuple,
             it must contain two integers, (kernel_size_H, kernel_size_W).
             Otherwise, the kernel will be a square.
-        output_padding(int|list|tuple, optional): Additional size added to one side
-            of each dimension in the output shape. Default: 0.
+        stride(int|list|tuple, optional): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
             2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` on both sides 
@@ -682,9 +684,8 @@ class ConvTranspose2d(_ConvNd):
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             The default value is 0.
-        stride(int|list|tuple, optional): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: 1.
+        output_padding(int|list|tuple, optional): Additional size added to one side
+            of each dimension in the output shape. Default: 0.
         dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: 1.
@@ -1024,7 +1025,7 @@ class ConvTranspose3d(_ConvNd):
           
           paddle.disable_static()
           x_var = paddle.to_tensor(x)
-          conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
+          conv = nn.ConvTranspose3d(4, 6, (3, 3, 3))
           y_var = conv(x_var)
           y_np = y_var.numpy()
           print(y_np.shape)
