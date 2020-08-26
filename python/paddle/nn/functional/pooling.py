@@ -18,10 +18,9 @@ from ...fluid.layers import pool3d  #DEFINE_ALIAS
 from ...fluid.layers import adaptive_pool2d  #DEFINE_ALIAS
 from ...fluid.layers import adaptive_pool3d  #DEFINE_ALIAS
 from ...fluid import core
-from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
-from ...fluid.layers import utils, LayerHelper
-from ...fluid.data_feeder import check_type, check_variable_and_dtype, check_dtype, convert_dtype
-from ...fluid.layers import unsqueeze, squeeze
+from ...fluid.framework import in_dygraph_mode
+from ...fluid.layers import utils, LayerHelper, unsqueeze, squeeze
+from ...fluid.data_feeder import check_type, check_variable_and_dtype
 
 __all__ = [
     'pool2d',
@@ -230,7 +229,7 @@ def avg_pool1d(x,
     padding, padding_algorithm = _update_padding_nd(
         padding, 1, channel_last=False)
 
-    # using 2d to implenment 1d should expand padding.
+    # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
     if in_dygraph_mode():
@@ -564,7 +563,7 @@ def max_pool1d(x,
 
     padding, padding_algorithm = _update_padding_nd(padding, 1)
 
-    # using 2d to implenment 1d should expand padding.
+    # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
     if in_dygraph_mode():
@@ -686,6 +685,7 @@ def max_pool2d(x,
 
     padding, padding_algorithm = _update_padding_nd(
         padding, num_dims=2, channel_last=channel_last)
+
     if in_dygraph_mode():
         output = core.ops.max_pool2d_with_index(
             x, 'ksize', kernel_size, 'global_pooling', False, 'strides', stride,
@@ -793,6 +793,7 @@ def max_pool3d(x,
         stride = utils.convert_to_list(stride, 3, 'pool_stride')
 
     channel_last = _channel_last(data_format, 3)
+
     padding, padding_algorithm = _update_padding_nd(padding, 3, channel_last)
 
     if in_dygraph_mode():
@@ -1231,9 +1232,8 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
                             output_size=[3, 3])
               # out.shape is [2, 3, 3, 3]
     """
-    # In kernel, the input is still named 'input', not 'x'
     if not in_dygraph_mode():
-        check_variable_and_dtype(x, 'input', ['float32', 'float64'],
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'adaptive_max_pool2d')
     _check_input(x, 4)
     check_type(output_size, 'pool_size', (int), 'adaptive_max_pool2d')
@@ -1317,9 +1317,8 @@ def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
               # out.shape is [2, 3, 3, 3, 3]
     """
 
-    # In kernel, the input is still named 'input', not 'x'
     if not in_dygraph_mode():
-        check_variable_and_dtype(x, 'input', ['float32', 'float64'],
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'adaptive_max_pool3d')
     _check_input(x, 5)
     check_type(output_size, 'pool_size', (int), 'adaptive_max_pool3d')

@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-
-from ...fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-from ...fluid.layers import utils
 from ...fluid.dygraph import layers
 from ...fluid.layer_helper import LayerHelper
 from .. import functional as F
