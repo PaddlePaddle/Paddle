@@ -17,23 +17,34 @@ import paddle
 import os
 from launch_function_helper import launch_func, _find_free_port
 
+try:
+    dist_ut_port_0 = int(os.getenv["PADDLE_DIST_UT_PORT"])
+    dist_ut_port_1 = dist_ut_port_0 + 1
+except:
+    dist_ut_port_0 = _find_free_port(set())
+    dist_ut_port_1 = _find_free_port(set())
+
 
 class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
     def test_graph_execution_optimizer_not_apply(self):
+        port_a = dist_ut_port_0
+        port_b = dist_ut_port_1
         node_a = {
             "PADDLE_TRAINER_ID": "0",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36003",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36003,127.0.0.1:36004",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
             "http_proxy": "",
             "https_proxy": ""
         }
 
         node_b = {
             "PADDLE_TRAINER_ID": "1",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36004",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_b),
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36003,127.0.0.1:36004",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
             "http_proxy": "",
             "https_proxy": ""
         }
@@ -71,10 +82,8 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         proc_b.join()
 
     def test_graph_execution_optimizer(self):
-
-        port_set = set()
-        port_a = _find_free_port(port_set)
-        port_b = _find_free_port(port_set)
+        port_a = dist_ut_port_0 + 2
+        port_b = dist_ut_port_1 + 2
 
         node_a = {
             "PADDLE_TRAINER_ID": "0",
@@ -146,20 +155,24 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         proc_b.join()
 
     def test_graph_execution_optimizer_not_apply_v2(self):
+        port_a = dist_ut_port_0 + 4
+        port_b = dist_ut_port_1 + 4
         node_a = {
             "PADDLE_TRAINER_ID": "0",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36003",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36003,127.0.0.1:36004",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
             "http_proxy": "",
             "https_proxy": ""
         }
 
         node_b = {
             "PADDLE_TRAINER_ID": "1",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36004",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_b),
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36003,127.0.0.1:36004",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
             "http_proxy": "",
             "https_proxy": ""
         }
@@ -197,20 +210,24 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
         proc_b.join()
 
     def test_graph_execution_optimizer(self):
+        port_a = dist_ut_port_0 + 6
+        port_b = dist_ut_port_1 + 6
         node_a = {
             "PADDLE_TRAINER_ID": "0",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36001",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_a),
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
             "http_proxy": "",
             "https_proxy": ""
         }
 
         node_b = {
             "PADDLE_TRAINER_ID": "1",
-            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36002",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:{}".format(port_b),
             "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+            "PADDLE_TRAINER_ENDPOINTS":
+            "127.0.0.1:{},127.0.0.1:{}".format(port_a, port_b),
             "http_proxy": "",
             "https_proxy": ""
         }
