@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
-
+#include <limits>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -82,12 +82,10 @@ class TensorDumpConfig {
   TensorDumpConfig() : dirname_("out/"), synchronized_(false) {
     // Read global required operators
     if (const char* env_ops = std::getenv("TENSOR_DUMP_OPERATORS")) {
-      auto tmp_ops = string::split_string<std::string>(
-          env_ops, ",");  // split(env_ops, ',');
+      auto tmp_ops = string::split_string<std::string>(env_ops, ",");
       auto it = std::back_inserter(ops);
       for (auto& _op : tmp_ops) {
-        auto key_value =
-            string::split_string<std::string>(_op, "=");  // split(_op, '=');
+        auto key_value = string::split_string<std::string>(_op, "=");
         auto size = key_value.size();
         msg_green(size);
         if (!size || size > 2) {
@@ -100,8 +98,7 @@ class TensorDumpConfig {
         *it++ = {key_value[0], framework::StringToDataLayout(key_value[1])};
       }
       for (auto& item : ops) {
-        msg_green("config for operator " << item.label << ","
-                                         << DataLayoutToString(item.layout));
+        msg_green("config for operator " << item.label << "," << item.layout);
       }
     }
     // Read global required folder
@@ -147,28 +144,34 @@ class TensorDumpConfig {
 
 class DumpComposit {
  private:
-  static void reorder_via_mkldnn(void* out, const Tensor* tensor_obj,
+  static std::ostream& print_memory(std::ostream& os,
+                                    const std::vector<float>& vout,
+                                    const size_t& data_limit) {
+    for (size_t i = 0; i < data_limit; i++) {
+      os << vout[i] << " ";
+    }
+    os << "...]" << std::endl;
+    return os;
+  }
+  static void reorder_via_mkldnn(void* out, const Tensor* tensor_src,
                                  DataLayout layout) {
     dnnl::engine::kind engine_kind = dnnl::engine::kind::cpu;
     dnnl::engine engine(engine_kind, 0);
     // Create dnnl::stream.
     dnnl::stream engine_stream(engine);
     dnnl::memory::dims src_dims;
-    auto& paddle_dims = tensor_obj->dims();
-
+    auto& paddle_dims = tensor_src->dims();
     for (decltype(paddle_dims.size()) i = 0; i < paddle_dims.size(); ++i)
       src_dims.push_back(paddle_dims.at(i));
-    auto current_layout = tensor_obj->layout();
+    auto current_layout = tensor_src->layout();
     auto src_md = dnnl::memory::desc(src_dims, dnnl::memory::data_type::f32,
                                      framework::ToMKLDNNFormat(current_layout));
     auto dst_md = dnnl::memory::desc(src_dims, dnnl::memory::data_type::f32,
                                      framework::ToMKLDNNFormat(layout));
-
     auto src_mem = dnnl::memory(
         src_md, engine,
-        reinterpret_cast<void*>(const_cast<float*>(tensor_obj->data<float>())));
+        reinterpret_cast<void*>(const_cast<float*>(tensor_src->data<float>())));
     auto dst_mem = dnnl::memory(dst_md, engine, out);
-
     // Create primitive descriptor.
     auto reorder_pd =
         dnnl::reorder::primitive_desc(engine, src_md, engine, dst_md);
@@ -191,34 +194,38 @@ class DumpComposit {
     if (it == TensorDumpConfig::get().fetchOperatorEnd()) {
       return;
     }
-    framework::Tensor* target_tensor;
     auto target_layout = TensorDumpConfig::get().getOperatorLayout(label);
+    std::string filename =
+        TensorDumpConfig::get().getFoldername() + label + name;
     if (target_layout != OperatorDetails::getDefaultLayout()) {
-      msg_green("WARNING! GET INTO THE reorder");
-      // reorder mkldnn layout to paddle layout
-      TensorCopySync(_tensor, platform::CPUPlace(), target_tensor);
-      target_tensor->set_layout(target_layout);
-      reorder_via_mkldnn(target_tensor->data<float>(), &_tensor, target_layout);
-    } else {
-      msg_green("NOT in THE reorder");
-      target_tensor = const_cast<framework::Tensor*>(&_tensor);
-    }
-
-    std::string filename = TensorDumpConfig::get().getFoldername() + label +
-                           name + DataLayoutToString(target_layout);
-    if (TensorDumpConfig::get().is_synchronized()) {
-      /* in case of parallel executor , io must be synchronized */
+      filename = filename + DataLayoutToString(target_layout);
+      std::vector<float> vout(_tensor.numel());
+      reorder_via_mkldnn(vout.data(), &_tensor, target_layout);
+      // Print out data()
+      auto data_limit = std::numeric_limits<int64_t>::max();
+      if (const char* value = std::getenv("DUMP_LIMIT")) {
+        data_limit = atoi(const_cast<char*>(value));
+      }
+      data_limit = data_limit < _tensor.numel() ? data_limit : _tensor.numel();
       std::lock_guard<decltype(TensorDumpConfig::getMutex())> l(
           TensorDumpConfig::getMutex());
-      std::ofstream(filename, std::ios_base::app) << SeqInFile::Access(filename)
-                                                  << std::endl
-                                                  << *target_tensor << std::endl
-                                                  << std::endl;
+      auto ofs = std::ofstream(filename, std::ios_base::app);
+      ofs << SeqInFile::Access(filename) << std::endl;
+      DumpComposit::print_memory(ofs, vout, data_limit);
     } else {
-      std::ofstream(filename, std::ios_base::app) << SeqInFile::Access(filename)
-                                                  << std::endl
-                                                  << *target_tensor << std::endl
-                                                  << std::endl;
+      filename = filename + DataLayoutToString(target_layout);
+      if (TensorDumpConfig::get().is_synchronized()) {
+        /* in case of parallel executor , io must be synchronized */
+        std::lock_guard<decltype(TensorDumpConfig::getMutex())> l(
+            TensorDumpConfig::getMutex());
+        std::ofstream(filename, std::ios_base::app)
+            << SeqInFile::Access(filename) << std::endl
+            << _tensor << std::endl;
+      } else {
+        std::ofstream(filename, std::ios_base::app)
+            << SeqInFile::Access(filename) << std::endl
+            << _tensor << std::endl;
+      }
     }
   }
 };
