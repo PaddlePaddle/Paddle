@@ -29,7 +29,6 @@ from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode, Variable, ParamBase, _current_expected_place
 # Note: Use alias `Input` temporarily before releasing hapi feature.
-from paddle.static import InputSpec as Input
 from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.executor import global_scope
@@ -50,8 +49,10 @@ from .callbacks import config_callbacks
 
 __all__ = [
     'Model',
-    'Input',
 ]
+
+
+_parallel_context_initialized = False
 
 
 def to_list(value):
@@ -782,19 +783,19 @@ class Model(object):
     Dynamic graph and static graph are supported at the same time,
     switched by `paddle.disable_static()`. The usage is as follows.
     But note, the switching between dynamic and static should be before
-    instantiating a Model. The input description, i.e, paddle.Input,
+    instantiating a Model. The input description, i.e, paddle.static.InputSpec,
     must be required for static graph.
 
     Args:
         network (paddle.nn.Layer): The network is an instance of
             paddle.nn.Layer.
-        inputs (Input|list|dict|None): `inputs`, entry points of network,
-            could be a Input layer, or lits of Input layers,
+        inputs (InputSpec|list|dict|None): `inputs`, entry points of network,
+            could be a InputSpec instance, or lits of InputSpec instances,
             or dict (name: Input), or None. For static graph,
             inputs must be set. For dynamic graph, it could be None.
-        labels (Input|list|None): `labels`, entry points of network,
-            could be a Input layer or lits of Input layers, or None.
-            For static graph, if labels is required in loss,
+        labels (InputSpec|list|None): `labels`, entry points of network,
+            could be a InputSpec instnace or lits of InputSpec instances,
+            or None. For static graph, if labels is required in loss,
             labels must be set. Otherwise, it could be None.
 
 
@@ -976,7 +977,7 @@ class Model(object):
               class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
-                      self._fc = paddle.nn.Linear(784, 1, act='softmax')
+                      self._fc = paddle.nn.Linear(784, 10, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
                       return y
@@ -1033,9 +1034,9 @@ class Model(object):
                 class Mnist(paddle.nn.Layer):
                     def __init__(self):
                         super(Mnist, self).__init__()
-                        self._fc = Linear(784, 1, act='softmax')
+                        self._fc = Linear(784, 10, act='softmax')
 
-                    @paddle.jit.to_static # If save for inference in dygraph, need this
+                    #@paddle.jit.to_static # If save for inference in dygraph, need this
                     def forward(self, x):
                         y = self._fc(x)
                         return y
@@ -1055,9 +1056,9 @@ class Model(object):
                               paddle.nn.CrossEntropyLoss(),
                               paddle.metric.Accuracy())
                 mnist_data = paddle.vision.datasets.MNIST(mode='train', chw_format=False)
-                model.fit(mnist_data, epochs=1, batch_size=32, verbose=0)
+                model.fit(mnist_data, epochs=1, batch_size=32, verbose=1)
                 model.save('checkpoint/test') # save for training
-                model.save('inference_model', False) # save for inference
+                #model.save('inference_model', False) # save for inference
         """
 
         if ParallelEnv().local_rank == 0:
@@ -1104,7 +1105,7 @@ class Model(object):
               class MyNet(paddle.nn.Layer):
                   def __init__(self):
                       super(MyNet, self).__init__()
-                      self._fc = paddle.nn.Linear(784, 1, act='softmax')
+                      self._fc = paddle.nn.Linear(784, 10, act='softmax')
                   def forward(self, x):
                       y = self._fc(x)
                       return y
@@ -1112,6 +1113,7 @@ class Model(object):
               device = paddle.set_device('cpu')
               paddle.disable_static(device)
               model = paddle.Model(MyNet())
+              model.save('checkpoint/test')
               model.load('checkpoint/test')
         """
 

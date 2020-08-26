@@ -83,8 +83,8 @@ def set_device(device):
      .. code-block:: python
             
         import paddle
-        paddle.enable_imperative()
-        paddle.set_device("gpu:0")
+        paddle.disable_static()
+        paddle.set_device("cpu")
         x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
         x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
         data = paddle.stack([x1,x2], axis=1)
@@ -104,6 +104,10 @@ def set_device(device):
             raise ValueError(
                 "The device must be a string which is like 'cpu', 'gpu' or 'gpu:0'"
             )
+        if not core.is_compiled_with_cuda():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with CUDA".format(avaliable_device))
         device_info_list = device.split(':', 1)
         device_id = device_info_list[1]
         device_id = int(device_id)
@@ -124,7 +128,7 @@ def get_device():
      .. code-block:: python
             
         import paddle
-        paddle.enable_imperative()
+        paddle.disable_static()
         device = paddle.get_device()
 
     """
