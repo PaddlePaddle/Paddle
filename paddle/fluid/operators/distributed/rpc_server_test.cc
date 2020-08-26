@@ -70,8 +70,8 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");
   x_var->GetMutable<framework::LoDTensor>();
 
-  auto out_var = scope->Var("res");
-  out_var->GetMutable<framework::LoDTensor>();
+  auto res_var = scope->Var("res");
+  res_var->GetMutable<framework::LoDTensor>();
 }
 
 void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
@@ -101,10 +101,6 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
   for (int64_t i = 0; i < w_value->numel(); ++i) {
     ptr[i] = static_cast<float>(i / 10);
   }
-
-  auto res = scope->Var("res")->GetMutable<framework::LoDTensor>();
-  auto res_value = res->mutable_value();
-  res_value->Resize({1, rows_numel});
 }
 
 void StartServer(const std::string& rpc_name) {
@@ -146,6 +142,7 @@ void StartSendAndRecvServer(const std::string& rpc_name) {
   std::string in_var_name("x");
   std::vector<int> prefetch_block_ids{block->ID()};
   auto prepared = exe.Prepare(program, prefetch_block_ids);
+  InitTensorsOnServer(&scope, &place, 10);
 
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
