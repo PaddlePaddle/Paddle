@@ -92,13 +92,13 @@ class UniformInitializer : public Initializer {
     random_engine_ = framework::GetCPURandomEngine(seed_);
   }
 
-  float GetValue() override { return dist_(random_engine_); }
+  float GetValue() override { return dist_(*random_engine_); }
 
  private:
   float min_;
   float max_;
 
-  std::mt19937_64 random_engine_;
+  std::shared_ptr<std::mt19937_64> random_engine_;
   std::uniform_real_distribution<float> dist_;
 };
 
@@ -134,13 +134,13 @@ class GaussianInitializer : public Initializer {
     dist_ = std::normal_distribution<float>(mean_, std_);
   }
 
-  float GetValue() override { return dist_(random_engine_); }
+  float GetValue() override { return dist_(*random_engine_); }
 
  private:
   float std_;
   float mean_;
 
-  std::mt19937_64 random_engine_;
+  std::shared_ptr<std::mt19937_64> random_engine_;
   std::normal_distribution<float> dist_;
 };
 

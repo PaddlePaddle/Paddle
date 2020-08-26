@@ -31,7 +31,7 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator() {
   return default_cpu_generator;
 }
 
-const std::shared_ptr<std::mt19937_64>& OpDefaultCPUEngine() {
+std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine() {
   static auto op_default_cpu_engine = std::make_shared<std::mt19937_64>();
   return op_default_cpu_engine;
 }
@@ -42,7 +42,7 @@ const std::shared_ptr<std::mt19937_64>& OpDefaultCPUEngine() {
 // (2) op seed is not set and DefaultCPUGenerator is not inited, use se
 // OpDefaultCPUEngine() and set a radnom seed
 // (3) op seed is set, use OpDefaultCPUEngine() and set the seed
-const std::mt19937_64& GetCPURandomEngine(uint64_t seed) {
+std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
   if (DefaultCPUGenerator()->GetIsInitPy() && seed == 0) {
     return DefaultCPUGenerator()->GetCPUEngine();
   } else {
@@ -54,7 +54,7 @@ const std::mt19937_64& GetCPURandomEngine(uint64_t seed) {
       std::lock_guard<std::mutex> lock(mu_);
       OpDefaultCPUEngine()->seed(seed);
     }
-    return *OpDefaultCPUEngine();
+    return OpDefaultCPUEngine();
   }
 }
 
@@ -80,7 +80,7 @@ uint64_t Generator::Seed() {
   seed = ((((uint64_t)de()) << 32) + de()) & 0x1FFFFFFFFFFFFF;
   this->state_->current_seed = seed;
   std::seed_seq seq({seed});
-  this->state_->cpu_engine.seed(seq);
+  this->state_->cpu_engine->seed(seq);
 
   return this->state_->current_seed;
 }
@@ -89,22 +89,23 @@ void Generator::SetCurrentSeed(uint64_t seed) {
   std::lock_guard<std::mutex> lock(this->mutex);
   this->state_->current_seed = uint64_t(seed);
   std::seed_seq seq({seed});
-  this->state_->cpu_engine.seed(seq);
+  this->state_->cpu_engine->seed(seq);
 }
 
-std::mt19937_64& Generator::GetCPUEngine() {
+std::shared_ptr<std::mt19937_64> Generator::GetCPUEngine() {
   std::lock_guard<std::mutex> lock(this->mutex);
   return this->state_->cpu_engine;
 }
 
-void Generator::SetCPUEngine(std::mt19937_64 engine) {
+void Generator::SetCPUEngine(std::shared_ptr<std::mt19937_64> engine) {
   std::lock_guard<std::mutex> lock(this->mutex);
-  this->state_->cpu_engine = std::mt19937_64(engine);
+  this->state_->cpu_engine = engine;
 }
 
 uint64_t Generator::Random64() {
   std::lock_guard<std::mutex> lock(this->mutex);
-  return this->state_->cpu_engine();
+  auto engine = this->state_->cpu_engine;
+  return (*engine)();
 }
 
 void Generator::SetIsInitPy(bool is_init_py) {

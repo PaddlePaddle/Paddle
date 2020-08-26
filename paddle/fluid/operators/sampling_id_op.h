@@ -59,7 +59,7 @@ class SamplingIdKernel : public framework::OpKernel<T> {
     auto engine = framework::GetCPURandomEngine(seed);
     std::vector<int64_t> ids(batch_size);
     for (int i = 0; i < batch_size; ++i) {
-      T r = dist(engine);
+      T r = dist(*engine);
       int idx = width - 1;
       for (int j = 0; j < width; ++j) {
         if ((r -= ins_vector[i * width + j]) < 0) {

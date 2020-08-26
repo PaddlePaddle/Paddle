@@ -37,7 +37,7 @@ static uint64_t GetRandomSeed() {
 struct GeneratorState {
   int64_t device = -1;
   uint64_t current_seed = 34342423252;
-  std::mt19937_64 cpu_engine;
+  std::shared_ptr<std::mt19937_64> cpu_engine;
 };
 
 struct Generator {
@@ -46,7 +46,7 @@ struct Generator {
     default_gen_state_cpu.device = -1;
     default_gen_state_cpu.current_seed = GetRandomSeed();
     std::seed_seq seq({default_gen_state_cpu.current_seed});
-    default_gen_state_cpu.cpu_engine = std::mt19937_64(seq);
+    default_gen_state_cpu.cpu_engine = std::make_shared<std::mt19937_64>(seq);
     this->state_ = std::make_shared<GeneratorState>(default_gen_state_cpu);
   }
   explicit Generator(uint64_t seed) {
@@ -54,7 +54,7 @@ struct Generator {
     default_gen_state_cpu.device = -1;
     default_gen_state_cpu.current_seed = seed;
     std::seed_seq seq({seed});
-    default_gen_state_cpu.cpu_engine = std::mt19937_64(seq);
+    default_gen_state_cpu.cpu_engine = std::make_shared<std::mt19937_64>(seq);
     this->state_ = std::make_shared<GeneratorState>(default_gen_state_cpu);
     this->is_init_py_ = true;  // TODO(zhiqiu): remove it in future
   }
@@ -74,9 +74,9 @@ struct Generator {
   // set seed
   void SetCurrentSeed(uint64_t seed);
   // get cpu engine
-  std::mt19937_64& GetCPUEngine();
+  std::shared_ptr<std::mt19937_64> GetCPUEngine();
   // set cpu engine
-  void SetCPUEngine(std::mt19937_64 engine);
+  void SetCPUEngine(std::shared_ptr<std::mt19937_64>);
 
   uint64_t Random64();
 
@@ -99,9 +99,9 @@ struct Generator {
 const std::shared_ptr<Generator>& DefaultCPUGenerator();
 
 // If op seed is set or global is not set, the OpDefaultCPUEngine is used.
-const std::shared_ptr<std::mt19937_64>& OpDefaultCPUEngine();
+std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine();
 
-const std::mt19937_64& GetCPURandomEngine(uint64_t);
+std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
 
 }  // namespace framework
 }  // namespace paddle

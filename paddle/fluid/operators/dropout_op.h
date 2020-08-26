@@ -65,12 +65,11 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         seed_data = context.Attr<int>("seed");
       }
       auto engine = framework::GetCPURandomEngine(seed_data);
-      engine.seed(seed_data);
 
       std::uniform_real_distribution<float> dist(0, 1);
 
       for (size_t i = 0; i < size; ++i) {
-        if (dist(engine) < dropout_prob) {
+        if (dist(*engine) < dropout_prob) {
           mask_data[i] = 0;
           y_data[i] = 0;
         } else {

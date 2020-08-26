@@ -65,10 +65,10 @@ class BernoulliOpKernel<platform::CPUDeviceContext, T>
     int64_t size = x->numel();
     std::uniform_real_distribution<T> dist(0.0, 1.0);
     auto gen_ptr = framework::DefaultCPUGenerator();
-    std::mt19937_64 &gen_engine = gen_ptr->GetCPUEngine();
+    auto engine = gen_ptr->GetCPUEngine();
 
     for (int64_t i = 0; i < size; ++i) {
-      out_data[i] = BernoulliFunctor(in_data[i], dist(gen_engine));
+      out_data[i] = BernoulliFunctor(in_data[i], dist(*engine));
     }
   }
 };  // namespace operators

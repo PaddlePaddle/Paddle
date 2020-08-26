@@ -68,7 +68,7 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     auto engine = framework::GetCPURandomEngine(seed);
 
     for (int64_t i = 0; i < size; ++i) {
-      data[i] = dist(engine);
+      data[i] = dist(*engine);
     }
 
     unsigned int diag_num =

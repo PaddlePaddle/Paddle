@@ -35,7 +35,7 @@ static inline void random_permate(T* data_ptr, int num, unsigned int seed) {
     data_ptr[i] = static_cast<T>(i);
   }
 
-  std::shuffle(data_ptr, data_ptr + num, engine);
+  std::shuffle(data_ptr, data_ptr + num, *engine);
 }
 
 template <typename DeviceContext, typename T>

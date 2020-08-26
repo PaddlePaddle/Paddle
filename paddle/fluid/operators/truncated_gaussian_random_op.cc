@@ -171,7 +171,7 @@ class CPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     auto engine = framework::GetCPURandomEngine(seed);
     for (int64_t i = 0; i < size; ++i) {
-      data[i] = truncated_normal(dist(engine));
+      data[i] = truncated_normal(dist(*engine));
     }
   }
 };
