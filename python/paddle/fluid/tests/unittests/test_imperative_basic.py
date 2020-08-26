@@ -314,9 +314,8 @@ class TestImperative(unittest.TestCase):
                 inputs2.append(tmp)
             ret2 = fluid.layers.sums(inputs2)
             loss2 = fluid.layers.reduce_sum(ret2)
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
-            loss2.backward(backward_strategy)
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            loss2.backward()
 
             self.assertTrue(np.allclose(ret.numpy(), x * 10))
             self.assertTrue(np.allclose(inputs[0].gradient(), x))
@@ -403,9 +402,8 @@ class TestImperative(unittest.TestCase):
             x2 = l2(var_inp2)[0]
             self.assertIsNotNone(x2)
             dy_out2 = x2.numpy()
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
-            x2.backward(backward_strategy)
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            x2.backward()
             dy_grad2 = l2._x_for_debug.gradient()
 
         with new_program_scope():
@@ -442,9 +440,8 @@ class TestImperative(unittest.TestCase):
             mlp2 = MLP(input_size=2)
             out2 = mlp2(var_inp2)
             dy_out2 = out2.numpy()
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
-            out2.backward(backward_strategy)
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            out2.backward()
             dy_grad2 = mlp2._linear1.weight.gradient()
 
         with new_program_scope():
@@ -552,9 +549,8 @@ class TestImperative(unittest.TestCase):
             simple_rnn2 = SimpleRNN()
             outs2, pre_hiddens2 = simple_rnn2.forward(var_inp2)
             dy_out2 = outs2[3].numpy()
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
-            outs2[3].backward(backward_strategy)
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            outs2[3].backward()
             dy_grad_h2o2 = simple_rnn2._cell._h2o_w.gradient()
             dy_grad_h2h2 = simple_rnn2._cell._h2h_w.gradient()
             dy_grad_i2h2 = simple_rnn2._cell._i2h_w.gradient()

@@ -319,8 +319,7 @@ def grad(outputs,
          create_graph=False,
          only_inputs=True,
          allow_unused=False,
-         no_grad_vars=None,
-         backward_strategy=None):
+         no_grad_vars=None):
     ''' 
     .. note::
         **This API is ONLY available in Dygraph mode.**
@@ -363,9 +362,6 @@ def grad(outputs,
             their gradients if allow_unused=True. Default False.
         no_grad_vars (Variable|list(Variable)|tuple(Variable)|set(Variable), optional): 
             the Variables whose gradients are not needed to compute. Default None.
-        backward_strategy (BackwardStrategy, optional): The backward strategy to
-            compute gradients. See :ref:`api_fluid_dygraph_BackwardStrategy` for
-            details. Default None.
 
     Returns:
         tuple: a tuple of Variables, whose length is the same as the Variable number 
@@ -504,12 +500,6 @@ def grad(outputs,
         raise AssertionError(
             "no_grad_vars must be None, Variable or list/tuple/set of Variables")
 
-    if backward_strategy is None:
-        backward_strategy = core.BackwardStrategy()
-
-    assert isinstance(backward_strategy, core.BackwardStrategy), \
-        "backward_strategy must be type paddle.fluid.dygraph.BackwardStrategy"
-
     assert isinstance(create_graph, bool), "create_graph must be True or False"
 
     if retain_graph is None:
@@ -525,9 +515,9 @@ def grad(outputs,
 
     place = core.Place()
     place.set_place(framework._current_expected_place())
-    return core.dygraph_partial_grad(
-        inputs, outputs, grad_outputs, no_grad_vars, place, backward_strategy,
-        create_graph, retain_graph, allow_unused, only_inputs)
+    return core.dygraph_partial_grad(inputs, outputs, grad_outputs,
+                                     no_grad_vars, place, create_graph,
+                                     retain_graph, allow_unused, only_inputs)
 
 
 @framework.dygraph_only

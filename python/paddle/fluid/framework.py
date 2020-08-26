@@ -1106,7 +1106,7 @@ class Variable(object):
         pass
 
     @fake_interface_only
-    def backward(self, backward_strategy=None, retain_graph=False):
+    def backward(self, retain_graph=False):
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
@@ -1114,10 +1114,6 @@ class Variable(object):
         Run backward of current Graph which starts from current Tensor.
 
         Args:
-            backward_strategy(BackwardStrategy, optional): The backward strategy to run the backward pass. If you would
-                like to sum gradients by the reverse order of the forward execution sequence, please set the value of
-                :code:`BackwardStrategy.sort_sum_gradient` to True. Refer to :ref:`api_fluid_dygraph_BackwardStrategy` for
-                more details. Defaults to None, which means that the value of :code:`BackwardStrategy.sort_sum_gradient` is False.
             retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
                 :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
@@ -1143,9 +1139,7 @@ class Variable(object):
                     inputs.append(tmp)
                 ret = paddle.sums(inputs)
                 loss = paddle.reduce_sum(ret)
-                backward_strategy = paddle.BackwardStrategy()
-                backward_strategy.sort_sum_gradient = True
-                loss.backward(backward_strategy)
+                loss.backward()
 
         """
         pass
@@ -1177,9 +1171,7 @@ class Variable(object):
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
                     loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                    loss2.backward()
                     print(loss2.gradient())
 
                 # example2: return tuple of ndarray
@@ -1225,9 +1217,7 @@ class Variable(object):
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
                     loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                    loss2.backward()
                     print(loss2.gradient())
                     loss2.clear_gradient()
                     print("After clear {}".format(loss2.gradient()))
