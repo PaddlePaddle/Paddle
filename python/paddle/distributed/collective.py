@@ -329,7 +329,7 @@ def all_gather(tensor_list, tensor, group=0):
         core.ops.c_allgather(tensor, out, 'use_calc_stream', True, 'ring_id',
                              group, 'nranks', _default_group.nranks)
     else:
-        helper.appendhelperhelper_op(
+        helper.append_op(
             type=op_type,
             inputs={'X': [tensor]},
             outputs={'Out': [out]},
