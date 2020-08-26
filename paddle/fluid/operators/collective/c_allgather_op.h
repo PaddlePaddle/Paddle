@@ -58,7 +58,9 @@ class CAllGatherOpCPUKernel : public framework::OpKernel<T> {
     gloo::allgather(opts);
 #else
     PADDLE_THROW(
-        "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON");
+        platform::errors
+        : Unavailable(
+            "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
 #endif
   }
 };

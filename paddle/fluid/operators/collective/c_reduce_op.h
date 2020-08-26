@@ -105,7 +105,9 @@ class CReduceOpCPUKernel : public framework::OpKernel<T> {
     gloo::reduce(opts);
 #else
     PADDLE_THROW(
-        "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON");
+        platform::errors
+        : Unavailable(
+            "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
 #endif
   }
 };
