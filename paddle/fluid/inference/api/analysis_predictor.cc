@@ -1057,4 +1057,5 @@ USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(skip_layernorm);
 USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
+USE_TRT_CONVERTER(stack);
 #endif
