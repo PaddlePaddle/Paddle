@@ -11,8 +11,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include <mkldnn/include/mkldnn_types.h>
+#include <stdlib.h>
 #include <memory>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/fc_op.h"
@@ -542,6 +542,47 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
                          fuse_relu, force_fp32_output);
 
     output->set_layout(DataLayout::kMKLDNN);
+
+    std::cout << "WARNING! I am in fc mkldnn op" << std::endl;
+    if (const char* value = std::getenv("TENSOR_DUMP_OPERATORS")) {
+      std::cout << value << std::endl;
+    }
+    if (const char* value = std::getenv("DUMP_LIMIT")) {
+      auto data_limit = atoi(const_cast<char*>(value));
+      std::cout << "DATA_LIMIT:" << data_limit << std::endl;
+    }
+    // if (const char* env_ops = std::getenv("TENSOR_DUMP_OPERATORS")) {
+    //   auto tmp_ops = string::split_string<std::string>(env_ops, ",");
+    //   auto it = std::back_inserter(ops);
+    //   for (auto& _op : tmp_ops) {
+    //     auto key_value = string::split_string<std::string>(_op, "=");
+    //     auto size = key_value.size();
+    //     msg_green(size);
+    //     if (!size || size > 2) {
+    //       throw std::runtime_error("incorrect key=env_ops");
+    //     }
+    //     if (size == 1) {
+    //       *it++ = {key_value[0], OperatorDetails::getDefaultLayout()};
+    //       continue;
+    //     }
+    //     *it++ = {key_value[0], framework::StringToDataLayout(key_value[1])};
+    //   }
+    //   for (auto& item : ops) {
+    //     msg_green("config for operator " << item.label << "," <<
+    //     item.layout);
+    //   }
+    // }
+    // // Read global required folder
+    // if (const char* foler_name = std::getenv("TENSOR_DUMP_FOLDER")) {
+    //   dirname_ = foler_name;
+    //   MkDir(dirname_.c_str());
+    //   msg_green("output folder " << dirname_);
+    // }
+    // // Read global set if it is required
+    // if (const char* sync_ = std::getenv("TENSOR_DUMP_SYNCHRONIZE")) {
+    //   synchronized_ = true;
+    //   msg_green("Is synchronized " << sync_);
+    // }
 
     platform::DumpComposit::execute("fc_mkldnn_fwd", ctx.OutputName("Out"),
                                     *output);

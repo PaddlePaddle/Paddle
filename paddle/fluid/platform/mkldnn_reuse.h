@@ -82,6 +82,8 @@ class TensorDumpConfig {
   TensorDumpConfig() : dirname_("out/"), synchronized_(false) {
     // Read global required operators
     if (const char* env_ops = std::getenv("TENSOR_DUMP_OPERATORS")) {
+      std::cout << "HAHA! WARNING! Get into achieving Tensor_Dump_Operators"
+                << std::endl;
       auto tmp_ops = string::split_string<std::string>(env_ops, ",");
       auto it = std::back_inserter(ops);
       for (auto& _op : tmp_ops) {
@@ -133,7 +135,8 @@ class TensorDumpConfig {
   bool is_synchronized() const { return synchronized_; }
   const std::string& getFoldername() { return dirname_; }
   static TensorDumpConfig& get() {
-    static TensorDumpConfig inst;
+    std::cout << "HAHA, I am in get method" << std::endl;
+    static TensorDumpConfig inst = TensorDumpConfig();
     return inst;
   }
   static std::mutex& getMutex() {
@@ -141,6 +144,7 @@ class TensorDumpConfig {
     return mx;
   }
 };
+// static TensorDumpConfig inst = TensorDumpConfig();
 
 class DumpComposit {
  private:
@@ -190,14 +194,19 @@ class DumpComposit {
  public:
   static void execute(const std::string& label, const std::string& name,
                       const framework::Tensor& _tensor) {
+    // TensorDumpConfig();
+    std::cout << "WARNING! Get into the execute function" << std::endl;
     auto it = TensorDumpConfig::get().fetchOperator(label);
     if (it == TensorDumpConfig::get().fetchOperatorEnd()) {
+      std::cout << "WARNING! ERROR, No operators are found" << std::endl;
       return;
     }
     auto target_layout = TensorDumpConfig::get().getOperatorLayout(label);
     std::string filename =
         TensorDumpConfig::get().getFoldername() + label + name;
+
     if (target_layout != OperatorDetails::getDefaultLayout()) {
+      std::cout << "WARNING! I am in the different layout branch" << std::endl;
       filename = filename + DataLayoutToString(target_layout);
       std::vector<float> vout(_tensor.numel());
       reorder_via_mkldnn(vout.data(), &_tensor, target_layout);
@@ -213,6 +222,7 @@ class DumpComposit {
       ofs << SeqInFile::Access(filename) << std::endl;
       DumpComposit::print_memory(ofs, vout, data_limit);
     } else {
+      std::cout << "WARNING! I am in same layout branch" << std::endl;
       filename = filename + DataLayoutToString(target_layout);
       if (TensorDumpConfig::get().is_synchronized()) {
         /* in case of parallel executor , io must be synchronized */
