@@ -236,8 +236,8 @@ class ReduceGradKernel : public framework::OpKernel<T> {
 
     if (reduce_all) {
       auto x = EigenVector<T>::Flatten(*input0);
-      auto x_reduce = EigenVector<T>::From(*input1);
-      auto x_reduce_grad = EigenVector<T>::From(*input2);
+      auto x_reduce = EigenVector<T>::Flatten(*input1);
+      auto x_reduce_grad = EigenVector<T>::Flatten(*input2);
       auto x_grad = EigenVector<T>::Flatten(*output);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();

@@ -28,10 +28,15 @@ using Tensor = framework::Tensor;
 
 template <typename T>
 struct Linspace<paddle::platform::CPUDeviceContext, T> {
-  void operator()(T start, T end, int count, framework::Tensor* numbers,
+  void operator()(T start, T end, int count, bool align_corners,
+                  framework::Tensor* numbers,
                   const framework::ExecutionContext& ctx) {
     T* number_data = numbers->mutable_data<T>({count}, platform::CPUPlace());
     T slice = (end - start) / (T)(count - 1);
+    if (!align_corners) {
+      slice = (end - start) / (T)count;
+      start *= (T)(count - 1) / (T)count;
+    }
     for (int i = 0; i < count; ++i) {
       number_data[i] = start + (T)i * slice;
     }
@@ -130,6 +135,10 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
         .SetDefault(true);
+    AddAttr<bool>("align_corners",
+                  "(bool, default false) Whether to align the corners of input"
+                  "and ouput.")
+        .SetDefault(true);
     AddAttr<std::vector<int>>(
         "output_shape",
         "The target output image shape with format [N, C, H, W].")
@@ -164,10 +173,12 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
               [-1.  -0.5  0.   0.5  1. ]
               [-1.  -0.5  0.   0.5  1. ]
               [-1.  -0.5  0.   0.5  1. ]]]
-        C[0] is the coordinates in height axis and  C[1] is the coordinates in width axis.
+        C[0] is the coordinates in height axis and  C[1] is the coordinates in
+        width axis.
     
     Step2:
-        Tanspose and reshape C to shape [H * W, 2] and append ones to last dimension. The we get:
+        Tanspose and reshape C to shape [H * W, 2] and append ones to last
+        dimension. The we get:
         C_ = [[-1.  -1.   1. ]
               [-0.5 -1.   1. ]
               [ 0.  -1.   1. ]
