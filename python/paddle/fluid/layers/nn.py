@@ -12127,7 +12127,7 @@ def logical_and(x, y, out=None, name=None):
         out = x \&\& y
 
     .. note::
-        ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`。
+        ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
         x (Tensor): the input tensor, it's data type should be bool.
@@ -12167,7 +12167,7 @@ def logical_or(x, y, out=None, name=None):
         out = x || y
 
     .. note::
-        ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`。
+        ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
     
     Args:
         x (Tensor): the input tensor, it's data type should be bool.
@@ -12199,7 +12199,7 @@ def logical_or(x, y, out=None, name=None):
 def logical_xor(x, y, out=None, name=None):
     """
 
-    ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Variable``.
+    ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Tensor``.
     Each element of ``out`` is calculated by
 
     .. math::
@@ -12207,7 +12207,7 @@ def logical_xor(x, y, out=None, name=None):
         out = (x || y) \&\& !(x \&\& y)
 
     .. note::
-        ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`。
+        ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
         x (Tensor): the input tensor, it's data type should be bool.
