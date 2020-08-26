@@ -658,13 +658,14 @@ def birnn(cell_fw, cell_bw, inputs, initial_states, sequence_length, time_major,
     along the last axis.
 
     Arguments:
-        cell(RNNCellBase): An instance of `RNNCellBase`.
-        inputs(Tensor): A (possibly nested structure of) tensor[s]. 
-            The shape of tensor should be `[batch_size, sequence_length, ...]`
-            for `time_major == False` or `[sequence_length, batch_size, ...]`
-            for `time_major == True`. It represents the inputs to be unrolled
-            in RNN.
-        initial_states(tuple, optional): A tuple of 
+        cell_fw(RNNCellBase): An instance of `RNNCellBase`.
+        cell_bw(RNNCellBase): An instance of `RNNCellBase`.
+        inputs(Tensor): the input sequences. 
+            If time_major is True, the shape is 
+            `[time_steps, batch_size, input_size]`
+            else the shape is `[batch_size, time_steps, input_size]`.
+        initial_states(tuple, optional): A tuple of initial states of 
+            `cell_fw` and `cell_bw`.
             If not provided, `cell.get_initial_states` would be called to 
             produce initial state for each cell. Defaults to None.
         sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
