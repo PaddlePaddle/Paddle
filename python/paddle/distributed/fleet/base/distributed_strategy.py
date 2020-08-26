@@ -623,6 +623,21 @@ class DistributedStrategy(object):
 
     @property
     def localsgd(self):
+        """
+        Indicating whether we are using Local SGD training. For more details, please refer to
+        [Don't Use Large Mini-Batches, Use Local SGD](https://arxiv.org/pdf/1808.07217.pdf),
+        [Adaptive Communication Strategies to Achieve the Best Error-Runtime Trade-off in Local-Update SGD](https://arxiv.org/pdf/1810.08313.pdf).
+
+        Default Value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.localsgd = True # by default this is false
+
+        """
         return self.strategy.localsgd
 
     @localsgd.setter
@@ -634,6 +649,26 @@ class DistributedStrategy(object):
 
     @property
     def localsgd_configs(self):
+        """
+        Set LocalSGD training configurations. LocalSGD has a configurable
+        setting that can be configured through a dict.
+
+        **Notes**:
+            **k_steps(int)**: The local steps for training before parameter
+                synchronization. Default 1. If strategy.auto is set True, the
+                local steps will be calculated automatically during training.
+                In this case, k_steps indicates the first local steps which
+                is suggested setting to 1.
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.localsgd = True
+            strategy.localsgd_configs = {"k_steps": 4}
+        """
+
         return get_msg_dict(self.strategy.localsgd_configs)
 
     @localsgd_configs.setter
