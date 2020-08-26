@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/ddim.h"
-
+#include "paddle/fluid/framework/op_version_registry.h"
 namespace paddle {
 namespace operators {
 
@@ -152,3 +152,7 @@ REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
                        ops::GatherGradientOpKernel<int>,
                        ops::GatherGradientOpKernel<uint8_t>,
                        ops::GatherGradientOpKernel<int64_t>);
+REGISTER_OP_VERSION(gather)
+    .AddCheckpoint(R"ROC(upgrad gather, add attribut [axis])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewAttr(
+                       "axis", "Specify the axis of gather operation.", {}));
