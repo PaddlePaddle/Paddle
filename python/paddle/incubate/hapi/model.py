@@ -895,7 +895,7 @@ class Model(object):
                         self._fc = Linear(784, 10, act='softmax')
 
                     # If save for inference in dygraph, need this
-                    @paddle.fluid.dygraph.jit.declarative
+                    @paddle.jit.to_static
                     def forward(self, x):
                         y = self._fc(x)
                         return y
