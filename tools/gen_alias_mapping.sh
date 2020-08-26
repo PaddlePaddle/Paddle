@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/usr/bin/env bash
+# Brief:
+#     This code is used for generating the mapping list of Paddle API alias.
+#     Only the APIs set with the `DEFINE_ALIAS` flag is enable.
+# 
+# Arguments:
+#     None
+# 
+# Usage:
+#     Go into the `Paddle` folder and just run `./tools/gen_alias_mapping.sh`     
+#
+# Returns:
+#     succ: 0
+# 
+#     Will also print the mapping list to stdout. The format of each line is as below:
+#         <real API implement>\t<API recommend>,<API other alias name1>,<API other alias name2>,...
+
 
 PADDLE_ROOT="$(dirname $(readlink -f ${BASH_SOURCE[0]}))/.."
 
