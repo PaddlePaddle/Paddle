@@ -117,7 +117,7 @@ struct BuildStrategy {
   boost::optional<bool> memory_optimize_{boost::none};
 
   // Turn on inplace by default.
-  bool enable_inplace_{true};
+  bool enable_inplace_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if

@@ -115,7 +115,7 @@ static void TransData(const framework::LoDTensor &src_item,
   if (src_item.IsInitialized() && src_item.numel() > 0) {
     if (platform::is_gpu_place(src_item.place())) {
 #ifdef PADDLE_WITH_CUDA
-      TensorCopy(src_item, platform::CPUPlace(), ctx, dst_item);
+      TensorCopy(src_item, platform::CUDAPinnedPlace(), ctx, dst_item);
 #endif
     } else {
       TensorCopy(src_item, platform::CPUPlace(), dst_item);
