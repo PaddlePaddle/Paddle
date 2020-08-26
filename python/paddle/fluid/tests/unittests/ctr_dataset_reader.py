@@ -133,7 +133,7 @@ def gen_fake_line(dnn_data_num=7,
 
     # for deep data
     for index in range(dnn_data_num):
-        data = str(random.randint(0, dnn_data_range))
+        data = str(random.randint(0, dnn_data_range - 1))
         if index < dnn_data_num - 1:
             data += " "
         line += data
@@ -141,7 +141,7 @@ def gen_fake_line(dnn_data_num=7,
 
     # for wide data
     for index in range(lr_data_num):
-        data = str(random.randint(0, lr_data_range)) + ":" + str(1)
+        data = str(random.randint(0, lr_data_range - 1)) + ":" + str(1)
         if index < lr_data_num - 1:
             data += " "
         line += data

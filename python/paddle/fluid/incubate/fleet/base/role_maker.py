@@ -16,7 +16,6 @@
 from __future__ import print_function
 from multiprocessing import Process, Manager
 import paddle.fluid as fluid
-import warnings
 import os
 import time
 
@@ -29,12 +28,6 @@ __all__ = [
 class Role:
     WORKER = 1
     SERVER = 2
-    HETER_WORKER = 3
-
-
-class Device:
-    CPU = 1
-    GPU = 2
     XPU = 3
 
 
@@ -84,10 +77,7 @@ class RoleMakerBase(object):
     def __init__(self):
         self._worker_endpoints = []
         self._server_endpoints = []
-        self._hetet_trainer_endpoints = []
-        self._heter_trainer_device = Device.CPU
         self._role_is_generated = False
-        self.is_heter_parameter_server = False
         self._role = None
         self._current_id = -1
 
@@ -195,52 +185,6 @@ class RoleMakerBase(object):
         barrier between trainers if current role is PSERVER
         """
         print("warning: RoleMakerBase does not have barrier all.")
-
-    def _is_heter_worker(self):
-        """
-        Return is_heter_worker() of current process
-
-        This function only implement in PaddleCloudRoleMaker currently
-        """
-        warnings.warn(
-            "No function _is_heter_worker implement, please check your env setting."
-        )
-        return False
-
-    def _heter_worker_num(self):
-        """
-        Get current total heter-worker number.
-
-        This function only implement in PaddleCloudRoleMaker currently.
-
-        Returns:
-            int: worker number
-        """
-        warnings.warn(
-            "No function _heter_worker_num implement, please check your env setting."
-        )
-        return 0
-
-    def _get_heter_worker_endpoints(self):
-        """
-        return heter_trainer endpoints
-        """
-        assert self._heter_trainer_endpoints != []
-        return self._heter_trainer_endpoints
-
-    def _get_heter_worker_endpoint(self):
-        """
-        return Corresponding heter equipment's endpoint
-        """
-        assert self._heter_trainer_endpoints != []
-        return self._heter_trainer_endpoints[(self._current_id + 1) %
-                                             self._heter_worker_num()]
-
-    def _get_heter_worker_device(self):
-        """
-        return heter_trainer's device of current node
-        """
-        return self._heter_trainer_device
 
 
 class MPIRoleMaker(RoleMakerBase):
@@ -561,42 +505,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
                     training_role = os.environ["TRAINING_ROLE"]
 
-                    if training_role not in [
-                            "TRAINER", "PSERVER", "HETER_TRAINER"
-                    ]:
+                    if training_role not in ["TRAINER", "PSERVER"]:
                         raise ValueError(
-                            "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER"
-                        )
-
-                    heter_trainer_eplist = os.getenv(
-                        "PADDLE_HETER_TRAINER_IP_PORT_LIST", None)
-                    heter_trainer_device = os.getenv(
-                        "PADDLE_HETER_TRAINER_DEVICE", None)
-                    if heter_trainer_eplist and heter_trainer_device:
-                        try:
-                            heter_trainer_eplist = os.environ[
-                                "PADDLE_HETER_TRAINER_IP_PORT_LIST"].split(",")
-                        except:
-                            raise ValueError(
-                                "Can not Find PADDLE_HETER_TRAINER_IP_PORT_LIST in env or its format does not match the requirement."
-                            )
-
-                        self.is_heter_parameter_server = True
-                        heter_trainers_num = len(heter_trainer_eplist)
-                        current_node_device = heter_trainer_device.upper()
-                        if current_node_device == "CPU":
-                            self._heter_trainer_device = Device.CPU
-                        elif current_node_device == "GPU":
-                            self._heter_trainer_device = Device.GPU
-                        elif current_node_device == "XPU":
-                            self._heter_trainer_device = Device.XPU
-                        else:
-                            raise ValueError(
-                                "Heter Trainer doesn't support {} now, please use cpu / gpu / xpu".
-                                format(heter_trainer_device))
-                    else:
-                        self.is_heter_parameter_server = False
-                        heter_trainers_num = 0
+                            "TRAINING_ROLE must be PSERVER or TRAINER")
 
                     if training_role == "TRAINER":
                         role = Role.WORKER
@@ -607,16 +518,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                         curr_port = os.environ["PADDLE_PORT"]
                         curr_endpoint = ":".join([cur_ip, curr_port])
                         current_id = eplist.index(curr_endpoint)
-                    elif training_role == "HETER_TRAINER":
-                        role = Role.HETER_WORKER
-                        cur_ip = os.environ["POD_IP"]
-                        cur_port = os.environ["PADDLE_PORT"]
-                        curr_endpoint = ":".join([cur_ip, cur_port])
-                        current_id = heter_trainer_eplist.index(curr_endpoint)
                     else:
                         raise ValueError(
-                            "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER"
-                        )
+                            "TRAINING_ROLE must be PSERVER or TRAINER")
                 except ValueError as ve:
                     raise ValueError(
                         "something wrong with PaddleCloud, please check environment"
@@ -626,8 +530,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 self._server_endpoints = eplist
                 self._role = role
                 self._current_id = current_id
-                self._heter_trainers_num = heter_trainers_num
-                self._heter_trainer_endpoints = heter_trainer_eplist
             else:
                 self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
                 self._training_role = os.getenv("PADDLE_TRAINING_ROLE",
@@ -675,16 +577,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             self.generate_role()
         return self._trainers_num
-
-    def _heter_worker_num(self):
-        if not self._role_is_generated:
-            self.generate_role()
-        return self._heter_trainers_num
-
-    def _is_heter_worker(self):
-        if not self._role_is_generated:
-            self.generate_role()
-        return self._role == Role.HETER_WORKER
 
 
 class GeneralRoleMaker(RoleMakerBase):

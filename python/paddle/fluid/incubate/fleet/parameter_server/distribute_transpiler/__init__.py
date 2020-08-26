@@ -33,7 +33,7 @@ from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerCo
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.mode import Mode
-from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker, Device
+from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 from paddle.fluid.incubate.fleet.parameter_server import version
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
@@ -49,7 +49,6 @@ from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 from paddle.fluid.incubate.fleet.parameter_server.ir import trainer_pass as worker
 from paddle.fluid.incubate.fleet.parameter_server.ir import pserver_pass as server
-from paddle.fluid.incubate.fleet.parameter_server.ir import heter_trainer_pass as heter_worker
 from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
 
 
@@ -89,12 +88,6 @@ class FleetTranspiler(Fleet):
         if role_maker is None:
             role_maker = MPISymetricRoleMaker()
         super(FleetTranspiler, self).init(role_maker)
-        if role_maker._is_heter_worker():
-            if role_maker._get_heter_worker_device() == Device.GPU:
-                gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-                self._executor = Executor(fluid.CUDAPlace(gpu_id))
-            elif role_maker._get_heter_worker_device() == Device.XPU:
-                raise ValueError("XPU Distributed not supported.")
         self._fleet_ptr = core.Fleet()
 
     def _init_transpiler_worker(self):
@@ -269,13 +262,7 @@ class FleetTranspiler(Fleet):
         """
 
         if self._inner_mode == PSMode.TRANSPILER:
-            if self._role_maker._is_heter_worker():
-                print("Parameter Server: init heter worker")
-                self._init_transpiler_worker()
-                self._init_transpiler_server(model_dir)
-            else:
-                print("Parameter Server: init server")
-                self._init_transpiler_server(model_dir)
+            self._init_transpiler_server(model_dir)
         else:
             raise NotImplementedError("add implement later")
 
@@ -796,19 +783,6 @@ class ParameterServerOptimizer(DistributedOptimizer):
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
 
-        if fleet._role_maker.is_heter_parameter_server:
-            # for heter main program
-            if fleet._role_maker._is_heter_worker():
-                _main = heter_worker.split_heter_worker_ops_pass(
-                    _main, compiled_config)
-            else:
-                _main = heter_worker.split_trainer_ops_pass(_main,
-                                                            compiled_config)
-
-            # for startup
-            _startup = heter_worker.delete_startup_useless_ops_var_pass(
-                _startup, _main, compiled_config)
-
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):
@@ -871,5 +845,5 @@ class ParameterServerOptimizer(DistributedOptimizer):
 
         fleet.compiled_config = compiled_config
         fleet.main_program, fleet.startup_program = \
-            self._build_trainer_programs(compiled_config) if fleet.is_worker() or fleet._role_maker._is_heter_worker() \
+            self._build_trainer_programs(compiled_config) if fleet.is_worker() \
             else self._build_pserver_programs(compiled_config)

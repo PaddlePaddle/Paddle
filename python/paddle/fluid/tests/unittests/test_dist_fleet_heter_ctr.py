@@ -42,7 +42,7 @@ class TestDistHeterPyreaderAsync2x2(TestFleetHeterBase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "0"
+            required_envs["GLOG_v"] = "4"
             required_envs["GLOG_logtostderr"] = "1"
 
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
@@ -74,7 +74,7 @@ class TestDistHeterDatasetAsync2x2(TestFleetHeterBase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "0"
+            required_envs["GLOG_v"] = "4"
             required_envs["GLOG_logtostderr"] = "1"
 
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
