@@ -398,31 +398,30 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
         return core.ops.c_scatter(temp, tensor, 'use_calc_stream', True,
                                   'ring_id', group, 'nranks',
                                   _default_group.nranks, 'root', src)
+    check_variable_and_dtype(
+        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'scatter')
+    if rank == src:
+        if not isinstance(tensor_list, list):
+            raise ValueError("The type of 'tensor_list' for scatter "
+                             "should be list for src.")
     else:
-        check_variable_and_dtype(
-            tensor, 'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'], 'scatter')
-        if rank == src:
-            if not isinstance(tensor_list, list):
-                raise ValueError("The type of 'tensor_list' for scatter "
-                                 "should be list for src.")
-        else:
-            if tensor_list:
-                raise ValueError("'tensor_list' for scatter "
-                                 "should be None for others.")
-        if not isinstance(group, int) or not isinstance(src, int):
-            raise ValueError("Both the type of 'src' and 'group' for scatter "
-                             "should be int.")
-        helper.append_op(
-            type=op_type,
-            inputs={'X': [temp]},
-            outputs={'Out': [tensor]},
-            attrs={
-                'ring_id': group,
-                'root': src,
-                'use_calc_stream': True,
-                'nranks': nranks,
-            })
+        if tensor_list:
+            raise ValueError("'tensor_list' for scatter "
+                             "should be None for others.")
+    if not isinstance(group, int) or not isinstance(src, int):
+        raise ValueError("Both the type of 'src' and 'group' for scatter "
+                         "should be int.")
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [temp]},
+        outputs={'Out': [tensor]},
+        attrs={
+            'ring_id': group,
+            'root': src,
+            'use_calc_stream': True,
+            'nranks': nranks,
+        })
 
 
 def barrier(group=0):
