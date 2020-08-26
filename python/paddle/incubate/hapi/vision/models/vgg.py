@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-from paddle.nn import Conv2d, Pool2D, BatchNorm, Linear, ReLU
+from paddle.nn import Conv2d, Pool2D, BatchNorm, Linear, ReLU, Softmax
 from paddle.fluid.dygraph.container import Sequential
 
 from ...download import get_weights_path_from_url
@@ -37,7 +37,8 @@ class Classifier(fluid.dygraph.Layer):
         super(Classifier, self).__init__()
         self.linear1 = Linear(512 * 7 * 7, 4096)
         self.linear2 = Linear(4096, 4096)
-        self.linear3 = Linear(4096, num_classes, act=classifier_activation)
+        self.linear3 = Linear(4096, num_classes)
+        self.act = Softmax()  #Todo: accept any activation
 
     def forward(self, x):
         x = self.linear1(x)
@@ -46,7 +47,8 @@ class Classifier(fluid.dygraph.Layer):
         x = self.linear2(x)
         x = fluid.layers.relu(x)
         x = fluid.layers.dropout(x, 0.5)
-        out = self.linear3(x)
+        x = self.linear3(x)
+        out = self.act(x)
         return out
 
 

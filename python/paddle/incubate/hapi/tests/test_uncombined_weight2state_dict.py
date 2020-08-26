@@ -22,7 +22,7 @@ import shutil
 import tempfile
 
 from paddle import fluid
-from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential
+from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential, Softmax
 
 from paddle.incubate.hapi.utils import uncombined_weight_to_state_dict
 
@@ -43,10 +43,8 @@ class LeNetDygraph(fluid.dygraph.Layer):
 
         if num_classes > 0:
             self.fc = Sequential(
-                Linear(400, 120),
-                Linear(120, 84),
-                Linear(
-                    84, 10, act=classifier_activation))
+                Linear(400, 120), Linear(120, 84), Linear(84, 10),
+                Softmax())  #Todo: accept any activation
 
     def forward(self, inputs):
         x = self.features(inputs)

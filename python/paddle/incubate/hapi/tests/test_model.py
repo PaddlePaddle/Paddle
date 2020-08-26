@@ -23,7 +23,7 @@ import shutil
 import tempfile
 
 from paddle import fluid
-from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential
+from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential, Softmax
 from paddle.fluid.dygraph.base import to_variable
 
 import paddle.incubate.hapi as hapi
@@ -53,10 +53,8 @@ class LeNetDygraph(fluid.dygraph.Layer):
 
         if num_classes > 0:
             self.fc = Sequential(
-                Linear(400, 120),
-                Linear(120, 84),
-                Linear(
-                    84, 10, act=classifier_activation))
+                Linear(400, 120), Linear(120, 84), Linear(84, 10),
+                Softmax())  #Todo: accept any activation
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -83,10 +81,8 @@ class LeNetDeclarative(fluid.dygraph.Layer):
 
         if num_classes > 0:
             self.fc = Sequential(
-                Linear(400, 120),
-                Linear(120, 84),
-                Linear(
-                    84, 10, act=classifier_activation))
+                Linear(400, 120), Linear(120, 84), Linear(84, 10),
+                Softmax())  #Todo: accept any activation
 
     @declarative
     def forward(self, inputs):
@@ -320,10 +316,12 @@ class TestModel(unittest.TestCase):
 class MyModel(fluid.dygraph.Layer):
     def __init__(self, classifier_activation='softmax'):
         super(MyModel, self).__init__()
-        self._fc = Linear(20, 10, act=classifier_activation)
+        self._fc = Linear(20, 10)
+        self._act = Softmax()  #Todo: accept any activation
 
     def forward(self, x):
         y = self._fc(x)
+        y = self._act(y)
         return y
 
 

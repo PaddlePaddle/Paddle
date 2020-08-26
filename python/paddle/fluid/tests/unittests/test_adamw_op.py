@@ -23,7 +23,7 @@ class TestAdamWOp(unittest.TestCase):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_variable(value)
-        linear = paddle.nn.Linear(13, 5, dtype="float32")
+        linear = paddle.nn.Linear(13, 5)
         adam = paddle.optimizer.AdamW(
             learning_rate=0.01,
             parameters=linear.parameters(),
@@ -38,7 +38,7 @@ class TestAdamWOp(unittest.TestCase):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_variable(value)
-        linear = paddle.nn.Linear(13, 5, dtype="float32")
+        linear = paddle.nn.Linear(13, 5)
         adam = paddle.optimizer.AdamW(
             learning_rate=0.0,
             parameters=linear.parameters(),
