@@ -1403,6 +1403,7 @@ function main() {
     local CMD=$1 
     local parallel_number=$2
     init
+    python ${PADDLE_ROOT}/tools/summary_env.py
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
@@ -1535,7 +1536,6 @@ function main() {
         exit 1
         ;;
       esac
-      python ${PADDLE_ROOT}/tools/summary_env.py
       echo "paddle_build script finished as expected"
 }
 
