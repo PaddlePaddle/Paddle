@@ -27,9 +27,14 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+struct Generator;
+
+Generator& getDefaultCUDAGenerator(int64_t device_id);
+
 struct GeneratorState {
   int64_t device = -1;
   uint64_t current_seed = 34342423252;
+  uint64_t thread_offset;
   std::mt19937_64 cpu_engine;
 };
 
@@ -64,6 +69,12 @@ struct Generator {
   void SetCPUEngine(std::mt19937_64 engine);
 
   uint64_t Random64();
+
+  std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t total_numel,
+                                                uint64_t grid_size,
+                                                uint64_t block_size,
+                                                uint64_t engine_calls_num);
+  std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t increament_offset);
 
   bool is_init_py = false;
 
