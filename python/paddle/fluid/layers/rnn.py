@@ -38,6 +38,7 @@ __all__ = [
     'Decoder',
     'BeamSearchDecoder',
     'rnn',
+    'birnn',
     'dynamic_decode',
     'DecodeHelper',
     'TrainingHelper',
@@ -444,33 +445,29 @@ def rnn(cell,
 
     Arguments:
         cell(RNNCellBase): An instance of `RNNCellBase`.
-        inputs(Tensor): A (possibly nested structure of) tensor[s]. 
-            The shape of tensor should be `[batch_size, sequence_length, ...]`
-            for `time_major == False` or `[sequence_length, batch_size, ...]`
-            for `time_major == True`. It represents the inputs to be unrolled
-            in RNN.
-        initial_states(Tensor, optional): A (possibly nested structure of)
-            tensor[s], representing the initial state for RNN. 
-            If not provided, `cell.get_initial_states` would be used to produce
-            the initial state. Default None.
-        sequence_length(Tensor, optional): A tensor with shape `[batch_size]`.
-            It stores real length of each instance, thus enables users to extract
-            the last valid state when past a batch element's sequence length for
-            correctness. If not provided, the paddings would be treated same as
-            non-padding inputs. Default None.
-        time_major(bool, optional): Indicate the data layout of Tensor included
-            in `input` and `output` tensors. If `False`, the data layout would
-            be batch major with shape `[batch_size, sequence_length, ...]`.  If
-            `True`, the data layout would be time major with shape
-            `[sequence_length, batch_size, ...]`. Default: `False`.
-        is_reverse(bool, optional): Indicate whether to calculate in the reverse
-            order of input sequences. Default: `False`.
-        **kwargs: Additional keyword arguments. Arguments passed to `cell.call`. 
+        inputs(Tensor): the input sequences. 
+            If time_major is True, the shape is 
+            `[time_steps, batch_size, input_size]`
+            else the shape is `[batch_size, time_steps, input_size]`.
+        initial_states(Tensor|tuple|list, optional): the initial state of the 
+            rnn cell. Tensor or a possibly nested structure of tensors. If not 
+            provided, `cell.get_initial_states` would be called to produce
+            the initial state. Defaults to None.
+        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
+            or int32. The valid lengths of input sequences. Defaults to None.
+            If `sequence_length` is not None, the inputs are treated as 
+            padded sequences. In each input sequence, elements whose time step 
+            index are not less than the valid length are treated as paddings.
+        time_major (bool): Whether the first dimension of the input means the
+            time steps. Defaults to False.
+        is_reverse (bool, optional): Indicate whether to calculate in the reverse
+            order of input sequences. Defaults to False.
+        **kwargs: Additional keyword arguments to pass to `forward` of the cell. 
 
     Returns:
         (outputs, final_states)
         outputs (Tensor|list|tuple): the output sequence. Tensor or nested 
-            structure of Tensor.
+            structure of Tensors.
             If `time_major` is True, the shape of each tensor in outpus is 
             `[time_steps, batch_size, hidden_size]`, else 
             `[batch_size, time_steps, hidden_size]`.
@@ -651,8 +648,8 @@ def _rnn_static_graph(cell,
     return (final_outputs, final_states)
 
 
-def birnn(cell_fw, cell_bw, inputs, initial_states, sequence_length,
-          time_major):
+def birnn(cell_fw, cell_bw, inputs, initial_states, sequence_length, time_major,
+          **kwargs):
     """
     birnn creates a bidirectional recurrent neural network specified by 
     RNNCell `cell_fw` and `cell_bw`, which performs :code:`cell.call()` 
@@ -668,28 +665,25 @@ def birnn(cell_fw, cell_bw, inputs, initial_states, sequence_length,
             for `time_major == True`. It represents the inputs to be unrolled
             in RNN.
         initial_states(tuple, optional): A tuple of 
-            If not provided, `cell.get_initial_states` would be used to produce
-            the each initial state. Defaults to None.
-        sequence_length(Tensor, optional): A tensor with shape `[batch_size]`.
-            It stores real length of each instance, thus enables users to extract
-            the last valid state when past a batch element's sequence length for
-            correctness. If not provided, the paddings would be treated same as
-            non-padding inputs. Default None.
-        time_major(bool, optional): Indicate the data layout of Tensor included
-            in `input` and `output` tensors. If `False`, the data layout would
-            be batch major with shape `[batch_size, time_steps, ...]`.  If
-            `True`, the data layout would be time major with shape
-            `[time_steps, batch_size, ...]`. Default: `False`.
-        **kwargs: Additional keyword arguments. Arguments passed to `cell.call`. 
+            If not provided, `cell.get_initial_states` would be called to 
+            produce initial state for each cell. Defaults to None.
+        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
+            or int32. The valid lengths of input sequences. Defaults to None.
+            If `sequence_length` is not None, the inputs are treated as 
+            padded sequences. In each input sequence, elements whose time step 
+            index are not less than the valid length are treated as paddings.
+        time_major (bool): Whether the first dimension of the input means the
+            time steps. Defaults to False.
+        **kwargs: Additional keyword arguments to pass to `forward` of each cell. 
 
     Returns:
-        outputs (Tensor): A (possibly nested structure of) tensor variable[s],
-            the outputs of the bidirectional RNN. It is the concatenation 
-            of the outputs for both the forward RNN and backward RNN along
-            the last axis. 
-            The shape of tensor should be `[batch_size, time_steps, ...]`
-            for `time_major == False` or `[time_steps, batch_size, ...]`
-            for `time_major == True`.
+        (outputs, final_states)
+        outputs (Tensor): the outputs of the bidirectional RNN. It is the 
+            concatenation of the outputs from the forward RNN and backward 
+            RNN along the last axis. 
+            If time major is True, the shape is `[time_steps, batch_size, size]`,
+            else the shape is `[batch_size, time_steps, size]`, where size is
+            `cell_fw.hidden_size + cell_bw.hidden_size`.
         final_states (tuple): A tuple of the final states of the forward 
             cell and backward cell. 
             
@@ -712,14 +706,16 @@ def birnn(cell_fw, cell_bw, inputs, initial_states, sequence_length,
                                 inputs,
                                 states_fw,
                                 sequence_length,
-                                time_major=time_major)
+                                time_major=time_major,
+                                **kwargs)
 
     outputs_bw, states_bw = rnn(cell_bw,
                                 inputs,
                                 states_bw,
                                 sequence_length,
                                 time_major=time_major,
-                                is_reverse=True)
+                                is_reverse=True,
+                                **kwargs)
 
     outputs = map_structure(lambda x, y: tensor.concat([x, y], -1), outputs_fw,
                             outputs_bw)
