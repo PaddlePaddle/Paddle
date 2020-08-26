@@ -33,6 +33,8 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticLaye
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.dygraph.layers import Layer
 
+# TODO(liym27): A better way to do this.
+BUILTIN_LIKELY_MODULES = [collections, pdb, copy, inspect, re, six, numpy]
 
 translator_logger = TranslatorLogger()
 
@@ -57,9 +59,11 @@ def is_paddle_func(func):
 
 
 def is_unsupported(func):
-    # TODO(liym27): A better way to do this.
-    if any(func in m.__dict__.values()
-           for m in (collections, pdb, copy, inspect, re, six, numpy)):
+    """
+    Checks whether the func is supported by dygraph to static graph.
+    """
+
+    if any(func in m.__dict__.values() for m in BUILTIN_LIKELY_MODULES):
         translator_logger.log(
             2,
             "Whitelist: {} is part of built-in module and does not have to be transformed.".
@@ -108,7 +112,8 @@ def convert_call(func):
           #  [1. 1. 1.]]
 
     """
-    translator_logger.log(1, "Convert call: convert {}.".format(func))
+    translator_logger.log(1,
+                          "Convert callable object: convert {}.".format(func))
     func_self = None
     converted_call = None
 
