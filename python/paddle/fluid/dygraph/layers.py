@@ -943,10 +943,10 @@ class Layer(core.Layer):
                     destination = destination_temp
         return destination
 
-    def set_dict(self,
-                 stat_dict,
-                 include_sublayers=True,
-                 use_structured_name=True):
+    def set_state_dict(self,
+                       state_dict,
+                       include_sublayers=True,
+                       use_structured_name=True):
         '''
         Set parameters and persistable buffers from stat_dict. All the parameters and buffers will be reset by the tensor in the stat_dict
 
@@ -961,56 +961,20 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                import paddle
+                
+                paddle.disable_static()
+                
+                emb = paddle.nn.Embedding([10, 10])
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
-                    
-                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
+                state_dict = emb.state_dict()
+                paddle.save(state_dict, "paddle_dy")
+                
+                para_state_dict, _ = paddle.load("paddle_dy")
 
-                    emb.set_dict( para_state_dict )
-
-        '''
-        self.load_dict(
-            stat_dict,
-            include_sublayers=include_sublayers,
-            use_structured_name=use_structured_name)
-
-    def load_dict(self,
-                  stat_dict,
-                  include_sublayers=True,
-                  use_structured_name=True):
-        '''
-        Set parameters and persistable buffers from stat_dict. All the parameters and persistabl buffers will be reset by the tensor in the stat_dict
-
-        This api will be Deprecated. Please use set_dict
-
-        Parameters:
-            state_dict(dict) : Dict contains all the parameters and persistable buffers.
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
-                                                  Default: True
-        Returns:
-            None
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
-
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
-                    
-                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
-
-                    emb.load_dict( para_state_dict )
+                emb.set_state_dict(para_state_dict)
 
         '''
-
         inner_state_dict = self.state_dict()
 
         for name, param_or_buffer in inner_state_dict.items():
@@ -1030,3 +994,7 @@ class Layer(core.Layer):
             warnings.warn(
                 "Variables [ {} ] are not used, because not included in layers state_dict".
                 format(" ".join(unused_para_list)))
+
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
+    load_dict = set_state_dict
