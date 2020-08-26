@@ -22,6 +22,7 @@ from ..fluid.layers import utils
 from ..fluid.dygraph.parallel import prepare_context
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 __all__ = [
     'broadcast',
@@ -93,6 +94,9 @@ def broadcast(tensor, src, group=0):
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
         'broadcast')
+    if in_dygraph_mode():
+        return core.ops.c_broadcast(tensor, tensor, 'root', src,
+                                    'use_calc_stream', True, 'ring_id', group)
     if not isinstance(src, int) or not isinstance(group, int):
         raise ValueError("Both the type of 'src' and 'group' for broadcast "
                          "should be int.")
@@ -150,6 +154,21 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=0):
     if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
         raise ValueError("The op for all_reduce must be one of educeOp.PROD, "
                          "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
+    if in_dygraph_mode():
+        if op == ReduceOp.SUM:
+            op_type = 'c_allreduce_sum'
+            return core.ops.c_allreduce_sum(tensor, tensor, 'use_calc_stream',
+                                            True, 'ring_id', group)
+        elif op == ReduceOp.MAX:
+            return core.ops.c_allreduce_max(tensor, tensor, 'use_calc_stream',
+                                            True, 'ring_id', group)
+        elif op == ReduceOp.MIN:
+            return core.ops.c_allreduce_min(tensor, tensor, 'use_calc_stream',
+                                            True, 'ring_id', group)
+        elif op == ReduceOp.PROD:
+            return core.ops.c_allreduce_prod(tensor, tensor, 'use_calc_stream',
+                                             True, 'ring_id', group)
+
     if op == ReduceOp.SUM:
         op_type = 'c_allreduce_sum'
     elif op == ReduceOp.MAX:
@@ -211,6 +230,22 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=0):
     if not op in [ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN, ReduceOp.PROD]:
         raise ValueError("The op for reduce must be one of educeOp.PROD, "
                          "ReduceOp.SUM, ReduceOp.MAX, ReduceOp.MIN.")
+    if in_dygraph_mode():
+        if op == ReduceOp.SUM:
+            op_type = 'c_allreduce_sum'
+            return core.ops.c_reduce_sum(tensor, tensor, 'use_calc_stream',
+                                         True, 'ring_id', group, 'root_id', dst)
+        elif op == ReduceOp.MAX:
+            return core.ops.c_reduce_max(tensor, tensor, 'use_calc_stream',
+                                         True, 'ring_id', group, 'root_id', dst)
+        elif op == ReduceOp.MIN:
+            return core.ops.c_reduce_min(tensor, tensor, 'use_calc_stream',
+                                         True, 'ring_id', group, 'root_id', dst)
+        elif op == ReduceOp.PROD:
+            return core.ops.c_reduce_prod(tensor, tensor, 'use_calc_stream',
+                                          True, 'ring_id', group, 'root_id',
+                                          dst)
+
     if op == ReduceOp.SUM:
         op_type = 'c_reduce_sum'
     elif op == ReduceOp.MAX:
@@ -285,20 +320,24 @@ def all_gather(tensor_list, tensor, group=0):
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'all_gather')
     check_variable_and_dtype(
         tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'all_reduce')
+        'all_gather')
     if not isinstance(group, int):
         raise ValueError("The type of 'group' for all_gather " "should be int.")
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [out]},
-        attrs={
-            'ring_id': group,
-            'use_calc_stream': True,
-            'nranks': _default_group.nranks
-        })
+    if in_dygraph_mode():
+        core.ops.c_allgather(tensor, out, 'use_calc_stream', True, 'ring_id',
+                             group, 'nranks', _default_group.nranks)
+    else:
+        helper.appendhelperhelper_op(
+            type=op_type,
+            inputs={'X': [tensor]},
+            outputs={'Out': [out]},
+            attrs={
+                'ring_id': group,
+                'use_calc_stream': True,
+                'nranks': _default_group.nranks
+            })
 
     tensor_list.extend(paddle.split(out, _default_group.nranks, 0))
 
@@ -368,16 +407,21 @@ def scatter(tensor, tensor_list=None, src=0, group=0):
         for _ in range(nranks):
             tensor_list.append(tensor)
     temp = paddle.concat(tensor_list, axis=0)
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [temp]},
-        outputs={'Out': [tensor]},
-        attrs={
-            'ring_id': group,
-            'root': src,
-            'use_calc_stream': True,
-            'nranks': nranks,
-        })
+    if in_dygraph_mode():
+        return core.ops.c_scatter(temp, tensor, 'use_calc_stream', True,
+                                  'ring_id', group, 'nranks',
+                                  _default_group.nranks, 'root', src)
+    else:
+        helper.append_op(
+            type=op_type,
+            inputs={'X': [temp]},
+            outputs={'Out': [tensor]},
+            attrs={
+                'ring_id': group,
+                'root': src,
+                'use_calc_stream': True,
+                'nranks': nranks,
+            })
 
 
 def barrier(group=0):
@@ -408,6 +452,8 @@ def barrier(group=0):
     if not isinstance(group, int):
         raise ValueError("The type of 'group' for barrier must be int.")
     temp = paddle.fill_constant([1], dtype="int32", value="1")
+    if in_dygraph_mode():
+        return core.ops.barrier(temp, temp, 'ring_id', group)
     helper = LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
