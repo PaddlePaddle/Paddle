@@ -22,7 +22,6 @@ from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
-import sys
 
 # TODO: define math functions
 # yapf: disable
@@ -1585,8 +1584,6 @@ def clip(x, min=None, max=None, name=None):
     assert min is not None or max is not None, "either min or max should be defined."
 
     if in_dygraph_mode():
-        min = sys.float_info.min if min is None else min
-        max = sys.float_info.max if max is None else max
         return core.ops.clip(x, "min", min, "max", max)
 
     if min is not None:
@@ -1603,7 +1600,7 @@ def clip(x, min=None, max=None, name=None):
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'clip')
 
     inputs = {'X': x}
-    attrs = {'min': sys.float_info.min, 'max': sys.float_info.max}
+    attrs = {'min': None, 'max': None}
 
     if isinstance(min, Variable):
         min.stop_gradient = True

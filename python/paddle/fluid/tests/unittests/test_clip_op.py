@@ -44,8 +44,10 @@ class TestClipOp(OpTest):
             max_v = self.attrs['max']
 
         input = np.random.random(self.shape).astype("float32")
-        input[np.abs(input - min_v) < self.max_relative_error] = 0.5
-        input[np.abs(input - max_v) < self.max_relative_error] = 0.5
+        if min_v is not None:
+            input[np.abs(input - min_v) < self.max_relative_error] = 0.5
+        if max_v is not None:
+            input[np.abs(input - max_v) < self.max_relative_error] = 0.5
         self.inputs['X'] = input
         self.outputs = {'Out': np.clip(self.inputs['X'], min_v, max_v)}
 
@@ -98,6 +100,13 @@ class TestCase5(TestClipOp):
         self.shape = (4, 8, 16)
         self.max = 0.5
         self.min = 0.5
+
+
+class TestCase6(TestClipOp):
+    def initTestCase(self):
+        self.shape = (4, 8, 16)
+        self.max = -1
+        self.min = None
 
 
 class TestClipOpError(unittest.TestCase):

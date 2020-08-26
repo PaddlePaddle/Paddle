@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/clip_op.h"
+#include <limits>
 #include <memory>
 
 namespace paddle {
@@ -50,8 +51,10 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
         "Out",
         "Tensor, the clipped tensor, with the same shape and data type as "
         "input(x)");
-    AddAttr<AttrType>("min", "float number, the minimum value to clip by.");
-    AddAttr<AttrType>("max", "float number, the maximum value to clip by.");
+    AddAttr<AttrType>("min", "float number, the minimum value to clip by.")
+      .SetDefault(std::numeric_limits<AttrType>::min());
+    AddAttr<AttrType>("max", "float number, the maximum value to clip by.")
+      .SetDefault(std::numeric_limits<AttrType>::max());
     AddComment(R"DOC(
 Clip Operator.
 

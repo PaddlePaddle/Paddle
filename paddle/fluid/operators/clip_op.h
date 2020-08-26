@@ -66,7 +66,7 @@ template <typename DeviceContext, typename T>
 class ClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto max = static_cast<T>(context.Attr<float>("max"));
+    auto max = context.Attr<T>("max");
     Tensor max_cpu;
     if (context.HasInput("Max")) {
       auto* max_t = context.Input<Tensor>("Max");
@@ -77,9 +77,8 @@ class ClipKernel : public framework::OpKernel<T> {
       }
       max = max_data[0];
     }
-    max = static_cast<T>(max);
 
-    auto min = context.Attr<float>("min");
+    auto min = context.Attr<T>("min");
     Tensor min_cpu;
     if (context.HasInput("Min")) {
       auto* min_t = context.Input<Tensor>("Min");
@@ -90,7 +89,7 @@ class ClipKernel : public framework::OpKernel<T> {
       }
       min = min_data[0];
     }
-    min = static_cast<T>(min);
+
     PADDLE_ENFORCE_LE(min, max, platform::errors::InvalidArgument(
                         "max should be greater than or equal to min. "
                         "But received min = %f, max = %f",
@@ -141,7 +140,7 @@ template <typename DeviceContext, typename T>
 class ClipGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto max = static_cast<T>(context.Attr<float>("max"));
+    auto max = context.Attr<T>("max");
     Tensor max_cpu;
     if (context.HasInput("Max")) {
       auto* max_t = context.Input<Tensor>("Max");
@@ -152,9 +151,8 @@ class ClipGradKernel : public framework::OpKernel<T> {
       }
       max = max_data[0];
     }
-    max = static_cast<T>(max);
 
-    auto min = context.Attr<float>("min");
+    auto min = context.Attr<T>("min");
     Tensor min_cpu;
     if (context.HasInput("Min")) {
       auto* min_t = context.Input<Tensor>("Min");
@@ -165,7 +163,6 @@ class ClipGradKernel : public framework::OpKernel<T> {
       }
       min = min_data[0];
     }
-    min = static_cast<T>(min);
 
     auto* d_out =
         context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
