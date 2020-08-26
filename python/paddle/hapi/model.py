@@ -28,7 +28,6 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode, Variable, ParamBase, _current_expected_place
-# Note: Use alias `Input` temporarily before releasing hapi feature.
 from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.executor import global_scope
@@ -47,9 +46,7 @@ from paddle.metric import Metric
 
 from .callbacks import config_callbacks
 
-__all__ = [
-    'Model',
-]
+__all__ = ['Model', ]
 
 
 _parallel_context_initialized = False
