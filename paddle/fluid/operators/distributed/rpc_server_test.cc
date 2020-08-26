@@ -220,7 +220,7 @@ TEST(SENDANDRECV, CPU) {
   auto ptr = value->mutable_data<float>(place);
 
   for (int64_t i = 0; i < rows_numel; ++i) {
-    EXPECT_EQ(ptr[0 + i * value->dims()[1]], 0.5);
+    EXPECT_EQ(ptr[i], 0.5);
   }
   g_rpc_service->ShutDown();
   server_thread.join();
