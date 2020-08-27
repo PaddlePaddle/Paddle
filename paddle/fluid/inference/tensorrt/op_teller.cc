@@ -51,6 +51,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "relu",
                                                   "depthwise_conv2d",
                                                   "softmax",
+                                                  "sigmoid",
                                                   "batch_norm",
                                                   "elementwise_add",
                                                   "leaky_relu",
