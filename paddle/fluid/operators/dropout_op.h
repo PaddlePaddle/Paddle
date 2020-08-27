@@ -55,16 +55,15 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         std::memset(mask_data, 0, size * sizeof(*mask_data));  // NOLINT
         return;
       }
-      std::random_device rnd;
       // std::minstd_rand engine;
       // NOTE: fixed seed should only be used in unittest or for debug.
       // Guarantee to use random seed in training.
-      int seed_data;
+      int seed_data = 0;
       if (seed) {
         seed_data = *(seed->data<int>());
       } else {
         seed_data =
-            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;
       }
       auto engine = framework::GetCPURandomEngine(seed_data);
 

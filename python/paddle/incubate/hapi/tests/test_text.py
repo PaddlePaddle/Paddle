@@ -88,16 +88,18 @@ class ModuleApiTest(unittest.TestCase):
             fluid.enable_dygraph(place)
         else:
             fluid.disable_dygraph()
-        paddle.manual_seed(self._random_seed)
+        gen = paddle.manual_seed(self._random_seed)
+        gen._is_init_py = False
         paddle.framework.random._manual_program_seed(self._random_seed)
-
-        layer = self.model_cls(**self.attrs) if isinstance(
-            self.attrs, dict) else self.model_cls(*self.attrs)
-        model = Model(layer, inputs=self.make_inputs())
-        model.prepare()
-        if self.param_states:
-            model.load(self.param_states, optim_state=None)
-        return model.test_batch(self.inputs)
+        scope = fluid.core.Scope()
+        with fluid.scope_guard(scope):
+            layer = self.model_cls(**self.attrs) if isinstance(
+                self.attrs, dict) else self.model_cls(*self.attrs)
+            model = Model(layer, inputs=self.make_inputs())
+            model.prepare()
+            if self.param_states:
+                model.load(self.param_states, optim_state=None)
+            return model.test_batch(self.inputs)
 
     def check_output_with_place(self, place, mode="test"):
         dygraph_output = self._calc_output(place, mode, dygraph=True)
@@ -113,6 +115,7 @@ class ModuleApiTest(unittest.TestCase):
 
     def check_output(self):
         devices = ["CPU", "GPU"] if fluid.is_compiled_with_cuda() else ["CPU"]
+        devices = ['PU']
         for device in devices:
             place = set_device(device)
             self.check_output_with_place(place)
@@ -131,12 +134,9 @@ class TestBasicLSTM(ModuleApiTest):
 
     @staticmethod
     def model_init(model, input_size, hidden_size):
-        model.lstm = RNN(
-            BasicLSTMCell(
-                input_size,
-                hidden_size,
-                param_attr=fluid.ParamAttr(name="lstm_weight"),
-                bias_attr=fluid.ParamAttr(name="lstm_bias")))
+        model.lstm = RNN(BasicLSTMCell(
+            input_size,
+            hidden_size, ))
 
     @staticmethod
     def model_forward(model, inputs):

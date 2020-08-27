@@ -287,6 +287,7 @@ def train(args, to_static):
     with fluid.dygraph.guard(place):
         np.random.seed(SEED)
         paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         train_reader = fake_data_reader(args.class_num, args.vocab_size,
                                         args.batch_size, args.padding_size)
