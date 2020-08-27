@@ -57,25 +57,25 @@ class TestDistSpawnRunner(unittest.TestCase):
         args = SpawnAssistTestArgs()
 
         # 1. calc signal card loss
-        # losses = self._run(model, args)
+        losses = self._run(model, args)
 
         # 2. calc multi card loss (nccl mode)
         dist_losses_list = self._run_parallel(model, args)
 
         # 3. compare losses
-        # for step_id in range(RUN_STEP):
-        #     loss = losses[step_id]
-        #     dist_loss_sum = None
-        #     for dist_losses in dist_losses_list:
-        #         if dist_loss_sum is None:
-        #             dist_loss_sum = np.array(dist_losses[step_id])
-        #         else:
-        #             dist_loss_sum += np.array(dist_losses[step_id])
-        #     dist_loss = dist_loss_sum / self.nprocs
-        #     self.assertAlmostEqual(
-        #         loss,
-        #         dist_loss,
-        #         delta=delta,
-        #         msg="The results of single-card execution and multi-card execution are inconsistent."
-        #         "signal-card loss is:\n{}\nmulti-card average loss is:\n{}\n".
-        #         format(loss, dist_loss))
+        for step_id in range(RUN_STEP):
+            loss = losses[step_id]
+            dist_loss_sum = None
+            for dist_losses in dist_losses_list:
+                if dist_loss_sum is None:
+                    dist_loss_sum = np.array(dist_losses[step_id])
+                else:
+                    dist_loss_sum += np.array(dist_losses[step_id])
+            dist_loss = dist_loss_sum / self.nprocs
+            self.assertAlmostEqual(
+                loss,
+                dist_loss,
+                delta=delta,
+                msg="The results of single-card execution and multi-card execution are inconsistent."
+                "signal-card loss is:\n{}\nmulti-card average loss is:\n{}\n".
+                format(loss, dist_loss))
