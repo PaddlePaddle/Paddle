@@ -120,6 +120,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         **Note:** The id in :attr:`input` must satisfy :math:`0 =< id < size[0]` ,
         otherwise the program will throw an exception and exit.
         .. code-block:: text
+
             Case 1:
             input is a Tensor. padding_idx = -1
                 input.data = [[[1], [3]], [[2], [4]], [[4], [127]]]
@@ -135,6 +136,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
                             [0.0,         0.0,         ..., 0.0        ]]]  # padding data
             The input padding_idx is less than 0, it is automatically converted to padding_idx = -1 + 128 = 127
             It will pad all-zero data when ids is 127.
+
         Args:
             x(Tensor): A Tensor or LoDTensor with type int64, which contains the id information.
                 The last dimension of Tensor shape must be equal to 1. The value of the input id should
@@ -156,22 +158,25 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             name(str|None): For detailed information, please refer
                to :ref:`api_guide_Name`. Usually name is no need to set and
                None by default.
+
         Returns:
             Tensor: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
+
         Examples:
             .. code-block:: python
-              import paddle.fluid as fluid
-              import numpy as np
-              data = fluid.data(name='x', shape=[None, 10], dtype='int64')
-              # example: load custom or pre-trained word vectors
-              # word vectors with numpy format
-              weight_data = np.random.random(size=(128, 100))
-              weight = fluid.ParamAttr(
+
+                import paddle.fluid as fluid
+                import numpy as np
+                data = fluid.data(name='x', shape=[None, 10], dtype='int64')
+                # example: load custom or pre-trained word vectors
+                # word vectors with numpy format
+                weight_data = np.random.random(size=(128, 100))
+                weight = fluid.ParamAttr(
                   name="emb_weight",
                   learning_rate=0.5,
                   initializer=fluid.initializer.NumpyArrayInitializer(weight_data),
                   trainable=True)
-              emb = paddle.nn.functional.embedding(x=data, weight=weight, sparse=True, name="sparse_embedding")
+                emb = paddle.nn.functional.embedding(x=data, weight=weight, sparse=True, name="sparse_embedding")
     """
     if in_dygraph_mode():
         return core.ops.lookup_table_v2(
