@@ -605,11 +605,11 @@ class ZeroOptimizer(MetaOptimizerBase):
         ckpts = list(self.user_defined_strategy.recompute_configs[
             "checkpoints"])
         optimizer = self.inner_opt
-        # if len(ckpts) > 0:
-        #     print("add recompute")
-        #     print(ckpts)
-        #     optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
-        #     optimizer._set_checkpoints(ckpts)
+        if len(ckpts) > 0:
+            print("add recompute")
+            print(ckpts)
+            optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
+            optimizer._set_checkpoints(ckpts)
 
         optimizer = fluid.contrib.mixed_precision.decorate(
             optimizer, use_dynamic_loss_scaling=True)
