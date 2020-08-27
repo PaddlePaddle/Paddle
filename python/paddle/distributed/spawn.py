@@ -21,6 +21,10 @@ import sys
 import warnings
 
 from paddle.distributed.utils import find_free_ports
+from paddle.device import get_device
+
+# deprecated module import
+from paddle.fluid.framework import cpu_places, cuda_places
 
 
 def _py_supported_check():
@@ -129,7 +133,7 @@ class MultiprocessContext(object):
 # to use CUDA in subprocesses.
 def start_processes(func,
                     args=(),
-                    nprocs=1,
+                    nprocs=-1,
                     join=True,
                     daemon=False,
                     start_method='spawn'):
@@ -148,11 +152,19 @@ def start_processes(func,
             This function should be called as ``func(i, *args)`` , ``i`` is
             the process index and ``args`` contains other arguments as tuple.
         args (tuple): Arguments passed to ``func`` .
-        nprocs (int): Number of processed to start. 
-        join (bool): Perform a blocking join on all started processes.
+        nprocs (int, optional): Number of processed to start. Default: -1.
+            when nprocs is -1, the available device will be obtained from 
+            the environment variable when the model is executed: If use GPU, 
+            the currently available device ID is obtained from the environment 
+            variable CUDA_VISIBLE_DEVICES; If use CPU, the currently available
+            CPU number is obtained from the environment variable CPU_NUM. 
+            For example, export CPU_NUM=4, if the environment variable is not set, 
+            the executor will add the variable to the environment variable and 
+            set its value to 1.
+        join (bool, optional): Perform a blocking join on all started processes.
             Default: True.
-        daemon (bool): The started processes' daemon flag. Default: False.
-        start_method (string): the way to start a process. The start method
+        daemon (bool, optional): The started processes' daemon flag. Default: False.
+        start_method (string, optional): the way to start a process. The start method
             can be ``spawn`` , ``fork`` , ``forkserver`` . Because the CUDA 
             runtime does not support the ``fork`` start method, when use 
             CUDA in subprocesses, we should start process by ``spawn`` or
@@ -203,8 +215,8 @@ def start_processes(func,
                 loss.backward()
                 dp_layer.apply_collective_grads()
 
-                sgd.minimize(loss)
-                dp_layer.clear_gradients()
+                sgd.step()
+                sgd.clear_grad()
 
             if __name__ == '__main__':
                 dist.start_processes(train, args=(), nprocs=2)
@@ -215,6 +227,14 @@ def start_processes(func,
     # method, while the default startup method of Unix is fork, which 
     # cannot support CUDA runtime multi-process
     _py_supported_check()
+
+    # get default nprocs
+    if nprocs == -1:
+        device = get_device()
+        if device == 'cpu':
+            nprocs = len(cpu_places())
+        else:
+            nprocs = len(cuda_places())
 
     # NOTE(chenweihang): [ why need set default master info before run? ]
     # when using `paddle.distributed.spawn/start_processes` start 
@@ -257,7 +277,7 @@ def start_processes(func,
 # NOTE(chenweihang): this method only supports start processes
 # by `spwan` method, if users want to start processes by other
 # method, they can use start_processes
-def spawn(func, args=(), nprocs=1, join=True, daemon=False):
+def spawn(func, args=(), nprocs=-1, join=True, daemon=False):
     """
     Start multiple processes with ``spawn`` method for parallel training.
     
@@ -271,10 +291,18 @@ def spawn(func, args=(), nprocs=1, join=True, daemon=False):
             This function should be called as ``func(i, *args)``, ``i`` is
             the process index and ``args`` contains other arguments as tuple.
         args (tuple): Arguments passed to ``func``.
-        nprocs (int): Number of processed to spawn. 
-        join (bool): Perform a blocking join on all spawned processes.
+        nprocs (int, optional): Number of processed to start. Default: -1.
+            when nprocs is -1, the available device will be obtained from 
+            the environment variable when the model is executed: If use GPU, 
+            the currently available device ID is obtained from the environment 
+            variable CUDA_VISIBLE_DEVICES; If use CPU, the currently available
+            CPU number is obtained from the environment variable CPU_NUM. 
+            For example, export CPU_NUM=4, if the environment variable is not set, 
+            the executor will add the variable to the environment variable and 
+            set its value to 1.
+        join (bool, optional): Perform a blocking join on all spawned processes.
             Default: True.
-        daemon (bool): The spawned processes' daemon flag. Default: False.
+        daemon (bool, optional): The spawned processes' daemon flag. Default: False.
 
     Returns:
         ``MultiprocessContext`` object, it hold the spawned processes.
@@ -321,8 +349,8 @@ def spawn(func, args=(), nprocs=1, join=True, daemon=False):
                 loss.backward()
                 dp_layer.apply_collective_grads()
 
-                sgd.minimize(loss)
-                dp_layer.clear_gradients()
+                sgd.step()
+                sgd.clear_grad()
 
             if __name__ == '__main__':
                 dist.spawn(train, args=(), nprocs=2)
