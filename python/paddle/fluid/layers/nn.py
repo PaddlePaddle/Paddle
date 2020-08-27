@@ -14099,17 +14099,11 @@ def sign(x):
 
 def unique(x, dtype='int32'):
     """
-    :alias_main: paddle.unique
-	:alias: paddle.unique,paddle.tensor.unique,paddle.tensor.manipulation.unique
-	:old_api: paddle.fluid.layers.unique
-
-    **unique**
-
     Return a unique tensor for `x` and an index tensor pointing to this unique tensor.
 
     Args:
-        x(Variable): A 1-D input tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of index tensor: int32, int64.
+        x(Tensor): A 1-D input tensor, it's data type should be float32, float64, int32, int64.
+        dtype(np.dtype|str, optional): The type of index tensor: int32, int64. Default: int32.
 
     Returns:
         tuple: (out, index). `out` is the unique tensor for `x`, with identical dtype to `x`, and \
