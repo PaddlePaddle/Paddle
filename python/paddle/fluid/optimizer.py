@@ -40,7 +40,6 @@ from paddle.fluid.layers import tensor
 from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
-import paddle
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -68,16 +67,14 @@ class Optimizer(object):
                  regularization=None,
                  grad_clip=None,
                  name=None):
-        # Because of the loop import, so place it in the function body
-        from paddle.optimizer.lr_scheduler import _LRScheduler
         self._parameter_list = list(
             parameter_list) if parameter_list is not None else None
         self._name = name
         if framework.in_dygraph_mode():
-            if not isinstance(learning_rate,
-                              (float, LearningRateDecay, _LRScheduler)):
+            if not isinstance(learning_rate, float) and \
+                    not isinstance(learning_rate, LearningRateDecay):
                 raise TypeError(
-                    "learning rate should be float or _LRScheduler, got %s here"
+                    "learning rate should be float or LearningRateDecay, got %s here"
                     % type(learning_rate))
             if self._parameter_list is None:
                 raise AttributeError(
@@ -92,11 +89,11 @@ class Optimizer(object):
                             % regularization.__str__())
                         break
         else:
-            if not isinstance(learning_rate,
-                              (float, framework.Variable, _LRScheduler)):
+            if not isinstance(learning_rate, float) and \
+                    not isinstance(learning_rate, framework.Variable):
                 raise TypeError(
-                    "learning rate should be float or _LRScheduler, got %s here"
-                    % type(learning_rate))
+                    "learning rate should be float or Variable, got %s here" %
+                    type(learning_rate))
 
         if grad_clip is not None:
             if not isinstance(grad_clip, GradientClipBase):
@@ -146,15 +143,11 @@ class Optimizer(object):
                     state_dict = adam.state_dict()
 
         '''
-        from paddle.optimizer.lr_scheduler import _LRScheduler
         state_dict = {}
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
         # global step if use lr decay
-        if isinstance(self._learning_rate, _LRScheduler):
-            state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
-            return state_dict
         if isinstance(self._learning_rate, LearningRateDecay):
             state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
 
@@ -198,9 +191,6 @@ class Optimizer(object):
                     adam.set_dict(opti_state_dict)
 
         '''
-        from paddle.optimizer.lr_scheduler import _LRScheduler
-        if isinstance(self._learning_rate, _LRScheduler):
-            self._learning_rate.set_dict(state_dict["LR_Scheduler"])
 
         if isinstance(self._learning_rate, LearningRateDecay):
             self._learning_rate.set_dict(state_dict["LR_Scheduler"])
@@ -1599,7 +1589,7 @@ class LarsMomentumOptimizer(Optimizer):
         & local\_learning\_rate = learning\_rate * lars\_coeff * \\
           \\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}
 
-        & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param)
+        & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param + epsilon)
 
         & param = param - velocity
 
@@ -1609,6 +1599,8 @@ class LarsMomentumOptimizer(Optimizer):
             momentum (float): momentum factor
         lars_coeff (float): Defines how much we trust the layer to change its weights.
         lars_weight_decay (float): Weight decay coefficient for decaying using LARS.
+        epsilon (float): Epsilon to avoid Division by Zero when calculate local lr.
+        exclude_from_weight_decay (list[str], optional): Name string of layers which will be exclude from lars weight decay.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
@@ -1651,6 +1643,8 @@ class LarsMomentumOptimizer(Optimizer):
                  momentum,
                  lars_coeff=0.001,
                  lars_weight_decay=0.0005,
+                 epsilon=0,
+                 exclude_from_weight_decay=None,
                  parameter_list=None,
                  regularization=None,
                  grad_clip=None,
@@ -1667,6 +1661,11 @@ class LarsMomentumOptimizer(Optimizer):
         self._momentum = momentum
         self._lars_coeff = float(lars_coeff)
         self._lars_weight_decay = float(lars_weight_decay)
+        self._epsilon = float(epsilon)
+        if exclude_from_weight_decay is None:
+            self._exclude_from_weight_decay = []
+        else:
+            self._exclude_from_weight_decay = exclude_from_weight_decay
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -1676,6 +1675,14 @@ class LarsMomentumOptimizer(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+
+        _lars_weight_decay = self._lars_weight_decay
+        param_name = param_and_grad[0].name
+        if len(self._exclude_from_weight_decay) > 0:
+            for name in self._exclude_from_weight_decay:
+                if name in param_name:
+                    _lars_weight_decay = 0.0
+                    break
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
@@ -1695,7 +1702,8 @@ class LarsMomentumOptimizer(Optimizer):
             attrs={
                 "mu": self._momentum,
                 "lars_coeff": self._lars_coeff,
-                "lars_weight_decay": self._lars_weight_decay
+                "lars_weight_decay": _lars_weight_decay,
+                "epsilon": self._epsilon
             },
             stop_gradient=True)
 

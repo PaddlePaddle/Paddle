@@ -52,6 +52,8 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
                 strategy.lars_configs = {
                     "lars_coeff": 0.001,
                     "lars_weight_decay": 0.0005,
+                    "epsilon": 0,
+                    "exclude_from_weight_decay": ["batch_norm", ".b"],
                 }
 
         return avg_cost, strategy
@@ -62,8 +64,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.fluid.optimizer.Momentum(
-            learning_rate=0.01, momentum=0.9)
+        optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -76,12 +77,31 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
         ops = [op.type for op in avg_cost.block.ops]
         self.assertNotIn('lars_momentum', ops)
+
+    def test_lars_exclude_fn(self):
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        fleet.init(role)
+        startup_prog = fluid.Program()
+        train_prog = fluid.Program()
+        avg_cost, strategy = self.net(train_prog, startup_prog)
+        optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer.minimize(avg_cost)
+
+        ops_without_wd = [
+            op for op in avg_cost.block.ops
+            if op.type == 'lars_momentum' and ("batch_norm" in op.attr(
+                'op_role_var')[0] or ".b" in op.attr('op_role_var')[0])
+        ]
+        for op in ops_without_wd:
+            self.assertEqual(op.attr('weight_decay'), 0)
 
 
 if __name__ == "__main__":

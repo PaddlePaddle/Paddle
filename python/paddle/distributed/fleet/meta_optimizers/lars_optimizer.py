@@ -43,6 +43,8 @@ class LarsOptimizer(MetaOptimizerBase):
             momentum=opt._momentum,
             lars_coeff=configs['lars_coeff'],
             lars_weight_decay=configs['lars_weight_decay'],
+            epsilon=configs['epsilon'],
+            exclude_from_weight_decay=configs['exclude_from_weight_decay'],
             parameter_list=opt._parameter_list,
             regularization=opt.regularization,
             grad_clip=opt._grad_clip,
@@ -52,7 +54,8 @@ class LarsOptimizer(MetaOptimizerBase):
         if self.user_defined_strategy.lars:
             if not isinstance(self.inner_opt, Momentum):
                 logging.warn(
-                    "lars need the inner optimizer to be Momentum optimizer.")
+                    "lars need the inner optimizer to be Momentum optimizer but got {}.".
+                    format(self.inner_opt.type))
                 return False
             return True
         return False
@@ -69,6 +72,13 @@ class LarsOptimizer(MetaOptimizerBase):
                  callbacks=None):
         return self.lars_opt.backward(loss, startup_program, parameter_list,
                                       no_grad_set, callbacks)
+
+    def apply_optimize(self, loss, startup_program, params_grads):
+        return self.lars_opt.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
+    def apply_gradients(self, params_grads):
+        return self.lars_opt.apply_gradients(params_grads=params_grads)
 
     def minimize_impl(self,
                       loss,
