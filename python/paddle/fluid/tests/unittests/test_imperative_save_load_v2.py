@@ -285,7 +285,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 else:
                     self.base_opti[k] = v
 
-            fluid.save_dygraph(self.opti_dict, "./test_dy")
+            fluid.save_dygraph(self.opti_dict, "./test_dy_v2")
 
             self.state_dict = ptb_model.state_dict()
 
@@ -294,7 +294,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 np_t = v.numpy()
                 self.model_base[k] = np_t
 
-            paddle.save(self.state_dict, "./test_dy")
+            paddle.save(self.state_dict, "./test_dy_v2")
 
     def testLoadAndSetVarBase(self):
         seed = 90
@@ -373,7 +373,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                     self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
 
-            para_state_dict, opti_state_dict = paddle.load("./test_dy")
+            para_state_dict, opti_state_dict = paddle.load("./test_dy_v2")
             adam.set_state_dict(opti_state_dict)
 
             opti_dict = adam.state_dict()
@@ -747,7 +747,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_hidden = None
             last_cell = None
 
-            state_dict, opti_dict = fluid.load_dygraph("./test_dy")
+            state_dict, opti_dict = fluid.load_dygraph("./test_dy_v2")
             adam.set_state_dict(opti_dict)
             ptb_model.set_dict(state_dict)
 
