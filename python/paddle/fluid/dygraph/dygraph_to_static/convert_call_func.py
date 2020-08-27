@@ -38,6 +38,7 @@ BUILTIN_LIKELY_MODULES = [collections, pdb, copy, inspect, re, six, numpy]
 
 translator_logger = TranslatorLogger()
 
+
 def is_builtin(func):
     if isinstance(func, types.BuiltinFunctionType):
         return True
