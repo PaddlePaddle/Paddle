@@ -320,7 +320,7 @@ class Conv2d(_ConvNd):
     applied to the final result.
     For each input :math:`X`, the equation is:
 
-    .. math::
+    ..  math::
         Out = \sigma \left ( W * X + b \right )
     Where:
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
@@ -371,7 +371,7 @@ class Conv2d(_ConvNd):
         - x: :math:`(N, C_{in}, H_{in}, W_{in})`
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
         Where
-        .. math::
+        ..  math::
            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1 \\\\
            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
     Examples:
@@ -649,7 +649,7 @@ class ConvTranspose2d(_ConvNd):
     `conv2dtranspose <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_ .
     For each input :math:`X`, the equation is:
 
-    .. math::
+    ..  math::
         Out=\sigma (W*X+b)\\
     Where:
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
@@ -704,7 +704,7 @@ class ConvTranspose2d(_ConvNd):
         - x: :math:`(N, C_{in}, H_{in}, W_{in})`
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
         Where
-        .. math::
+        ..  math::
            H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (kernel\_size[0] - 1) + 1 \\\\
            W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel\_size[1] - 1) + 1 \\\\
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
@@ -785,7 +785,7 @@ class Conv3d(_ConvNd):
     provided, bias is added to the output of the convolution, and the
     corresponding activation function is applied to the final result.
     For each input :math:`X`, the equation is:
-    .. math::
+    ..  math::
         Out = \sigma \left ( W * X + b \right )
     In the above equation:
     * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
@@ -836,7 +836,7 @@ class Conv3d(_ConvNd):
         - x: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
         - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
         Where
-        .. math::
+        ..  math::
            D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1 \\\\
            H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1 \\\\
            W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (kernel\_size[2] - 1) + 1))}{strides[2]} + 1
@@ -931,7 +931,7 @@ class ConvTranspose3d(_ConvNd):
     is applied to the final result.
     For each input :math:`X`, the equation is:
     
-    .. math::
+    ..  math::
         \\Out=\sigma (W*X+b)\\
     In the above equation:
     * :math:`X`: Input value, a tensor with NCDHW format.
@@ -1003,7 +1003,7 @@ class ConvTranspose3d(_ConvNd):
         - x: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
         - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
         Where
-        .. math::
+        ..  math::
            D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (kernel\_size[0] - 1) + 1 \\\\
            H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel\_size[1] - 1) + 1 \\\\
            W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (kernel\_size[2] - 1) + 1 \\\\

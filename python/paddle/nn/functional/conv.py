@@ -350,7 +350,7 @@ def conv2d(x,
 
     For each input :math:`X`, the equation is:
 
-    .. math::
+    ..  math::
 
         Out = \sigma (W \\ast X + b)
 
@@ -377,7 +377,7 @@ def conv2d(x,
 
         Where
 
-        .. math::
+        ..  math::
 
             H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
@@ -829,7 +829,7 @@ def conv_transpose2d(x,
 
     For each input :math:`X`, the equation is:
 
-    .. math::
+    ..  math::
 
         Out = \sigma (W \\ast X + b)
 
@@ -856,7 +856,7 @@ def conv_transpose2d(x,
 
         Where
 
-        .. math::
+        ..  math::
 
            H^\prime_{out} &= (H_{in} - 1) * strides[0] - pad_height_top - pad_height_bottom + dilations[0] * (H_f - 1) + 1 \\\\
            W^\prime_{out} &= (W_{in} - 1) * strides[1] - pad_width_left - pad_width_right + dilations[1] * (W_f - 1) + 1 \\\\
@@ -1070,7 +1070,7 @@ def conv3d(x,
 
     For each input :math:`X`, the equation is:
 
-    .. math::
+    ..  math::
 
         Out = \sigma (W \\ast X + b)
 
@@ -1096,7 +1096,7 @@ def conv3d(x,
 
         Where
 
-        .. math::
+        ..  math::
 
             D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
             H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
@@ -1278,7 +1278,7 @@ def conv_transpose3d(x,
 
     For each input :math:`X`, the equation is:
 
-    .. math::
+    ..  math::
 
         Out = \sigma (W \\ast X + b)
 
@@ -1305,7 +1305,7 @@ def conv_transpose3d(x,
 
         Where
 
-        .. math::
+        ..  math::
 
            D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\\\
            H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
