@@ -226,7 +226,7 @@ def avg_pool1d(x,
         stride = utils.convert_to_list(stride, 1, 'pool_stride')
         stride = [1] + stride
 
-    channel_last = _channel_last("NCL", 2)
+    channel_last = _channel_last("NCL", 1)
     padding, padding_algorithm = _update_padding_nd(
         padding, 1, channel_last=channel_last, ceil_mode=ceil_mode)
 
