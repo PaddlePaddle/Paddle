@@ -378,7 +378,7 @@ def _load_persistable_vars_by_program(model_path,
             new_var = framework._varbase_creator(
                 type=each_var.type(),
                 name=each_var.name(),
-                shpae=each_var.shape(),
+                shape=each_var.shape(),
                 dtype=each_var.dtype(),
                 persistable=True)
         if params_filename is None:
@@ -650,7 +650,7 @@ class TranslatedLayer(layers.Layer):
             )
         if not isinstance(persistable_vars, dict):
             raise TypeError(
-                "TranslatedLayer need to use persisatbale variable dict for initialization."
+                "TranslatedLayer need to use persistable variable dict for initialization."
             )
 
         self._program_holder_dict = programs
@@ -767,7 +767,7 @@ class TranslatedLayer(layers.Layer):
                                          core.VarDesc.VarType.STEP_SCOPES, True)
             tmp_scope_vec.value().set_scope(program_holder.scope)
 
-            # 2. run prorgam by op
+            # 2. run program by op
             trace_program = program_holder.infer_program if self._is_test else program_holder.train_program
             end_op_index = program_holder.infer_program.block(0).op_size()
             framework._dygraph_tracer().trace_op(
@@ -788,7 +788,7 @@ class TranslatedLayer(layers.Layer):
             # will be SelectedRows, not LoDTensor. But tracer will just
             # set param grad VarBase by forward VarBase(LoDTensor)
             # If we don't change grad_var type here, RunProgramOp need
-            # transform SelectedRows to LoDTensor forcely, it may not
+            # transform SelectedRows to LoDTensor forcibly, it may not
             # be user wanted result.
             for persistable_var in persistable_vars:
                 grad_var_name = var.name + core.grad_var_suffix()
