@@ -217,18 +217,6 @@ class TestPnormOp5(TestPnormOp):
         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
 
 
-def run_out(self, p, axis, shape_x, shape_y, dtype):
-    with fluid.program_guard(fluid.Program()):
-        data1 = fluid.data(name="X", shape=shape_x, dtype=dtype)
-        data2 = fluid.data(name="Y", shape=shape_y, dtype=dtype)
-        out = paddle.norm(x=data1, p=p, axis=axis, out=data2)
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        result = exe.run(feed={"X": np.random.rand(*shape_x).astype(dtype)},
-                         fetch_list=[data2, out])
-        self.assertEqual((result[0] == result[1]).all(), True)
-
-
 def run_fro(self, p, axis, shape_x, dtype):
     with fluid.program_guard(fluid.Program()):
         data = fluid.data(name="X", shape=shape_x, dtype=dtype)
@@ -253,17 +241,38 @@ def run_pnorm(self, p, axis, shape_x, dtype):
         self.assertEqual((np.abs(result - expected_result) < 1e-6).all(), True)
 
 
-class API_NormTest(unittest.TestCase):
-    def test_output_result(self):
-        run_out(self, p=2, axis=1, shape_x=[3, 4], shape_y=[3], dtype="float32")
-        run_out(
-            self,
-            p='fro',
-            axis=None,
-            shape_x=[3, 4],
-            shape_y=[1],
-            dtype="float32")
+def run_graph(self, p, axis, shape_x, dtype):
+    paddle.disable_static()
+    shape = [2, 3, 4]
+    np_input = np.arange(24).astype('float32') - 12
+    np_input = np_input.reshape(shape)
+    x = paddle.to_tensor(np_input)
+    #[[[-12. -11. -10.  -9.] [ -8.  -7.  -6.  -5.] [ -4.  -3.  -2.  -1.]]
+    # [[  0.   1.   2.   3.] [  4.   5.   6.   7.] [  8.   9.  10.  11.]]]
+    out_pnorm = paddle.norm(x, p=2, axis=-1)
 
+    # compute frobenius norm along last two dimensions.
+    out_fro = paddle.norm(x, p='fro')
+    out_fro = paddle.norm(x, p='fro', axis=[0, 1])
+    # compute 2-order  norm along [0,1] dimension.
+    out_pnorm = paddle.norm(x, p=2, axis=[0, 1])
+    out_pnorm = paddle.norm(x, p=2)
+    #out_pnorm = [17.43559577 16.91153453 16.73320053 16.91153453]
+    # compute inf-order  norm
+    out_pnorm = paddle.norm(x, p=np.inf)
+    #out_pnorm = [12.]
+    out_pnorm = paddle.norm(x, p=np.inf, axis=0)
+    #out_pnorm = [[0. 1. 2. 3.] [4. 5. 6. 5.] [4. 3. 2. 1.]]
+
+    # compute -inf-order  norm
+    out_pnorm = paddle.norm(x, p=-np.inf)
+    #out_pnorm = [0.]
+    out_pnorm = paddle.norm(x, p=-np.inf, axis=0)
+    # out_fro = [17.43559577 16.91153453 16.73320053 16.91153453]
+    paddle.enable_static()
+
+
+class API_NormTest(unittest.TestCase):
     def test_basic(self):
         run_fro(self, p='fro', axis=None, shape_x=[2, 3, 4], dtype="float32")
         run_fro(self, p='fro', axis=[0, 1], shape_x=[2, 3, 4], dtype="float64")
@@ -286,6 +295,9 @@ class API_NormTest(unittest.TestCase):
             self, p=np.inf, axis=[0, 1], shape_x=[2, 3, 4], dtype="float64")
         run_pnorm(
             self, p=-np.inf, axis=[0, 1], shape_x=[2, 3, 4], dtype="float64")
+
+    def test_dygraph(self):
+        run_graph(self, p='fro', axis=None, shape_x=[2, 3, 4], dtype="float32")
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
