@@ -45,7 +45,7 @@ class TestFleetRecomputeMetaOptimizer(unittest.TestCase):
         strategy.recompute = True
         strategy.recompute_configs = {"checkpoints": ["fc_1.tmp_0"]}
 
-        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

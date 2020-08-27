@@ -132,6 +132,7 @@ if(NOT APPLE AND WITH_MKLML)
     set(SEQ_POOL1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_pool")
     download_model_and_data(${SEQ_POOL1_INSTALL_DIR} "seq_pool1_model_.tar.gz" "seq_pool1_data.txt.tar.gz")
     inference_analysis_api_test(test_analyzer_seq_pool1 ${SEQ_POOL1_INSTALL_DIR} analyzer_seq_pool1_tester.cc)
+    set_tests_properties(test_analyzer_seq_pool1 PROPERTIES TIMEOUT 150)
 else()
     # TODO: fix this test on MACOS and OPENBLAS, the reason is that
     # fusion_seqexpand_concat_fc_op is not supported on MACOS and OPENBLAS
@@ -191,6 +192,7 @@ download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz")
 inference_analysis_test(test_analyzer_ernie_large SRCS analyzer_ernie_tester.cc
     EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
     ARGS --infer_model=${ERNIE_INSTALL_DIR}/model --infer_data=${ERNIE_INSTALL_DIR}/data.txt --refer_result=${ERNIE_INSTALL_DIR}/result.txt --ernie_large=true)
+set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 150) 
 
 # text_classification
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
