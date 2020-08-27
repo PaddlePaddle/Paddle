@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_placement_pass.h"
+#include <string>
 #include <unordered_set>
 
 namespace paddle {
