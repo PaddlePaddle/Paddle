@@ -168,7 +168,6 @@ from .math import prod  #DEFINE_ALIAS
 from .random import standard_normal
 from .random import normal
 from .random import uniform  #DEFINE_ALIAS
-from .random import shuffle  #DEFINE_ALIAS
 from .random import randn  #DEFINE_ALIAS
 from .random import rand  #DEFINE_ALIAS
 from .random import randint  #DEFINE_ALIAS

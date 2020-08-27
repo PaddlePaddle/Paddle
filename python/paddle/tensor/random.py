@@ -26,14 +26,11 @@ from ..fluid.layers.tensor import fill_constant
 import paddle
 import warnings
 
-from ..fluid.io import shuffle  #DEFINE_ALIAS
-
 __all__ = [
     'bernoulli',
     'standard_normal',
     'normal',
     'uniform',
-    'shuffle',
     'randn',
     'rand',
     'randint',

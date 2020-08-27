@@ -26,8 +26,6 @@ from functools import reduce
 import numpy as np
 
 import paddle
-import paddle.reader
-from paddle.reader import *
 from paddle.fluid import layers
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.evaluator import Evaluator
@@ -62,7 +60,7 @@ __all__ = [
     'set_program_state',
     'get_program_parameter',
     'get_program_persistable_vars',
-] + reader.__all__ + paddle.reader.__all__
+] + reader.__all__
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')

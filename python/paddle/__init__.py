@@ -200,7 +200,6 @@ from .tensor.math import prod  #DEFINE_ALIAS
 from .tensor.random import standard_normal
 from .tensor.random import normal
 from .tensor.random import uniform  #DEFINE_ALIAS
-from .tensor.random import shuffle  #DEFINE_ALIAS
 from .tensor.random import randn  #DEFINE_ALIAS
 from .tensor.random import rand  #DEFINE_ALIAS
 from .tensor.random import randint  #DEFINE_ALIAS
