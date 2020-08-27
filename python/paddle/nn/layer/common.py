@@ -1573,12 +1573,14 @@ class Embedding(layers.Layer):
         self._is_distributed = False
         self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
             num_embeddings + padding_idx)
+        self._dtype = self._helper.get_default_dtype()
+        self._size = [self._num_embeddings, self._embedding_dim]
 
         self._weight_attr = weight_attr
         self._remote_prefetch = False
         self._name = name
         self._weight = self.create_parameter(
-            attr=self._param_attr,
+            attr=self._weight_attr,
             shape=self._size,
             dtype=self._dtype,
             is_bias=False)
