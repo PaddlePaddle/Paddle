@@ -267,11 +267,11 @@ def init_parallel_env(rank=-1, backend='nccl', **options):
     # 3. init ParallelStrategy
     strategy = ParallelStrategy()
     if cpt.to_text(backend) == 'nccl':
-        strategy.world_size = ParallelEnv().world_size
-        strategy.rank = ParallelEnv().rank
+        strategy.nranks = ParallelEnv().world_size
+        strategy.local_rank = ParallelEnv().rank
         strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
         strategy.current_endpoint = ParallelEnv().current_endpoint
-        if strategy.world_size < 2:
+        if strategy.nranks < 2:
             return
         # NOTE(chenweihang): [ why config global place here? ]
         # the dygraph mode will be set to default mode, 
