@@ -25,11 +25,14 @@ import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
 from . import core
+from . import unique_name
 from . import compiler
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
+from . import framework
+from .incubate.checkpoint import auto_checkpoint as acp
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -107,7 +110,7 @@ def scope_guard(scope):
         _switch_scope(ex)
 
 
-def as_numpy(tensor):
+def as_numpy(tensor, copy=False):
     """
     Convert a Tensor to a numpy.ndarray, its only support Tensor without LoD information.
     For higher dimensional sequence data, please use LoDTensor directly.
@@ -126,6 +129,7 @@ def as_numpy(tensor):
 
     Args:
        tensor(Variable): a instance of Tensor
+       copy(bool, optional): Whether to use deep copy.
 
     Returns:
         numpy.ndarray
@@ -142,7 +146,10 @@ def as_numpy(tensor):
             Please set the parameter 'return_numpy' as 'False' to \
             return LoDTensor itself directly.")
     if tensor._is_initialized():
-        return np.array(tensor)
+        if copy:
+            return np.array(tensor)
+        else:
+            return np.asarray(tensor)
     else:
         return None
 
@@ -347,7 +354,7 @@ def _fetch_var(name, scope=None, return_numpy=True):
         " program.")
     tensor = var.get_tensor()
     if return_numpy:
-        tensor = as_numpy(tensor)
+        tensor = as_numpy(tensor, copy=True)
     return tensor
 
 
@@ -542,10 +549,8 @@ class Executor(object):
 
     def __init__(self, place=None):
         if place is None:
-            if core.is_compiled_with_cuda():
-                self.place = core.CUDAPlace(0)
-            else:
-                self.place = core.CPUPlace()
+            expected_place = framework._current_expected_place()
+            self.place = expected_place
         else:
             self.place = place
         self.program_caches = dict()
@@ -558,6 +563,9 @@ class Executor(object):
         self._default_executor = core.Executor(p)
         self._closed = False
         self.pruned_program_scope_caches = dict()
+
+        self._auto_checkpoint_name = unique_name.generate(
+            "__auto_checkpoint_executor__")
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -846,6 +854,7 @@ class Executor(object):
 
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
                       return_numpy, return_merged):
+        from paddle.optimizer.lr_scheduler import _LRScheduler
         exe = program._executor
         # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
         # instead of program. We will add support for checking Vars in Graph
@@ -888,6 +897,16 @@ class Executor(object):
                     res_dict[feed_name] = tensor
                 res.append(res_dict)
             exe.feed_tensors_into_local_scopes(res)
+
+        if hasattr(program._program, 'lr_sheduler'):
+            lr_sheduler = program._program.lr_sheduler
+            assert isinstance(lr_sheduler, _LRScheduler), "must be _LRScheduler"
+            lr_value = lr_sheduler()
+            lr_var = program._program.global_block().vars[lr_sheduler._var_name]
+            lr_tensor = _as_lodtensor(lr_value, core.CPUPlace(), lr_var.dtype)
+            exe.feed_and_split_tensor_into_local_scopes({
+                lr_sheduler._var_name: lr_tensor
+            })
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
         tensors = exe.run(fetch_var_names, return_merged)._move_to_list()
@@ -1152,6 +1171,28 @@ class Executor(object):
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
+        # Check if fluid.data() variable no feed data
+        if use_prune:
+            if compiled:
+                global_block = program._program.global_block()
+            else:
+                global_block = program.global_block()
+            for varname in global_block.vars:
+                vardesc = global_block.desc.find_var(cpt.to_bytes(varname))
+                varobj = global_block.vars[varname]
+
+                # Can not check var build by fluid.layers.data(), bucause fluid.layers.data() had not set need_check_feed
+                if vardesc.persistable() == False and \
+                    vardesc.type() == core.VarDesc.VarType.LOD_TENSOR and \
+                    vardesc.need_check_feed() == True and \
+                    varobj._stop_gradient == True and \
+                    varobj.is_data == True and \
+                    varobj.belong_to_optimizer == False and \
+                    varname not in feed:
+                    raise ValueError('Need feed data for variable %s' % varname)
+
+        acp._auto_checkpoint(self, program)
+
         # For backward compatibility, run directly.
         if not compiled:
             # In distributed training, the compiled program is saved in Program._graph
@@ -1196,7 +1237,7 @@ class Executor(object):
 
     def _run_program(self, program, feed, fetch_list, feed_var_name,
                      fetch_var_name, scope, return_numpy, use_program_cache):
-
+        from paddle.optimizer.lr_scheduler import _LRScheduler
         if feed is None:
             feed = {}
         elif isinstance(feed, (list, tuple)):
@@ -1252,6 +1293,16 @@ class Executor(object):
                 fetch_var_name=fetch_var_name)
 
         self._feed_data(program, feed, feed_var_name, scope)
+        if hasattr(program, 'lr_sheduler'):
+            assert isinstance(program.lr_sheduler,
+                              _LRScheduler), "must be _LRScheduler"
+            lr_sheduler = program.lr_sheduler
+            lr_value = lr_sheduler()
+            lr_var = program.global_block().vars[lr_sheduler._var_name]
+            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+            tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+            tensor.set(data, self.place)
+
         if not use_program_cache:
             self._default_executor.run(program.desc, scope, 0, True, True,
                                        fetch_var_name)
@@ -1300,6 +1351,12 @@ class Executor(object):
                          fetch_list=None,
                          fetch_info=None,
                          print_period=100):
+        is_heter = 0
+        if not program._fleet_opt is None:
+            if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
+                is_heter = 1
+            if program._fleet_opt("trainer", "") == "HeterXpuTrainer":
+                is_heter = 1
         if scope is None:
             scope = global_scope()
         if fetch_list is None:
@@ -1308,6 +1365,11 @@ class Executor(object):
             fetch_info = []
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
+        if is_heter:
+            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+            from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+            fu = FleetUtil()
+            ret = fu.split_program_by_device(program)
         if not compiled:
             # TODO: Need a better way to distinguish and specify different execution mode
             if program._pipeline_opt:
@@ -1317,6 +1379,8 @@ class Executor(object):
                 trainer = TrainerFactory()._create_trainer(program._fleet_opt)
                 trainer._set_thread_barrier(program._is_distributed)
             trainer._set_program(program)
+            if is_heter:
+                trainer._set_heter_info(ret)
         else:
             if program._pipeline_opt:
                 trainer = TrainerFactory()._create_trainer(
@@ -1475,6 +1539,60 @@ class Executor(object):
         return self._run_from_dataset(program, dataset, scope, thread, True,
                                       debug, fetch_list, fetch_info,
                                       print_period, fetch_handler)
+
+    def start_heter_trainer(self,
+                            program=None,
+                            scope=None,
+                            debug=False,
+                            fetch_list=None,
+                            fetch_info=None,
+                            print_period=100,
+                            fetch_handler=None):
+        return self._start_heter_trainer(program, scope, False, debug,
+                                         fetch_list, fetch_info, print_period,
+                                         fetch_handler)
+
+    def _start_heter_trainer(self,
+                             program=None,
+                             scope=None,
+                             is_infer=False,
+                             debug=False,
+                             fetch_list=None,
+                             fetch_info=None,
+                             print_period=100,
+                             fetch_handler=None):
+
+        scope, trainer = self._prepare_trainer(
+            program=program,
+            dataset=None,
+            scope=scope,
+            thread=1,
+            debug=debug,
+            fetch_list=fetch_list,
+            fetch_info=fetch_info,
+            print_period=print_period)
+
+        trainer._set_infer(is_infer)
+        trainer._gen_trainer_desc()
+
+        self._dump_debug_info(program=program, trainer=trainer)
+
+        trainer_instance = self._default_executor.init_for_dataset(
+            program.desc, trainer._desc(), scope, None)
+
+        #if fetch_handler is not None:
+        #    scope0 = trainer_instance.get_worker_scope(0)
+        #    fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
+        #    fetch_monitor.start()
+        #    self._default_executor.run_from_dataset(trainer_instance)
+        #    fetch_monitor.stop()
+        #    self._default_executor.release_trainer(trainer_instance)
+        #else:
+
+        self._default_executor.run_from_dataset(trainer_instance)
+        #self._default_executor.release_trainer(trainer_instance)
+
+        return trainer_instance
 
     def train_from_dataset(self,
                            program=None,

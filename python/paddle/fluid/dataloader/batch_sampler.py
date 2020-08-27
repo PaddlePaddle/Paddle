@@ -16,12 +16,13 @@ from __future__ import print_function
 from __future__ import division
 
 import numpy as np
-from .dataset import Dataset
+from .sampler import Sampler, SequenceSampler, RandomSampler
+from .dataset import Dataset, IterableDataset
 
 __all__ = ["BatchSampler"]
 
 
-class BatchSampler(object):
+class BatchSampler(Sampler):
     """
     A base implement of batch sampler used by `paddle.io.DataLoader`
     which yield mini-batch indices(a list/tuple with length as
@@ -41,10 +42,11 @@ class BatchSampler(object):
                 implement or other python object which implemented
                 :code:`__len__` for BatchSampler to get indices as the
                 range of :attr:`dataset` length. Default None.
-        indices (list|tuple): a substitution parameter for
-                :attr:`dataset` either :attr:`dataset` or
-                :attr:`indices` should be set, give the whole
-                indices to sampler from directly. Default None.
+        sampler (Sampler): this could be a :code:`paddle.io.Dataset`
+                instance which implemented :code:`__iter__` to yield
+                sample indices. :attr:`sampler` and :attr:`dataset`
+                can not be set in the same time.  If :attr:`sampler`
+                is set, :attr:`shuffle` should not be set. Default None.
         shuffle(bool): whether to shuffle indices order before genrating
                 batch indices. Default False.
         batch_size(int): sample indice number in a mini-batch indices.
@@ -58,16 +60,7 @@ class BatchSampler(object):
         
         .. code-block:: python
             
-            from paddle.io import BatchSampler, Dataset
-
-            # init with indices
-            bs = BatchSampler(indices=list(range(100)),
-                              shuffle=True,
-                              batch_size=8,
-                              drop_last=True)
-
-            for batch_indices in bs:
-                print(batch_indices)
+            from paddle.io import RandomSampler, BatchSampler, Dataset
 
             # init with dataset
             class RandomDataset(Dataset):
@@ -90,46 +83,57 @@ class BatchSampler(object):
             for batch_indices in bs:
                 print(batch_indices)
 
+            # init with sampler
+            sampler = RandomSampler(RandomDataset(100))
+            bs = BatchSampler(sampler=sampler,
+                              batch_size=8,
+                              drop_last=True)
+
+            for batch_indices in bs:
+                print(batch_indices)
+
+
     see `paddle.io.DataLoader`
 
     """
 
     def __init__(self,
                  dataset=None,
-                 indices=None,
+                 sampler=None,
                  shuffle=False,
                  batch_size=1,
                  drop_last=False):
         if dataset is None:
-            assert indices is not None, \
-                "either dataset or indices should be set"
-            assert isinstance(indices, list) or isinstance(indices, tuple), \
-                "indices should be a list or tuple, but got {}".format(type(indices))
-            self.indices = indices
+            assert sampler is not None, \
+                "either dataset or sampler should be set"
+            assert isinstance(sampler, Sampler), \
+                "sampler should be a paddle.io.Sampler, but got {}".format(type(sampler))
+            assert not shuffle, "shuffle should be False when sampler is set"
+            self.sampler = sampler
         else:
             assert isinstance(dataset, Dataset), \
-                "dataset should be an instance of paddle.io.Dataset"
-            assert indices is None, \
-                "should not set both dataset and indices"
-            self.indices = list(range(len(dataset)))
+                "dataset should be a paddle.io.Dataset"
+            assert not isinstance(dataset, IterableDataset), \
+                "dataset should not be a paddle.io.IterableDataset"
+            assert sampler is None, \
+                "should not set both dataset and sampler"
+            assert isinstance(shuffle, bool), \
+                "shuffle should be a boolean value, but got {}".format(type(shuffle))
+            if shuffle:
+                self.sampler = RandomSampler(dataset)
+            else:
+                self.sampler = SequenceSampler(dataset)
 
         assert isinstance(batch_size, int) and batch_size > 0, \
             "batch_size should be a positive integer, but got {}".format(batch_size)
         self.batch_size = batch_size
-        assert isinstance(shuffle, bool), \
-            "shuffle should be a boolean value, but got {}".format(type(shuffle))
-        self.shuffle = shuffle
         assert isinstance(drop_last, bool), \
             "drop_last should be a boolean value, but got {}".format(type(drop_last))
         self.drop_last = drop_last
 
     def __iter__(self):
-        if self.shuffle:
-            np.random.shuffle(self.indices)
-        _iter = iter(self.indices)
-
         batch_indices = []
-        for idx in _iter:
+        for idx in self.sampler:
             batch_indices.append(idx)
             if len(batch_indices) == self.batch_size:
                 yield batch_indices
@@ -138,6 +142,19 @@ class BatchSampler(object):
             yield batch_indices
 
     def __len__(self):
-        num_samples = len(self.indices)
+        num_samples = len(self.sampler)
         num_samples += int(not self.drop_last) * (self.batch_size - 1)
         return num_samples // self.batch_size
+
+
+class _InfiniteIterableSampler(object):
+    def __init__(self, dataset, batch_size=1):
+        assert isinstance(
+            dataset, IterableDataset
+        ), "dataset should be an instance of paddle.io.IterableDataset"
+        self.dataset = dataset
+        self.batch_size = batch_size
+
+    def __iter__(self):
+        while True:
+            yield [None] * self.batch_size

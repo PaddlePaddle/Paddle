@@ -180,6 +180,51 @@ class TestLayer(LayerTest):
 
             self.assertRaises(TypeError, test_type)
 
+    def test_Flatten(self):
+        inp = np.ones([3, 4, 4, 5], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 4, 4, 5],
+                dtype='float32',
+                append_batch_size=False)
+            flatten = nn.Flatten()
+            ret = flatten(t)
+            static_ret = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret])[0]
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            flatten = nn.Flatten()
+            dy_ret = flatten(t)
+            dy_ret_value = dy_ret.numpy()
+
+        self.assertTrue(np.array_equal(static_ret, dy_ret_value))
+
+        with self.static_graph():
+
+            # the input of Linear must be Variable.
+            def test_Variable():
+                inp = np.ones([3, 32, 32], dtype='float32')
+                linear = nn.Linear(
+                    32,
+                    4,
+                    bias_attr=fluid.initializer.ConstantInitializer(value=1))
+                linear_ret1 = linear(inp)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            # the input dtype of Linear must be float16 or float32 or float64
+            # float16 only can be set on GPU place
+            def test_type():
+                inp = np.ones([3, 32, 32], dtype='int32')
+                linear = nn.Linear(
+                    32,
+                    4,
+                    bias_attr=fluid.initializer.ConstantInitializer(value=1))
+                linear_ret2 = linear(inp)
+
+            self.assertRaises(TypeError, test_type)
+
     def test_layer_norm(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():
@@ -238,6 +283,24 @@ class TestLayer(LayerTest):
             with self.assertRaises(ValueError):
                 lm(base.to_variable(inp))
 
+    def test_SyncBatchNorm(self):
+        if core.is_compiled_with_cuda():
+            with self.static_graph():
+                t = layers.data(name='t', shape=[-1, 3, 5, 5], dtype='float32')
+                my_sync_bn = paddle.nn.SyncBatchNorm(3)
+                ret = my_sync_bn(t)
+                static_ret = self.get_static_graph_result(
+                    feed={'t': np.ones(
+                        [3, 3, 5, 5], dtype='float32')},
+                    fetch_list=[ret])[0]
+
+            with self.dynamic_graph():
+                t = np.ones([3, 3, 5, 5], dtype='float32')
+                my_syncbn = paddle.nn.SyncBatchNorm(3)
+                dy_ret = my_syncbn(base.to_variable(t))
+                dy_ret_value = dy_ret.numpy()
+            self.assertTrue(np.array_equal(static_ret, static_ret))
+
     def test_relu(self):
         with self.static_graph():
             t = layers.data(name='t', shape=[3, 3], dtype='float32')
@@ -249,21 +312,6 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             t = np.ones([3, 3], dtype='float32')
             dy_ret = layers.relu(base.to_variable(t))
-            dy_ret_value = dy_ret.numpy()
-
-        self.assertTrue(np.allclose(static_ret, dy_ret_value))
-
-    def test_leakyrelu(self):
-        inputs = np.random.uniform(-1, 1, (10, 10)).astype('float32')
-        with self.static_graph():
-            t = layers.data(name='t', shape=[10, 10], dtype='float32')
-            ret = layers.leaky_relu(t, alpha=0.01)
-            static_ret = self.get_static_graph_result(
-                feed={'t': inputs}, fetch_list=[ret])[0]
-
-        with self.dynamic_graph():
-            lrelu = paddle.nn.LeakyReLU(alpha=0.01)
-            dy_ret = lrelu(base.to_variable(inputs))
             dy_ret_value = dy_ret.numpy()
 
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
@@ -2615,13 +2663,6 @@ class TestBook(LayerTest):
             out = layers.brelu(input, t_min=1.0, t_max=20.0, name='brelu')
             return (out)
 
-    def make_leaky_relu(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.leaky_relu(input, alpha=0.1, name='leaky_relu')
-            return (out)
-
     def make_soft_relu(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
@@ -3639,6 +3680,33 @@ class TestBook(LayerTest):
                         dropout_prob=0.5,
                         bidirectional=bidirectional,
                         batch_first=batch_first)
+
+
+class TestMetricsDetectionMap(unittest.TestCase):
+    def test_detection_map(self):
+        program = fluid.Program()
+        with program_guard(program):
+            detect_res = fluid.layers.data(
+                name='detect_res',
+                shape=[10, 6],
+                append_batch_size=False,
+                dtype='float32')
+            label = fluid.layers.data(
+                name='label',
+                shape=[10, 1],
+                append_batch_size=False,
+                dtype='float32')
+            box = fluid.layers.data(
+                name='bbox',
+                shape=[10, 4],
+                append_batch_size=False,
+                dtype='float32')
+            map_eval = fluid.metrics.DetectionMAP(
+                detect_res, label, box, class_num=21)
+            cur_map, accm_map = map_eval.get_map_var()
+            self.assertIsNotNone(cur_map)
+            self.assertIsNotNone(accm_map)
+        print(str(program))
 
 
 if __name__ == '__main__':

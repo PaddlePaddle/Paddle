@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import paddle
 from six.moves import reduce
 from .. import core
 from ..layers import utils
@@ -35,7 +36,7 @@ __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
     'GRUUnit', 'InstanceNorm', 'LayerNorm', 'NCE', 'PRelu',
     'BilinearTensorProduct', 'Conv2DTranspose', 'Conv3DTranspose', 'GroupNorm',
-    'SpectralNorm', 'TreeConv'
+    'SpectralNorm', 'TreeConv', 'Flatten'
 ]
 
 
@@ -180,6 +181,7 @@ class Conv2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
         self._use_cudnn = use_cudnn
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
         self._filter_size = filter_size
         self._num_filters = num_filters
         self._param_attr = param_attr
@@ -187,7 +189,8 @@ class Conv2D(layers.Layer):
         self._dtype = dtype
 
         if (self._num_channels == self._groups and
-                num_filters % self._num_channels == 0 and not self._use_cudnn):
+                num_filters % self._num_channels == 0 and
+                not self._use_cudnn and not self._use_mkldnn):
             self._l_type = 'depthwise_conv2d'
         else:
             self._l_type = 'conv2d'
@@ -224,14 +227,15 @@ class Conv2D(layers.Layer):
         if in_dygraph_mode() and self._l_type == 'conv2d':
             attrs = ('strides', self._stride, 'paddings', self._padding,
                      'dilations', self._dilation, 'groups', self._groups
-                     if self._groups else 1, 'use_cudnn', self._use_cudnn)
+                     if self._groups else 1, 'use_cudnn', self._use_cudnn,
+                     'use_mkldnn', self._use_mkldnn)
             out = core.ops.conv2d(input, self.weight, *attrs)
             pre_bias = out
 
-            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias,
-                                                            1)
-            return dygraph_utils._append_activation_in_dygraph(pre_act,
-                                                               self._act)
+            pre_act = dygraph_utils._append_bias_in_dygraph(
+                pre_bias, self.bias, 1, use_mkldnn=self._use_mkldnn)
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, self._act, use_mkldnn=self._use_mkldnn)
         inputs = {
             'Input': [input],
             'Filter': [self.weight],
@@ -242,7 +246,7 @@ class Conv2D(layers.Layer):
             'dilations': self._dilation,
             'groups': self._groups if self._groups else 1,
             'use_cudnn': self._use_cudnn,
-            'use_mkldnn': False,
+            'use_mkldnn': self._use_mkldnn,
         }
 
         check_variable_and_dtype(input, 'input',
@@ -267,7 +271,8 @@ class Conv2D(layers.Layer):
                 inputs={'X': [pre_bias],
                         'Y': [self.bias]},
                 outputs={'Out': [pre_act]},
-                attrs={'axis': 1})
+                attrs={'axis': 1,
+                       'use_mkldnn': self._use_mkldnn})
         else:
             pre_act = pre_bias
 
@@ -828,6 +833,8 @@ class Pool2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
 
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
                 "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
@@ -853,8 +860,8 @@ class Pool2D(layers.Layer):
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
                      'use_cudnn', self._use_cudnn, 'ceil_mode', self._ceil_mode,
-                     'use_mkldnn', False, 'exclusive', self._exclusive,
-                     'data_format', self._data_format)
+                     'use_mkldnn', self._use_mkldnn, 'exclusive',
+                     self._exclusive, 'data_format', self._data_format)
             return core.ops.pool2d(input, *attrs)
 
         check_variable_and_dtype(
@@ -869,7 +876,7 @@ class Pool2D(layers.Layer):
             "paddings": self._pool_padding,
             "use_cudnn": self._use_cudnn,
             "ceil_mode": self._ceil_mode,
-            "use_mkldnn": False,
+            "use_mkldnn": self._use_mkldnn,
             "exclusive": self._exclusive,
             "data_format": self._data_format,
         }
@@ -958,16 +965,22 @@ class Linear(layers.Layer):
         self.bias = self.create_parameter(
             shape=[output_dim], attr=bias_attr, dtype=dtype, is_bias=True)
 
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
+
     def forward(self, input):
         if in_dygraph_mode():
             pre_bias = _varbase_creator(dtype=input.dtype)
             core.ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
-                            'transpose_Y', False, "alpha", 1)
+                            'transpose_Y', False, "alpha", 1, "use_mkldnn",
+                            self._use_mkldnn)
             pre_act = dygraph_utils._append_bias_in_dygraph(
-                pre_bias, self.bias, axis=len(input.shape) - 1)
+                pre_bias,
+                self.bias,
+                axis=len(input.shape) - 1,
+                use_mkldnn=self._use_mkldnn)
 
-            return dygraph_utils._append_activation_in_dygraph(pre_act,
-                                                               self._act)
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, self._act, use_mkldnn=self._use_mkldnn)
 
         check_variable_and_dtype(input, 'input',
                                  ['float16', 'float32', 'float64'], "Linear")
@@ -976,6 +989,7 @@ class Linear(layers.Layer):
             "transpose_X": False,
             "transpose_Y": False,
             "alpha": 1,
+            "use_mkldnn": self._use_mkldnn,
         }
         inputs = {"X": [input], "Y": [self.weight]}
 
@@ -990,7 +1004,10 @@ class Linear(layers.Layer):
                 inputs={'X': [tmp],
                         'Y': [self.bias]},
                 outputs={'Out': [pre_activation]},
-                attrs={'axis': len(input.shape) - 1})
+                attrs={
+                    'axis': len(input.shape) - 1,
+                    'use_mkldnn': self._use_mkldnn
+                })
         else:
             pre_activation = tmp
         return self._helper.append_activation(pre_activation, act=self._act)
@@ -1250,6 +1267,7 @@ class BatchNorm(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
+        self._use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
 
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
@@ -1314,8 +1332,8 @@ class BatchNorm(layers.Layer):
         if in_dygraph_mode():
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", not self.training, "data_layout",
-                     self._data_layout, "use_mkldnn", False, "fuse_with_relu",
-                     self._fuse_with_relu, "use_global_stats",
+                     self._data_layout, "use_mkldnn", self._use_mkldnn,
+                     "fuse_with_relu", self._fuse_with_relu, "use_global_stats",
                      self._use_global_stats, 'trainable_statistics',
                      self._trainable_statistics)
             batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
@@ -1323,7 +1341,7 @@ class BatchNorm(layers.Layer):
                 mean_out, variance_out, *attrs)
 
             return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=self._act)
+                batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn)
 
         check_variable_and_dtype(input, 'input',
                                  ['float16', 'float32', 'float64'], 'BatchNorm')
@@ -2308,7 +2326,8 @@ class PRelu(layers.Layer):
             #NOTE(zhiqiu): The _alpha_shape should be [1, channel] + [1] * len(input_shape[2:]), not [1, channel, 1, 1].
             # However, the suffix 1 in the list is useless, since the tensor is viewed as one demension array during kernel calculation. 
             # And, input_shape is not required when mode is 'channel', so it is simplified.
-            self._alpha_shape = [1, channel]
+            #NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
+            self._alpha_shape = [1, channel, 1, 1]
         elif mode == 'element':
             assert isinstance(input_shape, (
                 list, tuple
@@ -3182,3 +3201,49 @@ class TreeConv(layers.Layer):
         else:
             pre_activation = out
         return self._helper.append_activation(pre_activation, act=self._act)
+
+
+class Flatten(layers.Layer):
+    """
+    :alias_main: paddle.nn.Flatten
+    :alias: paddle.nn.Flatten,paddle.nn.layer.Flatten,paddle.nn.layer.common.Flatten
+    This interface is used to construct a callable object of the ``FLatten`` class.
+    For more details, refer to code examples.
+    It implements flatten a contiguous range of dims into a tensor.
+
+    Equation:
+
+    Parameters:
+        start_axis(int): first dim to flatten (default = 1)
+        stop_axis(int): last dim to flatten (default = -1).
+    
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+          from paddle import to_variable
+          import numpy as np
+
+          inp_np = np.ones([5, 2, 3, 4]).astype('float32')
+          
+          paddle.disable_static()
+          
+          inp_np = to_variable(inp_np)
+          flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
+          flatten_res = flatten(inp_np)
+
+    """
+
+    def __init__(self, start_axis=1, stop_axis=-1):
+        super(Flatten, self).__init__()
+        self.start_axis = start_axis
+        self.stop_axis = stop_axis
+
+    def forward(self, input):
+        out = paddle.tensor.manipulation.flatten(
+            input, start_axis=self.start_axis, stop_axis=self.stop_axis)
+        return out

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+import inspect
 import decorator
 import contextlib
-import functools
 import sys
 import numpy as np
 from paddle.fluid import core
@@ -26,13 +26,8 @@ import objgraph
 from ..data_feeder import convert_dtype
 
 __all__ = [
-    'no_grad',
-    'grad',
-    'guard',
-    'enable_dygraph',
-    'disable_dygraph',
-    'enabled',
-    'to_variable',
+    'no_grad', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph', 'enabled',
+    'to_variable'
 ]
 
 
@@ -96,8 +91,8 @@ def enabled():
     """
     This function checks whether the program runs in dynamic graph mode or not.
     You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
-    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
-    and :ref:`api_fluid_dygraph_disable` api .
+    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable_dygraph`
+    and :ref:`api_fluid_dygraph_disable_dygraph` api .
 
     **Note**:
         ``fluid.dygraph.enabled`` is the alias of ``fluid.in_dygraph_mode``, and
@@ -121,10 +116,6 @@ def enabled():
 
 def enable_dygraph(place=None):
     """
-    :alias_main: paddle.enable_dygraph
-	:alias: paddle.enable_dygraph,paddle.enable_imperative.enable_dygraph
-	:old_api: paddle.fluid.dygraph.base.enable_dygraph
-
     This function enables dynamic graph mode.
 
     Parameters:
@@ -155,10 +146,6 @@ def enable_dygraph(place=None):
 
 def disable_dygraph():
     """
-    :alias_main: paddle.disable_dygraph
-	:alias: paddle.disable_dygraph,paddle.disable_imperative.disable_dygraph
-	:old_api: paddle.fluid.dygraph.base.disable_dygraph
-
     This function disables dynamic graph mode.
 
     return:
@@ -180,77 +167,82 @@ def disable_dygraph():
         _functional_dygraph_context_manager = None
 
 
-@signature_safe_contextmanager
-def _switch_tracer_mode_guard_(is_train=True):
-    tracer = framework._dygraph_tracer()
-    if tracer:
-        mode = tracer._train_mode
-        tracer._train_mode = is_train
-        try:
-            yield
-        finally:
-            tracer._train_mode = mode
-    else:
-        yield
-
-
-def no_grad(func=None):
+class no_grad:
     """
     :api_attr: imperative
 
     Create a context which disables dygraph gradient calculation.
-    In this mode, the result of every computation will have `stop_gradient=True`.
+    In this mode, the result of every computation will have `stop_gradient` set
+    to `True`.
 
-    Also functions as a decorator. (Make sure to instantiate without parenthesis.)
+    Also functions as a decorator. (Make sure to use an instance.)
 
     Examples:
 
      .. code-block:: python
 
         import numpy as np
-        import paddle.fluid as fluid
+        import paddle
+
+        paddle.disable_static()
 
         # use as generator
 
         data = np.array([[2, 3], [4, 5]]).astype('float32')
-        with fluid.dygraph.guard():
-            l0 = fluid.Linear(2, 2)  # l0.weight.gradient() is None
-            l1 = fluid.Linear(2, 2)
-            with fluid.dygraph.no_grad():
-                # l1.weight.stop_gradient is False
-                tmp = l1.weight * 2  # tmp.stop_gradient is True
-            x = fluid.dygraph.to_variable(data)
-            y = l0(x) + tmp
-            o = l1(y)
-            o.backward()
-            print(tmp.gradient() is None)  # True
-            print(l0.weight.gradient() is None)  # False
+        l0 = paddle.nn.Linear(2, 2)  # l0.weight.gradient() is None
+        l1 = paddle.nn.Linear(2, 2)
+        with paddle.no_grad():
+            # l1.weight.stop_gradient is False
+            tmp = l1.weight * 2  # tmp.stop_gradient is True
+        x = paddle.to_tensor(data)
+        y = l0(x) + tmp
+        o = l1(y)
+        o.backward()
+        print(tmp.gradient() is None)  # True
+        print(l0.weight.gradient() is None)  # False
 
         # use as decorator
 
-        @fluid.dygraph.no_grad
+        @paddle.no_grad()
         def test_layer():
-            with fluid.dygraph.guard():
-                inp = np.ones([3, 1024], dtype='float32')
-                t = fluid.dygraph.base.to_variable(inp)
-                linear1 = fluid.Linear(1024, 4, bias_attr=False)
-                linear2 = fluid.Linear(4, 4)
-                ret = linear1(t)
-                dy_ret = linear2(ret)
+            inp = np.ones([3, 1024], dtype='float32')
+            t = paddle.to_tensor(inp)
+            linear1 = paddle.nn.Linear(1024, 4, bias_attr=False)
+            linear2 = paddle.nn.Linear(4, 4)
+            ret = linear1(t)
+            dy_ret = linear2(ret)
 
         test_layer()
-
     """
-    if func is None:
-        return _switch_tracer_mode_guard_(is_train=False)
-    else:
 
+    def __call__(self, func):
         @decorator.decorator
-        def __impl__(func, *args, **kwargs):
-            with _switch_tracer_mode_guard_(is_train=False):
+        def _decorate_function(func, *args, **kwargs):
+            with self:
                 return func(*args, **kwargs)
 
-        return __impl__(func)
+        @decorator.decorator
+        def _decorate_generator(func, *args, **kwargs):
+            gen = func(*args, **kwargs)
+            with self:
+                for x in gen:
+                    yield x
+
+        if inspect.isgeneratorfunction(func):
+            return _decorate_generator(func)
+        else:
+            return _decorate_function(func)
+
+    def __enter__(self):
+        tracer = framework._dygraph_tracer()
+        if tracer:
+            self.orig = tracer._train_mode
+            tracer._train_mode = False
+
+    def __exit__(self, *args):
+        tracer = framework._dygraph_tracer()
+        if tracer:
+            tracer._train_mode = self.orig
 
 
 @signature_safe_contextmanager
@@ -288,12 +280,11 @@ def guard(place=None):
     tracer = Tracer()
     VarBase = core.VarBase
 
-    if place is None:
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-    tracer._expected_place = place
+    if place is not None:
+        expected_place = place
+    else:
+        expected_place = framework._current_expected_place()
+    tracer._expected_place = expected_place
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
@@ -384,47 +375,46 @@ def grad(outputs,
     Examples 1:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            paddle.disable_static()
 
             def test_dygraph_grad(create_graph):
-                with fluid.dygraph.guard(): 
-                    x = fluid.layers.ones(shape=[1], dtype='float32') 
-                    x.stop_gradient = False
-                    y = x * x
+                x = paddle.ones(shape=[1], dtype='float32')
+                x.stop_gradient = False
+                y = x * x
 
-                    # Since y = x * x, dx = 2 * x 
-                    dx = fluid.dygraph.grad(
-                            outputs=[y],
-                            inputs=[x], 
-                            create_graph=create_graph, 
-                            retain_graph=True)[0]
+                # Since y = x * x, dx = 2 * x
+                dx = paddle.grad(
+                        outputs=[y],
+                        inputs=[x],
+                        create_graph=create_graph,
+                        retain_graph=True)[0]
 
-                    z = y + dx
+                z = y + dx
 
-                    # If create_graph = False, the gradient of dx
-                    # would not be backpropagated. Therefore,
-                    # z = x * x + dx, and x.gradient() = 2 * x = 2.0
-                    
-                    # If create_graph = True, the gradient of dx
-                    # would be backpropagated. Therefore, 
-                    # z = x * x + dx = x * x + 2 * x, and
-                    # x.gradient() = 2 * x + 2 = 4.0 
+                # If create_graph = False, the gradient of dx
+                # would not be backpropagated. Therefore,
+                # z = x * x + dx, and x.gradient() = 2 * x = 2.0
 
-                    z.backward()
-                    return x.gradient() 
+                # If create_graph = True, the gradient of dx
+                # would be backpropagated. Therefore,
+                # z = x * x + dx = x * x + 2 * x, and
+                # x.gradient() = 2 * x + 2 = 4.0
 
-            print(test_dygraph_grad(create_graph=False)) # [2.] 
+                z.backward()
+                return x.gradient()
+
+            print(test_dygraph_grad(create_graph=False)) # [2.]
             print(test_dygraph_grad(create_graph=True)) # [4.]
 
     Examples 2:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-
-            fluid.enable_dygraph()
+            import paddle
+            paddle.disable_static()
 
             def test_dygraph_grad(grad_outputs=None):
-                x = fluid.layers.fill_constant(shape=[1], value=2.0, dtype='float32')
+                x = paddle.fill_constant(shape=[1], value=2.0, dtype='float32')
                 x.stop_gradient = False
 
                 y1 = x * x
@@ -440,27 +430,27 @@ def grad(outputs,
                 # Therefore, the final result would be:
                 # dx = 2 * x * dy1 + 3 * dy2 = 4 * dy1 + 3 * dy2.
 
-                dx = fluid.dygraph.grad(
+                dx = paddle.grad(
                     outputs=[y1, y2], 
                     inputs=[x],
                     grad_outputs=grad_outputs)[0]
 
                 return dx.numpy()
 
-            THREE = fluid.layers.fill_constant(shape=[1], value=3.0, dtype='float32')
-            FOUR = fluid.layers.fill_constant(shape=[1], value=4.0, dtype='float32')
+            grad_value = paddle.fill_constant(shape=[1], value=4.0, dtype='float32')
 
             # dy1 = [1], dy2 = [1]
             print(test_dygraph_grad(None)) # [7.]
 
             # dy1 = [1], dy2 = [4]
-            print(test_dygraph_grad([None, FOUR])) # [16.] 
+            print(test_dygraph_grad([None, grad_value])) # [16.]
 
             # dy1 = [4], dy2 = [1]
-            print(test_dygraph_grad([FOUR, None])) # [19.]
+            print(test_dygraph_grad([grad_value, None])) # [19.]
 
             # dy1 = [3], dy2 = [4]
-            print(test_dygraph_grad([THREE, FOUR])) # [24.]
+            grad_y1 = paddle.fill_constant(shape=[1], value=3.0, dtype='float32')
+            print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
 	'''
 
     def check_in_out(in_out_list, name):

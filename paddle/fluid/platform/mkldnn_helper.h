@@ -129,6 +129,16 @@ inline void ClearMKLDNNCache(const platform::Place& place) {
   }
 }
 
+inline void DontClearMKLDNNCache(const platform::Place& place) {
+  // Clear mkl-dnn cache,
+  if (platform::is_cpu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::MKLDNNDeviceContext* dev_ctx =
+        (platform::MKLDNNDeviceContext*)pool.Get(place);
+    dev_ctx->BlockNextCacheClearing();
+  }
+}
+
 template <typename Type>
 mkldnn::memory::data_type MKLDNNGetDataType() {
   return mkldnn::memory::data_type::undef;
@@ -181,6 +191,8 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
     if (inner_nblks == 0) {
       if (strides[0] >= strides[1] && strides[1] >= strides[2]) {
         return mkldnn::memory::format_tag::ncw;
+      } else if (strides[1] >= strides[0] && strides[0] >= strides[2]) {
+        return mkldnn::memory::format_tag::ntc;
       } else {
         return mkldnn::memory::format_tag::nwc;
       }
@@ -419,6 +431,13 @@ inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
     return {{padding_top, padding_left}, {padding_bottom, padding_right}};
   }
 }
+
+inline bool HasOpINT8DataType(const paddle::framework::OpDesc* op) {
+  return (op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8" ||
+          op->GetAttrIfExists<bool>("use_quantizer"));
+}
+
+enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
 
 }  // namespace platform
 }  // namespace paddle
