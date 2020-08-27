@@ -129,7 +129,7 @@ void ListenAndServOp::RunSyncLoop(
     framework::Scope *recv_scope, platform::DeviceContext *dev_ctx,
     const std::vector<int> &prefetch_block_id_list,
     const int checkpoint_point_block_id) const {
-  VLOG(4) << "RunSyncLoop";
+  VLOG(2) << "RunSyncLoop";
   size_t num_blocks = program->Size();
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
@@ -211,7 +211,7 @@ void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
   for (auto &varname : sparse_vars_) {
     auto var = recv_scope->FindVar(varname);
     if (var == nullptr) {
-      VLOG(4) << "can not find var " << varname << " in received scope";
+      VLOG(2) << "can not find var " << varname << " in received scope";
       continue;
     }
     if (var->IsType<framework::SelectedRows>()) {
@@ -225,7 +225,7 @@ void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
     for (auto &varname : dense_vars_) {
       auto var = recv_scope->FindVar(varname);
       if (var == nullptr) {
-        VLOG(4) << "can not find var " << varname << " in received scope";
+        VLOG(2) << "can not find var " << varname << " in received scope";
         continue;
       }
       if (var->IsType<framework::LoDTensor>()) {
@@ -244,7 +244,7 @@ void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
                                    framework::ProgramDesc *program,
                                    framework::Scope *recv_scope) const {
-  VLOG(4) << "RunAsyncLoop";
+  VLOG(2) << "RunAsyncLoop";
   auto grad_to_block_id_str =
       Attr<std::vector<std::string>>("grad_to_block_id");
   DoubleFindMap<std::string, int32_t> grad_to_block_id;
@@ -268,7 +268,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
-  VLOG(4) << "ListenAndServOp::RunAsyncLoop Begin optimize_prepared";
   std::vector<int> block_list;
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
     block_list.push_back(blkid);
@@ -292,7 +291,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     }
   }
 
-  VLOG(4) << "ListenAndServOp::RunAsyncLoop Begin SetGradToPreparedCtx";
   request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
@@ -398,7 +396,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       new distributed::RequestNotifyHandler(distributed_mode, fan_in));
   request_send_and_recv_handler_.reset(
       new distributed::RequestSendAndRecvHandler(distributed_mode));
-  VLOG(4) << "Listen&Serv After new request handler";
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(), rpc_send_thread_num);
@@ -416,9 +413,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->RegisterRPC(distributed::kRequestSendAndRecv,
                             request_send_and_recv_handler_.get(),
                             rpc_get_thread_num);
-  VLOG(4) << "Listen&Serv After register RPC service";
 
-  VLOG(4) << "Listen&Serv Begin get optimizer block&program";
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(optimize_blocks.size(), 1,
@@ -426,33 +421,27 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                         "optimize blocks is less than 1. Optimize blocks "
                         "should be 1 at least on the pserver side."));
   auto *program = optimize_blocks[0]->Program();
-  VLOG(4) << "Listen&Serv End get optimizer block&program";
 
   framework::Executor executor(dev_place);
 
-  VLOG(4) << "Listen&Serv Begin get ckpt_pre_context";
   std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;
   if (checkpoint_block_id != -1) {
     auto ctx = executor.Prepare(*program, checkpoint_block_id);
     // see: https://stackoverflow.com/a/14856553
     ckpt_pre_context = std::move(ctx);
   }
-  VLOG(4) << "Listen&Serv End ckpt_pre_context";
 
-  VLOG(4) << "Listen&Serv Begin get lr_decay_context";
   std::shared_ptr<framework::ExecutorPrepareContext> lr_decay_context = nullptr;
   if (lr_decay_block_id != -1) {
     auto ctx = executor.Prepare(*program, lr_decay_block_id);
     // see: https://stackoverflow.com/a/14856553
     lr_decay_context = std::move(ctx);
   }
-  VLOG(4) << "Listen&Serv End get lr_decay_context";
 
   // prepare for prefetch
   std::vector<int> prefetch_block_id_list;
   std::unordered_map<int, std::string> block_id_to_prefetch_var_name;
 
-  VLOG(4) << "Listen&Serv Begin get prefetch";
   auto prefetch_var_name_to_block_id_str =
       Attr<std::vector<std::string>>(kPrefetchVarNameToBlockId);
   for (const auto &prefetch_var_name_and_id :
@@ -478,9 +467,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     auto prefetch_var_name = block_id_to_prefetch_var_name[block_id];
     prefetch_var_name_to_prepared_ctx[prefetch_var_name] = prefetch_prepared[i];
   }
-  VLOG(4) << "Listen&Serv End get prefetch";
 
-  VLOG(4) << "Listen&Serv Begin get kSparseGradToParam";
   // parse attr of kSparseGradToParam  sparse_grad_name -> param_name
   std::unordered_map<std::string, std::string> sparse_grad_name_to_param_name;
   auto sparse_grad_name_to_param_name_str =
@@ -494,9 +481,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
             << ", param_name = " << pieces[1];
     sparse_grad_name_to_param_name[pieces[0]] = pieces[1];
   }
-  VLOG(4) << "Listen&Serv End get kSparseGradToParam";
 
-  VLOG(4) << "Listen&Serv Begin get bind handler";
   auto f =
       std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx,
                 &executor, program, &prefetch_var_name_to_prepared_ctx,
@@ -510,12 +495,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   f(request_get_no_barrier_handler_.get());
   f(request_notify_handler_.get());
   f(request_send_and_recv_handler_.get());
-  VLOG(4) << "Listen&Serv End get bind handler";
 
   // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
   signal(SIGINT, SignalHandler::StopAndExit);
   signal(SIGTERM, SignalHandler::StopAndExit);
-  VLOG(4) << "Listen&Serv End get signal";
 
   if (distributed_mode == distributed::DistributedMode::kSync) {
     // start the server listening after all member initialized.
@@ -536,7 +519,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
           fan_in, sparse_grad_name_to_param_name);
     }
 
-    VLOG(4) << "RunAsyncLoop";
+    VLOG(2) << "RunAsyncLoop";
     auto grad_to_block_id_str =
         Attr<std::vector<std::string>>("grad_to_block_id");
 

@@ -563,7 +563,6 @@ def add_optimizer_pass(program, config):
 
     op = get_op_by_type(program.global_block(), "listen_and_serv")
     op._set_attr("optimize_blocks", optimize_blocks)
-    print("server optimize_blocks {}".format(optimize_blocks))
     op._set_attr("grad_to_block_id", grad_to_block_id)
     op._set_attr("sparse_grad_to_param", sparse_grad_to_param)
     op._set_attr("lr_decay_block_id", lr_decay_block_id)

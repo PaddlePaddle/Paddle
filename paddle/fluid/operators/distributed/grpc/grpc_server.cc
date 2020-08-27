@@ -440,7 +440,6 @@ class RequestSendAndRecv final : public RequestBase {
                               ::grpc::ServerCompletionQueue* cq,
                               RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    VLOG(4) << "RequestSendAndRecv Begin GRPCVariableResponse. ";
     request_.reset(new GRPCVariableResponse(
         request_handler->scope(), request_handler->dev_ctx(),
         request_handler->distributed_mode()));
@@ -448,42 +447,29 @@ class RequestSendAndRecv final : public RequestBase {
     int method_id =
         static_cast<int>(distributed::GrpcMethod::kRequestSendAndRecv);
 
-    VLOG(4) << "RequestSendAndRecv Begin RequestAsyncUnary. ";
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
-    VLOG(4) << "RequestSendAndRecv End RequestAsyncUnary. ";
   }
 
   virtual ~RequestSendAndRecv() {}
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
-    VLOG(4) << "RequestSendAndRecv Begin Process. ";
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
     std::string table_name = request_->TableName();
     int trainer_id = request_->GetTrainerId();
 
-    VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
+    VLOG(4) << "RequestSendAndRecv, in_var_name: " << in_var_name
             << " out_var_name: " << out_var_name << " trainer: " << trainer_id;
-
     auto scope = request_->GetMutableLocalScope();
     auto invar = scope->FindVar(in_var_name);
-    // out var must be created in local scope!
     framework::Variable* outvar = nullptr;
-    // framework::Variable* outvar = scope->Var(out_var_name);
-
-    VLOG(4) << "RequestSendAndRecv Begin Get Handle. ";
     request_handler_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
                              out_var_name, table_name);
-
-    VLOG(1) << "before SerializeToByteBuffer";
-
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
-
-    VLOG(1) << "after SerializeToByteBuffer";
     Finish(reply_, &responder_);
   }
 

@@ -343,7 +343,6 @@ class MPISymetricRoleMaker(MPIRoleMaker):
     def get_pserver_endpoints(self):
         """
         get pserver endpoints
-
         Returns:
             endpoints(list): pserver endpoints
         """

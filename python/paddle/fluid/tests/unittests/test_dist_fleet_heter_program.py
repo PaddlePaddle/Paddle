@@ -133,6 +133,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         inputs = self.build_input()
         avg_cost = self.build_net(inputs)
         self.build_optimizer(avg_cost, strategy)
+        fleet.init_server()
 
 
 if __name__ == "__main__":

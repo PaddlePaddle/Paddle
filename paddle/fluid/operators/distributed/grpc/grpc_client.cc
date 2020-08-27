@@ -512,10 +512,8 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
 
   while (true) {
     SendAndRecvProcessor* s = new SendAndRecvProcessor(ch);
-    VLOG(4) << "GRPCClient::SendAndRecv Get VarHandlePtr";
     VarHandlePtr h(
         new VarHandle(ep, method, send_var_name_val, p_ctx, p_scope));
-    VLOG(4) << "GRPCClient::SendAndRecv SendAndRecvProcessor Begin prepare";
     VarHandlePtr h_recv(
         new VarHandle(ep, method, recv_var_name_val, p_ctx, p_scope));
     s->Prepare(h, time_out);
@@ -523,12 +521,9 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
 
     framework::AsyncIO([send_var_name_val, recv_var_name_val, table_name_val,
                         p_scope, p_ctx, s, method, h, this] {
-      VLOG(4) << "GRPCClient::SendAndRecv Begin AsyncIO";
-
       auto* send_var = p_scope->FindVar(send_var_name_val);
       send_var->GetMutable<framework::LoDTensor>()->set_lod({});
       ::grpc::ByteBuffer buf;
-      VLOG(4) << "GRPCClient::SendAndRecv Begin AsyncIO SerializeToByteBuffer";
       VLOG(4) << "SerializeToByteBuffer: send_var_name_val: "
               << send_var_name_val
               << " recv_var_name_val: " << recv_var_name_val;
@@ -542,19 +537,12 @@ VarHandlePtr GRPCClient::AsyncSendAndRecv(const std::string& ep,
 
       platform::RecordRPCEvent record_event(method);
 
-      VLOG(4) << "GRPCClient::SendAndRecv Begin AsyncIO PrepareUnaryCall";
       auto call = s->stub_g_.PrepareUnaryCall(
           s->context_.get(), "/sendrecv.SendRecvService/SendAndRecvVariable",
           buf, &cq_);
-      VLOG(4) << "GRPCClient::SendAndRecv Begin AsyncIO StartCall";
       call->StartCall();
-      VLOG(4) << "GRPCClient::SendAndRecv Begin AsyncIO Finish";
       call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
 
-      // VLOG(4) << "GRPCClient::SendAndRecv Begin GRPCVariableResponse";
-      // distributed::GRPCVariableResponse resp(p_scope, p_ctx);
-      // resp.Parse(*(&s->reply_));
-      // VLOG(4) << "GRPCClient::SendAndRecv End GRPCVariableResponse";
       if (UNLIKELY(platform::IsProfileEnabled())) {
         h->Wait();
       }

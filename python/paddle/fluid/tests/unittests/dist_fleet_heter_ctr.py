@@ -120,10 +120,6 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
             merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
             label = fluid.layers.cast(label, dtype="int64")
             predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
-            # acc = fluid.layers.accuracy(input=predict, label=label)
-
-            # auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
-            #                                                       label=label)
 
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = fluid.layers.mean(x=cost)

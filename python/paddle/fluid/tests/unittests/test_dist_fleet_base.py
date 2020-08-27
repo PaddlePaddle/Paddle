@@ -345,10 +345,7 @@ class TestFleetBase(unittest.TestCase):
 def runtime_main(test_class):
     parser = argparse.ArgumentParser(description='Run Fleet test.')
     parser.add_argument(
-        '--role',
-        type=str,
-        required=True,
-        choices=['pserver', 'trainer', 'heter_trainer'])
+        '--role', type=str, required=True, choices=['pserver', 'trainer'])
     parser.add_argument('--endpoints', type=str, required=False, default="")
     parser.add_argument(
         '--trainer_endpoints', type=str, required=False, default="")
