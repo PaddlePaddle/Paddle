@@ -97,7 +97,7 @@ def _channel_last(data_format, num_dims):
             return True if data_format == "NDHWC" else False
 
 
-def _update_padding_nd(padding, num_dims, channel_last=False):
+def _update_padding_nd(padding, num_dims, channel_last=False, ceil_mode=False):
     if isinstance(padding, str):
         padding = padding.upper()
         if padding not in ["SAME", "VALID"]:
@@ -105,6 +105,11 @@ def _update_padding_nd(padding, num_dims, channel_last=False):
                 "Unknown padding: '{}'. It can only be 'SAME' or 'VALID'.".
                 format(padding))
         if padding == "VALID":
+            if ceil_mode != False:
+                raise ValueError(
+                    "When Attr(padding) is \"VALID\", Attr(ceil_mode) must be False. "
+                    "Received ceil_mode: True.")
+
             padding_algorithm = "VALID"
             padding = [0] * num_dims
         else:
@@ -221,13 +226,8 @@ def avg_pool1d(x,
         stride = utils.convert_to_list(stride, 1, 'pool_stride')
         stride = [1] + stride
 
-    if padding.upper() == "VALID" and ceil_mode != False:
-        raise ValueError(
-            "When Attr(padding) is \"VALID\", Attr(ceil_mode) must be False. "
-            "Received ceil_mode: True.")
-
     padding, padding_algorithm = _update_padding_nd(
-        padding, 1, channel_last=False)
+        padding, 1, channel_last=False, ceil_mode=ceil_mode)
 
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
@@ -337,7 +337,8 @@ def avg_pool2d(x,
         stride = utils.convert_to_list(stride, 2, 'pool_stride')
 
     channel_last = _channel_last(data_format, 2)
-    padding, padding_algorithm = _update_padding_nd(padding, 2, channel_last)
+    padding, padding_algorithm = _update_padding_nd(
+        padding, 2, channel_last, ceil_mode=ceil_mode)
 
     if in_dygraph_mode():
         output = core.ops.pool2d(
@@ -450,7 +451,8 @@ def avg_pool3d(x,
         stride = utils.convert_to_list(stride, 3, 'pool_stride')
 
     channel_last = _channel_last(data_format, 3)
-    padding, padding_algorithm = _update_padding_nd(padding, 3, channel_last)
+    padding, padding_algorithm = _update_padding_nd(
+        padding, 3, channel_last=channel_last, ceil_mode=ceil_mode)
 
     if in_dygraph_mode():
         output = core.ops.pool3d(
@@ -561,7 +563,8 @@ def max_pool1d(x,
     else:
         stride = [1] + utils.convert_to_list(stride, 1, 'pool_stride')
 
-    padding, padding_algorithm = _update_padding_nd(padding, 1)
+    padding, padding_algorithm = _update_padding_nd(
+        padding, 1, ceil_mode=ceil_mode)
 
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
@@ -684,7 +687,7 @@ def max_pool2d(x,
     channel_last = True if data_format == "NHWC" else False
 
     padding, padding_algorithm = _update_padding_nd(
-        padding, num_dims=2, channel_last=channel_last)
+        padding, num_dims=2, channel_last=channel_last, ceil_mode=ceil_mode)
 
     if in_dygraph_mode():
         output = core.ops.max_pool2d_with_index(
@@ -794,7 +797,8 @@ def max_pool3d(x,
 
     channel_last = _channel_last(data_format, 3)
 
-    padding, padding_algorithm = _update_padding_nd(padding, 3, channel_last)
+    padding, padding_algorithm = _update_padding_nd(
+        padding, 3, channel_last=channel_last, ceil_mode=ceil_mode)
 
     if in_dygraph_mode():
         output = core.ops.max_pool3d_with_index(
