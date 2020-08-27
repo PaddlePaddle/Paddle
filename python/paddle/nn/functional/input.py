@@ -110,7 +110,7 @@ def one_hot(x, num_classes, name=None):
         return one_hot_out
 
 
-def embedding(input, weight, padding_idx=None, is_sparse=True, name=None):
+def embedding(input, weight, padding_idx=None, is_sparse=False, name=None):
     """
         The operator is used to lookup embeddings vector of ids provided by :attr:`input` .
         It automatically constructs a 2D embedding matrix based on the
@@ -136,34 +136,19 @@ def embedding(input, weight, padding_idx=None, is_sparse=True, name=None):
                             [0.0,         0.0,         ..., 0.0        ]]]  # padding data
             The input padding_idx is less than 0, it is automatically converted to padding_idx = -1 + 128 = 127
             It will pad all-zero data when ids is 127.
-            Case 2:
-            input is a LoDTensor with 1-level LoD. padding_idx = 0
-                input.lod = [[2, 3]]
-                input.data = [[1], [3], [2], [4], [0]]
-                input.shape = [5, 1]
-            Given size = [128, 16]
-            output is a LoDTensor:
-                out.lod = [[2, 3]]
-                out.shape = [5, 16]
-                out.data = [[0.129435295, 0.244512452, ..., 0.436322452],
-                            [0.345421456, 0.524563927, ..., 0.144534654],
-                            [0.345249859, 0.124939536, ..., 0.194353745],
-                            [0.945345345, 0.435394634, ..., 0.435345365],
-                            [0.0,         0.0,         ..., 0.0        ]]  # padding data
-            It will pad all-zero data when ids is 0.
         Args:
-            input(Variable): A Tensor or LoDTensor with type int64, which contains the id information.
+            input(Tensor): A Tensor or LoDTensor with type int64, which contains the id information.
                 The last dimension of Tensor shape must be equal to 1. The value of the input id should
                 satisfy :math:`0<= id < size[0]` .
-            weight (Variable): The weight. A Tensor with shape of lookup table parameter. It should have two elements which
+            weight (Tensor): The weight. A Tensor with shape of lookup table parameter. It should have two elements which
                 indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
             is_sparse(bool): The flag indicating whether to use sparse update. This parameter only
                 affects the performance of the backwards gradient update. It is recommended to set
-                True because sparse update is faster. But some optimizer does not support sparse update,
+                True because sparse update is faster. But some optimizers does not support sparse update,
                 such as :ref:`api_fluid_optimizer_AdadeltaOptimizer` , :ref:`api_fluid_optimizer_AdamaxOptimizer` ,
                 :ref:`api_fluid_optimizer_DecayedAdagradOptimizer` , :ref:`api_fluid_optimizer_FtrlOptimizer` ,
                 :ref:`api_fluid_optimizer_LambOptimizer` and :ref:`api_fluid_optimizer_LarsMomentumOptimizer` .
-                In these case, is_sparse must be False. Default: False.
+                In these cases, is_sparse must be False. Default: False.
             padding_idx(int|long|None): padding_idx needs to be in the interval [-vocab_size, vocab_size).
                 If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
                 to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
@@ -173,7 +158,7 @@ def embedding(input, weight, padding_idx=None, is_sparse=True, name=None):
                to :ref:`api_guide_Name`. Usually name is no need to set and
                None by default.
         Returns:
-            Variable: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
+            Tensor: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
         Examples:
             .. code-block:: python
               import paddle.fluid as fluid
