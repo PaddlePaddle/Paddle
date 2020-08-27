@@ -73,9 +73,6 @@ class LinearTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(res_f, res_nn)
         np.testing.assert_array_almost_equal(res_nn, res_np)
 
-    def runTest(self):
-        self.test_error(place=self.place)
-
 
 if __name__ == "__main__":
     unittest.main()

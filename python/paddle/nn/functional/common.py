@@ -1180,10 +1180,10 @@ def linear(x, weight, bias=None, name=None):
     If ``bias`` is not None, a bias will be added to the output.
 
     Args:
-        x(Tensor): Input tensor.
-        weight(Tensor): Weight tensor.
-        bias(Tensor|None): Bias tensor, if it is set to None, no bias will be added to the output units.
-        name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. Default: None.
+        x(Tensor): Input tensor, its data type is float16, float32 or float64
+        weight(Tensor): Weight tensor, its data type is float16, float32 or float64
+        bias(Tensor|None, optional): Bias tensor, its data type is float16, float32 or float64. If it is set to None, no bias will be added to the output units.
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
         Output tensor
@@ -1215,7 +1215,7 @@ def linear(x, weight, bias=None, name=None):
             pre_bias, bias, axis=len(x.shape) - 1)
     else:
         helper = LayerHelper('linear', **locals())
-        dtype = helper.get_default_dtype()
+        dtype = x.dtype
 
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  'linear')
