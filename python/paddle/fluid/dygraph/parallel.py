@@ -514,7 +514,7 @@ class DataParallel(layers.Layer):
                        include_sublayers=True,
                        use_structured_name=True):
         '''
-        Set parameters of self._layers from stat_dict. All the parameters of self._layers will be reset by the tensor in the stat_dict
+        Set parameters of self._layers from state_dict. All the parameters of self._layers will be reset by the tensor in the state_dict
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters

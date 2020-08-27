@@ -22,12 +22,12 @@ from .device import _get_device
 
 def monkey_patch_layer():
     def load_dict(self,
-                  stat_dict,
+                  state_dict,
                   include_sublayers=True,
                   use_structured_name=True):
         '''
-        Set parameters from stat_dict. All the parameters will be reset by the
-        tensor in the stat_dict
+        Set parameters from state_dict. All the parameters will be reset by the
+        tensor in the state_dict
 
         This api will be Deprecated. Please use set_dict
 
@@ -56,7 +56,7 @@ def monkey_patch_layer():
         '''
 
         def _check_match(key, param):
-            state = stat_dict.get(key, None)
+            state = state_dict.get(key, None)
             if state is None:
                 raise ValueError(
                     "{} is not found in the providing file.".format(key))

@@ -797,7 +797,7 @@ class Layer(core.Layer):
                 raise ValueError(
                     "super(YourLayer, self).__init__() should be called first")
             if len(self._loaddict_holder) > 0:
-                assert value.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
+                assert value.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in state_dict".format(
                     value.name)
 
                 value.set_value(self._loaddict_holder[value.name])
@@ -948,7 +948,7 @@ class Layer(core.Layer):
                        include_sublayers=True,
                        use_structured_name=True):
         '''
-        Set parameters and persistable buffers from stat_dict. All the parameters and buffers will be reset by the tensor in the stat_dict
+        Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
@@ -979,15 +979,15 @@ class Layer(core.Layer):
 
         for name, param_or_buffer in inner_state_dict.items():
             key_name = name if use_structured_name else param_or_buffer.name
-            if key_name in stat_dict:
-                param_or_buffer.set_value(stat_dict[key_name])
+            if key_name in state_dict:
+                param_or_buffer.set_value(state_dict[key_name])
             else:
                 raise RuntimeError(
-                    "Parameter or persistable buffer not found, Can't find [ {} ] in stat_dict"
+                    "Parameter or persistable buffer not found, Can't find [ {} ] in state_dict"
                     "use_structured_name is set to [{}]".format(
                         key_name, use_structured_name))
         unused_para_list = []
-        for k, v in stat_dict.items():
+        for k, v in state_dict.items():
             if k not in inner_state_dict:
                 unused_para_list.append(k)
         if len(unused_para_list) > 0:

@@ -4600,15 +4600,15 @@ class RecomputeOptimizer(Optimizer):
             ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 
-    def load(self, stat_dict):
+    def load(self, state_dict):
         """
-	:api_attr: Static Graph
+	    :api_attr: Static Graph
 
         load function is not supported by Recompute Optimizer for now.
         :return: None
 
         Args:
-            stat_dict: the dict load by load_persistable method
+            state_dict: the dict load by load_persistable method
 
         Examples:
             .. code-block:: python
@@ -4632,8 +4632,8 @@ class RecomputeOptimizer(Optimizer):
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 try:
-                    stat_dict = {}
-                    sgd.load(stat_dict)
+                    state_dict = {}
+                    sgd.load(state_dict)
                 except NotImplementedError as e:
                     print(cpt.get_exception_message(e))
         """
