@@ -19,12 +19,12 @@ import pickle
 import warnings
 
 import six
+import paddle
 from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import FunctionSpec, ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticLayer, unwrap_decorators
 from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
@@ -128,7 +128,27 @@ def _dygraph_to_static_func_(dygraph_func):
 dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
-def _declarative_(dygraph_func):
+def copy_decorator_attrs(original_func, decorated_obj):
+    """
+    Copies some necessary attributes from original function into decorated function.
+
+    Args:
+        original_func(callable): the original decorated function.
+        decorated_obj(StaticLayer): the target decorated StaticLayer object.
+    """
+    decorator_name = "declarative"
+
+    decorated_obj.__name__ = original_func.__name__
+    decorated_obj._decorator_name = decorator_name
+    decorated_obj.__wrapped__ = original_func
+    decorated_obj.__doc__ = original_func.__doc__
+    if hasattr(original_func, "__module__"):
+        decorated_obj.__module__ = original_func.__module__
+
+    return decorated_obj
+
+
+def declarative(function=None, input_spec=None):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
     @declarative handles the Program and Executor of static mode and returns
@@ -138,7 +158,9 @@ def _declarative_(dygraph_func):
     converted into declarative function as well.
 
     Args:
-        dygraph_func (callable): callable imperative function.
+        function (callable): callable imperative function.
+        input_spec(list[InputSpec]): list of InputSpec to specific the shape/dtype/name
+            information of each input Tensor.
 
     Returns:
         Tensor(s): containing the numerical result.
@@ -167,37 +189,27 @@ def _declarative_(dygraph_func):
 
     """
 
-    def __impl__(*args, **kwargs):
-        program_translator = ProgramTranslator()
-        if not program_translator.enable_declarative:
-            warnings.warn(
-                "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
-                "We will just return dygraph output.")
-            return dygraph_func(*args, **kwargs)
-        try:
-            return program_translator.get_output(dygraph_func, *args, **kwargs)
-        except Exception as e:
-            error_data = getattr(e, ERROR_DATA, None)
-            if error_data:
-                new_exception = error_data.create_exception()
-                if six.PY3:
-                    # NOTE(liym27):
-                    # 1. Why `raise new_exception from None`?
-                    #   In Python 3, by default, an new exception is raised with trace information of the caught exception.
-                    #   This only raises new_exception and hides unwanted implementation details from tracebacks of the
-                    #   caught exception.
-                    # 2. Use exec to bypass syntax error checking in Python 2.
+    def decorated(python_func):
+        """
+        Decorates a python function into a StaticLayer object.
+        """
+        # Step 1. unwrap the function if it is already decorated.
+        _, python_func = unwrap_decorators(python_func)
 
-                    six.exec_("raise new_exception from None")
-                else:
-                    raise new_exception
-            else:
-                raise
+        # Step 2. copy some attributes from original python function.
+        static_layer = copy_decorator_attrs(
+            original_func=python_func,
+            decorated_obj=StaticLayer(
+                function=python_func, input_spec=input_spec))
 
-    return __impl__
+        return static_layer
 
+    # for usage: `declarative(foo, ...)`
+    if function is not None:
+        return decorated(function)
 
-declarative = wrap_decorator(_declarative_)
+    # for usage: `@declarative`
+    return decorated
 
 
 class SaveLoadConfig(object):
@@ -339,7 +351,7 @@ class SaveLoadConfig(object):
                 # use SaveLoadconfig.output_spec
                 model_path = "simplenet.example.model.output_spec"
                 configs = fluid.dygraph.jit.SaveLoadConfig()
-                # only keep the predicted output in saved model, diccard loss
+                # only keep the predicted output in saved model, discard loss
                 configs.output_spec = [out]
 
                 fluid.dygraph.jit.save(
@@ -374,7 +386,7 @@ class SaveLoadConfig(object):
         The name of file to save the translated program of target Layer.
         Default filename is :code:`__model__` .
 
-        Exampels:
+        Examples:
             .. code-block:: python
 
                 import numpy as np
@@ -444,7 +456,7 @@ class SaveLoadConfig(object):
         The name of file to save all persistable variables in target Layer. 
         Default file name is :code:`__variables__` .
         
-        Exampels:
+        Examples:
             .. code-block:: python
 
                 import numpy as np
@@ -597,7 +609,7 @@ def save(layer, model_path, input_spec=None, configs=None):
     The default saved translated program file name is ``__model__``,
     and the default saved persistable variables file name is ``__variables__``,
     and it also saved some additional variable description information to file 
-    ``__varibales.info__``, these additional information is used in fine-tuning.
+    ``__variables.info__``, these additional information is used in fine-tuning.
 
     The saved model can be loaded by follow APIs:
       - :ref:`api_imperative_jit_load`
@@ -607,7 +619,7 @@ def save(layer, model_path, input_spec=None, configs=None):
     Args:
         layer (Layer): the Layer to be saved. The Layer should be decorated by `@declarative`.
         model_path (str): the directory to save the model.
-        input_spec (list[Varibale], optional): Describes the input of the saved model. 
+        input_spec (list[Variable], optional): Describes the input of the saved model. 
             It is the example inputs that will be passed to saved TranslatedLayer's forward
             function. If None, all input variables of the original Layer's forward function
             would be the inputs of the saved model. Default None.
@@ -721,16 +733,17 @@ def save(layer, model_path, input_spec=None, configs=None):
                 "The input input_spec should be 'list', but received input_spec's type is %s."
                 % type(input_spec))
         for var in input_spec:
-            if not isinstance(var, core.VarBase):
+            if not isinstance(var, (core.VarBase, Variable,
+                                    paddle.static.InputSpec)):
                 raise TypeError(
-                    "The element in input_spec list should be 'Variable', but received element's type is %s."
+                    "The element in input_spec list should be 'Variable' or `paddle.static.InputSpec`, but received element's type is %s."
                     % type(var))
 
     # 2. get program of declarative Layer.forward
-    prog_cache = prog_translator.get_program_cache()
-    # make dummy args & kwargs, to get excepted FunctionSpec
-    layer_func = FunctionSpec(type(layer).forward, [layer], {})
-    concrete_program, _ = prog_cache.get_program(layer_func)
+    if not isinstance(layer.forward, StaticLayer):
+        raise RuntimeError(
+            "layer.forward need to be decorated by `@declarative`.")
+    concrete_program = layer.forward.concrete_program
 
     # NOTE: we maintain the mapping of variable name to
     # structured name, the buffer variable (non-persistable)
@@ -814,7 +827,7 @@ def load(model_path, configs=None):
         For some historical reasons, if you load model saved by :ref:`api_fluid_io_save_inference_model`,
         there will be the following limitations when using it in fine-tuning:
         1. Imperative mode do not support LoDTensor. All original model's feed targets or parametars that depend on LoD are temporarily unavailable.
-        2. All saved model's feed targets need to be passed into TranslatedLayer's forwrad function.
+        2. All saved model's feed targets need to be passed into TranslatedLayer's forward function.
         3. The variable's ``stop_gradient`` information is lost and can not be recovered.
         4. The parameter's ``trainable`` information is lost and can not be recovered.
 
