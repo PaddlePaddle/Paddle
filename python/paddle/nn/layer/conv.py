@@ -319,8 +319,9 @@ class Conv2d(_ConvNd):
     output of the convolution, and the corresponding activation function is
     applied to the final result.
     For each input :math:`X`, the equation is:
+
     .. math::
-        Out = \\sigma (W \\ast X + b)
+        Out = \sigma \left ( W * X + b \right )
     Where:
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
@@ -342,7 +343,6 @@ class Conv2d(_ConvNd):
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             The default value is 0.
-        padding_mode (str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Default: ``'zeros'`` .
         dilation (int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: 1.
@@ -351,6 +351,7 @@ class Conv2d(_ConvNd):
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: 1.
+        padding_mode (str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Default: ``'zeros'`` .
         weight_attr (ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -371,8 +372,8 @@ class Conv2d(_ConvNd):
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
         Where
         .. math::
-           H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel_size[0] - 1) + 1))}{strides[0]} + 1 \\\\
-           W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel_size[1] - 1) + 1))}{strides[1]} + 1
+           H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1 \\\\
+           W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
     Examples:
         .. code-block:: python
           import numpy as np
@@ -647,8 +648,9 @@ class ConvTranspose2d(_ConvNd):
     The details of convolution transpose layer, please refer to the following explanation and references
     `conv2dtranspose <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_ .
     For each input :math:`X`, the equation is:
+
     .. math::
-        Out = \sigma (W \\ast X + b)
+        Out=\sigma (W*X+b)\\
     Where:
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
@@ -656,18 +658,7 @@ class ConvTranspose2d(_ConvNd):
     * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
-    Example:
-        - Input:
-          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
-          Filter shape: :math:`(C_{in}, C_{out}, H_f, W_f)`
-        - Output:
-          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
-        Where
-        .. math::
-           H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
-           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
+    
     Parameters:
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of channels produced by the convolution.
@@ -714,8 +705,10 @@ class ConvTranspose2d(_ConvNd):
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
         Where
         .. math::
-           H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (kernel_size[0] - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel_size[1] - 1) + 1 \\\\
+           H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (kernel\_size[0] - 1) + 1 \\\\
+           W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel\_size[1] - 1) + 1 \\\\
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
+           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
     Examples:
        .. code-block:: python
           import numpy as np
@@ -793,7 +786,7 @@ class Conv3d(_ConvNd):
     corresponding activation function is applied to the final result.
     For each input :math:`X`, the equation is:
     .. math::
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma \left ( W * X + b \right )
     In the above equation:
     * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
@@ -844,9 +837,9 @@ class Conv3d(_ConvNd):
         - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
         Where
         .. math::
-           D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
-           H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
-           W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
+           D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1 \\\\
+           H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1 \\\\
+           W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (kernel\_size[2] - 1) + 1))}{strides[2]} + 1
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
                     groups mismatch.
@@ -937,8 +930,9 @@ class ConvTranspose3d(_ConvNd):
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
     For each input :math:`X`, the equation is:
+    
     .. math::
-        Out = \sigma (W \\ast X + b)
+        \\Out=\sigma (W*X+b)\\
     In the above equation:
     * :math:`X`: Input value, a tensor with NCDHW format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
@@ -1010,9 +1004,9 @@ class ConvTranspose3d(_ConvNd):
         - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
         Where
         .. math::
-           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (kernel_size[0] - 1) + 1 \\\\
-           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel_size[1] - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (kernel_size[2] - 1) + 1 \\\\
+           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (kernel\_size[0] - 1) + 1 \\\\
+           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel\_size[1] - 1) + 1 \\\\
+           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (kernel\_size[2] - 1) + 1 \\\\
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
                     groups mismatch.

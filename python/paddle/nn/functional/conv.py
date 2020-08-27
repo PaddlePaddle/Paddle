@@ -807,10 +807,10 @@ def conv_transpose2d(x,
                      stride=1,
                      padding=0,
                      output_padding=0,
-                     groups=1,
                      dilation=1,
-                     data_format='NCHW',
+                     groups=1,
                      output_size=None,
+                     data_format='NCHW',
                      name=None):
     """
 
@@ -896,15 +896,15 @@ def conv_transpose2d(x,
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
-            If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width). 
-            Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups = 1.
+        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
+            If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width). 
+            Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple, it must contain two integers, (image_height, image_width). None if use
             filter_size, padding, and stride to calculate output_size.
@@ -950,7 +950,7 @@ def conv_transpose2d(x,
           paddle.disable_static()
           x_var = paddle.to_tensor(x)
           w_var = paddle.to_tensor(w)
-          y_var = F.conv2d_transpose(x_var, w_var)
+          y_var = F.conv_transpose2d(x_var, w_var)
           y_np = y_var.numpy()
           print(y_np.shape)
 
@@ -1259,8 +1259,8 @@ def conv_transpose3d(x,
                      output_padding=0,
                      groups=1,
                      dilation=1,
-                     data_format='NCDHW',
                      output_size=None,
+                     data_format='NCDHW',
                      name=None):
     """
     The convolution3d transpose layer calculates the output based on the input,
@@ -1349,25 +1349,25 @@ def conv_transpose3d(x,
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
-            If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height, 
-            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
-            Default: dilation = 1.
         groups(int, optional): The groups number of the Conv3d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups=1
-        data_format (str, optional): Specify the data format of the input, and the data format of the output 
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
+        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
+            If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height, 
+            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
+            Default: dilation = 1.
         output_size(int|list|tuple, optional): The output image size. If output size is a
             tuple, it must contain three integers, (image_depth, image_height, image_width). This
             parameter only works when filter_size is None. If output_size and filter_size are 
             specified at the same time, They should follow the formula above. Default: None. 
             Output_size and filter_size should not be None at the same time.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
         name(str, optional): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
