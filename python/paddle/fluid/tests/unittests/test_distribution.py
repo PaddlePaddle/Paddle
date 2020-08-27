@@ -105,10 +105,10 @@ class DistributionTest(unittest.TestCase):
             self.gpu_id = 0
         self.executor = fluid.Executor(place)
 
-    def build_normal_common_net(self, batch_size, dims, loc_float, scale_float,
-                                other_loc_float, other_scale_float, scale_np,
-                                other_scale_np, loc_np, other_loc_np, loc,
-                                scale, other_loc, other_scale, values):
+    def build_normal_common_net(self, batch_size, dims, sample_shape, loc_float,
+                                scale_float, other_loc_float, other_scale_float,
+                                scale_np, other_scale_np, loc_np, other_loc_np,
+                                loc, scale, other_loc, other_scale, values):
         normal_int = Normal(int(loc_float), int(scale_float))
         normal_float = Normal(loc_float, scale_float)
         other_normal_float = Normal(other_loc_float, other_scale_float)
@@ -129,6 +129,13 @@ class DistributionTest(unittest.TestCase):
             [batch_size, dims])
         sample_np = normal_np.sample([batch_size, dims])
         sample_variable = normal_variable.sample([batch_size, dims])
+
+        sample_int_diff = normal_int.sample([sample_shape])
+        sample_float_diff = normal_float.sample([sample_shape])
+        sample_float_np_broadcast_diff = normal_float_np_broadcast.sample(
+            [sample_shape])
+        sample_np_diff = normal_np.sample([sample_shape])
+        sample_variable_diff = normal_variable.sample([sample_shape])
 
         entropy_int = normal_int.entropy()
         entropy_float = normal_float.entropy()
@@ -152,7 +159,9 @@ class DistributionTest(unittest.TestCase):
 
         fetch_list = [
             sample_int, sample_float, sample_float_np_broadcast, sample_np,
-            sample_variable, entropy_int, entropy_float,
+            sample_variable, sample_int_diff, sample_float_diff,
+            sample_float_np_broadcast_diff, sample_np_diff,
+            sample_variable_diff, entropy_int, entropy_float,
             entropy_float_np_broadcast, entropy_np, entropy_variable,
             lp_float_np_broadcast, lp_np, lp_variable, p_float_np_broadcast,
             p_np, p_variable, kl_float, kl_float_np_broadcast, kl_np,
@@ -160,10 +169,10 @@ class DistributionTest(unittest.TestCase):
         ]
         return fetch_list
 
-    def build_normal_static(self, test_program, batch_size, dims, loc_float,
-                            scale_float, other_loc_float, other_scale_float,
-                            scale_np, other_scale_np, loc_np, other_loc_np,
-                            values_np):
+    def build_normal_static(self, test_program, batch_size, dims, sample_shape,
+                            loc_float, scale_float, other_loc_float,
+                            other_scale_float, scale_np, other_scale_np, loc_np,
+                            other_loc_np, values_np):
         with fluid.program_guard(test_program):
             loc = layers.data(name='loc', shape=[dims], dtype='float32')
             scale = layers.data(name='scale', shape=[dims], dtype='float32')
@@ -176,9 +185,10 @@ class DistributionTest(unittest.TestCase):
             values = layers.data(name='values', shape=[dims], dtype='float32')
 
             fetch_list = self.build_normal_common_net(
-                batch_size, dims, loc_float, scale_float, other_loc_float,
-                other_scale_float, scale_np, other_scale_np, loc_np,
-                other_loc_np, loc, scale, other_loc, other_scale, values)
+                batch_size, dims, sample_shape, loc_float, scale_float,
+                other_loc_float, other_scale_float, scale_np, other_scale_np,
+                loc_np, other_loc_np, loc, scale, other_loc, other_scale,
+                values)
 
         feed_vars = {
             'loc': loc_np,
@@ -189,9 +199,10 @@ class DistributionTest(unittest.TestCase):
         }
         return feed_vars, fetch_list
 
-    def build_normal_dygraph(self, batch_size, dims, loc_float, scale_float,
-                             other_loc_float, other_scale_float, scale_np,
-                             other_scale_np, loc_np, other_loc_np, values_np):
+    def build_normal_dygraph(self, batch_size, dims, sample_shape, loc_float,
+                             scale_float, other_loc_float, other_scale_float,
+                             scale_np, other_scale_np, loc_np, other_loc_np,
+                             values_np):
         loc = paddle.to_tensor(loc_np)
         scale = paddle.to_tensor(scale_np)
         other_loc = paddle.to_tensor(other_loc_np)
@@ -199,9 +210,9 @@ class DistributionTest(unittest.TestCase):
         values = paddle.to_tensor(values_np)
 
         fetch_list = self.build_normal_common_net(
-            batch_size, dims, loc_float, scale_float, other_loc_float,
-            other_scale_float, scale_np, other_scale_np, loc_np, other_loc_np,
-            loc, scale, other_loc, other_scale, values)
+            batch_size, dims, sample_shape, loc_float, scale_float,
+            other_loc_float, other_scale_float, scale_np, other_scale_np,
+            loc_np, other_loc_np, loc, scale, other_loc, other_scale, values)
         fetch_list_numpy = [t.numpy() for t in fetch_list]
         return fetch_list_numpy
 
@@ -237,6 +248,7 @@ class DistributionTest(unittest.TestCase):
                                   output_list,
                                   batch_size=2,
                                   dims=3,
+                                  sample_shape=7,
                                   tolerance=1e-6):
         loc_np, other_loc_np, loc_float, scale_float, other_loc_float, other_scale_float, scale_np, other_scale_np, values_np = data_list
 
@@ -254,6 +266,13 @@ class DistributionTest(unittest.TestCase):
         gt_sample_float_np_broadcast = np_normal_float_np_broadcast.sample(
             [batch_size, dims])
         gt_sample_np = np_normal.sample([batch_size, dims])
+
+        gt_sample_int_diff = np_normal_int.sample([sample_shape])
+        gt_sample_float_diff = np_normal_float.sample([sample_shape])
+        gt_sample_float_np_broadcast_diff = np_normal_float_np_broadcast.sample(
+            [sample_shape])
+        gt_sample_np_diff = np_normal.sample([sample_shape])
+
         gt_entropy_int = np_normal_int.entropy()
         gt_entropy_float = np_normal_float.entropy()
         gt_entropy_float_np_broadcast = np_normal_float_np_broadcast.entropy()
@@ -271,7 +290,10 @@ class DistributionTest(unittest.TestCase):
         [
             output_sample_int, output_sample_float,
             output_sample_float_np_broadcast, output_sample_np,
-            output_sample_variable, output_entropy_int, output_entropy_float,
+            output_sample_variable, output_sample_int_diff,
+            output_sample_float_diff, output_sample_float_np_broadcast_diff,
+            output_sample_np_diff, output_sample_variable_diff,
+            output_entropy_int, output_entropy_float,
             output_entropy_float_np_broadcast, output_entropy_np,
             output_entropy_variable, output_lp_float_np_broadcast, output_lp_np,
             output_lp_variable, output_p_float_np_broadcast, output_p_np,
@@ -302,6 +324,31 @@ class DistributionTest(unittest.TestCase):
         np.testing.assert_allclose(
             output_sample_variable.shape,
             gt_sample_np.shape,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_sample_int_diff.shape,
+            gt_sample_int_diff.shape,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_sample_float_diff.shape,
+            gt_sample_float_diff.shape,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_sample_float_np_broadcast_diff.shape,
+            gt_sample_float_np_broadcast_diff.shape,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_sample_np_diff.shape,
+            gt_sample_np_diff.shape,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_sample_variable_diff.shape,
+            gt_sample_np_diff.shape,
             rtol=tolerance,
             atol=tolerance)
         np.testing.assert_allclose(
@@ -353,15 +400,16 @@ class DistributionTest(unittest.TestCase):
     def test_normal_distribution_static(self,
                                         batch_size=2,
                                         dims=3,
+                                        sample_shape=7,
                                         tolerance=1e-6):
         test_program = fluid.Program()
         data_list = self.get_normal_random_input(batch_size, dims)
         loc_np, other_loc_np, loc_float, scale_float, other_loc_float, other_scale_float, scale_np, other_scale_np, values_np = data_list
 
         feed_vars, fetch_list = self.build_normal_static(
-            test_program, batch_size, dims, loc_float, scale_float,
-            other_loc_float, other_scale_float, scale_np, other_scale_np,
-            loc_np, other_loc_np, values_np)
+            test_program, batch_size, dims, sample_shape, loc_float,
+            scale_float, other_loc_float, other_scale_float, scale_np,
+            other_scale_np, loc_np, other_loc_np, values_np)
         self.executor.run(fluid.default_startup_program())
 
         output_list = self.executor.run(program=test_program,
@@ -369,27 +417,39 @@ class DistributionTest(unittest.TestCase):
                                         fetch_list=fetch_list)
 
         self.compare_normal_with_numpy(data_list, output_list, batch_size, dims,
-                                       tolerance)
+                                       sample_shape, tolerance)
 
     def test_normal_distribution_dygraph(self,
                                          batch_size=2,
                                          dims=3,
+                                         sample_shape=7,
                                          tolerance=1e-6):
         paddle.disable_static()
         data_list = self.get_normal_random_input(batch_size, dims)
         loc_np, other_loc_np, loc_float, scale_float, other_loc_float, other_scale_float, scale_np, other_scale_np, values_np = data_list
 
         output_list = self.build_normal_dygraph(
-            batch_size, dims, loc_float, scale_float, other_loc_float,
-            other_scale_float, scale_np, other_scale_np, loc_np, other_loc_np,
-            values_np)
+            batch_size, dims, sample_shape, loc_float, scale_float,
+            other_loc_float, other_scale_float, scale_np, other_scale_np,
+            loc_np, other_loc_np, values_np)
 
         self.compare_normal_with_numpy(data_list, output_list, batch_size, dims,
-                                       tolerance)
+                                       sample_shape, tolerance)
         paddle.enable_static()
 
-    def build_uniform_common_net(self, batch_size, dims, low_float, high_float,
-                                 high_np, low_np, values_np, low, high, values):
+    def build_uniform_common_net(self,
+                                 batch_size,
+                                 dims,
+                                 sample_shape,
+                                 low_float,
+                                 high_float,
+                                 high_np,
+                                 low_np,
+                                 values_np,
+                                 low,
+                                 high,
+                                 values,
+                                 other_dims=7):
         uniform_int = Uniform(int(low_float), int(high_float))
         uniform_float = Uniform(low_float, high_float)
         uniform_float_np_broadcast = Uniform(low_float, high_np)
@@ -402,6 +462,13 @@ class DistributionTest(unittest.TestCase):
             [batch_size, dims])
         sample_np = uniform_np.sample([batch_size, dims])
         sample_variable = uniform_variable.sample([batch_size, dims])
+
+        sample_int_diff = uniform_int.sample([sample_shape])
+        sample_float_diff = uniform_float.sample([sample_shape])
+        sample_float_np_broadcast_diff = uniform_float_np_broadcast.sample(
+            [sample_shape])
+        sample_np_diff = uniform_np.sample([sample_shape])
+        sample_variable_diff = uniform_variable.sample([sample_shape])
 
         entropy_int = uniform_int.entropy()
         entropy_float = uniform_float.entropy()
@@ -419,15 +486,17 @@ class DistributionTest(unittest.TestCase):
 
         fetch_list = [
             sample_int, sample_float, sample_float_np_broadcast, sample_np,
-            sample_variable, entropy_int, entropy_float,
+            sample_variable, sample_int_diff, sample_float_diff,
+            sample_float_np_broadcast_diff, sample_np_diff,
+            sample_variable_diff, entropy_int, entropy_float,
             entropy_float_np_broadcast, entropy_np, entropy_variable,
             lp_float_np_broadcast, lp_np, lp_variable, p_float_np_broadcast,
             p_np, p_variable
         ]
         return fetch_list
 
-    def build_uniform_static(self, test_program, batch_size, dims, low_float,
-                             high_float, high_np, low_np, values_np):
+    def build_uniform_static(self, test_program, batch_size, dims, sample_shape,
+                             low_float, high_float, high_np, low_np, values_np):
         with fluid.program_guard(test_program):
             low = layers.data(name='low', shape=[dims], dtype='float32')
             high = layers.data(name='high', shape=[dims], dtype='float32')
@@ -435,21 +504,21 @@ class DistributionTest(unittest.TestCase):
             values = layers.data(name='values', shape=[dims], dtype='float32')
 
             fetch_list = self.build_uniform_common_net(
-                batch_size, dims, low_float, high_float, high_np, low_np,
-                values_np, low, high, values)
+                batch_size, dims, sample_shape, low_float, high_float, high_np,
+                low_np, values_np, low, high, values)
 
         feed_vars = {'low': low_np, 'high': high_np, 'values': values_np}
         return feed_vars, fetch_list
 
-    def build_uniform_dygraph(self, batch_size, dims, low_float, high_float,
-                              high_np, low_np, values_np):
+    def build_uniform_dygraph(self, batch_size, dims, sample_shape, low_float,
+                              high_float, high_np, low_np, values_np):
         low = paddle.to_tensor(low_np)
         high = paddle.to_tensor(high_np)
         values = paddle.to_tensor(values_np)
 
-        fetch_list = self.build_uniform_common_net(batch_size, dims, low_float,
-                                                   high_float, high_np, low_np,
-                                                   values_np, low, high, values)
+        fetch_list = self.build_uniform_common_net(
+            batch_size, dims, sample_shape, low_float, high_float, high_np,
+            low_np, values_np, low, high, values)
         fetch_list_numpy = [t.numpy() for t in fetch_list]
         return fetch_list_numpy
 
@@ -458,6 +527,7 @@ class DistributionTest(unittest.TestCase):
                                    output_list,
                                    batch_size=2,
                                    dims=3,
+                                   sample_shape=7,
                                    tolerance=1e-6):
         [low_np, low_float, high_float, high_np, values_np] = data_list
 
@@ -471,6 +541,11 @@ class DistributionTest(unittest.TestCase):
         gt_sample_float_np_broadcast = np_uniform_float_np_broadcast.sample(
             [batch_size, dims])
         gt_sample_np = np_uniform.sample([batch_size, dims])
+        gt_sample_int_diff = np_uniform_int.sample([sample_shape])
+        gt_sample_float_diff = np_uniform_float.sample([sample_shape])
+        gt_sample_float_np_broadcast_diff = np_uniform_float_np_broadcast.sample(
+            [sample_shape])
+        gt_sample_np_diff = np_uniform.sample([sample_shape])
         gt_entropy_int = np_uniform_int.entropy()
         gt_entropy_float = np_uniform_float.entropy()
         gt_entropy_float_np_broadcast = np_uniform_float_np_broadcast.entropy()
@@ -484,7 +559,10 @@ class DistributionTest(unittest.TestCase):
         [
             output_sample_int, output_sample_float,
             output_sample_float_np_broadcast, output_sample_np,
-            output_sample_variable, output_entropy_int, output_entropy_float,
+            output_sample_variable, output_sample_int_diff,
+            output_sample_float_diff, output_sample_float_np_broadcast_diff,
+            output_sample_np_diff, output_sample_variable_diff,
+            output_entropy_int, output_entropy_float,
             output_entropy_float_np_broadcast, output_entropy_np,
             output_entropy_variable, output_lp_float_np_broadcast, output_lp_np,
             output_lp_variable, output_p_float_np_broadcast, output_p_np,
@@ -514,6 +592,31 @@ class DistributionTest(unittest.TestCase):
         np.testing.assert_allclose(
             output_sample_variable.shape,
             gt_sample_np.shape,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_sample_int_diff.shape,
+            gt_sample_int_diff.shape,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_sample_float_diff.shape,
+            gt_sample_float_diff.shape,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_sample_float_np_broadcast_diff.shape,
+            gt_sample_float_np_broadcast_diff.shape,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_sample_np_diff.shape,
+            gt_sample_np_diff.shape,
+            rtol=tolerance,
+            atol=tolerance)
+        np.testing.assert_allclose(
+            output_sample_variable_diff.shape,
+            gt_sample_np_diff.shape,
             rtol=tolerance,
             atol=tolerance)
         np.testing.assert_allclose(
@@ -554,6 +657,7 @@ class DistributionTest(unittest.TestCase):
     def test_uniform_distribution_static(self,
                                          batch_size=2,
                                          dims=3,
+                                         sample_shape=7,
                                          tolerance=1e-6):
         test_program = fluid.Program()
 
@@ -567,8 +671,8 @@ class DistributionTest(unittest.TestCase):
         data_list = [low_np, low_float, high_float, high_np, values_np]
 
         feed_vars, fetch_list = self.build_uniform_static(
-            test_program, batch_size, dims, low_float, high_float, high_np,
-            low_np, values_np)
+            test_program, batch_size, dims, sample_shape, low_float, high_float,
+            high_np, low_np, values_np)
 
         self.executor.run(fluid.default_startup_program())
 
@@ -577,11 +681,12 @@ class DistributionTest(unittest.TestCase):
                                         feed=feed_vars,
                                         fetch_list=fetch_list)
         self.compare_uniform_with_numpy(data_list, output_list, batch_size,
-                                        dims, tolerance)
+                                        dims, sample_shape, tolerance)
 
     def test_uniform_distribution_dygraph(self,
                                           batch_size=2,
                                           dims=3,
+                                          sample_shape=7,
                                           tolerance=1e-6):
         paddle.disable_static()
 
@@ -593,11 +698,12 @@ class DistributionTest(unittest.TestCase):
         values_np = np.random.randn(batch_size, dims).astype('float32')
 
         data_list = [low_np, low_float, high_float, high_np, values_np]
-        output_list = self.build_uniform_dygraph(
-            batch_size, dims, low_float, high_float, high_np, low_np, values_np)
+        output_list = self.build_uniform_dygraph(batch_size, dims, sample_shape,
+                                                 low_float, high_float, high_np,
+                                                 low_np, values_np)
 
         self.compare_uniform_with_numpy(data_list, output_list, batch_size,
-                                        dims, tolerance)
+                                        dims, sample_shape, tolerance)
         paddle.enable_static()
 
 
