@@ -83,10 +83,10 @@ class Fleet(object):
         """
         Initialize role_maker in Fleet.
 
-        This function is responsible for the distributed architecture 
+        This function is responsible for the distributed architecture
         what you want to run your code behind,such as Transpiler,
-        Collective in PaddleCloudRoleMaker or UserDefinedRoleMaker 
-        
+        Collective in PaddleCloudRoleMaker or UserDefinedRoleMaker
+
         """
         if isinstance(role_maker, RoleMakerBase):
             self._role_maker = role_maker
@@ -113,7 +113,7 @@ class Fleet(object):
         Returns:
             bool: True if this is the first node of worker,
                   False if not.
-        
+
         """
         return self._role_maker.is_first_worker()
 
@@ -255,7 +255,7 @@ class Fleet(object):
 
     def _is_non_distributed(self):
         """
-        Return True if indispensable environment for fleetrun is not found 
+        Return True if indispensable environment for fleetrun is not found
         (use python-run to launch fleet-code directly)
         Fleet-code will roll back the non_distributed code
         """
@@ -273,6 +273,9 @@ class Fleet(object):
             export_for_deployment)
 
     def save_persistables(self, executor, dirname, main_program=None):
+        if self._is_non_distributed():
+            paddle.fluid.io.save_persistables(
+                executor, dirname, main_program=main_program)
         self._runtime_handle._save_persistables(executor, dirname, main_program)
 
     def distributed_optimizer(self, optimizer, strategy=None):
@@ -320,8 +323,8 @@ class Fleet(object):
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) variable pairs, param is
             ``Parameter``, grad is the gradient value corresponding to the parameter.
-            The returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
-            indicate program pruning. If so, the program will be pruned by ``feed`` and 
+            The returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to
+            indicate program pruning. If so, the program will be pruned by ``feed`` and
             ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
@@ -397,7 +400,7 @@ class Fleet(object):
         optimize_ops = []
         params_grads = []
 
-        if self._is_non_distributed():
+        if self._is_non_distributed() and not self._is_collective:
             if self._runtime_handle is None:
                 self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
@@ -410,6 +413,7 @@ class Fleet(object):
                 startup_program=startup_program,
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set)
+
         if meta_optimizer:
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss,
