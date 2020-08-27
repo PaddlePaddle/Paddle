@@ -19,11 +19,11 @@ import pickle
 import unittest
 import numpy as np
 
-import paddle
+from paddle.static import InputSpec
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.io import VARIABLE_FILENAME, EXTRA_VAR_INFO_FILENAME
+from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME
 
 BATCH_SIZE = 32
 BATCH_NUM = 10
@@ -156,7 +156,7 @@ class TestJitSaveLoad(unittest.TestCase):
 
     def load_dygraph_state_dict(self, train_layer):
         train_layer.eval()
-        # contruct new model
+        # construct new model
         new_layer = LinearNet(784, 1)
         model_dict, _ = fluid.dygraph.load_dygraph(self.model_path)
         new_layer.set_dict(model_dict)
@@ -176,7 +176,7 @@ class TestJitSaveLoad(unittest.TestCase):
                 model_path=self.model_path,
                 input_spec=example_inputs)
 
-    def test_load_dygraoh_no_path(self):
+    def test_load_dygraph_no_path(self):
         model_path = "model.test_jit_save_load.no_path"
         new_layer = LinearNet(784, 1)
         with self.assertRaises(ValueError):
@@ -200,6 +200,92 @@ class TestJitSaveLoad(unittest.TestCase):
         new_layer = LinearNet(784, 1)
         with self.assertRaises(RuntimeError):
             model_dict, _ = fluid.dygraph.load_dygraph(model_path)
+
+
+class LinearNetMultiInput(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetMultiInput, self).__init__()
+        self._linear1 = Linear(in_size, out_size)
+        # self._linear2 = Linear(in_size, out_size)
+
+    @declarative(input_spec=[
+        InputSpec(
+            [None, 8], dtype='float32'), InputSpec(
+                [None, 8], dtype='float32')
+    ])
+    def forward(self, x, y):
+        x_out = self._linear1(x)
+        y_out = self._linear1(y)
+        loss = fluid.layers.mean(x_out + y_out)
+        return x_out, y_out, loss
+
+
+class TestSaveLoadWithInputSpec(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        fluid.enable_dygraph()
+
+    def test_with_input_spec(self):
+        net = LinearNetReturnLoss(8, 8)
+        # set x.shape = [None, 8]
+        net.forward = declarative(
+            net.forward, input_spec=[InputSpec(
+                [None, 8], name='x')])
+
+        model_path = "model.input_spec.output_spec"
+        configs = fluid.dygraph.jit.SaveLoadConfig()
+        # check inputs and outputs
+        self.assertTrue(len(net.forward.inputs) == 1)
+        input_x = net.forward.inputs[0]
+        self.assertTrue(input_x.shape == (-1, 8))
+        self.assertTrue(input_x.name == 'x')
+
+        # 1. prune loss
+        configs.output_spec = net.forward.outputs[:1]
+        fluid.dygraph.jit.save(net, model_path, configs=configs)
+
+        # 2. load to infer
+        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        pred = infer_layer(x)
+
+    def test_multi_in_out(self):
+        net = LinearNetMultiInput(8, 8)
+
+        model_path = "model.multi_inout.output_spec1"
+        configs = fluid.dygraph.jit.SaveLoadConfig()
+        # 1. check inputs and outputs
+        self.assertTrue(len(net.forward.inputs) == 2)
+        input_x = net.forward.inputs[0]
+        input_y = net.forward.inputs[1]
+        self.assertTrue(input_x.shape == (-1, 8))
+        self.assertTrue(input_y.shape == (-1, 8))
+
+        # 2. prune loss
+        configs.output_spec = net.forward.outputs[:2]
+        fluid.dygraph.jit.save(net, model_path, configs=configs)
+
+        # 3. load to infer
+        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        y = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        # 4. predict
+        pred_x, pred_y = infer_layer(x, y)
+
+        # 1. prune y and loss
+        model_path = "model.multi_inout.output_spec2"
+        configs.output_spec = net.forward.outputs[:1]
+        fluid.dygraph.jit.save(net, model_path, [input_x], configs)
+        # 2. load again
+        infer_layer2 = fluid.dygraph.jit.load(model_path, configs=configs)
+        # 3. predict
+        pred_xx = infer_layer2(x)
+
+        # 4. assert pred_x == pred_xx
+        self.assertTrue(np.allclose(pred_x.numpy(), pred_xx.numpy()))
 
 
 class TestJitSaveLoadConfig(unittest.TestCase):

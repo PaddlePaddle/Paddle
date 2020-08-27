@@ -226,8 +226,9 @@ def avg_pool1d(x,
         stride = utils.convert_to_list(stride, 1, 'pool_stride')
         stride = [1] + stride
 
+    channel_last = _channel_last("NCL", 2)
     padding, padding_algorithm = _update_padding_nd(
-        padding, 1, channel_last=False, ceil_mode=ceil_mode)
+        padding, 1, channel_last=channel_last, ceil_mode=ceil_mode)
 
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
@@ -236,9 +237,9 @@ def avg_pool1d(x,
         output = core.ops.pool2d(
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'global_pooling',
             False, 'strides', stride, 'paddings', padding, 'padding_algorithm',
-            padding_algorithm, 'use_cudnn', not count_include_pad, 'ceil_mode',
-            ceil_mode, 'use_mkldnn', False, 'exclusive', True, 'data_format',
-            data_format)
+            padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
+            'use_mkldnn', False, 'exclusive', not count_include_pad,
+            'data_format', data_format)
         return squeeze(output, [2])
 
     op_type = 'pool2d'

@@ -18,6 +18,7 @@
 from .layer import norm
 from .functional import extension
 from .layer import common
+from .layer import rnn
 from .utils import weight_norm_hook
 
 from . import initializer
@@ -26,6 +27,7 @@ __all__ = []
 __all__ += norm.__all__
 __all__ += extension.__all__
 __all__ += common.__all__
+__all__ += rnn.__all__
 __all__ += weight_norm_hook.__all__
 
 # TODO: define alias in nn directory
@@ -88,6 +90,8 @@ from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
 from .layer.common import Flatten  #DEFINE_ALIAS
 from .layer.common import UpSample  #DEFINE_ALIAS
+from .layer.common import UpsamplingNearest2d  #DEFINE_ALIAS
+from .layer.common import UpsamplingBilinear2d  #DEFINE_ALIAS
 from .layer.common import Bilinear  #DEFINE_ALIAS
 from .layer.common import Dropout  #DEFINE_ALIAS
 from .layer.common import Dropout2D  #DEFINE_ALIAS
@@ -146,6 +150,7 @@ from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
+from .layer.rnn import *
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS
