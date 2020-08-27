@@ -49,6 +49,12 @@ std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
     VLOG(4) << "Use random engine from generator";
     return DefaultCPUGenerator()->GetCPUEngine();
   } else {
+    // NOTE(zhiqiu): creating an engine instance everytime instead of using
+    // OpDefaultCPUEngine(), this is the legacy behavior of random operators.
+    // The benefit is that when runing PE with fixed-seed in multiple thrads,
+    // each thread has their own engine, and doesn't affect each other.
+    //
+    // And we need to measure the determinacy of Generator in PE.
     auto engine = std::make_shared<std::mt19937_64>();
     if (seed == 0) {
       seed = GetRandomSeed();
