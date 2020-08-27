@@ -381,9 +381,9 @@ class TestOptimizerLearningRate(unittest.TestCase):
             bd = [2, 4, 6, 8]
             value = [0.2, 0.4, 0.6, 0.8, 1.0]
 
+            scheduler = paddle.optimizer.PiecewiseLR(bd, value)
             adam = paddle.optimizer.Adam(
-                fluid.dygraph.PiecewiseDecay(bd, value, 0),
-                parameters=linear.parameters())
+                scheduler, parameters=linear.parameters())
 
             self.assertTrue(
                 np.allclose(
@@ -393,8 +393,8 @@ class TestOptimizerLearningRate(unittest.TestCase):
             for i in range(12):
                 adam.minimize(loss)
                 lr = adam.get_lr()
-
                 self.assertTrue(np.allclose(lr, ret[i], rtol=1e-06, atol=0.0))
+                scheduler.step()
 
     def test_lr_decay_natural_exp(self):
         with fluid.dygraph.guard():
@@ -409,24 +409,21 @@ class TestOptimizerLearningRate(unittest.TestCase):
             loss = fluid.layers.reduce_mean(b)
             base_lr = 1.0
 
+            scheduler = paddle.optimizer.NaturalExpLR(1.0, gamma=0.5)
+            print("scheduler.last_lr", scheduler.last_lr)
             adam = paddle.optimizer.Adam(
-                fluid.dygraph.NaturalExpDecay(
-                    learning_rate=base_lr,
-                    decay_steps=3,
-                    decay_rate=0.5,
-                    staircase=True),
-                parameters=linear.parameters())
+                scheduler, parameters=linear.parameters())
 
             self.assertTrue(
                 np.allclose(
                     adam.get_lr(), 1.0, rtol=1e-06, atol=0.0))
 
-            ret = [1.0, 1.0, 1.0, np.exp(-0.5), np.exp(-0.5)]
-            for i in range(5):
+            ret = [1.0, np.exp(-0.5), np.exp(-1)]
+            for i in range(3):
                 adam.minimize(loss)
                 lr = adam.get_lr()
-
                 self.assertTrue(np.allclose(lr, ret[i], rtol=1e-06, atol=0.0))
+                scheduler.step()
 
     def test_set_lr(self):
         with fluid.dygraph.guard():
@@ -451,20 +448,15 @@ class TestOptimizerLearningRate(unittest.TestCase):
                     np.allclose(
                         lr, lr_list[i], rtol=1e-06, atol=0.0))
 
-            lr_var = fluid.layers.create_global_var(
-                shape=[1], value=0.7, dtype='float32')
-            adam.set_lr(lr_var)
-            adam.minimize(loss)
-            lr = adam.get_lr()
-            self.assertTrue(np.allclose(lr, 0.7, rtol=1e-06, atol=0.0))
+            with self.assertRaises(TypeError):
+                lr_var = fluid.layers.create_global_var(
+                    shape=[1], value=0.7, dtype='float32')
+                adam.set_lr(lr_var)
 
             with self.assertRaises(RuntimeError):
                 adam = paddle.optimizer.Adam(
-                    fluid.dygraph.NaturalExpDecay(
-                        learning_rate=0.1,
-                        decay_steps=3,
-                        decay_rate=0.5,
-                        staircase=True),
+                    paddle.optimizer.NaturalExpLR(
+                        learning_rate=0.1, gamma=0.5),
                     parameters=linear.parameters())
                 adam.set_lr(0.01)
 
