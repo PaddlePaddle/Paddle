@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/distributed/large_scale_kv.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -37,8 +38,9 @@ class LargeScaleFuseAdamOpKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+    using paddle::framework::LoDTensor;
 
+    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     const auto *grad_var = ctx.InputVar("Grad");
 
     PADDLE_ENFORCE(
@@ -56,8 +58,8 @@ class LargeScaleFuseAdamOpKernel<platform::CPUDeviceContext, T>
 
     framework::SelectedRows tmp_grad_merge;
     const framework::SelectedRows *grad_merge_ptr;
-    math::scatter::MergeAdd<DeviceContext, T> merge_func;
-    merge_func(context.template device_context<DeviceContext>(), *in_grad,
+    math::scatter::MergeAdd<platform::CPUDeviceContext, T> merge_func;
+    merge_func(ctx.template device_context<platform::CPUDeviceContext>(), grad,
                &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
 
@@ -71,8 +73,8 @@ class LargeScaleFuseAdamOpKernel<platform::CPUDeviceContext, T>
     auto grad_width = grad_v.dims()[1];
 
     //    auto is_entry = context.Attr<bool>("is_entry");
-    auto tablename = context.Attr<std::string>("tablename");
-    auto value_names = Attr<std::vector<std::string>>("value_names");
+    auto tablename = ctx.Attr<std::string>("tablename");
+    auto value_names = ctx.Attr<std::vector<std::string>>("value_names");
 
     auto *beta1_pow = ctx.Input<LoDTensor>("Beta1Pow");
     auto *beta2_pow = ctx.Input<LoDTensor>("Beta2Pow");
@@ -116,11 +118,11 @@ class LargeScaleFuseAdamOpKernel<platform::CPUDeviceContext, T>
     auto &moment_1 = values[1];
     auto &moment_2 = values[2];
 
-    T lr = *lr_;
+    T lr_ = lr[0];
     T beta1_ = beta1_pow->data<T>()[0];
     T beta2_ = beta2_pow->data<T>()[0];
 
-    lr *= sqrt(1 - beta1_) / (1 - beta2_);
+    lr_ *= sqrt(1 - beta1_) / (1 - beta2_);
 
     for (size_t i = 0; i < in_rows.size(); i++) {
       auto *m1_data = moment_1[i]->data();
@@ -131,7 +133,7 @@ class LargeScaleFuseAdamOpKernel<platform::CPUDeviceContext, T>
         auto g = grad_v.data<T>()[grad_width * i + x];
         m1_data[x] = beta1_ * m1_data[x] + (1 - beta1_) * g;
         m2_data[x] = beta2_ * m2_data[x] + (1 - beta2_) * g * g;
-        p_data[x] -= lr * (m1_data[x] / (sqrt(m2_data[x]) + epsilon));
+        p_data[x] -= lr_ * (m1_data[x] / (sqrt(m2_data[x]) + epsilon));
       }
     }
   }

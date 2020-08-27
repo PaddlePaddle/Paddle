@@ -82,7 +82,7 @@ class LargeScaleFuseAdamOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator");
     AddInput("Beta2Pow", "(Tensor) Input beta2 power accumulator");
-
+    AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator");
     AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator");
 
@@ -150,6 +150,4 @@ REGISTER_OPERATOR(
 
 REGISTER_OP_CPU_KERNEL(
     lookup_sparse_table_fuse_adam,
-    ops::LargeScaleFuseAdamOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LargeScaleFuseAdamOpKernel<paddle::platform::CPUDeviceContext,
-                                    double>);
+    ops::LargeScaleFuseAdamOpKernel<paddle::platform::CPUDeviceContext, float>);

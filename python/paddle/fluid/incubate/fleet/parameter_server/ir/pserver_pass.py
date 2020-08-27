@@ -657,13 +657,15 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
 
         if op.type == "sgd":
             grad = main_program.global_block().vars[op.input("Grad")[0]]
+            lr = main_program.global_block().vars[op.input("LearningRate")[0]]
             # remove origin optimzier op
             block._remove_op(opt_idx)
 
             block._insert_op(
                 opt_idx,
                 type="lookup_sparse_table_fuse_sgd",
-                inputs={"Grad": grad},
+                inputs={"Grad": grad,
+                        "LearningRate": lr},
                 attrs={
                     "is_entry": is_entry,
                     "tablename": table_name,
@@ -672,6 +674,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
 
         elif op.type == "adam":
             grad = main_program.global_block().vars[op.input("Grad")[0]]
+            lr = main_program.global_block().vars[op.input("LearningRate")[0]]
             beta1_pow = main_program.global_block().vars[op.input("Beta1Pow")[
                 0]]
             beta2_pow = main_program.global_block().vars[op.input("Beta2Pow")[
@@ -693,6 +696,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
                 type="lookup_sparse_table_fuse_adam",
                 inputs={
                     "Grad": grad,
+                    "LearningRate": lr,
                     "Beta1Pow": beta1_pow,
                     "Beta2Pow": beta2_pow
                 },

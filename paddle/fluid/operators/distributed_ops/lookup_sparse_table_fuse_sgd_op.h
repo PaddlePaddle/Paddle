@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/distributed/large_scale_kv.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -56,8 +57,8 @@ class LargeScaleFuseSGDOpKernel<platform::CPUDeviceContext, T>
 
     framework::SelectedRows tmp_grad_merge;
     const framework::SelectedRows *grad_merge_ptr;
-    math::scatter::MergeAdd<DeviceContext, T> merge_func;
-    merge_func(context.template device_context<DeviceContext>(), *in_grad,
+    math::scatter::MergeAdd<platform::CPUDeviceContext, T> merge_func;
+    merge_func(ctx.template device_context<platform::CPUDeviceContext>(), grad,
                &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
 
@@ -71,8 +72,8 @@ class LargeScaleFuseSGDOpKernel<platform::CPUDeviceContext, T>
     auto grad_width = grad_v.dims()[1];
 
     //    auto is_entry = context.Attr<bool>("is_entry");
-    auto tablename = context.Attr<std::string>("tablename");
-    auto value_names = Attr<std::vector<std::string>>("value_names");
+    auto tablename = ctx.Attr<std::string>("tablename");
+    auto value_names = ctx.Attr<std::vector<std::string>>("value_names");
 
     std::vector<std::vector<std::vector<float> *>> values;
     std::vector<int64_t> dims;
@@ -88,15 +89,16 @@ class LargeScaleFuseSGDOpKernel<platform::CPUDeviceContext, T>
 
     auto &params = values[0];
 
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
 
     std::vector<T> grads;
-    framework::TensorToVector(grad_v, context.device_context(), &grads);
+    framework::TensorToVector(grad_v, ctx.device_context(), &grads);
 
-    blas.VMUL(grads, lr[0], grads);
+    blas.SCAL(grads.size(), lr[0], grads.data());
 
     for (int x = 0; x < static_cast<int>(in_rows.size()); ++x) {
-      blas.VSUB(grad_width, params[x], grads.data() + grad_width * x, params);
+      blas.VSUB(grad_width, params[x]->data(), grads.data() + grad_width * x,
+                params[x]->data());
     }
   }
 };

@@ -79,7 +79,7 @@ class LargeScaleFuseSGDOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Grad",
              "(SelectedRows) Ids's type should be SelectedRows"
              "THe ids to be looked up in W.");
-
+    AddInput("LearningRate", "(Tensor) Learning rate of SGD");
     AddAttr<bool>("is_entry",
                   "(bool)"
                   "sparse table need entry");
@@ -117,5 +117,4 @@ REGISTER_OPERATOR(
 
 REGISTER_OP_CPU_KERNEL(
     lookup_sparse_table_fuse_sgd,
-    ops::LargeScaleFuseSGDOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LargeScaleFuseSGDOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::LargeScaleFuseSGDOpKernel<paddle::platform::CPUDeviceContext, float>);
