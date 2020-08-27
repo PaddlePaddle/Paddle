@@ -50,7 +50,6 @@ from .callbacks import config_callbacks
 
 __all__ = ['Model', ]
 
-
 _parallel_context_initialized = False
 
 
