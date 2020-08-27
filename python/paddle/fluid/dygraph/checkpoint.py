@@ -207,6 +207,7 @@ def load_dygraph(model_path, keep_name_table=False):
         # NOTE: `jit.save` doesn't save optimizer state
     else:
         # Load state dict by `save_dygraph` save format
+        para_dict = {}
         if os.path.exists(params_file_path):
             with open(params_file_path, 'rb') as f:
                 para_dict = pickle.load(f) if six.PY2 else pickle.load(
