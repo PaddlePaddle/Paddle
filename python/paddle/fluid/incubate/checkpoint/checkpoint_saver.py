@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fleet.utils.fs import FS, LocalFS
-from ..fleet.utils.hdfs import HDFSClient
 from ...compiler import CompiledProgram
 
 
@@ -81,6 +79,7 @@ class CheckpointSaver(object):
         tmp_path = "{}.tmp".format(real_path)
         saved_path = tmp_path
 
+        from paddle.distributed.fleet.utils.fs import LocalFS
         local_fs = LocalFS()
 
         cache_path = None
@@ -121,7 +120,6 @@ class CheckpointSaver(object):
         Deserialize objects in slists from path
         Return really load path
         """
-
         if checkpoint_no is None:
             max_no = self._get_last_checkpoint_no(path)
 
@@ -136,6 +134,7 @@ class CheckpointSaver(object):
             assert isinstance(checkpoint_no, int)
             assert checkpoint_no >= 0
 
+        from paddle.distributed.fleet.utils.fs import LocalFS
         local_fs = LocalFS()
         if self._fs.need_upload_download():
             cache_path = "{}/{}.{}.load_cache".format(

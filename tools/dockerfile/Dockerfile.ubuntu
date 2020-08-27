@@ -156,19 +156,19 @@ RUN pip3 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
 
 RUN pip3 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3 --no-cache-dir install opencv-python && \
+    pip3 --no-cache-dir install opencv-python==4.2.0.32 && \
     pip3.6 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.6 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.6 --no-cache-dir install opencv-python && \
+    pip3.6 --no-cache-dir install opencv-python==4.2.0.32 && \
     pip3.7 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.7 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.7 --no-cache-dir install opencv-python && \
+    pip3.7 --no-cache-dir install opencv-python==4.2.0.32 && \
     pip3.8 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3.8 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.8 --no-cache-dir install opencv-python && \
+    pip3.8 --no-cache-dir install opencv-python==4.2.0.32 && \
     pip --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip --no-cache-dir install opencv-python
+    pip --no-cache-dir install opencv-python==4.2.0.32
 
 #For docstring checker
 RUN pip3 --no-cache-dir install pylint pytest astroid isort && \
@@ -218,5 +218,12 @@ RUN wget -q http://mirrors.kernel.org/ubuntu/pool/universe/p/patchelf/patchelf_0
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 CMD source ~/.bashrc
+
+# ccache 3.7.9
+RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
+    tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
+    ./configure -prefix=/usr/local/ccache-3.7.9 && \
+    make -j8 && make install && \
+    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
 
 EXPOSE 22

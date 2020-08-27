@@ -130,9 +130,9 @@ TEST(QuantizerPlacementPass, enabled_conv_excluded_one) {
   MainTest({"conv2d"}, {4}, 1);
 }
 
-TEST(QuantizerPlacementPass, excluded_none) {
-  // all operators quantized
-  MainTest({}, {}, 6);
+TEST(QuantizerPlacementPass, empty_list) {
+  // no operator quantized
+  MainTest({}, {}, 0);
 }
 
 TEST(QuantizerPlacementPass, default_attr_value) {

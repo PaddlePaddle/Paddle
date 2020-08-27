@@ -453,6 +453,18 @@ class TestAvgPoolAdaptive(TestCase1):
         self.adaptive = True
 
 
+class TestAvgPoolAdaptiveAsyOutSize(TestCase1):
+    def init_adaptive(self):
+        self.adaptive = True
+
+    def init_shape(self):
+        self.shape = [8, 3, 2, 4, 4]
+
+    def init_test_case(self):
+        self.ksize = [2, 2, 3]
+        self.strides = [1, 1, 1]
+
+
 #-------test pool3d with asymmetric padding------
 class TestPool3d_Op_AsyPadding(TestPool3d_Op):
     def init_test_case(self):

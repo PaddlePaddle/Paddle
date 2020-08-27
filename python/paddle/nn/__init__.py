@@ -18,6 +18,7 @@
 from .layer import norm
 from .functional import extension
 from .layer import common
+from .utils import weight_norm_hook
 
 from . import initializer
 
@@ -25,6 +26,7 @@ __all__ = []
 __all__ += norm.__all__
 __all__ += extension.__all__
 __all__ += common.__all__
+__all__ += weight_norm_hook.__all__
 
 # TODO: define alias in nn directory
 # from .clip import ErrorClipByValue        #DEFINE_ALIAS
@@ -49,26 +51,58 @@ from .decode import beam_search_decode  #DEFINE_ALIAS
 # from .decode import ctc_greedy_decoder        #DEFINE_ALIAS
 # from .decode import dynamic_decode        #DEFINE_ALIAS
 from .decode import gather_tree  #DEFINE_ALIAS
-from .input import data  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
-# from .layer.activation import PReLU        #DEFINE_ALIAS
-from .layer.activation import ReLU  #DEFINE_ALIAS
+from .layer.activation import ELU
+from .layer.activation import GELU
+from .layer.activation import Tanh
+from .layer.activation import Hardshrink
+from .layer.activation import Hardtanh
+from .layer.activation import PReLU
+from .layer.activation import ReLU
+from .layer.activation import ReLU6  #DEFINE_ALIAS
+from .layer.activation import SELU  #DEFINE_ALIAS
 from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS
-# from .layer.activation import Softmax        #DEFINE_ALIAS
+from .layer.activation import LogSigmoid
+from .layer.activation import Softmax  #DEFINE_ALIAS
+from .layer.activation import Softplus  #DEFINE_ALIAS
+from .layer.activation import Softshrink  #DEFINE_ALIAS
+from .layer.activation import Softsign  #DEFINE_ALIAS
+from .layer.activation import Tanhshrink  #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 from .layer.activation import HSigmoid  #DEFINE_ALIAS
 from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
 from .layer.common import Pool2D  #DEFINE_ALIAS
 from .layer.common import Pad2D  #DEFINE_ALIAS
+from .layer.common import ReflectionPad1d  #DEFINE_ALIAS
+from .layer.common import ReplicationPad1d  #DEFINE_ALIAS
+from .layer.common import ConstantPad1d  #DEFINE_ALIAS
+from .layer.common import ReflectionPad2d  #DEFINE_ALIAS
+from .layer.common import ReplicationPad2d  #DEFINE_ALIAS
+from .layer.common import ConstantPad2d  #DEFINE_ALIAS
+from .layer.common import ZeroPad2d  #DEFINE_ALIAS
+from .layer.common import ReplicationPad3d  #DEFINE_ALIAS
+from .layer.common import ConstantPad3d  #DEFINE_ALIAS
+from .layer.common import CosineSimilarity  #DEFINE_ALIAS
 from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
 from .layer.common import Flatten  #DEFINE_ALIAS
 from .layer.common import UpSample  #DEFINE_ALIAS
-from .layer.conv import Conv2D  #DEFINE_ALIAS
-from .layer.conv import Conv2DTranspose  #DEFINE_ALIAS
-from .layer.conv import Conv3D  #DEFINE_ALIAS
-from .layer.conv import Conv3DTranspose  #DEFINE_ALIAS
+from .layer.common import UpsamplingNearest2d  #DEFINE_ALIAS
+from .layer.common import UpsamplingBilinear2d  #DEFINE_ALIAS
+from .layer.common import Bilinear  #DEFINE_ALIAS
+from .layer.common import Dropout  #DEFINE_ALIAS
+from .layer.common import Dropout2D  #DEFINE_ALIAS
+from .layer.common import Dropout3D  #DEFINE_ALIAS
+from .layer.common import AlphaDropout  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
+from .layer.conv import Conv1d  #DEFINE_ALIAS
+from .layer.conv import Conv2d  #DEFINE_ALIAS
+from .layer.conv import Conv3d  #DEFINE_ALIAS
+from .layer.conv import ConvTranspose1d  #DEFINE_ALIAS
+from .layer.conv import ConvTranspose2d  #DEFINE_ALIAS
+from .layer.conv import ConvTranspose3d  #DEFINE_ALIAS
 # from .layer.conv import TreeConv        #DEFINE_ALIAS
 # from .layer.conv import Conv1D        #DEFINE_ALIAS
 from .layer.extension import RowConv  #DEFINE_ALIAS
@@ -80,21 +114,43 @@ from .layer.extension import RowConv  #DEFINE_ALIAS
 # from .layer.learning_rate import PiecewiseDecay        #DEFINE_ALIAS
 # from .layer.learning_rate import PolynomialDecay        #DEFINE_ALIAS
 # from .layer.loss import NCELoss        #DEFINE_ALIAS
+from .layer.loss import BCEWithLogitsLoss  #DEFINE_ALIAS
 from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
 from .layer.loss import MSELoss  #DEFINE_ALIAS
 from .layer.loss import L1Loss  #DEFINE_ALIAS
 from .layer.loss import NLLLoss  #DEFINE_ALIAS
 from .layer.loss import BCELoss  #DEFINE_ALIAS
+from .layer.loss import KLDivLoss  #DEFINE_ALIAS
+from .layer.loss import MarginRankingLoss  #DEFINE_ALIAS
+from .layer.loss import CTCLoss  #DEFINE_ALIAS
+from .layer.loss import SmoothL1Loss  #DEFINE_ALIAS
 from .layer.norm import BatchNorm  #DEFINE_ALIAS
+from .layer.norm import SyncBatchNorm  #DEFINE_ALIAS
 from .layer.norm import GroupNorm  #DEFINE_ALIAS
 from .layer.norm import LayerNorm  #DEFINE_ALIAS
 from .layer.norm import SpectralNorm  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm1d  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm2d  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
+from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
+from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
+from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS
+from .layer.transformer import MultiHeadAttention
+from .layer.transformer import TransformerEncoderLayer
+from .layer.transformer import TransformerEncoder
+from .layer.transformer import TransformerDecoderLayer
+from .layer.transformer import TransformerDecoder
+from .layer.transformer import Transformer
+from .layer.distance import PairwiseDistance  #DEFINE_ALIAS
+
+from .layer.vision import PixelShuffle
 
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS
+from .layer import vision  #DEFINE_ALIAS
 from ..fluid.dygraph.layers import Layer  #DEFINE_ALIAS
 from ..fluid.dygraph.container import LayerList, ParameterList, Sequential  #DEFINE_ALIAS
