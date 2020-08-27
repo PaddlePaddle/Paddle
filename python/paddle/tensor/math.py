@@ -17,6 +17,8 @@ math functions
 from __future__ import print_function
 
 from paddle.common_ops_import import *
+from paddle.tensor import cast
+import paddle
 from ..fluid import layers
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
 from ..fluid.layer_helper import LayerHelper
@@ -64,6 +66,7 @@ from ..fluid.layers import sums    #DEFINE_ALIAS
 from ..fluid import layers
 import paddle
 
+
 __all__ = [
         'abs',
         'acos',
@@ -86,8 +89,8 @@ __all__ = [
         'logsumexp',
         'mul',
         'multiplex',
-        'prod',
         'pow',
+        'prod',
         'reciprocal',
         'reduce_max',
         'reduce_min',
@@ -147,64 +150,87 @@ _supported_float_dtype_ = [
     VarDesc.VarType.FP64,
 ]
 
-@templatedoc()
-def pow(input, exponent, name=None):
+def pow(x, y, name=None):
     """
-	:alias_main: paddle.pow
-	:alias: paddle.pow,paddle.tensor.pow,paddle.tensor.math.pow
+    Compute the power of tensor elements. The equation is:
 
-    This is Pow Activation Operator.
+    .. math::
+        out = x^{y} 
 
-    :math:`out = input^{exponent}`
+    **Note**:
+    ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
 
     Args:
-        input(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32`` or ``float64``.
-        exponent(float32|Variable): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        y (Tensor): An N-D Tensor with type float32, float64, int32 or int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    
     Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``input``.
+        N-D Tensor. A location into which the result is stored. Its dimension equals with $x$.
 
     Examples:
 
-        .. code-block:: python
+        ..  code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import numpy as np
 
-            x = fluid.data(name="x", shape=[32,32], dtype="float32")
+            paddle.disable_static()
+            
+            # example 1: y is a float
+            x_data = np.array([1, 2, 3])
+            y = 2
+            x = paddle.to_tensor(x_data)
+            res = paddle.pow(x, y)
+            print(res.numpy()) # [1 4 9]
+            
+            # example 2: y is a Tensor
+            y = paddle.fill_constant(shape=[1], value=2, dtype='float32')
+            res = paddle.pow(x, y)
+            print(res.numpy()) # [1 4 9]
 
-            # example 1: argument exponent is float
-            y_1 = paddle.pow(x, 2.0)
-            # y_1 is x^{2.0}
-
-            # example 2: argument exponent is Variable
-            exponent_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
-            y_2 = paddle.pow(x, exponent_tensor)
-            # y_2 is x^{3.0}
     """
+    # in dynamic graph mode
     if in_dygraph_mode():
-        return core.ops.pow(input, "exponent", exponent)
+        if isinstance(y, (int, float)):
+            return core.ops.pow(x, 'factor', y)
+        elif isinstance(y, (paddle.Tensor, Variable)):
 
-    helper = LayerHelper('pow', **locals())
-    inputs = {'X': input}
-    attrs = {}
-    if isinstance(exponent, Variable):
-        exponent.stop_gradient = True
-        inputs['FactorTensor'] = exponent
+            if x.dtype != y.dtype:
+                y = cast(y, dtype='float64')
+                x = cast(x, dtype='float64')
+                out_dygraph = _elementwise_op_in_dygraph(
+                x, y, axis=-1, act=None, op_name='elementwise_pow')
+                return out_dygraph
+
+            return _elementwise_op_in_dygraph(
+                x, y, axis=-1, act=None, op_name='elementwise_pow')
+        else:
+            raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
+    # in static graph mode
     else:
-        attrs['factor'] = exponent
+        if isinstance(y, (int, float)):
+            helper = LayerHelper('pow', **locals())
+            inputs = {'X': x}
+            attrs = {'factor': y}
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+            return out
+        elif isinstance(y, (paddle.Tensor, Variable)):
+            # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
+            helper = LayerHelper('elementwise_pow', **locals())
+            if x.dtype != y.dtype:
+                y = cast(y, dtype='float64')
+                x = cast(x, dtype='float64')
+                out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            else:
+                out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
+        else:
+            raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
 
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    check_dtype(
-        out.dtype, out.name,
-        convert_dtype(input.dtype), 'pow',
-        '(The out data type in pow must be the same with input data type.)')
-
-    helper.append_op(
-        type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
-    return out
 
 
 @dygraph_only
@@ -227,6 +253,8 @@ def _elementwise_op(helper):
     x = helper.kwargs.get('x', None)
     y = helper.kwargs.get('y', None)
 
+    out = helper.kwargs.get('out', None)
+
     assert x is not None, 'x cannot be None in {}'.format(original_op_type)
     assert y is not None, 'y cannot be None in {}'.format(original_op_type)
     check_variable_and_dtype(
@@ -239,11 +267,12 @@ def _elementwise_op(helper):
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+
+    if out is None:
+        if name is None:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        else:
+            out = helper.create_variable(name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type=op_type,
