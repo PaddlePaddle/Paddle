@@ -17,18 +17,28 @@ from . import core
 
 __all__ = ['Generator']
 
-default_rng_seed_val = 34342423252
-
 
 class Generator(core.Generator):
     """Generator class"""
 
-    def __init__(self, device="CPU"):
-        """init"""
-        self.device = device
-        if self.device == "CPU":
+    def __init__(self, place=None):
+        """
+        Create a generator object which manages the random number generation. ( Experimental Feature )
+
+        Parameters:
+            place(CPUPlace|CUDAPinnedPlace|CUDAPlace, optional): The place to allocate Tensor. Can be  
+                CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place.
+
+        Returns:
+            Generator: A generator object.
+
+        """
+        self.place = place
+        if not place:
+            place = core.CPUPlace()
+        if isinstance(place, core.CPUPlace):
             super(Generator, self).__init__()
         else:
             raise ValueError(
-                "generator class with device %s does not exist, currently only support generator with device 'CPU' "
-                % device)
+                "Generator class with %s does is not supported yet, currently only support generator with CPUPlace "
+                % place)

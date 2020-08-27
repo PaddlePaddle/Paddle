@@ -115,7 +115,6 @@ class ModuleApiTest(unittest.TestCase):
 
     def check_output(self):
         devices = ["CPU", "GPU"] if fluid.is_compiled_with_cuda() else ["CPU"]
-        devices = ['PU']
         for device in devices:
             place = set_device(device)
             self.check_output_with_place(place)

@@ -22,19 +22,19 @@ __all__ = ['manual_seed']
 def manual_seed(seed):
     """
 
-    Sets global seed for generating random numbers.
+    Sets the seed for global default generator, which manages the random number generation.
 
     Args:
         seed(int): The random seed to set. It is recommend to set a large int number.
 
     Returns:
-        Generator: a generator object.
+        Generator: The global default generator object.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            paddle.manual_seed(102)
+            gen = paddle.manual_seed(102)
 
     """
     #TODO(zhiqiu): 1. remove program.random_seed when all random-related op upgrade
