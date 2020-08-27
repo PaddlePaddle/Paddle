@@ -168,13 +168,13 @@ def hardshrink(x, threshold=0.5, name=None):
     .. math::
 
         hardshrink(x)=
-            \left\{
-            \begin{aligned}
-            &x, & & if \ x > threshold \\
-            &x, & & if \ x < -threshold \\
-            &0, & & if \ others
-            \end{aligned}
-            \right.
+            \\left\\{
+            \\begin{aligned}
+            &x, & & if \\ x > threshold \\\\
+            &x, & & if \\ x < -threshold \\\\
+            &0, & & if \\ others
+            \\end{aligned}
+            \\right.
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -391,14 +391,14 @@ def leaky_relu(x, negative_slope=0.01, name=None):
     """
     leaky_relu activation
 
-    .. math:
-        leaky_relu(x)=
-            \left\{
-            \begin{aligned}
-            &x, & & if \ x >= 0 \\
-            &negative\_slope * x, & & otherwise \\
-            \end{aligned}
-            \right. \\
+    .. math::
+        leaky\\_relu(x)=
+            \\left\\{
+            \\begin{aligned}
+            &x, & & if \\ x >= 0 \\\\
+            &negative\_slope * x, & & otherwise \\\\
+            \\end{aligned}
+            \\right. \\\\
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -644,7 +644,11 @@ def selu(x,
 
     .. math::
 
-        selu(x) = scale * (max(0,x) + min(0, alpha * (e^{x} - 1)))
+        selu(x)= scale *
+                 \\begin{cases}
+                   x, \\text{if } x > 0 \\\\
+                   alpha * e^{x} - alpha, \\text{if } x <= 0
+                 \\end{cases}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -1029,8 +1033,8 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
 
     .. math::
 
-        Out[i, j] = log(softmax(x)) 
-                  = log(\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])})
+        log\\_softmax[i, j] = log(softmax(x))
+                            = log(\\frac{\exp(X[i, j])}{\\sum_j(exp(X[i, j])})
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.

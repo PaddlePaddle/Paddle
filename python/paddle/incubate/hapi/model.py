@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,17 +26,22 @@ from collections import Iterable
 
 import paddle
 from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.framework import in_dygraph_mode, Variable, ParamBase, _current_expected_place
 # Note: Use alias `Input` temporarily before releasing hapi feature.
 from paddle.static import InputSpec as Input
-from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.base import role_maker
+from paddle.fluid.executor import scope_guard, Executor
 from paddle.io import DataLoader, Dataset
+
+from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 
 from .distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
@@ -846,24 +851,32 @@ class Model(object):
         """
         return self._adapter.test_batch(inputs)
 
-    def save(self, path):
-        """
-        This function saves parameters, optimizer infomation to path.
+    def save(self, path, training=True):
+        """  
+        This function saves parameters, optimizer information or model and 
+        paramters only for inference to path. It depends on the parameter
+        `training`.
 
-        The parameters contains all the trainable Variable, will save to
-        a file with suffix ".pdparams".
+        If `training` is set to True, the parameters saved contain all 
+        the trainable Variable, will save to a file with suffix ".pdparams".
         The optimizer information contains all the variable used by optimizer.
         For Adam optimizer, contains beta1, beta2, momentum etc. All the
         information will save to a file with suffix ".pdopt". (If the optimizer
         have no variable need to save (like SGD), the fill will not generated).
+        This function will silently overwrite existing file at the target location.
 
-        This function will silently overwrite existing file
-        at the target location.
+        If `training` is set to False, only inference model will be saved. It 
+        should be noted that before using `save`, you should run the model, and 
+        the shape of input you saved is as same as the input of its running.
+        `@paddle.jit.to_static` must be added on `forward` function of your layer 
+        in dynamic mode now and these will be optimized later.
 
         Args:
             path (str): The file prefix to save model. The format is
                 'dirname/file_prefix' or 'file_prefix'. if empty str. A exception
                  will be raised.
+            training (bool, optional): Whether to save for training. If not, save
+                for inference only. Default: True.
 
         Returns:
             None
@@ -871,25 +884,47 @@ class Model(object):
         Examples:
 
             .. code-block:: python
-            
-              import paddle
-              import paddle.incubate.hapi as hapi
-              
-              class MyNet(paddle.nn.Layer):
-                  def __init__(self):
-                      super(MyNet, self).__init__()
-                      self._fc = paddle.nn.Linear(784, 1, act='softmax')
+                import paddle
+                import paddle.incubate.hapi as hapi
+                from paddle.nn import Linear
+                from paddle.incubate.hapi.datasets.mnist import MNIST as MnistDataset
+
+                class Mnist(paddle.nn.Layer):
+                    def __init__(self):
+                        super(MyNet, self).__init__()
+                        self._fc = Linear(784, 1, act='softmax')
+
+                  @paddle.jit.to_static # If save for inference in dygraph, need this
                   def forward(self, x):
                       y = self._fc(x)
                       return y
-              
-              device = hapi.set_device('cpu')
-              paddle.disable_static(device)
-              model = hapi.Model(MyNet())
-              model.save('checkpoint/test')
+
+                dynamic = True # False
+                device = hapi.set_device('cpu')
+                # if use static graph, do not set
+                paddle.disable_static(device) if dynamic else None
+
+                # inputs and labels are not required for dynamic graph.
+                input = hapi.Input([None, 784], 'float32', 'x')
+                label = hapi.Input([None, 1], 'int64', 'label')
+
+                model = hapi.Model(Mnist(), input, label)
+                optim = paddle.optimizer.SGD(learning_rate=1e-3,
+                    parameter_list=model.parameters())
+                model.prepare(optim,
+                                paddle.nn.CrossEntropyLoss(),
+                                hapi.metrics.Accuracy())
+                mnist_data = hapi.datasets.MNIST(mode='train', chw_format=False)
+                model.fit(mnist_data, epochs=1, batch_size=32, verbose=0)
+                model.save('checkpoint/test') # save for training
+                model.save('inference_model', False) # save for inference
         """
+
         if ParallelEnv().local_rank == 0:
-            self._adapter.save(path)
+            if not training:
+                self._save_inference_model(path)
+            else:
+                self._adapter.save(path)
 
     def load(self, path, skip_mismatch=False, reset_optimizer=False):
         """
@@ -1474,13 +1509,17 @@ class Model(object):
         cbks.on_end('test', logs)
         return outputs
 
-    def save_inference_model(self,
-                             save_dir,
-                             model_filename=None,
-                             params_filename=None,
-                             model_only=False):
+    def _save_inference_model(self,
+                              save_dir,
+                              model_filename=None,
+                              params_filename=None,
+                              model_only=False):
         """
-        Save inference model must in static mode.
+        Save inference model can be in static or dynamic mode.
+        It should be noted that before using `save_inference_model`, you should
+        run the model, and the shape you saved is as same as the input of its
+        running. `@paddle.jit.to_static` must be added on `forward` function of
+        your layer in dynamic mode now and these will be optimized later.
 
         Args:
             save_dir (str): The directory path to save the inference model.
@@ -1496,39 +1535,145 @@ class Model(object):
         Returns:
             list: The fetch variables' name list
 
-
         Examples:
         .. code-block:: python
+            import numpy as np
+            import paddle
+            from paddle.static import InputSpec
 
             import paddle.incubate.hapi as hapi
+            from paddle.nn import Linear
+            from paddle.incubate.hapi.datasets.mnist import MNIST as MnistDataset
 
-            input = hapi.Input([-1, 1, 28, 28], 'float32', 'image')
-            model = hapi.Model(hapi.vision.LeNet(), input)
-            model.prepare()
+            class Mnist(Layer):
+                def __init__(self, classifier_act=None):
+                    super(Mnist, self).__init__()
 
+                    self.fc = Linear(input_dim=784, output_dim=10, act="softmax")
+
+                @paddle.jit.to_static # In static mode, you need to delete this.
+                def forward(self, inputs):
+                    outputs = self.fc(inputs)
+                    return outputs
+
+            dynamic = True # False
+            device = hapi.set_device('gpu')
+
+            # if use static graph, do not set
+            paddle.disable_static(device) if dynamic else None
+
+            # inputs and labels are not required for dynamic graph.
+            input = InputSpec([None, 784], 'float32', 'x')
+            label = InputSpec([None, 1], 'int64', 'label')
+
+            model = hapi.Model(Mnist(), input, label)
+            optim = paddle.optimizer.SGD(learning_rate=1e-3,
+                parameter_list=model.parameters())
+            model.prepare(optim,
+                            paddle.nn.CrossEntropyLoss(),
+                            hapi.metrics.Accuracy())
+            mnist_data = hapi.datasets.MNIST(mode='train', chw_format=False)
+            model.fit(mnist_data, epochs=1, batch_size=32, verbose=0)
             model.save_inference_model('inference_model')
         """
-        assert not fluid.in_dygraph_mode(
-        ), 'Save inference model must in static mode!'
 
-        prog = self._adapter._progs.get('test', None)
-        assert prog, \
-            "Model is not ready, please call `model.prepare()` first"
+        def get_inout_spec(all_vars, return_name=False):
+            result_list = []
+            valid_vars = [var for var in all_vars if isinstance(var, Variable)]
+            result_list = valid_vars
+            if return_name:
+                result_list = [var.name for var in result_list]
 
-        infer_prog = prog.clone(for_test=True)
+            return result_list
 
-        input_names = [v.name for v in self._adapter._input_vars['test']]
-        endpoints = self._adapter._endpoints['test']['output']
+        # TODO:
+        # 1. Make it Unnecessary to run model before calling `save_inference_model` for users in dygraph.
+        # 2. Save correct shape of input, now the interface stores the shape that the user sent to 
+        #    the inputs of the model in running.
+        # 3. Make it Unnecessary to add `@paddle.jit.to_static` for users in dynamic mode.
+        if fluid.in_dygraph_mode():
+            layer = self.network
+            fluid.disable_dygraph()
 
-        return fluid.io.save_inference_model(
-            save_dir,
-            input_names,
-            endpoints,
-            self._adapter._executor,
-            main_program=infer_prog,
-            model_filename=model_filename,
-            params_filename=params_filename,
-            program_only=model_only)
+            # 1. input check
+            prog_translator = ProgramTranslator()
+            if not prog_translator.enable_declarative:
+                raise RuntimeError(
+                    "save_inference_model doesn't work when setting ProgramTranslator.enable=False."
+                )
+            if not isinstance(layer, Layer):
+                raise TypeError(
+                    "The input layer should be 'Layer', but received layer type is %s."
+                    % type(layer))
+
+            # 2. get program of declarative Layer.forward
+            prog_cache = prog_translator.get_program_cache()
+            # make dummy args & kwargs, to get excepted FunctionSpec
+            layer_func = FunctionSpec(type(layer).forward, [layer], {})
+            concrete_program, _ = prog_cache.get_program(layer_func)
+
+            # NOTE: we maintain the mapping of variable name to
+            # structured name, the buffer variable (non-persistable)
+            # saved to inference program may not need by dygraph Layer,
+            # we only record the state_dict variable's structured name
+            state_names_dict = dict()
+            for structured_name, var in layer.state_dict().items():
+                state_names_dict[var.name] = structured_name
+
+            # 3. share parameters from Layer to scope & record var info
+            scope = core.Scope()
+            extra_var_info = dict()
+            for param_or_buffer in concrete_program.parameters:
+                # share to scope
+                param_or_buffer_tensor = scope.var(
+                    param_or_buffer.name).get_tensor()
+                src_tensor = param_or_buffer.value().get_tensor()
+                param_or_buffer_tensor._share_data_with(src_tensor)
+                # record var info
+                extra_info_dict = dict()
+                if param_or_buffer.name in state_names_dict:
+                    extra_info_dict['structured_name'] = state_names_dict[
+                        param_or_buffer.name]
+                extra_info_dict['stop_gradient'] = param_or_buffer.stop_gradient
+                if isinstance(param_or_buffer, ParamBase):
+                    extra_info_dict['trainable'] = param_or_buffer.trainable
+                extra_var_info[param_or_buffer.name] = extra_info_dict
+
+            # 4. build input & output spec
+            input_var_names = get_inout_spec(concrete_program.inputs, True)
+            output_vars = get_inout_spec(concrete_program.outputs)
+
+            # 5. save inference model
+            with scope_guard(scope):
+                return fluid.io.save_inference_model(
+                    dirname=save_dir,
+                    feeded_var_names=input_var_names,
+                    target_vars=output_vars,
+                    executor=Executor(_current_expected_place()),
+                    main_program=concrete_program.main_program.clone(),
+                    model_filename=model_filename,
+                    params_filename=params_filename,
+                    program_only=model_only)
+
+        else:
+            prog = self._adapter._progs.get('test', None)
+            assert prog, \
+                "Model is not ready, please call `model.prepare()` first"
+
+            infer_prog = prog.clone(for_test=True)
+
+            input_names = [v.name for v in self._adapter._input_vars['test']]
+            endpoints = self._adapter._endpoints['test']['output']
+
+            return fluid.io.save_inference_model(
+                save_dir,
+                input_names,
+                endpoints,
+                self._adapter._executor,
+                main_program=infer_prog,
+                model_filename=model_filename,
+                params_filename=params_filename,
+                program_only=model_only)
 
     def _run_one_epoch(self, data_loader, callbacks, mode, logs={}):
         outputs = []

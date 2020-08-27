@@ -8210,9 +8210,9 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
     return image_resize(input=input, out_shape=out_shape, resample=resample)
 
 
+@deprecated(since="2.0.0", update_to="paddle.gather")
 def gather(input, index, overwrite=True):
     """
-    **Gather Layer**
 
     Output is obtained by gathering entries of the outer-most dimension
     of X indexed by `index` and concatenate them together.
@@ -8283,6 +8283,7 @@ def gather(input, index, overwrite=True):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.gather_nd")
 def gather_nd(input, index, name=None):
     """
     **Gather Nd Layer**
@@ -8335,7 +8336,7 @@ def gather_nd(input, index, name=None):
                          = [23]
 
     Args:
-        input (Tensor): The source input. Its dtype should be bool, float32, float64, int32, int64.
+        input (Tensor): The input Tensor which it's data type should be bool, float32, float64, int32, int64.
         index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
                         Its dtype should be int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
@@ -14097,17 +14098,11 @@ def sign(x):
 
 def unique(x, dtype='int32'):
     """
-    :alias_main: paddle.unique
-	:alias: paddle.unique,paddle.tensor.unique,paddle.tensor.manipulation.unique
-	:old_api: paddle.fluid.layers.unique
-
-    **unique**
-
     Return a unique tensor for `x` and an index tensor pointing to this unique tensor.
 
     Args:
-        x(Variable): A 1-D input tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of index tensor: int32, int64.
+        x(Tensor): A 1-D input tensor, it's data type should be float32, float64, int32, int64.
+        dtype(np.dtype|str, optional): The type of index tensor: int32, int64. Default: int32.
 
     Returns:
         tuple: (out, index). `out` is the unique tensor for `x`, with identical dtype to `x`, and \

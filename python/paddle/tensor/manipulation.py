@@ -27,10 +27,8 @@ from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
 from ..fluid.layers import strided_slice  #DEFINE_ALIAS
 from ..fluid.layers import transpose  #DEFINE_ALIAS
-from ..fluid.layers import unique  #DEFINE_ALIAS
 from ..fluid.layers import unstack  #DEFINE_ALIAS
 
-from ..fluid.layers import gather_nd  #DEFINE_ALIAS
 from ..fluid.layers import scatter_nd_add  #DEFINE_ALIAS
 from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
 from ..fluid.layers import shard_index  #DEFINE_ALIAS
@@ -474,9 +472,6 @@ def stack(x, axis=0, name=None):
 
 def split(x, num_or_sections, axis=0, name=None):
     """
-	:alias_main: paddle.split
-        :alias: paddle.tensor.split, paddle.tensor.manipulation.split
-    
     Split the input tensor into multiple sub-Tensors.
     
     Args:
@@ -612,6 +607,130 @@ def squeeze(x, axis=None, name=None):
     return layers.squeeze(x, axis, name)
 
 
+def unique(x,
+           return_index=False,
+           return_inverse=False,
+           return_counts=False,
+           axis=None,
+           dtype="int64",
+           name=None):
+    """
+    Returns the unique elements of `x` in ascending order.
+
+    Args:
+        x(Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
+        return_index(bool, optional): If True, also return the indices of the input tensor that
+            result in the unique Tensor.
+        return_inverse(bool, optional): If True, also return the indices for where elements in
+            the original input ended up in the returned unique tensor.
+        return_counts(bool, optional): If True, also return the counts for each unique element.
+        axis(int, optional): The axis to apply unique. If None, the input will be flattened.
+            Default: None.
+        dtype(np.dtype|str, optional): The date type of `indices` or `inverse` tensor: int32 or int64.
+            Default: int64.
+        name(str, optional): Name for the operation. For more information, please refer to
+            :ref:`api_guide_Name`. Default: None.
+
+    Returns: 
+        tuple: (out, indices, inverse, counts). `out` is the unique tensor for `x`. `indices` is \
+            provided only if `return_index` is True. `inverse` is provided only if `return_inverse` \
+            is True. `counts` is provided only if `return_counts` is True.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            paddle.disable_static()
+            x_data = np.array([2, 3, 3, 1, 5, 3])
+            x = paddle.to_tensor(x_data)
+            unique = paddle.unique(x)
+            np_unique = unique.numpy() # [1 2 3 5]
+            _, indices, inverse, counts = paddle.unique(x, return_index=True, return_inverse=True, return_counts=True)
+            np_indices = indices.numpy() # [3 0 1 4]
+            np_inverse = inverse.numpy() # [1 2 2 0 3 2]
+            np_counts = counts.numpy() # [1 1 3 1]
+
+            x_data = np.array([[2, 1, 3], [3, 0, 1], [2, 1, 3]])
+            x = paddle.to_tensor(x_data)
+            unique = paddle.unique(x)
+            np_unique = unique.numpy() # [0 1 2 3]
+
+            unique = paddle.unique(x, axis=0)
+            np_unique = unique.numpy() 
+            # [[2 1 3]
+            #  [3 0 1]]
+    """
+    if axis is None:
+        axis = []
+    else:
+        axis = [axis]
+    attr_dtype = convert_np_dtype_to_dtype_(dtype)
+    if in_dygraph_mode():
+        out, inverse, indices, counts = core.ops.unique(
+            x, 'dtype', attr_dtype, 'return_index', return_index,
+            'return_inverse', return_inverse, 'return_counts', return_counts,
+            'axis', axis, "is_sorted", True)
+        outs = [out]
+        if return_index:
+            outs.append(indices)
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+
+        if len(outs) == 1:
+            return outs[0]
+
+        return tuple(outs)
+
+    check_variable_and_dtype(x, "input",
+                             ['float32', 'float64', 'int32', 'int64'], 'unique')
+    check_type(return_index, 'return_index', bool, 'unique')
+    check_type(return_inverse, 'return_inverse', bool, 'unique')
+    check_type(return_counts, 'return_counts', bool, 'unique')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'unique')
+    if len(axis) != 0:
+        check_type(axis[0], 'axis', int, 'unique')
+
+    helper = LayerHelper('unique', **locals())
+    attrs = {
+        'dtype': attr_dtype,
+        "return_index": return_index,
+        "return_inverse": return_inverse,
+        "return_counts": return_counts,
+        "axis": axis,
+        "is_sorted": True
+    }
+    out = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
+    inverse = helper.create_variable_for_type_inference(
+        dtype=attr_dtype, stop_gradient=True)
+    outputs = {"Out": out, "Index": inverse}
+    outs = [out]
+    if return_index:
+        indices = helper.create_variable_for_type_inference(
+            dtype=attr_dtype, stop_gradient=True)
+        outputs["Indices"] = indices
+        outs.append(indices)
+    if return_inverse:
+        outs.append(inverse)
+    if return_counts:
+        counts = helper.create_variable_for_type_inference(
+            dtype=attr_dtype, stop_gradient=True)
+        outputs["Counts"] = counts
+        outs.append(counts)
+
+    helper.append_op(
+        type="unique", inputs={"X": x}, attrs=attrs, outputs=outputs)
+
+    if len(outs) == 1:
+        return outs[0]
+
+    return tuple(outs)
+
+
 def unsqueeze(x, axis, name=None):
     """
 	:alias_main: paddle.unsqueeze
@@ -663,13 +782,8 @@ def gather(x, index, axis=None, name=None):
 
     **Gather Layer**
 
-    Output is obtained by gathering entries of the outer-most dimension
-    of X indexed by `index` and concatenate them together.
-
-    .. math::
-
-        Out = X[Index]
-
+    Output is obtained by gathering entries of ``axis``
+    of ``x`` indexed by ``index`` and concatenate them together.
 
     .. code-block:: text
 
@@ -692,7 +806,7 @@ def gather(x, index, axis=None, name=None):
             int32, int64, float32, float64 and uint8 (only for CPU),
             float16 (only for GPU).
         index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
-        axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. Default: if None, the axis is 0.
+        axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. The default value is None, if None, the ``axis`` is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -714,8 +828,8 @@ def gather(x, index, axis=None, name=None):
             paddle.disable_static()
             input_1 = np.array([[1,2],[3,4],[5,6]])
             index_1 = np.array([0,1])
-            input = fluid.to_tensor(input_1)
-            index = fluid.to_tensor(index_1)
+            input = paddle.to_tensor(input_1)
+            index = paddle.to_tensor(index_1)
             output = paddle.gather(input, index, axis=0)
             # expected output: [[1,2],[3,4]]
     """
@@ -1242,7 +1356,6 @@ def reshape(x, shape, name=None):
 
 def gather_nd(x, index, name=None):
     """
-    **Gather Nd Layer**
 
     This function is actually a high-dimensional extension of :code:`gather`
     and supports for simultaneous indexing by multiple axes. :attr:`index` is a
@@ -1260,19 +1373,19 @@ def gather_nd(x, index, name=None):
     .. code-block:: text
 
             Given:
-                input = [[[ 0,  1,  2,  3],
-                          [ 4,  5,  6,  7],
-                          [ 8,  9, 10, 11]],
-                         [[12, 13, 14, 15],
-                          [16, 17, 18, 19],
-                          [20, 21, 22, 23]]]
-                input.shape = (2, 3, 4)
+                x =  [[[ 0,  1,  2,  3],
+                       [ 4,  5,  6,  7],
+                       [ 8,  9, 10, 11]],
+                      [[12, 13, 14, 15],
+                       [16, 17, 18, 19],
+                       [20, 21, 22, 23]]]
+                x.shape = (2, 3, 4)
 
             * Case 1:
                 index = [[1]]
 
-                gather_nd(input, index)
-                         = [input[1, :, :]]
+                gather_nd(x, index)
+                         = [x[1, :, :]]
                          = [[12, 13, 14, 15],
                             [16, 17, 18, 19],
                             [20, 21, 22, 23]]
@@ -1280,15 +1393,15 @@ def gather_nd(x, index, name=None):
             * Case 2:
                 index = [[0,2]]
 
-                gather_nd(input, index)
-                         = [input[0, 2, :]]
+                gather_nd(x, index)
+                         = [x[0, 2, :]]
                          = [8, 9, 10, 11]
 
             * Case 3:
                 index = [[1, 2, 3]]
 
-                gather_nd(input, index)
-                         = [input[1, 2, 3]]
+                gather_nd(x, index)
+                         = [x[1, 2, 3]]
                          = [23]
 
     Args:
@@ -1308,6 +1421,7 @@ def gather_nd(x, index, name=None):
     Examples:
 
         .. code-block:: python
+            
             import paddle
             import numpy as np
             

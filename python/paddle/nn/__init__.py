@@ -128,6 +128,12 @@ from .layer.norm import GroupNorm  #DEFINE_ALIAS
 from .layer.norm import LayerNorm  #DEFINE_ALIAS
 from .layer.norm import SpectralNorm  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm1d  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm2d  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
+from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
+from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
+from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS
@@ -139,7 +145,10 @@ from .layer.transformer import TransformerDecoder
 from .layer.transformer import Transformer
 from .layer.distance import PairwiseDistance  #DEFINE_ALIAS
 
+from .layer.vision import PixelShuffle
+
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS
+from .layer import vision  #DEFINE_ALIAS
 from ..fluid.dygraph.layers import Layer  #DEFINE_ALIAS
 from ..fluid.dygraph.container import LayerList, ParameterList, Sequential  #DEFINE_ALIAS
