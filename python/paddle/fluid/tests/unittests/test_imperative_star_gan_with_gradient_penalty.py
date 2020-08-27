@@ -479,8 +479,7 @@ class DyGraphTrainModel(object):
 
         self.cfg = cfg
 
-        self.backward_strategy = fluid.dygraph.BackwardStrategy()
-        self.backward_strategy.sort_sum_gradient = cfg.sort_sum_gradient
+        fluid.set_flags({'FLAGS_sort_sum_gradient': cfg.sort_sum_gradient})
 
     def clear_gradients(self):
         if self.g_optimizer:
@@ -497,7 +496,7 @@ class DyGraphTrainModel(object):
         g_loss = get_generator_loss(image_real, label_org, label_trg,
                                     self.generator, self.discriminator,
                                     self.cfg)
-        g_loss.backward(self.backward_strategy)
+        g_loss.backward()
         if self.g_optimizer:
             self.g_optimizer.minimize(g_loss)
 
@@ -506,7 +505,7 @@ class DyGraphTrainModel(object):
         d_loss = get_discriminator_loss(image_real, label_org, label_trg,
                                         self.generator, self.discriminator,
                                         self.cfg)
-        d_loss.backward(self.backward_strategy)
+        d_loss.backward()
         if self.d_optimizer:
             self.d_optimizer.minimize(d_loss)
 

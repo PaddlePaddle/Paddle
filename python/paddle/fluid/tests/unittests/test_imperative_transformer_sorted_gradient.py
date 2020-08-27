@@ -951,8 +951,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
         with guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,
@@ -1021,7 +1020,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                     for param in transformer.parameters():
                         dy_param_init[param.name] = param.numpy()
 
-                dy_avg_cost.backward(backward_strategy)
+                dy_avg_cost.backward()
                 optimizer.minimize(dy_avg_cost)
                 transformer.clear_gradients()
 
