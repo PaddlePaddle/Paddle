@@ -15,6 +15,7 @@
 import math
 import numpy as np
 import unittest
+import paddle
 from paddle.jit import to_static
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
@@ -561,7 +562,7 @@ def train_bmn(args, place, to_static):
 
     with fluid.dygraph.guard(place):
         paddle.manual_seed(SEED)
-        paddle.framework.random._manual_program_seed(seed)
+        paddle.framework.random._manual_program_seed(SEED)
         global local_random
         local_random = np.random.RandomState(SEED)
 
