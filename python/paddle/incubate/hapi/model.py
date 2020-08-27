@@ -1588,7 +1588,8 @@ class Model(object):
                     if param_or_buffer.name in state_names_dict:
                         extra_info_dict['structured_name'] = state_names_dict[
                             param_or_buffer.name]
-                    extra_info_dict['stop_gradient'] = param_or_buffer.stop_gradient
+                    extra_info_dict[
+                        'stop_gradient'] = param_or_buffer.stop_gradient
                     if isinstance(param_or_buffer, ParamBase):
                         extra_info_dict['trainable'] = param_or_buffer.trainable
                     extra_var_info[param_or_buffer.name] = extra_info_dict
