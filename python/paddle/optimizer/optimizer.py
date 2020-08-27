@@ -489,7 +489,7 @@ class Optimizer(object):
             return self._learning_rate
         elif isinstance(self._learning_rate, _LRScheduler):
             step_lr = self._learning_rate.get_lr()
-            return step_lr.numpy()[0]
+            return step_lr
         else:
             step_lr = self._learning_rate.step()
             if isinstance(step_lr, (float, int)):
