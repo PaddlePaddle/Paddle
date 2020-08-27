@@ -147,8 +147,7 @@ class Fleet(object):
             bool: True if this is a node of server,
                   False if not
         """
-        return self._role_maker.is_server(
-        ) or self._role_maker._is_heter_worker()
+        return self._role_maker.is_server()
 
     def is_xpu(self):
         """

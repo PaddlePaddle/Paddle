@@ -260,7 +260,7 @@ class ParameterServerRuntime(RuntimeBase):
 
     def _stop_worker(self):
         self._communicator.stop()
-        executor = fluid.Executor(fluid.CPUPlace())
+        executor = self._get_executor()
         executor.close()
 
     def _get_optimizer_status(self, op, param_name):

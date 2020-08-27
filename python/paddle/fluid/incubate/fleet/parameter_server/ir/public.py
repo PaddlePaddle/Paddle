@@ -813,13 +813,6 @@ def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype,
         index += 1
 
 
-def get_op_by_type(block, op_type):
-    for op in block.ops:
-        if op.type == op_type:
-            return op
-    raise ValueError("add_listen_and_serv_pass must at first")
-
-
 def deleter_trainer_useless_var(program):
     porgram_useful_var_list = []
     for op in program.global_block().ops:
@@ -986,17 +979,6 @@ def delete_same_ops(block, ops):
                 if is_same_op(origin_op, op):
                     idx = list(block.ops).index(origin_op)
                     block._remove_op(idx)
-                    break
-        except Exception as e:
-            print(e)
-
-
-def delete_same_ops_in_list(op_list, ops):
-    for op in ops:
-        try:
-            for origin_op in op_list:
-                if is_same_op(origin_op, op):
-                    op_list.remove(origin_op)
                     break
         except Exception as e:
             print(e)
