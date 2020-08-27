@@ -78,7 +78,7 @@ class TestLinearInterpOp(OpTest):
         self.actual_shape = None
         self.data_layout = 'NCHW'
         self.init_test_case()
-        self.op_type = "linear_interp"
+        self.op_type = "linear_interp_v2"
         input_np = np.random.random(self.input_shape).astype("float64")
 
         if self.data_layout == "NCHW":
@@ -87,6 +87,10 @@ class TestLinearInterpOp(OpTest):
             in_w = self.input_shape[1]
 
         if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = float(self.scale)
+            if isinstance(self.scale, list):
+                self.scale = float(self.scale[0])
             out_w = int(in_w * self.scale)
         else:
             out_w = self.out_w
@@ -102,12 +106,15 @@ class TestLinearInterpOp(OpTest):
 
         self.attrs = {
             'out_w': self.out_w,
-            'scale': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'align_mode': self.align_mode,
             'data_layout': self.data_layout
         }
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = [float(self.scale)]
+            self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
@@ -169,7 +176,7 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
         self.actual_shape = None
         self.data_layout = 'NCHW'
         self.init_test_case()
-        self.op_type = "linear_interp"
+        self.op_type = "linear_interp_v2"
         input_np = np.random.random(self.input_shape).astype("float64")
         self.shape_by_1Dtensor = False
         self.scale_by_1Dtensor = False
@@ -180,6 +187,10 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
             in_w = self.input_shape[1]
 
         if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = float(self.scale)
+            if isinstance(self.scale, list):
+                self.scale = float(self.scale[0])
             out_w = int(in_w * self.scale)
         else:
             out_w = self.out_w
@@ -202,12 +213,17 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
 
         self.attrs = {
             'out_w': self.out_w,
-            'scale': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'align_mode': self.align_mode,
             'data_layout': self.data_layout
         }
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = [self.scale]
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                self.scale = [self.scale[0], self.scale[0]]
+            self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
 
 
@@ -314,11 +330,15 @@ class TestResizeLinearOpUint8(OpTest):
         self.out_size = None
         self.actual_shape = None
         self.init_test_case()
-        self.op_type = "linear_interp"
+        self.op_type = "linear_interp_v2"
         input_np = np.random.random(self.input_shape).astype("uint8")
 
         if self.scale > 0:
-            out_w = int(self.input_shape[3] * self.scale)
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = float(self.scale)
+            if isinstance(self.scale, list):
+                self.scale = float(self.scale[0])
+            out_w = int(self.input_shape[2] * self.scale)
         else:
             out_w = self.out_w
 
@@ -331,11 +351,16 @@ class TestResizeLinearOpUint8(OpTest):
 
         self.attrs = {
             'out_w': self.out_w,
-            'scale': self.scale,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'align_mode': self.align_mode
         }
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = [self.scale]
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                self.scale = [self.scale[0], self.scale[0]]
+            self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
