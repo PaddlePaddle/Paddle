@@ -24,6 +24,10 @@ namespace compatible {
 TEST(test_operator_version, test_operator_version) {
   REGISTER_OP_VERSION(test__)
       .AddCheckpoint(
+          R"ROC(Fix the bug of reshape op, support the case of axis < 0)ROC",
+          framework::compatible::OpVersionDesc().BugfixWithBehaviorChanged(
+              "Support the case of axis < 0"))
+      .AddCheckpoint(
           R"ROC(
         Upgrade reshape, modified one attribute [axis] and add a new attribute [size].
       )ROC",

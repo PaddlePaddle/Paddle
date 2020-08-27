@@ -34,7 +34,8 @@ struct OpUpdateRecord {
     kModifyAttr,
     kNewAttr,
     kNewInput,
-    kNewOutput
+    kNewOutput,
+    kBugfixWithBehaviorChanged,
   };
   Type type_;
   std::string remark_;
@@ -82,6 +83,11 @@ struct NewOutput : OpUpdateRecord {
   std::string name_;
 };
 
+struct BugfixWithBehaviorChanged : OpUpdateRecord {
+  explicit BugfixWithBehaviorChanged(const std::string& remark)
+      : OpUpdateRecord({Type::kBugfixWithBehaviorChanged, remark}) {}
+};
+
 class OpVersionDesc {
  public:
   OpVersionDesc& ModifyAttr(const std::string& name, const std::string& remark,
@@ -107,6 +113,12 @@ class OpVersionDesc {
   OpVersionDesc& NewOutput(const std::string& name, const std::string& remark) {
     infos_.push_back(std::shared_ptr<OpUpdateRecord>(
         new compatible::NewOutput(name, remark)));
+    return *this;
+  }
+
+  OpVersionDesc& BugfixWithBehaviorChanged(const std::string& remark) {
+    infos_.push_back(std::shared_ptr<OpUpdateRecord>(
+        new compatible::BugfixWithBehaviorChanged(remark)));
     return *this;
   }
 
