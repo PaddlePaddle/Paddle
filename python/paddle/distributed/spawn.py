@@ -17,6 +17,7 @@ from __future__ import print_function, division
 import multiprocessing
 import os
 import signal
+import six
 import sys
 import warnings
 
@@ -24,7 +25,8 @@ from paddle.distributed.utils import find_free_ports
 from paddle.device import get_device
 
 # deprecated module import
-from paddle.fluid.framework import cpu_places, cuda_places
+from paddle.fluid import core
+from paddle.fluid.framework import _cpu_num
 
 
 def _py_supported_check():
@@ -50,8 +52,20 @@ def _set_default_assist_env(nprocs):
     # because the FLAGS_selected_gpus may be used in other place,
     # if we set FLAGS_selected_gpus to be `0,1,2,3`, it may cause error
     # when using `ParallelEnv`
+    # NOTE(chenweihang): use absolute gpu card id
+    env_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+    if env_devices is None or env_devices == "":
+        env_devices_list = six.moves.range(core.get_cuda_device_count())
+    else:
+        env_devices_list = env_devices.split(',')
+    if len(env_devices_list) < nprocs:
+        raise RuntimeError(
+            "the number of visible devices(%d) is less than the number "
+            "of spawn processes(%d), please ensure that the correct `nprocs` argument is "
+            "passed or the environment variable `CUDA_VISIBLE_DEVICES` is correctly configured."
+            % len(env_devices_list), nprocs)
     os.environ['PADDLE_CUDA_VISIBLE_DEVICES'] = ",".join(
-        [str(x) for x in range(0, nprocs)])
+        [str(env_devices_list[x]) for x in range(0, nprocs)])
 
 
 def _func_wrapper(func, i, args, error_queue, return_queue):
@@ -202,8 +216,8 @@ def start_processes(func,
                 dp_layer = paddle.DataParallel(layer)
 
                 loss_fn = nn.MSELoss()
-                sgd = opt.SGD(
-                    learning_rate=0.001, parameter_list=dp_layer.parameters())
+                adam = opt.Adam(
+                    learning_rate=0.001, parameters=dp_layer.parameters())
 
                 # 4. run layer
                 inputs = paddle.randn([10, 10], 'float32')
@@ -215,8 +229,8 @@ def start_processes(func,
                 loss.backward()
                 dp_layer.apply_collective_grads()
 
-                sgd.step()
-                sgd.clear_grad()
+                adam.step()
+                adam.clear_grad()
 
             if __name__ == '__main__':
                 dist.start_processes(train, args=(), nprocs=2)
@@ -232,9 +246,10 @@ def start_processes(func,
     if nprocs == -1:
         device = get_device()
         if device == 'cpu':
-            nprocs = len(cpu_places())
+            # TODO: not supports cpu parallel now
+            nprocs = _cpu_num
         else:
-            nprocs = len(cuda_places())
+            nprocs = core.get_cuda_device_count()
 
     # NOTE(chenweihang): [ why need set default master info before run? ]
     # when using `paddle.distributed.spawn/start_processes` start 
@@ -336,8 +351,8 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False):
                 dp_layer = paddle.DataParallel(layer)
 
                 loss_fn = nn.MSELoss()
-                sgd = opt.SGD(
-                    learning_rate=0.001, parameter_list=dp_layer.parameters())
+                adam = opt.Adam(
+                    learning_rate=0.001, parameters=dp_layer.parameters())
 
                 # 4. run layer
                 inputs = paddle.randn([10, 10], 'float32')
@@ -349,8 +364,8 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False):
                 loss.backward()
                 dp_layer.apply_collective_grads()
 
-                sgd.step()
-                sgd.clear_grad()
+                adam.step()
+                adam.clear_grad()
 
             if __name__ == '__main__':
                 dist.spawn(train, args=(), nprocs=2)

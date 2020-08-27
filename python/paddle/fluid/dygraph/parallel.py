@@ -294,8 +294,8 @@ class DataParallel(layers.Layer):
                 dp_layer = paddle.DataParallel(layer)
 
                 loss_fn = nn.MSELoss()
-                sgd = opt.SGD(
-                    learning_rate=0.001, parameter_list=dp_layer.parameters())
+                adam = opt.Adam(
+                    learning_rate=0.001, parameters=dp_layer.parameters())
 
                 # 4. run layer
                 inputs = paddle.randn([10, 10], 'float32')
@@ -307,8 +307,8 @@ class DataParallel(layers.Layer):
                 loss.backward()
                 dp_layer.apply_collective_grads()
 
-                sgd.minimize(loss)
-                dp_layer.clear_gradients()
+                adam.step()
+                adam.clear_grad()
 
             if __name__ == '__main__':
                 # 1. start by ``paddle.distributed.spawn`` (default)
