@@ -29,6 +29,8 @@ __all__ = [
     'Linear',
     'UpSample',
     'Pad2D',
+    'UpsamplingNearest2d',
+    'UpsamplingBilinear2d',
     'ReflectionPad1d',
     'ReplicationPad1d',
     'ConstantPad1d',
@@ -54,8 +56,7 @@ class UpSample(layers.Layer):
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     and the resizing only applies on the three dimensions(depth, height and width).
-    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
-    future and only use :attr:`out_shape` instead.
+
     Supporting resample methods:
         'linear' : Linear interpolation
         'bilinear' : Bilinear interpolation
@@ -85,7 +86,7 @@ class UpSample(layers.Layer):
     interpolating functions of three variables (e.g. D-direction,
     H-direction and W-direction in this op) on a rectilinear 3D grid.
     The linear interpolation is performed on three directions.
-    Align_corners and align_mode are optional parameters,the calculation method
+    align_corners and align_mode are optional parameters,the calculation method
     of interpolation can be selected by them.
 
     Example:
@@ -183,16 +184,16 @@ class UpSample(layers.Layer):
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
     
     Parameters:
-        input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
+        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
-        size (list|tuple|Variable|None): Output shape of image resize
+        size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|Variable|None): The multiplier for the input height or width. At
+        scale_factor (float|Tensor|list|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
+             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.Has to match input size if it is a list.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'nearst', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
@@ -216,7 +217,7 @@ class UpSample(layers.Layer):
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
     Raises:
-        TypeError: size should be a list or tuple or Variable.
+        TypeError: size should be a list or tuple or Tensor.
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
                     'trilinear', 'bicubic', or 'nearest' currently.
         ValueError: 'linear' only support 3-D tensor.
@@ -234,16 +235,18 @@ class UpSample(layers.Layer):
     Examples:
         .. code-block:: python
             import paddle
+            import paddle.nn as nn
             import numpy as np
-            import paddle.fluid.dygraph as dg
-            upsample_op = paddle.nn.UpSample(size=[12,12])
+            paddle.disable_static()
+
             input_data = np.random.rand(2,3,6,10).astype("float32")
-            place = paddle.fluid.CPUPlace()
-            with dg.guard(place) as g:
-                input = dg.to_variable(input_data)
-                output = upsample_op(input=input)
-                print(output.shape)
-                # [2L, 3L, 12L, 12L]
+            upsample_out  = paddle.nn.UpSample(size=[12,12])
+
+            input = paddle.to_tensor(input_data)
+            output = upsample_out(x=input)
+            print(output.shape)
+            # [2L, 3L, 12L, 12L]
+
     """
 
     def __init__(self,
@@ -251,8 +254,9 @@ class UpSample(layers.Layer):
                  scale_factor=None,
                  mode='nearest',
                  align_corners=False,
-                 align_mode=1,
-                 data_format='NCHW'):
+                 align_mode=0,
+                 data_format='NCHW',
+                 name=None):
         super(UpSample, self).__init__()
         self.size = size
         self.scale_factor = scale_factor
@@ -260,16 +264,184 @@ class UpSample(layers.Layer):
         self.align_corners = align_corners
         self.align_mode = align_mode
         self.data_format = data_format
+        self.name = name
 
-    def forward(self, input):
+    def forward(self, x):
         out = F.interpolate(
-            input,
+            x,
             size=self.size,
             scale_factor=self.scale_factor,
             mode=self.mode,
             align_corners=self.align_corners,
             align_mode=self.align_mode,
-            data_format=self.data_format)
+            data_format=self.data_format,
+            name=self.name)
+
+        return out
+
+
+class UpsamplingNearest2d(layers.Layer):
+    """
+    This op upsamples a batch of images, using nearest neighbours' pixel values.
+    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w), 
+    and the upsampling only applies on the two dimensions(height and width).
+
+    Nearest neighbor interpolation is to perform nearest neighbor interpolation
+    in both the 3rd dimension(in height direction) and the 4th dimension(in width
+    direction) on input tensor.
+    
+    For details of nearest neighbor interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
+    
+        x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        size (list|tuple|Tensor|None): Output shape of image resize
+             layer, the shape is (out_h, out_w) when input is a 4-D Tensor. 
+             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
+             If a Tensor Variable, its dimensions size should be a 1.
+        scale_factor (float|int|list|Tensor|None): The multiplier for the input height or width. At
+             least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
+             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
+             Default: None. Has to match input size if it is a list.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
+            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
+    Raises:
+        TypeError: size should be a list or tuple or Tensor.
+        ValueError: 'nearest' only support 4-D tensor.
+        ValueError: One of size and scale_factor must not be None.
+        ValueError: size length should be 2 for input 4-D tensor.
+        ValueError: scale_factor should be greater than zero.
+        ValueError: data_format can only be 'NCHW', 'NHWC'.
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+            import numpy as np
+            paddle.disable_static()
+
+            input_data = np.random.rand(2,3,6,10).astype("float32")
+            upsample_out  = paddle.nn.UpsamplingNearest2d(size=[12,12])
+
+            input = paddle.to_tensor(input_data)
+            output = upsample_out(x=input)
+            print(output.shape)
+            # [2L, 3L, 12L, 12L]
+
+    """
+
+    def __init__(self,
+                 size=None,
+                 scale_factor=None,
+                 data_format='NCHW',
+                 name=None):
+        super(UpsamplingNearest2d, self).__init__()
+        self.size = size
+        self.scale_factor = scale_factor
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, x):
+        out = F.interpolate(
+            x,
+            size=self.size,
+            scale_factor=self.scale_factor,
+            mode='nearest',
+            align_corners=False,
+            align_mode=0,
+            data_format=self.data_format,
+            name=self.name)
+
+        return out
+
+
+class UpsamplingBilinear2d(layers.Layer):
+    """
+    This op upsamples a batch of images, using bilinear' pixel values.
+    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w), 
+    and the upsampling only applies on the two dimensions(height and width).
+
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this op) on a rectilinear 2D grid. The key idea is
+    to perform linear interpolation first in one direction, and then
+    again in the other direction.
+    
+    For details of bilinear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bilinear_interpolation.
+    
+        x (Tensor): 4-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        size (list|tuple|Tensor|None): Output shape of image resize
+             layer, the shape is (out_h, out_w) when input is a 4-D Tensor. 
+             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
+             If a Tensor Variable, its dimensions size should be a 1.
+        scale_factor (float|int|list|Tensor|None): The multiplier for the input height or width. At
+             least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
+             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
+             Default: None. Has to match input size if it is a list.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
+            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
+    Raises:
+        TypeError: size should be a list or tuple or Tensor.
+        ValueError: 'bilinear' only support 4-D tensor.
+        ValueError: One of size and scale_factor must not be None.
+        ValueError: size length should be 2 for input 4-D tensor.
+        ValueError: scale_factor should be greater than zero.
+        ValueError: data_format can only be 'NCHW', 'NHWC'.
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.nn as nn
+            import numpy as np
+            paddle.disable_static()
+
+            input_data = np.random.rand(2,3,6,10).astype("float32")
+            upsample_out  = paddle.nn.UpsamplingBilinear2d(size=[12,12])
+
+            input = paddle.to_tensor(input_data)
+            output = upsample_out(x=input)
+            print(output.shape)
+            # [2L, 3L, 12L, 12L]
+    """
+
+    def __init__(self,
+                 size=None,
+                 scale_factor=None,
+                 data_format='NCHW',
+                 name=None):
+        super(UpsamplingBilinear2d, self).__init__()
+        self.size = size
+        self.scale_factor = scale_factor
+        self.data_format = data_format
+        self.name = name
+
+    def forward(self, x):
+        out = F.interpolate(
+            x,
+            size=self.size,
+            scale_factor=self.scale_factor,
+            mode='bilinear',
+            align_corners=True,
+            align_mode=0,
+            data_format=self.data_format,
+            name=self.name)
 
         return out
 
