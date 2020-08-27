@@ -651,7 +651,7 @@ def _rnn_static_graph(cell,
 def birnn(cell_fw,
           cell_bw,
           inputs,
-          initial_states,
+          initial_states=None,
           sequence_length=None,
           time_major=False,
           **kwargs):
@@ -712,11 +712,12 @@ def birnn(cell_fw,
         
     """
     if initial_states is None:
-        state_fw = cell_fw.get_initial_states(
+        states_fw = cell_fw.get_initial_states(
             batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
-        state_bw = cell_fw.get_initial_states(
+        states_bw = cell_fw.get_initial_states(
             batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
-    states_fw, states_bw = initial_states
+    else:
+        states_fw, states_bw = initial_states
     outputs_fw, states_fw = rnn(cell_fw,
                                 inputs,
                                 states_fw,
