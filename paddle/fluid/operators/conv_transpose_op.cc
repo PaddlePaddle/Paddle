@@ -569,7 +569,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
                                      double>);
 
-REGISTER_OP_VERSION(cumsum)
+REGISTER_OP_VERSION(conv_transpose)
     .AddCheckpoint(
         R"ROC(
       Upgrade convtranspose add a new attribute [output_padding].
