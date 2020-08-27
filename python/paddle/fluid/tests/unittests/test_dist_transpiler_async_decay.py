@@ -113,8 +113,8 @@ class TranspilerAsyncLRDecayTest(unittest.TestCase):
                          ["listen_and_serv"])
         # block1: sum,cast,scale,floor,fill_constant,elementwise_pow,scale
         self.assertEqual([op.type for op in pserver.blocks[1].ops], [
-            "sum", "cast", "scale", "floor", "fill_constant", "elementwise_pow",
-            "scale"
+            "sum", "cast", "fill_constant", "elementwise_div", "floor",
+            "fill_constant", "elementwise_pow", "scale"
         ])
 
         # block1~2: optimize pass

@@ -91,7 +91,7 @@ from .tensor.logic import equal  #DEFINE_ALIAS
 from .tensor.logic import greater_equal  #DEFINE_ALIAS
 from .tensor.logic import greater_than  #DEFINE_ALIAS
 from .tensor.logic import is_empty  #DEFINE_ALIAS
-from .tensor.logic import isfinite  #DEFINE_ALIAS
+#from .tensor.logic import isfinite  #DEFINE_ALIAS
 from .tensor.logic import less_equal  #DEFINE_ALIAS
 from .tensor.logic import less_than  #DEFINE_ALIAS
 from .tensor.logic import logical_and  #DEFINE_ALIAS
@@ -176,7 +176,11 @@ from .tensor.math import maximum  #DEFINE_ALIAS
 from .tensor.math import min  #DEFINE_ALIAS
 from .tensor.math import minimum  #DEFINE_ALIAS
 from .tensor.math import mm  #DEFINE_ALIAS
-from .tensor.math import div  #DEFINE_ALIAS
+from .tensor.math import divide  #DEFINE_ALIAS
+from .tensor.math import floor_divide  #DEFINE_ALIAS
+from .tensor.math import remainder  #DEFINE_ALIAS
+from .tensor.math import mod  #DEFINE_ALIAS
+from .tensor.math import floor_mod  #DEFINE_ALIAS
 from .tensor.math import multiply  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
@@ -189,8 +193,12 @@ from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clip  #DEFINE_ALIAS
 from .tensor.math import trace  #DEFINE_ALIAS
 from .tensor.math import kron  #DEFINE_ALIAS
+from .tensor.math import isfinite  #DEFINE_ALIAS
+from .tensor.math import isinf  #DEFINE_ALIAS
+from .tensor.math import isnan  #DEFINE_ALIAS
 from .tensor.math import prod  #DEFINE_ALIAS
-# from .tensor.random import gaussin        #DEFINE_ALIAS
+from .tensor.random import standard_normal
+from .tensor.random import normal
 from .tensor.random import uniform  #DEFINE_ALIAS
 from .tensor.random import shuffle  #DEFINE_ALIAS
 from .tensor.random import randn  #DEFINE_ALIAS

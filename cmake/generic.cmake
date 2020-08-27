@@ -384,8 +384,12 @@ function(cc_test_run TARGET_NAME)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
-    # No unit test should exceed 10 minutes.
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+    # No unit test should exceed 2 minutes.
+    if (APPLE OR WIN32)
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+    else()
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)
+    endif()
   endif()
 endfunction()
 
@@ -742,9 +746,14 @@ function(py_test TARGET_NAME)
                ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
+    
+    if (APPLE OR WIN32)
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+    else()
+        # No unit test should exceed 2 minutes in Linux.
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)
+    endif()
 
-    # No unit test should exceed 10 minutes.
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
   endif()
 endfunction()
 

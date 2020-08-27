@@ -22,6 +22,7 @@ from ...fluid.layers import soft_relu  #DEFINE_ALIAS
 from ...fluid.layers import swish  #DEFINE_ALIAS
 from ...fluid.layers import sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
+from ...tensor.math import tanh  #DEFINE_ALIAS
 
 __all__ = [
     'brelu',
@@ -47,6 +48,7 @@ __all__ = [
     'softsign',
     'sigmoid',
     'swish',
+    'tanh',
     'tanhshrink',
     'thresholded_relu',
     'log_softmax',
@@ -223,7 +225,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
                         x,  \\text{otherwise}
                       \\end{cases}
 
-    Args:
+    Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         min (float, optional): The minimum value of the linear region range. Default is -1.
         max (float, optional): The maximum value of the linear region range. Default is 1.
@@ -417,7 +419,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 
             paddle.disable_static()
 
-            x = paddle.to_tensor(np.array([-2, 0, 1]))
+            x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
             out = F.leaky_relu(x) # [-0.02, 0., 1.]
 
     """
@@ -464,11 +466,11 @@ def prelu(x, weight, name=None):
             paddle.disable_static()
 
             data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
-                            [ 3.0, -4.0,  5.0, -6.0],
-                            [-7.0, -8.0,  8.0,  9.0]],
-                            [[ 1.0, -2.0, -3.0,  4.0],
-                            [-5.0,  6.0,  7.0, -8.0],
-                            [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
+                               [ 3.0, -4.0,  5.0, -6.0],
+                               [-7.0, -8.0,  8.0,  9.0]],
+                              [[ 1.0, -2.0, -3.0,  4.0],
+                               [-5.0,  6.0,  7.0, -8.0],
+                               [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
             x = paddle.to_tensor(data)
             w = paddle.to_tensor(np.array([0.25]).astype('float32'))
             out = F.prelu(x, w)
@@ -596,9 +598,9 @@ def relu6(x, name=None):
 
     .. math::
 
-        \text{relu6}(x) = \min(\max(0,x), 6)
+        relu6(x) = min(max(0,x), 6)
 
-    Args:
+    Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -607,18 +609,16 @@ def relu6(x, name=None):
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
-        out = F.relu6(x) # [0, 0.3, 6]
-
+            x = paddle.to_tensor(np.array([-1, 0.3, 6.5]))
+            out = F.relu6(x) # [0, 0.3, 6]
     """
     threshold = 6.0
     if in_dygraph_mode():
@@ -644,11 +644,13 @@ def selu(x,
 
     .. math::
 
-        \text{selu}(x) = scale * (\max(0,x) + \min(0, \alpha * (\exp(x) - 1))), \\
-        with\,alpha=1.6732632423543772848170429916717 and \\
-        scale=1.0507009873554804934193349852946
+        selu(x)= scale *
+                 \\begin{cases}
+                   x, \\text{if } x > 0 \\\\
+                   alpha * e^{x} - alpha, \\text{if } x <= 0
+                 \\end{cases}
 
-    Args:
+    Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         scale (float, optional): The value of scale for selu. Default is 1.0507009873554804934193349852946
         alpha (float, optional): The value of alpha for selu. Default is 1.6732632423543772848170429916717
@@ -659,18 +661,16 @@ def selu(x,
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([[0, 1],[2, 3]]))
-        out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
-
+            x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
+            out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
     """
     if in_dygraph_mode():
         return core.ops.selu(x, 'scale', scale, 'alpha', alpha)
@@ -854,10 +854,10 @@ def softplus(x, beta=1, threshold=20, name=None):
 
     .. math::
 
-        \text{softplus}(x) = \frac{1}{\beta} * \log(1 + \exp(\beta * x)) \\
-        \text{For numerical stability, the implementation reverts to the linear function when :}\,x \times \beta > threshold.
+        softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\
+        \\text{For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.}
 
-    Args:
+    Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         beta (float, optional): The value of beta for softplus. Default is 1
         threshold (float, optional): The value of threshold for softplus. Default is 20
@@ -868,18 +868,16 @@ def softplus(x, beta=1, threshold=20, name=None):
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-        out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
-
+            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
     if in_dygraph_mode():
         return core.ops.softplus(x, 'beta', beta, 'threshold', threshold)
@@ -903,14 +901,13 @@ def softshrink(x, threshold=0.5, name=None):
 
     .. math::
 
-        \text{softshrink}(x) =
-        \begin{cases}
-        x - threshold, & \text{ if } x > threshold \\
-        x + threshold, & \text{ if } x < -threshold \\
-        0, & \text{ otherwise }
-        \end{cases}
+        softshrink(x)= \\begin{cases}
+                        x - threshold, \\text{if } x > threshold \\\\
+                        x + threshold, \\text{if } x < -threshold \\\\
+                        0,  \\text{otherwise}
+                      \\end{cases}
 
-    Args:
+    Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         threshold (float, optional): The value of threshold(must be no less than zero) for softplus. Default is 0.5
         name (str, optional): Name for the operation (optional, default is None).
@@ -920,19 +917,22 @@ def softshrink(x, threshold=0.5, name=None):
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
-        out = F.softshrink(x) # [-0.4, 0, 0, 0.3]
-
+            x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
+            out = F.softshrink(x) # [-0.4, 0, 0, 0.3]
     """
+    if threshold < 0:
+        raise ValueError(
+            "The threshold must be no less than zero. Received: {}.".format(
+                threshold))
+
     if in_dygraph_mode():
         return core.ops.softshrink(x, 'lambda', threshold)
 
@@ -954,9 +954,9 @@ def softsign(x, name=None):
 
     .. math::
 
-        \text{softsign}(x) = \frac{x}{1 + |x|}
+        softsign(x) = \\frac{x}{1 + |x|}
 
-    Args:
+    Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -965,18 +965,16 @@ def softsign(x, name=None):
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-        out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
-
+            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
     """
     if in_dygraph_mode():
         return core.ops.softsign(x)
@@ -995,7 +993,7 @@ def tanhshrink(x, name=None):
 
     .. math::
 
-        \text{tanhshrink}(x) = x - \text{tanh}(x)
+        tanhshrink(x) = x - tanh(x)
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -1006,18 +1004,16 @@ def tanhshrink(x, name=None):
         A Tensor with the same data type and shape as ``x`` .
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
-        import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-        out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
-
+            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
     """
     if in_dygraph_mode():
         return core.ops.tanh_shrink(x)
