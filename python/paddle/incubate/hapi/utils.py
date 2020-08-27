@@ -196,20 +196,20 @@ def summary(net, input_size, batch_size=-1, dtypes=None):
         .. code-block:: python
 
             from paddle import fluid
-            from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
+            from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential
             from paddle.incubate.hapi.utils import summary
 
 
             class LeNetDygraph(fluid.dygraph.Layer):
-                def __init__(self, num_classes=10, classifier_activation='softmax'):
+                def __init__(self, num_classes=10):
                     super(LeNetDygraph, self).__init__()
                     self.num_classes = num_classes
                     self.features = Sequential(
-                        Conv2D(
+                        Conv2d(
                             1, 6, 3, stride=1, padding=1),
                         ReLU(),
                         Pool2D(2, 'max', 2),
-                        Conv2D(
+                        Conv2d(
                             6, 16, 5, stride=1, padding=0),
                         ReLU(),
                         Pool2D(2, 'max', 2))
@@ -219,7 +219,7 @@ def summary(net, input_size, batch_size=-1, dtypes=None):
                             Linear(400, 120),
                             Linear(120, 84),
                             Linear(
-                                84, 10, act=classifier_activation))
+                                84, 10))
 
                 def forward(self, inputs):
                     x = self.features(inputs)
