@@ -131,6 +131,12 @@ class Conll05st(Dataset):
                 target_dict_file, TRGDICT_URL, TRGDICT_MD5, 'conll05st',
                 download)
 
+        self.emb_file = emb_file
+        if self.emb_file is None:
+            assert download, "emb_file is not set and downloading automatically is disabled"
+            self.emb_file = _check_exists_and_download(
+                emb_file, EMB_URL, EMB_MD5, 'conll05st', download)
+
         self.word_dict = self._load_dict(self.word_dict_file)
         self.predicate_dict = self._load_dict(self.verb_dict_file)
         self.label_dict = self._load_label_dict(self.target_dict_file)

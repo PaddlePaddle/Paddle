@@ -15,12 +15,8 @@
 import unittest
 import os
 import numpy as np
-import tempfile
-import shutil
-import cv2
 
 from paddle.incubate.hapi.datasets import *
-from paddle.incubate.hapi.datasets.utils import _check_exists_and_download
 
 
 class TestConll05st(unittest.TestCase):
@@ -35,6 +31,8 @@ class TestConll05st(unittest.TestCase):
         self.assertTrue(len(sample) == 9)
         for s in sample:
             self.assertTrue(len(s.shape) == 1)
+
+        assert os.path.exists(conll05st.get_embedding())
 
 
 if __name__ == '__main__':
