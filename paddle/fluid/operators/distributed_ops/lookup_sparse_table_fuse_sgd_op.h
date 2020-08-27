@@ -87,8 +87,6 @@ class LargeScaleFuseSGDOpKernel<platform::CPUDeviceContext, T>
                       platform::errors::InvalidArgument(
                           "param_row should have the same size with grad_row"));
 
-    auto &params = values[0];
-
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
 
     std::vector<T> grads;
@@ -97,8 +95,9 @@ class LargeScaleFuseSGDOpKernel<platform::CPUDeviceContext, T>
     blas.SCAL(grads.size(), lr[0], grads.data());
 
     for (int x = 0; x < static_cast<int>(in_rows.size()); ++x) {
-      blas.VSUB(grad_width, params[x]->data(), grads.data() + grad_width * x,
-                params[x]->data());
+      auto &params = values[x][0];
+      blas.VSUB(grad_width, params->data(), grads.data() + grad_width * x,
+                params->data());
     }
   }
 };
