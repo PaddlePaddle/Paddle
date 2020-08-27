@@ -239,10 +239,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.PiecewiseLR(
+                boundaries=bd, values=lr_arr)
             adam = Adam(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr_arr),
-                parameters=ptb_model.parameters())
+                learning_rate=scheduler, parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -268,7 +268,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
                 adam.minimize(dy_loss)
+                scheduler.step()
                 ptb_model.clear_gradients()
+
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
                         dy_param_updated[param.name] = param.numpy()
@@ -325,10 +327,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.PiecewiseLR(
+                boundaries=bd, values=lr_arr)
             adam = Adam(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr_arr),
-                parameters=ptb_model.parameters())
+                learning_rate=scheduler, parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -354,6 +356,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
                 adam.minimize(dy_loss)
+                scheduler.step()
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
@@ -369,9 +372,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
                     var.set(np.zeros_like(np_t), place)
 
                     self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
-
-            if isinstance(adam._learning_rate, LearningRateDecay):
-                adam._learning_rate.step_num = 0
 
             para_state_dict, opti_state_dict = paddle.load("./test_dy")
             adam.set_state_dict(opti_state_dict)
@@ -434,10 +434,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.PiecewiseLR(
+                boundaries=bd, values=lr_arr)
             adam = Adam(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr_arr),
-                parameters=ptb_model.parameters())
+                learning_rate=scheduler, parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -463,6 +463,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
                 adam.minimize(dy_loss)
+                scheduler.step()
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
@@ -541,10 +542,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.PiecewiseLR(
+                boundaries=bd, values=lr_arr)
             adam = Adam(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr_arr),
-                parameters=ptb_model.parameters())
+                learning_rate=scheduler, parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -570,6 +571,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
                 adam.minimize(dy_loss)
+                scheduler.step()
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
@@ -825,9 +827,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.PiecewiseLR(
+                boundaries=bd, values=lr_arr)
             adam = Adam(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr_arr),
+                learning_rate=scheduler,
                 beta1=0.8,
                 beta2=0.6,
                 parameters=ptb_model.parameters())
@@ -867,14 +870,16 @@ class TestDygraphPtbRnn(unittest.TestCase):
                                                             init_cell)
 
                 dy_loss.backward()
+                scheduler.step()
                 adam.minimize(dy_loss)
                 ptb_model.clear_gradients()
 
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                if k == "global_step":
+                if k == "LR_Scheduler":
                     self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] + 1))
+                        np.array_equal(v['last_epoch'], self.base_opti[k][
+                            'last_epoch'] + 1))
 
                 if k.find("beta1_pow_acc_0") > 0:
                     self.assertTrue(

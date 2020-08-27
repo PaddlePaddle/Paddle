@@ -35,12 +35,12 @@ from ..fluid.layers import ops
 from ..fluid.regularizer import append_regularization_ops
 from ..fluid.dygraph import base as imperative_base
 from ..fluid.dygraph import no_grad
-from ..fluid.dygraph.learning_rate_scheduler import LearningRateDecay, _LearningRateEpochDecay
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
 from ..fluid.wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
+from .lr_scheduler import _LRScheduler
 
 __all__ = ['Optimizer']
 
@@ -53,8 +53,8 @@ class Optimizer(object):
     but need to use one of it's implementation.
 
     Args:
-        learning_rate (float|LearningRateDecay): The learning rate used to update ``Parameter``.
-            It can be a float value or a LearningRateDecay.
+        learning_rate (float|_LRScheduler): The learning rate used to update ``Parameter``.
+            It can be a float value or any subclass of ``_LRScheduler`` .
         parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
@@ -109,11 +109,6 @@ class Optimizer(object):
             parameters) if parameters is not None else None
         self._name = name
         if framework.in_dygraph_mode():
-            if not isinstance(learning_rate, float) and \
-                    not isinstance(learning_rate, LearningRateDecay):
-                raise TypeError(
-                    "learning rate should be float or LearningRateDecay, got %s here"
-                    % type(learning_rate))
             if self._parameter_list is None:
                 raise AttributeError(
                     "parameters argument given to the Optimizer should not be None in dygraph mode."
@@ -126,13 +121,10 @@ class Optimizer(object):
                             "The weight_decay[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                             % weight_decay.__str__())
                         break
-        else:
-            if not isinstance(learning_rate, float) and \
-                    not isinstance(learning_rate, framework.Variable):
-                raise TypeError(
-                    "learning rate should be float or Tensor, got %s here" %
-                    type(learning_rate))
-
+        if not isinstance(learning_rate, (float, _LRScheduler)):
+            raise TypeError(
+                "learning rate should be float or _LRScheduler, got %s here" %
+                type(learning_rate))
         if grad_clip is not None:
             if not isinstance(grad_clip, GradientClipBase):
                 raise TypeError(
@@ -150,9 +142,6 @@ class Optimizer(object):
         # each program should have a independent learning rate
         # program -> tensor(learning_rate)
         self._learning_rate_map = dict()
-        if isinstance(self._learning_rate, framework.Variable):
-            self._learning_rate_map[framework.default_main_program(
-            )] = self._learning_rate
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra tensors associated with the parameters
         # to train. These tensors are called accumulators.
@@ -167,7 +156,7 @@ class Optimizer(object):
     @framework.dygraph_only
     def state_dict(self):
         '''
-        Get state dict information from optimizer. It contain all the tensor used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
+        Get state dict information from optimizer. It contain all the tensor used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. If _LRScheduler have been used, global_step will be include in state dict.
         If the optimizer never be called(minimize function), the state_dict is empty.
 
         Args: 
@@ -192,24 +181,14 @@ class Optimizer(object):
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
         # global step if use lr decay
-        if isinstance(self._learning_rate, LearningRateDecay):
+        if isinstance(self._learning_rate, _LRScheduler):
             state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
-
-            if not isinstance(self._learning_rate, _LearningRateEpochDecay):
-                var_tmp = None
-                var_temp = framework._varbase_creator(
-                    None, name='global_step', dtype='int32')
-
-                tensor.fill_constant(
-                    [1], "int32", self._learning_rate.step_num, out=var_temp)
-
-                state_dict['global_step'] = var_temp
         return state_dict
 
     @framework.dygraph_only
     def set_state_dict(self, state_dict):
         '''
-        Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
+        Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If _LRScheduler have been used, global_step will be changed.
 
         Args: 
             state_dict(dict) : Dict contains all the Tensor needed by optimizer
@@ -237,29 +216,8 @@ class Optimizer(object):
 
         '''
 
-        if isinstance(self._learning_rate, LearningRateDecay):
-            self._learning_rate.set_dict(state_dict["LR_Scheduler"])
-
-            if not isinstance(self._learning_rate, _LearningRateEpochDecay):
-                assert 'global_step' in state_dict, \
-                        'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
-                global_step = state_dict['global_step']
-
-                if isinstance(global_step, Variable):
-                    step_np = global_step
-                    step_np = np.array(step_np.value().get_tensor())
-                    assert step_np.shape == (1,),  \
-                            "global step shape is (1,), the shape is {}".format( step_np.shape )
-
-                    self._learning_rate.step_num = int(step_np[0])
-                elif isinstance(global_step, np.ndarray):
-                    assert global_step.shape == (1,),  \
-                            "global step shape is (1,), the shape is {}".format( global_step.shape )
-                    self._learning_rate.step_num = global_step[0]
-                else:
-                    raise RuntimeError(
-                        "Type not supprt, value in state dict must be [VarBase, Tensor, numpy], the type is ",
-                        type(global_step))
+        if isinstance(self._learning_rate, _LRScheduler):
+            self._learning_rate.set_state_dict(state_dict["LR_Scheduler"])
 
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
@@ -296,58 +254,49 @@ class Optimizer(object):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
-        if imperative_base.enabled():
-            # create learning rate tensor
-            if isinstance(self._learning_rate, float):
-                lr = self._global_learning_rate()
-
-                if isinstance(lr, framework.Variable):
-                    return
-                else:
-                    self._learning_rate_map[framework.default_main_program(
-                    )] = layers.create_global_var(
-                        name=unique_name.generate("learning_rate"),
-                        shape=[1],
-                        value=float(self._learning_rate),
-                        dtype=paddle.get_default_dtype()
-                        if self._dtype is None else self._dtype,
-                        persistable=True)
-            # get learning rate Tensor from LearningRateDecay
-            elif isinstance(self._learning_rate, LearningRateDecay):
+        if isinstance(self._learning_rate, _LRScheduler):
+            lr_var = self._global_learning_rate()
+            # only create global lr_var once
+            if not isinstance(lr_var, framework.Variable):
+                lr_name = unique_name.generate('learning_rate')
+                self._learning_rate._var_name = lr_name
+                lr_var = self.helper.create_global_variable(
+                    name=lr_name,
+                    shape=[1],
+                    persistable=True,
+                    stop_gradient=True,
+                    dtype=paddle.get_default_dtype()
+                    if self._dtype is None else self._dtype)
+                main_prog = framework.default_main_program()
+                main_prog.lr_sheduler = self._learning_rate
+                main_prog.lr_var = lr_var
                 self._learning_rate_map[framework.default_main_program(
-                )] = self._learning_rate()
-            else:
-                raise TypeError(
-                    "optimizer's learning rate must be float or LearningRateDecay"
-                )
-        else:
-            lr = self._global_learning_rate()
+                )] = lr_var
 
+            lr_value = float(self._learning_rate())
+            self.helper.set_variable_initializer(
+                lr_var, initializer=Constant(value=lr_value))
+        elif isinstance(self._learning_rate, float):
+            # only create global lr_var once
+            lr = self._global_learning_rate()
             if isinstance(lr, framework.Variable):
                 return
             else:
-                if not isinstance(self._learning_rate, float):
-                    raise TypeError(
-                        "learning rate Tensor is create outside optimizer,"
-                        "can not create new learning rate Tensor for new program"
-                    )
-
-            # create learning rate in the current main program
-            self._learning_rate_map[framework.default_main_program(
-            )] = layers.create_global_var(
-                name=unique_name.generate("learning_rate"),
-                shape=[1],
-                value=float(self._learning_rate),
-                dtype=paddle.get_default_dtype()
-                if self._dtype is None else self._dtype,
-                persistable=True)
+                self._learning_rate_map[framework.default_main_program(
+                )] = layers.create_global_var(
+                    name=unique_name.generate("learning_rate"),
+                    shape=[1],
+                    value=float(self._learning_rate),
+                    dtype=paddle.get_default_dtype()
+                    if self._dtype is None else self._dtype,
+                    persistable=True)
 
     @framework.dygraph_only
     def set_lr(self, value):
         """
         :api_attr: imperative
         
-        Set the value of the learning rate manually in the optimizer. If the optimizer use LearningRateDecay,
+        Set the value of the learning rate manually in the optimizer. If the optimizer use _LRScheduler,
         this API cannot be invoked, because it will lead to conflict.
 
         Args:
@@ -391,40 +340,35 @@ class Optimizer(object):
 
 
         """
-        if not isinstance(value, (framework.Variable, float)):
+        if not isinstance(value, (int, float)):
             raise TypeError(
-                "The type of 'value' in optimizer.set_lr must be (float, Tensor), but received %s."
+                "The type of 'value' in optimizer.set_lr must be float, but received %s."
                 % (type(value)))
-        if isinstance(self._learning_rate, LearningRateDecay):
+        if isinstance(self._learning_rate, _LRScheduler):
             raise RuntimeError(
-                "optimizer's learning rate can't be LearningRateDecay when invoke this API, because this will lead to conflict."
+                "optimizer's learning rate can't be _LRScheduler when invoke this API, because this will lead to conflict."
             )
-        if isinstance(value, float):
-            self._learning_rate = value
-            current_lr = self._global_learning_rate()
-            if current_lr is not None:
-                global_block = framework.default_main_program().global_block()
-                global_block.append_op(
-                    type='fill_constant',
-                    outputs={'Out': [current_lr]},
-                    attrs={
-                        'dtype': current_lr.dtype,
-                        'shape': list(current_lr.shape),
-                        'value': float(value)
-                    },
-                    stop_gradient=True)
-        else:
-            assert len(value.shape) == 1 and value.shape[
-                0] == 1, "optimizer's learning rate must be 1-D Tensor with shape[1]"
-            self._learning_rate_map[framework.default_main_program()] = value
+        self._learning_rate = float(value)
+        current_lr = self._global_learning_rate()
+        if current_lr is not None:
+            global_block = framework.default_main_program().global_block()
+            global_block.append_op(
+                type='fill_constant',
+                outputs={'Out': [current_lr]},
+                attrs={
+                    'dtype': current_lr.dtype,
+                    'shape': list(current_lr.shape),
+                    'value': float(value)
+                },
+                stop_gradient=True)
 
     @framework.dygraph_only
     def get_lr(self):
         """
         :api_attr: imperative
         
-        Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
-        otherwise return the step learning rate.
+        Get current step learning rate. The return value is all the same When _LRScheduler is not used,
+        otherwise return the current step learning rate.
 
         Returns:
             float: The learning rate of the current step.
@@ -434,14 +378,14 @@ class Optimizer(object):
 
                 import numpy as np
                 import paddle
-                # example1: LearningRateDecay is not used, return value is all the same
+                # example1: _LRScheduler is not used, return value is all the same
                 paddle.disable_static()
                 emb = paddle.nn.Embedding([10, 10])
                 adam = paddle.optimizer.Adam(0.001, parameters = emb.parameters())
                 lr = adam.get_lr()
                 print(lr) # 0.001
 
-                # example2: PiecewiseDecay is used, return the step learning rate
+                # example2: PiecewiseLR is used, return the step learning rate
                 paddle.disable_static()
                 inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
                 linear = paddle.nn.Linear(10, 10)
@@ -451,7 +395,8 @@ class Optimizer(object):
                 
                 bd = [2, 4, 6, 8]
                 value = [0.2, 0.4, 0.6, 0.8, 1.0]
-                adam = paddle.optimizer.Adam(paddle.PiecewiseDecay(bd, value, 0),
+                scheduler = paddle.optimizer.PiecewiseLR(bd, value, 0)
+                adam = paddle.optimizer.Adam(scheduler,
                                        parameters=linear.parameters())
 
                 # first step: learning rate is 0.2
@@ -462,24 +407,14 @@ class Optimizer(object):
                 for i in range(12):
                     adam.step()
                     lr = adam.get_lr()
+                    scheduler.step()
                     np.allclose(lr, ret[i], rtol=1e-06, atol=0.0) # True
 
         """
-        current_lr = self._global_learning_rate()
-        if isinstance(current_lr, framework.Variable):
-            return self._global_learning_rate().numpy()[0]
-
         if isinstance(self._learning_rate, float):
             return self._learning_rate
-        elif isinstance(self._learning_rate, _LearningRateEpochDecay):
-            step_lr = self._learning_rate()
-            return step_lr.numpy()[0]
         else:
-            step_lr = self._learning_rate.step()
-            if isinstance(step_lr, (float, int)):
-                return step_lr
-            else:
-                return step_lr.numpy()[0]
+            return self._learning_rate()
 
     def _global_learning_rate(self, program=None):
         """

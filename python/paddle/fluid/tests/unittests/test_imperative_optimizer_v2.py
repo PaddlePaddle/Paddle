@@ -200,7 +200,7 @@ class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         bd = [3, 6, 9]
         optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.piecewise_decay(
+            learning_rate=paddle.optimizer.PiecewiseLR(
                 boundaries=bd,
                 values=[0.1 * (0.1**i) for i in range(len(bd) + 1)]),
             parameter_list=parameter_list)
@@ -208,7 +208,7 @@ class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
 
     def get_optimizer(self):
         bd = [3, 6, 9]
-        optimizer = SGDOptimizer(learning_rate=fluid.layers.piecewise_decay(
+        optimizer = SGDOptimizer(learning_rate=paddle.optimizer.PiecewiseLR(
             boundaries=bd, values=[0.1 * (0.1**i) for i in range(len(bd) + 1)]))
         return optimizer
 
