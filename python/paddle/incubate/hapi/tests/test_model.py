@@ -481,7 +481,7 @@ class TestModelFunction(unittest.TestCase):
             device = hapi.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             net = MyModel()
-            inputs = [Input('x', [None, 20], 'float32')]
+            inputs = [Input([None, 20], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
             params_info = model.summary()
