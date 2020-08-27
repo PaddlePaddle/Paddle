@@ -1224,7 +1224,19 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     x_dim = len(x.shape)
 
-    original_data_format = data_format
+    assert x_dim in [
+        3, 4, 5
+    ], "input tesor dimension must be in [3, 4, 5] but got {}".format(x_dim)
+
+    supported_format_map = {
+        3: ["NCL", "NLC"],
+        4: ["NCHW", "NHWC"],
+        5: ["NCDHW", "NDHWC"],
+    }
+    assert data_format in supported_format_map[x_dim], \
+    "input tensor dimension is {}, it's data format should be in {} but got {}".format(
+        x_dim, supported_format_map[x_dim], data_format)
+
     unsqueezed_dim = []
 
     if isinstance(pad, Variable):
