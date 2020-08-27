@@ -44,8 +44,6 @@ def deprecated(update_to="", since="", reason=""):
     """
 
     def decorator(func):
-        # TODO(zhiqiu): We temporally disable the warnings for 2.0-bata, and it should be re-enabled in the future.
-        return func
         """construct warning message, and return a decorated function or class."""
         assert isinstance(update_to, str), 'type of "update_to" must be str.'
         assert isinstance(since, str), 'type of "since" must be str.'
@@ -67,6 +65,13 @@ def deprecated(update_to="", since="", reason=""):
             msg += ' Please use "{}" instead.'.format(_update_to)
         if len(_reason) > 0:
             msg += "\n reason: {}".format(_reason)
+
+        # Add deprecation information to deprecated API.
+        if func.__doc__:
+            func.__doc__ = msg + '\n' + func.__doc__
+
+        # TODO(zhiqiu): We temporally disable the warnings for 2.0-bata, and it should be re-enabled in the future.
+        return func
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
