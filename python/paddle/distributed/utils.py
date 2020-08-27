@@ -213,12 +213,6 @@ class Pod(object):
         r = r[:-1]
         return r
 
-    def get_trainer(self, trainer_id):
-        for trainer in self.trainers:
-            if trainer.rank == trainer_id:
-                return trainer
-        return None
-
 
 def get_logger(log_level, name="root"):
     logger = logging.getLogger(name)
@@ -333,7 +327,7 @@ def find_free_ports(num):
     return None
 
 
-def _update_trainer_env(current_env, cluster, trainer):
+def _prepare_trainer_env(cluster, trainer):
     proc_env = {
         "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in trainer.gpus]),
         "PADDLE_TRAINER_ID": "%d" % trainer.rank,
@@ -341,8 +335,6 @@ def _update_trainer_env(current_env, cluster, trainer):
         "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
         "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
     }
-    current_env.update(proc_env)
-
     return proc_env
 
 
@@ -371,7 +363,8 @@ def start_local_trainers(cluster,
 
     procs = []
     for idx, t in enumerate(pod.trainers):
-        proc_env = _update_trainer_env(current_env, cluster, t)
+        proc_env = _prepare_trainer_env(cluster, t)
+        current_env.update(proc_env)
 
         logger.debug("trainer proc env:{}".format(current_env))
 

@@ -14,10 +14,11 @@
 
 from . import spawn
 from .spawn import spawn
-from .spawn import start_processes
 
 from . import parallel
 from .parallel import init_parallel_env
+from .parallel import get_rank
+from .parallel import get_world_size
 from paddle.fluid.dygraph.parallel import prepare_context  #DEFINE_ALIAS
 from paddle.fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
 
@@ -25,10 +26,13 @@ from . import collective
 from .collective import *
 
 # start multiprocess apis
-__all__ = ["spawn", "start_processes"]
+__all__ = ["spawn"]
 
 # dygraph parallel apis
-__all__ += ["prepare_context", "init_parallel_env", "ParallelEnv"]
+__all__ += [
+    "init_parallel_env", "get_rank", "get_world_size", "prepare_context",
+    "ParallelEnv"
+]
 
 # collective apis
 __all__ += collective.__all__

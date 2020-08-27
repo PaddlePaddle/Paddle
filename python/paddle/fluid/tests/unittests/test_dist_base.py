@@ -457,10 +457,12 @@ class TestParallelDyGraphRunnerBase(object):
         paddle.static.default_main_program().random_seed = seed
         np.random.seed(seed)
         random.seed = seed
+        # get trainer id
+        args.trainer_id = paddle.distributed.get_rank()
 
         # 3. init parallel env
         if args.update_method == "nccl2":
-            paddle.distributed.init_parallel_env(rank=args.trainer_id)
+            paddle.distributed.init_parallel_env()
 
         # 4. train model
         model, train_reader, opt = self.get_model()

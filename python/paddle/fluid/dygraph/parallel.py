@@ -118,16 +118,12 @@ class ParallelEnv(object):
     """
 
     def __init__(self):
-        self._nranks = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-        self._local_rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-        self._dev_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+        self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+        self._device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
-        self.__aliases__ = {
-            'local_rank': 'rank',
-            'nranks': 'world_size',
-        }
 
     @property
     def rank(self):
@@ -146,7 +142,7 @@ class ParallelEnv(object):
             print("The rank is %d" % env.rank)
             # The rank is 0
         """
-        return self._local_rank
+        return self._rank
 
     @property
     def world_size(self):
@@ -165,10 +161,10 @@ class ParallelEnv(object):
             print("The world_size is %d" % env.world_size)
             # The world_size is 4
         """
-        return self._nranks
+        return self._world_size
 
     @property
-    def dev_id(self):
+    def device_id(self):
         """
         The ID of selected GPU card for parallel training.
 
@@ -181,10 +177,10 @@ class ParallelEnv(object):
             import paddle.distributed as dist
             
             env = dist.ParallelEnv()
-            print("The device id are %d" % env.dev_id)
+            print("The device id are %d" % env.device_id)
             # The device id are 1
         """
-        return self._dev_id
+        return self._device_id
 
     @property
     def current_endpoint(self):
@@ -225,11 +221,10 @@ class ParallelEnv(object):
         """
         return self._trainer_endpoints
 
-    def __getattr__(self, name):
-        if name == "__aliases__":
-            raise AttributeError("Attribute `__aliases__` can not be accessed.")
-        name = self.__aliases__.get(name, name)
-        return object.__getattribute__(self, name)
+    # [aliases] Compatible with old method names
+    local_rank = rank
+    nranks = world_size
+    dev_id = device_id
 
 
 # NOTE: [ Compatible ] Originally this class name is `Env`. The semantics of the old class names
@@ -282,12 +277,12 @@ class DataParallel(layers.Layer):
                 def forward(self, x):
                     return self._linear2(self._linear1(x))
 
-            def train(rank):
+            def train():
                 # 1. enable dynamic mode
                 paddle.disable_static()
                 
                 # 2. initialize parallel environment
-                dist.init_parallel_env(rank)
+                dist.init_parallel_env()
 
                 # 3. create data parallel layer & optimizer
                 layer = LinearNet()
@@ -312,9 +307,9 @@ class DataParallel(layers.Layer):
 
             if __name__ == '__main__':
                 # 1. start by ``paddle.distributed.spawn`` (default)
-                dist.spawn(train, args=(), nprocs=2)
+                dist.spawn(train, nprocs=2)
                 # 2. start by ``paddle.distributed.launch``
-                # train(-1)
+                # train()
     """
 
     def __init__(self, layers, strategy=None):
