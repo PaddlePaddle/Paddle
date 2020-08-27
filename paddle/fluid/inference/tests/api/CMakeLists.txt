@@ -191,6 +191,7 @@ download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz")
 inference_analysis_test(test_analyzer_ernie_large SRCS analyzer_ernie_tester.cc
     EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
     ARGS --infer_model=${ERNIE_INSTALL_DIR}/model --infer_data=${ERNIE_INSTALL_DIR}/data.txt --refer_result=${ERNIE_INSTALL_DIR}/result.txt --ernie_large=true)
+set_tests_properties(test_analyzer_ernie_large PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
 
 # text_classification
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
