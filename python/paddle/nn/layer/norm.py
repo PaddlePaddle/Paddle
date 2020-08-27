@@ -566,17 +566,28 @@ class _BatchNormBase(layers.Layer):
         param_shape = [num_features]
 
         # create parameter
-        self.weight = self.create_parameter(
-            attr=self._weight_attr,
-            shape=param_shape,
-            default_initializer=Constant(1.0))
-        self.weight.stop_gradient = (self._weight_attr is False) or (
-            self._weight_attr and self._weight_attr.learning_rate == 0.)
+        if weight_attr == False:
+            self.weight = self.create_parameter(
+                attr=None, shape=param_shape, default_initializer=Constant(1.0))
+            self.weight.stop_gradient = True
+        else:
+            self.weight = self.create_parameter(
+                attr=self._weight_attr,
+                shape=param_shape,
+                default_initializer=Constant(1.0))
+            self.weight.stop_gradient = self._weight_attr.learning_rate == 0.
 
-        self.bias = self.create_parameter(
-            attr=self._bias_attr, shape=param_shape, is_bias=True)
-        self.bias.stop_gradient = (self._bias_attr is False) or (
-            self._bias_attr and self._bias_attr.learning_rate == 0.)
+        if bias_attr == False:
+            self.bias = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                default_initializer=Constant(0.0),
+                is_bias=True)
+            self.bias.stop_gradient = True
+        else:
+            self.bias = self.create_parameter(
+                attr=self._bias_attr, shape=param_shape, is_bias=True)
+            self.bias.stop_gradient = self._bias_attr.learning_rate == 0.
 
         moving_mean_name = None
         moving_variance_name = None
@@ -996,10 +1007,11 @@ class SyncBatchNorm(layers.Layer):
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         self._num_features = num_features
-        self._data_layout = data_format
+        self._data_format = data_format
         self._momentum = momentum
         self._epsilon = epsilon
         self._track_running_stats = track_running_stats
+        self._name = name
 
         if self._track_running_stats == False:
             warnings.warn(
@@ -1032,9 +1044,16 @@ class SyncBatchNorm(layers.Layer):
                 attr=self._bias_attr, shape=param_shape, is_bias=True)
             self.bias.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
 
+        moving_mean_name = None
+        moving_variance_name = None
+
+        if name is not None:
+            moving_mean_name = name + "_mean"
+            moving_variance_name = name + "_variance"
+
         self._mean = self.create_parameter(
             attr=ParamAttr(
-                name=None,
+                name=moving_mean_name,
                 initializer=Constant(0.0),
                 trainable=False,
                 do_model_average=True),
@@ -1044,7 +1063,7 @@ class SyncBatchNorm(layers.Layer):
 
         self._variance = self.create_parameter(
             attr=ParamAttr(
-                name=None,
+                name=moving_variance_name,
                 initializer=Constant(1.0),
                 trainable=False,
                 do_model_average=True),
@@ -1064,7 +1083,7 @@ class SyncBatchNorm(layers.Layer):
         if in_dygraph_mode():
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", not self.training, "data_layout",
-                     self._data_layout, "use_mkldnn", False, "fuse_with_relu",
+                     self._data_format, "use_mkldnn", False, "fuse_with_relu",
                      False, "use_global_stats", False, 'trainable_statistics',
                      False)
             sync_batch_norm_out, _, _, _, _, _ = core.ops.sync_batch_norm(
@@ -1080,7 +1099,7 @@ class SyncBatchNorm(layers.Layer):
             "momentum": self._momentum,
             "epsilon": self._epsilon,
             "is_test": not self.training,
-            "data_layout": self._data_layout,
+            "data_layout": self._data_format,
             "use_mkldnn": False,
             "fuse_with_relu": False,
             "use_global_stats": False,
@@ -1120,7 +1139,7 @@ class SyncBatchNorm(layers.Layer):
         Helper function to convert :class: `paddle.nn.BatchNorm*d` layers in the model to :class: `paddle.nn.SyncBatchNorm` layers.
 
         Parameters:
-            layer(paddle.fluid.dygraph.Layer): model containing one or more `BatchNorm*d` layers.
+            layer(paddle.nn.Layer): model containing one or more `BatchNorm*d` layers.
 
         Returns:
             The original model with converted SyncBatchNorm layers. If BatchNorm*d layer in the model, use SyncBatchNorm layer instead.
@@ -1138,17 +1157,21 @@ class SyncBatchNorm(layers.Layer):
         """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
-            layer_output = SyncBatchNorm(layer._num_features, layer._epsilon,
-                                         layer._momentum, layer._weight_attr,
-                                         layer._bias_attr, layer._data_format,
-                                         layer._name)
+            layer_output = SyncBatchNorm.__new__(SyncBatchNorm)
+            super(SyncBatchNorm, layer_output).__init__()
 
-            if layer._weight_attr != False and layer._bias_attr != False:
-                with no_grad():
-                    layer_output.weight = layer.weight
-                    layer_output.bias = layer.bias
+            with no_grad():
+                #weight_attr = False and bias_attr = False also need create param, 
+                #so assign weight and bias from bn always
+                layer_output.weight = layer.weight
+                layer_output.bias = layer.bias
             layer_output._mean = layer._mean
             layer_output._variance = layer._variance
+            layer_output._num_features = layer._num_features
+            layer_output._epsilon = layer._epsilon
+            layer_output._momentum = layer._momentum
+            layer_output._data_format = layer._data_format
+            layer_output._name = layer._name
 
         for name, sublayer in layer.named_sublayers():
             layer_output.add_sublayer(name,

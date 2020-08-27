@@ -85,10 +85,35 @@ class TestBatchNorm(unittest.TestCase):
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
+            def compute_v3(x, is_test, trainable_statistics):
+                with fluid.dygraph.guard(p):
+                    bn = fluid.dygraph.BatchNorm(
+                        shape[1],
+                        is_test=is_test,
+                        param_attr=fluid.ParamAttr(
+                            initializer=fluid.initializer.Constant(1.0),
+                            trainable=False),
+                        bias_attr=fluid.ParamAttr(
+                            initializer=fluid.initializer.Constant(0.0),
+                            trainable=False),
+                        trainable_statistics=trainable_statistics)
+                    y = bn(fluid.dygraph.to_variable(x))
+                return y.numpy()
+
+            def compute_v4(x):
+                with fluid.dygraph.guard(p):
+                    bn = paddle.nn.BatchNorm2d(
+                        shape[1], weight_attr=False, bias_attr=False)
+                    y = bn(fluid.dygraph.to_variable(x))
+                return y.numpy()
+
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x, False, False)
             y2 = compute_v2(x)
+            y3 = compute_v3(x, False, False)
+            y4 = compute_v4(x)
             self.assertTrue(np.allclose(y1, y2))
+            self.assertTrue(np.allclose(y3, y4))
 
     def test_static(self):
         places = [fluid.CPUPlace()]
