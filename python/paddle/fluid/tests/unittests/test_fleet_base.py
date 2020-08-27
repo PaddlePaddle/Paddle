@@ -18,6 +18,7 @@ import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import os
 import paddle.fluid as fluid
+import numpy as np
 
 
 class TestFleetBase(unittest.TestCase):
@@ -123,6 +124,26 @@ class TestFleetBase(unittest.TestCase):
     def test_exception(self):
         import paddle.distributed.fleet as fleet
         self.assertRaises(Exception, fleet.init_worker)
+
+
+class TestFleetDygraph(unittest.TestCase):
+    def setUp(self):
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36789"
+        os.environ["PADDLE_TRAINERS_NUM"] = "1"
+
+    def test_distributed_model(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = fluid.dygraph.to_variable(value)
+        layer = paddle.nn.Linear(13, 5, dtype="float32")
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=layer.parameters())
+        outs = layer(a)
+
+        fleet.init(is_collective=True)
+        optimizer = fleet.distributed_optimizer(optimizer)
+        dp_layer = fleet.distributed_model(layer)
 
 
 if __name__ == "__main__":

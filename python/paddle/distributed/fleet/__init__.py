@@ -51,4 +51,4 @@ distributed_optimizer = fleet.distributed_optimizer
 save_inference_model = fleet.save_inference_model
 save_persistables = fleet.save_persistables
 minimize = fleet.minimize
-build_distributed_model = fleet.build_distributed_model
+distributed_model = fleet.distributed_model

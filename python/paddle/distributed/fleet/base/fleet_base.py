@@ -293,7 +293,28 @@ class Fleet(object):
         self.valid_strategy = None
         return self
 
-    def build_distributed_model(self, model):
+    def distributed_model(self, model):
+        """
+        Return dygraph distributed data parallel model (Layer)
+        Only work in dygraph mode
+
+        Examples:
+            .. code-block:: python
+            import paddle
+            import paddle.distributed.fleet as fleet
+
+            paddle.disable_static()
+            value = np.arange(26).reshape(2, 13).astype("float32")
+            a = fluid.dygraph.to_variable(value)
+            linear = paddle.nn.Linear(13, 5, dtype="float32")
+            layer = linear(a)
+            optimizer = paddle.optimizer.Adam(
+                learning_rate=0.01, parameters=layer.parameters())
+
+            fleet.init(is_collective=True)
+            optimizer = fleet.distributed_optimizer(optimizer)
+            dp_layer = fleet.distributed_model(layer)
+        """
         if not paddle.fluid.framework.in_dygraph_mode():
             return model
 
