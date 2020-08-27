@@ -27,7 +27,7 @@ __all__ = ["VOC2012"]
 VOC_URL = 'http://host.robots.ox.ac.uk/pascal/VOC/voc2012/\
 VOCtrainval_11-May-2012.tar'
 
-VOC_MD5 = '131da710f39b47a43fdfa256cbc11976'
+VOC_MD5 = '6cd6e144f989b92b3379bac3b3de84fd'
 SET_FILE = 'VOCdevkit/VOC2012/ImageSets/Segmentation/{}.txt'
 DATA_FILE = 'VOCdevkit/VOC2012/JPEGImages/{}.jpg'
 LABEL_FILE = 'VOCdevkit/VOC2012/SegmentationClass/{}.png'
@@ -131,3 +131,7 @@ class VOC2012(Dataset):
 
     def __len__(self):
         return len(self.data)
+
+    def __del__(self):
+        if self.data_tar:
+            self.data_tar.close()

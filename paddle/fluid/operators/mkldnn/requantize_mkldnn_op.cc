@@ -40,11 +40,12 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
     auto src_tz = paddle::framework::vectorize(input->dims());
 
-    std::string key = platform::CreateKey(src_tz, scale_in, scale_out,
-                                          ctx.OutputName("Output"));
-    const std::string key_prim = key + "@reorder_p";
-    const std::string key_src_mem = key + "@src_mem";
-    const std::string key_dst_mem = key + "@dst_mem";
+    std::string key =
+        platform::CreateKey(platform::ThreadIDasStr(), src_tz, scale_in,
+                            scale_out, ctx.OutputName("Output"));
+    const std::string key_prim = key + "@r";
+    const std::string key_src_mem = key + "@s";
+    const std::string key_dst_mem = key + "@d";
 
     std::shared_ptr<dnnl::memory> src_memory;
     std::shared_ptr<dnnl::memory> dst_memory;

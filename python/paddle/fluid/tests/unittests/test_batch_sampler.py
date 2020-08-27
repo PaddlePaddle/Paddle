@@ -88,6 +88,18 @@ class TestRandomSampler(unittest.TestCase):
             rets.append(i)
         assert tuple(sorted(rets)) == tuple(range(0, 60))
 
+    def test_with_generator_num_samples(self):
+        dataset = RandomDataset(100, 10)
+        generator = iter(range(0, 60))
+        sampler = RandomSampler(
+            dataset, generator=generator, num_samples=50, replacement=True)
+        assert len(sampler) == 50
+
+        rets = []
+        for i in iter(sampler):
+            rets.append(i)
+        assert tuple(sorted(rets)) == tuple(range(0, 50))
+
 
 class TestBatchSampler(unittest.TestCase):
     def setUp(self):
