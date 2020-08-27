@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <assert.h>
 #include <math.h>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
