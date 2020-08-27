@@ -110,7 +110,7 @@ def one_hot(x, num_classes, name=None):
         return one_hot_out
 
 
-def embedding(input, weight, padding_idx=None, is_sparse=False, name=None):
+def embedding(x, weight, padding_idx=None, sparse=False, name=None):
     """
         The operator is used to lookup embeddings vector of ids provided by :attr:`input` .
         It automatically constructs a 2D embedding matrix based on the
@@ -137,12 +137,12 @@ def embedding(input, weight, padding_idx=None, is_sparse=False, name=None):
             The input padding_idx is less than 0, it is automatically converted to padding_idx = -1 + 128 = 127
             It will pad all-zero data when ids is 127.
         Args:
-            input(Tensor): A Tensor or LoDTensor with type int64, which contains the id information.
+            x(Tensor): A Tensor or LoDTensor with type int64, which contains the id information.
                 The last dimension of Tensor shape must be equal to 1. The value of the input id should
                 satisfy :math:`0<= id < size[0]` .
             weight (Tensor): The weight. A Tensor with shape of lookup table parameter. It should have two elements which
                 indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
-            is_sparse(bool): The flag indicating whether to use sparse update. This parameter only
+            sparse(bool): The flag indicating whether to use sparse update. This parameter only
                 affects the performance of the backwards gradient update. It is recommended to set
                 True because sparse update is faster. But some optimizers does not support sparse update,
                 such as :ref:`api_fluid_optimizer_AdadeltaOptimizer` , :ref:`api_fluid_optimizer_AdamaxOptimizer` ,
@@ -172,20 +172,20 @@ def embedding(input, weight, padding_idx=None, is_sparse=False, name=None):
                   learning_rate=0.5,
                   initializer=fluid.initializer.NumpyArrayInitializer(weight_data),
                   trainable=True)
-              emb = paddle.nn.functional.embedding(input=data, weight=weight, is_sparse=True, name="sparse_embedding")
+              emb = paddle.nn.functional.embedding(x=data, weight=weight, sparse=True, name="sparse_embedding")
     """
     if in_dygraph_mode():
         return core.ops.lookup_table_v2(
-            weight, input, 'is_sparse', is_sparse, 'is_distributed', False,
+            weight, x, 'is_sparse', sparse, 'is_distributed', False,
             'remote_prefetch', False, 'padding_idx', padding_idx)
     else:
         helper = LayerHelper('embedding', **locals())
         dtype = helper.input_dtype()
 
-        check_variable_and_dtype(input, 'input', ['int64'], 'embedding')
+        check_variable_and_dtype(x, 'input', ['int64'], 'embedding')
 
         is_distributed = False
-        remote_prefetch = is_sparse and (not is_distributed)
+        remote_prefetch = sparse and (not is_distributed)
 
         tmp = helper.create_variable_for_type_inference(dtype)
         padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
@@ -193,11 +193,11 @@ def embedding(input, weight, padding_idx=None, is_sparse=False, name=None):
 
         helper.append_op(
             type='lookup_table_v2',
-            inputs={'Ids': input,
+            inputs={'Ids': x,
                     'W': weight},
             outputs={'Out': tmp},
             attrs={
-                'is_sparse': is_sparse,
+                'is_sparse': sparse,
                 'is_distributed': is_distributed,
                 'remote_prefetch': remote_prefetch,
                 'padding_idx': padding_idx

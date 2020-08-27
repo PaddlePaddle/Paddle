@@ -15,7 +15,6 @@
 # TODO: define the common classes to build a neural network
 from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
-from ...fluid.dygraph import Embedding  #DEFINE_ALIAS
 from ...fluid.dygraph import Linear  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
@@ -63,9 +62,9 @@ class UpSample(layers.Layer):
         'nearest' : Nearest neighbor interpolation
         'bicubic' : Bicubic interpolation
 
-    Linear interpolation is the method of using a line connecting two known quantities 
-    to determine the value of an unknown quantity between the two known quantities. 
-    
+    Linear interpolation is the method of using a line connecting two known quantities
+    to determine the value of an unknown quantity between the two known quantities.
+
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
     direction) on input tensor.
@@ -75,7 +74,7 @@ class UpSample(layers.Layer):
     W-direction in this op) on a rectilinear 2D grid. The key idea is
     to perform linear interpolation first in one direction, and then
     again in the other direction.
-    
+
     Bicubic interpolation is an extension of cubic interpolation for interpolating
     data points on a two-dimensional regular grid. The interpolated surface is
     smoother than corresponding surfaces obtained by bilinear interpolation or
@@ -122,7 +121,7 @@ class UpSample(layers.Layer):
               output: (N,C,H_out,W_out) where:
               H_out = round(H_{in} * scale_{factor})
               W_out = round(W_{in} * scale_{factor})
-        
+
         Bilinear interpolation:
           if:
               align_corners = False , align_mode = 0
@@ -169,25 +168,25 @@ class UpSample(layers.Layer):
 
     https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of linear interpolation, please refer to Wikipedia:
-    
+
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
-    
+
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
-    
+
     For details of bicubic interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bicubic_interpolation
-    
+
     For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
-    
+
     Parameters:
         input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Variable|None): Output shape of image resize
-             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
-             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
         scale_factor (float|Variable|None): The multiplier for the input height or width. At
@@ -283,8 +282,8 @@ class Pad2D(layers.Layer):
     If mode is 'reflect', paddings[0] and paddings[1] must be no greater
     than height-1. And the width dimension has the same condition.
     Parameters:
-        paddings (int | List[int32]): The padding size. If padding is a int, uses the same 
-            padding in all boundaries, if padding is a List, it must contain four integers, 
+        paddings (int | List[int32]): The padding size. If padding is a int, uses the same
+            padding in all boundaries, if padding is a List, it must contain four integers,
             (padding_top, padding_bottom, padding_left, padding_right).
             Default is [0, 0, 0, 0].
         mode (str): Three modes: 'constant' (default), 'reflect', 'edge' .
@@ -296,7 +295,7 @@ class Pad2D(layers.Layer):
         data_format (str): An string from: "NHWC", "NCHW". Specify the data format of
                            the input data.
                            Default is  "NCHW"
-    Returns: 
+    Returns:
         None
     Examples:
         .. code-block:: text
@@ -377,11 +376,11 @@ class Bilinear(layers.Layer):
        in1_features (int): The dimension of each first input(`x1`).
        in2_features (int): The dimension of each second input(`x2`).
        out_features (int): The dimension of output of this layer.
-       weight_attr (ParamAttr, optional): The parameter attribute for the learnable w, parameters/weights of 
+       weight_attr (ParamAttr, optional): The parameter attribute for the learnable w, parameters/weights of
        this layer. The default value is None.
        bias_attr (ParamAttr, optional): The parameter attribute for the bias
            of this layer. If it is set to False, no bias will be added to the output units.
-           If it is set to None, the bias is initialized zero. The default value is None.       
+           If it is set to None, the bias is initialized zero. The default value is None.
        name (str, optional): The default value is None. Normally there is no need for user
            to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
 
@@ -448,7 +447,7 @@ class Dropout(layers.Layer):
     """
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training as described in the paper:
-    `Improving neural networks by preventing co-adaptation of feature detectors <https://arxiv.org/abs/1207.0580>`_ 
+    `Improving neural networks by preventing co-adaptation of feature detectors <https://arxiv.org/abs/1207.0580>`_
     The dropout operator randomly sets the outputs of some units to zero, while upscale others
     according to the given dropout probability.
 
@@ -517,8 +516,8 @@ class Dropout2D(layers.Layer):
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
     a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
-    Dropout2d will help promote independence between feature maps as described in the paper: 
-    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_ 
+    Dropout2d will help promote independence between feature maps as described in the paper:
+    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_
 
     See ``paddle.nn.functional.dropout2d`` for more details.
 
@@ -575,8 +574,8 @@ class Dropout3D(layers.Layer):
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
     a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
-    Dropout3d will help promote independence between feature maps as described in the paper: 
-    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_ 
+    Dropout3d will help promote independence between feature maps as described in the paper:
+    `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_
 
     See ``paddle.nn.functional.dropout3d`` for more details.
 
@@ -1293,3 +1292,129 @@ class CosineSimilarity(layers.Layer):
 
     def forward(self, x1, x2):
         return F.cosine_similarity(x1, x2, axis=self._axis, eps=self._eps)
+
+
+class Embedding(layers.Layer):
+    """
+    :alias_main: paddle.nn.Embedding
+	:alias: paddle.nn.Embedding,paddle.nn.layer.Embedding,paddle.nn.layer.common.Embedding
+	:old_api: paddle.fluid.dygraph.Embedding
+
+    **Embedding Layer**
+
+    This interface is used to construct a callable object of the ``Embedding`` class.
+    For specific usage, refer to code examples. It implements the function of the Embedding Layer.
+    This layer is used to lookup embeddings vector of ids provided by :attr:`input` .
+    It automatically constructs a 2D embedding matrix based on the
+    input :attr:`size` (vocab_size, emb_size) and :attr:`dtype` .
+
+    The shape of output Tensor is generated by appending an emb_size dimension to the
+    last dimension of the input Tensor shape.
+
+    **Note:** The id in :attr:`input` must satisfy :math:`0 =< id < size[0]` ,
+    otherwise the program will throw an exception and exit.
+
+    .. code-block:: text
+
+        Case 1:
+
+        input is a Tensor. padding_idx = -1
+            input.data = [[1, 3], [2, 4], [4, 127]
+            input.shape = [3, 2]
+        Given size = [128, 16]
+        output is a Tensor:
+            out.shape = [3, 2, 16]
+            out.data = [[[0.129435295, 0.244512452, ..., 0.436322452],
+                        [0.345421456, 0.524563927, ..., 0.144534654]],
+
+                        [[0.345249859, 0.124939536, ..., 0.194353745],
+                        [0.945345345, 0.435394634, ..., 0.435345365]],
+
+                        [[0.945345345, 0.435394634, ..., 0.435345365],
+                        [0.0,         0.0,         ..., 0.0        ]]]  # padding data
+        The input padding_idx is less than 0, it is automatically converted to padding_idx = -1 + 128 = 127
+        It will pad all-zero data when ids is 127.
+
+    Parameters:
+        num_embeddings (int): Just one element which indicate the size
+            of the dictionary of embeddings.
+        embedding_dim:  Just one element which indicate the size of each embedding vector respectively.
+        padding_idx(int|long|None): padding_idx needs to be in the interval [-vocab_size, vocab_size).
+            If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
+            to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
+            encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
+            If set None, it makes no effect to output. Default: None.
+        sparse(bool): The flag indicating whether to use sparse update. This parameter only
+            affects the performance of the backwards gradient update. It is recommended to set
+            True because sparse update is faster. But some optimizer does not support sparse update,
+            such as :ref:`api_fluid_optimizer_AdadeltaOptimizer` , :ref:`api_fluid_optimizer_AdamaxOptimizer` ,
+            :ref:`api_fluid_optimizer_DecayedAdagradOptimizer` , :ref:`api_fluid_optimizer_FtrlOptimizer` ,
+            :ref:`api_fluid_optimizer_LambOptimizer` and :ref:`api_fluid_optimizer_LarsMomentumOptimizer` .
+            In these case, is_sparse must be False. Default: False.
+        weight_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` . In addition,
+            user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
+            The local word vector needs to be transformed into numpy format, and the shape of local word
+            vector should be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
+            is used to load custom or pre-trained word vectors. See code example 2 for details.
+        name(str|None): For detailed information, please refer
+               to :ref:`api_guide_Name`. Usually name is no need to set and
+               None by default.
+
+    Attribute:
+        **weight** (Parameter): the learnable weights of this layer.
+
+    Returns:
+        Variable: Embedding Tensor mapped by input. The data type is the same as :attr:`dtype` .
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+          import paddle.nn as nn
+          import numpy as np
+          paddle.disable_static()
+
+          # example 1
+          inp_word = np.array([[2, 3, 5], [4, 2, 1]]).astype('int64')
+          inp_word.shape  # [2, 3]
+          dict_size = 20
+
+          emb = nn.Embedding(dict_size,
+                  32,
+                  weight_attr='emb.w',
+                  sparse=False)
+    """
+
+    def __init__(self,
+                 num_embeddings,
+                 embedding_dim,
+                 padding_idx=None,
+                 sparse=False,
+                 weight_attr=None,
+                 name=None):
+        super(Embedding, self).__init__()
+        self._num_embeddings = num_embeddings
+        self._embedding_dim = embedding_dim
+        self._sparse = sparse
+        self._is_distributed = False
+        self._padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+            num_embeddings + padding_idx)
+
+        self._weight_attr = weight_attr
+        self._remote_prefetch = False
+        self._name = name
+        self._weight = self.create_parameter(
+            attr=self._param_attr,
+            shape=self._size,
+            dtype=self._dtype,
+            is_bias=False)
+
+    def forward(self, x):
+        return F.embedding(
+            x,
+            weight=self._weight,
+            padding_idx=self._padding_idx,
+            sparse=self._sparse,
+            name=self._name)
