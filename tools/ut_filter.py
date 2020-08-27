@@ -22,7 +22,8 @@ import os.path
 import subprocess
 from github import Github
 
-PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
+PADDLE_ROOT = '{}/'.format(os.getenv('PADDLE_ROOT', '/paddle/')).replace('//',
+                                                                         '/')
 
 
 class UTMapper(object):

@@ -18,7 +18,8 @@ import os
 from github import Github
 import ut_filter
 
-PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
+PADDLE_ROOT = '{}/'.format(os.getenv('PADDLE_ROOT', '/paddle/')).replace('//',
+                                                                         '/')
 
 
 class PRChecker(object):
@@ -38,7 +39,11 @@ class PRChecker(object):
         self.pr = self.repo.get_pull(int(pr_id))
 
     def get_pr_files(self):
-        """ Get files in pull request. """
+        """
+        Returns:
+            list: List of files.
+        """
+
         page = 0
         file_list = []
         while True:
@@ -49,7 +54,6 @@ class PRChecker(object):
                 file_list.append(PADDLE_ROOT + f.filename)
             page += 1
         return file_list
-        #return ['/paddle/paddle/fluid/memory/malloc_test.cu']
 
     def get_pr_ut(self):
         """ Get unit tests in pull request. """
