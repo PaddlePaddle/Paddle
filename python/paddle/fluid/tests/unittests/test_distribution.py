@@ -301,56 +301,24 @@ class DistributionTest(unittest.TestCase):
             output_kl_np, output_kl_variable
         ] = output_list
 
-        np.testing.assert_allclose(
-            output_sample_int.shape,
-            gt_sample_int.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_float.shape,
-            gt_sample_float.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_float_np_broadcast.shape,
-            gt_sample_float_np_broadcast.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_np.shape,
-            gt_sample_np.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_variable.shape,
-            gt_sample_np.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_int_diff.shape,
-            gt_sample_int_diff.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_float_diff.shape,
-            gt_sample_float_diff.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_float_np_broadcast_diff.shape,
-            gt_sample_float_np_broadcast_diff.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_np_diff.shape,
-            gt_sample_np_diff.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_variable_diff.shape,
-            gt_sample_np_diff.shape,
-            rtol=tolerance,
-            atol=tolerance)
+        np.testing.assert_equal(output_sample_int.shape, gt_sample_int.shape)
+        np.testing.assert_equal(output_sample_float.shape,
+                                gt_sample_float.shape)
+        np.testing.assert_equal(output_sample_float_np_broadcast.shape,
+                                gt_sample_float_np_broadcast.shape)
+        np.testing.assert_equal(output_sample_np.shape, gt_sample_np.shape)
+        np.testing.assert_equal(output_sample_variable.shape,
+                                gt_sample_np.shape)
+        np.testing.assert_equal(output_sample_int_diff.shape,
+                                gt_sample_int_diff.shape)
+        np.testing.assert_equal(output_sample_float_diff.shape,
+                                gt_sample_float_diff.shape)
+        np.testing.assert_equal(output_sample_float_np_broadcast_diff.shape,
+                                gt_sample_float_np_broadcast_diff.shape)
+        np.testing.assert_equal(output_sample_np_diff.shape,
+                                gt_sample_np_diff.shape)
+        np.testing.assert_equal(output_sample_variable_diff.shape,
+                                gt_sample_np_diff.shape)
         np.testing.assert_allclose(
             output_entropy_int, gt_entropy_int, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
@@ -569,56 +537,24 @@ class DistributionTest(unittest.TestCase):
             output_p_variable
         ] = output_list
 
-        np.testing.assert_allclose(
-            output_sample_int.shape,
-            gt_sample_int.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_float.shape,
-            gt_sample_float.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_float_np_broadcast.shape,
-            gt_sample_float_np_broadcast.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_np.shape,
-            gt_sample_np.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_variable.shape,
-            gt_sample_np.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_int_diff.shape,
-            gt_sample_int_diff.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_float_diff.shape,
-            gt_sample_float_diff.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_float_np_broadcast_diff.shape,
-            gt_sample_float_np_broadcast_diff.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_np_diff.shape,
-            gt_sample_np_diff.shape,
-            rtol=tolerance,
-            atol=tolerance)
-        np.testing.assert_allclose(
-            output_sample_variable_diff.shape,
-            gt_sample_np_diff.shape,
-            rtol=tolerance,
-            atol=tolerance)
+        np.testing.assert_equal(output_sample_int.shape, gt_sample_int.shape)
+        np.testing.assert_equal(output_sample_float.shape,
+                                gt_sample_float.shape)
+        np.testing.assert_equal(output_sample_float_np_broadcast.shape,
+                                gt_sample_float_np_broadcast.shape)
+        np.testing.assert_equal(output_sample_np.shape, gt_sample_np.shape)
+        np.testing.assert_equal(output_sample_variable.shape,
+                                gt_sample_np.shape)
+        np.testing.assert_equal(output_sample_int_diff.shape,
+                                gt_sample_int_diff.shape)
+        np.testing.assert_equal(output_sample_float_diff.shape,
+                                gt_sample_float_diff.shape)
+        np.testing.assert_equal(output_sample_float_np_broadcast_diff.shape,
+                                gt_sample_float_np_broadcast_diff.shape)
+        np.testing.assert_equal(output_sample_np_diff.shape,
+                                gt_sample_np_diff.shape)
+        np.testing.assert_equal(output_sample_variable_diff.shape,
+                                gt_sample_np_diff.shape)
         np.testing.assert_allclose(
             output_entropy_int, gt_entropy_int, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
