@@ -626,7 +626,6 @@ class DistributedStrategy(object):
         """
         Indicating whether we are using Local SGD training. For more details, please refer to
         [Don't Use Large Mini-Batches, Use Local SGD](https://arxiv.org/pdf/1808.07217.pdf),
-        [Adaptive Communication Strategies to Achieve the Best Error-Runtime Trade-off in Local-Update SGD](https://arxiv.org/pdf/1810.08313.pdf).
 
         Default Value: False
 
@@ -657,6 +656,8 @@ class DistributedStrategy(object):
             **k_steps(int)**: The local steps for training before parameter
                 synchronization. Default 1. If strategy.auto is set True, the
                 local steps will be calculated automatically during training.
+                The algorithm is referenced in this paper: 
+                [Adaptive Communication Strategies to Achieve the Best Error-Runtime Trade-off in Local-Update SGD](https://arxiv.org/pdf/1810.08313.pdf).
                 In this case, k_steps indicates the first local steps which
                 is suggested setting to 1.
 
