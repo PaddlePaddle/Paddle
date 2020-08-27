@@ -144,13 +144,13 @@ class Hardshrink(layers.Layer):
     .. math::
 
         hardshrink(x)=
-            \left\{
-            \begin{aligned}
-            &x, & & if \ x > threshold \\
-            &x, & & if \ x < -threshold \\
-            &0, & & if \ others
-            \end{aligned}
-            \right.
+            \\left\\{
+            \\begin{aligned}
+            &x, & & if \\ x > threshold \\\\
+            &x, & & if \\ x < -threshold \\\\
+            &0, & & if \\ others
+            \\end{aligned}
+            \\right.
 
     Parameters:
         threshold (float, optional): The value of threshold for hardthrink. Default is 0.5
@@ -165,14 +165,14 @@ class Hardshrink(layers.Layer):
 
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = paddle.to_tensor(np.array([-1, 0.3, 2.5]))
-        m = paddle.nn.Hardshrink()
-        out = m(x) # [-1., 0., 2.5]
+            x = paddle.to_tensor(np.array([-1, 0.3, 2.5]))
+            m = paddle.nn.Hardshrink()
+            out = m(x) # [-1., 0., 2.5]
     """
 
     def __init__(self, threshold=0.5, name=None):
@@ -598,15 +598,15 @@ class LeakyReLU(layers.Layer):
     """
     Leaky ReLU Activation.
 
-    .. math:
+    .. math::
 
         LeakyReLU(x)=
-            \left\{
-            \begin{aligned}
-            &x, & & if \ x >= 0 \\
-            &negative\_slope * x, & & otherwise \\
-            \end{aligned}
-            \right. \\
+            \\left\\{
+            \\begin{aligned}
+            &x, & & if \\ x >= 0 \\\\
+            &negative\_slope * x, & & otherwise \\\\
+            \\end{aligned}
+            \\right. \\\\
 
     Parameters:
         negative_slope (float, optional): Slope of the activation function at
@@ -1015,7 +1015,7 @@ class LogSoftmax(layers.Layer):
     .. math::
 
         Out[i, j] = log(softmax(x)) 
-                  = log(\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])})
+                  = log(\\frac{\exp(X[i, j])}{\\sum_j(exp(X[i, j])})
 
     Parameters:
         axis (int, optional): The axis along which to perform log_softmax
@@ -1032,26 +1032,26 @@ class LogSoftmax(layers.Layer):
     Examples:
         .. code-block:: python
 
-        import paddle
-        import numpy as np
+            import paddle
+            import numpy as np
 
-        paddle.disable_static()
+            paddle.disable_static()
 
-        x = np.array([[[-2.0, 3.0, -4.0, 5.0],
-                        [3.0, -4.0, 5.0, -6.0],
-                        [-7.0, -8.0, 8.0, 9.0]],
-                        [[1.0, -2.0, -3.0, 4.0],
-                        [-5.0, 6.0, 7.0, -8.0],
-                        [6.0, 7.0, 8.0, 9.0]]])
-        m = paddle.nn.LogSoftmax()
-        x = paddle.to_tensor(x)
-        out = m(x)
-        # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
-        #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
-        #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
-        #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
-        #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
-        #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
+            x = np.array([[[-2.0, 3.0, -4.0, 5.0],
+                           [3.0, -4.0, 5.0, -6.0],
+                           [-7.0, -8.0, 8.0, 9.0]],
+                          [[1.0, -2.0, -3.0, 4.0],
+                           [-5.0, 6.0, 7.0, -8.0],
+                           [6.0, 7.0, 8.0, 9.0]]])
+            m = paddle.nn.LogSoftmax()
+            x = paddle.to_tensor(x)
+            out = m(x)
+            # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
+            #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
+            #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
+            #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
+            #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
+            #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
     """
 
     def __init__(self, axis=-1, name=None):
