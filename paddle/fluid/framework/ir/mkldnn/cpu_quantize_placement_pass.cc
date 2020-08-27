@@ -39,11 +39,8 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
         if (op->GetAttrIfExists<bool>("use_quantizer")) {
           op->SetAttr("mkldnn_data_type", std::string("int8"));
         }
-        if (op_types_list.empty()) {
-          op->SetAttr("mkldnn_data_type", std::string("int8"));
-          op->SetAttr("use_quantizer", true);
-        } else if (std::find(op_types_list.begin(), op_types_list.end(),
-                             op->Type()) != op_types_list.end()) {
+        if (std::find(op_types_list.begin(), op_types_list.end(), op->Type()) !=
+            op_types_list.end()) {
           op->SetAttr("mkldnn_data_type", std::string("int8"));
           op->SetAttr("use_quantizer", true);
         }
@@ -61,7 +58,10 @@ REGISTER_PASS(cpu_quantize_placement_pass,
     // a vector of operator type names to be quantized ("conv2d" etc.)
     // the second param is the default value for this vector
     .DefaultPassAttr("quantize_enabled_op_types",
-                     new std::unordered_set<std::string>())
+                     new std::unordered_set<std::string>(
+                         {"concat", "conv2d", "elementwise_add", "fc", "matmul",
+                          "pool2d", "prior_box", "relu", "reshape2",
+                          "transpose2"}))
     // a vector of operator ids that are to be excluded from quantization
     // the second param is the default value for this vector
     .DefaultPassAttr("quantize_excluded_op_ids", new std::unordered_set<int>());

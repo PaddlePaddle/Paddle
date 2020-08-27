@@ -201,10 +201,13 @@ def pre_load(dso_name):
 
 
 def get_glibc_ver():
-    return run_shell_command("ldd --version | awk '/ldd/{print $NF}'").strip()
+    return run_shell_command("ldd --version | awk '/ldd/{print $NF}'")
 
 
 def less_than_ver(a, b):
+    if a is None or b is None:
+        return False
+
     import re
     import operator
 
