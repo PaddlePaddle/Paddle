@@ -623,6 +623,20 @@ class DistributedStrategy(object):
 
     @property
     def localsgd(self):
+        """
+        Indicating whether we are using Local SGD training. For more details, please refer to
+        [Don't Use Large Mini-Batches, Use Local SGD](https://arxiv.org/pdf/1808.07217.pdf),
+
+        Default Value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.localsgd = True # by default this is false
+
+        """
         return self.strategy.localsgd
 
     @localsgd.setter
@@ -634,6 +648,28 @@ class DistributedStrategy(object):
 
     @property
     def localsgd_configs(self):
+        """
+        Set LocalSGD training configurations. LocalSGD has a configurable
+        setting that can be configured through a dict.
+
+        **Notes**:
+            **k_steps(int)**: The local steps for training before parameter
+                synchronization. Default 1. If strategy.auto is set True, the
+                local steps will be calculated automatically during training.
+                The algorithm is referenced in this paper: 
+                [Adaptive Communication Strategies to Achieve the Best Error-Runtime Trade-off in Local-Update SGD](https://arxiv.org/pdf/1810.08313.pdf).
+                In this case, k_steps indicates the first local steps which
+                is suggested setting to 1.
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.localsgd = True
+            strategy.localsgd_configs = {"k_steps": 4}
+        """
+
         return get_msg_dict(self.strategy.localsgd_configs)
 
     @localsgd_configs.setter
@@ -750,6 +786,20 @@ class DistributedStrategy(object):
 
     @property
     def lars(self):
+        """
+        Set lars configurations. lars is used to deal with the convergence problems when the global 
+        batch size is larger than 8k.  For more details, please refer to 
+        [Large Batch Training of Convolutional Networks](https://arxiv.org/abs/1708.03888).
+
+        Default Value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.lars = True # by default this is false
+        """
         return self.strategy.lars
 
     @lars.setter
@@ -761,6 +811,29 @@ class DistributedStrategy(object):
 
     @property
     def lars_configs(self):
+        """
+        Set Lars training configurations.
+
+        **Notes**:
+        **lars_coeff (float)**: trust ratio in lars formula.
+        **lars_weight_decay** (float): weight decay coefficient in lars formula.
+        **epsilon (float)**: argument is used to avoid potential devision-by-zero 
+        when compute the local lr; 
+        **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
+        will be exclude from weight decay in lars formula.
+
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.lars = True
+            strategy.lars_configs = {
+                        "lars_coeff": 0.01,
+                        "lars_weight_decay": 0.0005,
+                        "epsilon": 0,
+                        "exclude_from_weight_decay": ['batch_norm', '.b_0']
+                    }
+        """
         return get_msg_dict(self.strategy.lars_configs)
 
     @lars_configs.setter
@@ -770,6 +843,22 @@ class DistributedStrategy(object):
 
     @property
     def lamb(self):
+        """
+        Set lamb configurations. lamb is used to deal with the convergence problems for large 
+        batch size training, specially for attention-related model like BERT. For more details, 
+        please refer to 
+        [Large Batch Optimization for Deep Learning: Training BERT in 76 minutes](https://arxiv.org/abs/1904.00962).
+
+        Default Value: False
+        
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.lamb = True # by default this is false
+        """
+
         return self.strategy.lamb
 
     @lamb.setter
@@ -781,6 +870,24 @@ class DistributedStrategy(object):
 
     @property
     def lamb_configs(self):
+        """
+        Set Lars training configurations.
+
+        **Notes**:
+        **lamb_weight_decay** (float): weight decay coefficient in lamb formula.
+        **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
+        will be exclude from weight decay in lamb formula.
+
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.lamb = True
+            strategy.lamb_configs = {
+                    'lamb_weight_decay': 0.01,
+                    'exclude_from_weight_decay': [],
+                }
+        """
         return get_msg_dict(self.strategy.lamb_configs)
 
     @lamb_configs.setter
