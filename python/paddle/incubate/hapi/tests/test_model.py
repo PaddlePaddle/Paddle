@@ -172,6 +172,7 @@ class TestModel(unittest.TestCase):
 
         seed = 333
         paddle.manual_seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
 
         dy_lenet = LeNetDygraph()
         cls.init_param = dy_lenet.state_dict()
@@ -223,6 +224,7 @@ class TestModel(unittest.TestCase):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
         paddle.manual_seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
 
         net = LeNet(classifier_activation=None)
         optim_new = fluid.optimizer.Adam(
@@ -327,6 +329,7 @@ class MyModel(fluid.dygraph.Layer):
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
         paddle.manual_seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
 
     def test_train_batch(self, dynamic=True):
         dim = 20

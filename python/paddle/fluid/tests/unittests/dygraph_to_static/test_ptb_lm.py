@@ -219,6 +219,7 @@ def train(place):
 
     with fluid.dygraph.guard(place):
         paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
         ptb_model = PtbModel(
             hidden_size=hidden_size,
             vocab_size=vocab_size,

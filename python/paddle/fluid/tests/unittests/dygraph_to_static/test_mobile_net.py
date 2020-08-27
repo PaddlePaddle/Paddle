@@ -449,6 +449,7 @@ def train_mobilenet(args, to_static):
 
         np.random.seed(SEED)
         paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         if args.model == "MobileNetV1":
             net = MobileNetV1(class_dim=args.class_dim, scale=1.0)

@@ -93,6 +93,7 @@ class TestWeightDecay(unittest.TestCase):
 
     def check_weight_decay(self, place, model):
         paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
 
@@ -115,6 +116,7 @@ class TestWeightDecay(unittest.TestCase):
 
     def check_weight_decay2(self, place, model):
         paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
 

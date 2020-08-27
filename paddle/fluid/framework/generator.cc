@@ -49,6 +49,7 @@ std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
     VLOG(4) << "Use random engine from generator";
     return DefaultCPUGenerator()->GetCPUEngine();
   } else {
+    auto engine = std::make_shared<std::mt19937_64>();
     if (seed == 0) {
       seed = GetRandomSeed();
       VLOG(4) << "Use default random engine with random seed = " << seed;
@@ -58,9 +59,9 @@ std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
     static std::mutex mu_;
     {
       std::lock_guard<std::mutex> lock(mu_);
-      OpDefaultCPUEngine()->seed(seed);
+      engine->seed(seed);
     }
-    return OpDefaultCPUEngine();
+    return engine;
   }
 }
 

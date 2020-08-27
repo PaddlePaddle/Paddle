@@ -40,6 +40,7 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
     def run_program(self, place, stop_gradient=False):
         np.random.seed(1)
         paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
 
         startup_program = fluid.Program()
         main_program = fluid.Program()
