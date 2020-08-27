@@ -177,6 +177,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
                   initializer=fluid.initializer.NumpyArrayInitializer(weight_data),
                   trainable=True)
                 emb = paddle.nn.functional.embedding(x=data, weight=weight, sparse=True, name="sparse_embedding")
+
     """
     if in_dygraph_mode():
         return core.ops.lookup_table_v2(
