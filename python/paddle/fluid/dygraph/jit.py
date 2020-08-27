@@ -277,6 +277,8 @@ class SaveLoadConfig(object):
         self._model_filename = None
         self._params_filename = None
         self._separate_params = False
+        # used for `paddle.load`
+        self._keep_name_table = False
 
         # NOTE: Users rarely use following configs, so these configs are not open to users,
         # reducing user learning costs, but we retain the configuration capabilities
@@ -583,6 +585,18 @@ class SaveLoadConfig(object):
                 "The SaveLoadConfig.separate_params should be bool value, but received input's type is %s."
                 % type(value))
         self._separate_params = value
+
+    @property
+    def keep_name_table(self):
+        return self._keep_name_table
+
+    @keep_name_table.setter
+    def keep_name_table(self, value):
+        if not isinstance(value, bool):
+            raise TypeError(
+                "The SaveLoadConfig.keep_name_table should be bool value, but received input's type is %s."
+                % type(value))
+        self.keep_name_table = value
 
 
 @switch_to_static_graph
