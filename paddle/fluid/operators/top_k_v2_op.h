@@ -33,6 +33,19 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+inline void GetDims(const framework::DDim& dim, int axis, int* pre, int* n,
+                    int* post) {
+  *pre = 1;
+  *post = 1;
+  *n = dim[axis];
+  for (int i = 0; i < axis; ++i) {
+    (*pre) *= dim[i];
+  }
+  for (int i = axis + 1; i < dim.size(); ++i) {
+    (*post) *= dim[i];
+  }
+}
+
 template <typename T, typename Type>
 static void FullTopK(Type input_height, Type input_width, int input_dim,
                      const framework::Tensor* input, T* t_out, Type* t_indices,

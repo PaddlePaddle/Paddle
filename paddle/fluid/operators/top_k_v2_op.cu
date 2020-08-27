@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/p_norm_op.h"
 #include "paddle/fluid/operators/top_k_function_cuda.h"
 #include "paddle/fluid/operators/top_k_v2_op.h"
 
