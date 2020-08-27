@@ -902,14 +902,11 @@ class Model(object):
 
                 dynamic = True  # False
                 device = hapi.set_device('cpu')
-
                 # if use static graph, do not set
                 paddle.disable_static(device) if dynamic else None
-
                 # inputs and labels are not required for dynamic graph.
                 input = hapi.Input([None, 784], 'float32', 'x')
                 label = hapi.Input([None, 1], 'int64', 'label')
-
                 model = hapi.Model(Mnist(), input, label)
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
                                             parameter_list=model.parameters())
@@ -1567,10 +1564,7 @@ class Model(object):
                         % type(layer))
 
                 # 2. get program of declarative Layer.forward
-                prog_cache = prog_translator.get_program_cache()
-                # make dummy args & kwargs, to get excepted FunctionSpec
-                layer_func = FunctionSpec(type(layer).forward, [layer], {})
-                concrete_program, _ = prog_cache.get_program(layer_func)
+                concrete_program = layer.forward.concrete_program
 
                 # NOTE: we maintain the mapping of variable name to
                 # structured name, the buffer variable (non-persistable)
@@ -1702,12 +1696,13 @@ class Model(object):
         out_specs = []
 
         if specs is None:
-            # If not specific specs of `Input`, using argument names of `forward` function
-            # to generate `Input`.
+            # Note(Aurelius84): If not specific specs of `Input`, using argument names of `forward` function
+            # to generate `Input`. But how can we know the actual shape of each input tensor?
             if is_input:
                 out_specs = [
-                    Input(name=n) for n in extract_args(self.network.forward)
-                    if n != 'self'
+                    Input(
+                        name=n, shape=[None])
+                    for n in extract_args(self.network.forward) if n != 'self'
                 ]
             else:
                 out_specs = to_list(specs)

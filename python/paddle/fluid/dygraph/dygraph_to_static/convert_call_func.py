@@ -27,13 +27,12 @@ import types
 import numpy
 import six
 
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticLayer
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 
 DECORATOR_NAMES = ['declarative', 'dygraph_to_static_func']
-program_translator = ProgramTranslator()
-to_static_func = program_translator.get_func
 
 
 def is_builtin(func):
@@ -63,7 +62,7 @@ def is_paddle_func(func):
 
 def convert_call(func):
     """
-    Converts a function call which needs to be transformed to static fucntion.
+    Converts a function call which needs to be transformed to static function.
 
     Args:
         func (callable): A callable function or method to convert.
@@ -98,6 +97,15 @@ def convert_call(func):
     func_self = None
     converted_call = None
 
+    # Function in convert_call may be decorated by another `@declarative`,
+    # in this case, unwraps it into a raw method or function.
+    if isinstance(func, StaticLayer):
+        instance = func._class_instance
+        if instance is not None:
+            func = func.dygraph_function.__get__(instance)
+        else:
+            func = func.dygraph_function
+
     if is_builtin_len(func):
         return convert_len
 
@@ -109,11 +117,27 @@ def convert_call(func):
         if func.__name__ == '<lambda>':
             return func
         try:
-            global_funcs = set([
-                fn for fn in func.__globals__.values() if inspect.isfunction(fn)
-            ])
-            if func in global_funcs:
-                converted_call = to_static_func(func)
+            # Note(Aurelius84): Because `@declarative` returns a class instance instead of
+            # a function. This will modify the value referring to itself in `__globals__`.
+
+            # For example: 
+            #
+            #      @declarative
+            #      def foo(x):
+            #          return x
+            #
+            # `foo` will be converted into a wrapper class, suppose as `StaticLayer`.
+            # And `foo.__globals__['foo']` will still return this `StaticLayer` instead of
+            # `foo` function. So `isinstance(fn, StaticLayer)` is added here. 
+            global_functions = set()
+            for fn in func.__globals__.values():
+                if inspect.isfunction(fn):
+                    global_functions.add(fn)
+                elif isinstance(fn, StaticLayer):
+                    global_functions.add(fn.dygraph_function)
+
+            if func in global_functions:
+                converted_call = convert_to_static(func)
                 func_self = getattr(func, '__self__', None)
         except AttributeError:
             # NOTE:
@@ -127,7 +151,7 @@ def convert_call(func):
             converted_call = None
     elif inspect.ismethod(func):
         try:
-            converted_call = to_static_func(func)
+            converted_call = convert_to_static(func)
             func_self = getattr(func, '__self__', None)
         except (IOError, OSError):
             # NOTE: func may have been decorated.
@@ -136,7 +160,7 @@ def convert_call(func):
     elif hasattr(func, '__class__') and hasattr(func.__class__, '__call__'):
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
-                forward_func = to_static_func(func.forward)
+                forward_func = convert_to_static(func.forward)
                 setattr(func, 'forward', forward_func)
                 func_self = func
             except Exception:
@@ -146,7 +170,7 @@ def convert_call(func):
         else:
             try:
                 call_func = func.__class__.__call__
-                converted_call = to_static_func(call_func)
+                converted_call = convert_to_static(call_func)
                 func_self = func
             except Exception:
                 # NOTE:
