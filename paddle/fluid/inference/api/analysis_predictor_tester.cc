@@ -492,7 +492,11 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
   config.SwitchIrOptim(true);
   config.EnableUseGpu(100, 0);
   config.EnableMkldnnBfloat16();
+#ifdef PADDLE_WITH_MKLDNN
+  ASSERT_EQ(config.mkldnn_bfloat16_enabled(), true);
+#else
   ASSERT_EQ(config.mkldnn_bfloat16_enabled(), false);
+#endif
 }
 #endif
 
