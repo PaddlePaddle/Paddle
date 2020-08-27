@@ -177,6 +177,8 @@ from .pooling import pool2d  #DEFINE_ALIAS
 from .pooling import pool3d  #DEFINE_ALIAS
 from .pooling import adaptive_pool2d  #DEFINE_ALIAS
 from .pooling import adaptive_pool3d  #DEFINE_ALIAS
+from .rnn import rnn  #DEFINE_ALIAS
+from .rnn import birnn  #DEFINE_ALIAS
 from .pooling import avg_pool2d  #DEFINE_ALIAS
 from .pooling import max_pool2d  #DEFINE_ALIAS
 from .pooling import avg_pool3d  #DEFINE_ALIAS
