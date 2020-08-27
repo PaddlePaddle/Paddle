@@ -55,12 +55,6 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
                           "dims) should be equal. But "
                           "received in_dims[1] is %d and init_dims[1] is %d.",
                           in_dims[1], init_dims[1]));
-    PADDLE_ENFORCE_EQ(in_dims[2], init_dims[2],
-                      platform::errors::InvalidArgument(
-                          "The in_dims[2] (Input dims) and init_dims[2] (InitH "
-                          "dims) should be equal. But "
-                          "received in_dims[2] is %d and init_dims[2] is %d.",
-                          in_dims[2], init_dims[2]));
 
     auto out_dims = in_dims;
     auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
@@ -155,7 +149,7 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(0);
     AddAttr<std::vector<int>>(
-        "sequence_lengths",
+        "sequence_length",
         "(list<int>) When the input data is padding, set this parameter.")
         .SetDefault({});
     AddComment(R"DOC(

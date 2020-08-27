@@ -113,6 +113,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnRNNBackwardWeights);                       \
   __macro(cudnnRNNForwardInference);                      \
   __macro(cudnnRNNForwardTrainingEx);                     \
+  __macro(cudnnSetRNNPaddingMode);                        \
   __macro(cudnnRNNBackwardDataEx);                        \
   __macro(cudnnRNNBackwardWeightsEx);                     \
   __macro(cudnnRNNForwardInferenceEx);                    \
