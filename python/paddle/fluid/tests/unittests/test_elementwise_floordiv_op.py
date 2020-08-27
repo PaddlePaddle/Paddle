@@ -193,6 +193,27 @@ class TestFloorDivideAPI(unittest.TestCase):
                 z_expected = np.array([2., 0., 2.])
                 self.assertEqual((z_expected == z.numpy()).all(), True)
 
+        with fluid.dygraph.guard(fluid.CPUPlace()):
+            # divide by zero 
+            np_x = np.array([2, 3, 4])
+            np_y = np.array([0])
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            try:
+                z = x // y
+            except Exception as e:
+                print("Error: Divide by zero encounter in floor_divide\n")
+
+            # divide by zero 
+            np_x = np.array([2])
+            np_y = np.array([0, 0, 0])
+            x = paddle.to_tensor(np_x, dtype="int32")
+            y = paddle.to_tensor(np_y, dtype="int32")
+            try:
+                z = x // y
+            except Exception as e:
+                print("Error: Divide by zero encounter in floor_divide\n")
+
 
 if __name__ == '__main__':
     unittest.main()
