@@ -505,7 +505,7 @@ class Normalize(object):
             mean = [mean, mean, mean]
 
         if isinstance(std, numbers.Number):
-            mean = [std, std, std]
+            std = [std, std, std]
 
         self.mean = np.array(mean, dtype=np.float32).reshape(len(mean), 1, 1)
         self.std = np.array(std, dtype=np.float32).reshape(len(std), 1, 1)
