@@ -656,15 +656,16 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
 
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle.optimizer.ReduceLROnPlateau(**kwargs)
-        sgd = paddle.optimizer.SGD(learning_rate=scheduler,
-                                   parameter_list=linear.parameters())
+        adam = paddle.optimizer.Adam(
+            learning_rate=scheduler, parameter_list=linear.parameters())
 
         for epoch in range(20):
             for batch_id in range(1):
                 x = paddle.to_tensor(epoch).astype('float32')
                 loss = paddle.sin(x)
                 loss.backward()
-                sgd.minimize(loss)
+                sgd.step()
+                sgd.clear_grad()
 
             scheduler.step(loss)
             # get lr from paddle
@@ -675,11 +676,11 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
                 kwargs['patience'], kwargs['mode'], kwargs['threshold_mode'],
                 loss, var_list)
             self.assertEqual(current_lr, expected_lr)
-        state_dict = sgd.state_dict()
+        state_dict = adam.state_dict()
         scheduler1 = paddle.optimizer.ReduceLROnPlateau(**kwargs)
-        sgd1 = paddle.optimizer.SGD(learning_rate=scheduler1,
-                                    parameter_list=linear.parameters())
-        sgd1.set_dict(state_dict)
+        adam1 = paddle.optimizer.Adam(
+            learning_rate=scheduler1, parameter_list=linear.parameters())
+        adam1.set_state_dict(state_dict)
         self.assertEqual(scheduler.cooldown_counter,
                          scheduler1.cooldown_counter)
         self.assertEqual(scheduler.best.numpy()[0], scheduler1.best)
@@ -903,16 +904,16 @@ class TestLRScheduler(unittest.TestCase):
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
         linear = paddle.nn.Linear(10, 10)
         scheduler = paddle_api(**kwarg)
-        sgd = paddle.optimizer.SGD(learning_rate=scheduler,
-                                   parameter_list=linear.parameters())
+        adam = paddle.optimizer.Adam(
+            learning_rate=scheduler, parameter=linear.parameters())
         for epoch in range(20):
             for batch_id in range(2):
                 x = paddle.to_tensor(x)
                 out = linear(x)
                 loss = paddle.reduce_mean(out)
-                out.backward()
-                sgd.minimize(loss)
-                linear.clear_gradients()
+                loss.backward()
+                adam.step()
+                adam.clear_grad()
 
             self.assertAlmostEqual(sgd.current_step_lr(),
                                    python_func(epoch, **kwarg))
