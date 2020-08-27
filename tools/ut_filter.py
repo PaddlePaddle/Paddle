@@ -44,7 +44,7 @@ class UTMapper(object):
             stderr=subprocess.STDOUT,
             cwd='{}build'.format(PADDLE_ROOT))
         uts = ps.communicate()[0]
-        self.ut_list = uts.rstrip('\n').encode().split('\n')
+        self.ut_list = uts.decode().rstrip('\n').split('\n')
 
     def load_cpp_and_cuda_ut(self):
         """ Load C++ and CUDA unit test list. """
