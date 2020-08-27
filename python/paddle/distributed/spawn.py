@@ -257,7 +257,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
                 can be ``spawn`` , ``fork`` , ``forkserver`` . Because the CUDA 
                 runtime does not support the ``fork`` start method, when use CUDA
                 in subprocesses, we should start process by ``spawn`` or ``forkserver`` 
-                method. Default: 'spawn'; 
+                method. Default: "spawn" ; 
             (2) cluster_node_ips (string): Paddle cluster nodes ips, such as 
                 "192.168.0.16,192.168.0.17". Default: "127.0.0.1"; 
             (3) node_ip (string): The current node ip, such as "192.168.0.16". 
