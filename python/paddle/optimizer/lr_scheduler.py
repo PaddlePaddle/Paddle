@@ -53,9 +53,8 @@ class _LRScheduler(object):
 
     def step(self, epoch=None):
         """
-        ``scheduler.step()`` should be called after ``optimizer.step()`` . 
-        It will update the learning rate in optimizer according to ``epoch`` .  
-        The new learning rate will take effect on next ``optimizer.step()`` .
+        'step' should be called after 'minimize' . It will update the learning rate in optimizer according to 'epoch'.  
+        The new learning rate will take effect on next epoch.
 
         Args:
             epoch (int, None): specify current epoch. Default: None. Auto-increment from last_epoch=-1.
@@ -110,7 +109,7 @@ class _LRScheduler(object):
         """
         self.keys = ['last_epoch', 'last_lr']
 
-    def set_state_dict(self, state_dict):
+    def set_dict(self, state_dict):
         """
         Loads the schedulers state.
         """
@@ -126,6 +125,9 @@ class _LRScheduler(object):
             warnings.warn(
                 "There are some unused values in state_dict. Maybe the optimizer have different 'LearningRateDecay' when invoking state_dict and set_dict"
             )
+
+    # alias for set_dict
+    set_state_dict = set_dict
 
     def get_lr(self):
         # calculate by python float
@@ -174,8 +176,8 @@ class NoamLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.step()
-                    sgd.clear_grad()
+                    sgd.minimize(loss)
+                    linear.clear_gradients()
                 scheduler.step()
 
             # train on static mode
@@ -272,8 +274,8 @@ class PiecewiseLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.step()
-                    sgd.clear_grad()
+                    sgd.minimize(loss)
+                    linear.clear_gradients()
                 scheduler.step()
 
             # train on static mode
@@ -356,8 +358,8 @@ class NaturalExpLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.step()
-                    sgd.clear_grad()
+                    sgd.minimize(loss)
+                    linear.clear_gradients()
                 scheduler.step()
 
             # train on static mode
@@ -435,8 +437,8 @@ class InverseTimeLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.step()
-                    sgd.clear_grad()
+                    sgd.minimize(loss)
+                    linear.clear_gradients()
                 scheduler.step()
 
             # train on static mode
@@ -531,8 +533,8 @@ class PolynomialLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.step()
-                    sgd.clear_grad()
+                    sgd.minimize(loss)
+                    linear.clear_gradients()
                 scheduler.step()
 
             # train on static mode
@@ -647,8 +649,8 @@ class LinearLrWarmup(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.step()
-                    sgd.clear_grad()
+                    sgd.minimize(loss)
+                    linear.clear_gradients()
                 scheduler.step()
 
             # train on static mode
@@ -752,8 +754,8 @@ class ExponentialLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.step()
-                    sgd.clear_grad()
+                    sgd.minimize(loss)
+                    linear.clear_gradients()
                 scheduler.step()
 
             # train on static mode
@@ -840,8 +842,8 @@ class MultiStepLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.step()
-                    sgd.clear_grad()
+                    sgd.minimize(loss)
+                    linear.clear_gradients()
                 scheduler.step()
 
             # train on static mode
@@ -949,8 +951,8 @@ class StepLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.step()
-                    sgd.clear_grad()
+                    sgd.minimize(loss)
+                    linear.clear_gradients()
                 scheduler.step()
 
             # train on static mode
@@ -1045,8 +1047,8 @@ class LambdaLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.step()
-                    sgd.clear_grad()
+                    sgd.minimize(loss)
+                    linear.clear_gradients()
                 scheduler.step()
 
             # train on static mode
@@ -1145,8 +1147,8 @@ class ReduceLROnPlateau(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.step()
-                    sgd.clear_grad()
+                    sgd.minimize(loss)
+                    linear.clear_gradients()
                 scheduler.step(loss)
 
             # train on static mode
@@ -1236,9 +1238,8 @@ class ReduceLROnPlateau(_LRScheduler):
 
     def step(self, metrics, epoch=None):
         """
-        ``scheduler.step()`` should be called after ``optimizer.step()`` . 
-        It will update the learning rate in optimizer according to ``metrics`` .  
-        The new learning rate will take effect on next ``optimizer.step()`` .
+        step should be called after 'minimize' . It will update the learning rate in optimizer according to ``metrics`` .  
+        The new learning rate will take effect on next epoch.
 
         Args:
             metrics (Tensor|numpy.ndarray|float): Which will be monitored to determine whether the learning rate will reduce. 
@@ -1363,8 +1364,8 @@ class CosineAnnealingLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.step()
-                    sgd.clear_grad()
+                    sgd.minimize(loss)
+                    linear.clear_gradients()
                 scheduler.step()
 
             # train on static mode
