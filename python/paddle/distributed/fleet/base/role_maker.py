@@ -221,7 +221,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def __init__(self, is_collective=False, **kwargs):
         super(PaddleCloudRoleMaker, self).__init__()
         self._is_collective = is_collective
-        self._init_gloo = False  #default no init gloo
+        self._init_gloo = False  # default no init gloo
         self._kwargs = kwargs
 
         self._role_is_generated = False
@@ -414,6 +414,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             assert self._server_endpoints != ""
             self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                                "").split(",")
+            assert self._server_endpoints != ""
 
             trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
             training_role = os.environ["TRAINING_ROLE"]
