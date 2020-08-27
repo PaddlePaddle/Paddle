@@ -40,7 +40,7 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto engine = framework::GetCPURandomEngine(seed);
 
     for (int64_t i = 0; i < size; ++i) {
-      data[i] = dist(*gen_engine);
+      data[i] = dist(*engine);
     }
 
     tensor->set_layout(DataLayout::kMKLDNN);
