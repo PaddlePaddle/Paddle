@@ -109,6 +109,55 @@ class DistributionTest(unittest.TestCase):
                                 scale_float, other_loc_float, other_scale_float,
                                 scale_np, other_scale_np, loc_np, other_loc_np,
                                 loc, scale, other_loc, other_scale, values):
+        """Generate Normal object and get the output of its methods including
+        ``sample``, ``entropy``, ``log_prob``, ``probs`` and ``kl_divergence``.
+        Parameters ``loc`` and ``scale`` have different data types to test different situations.
+
+        Args:
+          batch_size(int)：The first dimension of the shape of parameters(loc and scale).
+          dims(int): The second dimension of the shape of parameters.
+          sample_shape(int): The sample value used in ``sample`` method.
+          loc_float(float): Generated in function ``get_normal_random_input``, loc is a float number.
+          scale_float(float): Generated in function ``get_normal_random_input``, scale is a float number.
+          other_loc_float(float): Generated in function ``get_normal_random_input``, other_loc is a
+            float number. It is the first parameter in another Normal object used in ``kl_divergence``
+            method.
+          other_scale_float(float): Generated in function ``get_normal_random_input``, other_scale is a
+            float number. It is the second parameter in another Normal object used in ``kl_divergence``
+            method.
+          scale_np(numpy.ndarray): Generated in function ``get_normal_random_input``, An numpy array
+            whose shape is [batch_size, dims].
+          other_scale_np(numpy.ndarray): Generated in function ``get_normal_random_input``, other_scale_np
+            is an numpy array. It is the second parameter in another Normal object used in ``kl_divergence``
+            method.
+          loc_np(numpy.ndarray): Generated in function ``get_normal_random_input``, An numpy array
+            whose shape is [batch_size, dims].
+          other_loc_np(numpy.ndarray): Generated in function ``get_normal_random_input``, other_loc_np
+            is an numpy array. It is the first parameter in another Normal object used in ``kl_divergence``
+            method.
+          loc(Tensor): In dynamic mode, loc is generated in ``build_normal_dygraph``, it's a Tensor filled
+            with ``loc_np`` data. In static mode, loc is generated in ``build_normal_static``, ``layers.data``
+             method is used to get a Placeholder whose shape is [dims].
+          scale(Tensor): In dynamic mode, scale is generated in ``build_normal_dygraph``, it's a Tensor filled
+            with ``scale_np`` data. In static mode, scale is generated in ``build_normal_static``, ``layers.data``
+             method is used to get a Placeholder whose shape is [dims].
+          other_loc(Tensor): In dynamic mode, other_loc is generated in ``build_normal_dygraph``, it's a Tensor
+            filled with ``other_loc_np`` data. In static mode, other_loc is generated in ``build_normal_static``,
+             ``layers.data`` method is used to get a Placeholder whose shape is [dims]. It is the first parameter
+              in another Normal object used in ``kl_divergence`` method.
+          other_scale(Tensor): In dynamic mode, other_scale is generated in ``build_normal_dygraph``, it's a Tensor
+            filled with ``other_scale_np`` data. In static mode, other_scale is generated in ``build_normal_static``,
+             ``layers.data`` method is used to get a Placeholder whose shape is [dims]. It is the second parameter
+              in another Normal object used in ``kl_divergence`` method.
+          values(Tensor): In dynamic mode, values is generated in ``build_normal_dygraph``, it's a Tensor filled with
+             ``values_np`` data. In static mode, values is generated in ``build_normal_static``, ``layers.data``
+             method is used to get a Placeholder whose shape is [dims].
+
+        Returns:
+          List: The elements of the list are the output of sample, entropy, log_prob, probs, kl_divergence methods.
+          The inputs' type of these methods can be float, np.ndarray and Tensor. And broadcast will be considered.
+
+        """
         normal_int = Normal(int(loc_float), int(scale_float))
         normal_float = Normal(loc_float, scale_float)
         other_normal_float = Normal(other_loc_float, other_scale_float)
@@ -173,6 +222,18 @@ class DistributionTest(unittest.TestCase):
                             loc_float, scale_float, other_loc_float,
                             other_scale_float, scale_np, other_scale_np, loc_np,
                             other_loc_np, values_np):
+        """
+        In static mode, generate feed data of Normal network, and get output fetch_list using
+        ``build_normal_common_net``.
+
+        Args:
+          test_program: In static mode, the Program object.
+          other args can refer to function ``build_normal_common_net``.
+
+        Returns:
+          feed_vars: The feed data of Normal network in static mode.
+          fetch_list: The output is generated by function ``build_normal_common_net``.
+        """
         with fluid.program_guard(test_program):
             loc = layers.data(name='loc', shape=[dims], dtype='float32')
             scale = layers.data(name='scale', shape=[dims], dtype='float32')
@@ -203,6 +264,17 @@ class DistributionTest(unittest.TestCase):
                              scale_float, other_loc_float, other_scale_float,
                              scale_np, other_scale_np, loc_np, other_loc_np,
                              values_np):
+        """
+        In dynamic mode, generate input data of Normal network, and get output fetch_list using
+        ``build_normal_common_net``.
+
+        Args:
+          refer to function ``build_normal_common_net``.
+
+        Returns:
+          fetch_list_numpy: The output is generated by function ``build_normal_common_net``. Transform
+          these tensor to numpy.ndarray.
+        """
         loc = paddle.to_tensor(loc_np)
         scale = paddle.to_tensor(scale_np)
         other_loc = paddle.to_tensor(other_loc_np)
@@ -217,6 +289,17 @@ class DistributionTest(unittest.TestCase):
         return fetch_list_numpy
 
     def get_normal_random_input(self, batch_size, dims):
+        """
+        Generate input data ``loc`` and ``scale`` used in Normal network.
+
+        Args:
+          refer to function ``build_normal_common_net``.
+
+        Returns:
+          List: Different data type of ``loc`` and ``scale``, including float, numpy.ndarray.
+          By the way, ``other_loc`` and ``other_scale`` are used in ``kl_divergence`` method.
+          refer to ``args`` in function ``build_normal_common_net``.
+        """
         loc_np = np.random.randn(batch_size, dims).astype('float32')
         other_loc_np = np.random.randn(batch_size, dims).astype('float32')
 
@@ -250,6 +333,18 @@ class DistributionTest(unittest.TestCase):
                                   dims=3,
                                   sample_shape=7,
                                   tolerance=1e-6):
+        """
+        Compare the outputs of Normal's methods in paddle and numpy. If the outputs are not consistent,
+        raise errors.
+
+        Args:
+          data_list: Input data generated by function ``get_normal_random_input``.
+          output_list: The outputs of Normal's methods in static or dynamic mode.
+          batch_size(int)：The first dimension of the shape of parameters(loc and scale).
+          dims(int): The second dimension of the shape of parameters.
+          sample_shape(int): The sample value used in ``sample`` method.
+          tolerance(float): The tolerance of the error.
+        """
         loc_np, other_loc_np, loc_float, scale_float, other_loc_float, other_scale_float, scale_np, other_scale_np, values_np = data_list
 
         np_normal_int = NormalNumpy(int(loc_float), int(scale_float))
@@ -370,6 +465,12 @@ class DistributionTest(unittest.TestCase):
                                         dims=3,
                                         sample_shape=7,
                                         tolerance=1e-6):
+        """
+        Test Normal's methods in static mode.
+
+        Args:
+          refer to ``compare_normal_with_numpy`` function.
+        """
         test_program = fluid.Program()
         data_list = self.get_normal_random_input(batch_size, dims)
         loc_np, other_loc_np, loc_float, scale_float, other_loc_float, other_scale_float, scale_np, other_scale_np, values_np = data_list
@@ -392,6 +493,12 @@ class DistributionTest(unittest.TestCase):
                                          dims=3,
                                          sample_shape=7,
                                          tolerance=1e-6):
+        """
+        Test Normal's methods in dynamic mode.
+
+        Args:
+          refer to ``compare_normal_with_numpy`` function.
+        """
         paddle.disable_static()
         data_list = self.get_normal_random_input(batch_size, dims)
         loc_np, other_loc_np, loc_float, scale_float, other_loc_float, other_scale_float, scale_np, other_scale_np, values_np = data_list
@@ -405,19 +512,36 @@ class DistributionTest(unittest.TestCase):
                                        sample_shape, tolerance)
         paddle.enable_static()
 
-    def build_uniform_common_net(self,
-                                 batch_size,
-                                 dims,
-                                 sample_shape,
-                                 low_float,
-                                 high_float,
-                                 high_np,
-                                 low_np,
-                                 values_np,
-                                 low,
-                                 high,
-                                 values,
-                                 other_dims=7):
+    def build_uniform_common_net(self, batch_size, dims, sample_shape,
+                                 low_float, high_float, high_np, low_np,
+                                 values_np, low, high, values):
+        """Generate Uniform object and get the output of its methods including ``sample``, ``entropy``,
+         ``log_prob`` and ``probs``.
+        Parameters ``low`` and ``high`` have different data types to test different situations.
+
+        Args:
+          batch_size(int)：The first dimension of the shape of parameters(low and high).
+          dims(int): The second dimension of the shape of parameters.
+          sample_shape(int): The sample value used in ``sample`` method.
+          low_float(float): Parameter ``low`` is a float number.
+          high_float(float): Parameter ``high`` is a float number.
+          high_np(numpy.ndarray): An numpy array whose shape is [batch_size, dims].
+          low_np(numpy.ndarray): An numpy array whose shape is [batch_size, dims].
+          values_np(numpy.ndarray): The input of ``log_prob`` and ``probs`` methods. An numpy array whose
+            shape is [batch_size, dims].
+          low(Tensor): In dynamic mode, low is generated in ``build_uniform_dygraph``, it's a Tensor filled
+            with ``low_np`` data. In static mode, low is generated in ``build_uniform_static``.
+          high(Tensor): In dynamic mode, high is generated in ``build_uniform_dygraph``, it's a Tensor filled
+            with ``high_np`` data. In static mode, high is generated in ``build_uniform_static``.
+          values(Tensor): In dynamic mode, values is generated in ``build_uniform_dygraph``, it's a Tensor
+            filled with ``values_np`` data. In static mode, values is generated in ``build_uniform_static``.
+
+        Returns:
+          List: The elements of the list are the output of sample, entropy, log_prob, probs methods.
+          The inputs' type of these methods can be float, np.ndarray and Tensor. And broadcast will be
+           considered.
+
+        """
         uniform_int = Uniform(int(low_float), int(high_float))
         uniform_float = Uniform(low_float, high_float)
         uniform_float_np_broadcast = Uniform(low_float, high_np)
@@ -465,6 +589,18 @@ class DistributionTest(unittest.TestCase):
 
     def build_uniform_static(self, test_program, batch_size, dims, sample_shape,
                              low_float, high_float, high_np, low_np, values_np):
+        """
+        In static mode, generate feed data of Uniform network, and get output fetch_list using
+        ``build_uniform_common_net``.
+
+        Args:
+          test_program: In static mode, the Program object.
+          other args can refer to function ``build_uniform_common_net``.
+
+        Returns:
+          feed_vars: The feed data of Uniform network in static mode.
+          fetch_list: The output is generated by function ``build_uniform_common_net``.
+        """
         with fluid.program_guard(test_program):
             low = layers.data(name='low', shape=[dims], dtype='float32')
             high = layers.data(name='high', shape=[dims], dtype='float32')
@@ -480,6 +616,17 @@ class DistributionTest(unittest.TestCase):
 
     def build_uniform_dygraph(self, batch_size, dims, sample_shape, low_float,
                               high_float, high_np, low_np, values_np):
+        """
+        In dynamic mode, generate input data of Uniform network, and get output fetch_list using
+        ``build_uniform_common_net``.
+
+        Args:
+          refer to function ``build_uniform_common_net``.
+
+        Returns:
+          fetch_list_numpy: The output is generated by function ``build_uniform_common_net``. Transform
+          these tensor to numpy.ndarray.
+        """
         low = paddle.to_tensor(low_np)
         high = paddle.to_tensor(high_np)
         values = paddle.to_tensor(values_np)
@@ -497,6 +644,18 @@ class DistributionTest(unittest.TestCase):
                                    dims=3,
                                    sample_shape=7,
                                    tolerance=1e-6):
+        """
+        Compare the outputs of Uniform's methods in paddle and numpy. If the outputs are not consistent,
+        raise errors.
+
+        Args:
+          data_list: Input data including float and numpy.ndarray type of ``low`` and ``high`` parameters.
+          output_list: The outputs of Uniform's methods in static or dynamic mode.
+          batch_size(int)：The first dimension of the shape of parameters(low and high).
+          dims(int): The second dimension of the shape of parameters.
+          sample_shape(int): The sample value used in ``sample`` method.
+          tolerance(float): The tolerance of the error.
+        """
         [low_np, low_float, high_float, high_np, values_np] = data_list
 
         np_uniform_int = UniformNumpy(int(low_float), int(high_float))
@@ -595,6 +754,12 @@ class DistributionTest(unittest.TestCase):
                                          dims=3,
                                          sample_shape=7,
                                          tolerance=1e-6):
+        """
+        Test Uniform's methods in static mode.
+
+        Args:
+          refer to ``compare_uniform_with_numpy`` function.
+        """
         test_program = fluid.Program()
 
         low_np = np.random.randn(batch_size, dims).astype('float32')
@@ -624,6 +789,12 @@ class DistributionTest(unittest.TestCase):
                                           dims=3,
                                           sample_shape=7,
                                           tolerance=1e-6):
+        """
+        Test Uniform's methods in dynamic mode.
+
+        Args:
+          refer to ``compare_uniform_with_numpy`` function.
+        """
         paddle.disable_static()
 
         low_np = np.random.randn(batch_size, dims).astype('float32')
