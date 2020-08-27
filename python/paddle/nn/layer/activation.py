@@ -41,6 +41,7 @@ from ...fluid import core
 from ...fluid.framework import in_dygraph_mode
 from ...fluid.param_attr import ParamAttr
 from ...fluid.initializer import Constant
+from paddle.framework import get_default_dtype
 from .. import functional as F
 
 
@@ -423,7 +424,7 @@ class PReLU(layers.Layer):
             For more information, please refer to :ref:`api_guide_Name`.
     
     Shape:
-        - input: Tensor with any shape.
+        - input: Tensor with any shape. Default dtype is float32.
         - output: Tensor with the same shape as input.
     
     Examples:
@@ -433,13 +434,14 @@ class PReLU(layers.Layer):
             import numpy as np
 
             paddle.disable_static()
+            paddle.set_default_dtype("float64")
 
             data = np.array([[[[-2.0,  3.0, -4.0,  5.0],
                             [ 3.0, -4.0,  5.0, -6.0],
                             [-7.0, -8.0,  8.0,  9.0]],
                             [[ 1.0, -2.0, -3.0,  4.0],
                             [-5.0,  6.0,  7.0, -8.0],
-                            [ 6.0,  7.0,  8.0,  9.0]]]], 'float32')
+                            [ 6.0,  7.0,  8.0,  9.0]]]], 'float64')
             x = paddle.to_tensor(data)
             m = paddle.nn.PReLU(1, 0.25)
             out = m(x)
@@ -461,10 +463,10 @@ class PReLU(layers.Layer):
 
         self._weight = self.create_parameter(
             attr=self._weight_attr,
-            shape=[num_parameters],
-            dtype='float32',
+            shape=[self._num_parameters],
+            dtype=get_default_dtype(),
             is_bias=False,
-            default_initializer=Constant(init))
+            default_initializer=Constant(self._init))
 
     def forward(self, x):
         return F.prelu(x, self._weight)
@@ -550,7 +552,11 @@ class SELU(layers.Layer):
 
     .. math::
 
-        SELU(x) = scale * (max(0,x) + min(0, alpha * (e^{x} - 1)))
+        SELU(x)= scale *
+                 \\begin{cases}
+                   x, \\text{if } x > 0 \\\\
+                   alpha * e^{x} - alpha, \\text{if } x <= 0
+                 \\end{cases}
 
     Parameters:
         scale (float, optional): The value of scale for SELU. Default is 1.0507009873554804934193349852946
