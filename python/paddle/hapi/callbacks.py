@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
 from .progressbar import ProgressBar
@@ -459,11 +461,11 @@ class ModelCheckpoint(Callback):
     def on_epoch_end(self, epoch, logs=None):
         if self._is_save() and self.epoch % self.save_freq == 0:
             path = '{}/{}'.format(self.save_dir, epoch)
-            print('save checkpoint at {}'.format(path))
+            print('save checkpoint at {}'.format(os.path.abspath(path)))
             self.model.save(path)
 
     def on_train_end(self, logs=None):
         if self._is_save():
             path = '{}/final'.format(self.save_dir)
-            print('save checkpoint at {}'.format(path))
+            print('save checkpoint at {}'.format(os.path.abspath(path)))
             self.model.save(path)

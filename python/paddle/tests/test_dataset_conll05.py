@@ -31,6 +31,8 @@ class TestConll05st(unittest.TestCase):
         for s in sample:
             self.assertTrue(len(s.shape) == 1)
 
+        assert os.path.exists(conll05st.get_embedding())
+
 
 if __name__ == '__main__':
     unittest.main()
