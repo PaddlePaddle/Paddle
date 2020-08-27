@@ -276,6 +276,8 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     Examples:
         .. code-block:: python
 
+            from __future__ import print_function
+
             import paddle
             import paddle.nn as nn
             import paddle.optimizer as opt
@@ -312,7 +314,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
                 loss = loss_fn(outputs, labels)
                 
                 if print_result is True:
-                    print("loss: " % loss)
+                    print("loss:", loss.numpy())
                 
                 loss = dp_layer.scale_loss(loss)
                 loss.backward()
