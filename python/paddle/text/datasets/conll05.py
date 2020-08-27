@@ -131,6 +131,12 @@ class Conll05st(Dataset):
                 target_dict_file, TRGDICT_URL, TRGDICT_MD5, 'conll05st',
                 download)
 
+        self.emb_file = emb_file
+        if self.emb_file is None:
+            assert download, "emb_file is not set and downloading automatically is disabled"
+            self.emb_file = _check_exists_and_download(
+                emb_file, EMB_URL, EMB_MD5, 'conll05st', download)
+
         self.word_dict = self._load_dict(self.word_dict_file)
         self.predicate_dict = self._load_dict(self.verb_dict_file)
         self.label_dict = self._load_label_dict(self.target_dict_file)
@@ -290,8 +296,27 @@ class Conll05st(Dataset):
     def get_dict(self):
         """
         Get the word, verb and label dictionary of Wikipedia corpus.
+
+        Examples:
+    
+            .. code-block:: python
+    
+            from paddle.text.datasets import Conll05st
+            conll05st = Conll05st()
+            word_dict, predicate_dict, label_dict = conll05st.get_dict()
         """
         return self.word_dict, self.predicate_dict, self.label_dict
 
     def get_embedding(self):
+        """
+        Get the embedding dictionary file.
+
+        Examples:
+    
+            .. code-block:: python
+    
+            from paddle.text.datasets import Conll05st
+            conll05st = Conll05st()
+            emb_file = conll05st.get_embedding()
+        """
         return self.emb_file
