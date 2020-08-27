@@ -62,7 +62,7 @@ class UTMapper(object):
         """ Load Python unit test list. """
         pyut_files = subprocess.check_output(
             'find {}python -name test*.py'.format(PADDLE_ROOT).split(' '))
-        pyut_list = pyut_files.rstrip('\n').split('\n')
+        pyut_list = pyut_files.decode().rstrip('\n').split('\n')
         for src_file in pyut_list:
             self.src_ut_dict[src_file] = src_file.split('/')[-1].split('.py')[0]
 
