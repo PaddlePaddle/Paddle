@@ -205,7 +205,7 @@ class Optimizer(object):
                 state_dict = emb.state_dict()
                 paddle.framework.save(state_dict, "paddle_dy")
 
-                adam = paddle.optimizer.Adam(learning_rate=paddle.nn.functional.noam_decay( 100, 10000), 
+                adam = paddle.optimizer.Adam(learning_rate=paddle.optimizer.NoamLR( 100, 10000), 
                                             parameters=emb.parameters())
                 state_dict = adam.state_dict()
                 paddle.framework.save(state_dict, "paddle_dy")
@@ -326,18 +326,6 @@ class Optimizer(object):
                 #    current lr is 0.4
                 #    current lr is 0.5
                 #    current lr is 0.6
-
-
-                    # set learning rate manually by framework Tensor
-                    lr_var = paddle.create_global_var(
-                        shape=[1], value=0.7, dtype='float32')
-                    adam.set_lr(lr_var)
-                    lr = adam.get_lr()
-                    print("current lr is {}".format(lr))
-                    # Print:
-                    #    current lr is 0.7
-
-
 
         """
         if not isinstance(value, (int, float)):

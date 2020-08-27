@@ -374,6 +374,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 adam._learning_rate.step_num = 0
 
             para_state_dict, opti_state_dict = paddle.load("./test_dy")
+            print(opti_state_dict)
             adam.set_dict(opti_state_dict)
 
             opti_dict = adam.state_dict()
