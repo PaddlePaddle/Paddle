@@ -173,8 +173,6 @@ class OpConverter {
                                   "optim_input_shape should be same."));
           }
         }
-        std::cerr << "Declare input: " << input << std::endl;
-        if (input.find("stack_0.tmp_0") != std::string::npos) continue;
         engine->DeclareInput(
             input, FluidDataType2TRT(
                        var->Proto()->type().lod_tensor().tensor().data_type()),

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/plugin/convert_mask_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -26,6 +27,7 @@ class ScaleOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(3) << "convert a fluid scale op to tensorrt mul layer without bias";
+    std::cerr << "Scale converter" << std::endl;
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -63,6 +65,12 @@ class ScaleOpConverter : public OpConverter {
     PADDLE_ENFORCE_GE(input_dim.nbDims, 3,
                       platform::errors::Fatal(
                           "Paddle-TRT scale mode only support dimension >= 3"));
+
+    plugin::ConvertMaskPluginDynamic* plugin =
+        new plugin::ConvertMaskPluginDynamic();
+    auto convert_mask_layer = engine_->AddPluginV2(&input, 1, plugin);
+    convert_mask_layer->setName("convert_mask_layer");
+    engine_->SetITensor("fused_mha_mask", convert_mask_layer->getOutput(0));
 
     nvinfer1::IShuffleLayer* expand_layer = nullptr;
     nvinfer1::IShuffleLayer* squeeze_layer = nullptr;

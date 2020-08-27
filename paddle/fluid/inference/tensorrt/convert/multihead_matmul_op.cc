@@ -138,7 +138,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
          *reshape_layer->getOutput(0),
                                      nvinfer1::ReduceOperation::kMAX, 1, false);
       */
-      auto imask_tensor = engine_->GetITensor("imask_tensor");
+      // auto imask_tensor = engine_->GetITensor("imask_tensor");
+      auto imask_tensor = engine_->GetITensor("fused_mha_mask");
 
       auto creator = GetPluginRegistry()->getPluginCreator(
           "CustomQKVToContextPluginDynamic", "1");
