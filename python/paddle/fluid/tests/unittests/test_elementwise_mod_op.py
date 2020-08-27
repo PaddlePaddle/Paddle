@@ -204,7 +204,6 @@ class TestRemainderAPI(unittest.TestCase):
                 z_expected = np.array([1., 0., 1., 1., 0., 1.])
                 self.assertEqual((z_expected == z.numpy()).all(), True)
 
-                # x = -3 ,y=-2 
                 np_x = np.array([-3.3, 11.5, -2, 3.5])
                 np_y = np.array([-1.2, 2., 3.3, -2.3])
                 x = paddle.to_tensor(np_x)
@@ -213,7 +212,6 @@ class TestRemainderAPI(unittest.TestCase):
                 z_expected = np.array([-0.9, 1.5, 1.3, -1.1])
                 self.assertEqual(np.allclose(z_expected, z.numpy()), True)
 
-                # x = -3 ,y=-2 
                 np_x = np.array([-3, 11, -2, 3])
                 np_y = np.array([-1, 2, 3, -2])
                 x = paddle.to_tensor(np_x, dtype="int64")
