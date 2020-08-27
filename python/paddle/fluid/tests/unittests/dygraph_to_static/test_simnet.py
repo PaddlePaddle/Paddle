@@ -109,6 +109,7 @@ def train(conf_dict, to_static):
 
     with fluid.dygraph.guard(place):
         paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         conf_dict['dict_size'] = len(vocab)
         conf_dict['seq_len'] = args.seq_len

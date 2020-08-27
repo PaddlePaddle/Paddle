@@ -18,7 +18,7 @@ import os
 import pickle
 import unittest
 import numpy as np
-
+import paddle
 from paddle.static import InputSpec
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Linear
@@ -109,6 +109,7 @@ class TestJitSaveLoad(unittest.TestCase):
         fluid.enable_dygraph()
         # config seed
         paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
     def train_and_save_model(self, model_path=None, configs=None):
         layer = LinearNet(784, 1)
@@ -294,6 +295,7 @@ class TestJitSaveLoadConfig(unittest.TestCase):
         fluid.enable_dygraph()
         # config seed
         paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
     def basic_save_load(self, layer, model_path, configs):
         # 1. train & save
@@ -386,6 +388,7 @@ class TestJitMultipleLoading(unittest.TestCase):
         fluid.enable_dygraph()
         # config seed
         paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
         # train and save base model
         self.train_and_save_orig_model()
 
@@ -427,6 +430,7 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
         fluid.enable_dygraph()
         # config seed
         paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
     def train_and_save(self):
         train_layer = LinearNetReturnHidden(8, 8)

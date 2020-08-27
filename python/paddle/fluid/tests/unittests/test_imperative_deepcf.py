@@ -207,6 +207,7 @@ class TestDygraphDeepCF(unittest.TestCase):
             (users_np, items_np, labels_np, num_users, num_items,
              matrix) = get_data()
         paddle.manual_seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
         startup = fluid.Program()
         main = fluid.Program()
 
@@ -243,6 +244,7 @@ class TestDygraphDeepCF(unittest.TestCase):
 
         with fluid.dygraph.guard():
             paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             deepcf = DeepCF(num_users, num_items, matrix)
             adam = fluid.optimizer.AdamOptimizer(
@@ -267,6 +269,7 @@ class TestDygraphDeepCF(unittest.TestCase):
 
         with fluid.dygraph.guard():
             paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             deepcf2 = DeepCF(num_users, num_items, matrix)
             adam2 = fluid.optimizer.AdamOptimizer(
