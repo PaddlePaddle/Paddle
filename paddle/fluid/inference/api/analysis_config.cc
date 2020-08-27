@@ -220,7 +220,8 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
-                          "MkldnnQuantizer was not enabled yet.");
+                          platform::errors::PreconditionNotMet(
+                              "MkldnnQuantizer was not enabled yet."));
   return mkldnn_quantizer_config_.get();
 }
 

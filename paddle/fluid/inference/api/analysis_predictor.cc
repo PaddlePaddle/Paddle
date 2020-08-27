@@ -170,7 +170,8 @@ bool AnalysisPredictor::PrepareScope(
   if (parent_scope) {
     PADDLE_ENFORCE_NOT_NULL(
         parent_scope,
-        "Both program and parent_scope should be set in Clone mode.");
+        platform::errors::PreconditionNotMet(
+            "Both program and parent_scope should be set in Clone mode."));
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
@@ -236,7 +237,9 @@ bool AnalysisPredictor::PrepareExecutor() {
   executor_->Prepare(sub_scope_, *inference_program_, 0,
                      config_.use_feed_fetch_ops_);
 
-  PADDLE_ENFORCE_NOT_NULL(sub_scope_);
+  PADDLE_ENFORCE_NOT_NULL(sub_scope_,
+                          platform::errors::PreconditionNotMet(
+                              "The sub_scope should not be nullptr."));
 
   return true;
 }
@@ -298,7 +301,8 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   timer.tic();
   // set feed variable
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
-  PADDLE_ENFORCE_NOT_NULL(scope, "The scope should not be nullptr.");
+  PADDLE_ENFORCE_NOT_NULL(scope, platform::errors::PreconditionNotMet(
+                                     "The scope should not be nullptr."));
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
     return false;
@@ -400,7 +404,11 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   outputs->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
     int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
-    PADDLE_ENFORCE((size_t)idx == i);
+    PADDLE_ENFORCE_EQ(
+        static_cast<size_t>(idx), i,
+        platform::errors::InvalidArgument(
+            "Fetch op's col attr(%d) should be equal to the index(%d)", idx,
+            i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
@@ -436,10 +444,12 @@ void AnalysisPredictor::PrepareArgument() {
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
-    PADDLE_ENFORCE(
-        !config_.params_file().empty(),
-        "Either model_dir or (param_file, prog_file) should be set.");
-    PADDLE_ENFORCE(!config_.prog_file().empty());
+    PADDLE_ENFORCE_EQ(config_.params_file().empty(), false,
+                      platform::errors::PreconditionNotMet(
+                          "Either model_dir or param_file should be set."));
+    PADDLE_ENFORCE_EQ(config_.prog_file().empty(), false,
+                      platform::errors::PreconditionNotMet(
+                          "Either model_dir or prog_file should be set."));
     std::string dir = inference::analysis::GetDirRoot(config_.prog_file());
 
     argument_.SetModelProgramPath(config_.prog_file());
@@ -502,7 +512,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   PrepareArgument();
   Analyzer().Run(&argument_);
 
-  PADDLE_ENFORCE(argument_.scope_valid());
+  PADDLE_ENFORCE_EQ(
+      argument_.scope_valid(), true,
+      platform::errors::InvalidArgument("The argument scope should be valid."));
   VLOG(5) << "to prepare executor";
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
@@ -522,8 +534,10 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     FLAGS_minloglevel = 2;  // GLOG_ERROR
   }
   VLOG(3) << "create AnalysisConfig";
-  PADDLE_ENFORCE(config.is_valid(),
-                 "Note: Each config can only be used for one predictor.");
+  PADDLE_ENFORCE_EQ(
+      config.is_valid(), true,
+      platform::errors::InvalidArgument(
+          "Note: Each config can only be used for one predictor."));
 
   if (config.use_gpu()) {
     static std::once_flag gflags_initialized;
@@ -620,7 +634,9 @@ bool AnalysisPredictor::MkldnnQuantize() {
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
-  PADDLE_ENFORCE_NOT_NULL(sub_scope_);
+  PADDLE_ENFORCE_NOT_NULL(sub_scope_,
+                          platform::errors::InvalidArgument(
+                              "The sub_scope should not be nullptr."));
   CreateFeedFetchVar(sub_scope_);
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
@@ -643,7 +659,8 @@ void AnalysisPredictor::PrepareFeedFetch() {
 }
 
 void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
-  PADDLE_ENFORCE_NOT_NULL(scope);
+  PADDLE_ENFORCE_NOT_NULL(scope, platform::errors::InvalidArgument(
+                                     "The scope should not be nullptr."));
   auto *var = scope->Var("feed");
   var->GetMutable<framework::FeedList>();
   var = scope->Var("fetch");
@@ -664,7 +681,8 @@ AnalysisPredictor::GetInputTensorShape() {
   std::vector<std::string> names = GetInputNames();
   for (std::string name : names) {
     auto *var = inference_program_->Block(0).FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(var, "input %s does not exist.", name);
+    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::PreconditionNotMet(
+                                     "Input %s does not exist.", name));
     input_shapes[name] = var->GetShape();
   }
   return input_shapes;
@@ -680,7 +698,11 @@ std::vector<std::string> AnalysisPredictor::GetOutputNames() {
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
-  PADDLE_ENFORCE(executor_->scope()->FindVar(name), "no name called %s", name);
+  PADDLE_ENFORCE_NOT_NULL(
+      executor_->scope()->FindVar(name),
+      platform::errors::PreconditionNotMet(
+          "The variable named %s is not found in the scope of the exector.",
+          name));
   std::unique_ptr<ZeroCopyTensor> res(
       new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
   res->input_or_output_ = true;
@@ -697,7 +719,11 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     const std::string &name) {
-  PADDLE_ENFORCE(executor_->scope()->FindVar(name), "no name called %s", name);
+  PADDLE_ENFORCE_NOT_NULL(
+      executor_->scope()->FindVar(name),
+      platform::errors::PreconditionNotMet(
+          "he variable named %s is not found in the scope of the exector.",
+          name));
   std::unique_ptr<ZeroCopyTensor> res(
       new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
   res->input_or_output_ = false;
@@ -758,8 +784,11 @@ bool AnalysisPredictor::LoadProgramDesc() {
     std::string pb_content;
     // Read binary
     std::ifstream fin(filename, std::ios::in | std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fin.is_open()), "Cannot open file %s",
-                   filename);
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(fin.is_open()), true,
+        platform::errors::NotFound(
+            "Cannot open file %s, please confirm whether the file is normal.",
+            filename));
     fin.seekg(0, std::ios::end);
     pb_content.resize(fin.tellg());
     fin.seekg(0, std::ios::beg);
@@ -776,7 +805,8 @@ bool AnalysisPredictor::LoadProgramDesc() {
 
 bool AnalysisPredictor::LoadParameters() {
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
-                          "The inference program should be loaded first.");
+                          platform::errors::PreconditionNotMet(
+                              "The inference program should be loaded first."));
 
   const auto &global_block = inference_program_->MutableBlock(0);
 
@@ -852,8 +882,9 @@ void AnalysisPredictor::ClearIntermediateTensor() {
 
 #if PADDLE_WITH_TENSORRT
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
-  PADDLE_ENFORCE(config_.tensorrt_engine_enabled(),
-                 "This func can be invoked only in trt mode");
+  PADDLE_ENFORCE_EQ(config_.tensorrt_engine_enabled(), true,
+                    platform::errors::PreconditionNotMet(
+                        "This func can be invoked only in trt mode"));
   auto &block = inference_program_->Block(0);
   for (auto &op_desc : block.AllOps()) {
     if (op_desc->Type() == "tensorrt_engine") {
