@@ -253,22 +253,22 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
         daemon (bool, optional): The spawned processes' daemon flag. Default: False.
         **options(dict, optional): Other initial parallel execution environment 
             configuration options. The following options are currently supported: 
-            (1) start_method (string): the way to start a process. The start method 
-                can be ``spawn`` , ``fork`` , ``forkserver`` . Because the CUDA 
-                runtime does not support the ``fork`` start method, when use CUDA
-                in subprocesses, we should start process by ``spawn`` or ``forkserver`` 
-                method. Default: "spawn" ; 
+            (1) start_method (string): the way to start a process. 
+            The start method can be ``spawn`` , ``fork`` , ``forkserver`` . 
+            Because the CUDA runtime does not support the ``fork`` start method, 
+            when use CUDA in subprocesses, we should start process by ``spawn`` 
+            or ``forkserver`` method. Default: "spawn" ; 
             (2) cluster_node_ips (string): Paddle cluster nodes ips, such as 
-                "192.168.0.16,192.168.0.17". Default: "127.0.0.1"; 
+            "192.168.0.16,192.168.0.17". Default: "127.0.0.1"; 
             (3) node_ip (string): The current node ip, such as "192.168.0.16". 
-                Default: "127.0.0.1"; 
+            Default: "127.0.0.1"; 
             (4) started_port (int): The trainer's started port on a single node,
-                such as 6170. Default: None; 
+            such as 6170. Default: None; 
             (5) selected_gpus (string): The training process will run on the 
-                selected_gpus, such as "0,1,2,3". Default: None; 
+            selected_gpus, such as "0,1,2,3". Default: None; 
             (6) print_config: Print current parallel training config. Default: False;
             (7) use_paddlecloud: Whether to use paddlecloud platform to run your 
-                multi-process job. Default: False.
+            multi-process job. Default: False.
 
     Returns:
         ``MultiprocessContext`` object, it hold the spawned processes.
