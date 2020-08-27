@@ -128,15 +128,17 @@ _TRANSLATOR_LOGGER = TranslatorLogger()
 def set_verbosity(level=0):
     """
     Sets the verbosity level for dygraph to static graph.
-
     There are two means to set the logging verbosity:
      1. Call function `set_verbosity`
      2. Set environment variable `TRANSLATOR_VERBOSITY`
-    NOTE: `set_verbosity` has a higher priority than the environment variable
+
+    **Note**:
+    `set_verbosity` has a higher priority than the environment variable
 
     Args:
         level(int): The verbosity level. The larger value idicates more verbosity.
             The default value is 0, which means no logging.
+
     Examples:
         .. code-block:: python
 
@@ -162,18 +164,19 @@ LOG_AllTransformer = 100
 def set_code_level(level=LOG_AllTransformer):
     """
     Sets the level to print code from specific level of Ast Transformer.
-
     There are two means to set the code level:
      1. Call function `set_code_level`
      2. Set environment variable `TRANSLATOR_CODE_LEVEL`
 
-    NOTE: `set_code_level` has a higher priority than the environment variable
+    **Note**:
+    `set_code_level` has a higher priority than the environment variable
 
     Args:
         level(int): The level to print code. Default is 100, which means to print the code after all AST Transformers
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             paddle.jit.set_code_level(2)
