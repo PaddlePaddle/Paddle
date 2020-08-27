@@ -299,7 +299,7 @@ class TestLayer(LayerTest):
                 my_syncbn = paddle.nn.SyncBatchNorm(3)
                 dy_ret = my_syncbn(base.to_variable(t))
                 dy_ret_value = dy_ret.numpy()
-            self.assertTrue(np.array_equal(static_ret, static_ret))
+            self.assertTrue(np.array_equal(static_ret, dy_ret_value))
 
     def test_relu(self):
         with self.static_graph():
