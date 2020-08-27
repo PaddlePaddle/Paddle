@@ -658,8 +658,6 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
         if op.type == "sgd":
             grad = main_program.global_block().vars[op.input("Grad")[0]]
             lr = main_program.global_block().vars[op.input("LearningRate")[0]]
-            ## remove origin optimzier op
-            #block._remove_op(opt_idx)
 
             block._insert_op(
                 opt_idx,
@@ -679,17 +677,14 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
                 0]]
             beta2_pow = main_program.global_block().vars[op.input("Beta2Pow")[
                 0]]
-            beta1_pow_o = main_program.global_block().vars[op.input(
+            beta1_pow_o = main_program.global_block().vars[op.output(
                 "Beta1PowOut")[0]]
-            beta2_pow_o = main_program.global_block().vars[op.input(
+            beta2_pow_o = main_program.global_block().vars[op.output(
                 "Beta2PowOut")[0]]
 
             beta1 = op.attr('shape')
             beta2 = op.attr('beta2')
             epsilon = op.attr('epsilon')
-
-            ## remove origin optimzier op
-            #block._remove_op(opt_idx)
 
             block._insert_op(
                 opt_idx,
