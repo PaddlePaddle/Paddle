@@ -343,7 +343,7 @@ def avg_pool2d(x,
         output = core.ops.pool2d(
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'global_pooling',
             False, 'padding_algorithm', padding_algorithm, 'strides', stride,
-            'paddings', pool_padding, 'use_cudnn', True, 'ceil_mode', ceil_mode,
+            'paddings', padding, 'use_cudnn', True, 'ceil_mode', ceil_mode,
             'use_mkldnn', False, 'exclusive', not count_include_pad,
             'data_format', data_format)
         if divisor_override is None:
@@ -366,7 +366,7 @@ def avg_pool2d(x,
             "ksize": kernel_size,
             "global_pooling": False,
             "strides": stride,
-            "paddings": pool_padding,
+            "paddings": padding,
             "padding_algorithm": padding_algorithm,
             "use_cudnn": True,
             "ceil_mode": ceil_mode,
