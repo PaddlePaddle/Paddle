@@ -68,7 +68,7 @@ def deprecated(update_to="", since="", reason=""):
 
         # Add deprecation information to deprecated API.
         if func.__doc__:
-            func.__doc__ = msg + '\n' + func.__doc__
+            func.__doc__ += ('\n\n' + msg + '\n')
 
         # TODO(zhiqiu): We temporally disable the warnings for 2.0-bata, and it should be re-enabled in the future.
         return func
