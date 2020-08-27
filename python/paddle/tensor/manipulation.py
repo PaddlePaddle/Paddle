@@ -23,7 +23,6 @@ from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
 from ..fluid.layers import strided_slice  #DEFINE_ALIAS
 from ..fluid.layers import transpose  #DEFINE_ALIAS
@@ -1100,6 +1099,9 @@ def tile(x, repeat_times, name=None):
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
+    if in_dygraph_mode():
+        return core.ops.tile(x, 'repeat_times', repeat_times)
+
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile')
     check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
@@ -1108,9 +1110,6 @@ def tile(x, repeat_times, name=None):
             "When the date type is bool for the input 'x' of tile op, you "
             "must set its stop_gradient to be True by "
             "some_var.stop_gradient == True supporting some_var is the input.")
-
-    if in_dygraph_mode():
-        return core.ops.tile(x, 'repeat_times', repeat_times)
 
     helper = LayerHelper('tile', **locals())
 
@@ -1176,6 +1175,9 @@ def expand_as(x, y, name=None):
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
+    if in_dygraph_mode():
+        return core.ops.expand_as_v2(x, y)
+
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand_as')
     check_type(y, 'y', Variable, 'expand_as')
@@ -1187,9 +1189,6 @@ def expand_as(x, y, name=None):
             "some_var.stop_gradient = True, supporting "
             "some_var as the input 'x'.")
     inputs = {"X": [x], "target_tensor": [y]}
-
-    if in_dygraph_mode():
-        return core.ops.expand_as_v2(x, y)
 
     helper = LayerHelper('expand_as', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -1229,6 +1228,9 @@ def expand(x, shape, name=None):
             out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
+    if in_dygraph_mode():
+        return core.ops.expand_v2(x, 'shape', shape)
+
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
     check_type(shape, 'shape', (list, tuple, Variable), 'expand')
@@ -1240,9 +1242,6 @@ def expand(x, shape, name=None):
                          "you must set its stop_gradient to be False by "
                          "some_var.stop_gradient = True, supporting "
                          "some_var as the input.")
-
-    if in_dygraph_mode():
-        return core.ops.expand_v2(x, 'shape', shape)
 
     helper = LayerHelper('expand', **locals())
 
