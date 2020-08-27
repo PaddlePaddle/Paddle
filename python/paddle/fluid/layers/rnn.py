@@ -648,7 +648,12 @@ def _rnn_static_graph(cell,
     return (final_outputs, final_states)
 
 
-def birnn(cell_fw, cell_bw, inputs, initial_states, sequence_length, time_major,
+def birnn(cell_fw,
+          cell_bw,
+          inputs,
+          initial_states,
+          sequence_length=None,
+          time_major=False,
           **kwargs):
     """
     birnn creates a bidirectional recurrent neural network specified by 
@@ -686,8 +691,7 @@ def birnn(cell_fw, cell_bw, inputs, initial_states, sequence_length, time_major,
             else the shape is `[batch_size, time_steps, size]`, where size is
             `cell_fw.hidden_size + cell_bw.hidden_size`.
         final_states (tuple): A tuple of the final states of the forward 
-            cell and backward cell. 
-            
+            cell and backward cell.        
 
     Examples:
 
@@ -696,12 +700,22 @@ def birnn(cell_fw, cell_bw, inputs, initial_states, sequence_length, time_major,
             import paddle
             paddle.disable_static()
 
-            cell_fw = LSTMCell(16, 32)
-            cell_bw = LSTMCell(16, 32)
-            inputs = paddle.rand((2, 23, 16))
-            outputs, final_states = paddle.nn.functional.birnn(cell_fw, cell_bw, inputs)
+            cell_fw = paddle.nn.LSTMCell(16, 32)
+            cell_bw = paddle.nn.LSTMCell(16, 32)
+
+            inputs = paddle.rand((4, 23, 16))
+            hf, cf = paddle.rand((4, 32)), paddle.rand((4, 32))
+            hb, cb = paddle.rand((4, 32)), paddle.rand((4, 32))
+            initial_states = ((hf, cf), (hb, cb))
+            outputs, final_states = paddle.nn.functional.birnn(
+                cell_fw, cell_bw, inputs, initial_states)
         
     """
+    if initial_states is None:
+        state_fw = cell_fw.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
+        state_bw = cell_fw.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
     states_fw, states_bw = initial_states
     outputs_fw, states_fw = rnn(cell_fw,
                                 inputs,
