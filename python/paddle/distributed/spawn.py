@@ -136,6 +136,11 @@ def start_processes(func,
     """
     Start multiple processes for parallel training.
 
+    .. note:: 
+        ``start_processes`` is not a public interface! Please use ``spawn``
+        firstly, if ``spawn`` cannot meet the need, then consider using
+        ``start_processes`` .
+
     Args:
         func (function): The target function is called by started process.
             This function need to be able to pickled, so it must be defined
@@ -256,7 +261,8 @@ def spawn(func, args=(), nprocs=1, join=True, daemon=False):
     """
     Start multiple processes with ``spawn`` method for parallel training.
     
-    This is a specialized method of ``paddle.distributed.start_processes`` .
+    If you want to use other methods ( ``fork`` , ``forkserver`` ) to start 
+    multiple processes, please use ``paddle.distributed.start_processes`` .
 
     Args:
         func (function): The target function is called by spawned process.
