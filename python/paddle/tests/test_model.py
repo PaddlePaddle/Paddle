@@ -27,7 +27,8 @@ from paddle import fluid
 from paddle import to_tensor
 from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential
 
-from paddle import Model, Input
+from paddle import Model
+from paddle.static import InputSpec
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
 from paddle.vision.datasets import MNIST
@@ -184,8 +185,8 @@ class TestModel(unittest.TestCase):
 
         cls.acc1 = dynamic_evaluate(dy_lenet, cls.val_loader)
 
-        cls.inputs = [Input([-1, 1, 28, 28], 'float32', 'image')]
-        cls.labels = [Input([None, 1], 'int64', 'label')]
+        cls.inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
+        cls.labels = [InputSpec([None, 1], 'int64', 'label')]
 
         cls.save_dir = tempfile.mkdtemp()
         cls.weight_path = os.path.join(cls.save_dir, 'lenet')
@@ -364,8 +365,8 @@ class TestModelFunction(unittest.TestCase):
             optim2 = fluid.optimizer.SGD(learning_rate=0.001,
                                          parameter_list=net.parameters())
 
-            inputs = [Input([None, dim], 'float32', 'x')]
-            labels = [Input([None, 1], 'int64', 'label')]
+            inputs = [InputSpec([None, dim], 'float32', 'x')]
+            labels = [InputSpec([None, 1], 'int64', 'label')]
             model = Model(net, inputs, labels)
             model.prepare(optim2, loss=CrossEntropyLoss(reduction="sum"))
             loss, = model.train_batch([data], [label])
@@ -391,7 +392,7 @@ class TestModelFunction(unittest.TestCase):
             fluid.enable_dygraph(device) if dynamic else None
             self.set_seed()
             net = MyModel()
-            inputs = [Input([None, dim], 'float32', 'x')]
+            inputs = [InputSpec([None, dim], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
             out, = model.test_batch([data])
@@ -405,8 +406,8 @@ class TestModelFunction(unittest.TestCase):
             device = paddle.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             net = MyModel(classifier_activation=None)
-            inputs = [Input([None, 20], 'float32', 'x')]
-            labels = [Input([None, 1], 'int64', 'label')]
+            inputs = [InputSpec([None, 20], 'float32', 'x')]
+            labels = [InputSpec([None, 1], 'int64', 'label')]
             optim = fluid.optimizer.SGD(learning_rate=0.001,
                                         parameter_list=net.parameters())
             model = Model(net, inputs, labels)
@@ -429,8 +430,8 @@ class TestModelFunction(unittest.TestCase):
         model.save(path + '/test')
         fluid.disable_dygraph()
 
-        inputs = [Input([None, 20], 'float32', 'x')]
-        labels = [Input([None, 1], 'int64', 'label')]
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
         model = Model(MyModel(classifier_activation=None), inputs, labels)
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
@@ -442,8 +443,8 @@ class TestModelFunction(unittest.TestCase):
         path = tempfile.mkdtemp()
 
         net = MyModel(classifier_activation=None)
-        inputs = [Input([None, 20], 'float32', 'x')]
-        labels = [Input([None, 1], 'int64', 'label')]
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=net.parameters())
         model = Model(net, inputs, labels)
@@ -454,8 +455,8 @@ class TestModelFunction(unittest.TestCase):
         fluid.enable_dygraph(device)  #if dynamic else None
 
         net = MyModel(classifier_activation=None)
-        inputs = [Input([None, 20], 'float32', 'x')]
-        labels = [Input([None, 1], 'int64', 'label')]
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=net.parameters())
         model = Model(net, inputs, labels)
@@ -469,7 +470,7 @@ class TestModelFunction(unittest.TestCase):
             device = paddle.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             net = MyModel()
-            inputs = [Input([None, 20], 'float32', 'x')]
+            inputs = [InputSpec([None, 20], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
             params = model.parameters()
@@ -484,7 +485,7 @@ class TestModelFunction(unittest.TestCase):
             prog_translator = ProgramTranslator()
             prog_translator.enable(False) if not dynamic else None
             net = LeNetDeclarative()
-            inputs = [Input([None, 1, 28, 28], 'float32', 'x')]
+            inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
             save_dir = tempfile.mkdtemp()
@@ -516,8 +517,8 @@ class TestRaiseError(unittest.TestCase):
     def test_input_without_name(self):
         net = MyModel(classifier_activation=None)
 
-        inputs = [Input([None, 10], 'float32')]
-        labels = [Input([None, 1], 'int64', 'label')]
+        inputs = [InputSpec([None, 10], 'float32')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
         with self.assertRaises(ValueError):
             model = Model(net, inputs, labels)
 

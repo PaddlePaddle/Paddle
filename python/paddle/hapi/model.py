@@ -44,6 +44,8 @@ from paddle.fluid.executor import scope_guard, Executor
 from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
 
+from paddle.static import InputSpec as Input
+
 from .callbacks import config_callbacks
 
 __all__ = ['Model', ]
@@ -788,7 +790,7 @@ class Model(object):
             paddle.nn.Layer.
         inputs (InputSpec|list|dict|None): `inputs`, entry points of network,
             could be a InputSpec instance, or lits of InputSpec instances,
-            or dict (name: Input), or None. For static graph,
+            or dict ({name: InputSpec}), or None. For static graph,
             inputs must be set. For dynamic graph, it could be None.
         labels (InputSpec|list|None): `labels`, entry points of network,
             could be a InputSpec instnace or lits of InputSpec instances,

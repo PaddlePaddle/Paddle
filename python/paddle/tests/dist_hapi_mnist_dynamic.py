@@ -22,7 +22,8 @@ import contextlib
 
 from paddle import fluid
 
-from paddle import Model, Input, set_device
+from paddle import Model, set_device
+from paddle.static import InputSpec as Input
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
 from paddle.vision.models import LeNet

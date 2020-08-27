@@ -23,7 +23,8 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Embedding, Linear, Layer
 from paddle.fluid.layers import BeamSearchDecoder
-from paddle import Model, Input, set_device
+from paddle import Model, set_device
+from paddle.static import InputSpec as Input
 from paddle.text import *
 
 
