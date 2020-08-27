@@ -529,13 +529,16 @@ EOF
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
         ut_startTime_s=`date +%s`
-        ctest --output-on-failure -j $2
+        ctest --output-on-failure -j $2;mactest_error=$?
         ut_endTime_s=`date +%s`
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
         # Recovery proxy to avoid failure in later steps
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
+        if [ "$mactest_error" != 0 ];then
+            exit 8;
+        fi
     fi
 }
 
@@ -1105,22 +1108,6 @@ EOF
       esac
 }
 
-function gen_html() {
-    cat <<EOF
-    ========================================
-    Converting C++ source code into HTML ...
-    ========================================
-EOF
-    export WOBOQ_OUT=${PADDLE_ROOT}/build/woboq_out
-    mkdir -p $WOBOQ_OUT
-    cp -rv /woboq/data $WOBOQ_OUT/../data
-    /woboq/generator/codebrowser_generator \
-    	-b ${PADDLE_ROOT}/build \
-    	-a \
-    	-o $WOBOQ_OUT \
-    	-p paddle:${PADDLE_ROOT}
-    /woboq/indexgenerator/codebrowser_indexgenerator $WOBOQ_OUT
-}
 
 function gen_dockerfile() {
     # Set BASE_IMAGE according to env variables
@@ -1442,9 +1429,6 @@ function main() {
         ;;
       gen_doc_lib)
         gen_doc_lib $2
-        ;;
-      html)
-        gen_html
         ;;
       dockerfile)
         gen_dockerfile ${PYTHON_ABI:-""}

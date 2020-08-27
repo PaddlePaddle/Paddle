@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
-from paddle.fluid.framework import Variable
+from paddle.fluid.framework import Variable, set_flags, core
 import google.protobuf.text_format
 
 
@@ -307,6 +307,30 @@ class DistributedStrategy(object):
 
     @property
     def amp_configs(self):
+        """
+        Set automatic mixed precision training configurations. In general, amp has serveral configurable
+        settings that can be configured through a dict.
+
+        **Notes**:
+            **init_loss_scaling(float)**: The initial loss scaling factor. Default 32768.
+            **use_dynamic_loss_scaling(bool)**: Whether to use dynamic loss scaling. Default True.
+            **incr_every_n_steps(int)**: Increases loss scaling every n consecutive steps with finite gradients. Default 1000.
+            **decr_every_n_nan_or_inf(int)**: Decreases loss scaling every n accumulated steps with nan or inf gradients. Default 2.
+            **incr_ratio(float)**: The multiplier to use when increasing the loss scaling. Default 2.0.
+            **decr_ratio(float)**: The less-than-one-multiplier to use when decreasing the loss scaling. Default 0.5.
+            **custom_white_list(list[str])**: Users' custom white list which always execution fp16.
+            **custom_black_list(list[str])**: Users' custom black list which forbidden execution fp16.
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.amp = True
+            strategy.amp_configs = {
+                "init_loss_scaling": 32768,
+                "custom_white_list": ['conv2d']}
+        """
         return get_msg_dict(self.strategy.amp_configs)
 
     @amp_configs.setter
@@ -620,6 +644,20 @@ class DistributedStrategy(object):
 
     @property
     def dgc(self):
+        """
+        Indicating whether we are using Deep Gradient Compression training. For more details, please refer to
+        [Deep Gradient Compression](https://arxiv.org/abs/1712.01887).
+
+        Default Value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.dgc = True # by default this is false
+
+        """
         return self.strategy.dgc
 
     @dgc.setter
@@ -631,6 +669,28 @@ class DistributedStrategy(object):
 
     @property
     def dgc_configs(self):
+        """
+        Set Deep Gradient Compression training configurations. In general, dgc has serveral configurable
+        settings that can be configured through a dict.
+
+        **Notes**:
+            **rampup_begin_step(int)**: The beginning step from which gradient compression is implemented. Default 0.
+            **rampup_step(int)**: Time steps used in sparsity warm-up periods. Default is 1.
+                For example, if the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 100,
+                it will use 0.75 at 0~19 steps, and 0.9375 at 20~39 steps, and so on. And when reach sparsity array
+                ends, it will use 0.999 then and after.
+            **sparsity(list[float])**: Get top important element from gradient tensor, the ratio is (1 - sparsity).
+                Default is [0.999]. For example, if the sparsity is [0.99, 0.999], the top [1%, 0.1%] important
+                element will be transmitted.
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.dgc = True
+            strategy.dgc_configs = {"rampup_begin_step": 1252}
+        """
         return get_msg_dict(self.strategy.dgc_configs)
 
     @dgc_configs.setter
@@ -690,6 +750,20 @@ class DistributedStrategy(object):
 
     @property
     def lars(self):
+        """
+        Set lars configurations. lars is used to deal with the convergence problems when the global 
+        batch size is larger than 8k.  For more details, please refer to 
+        [Large Batch Training of Convolutional Networks](https://arxiv.org/abs/1708.03888).
+
+        Default Value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.lars = True # by default this is false
+        """
         return self.strategy.lars
 
     @lars.setter
@@ -701,6 +775,29 @@ class DistributedStrategy(object):
 
     @property
     def lars_configs(self):
+        """
+        Set Lars training configurations.
+
+        **Notes**:
+        **lars_coeff (float)**: trust ratio in lars formula.
+        **lars_weight_decay** (float): weight decay coefficient in lars formula.
+        **epsilon (float)**: argument is used to avoid potential devision-by-zero 
+        when compute the local lr; 
+        **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
+        will be exclude from weight decay in lars formula.
+
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.lars = True
+            strategy.lars_configs = {
+                        "lars_coeff": 0.01,
+                        "lars_weight_decay": 0.0005,
+                        "epsilon": 0,
+                        "exclude_from_weight_decay": ['batch_norm', '.b_0']
+                    }
+        """
         return get_msg_dict(self.strategy.lars_configs)
 
     @lars_configs.setter
@@ -710,6 +807,22 @@ class DistributedStrategy(object):
 
     @property
     def lamb(self):
+        """
+        Set lamb configurations. lamb is used to deal with the convergence problems for large 
+        batch size training, specially for attention-related model like BERT. For more details, 
+        please refer to 
+        [Large Batch Optimization for Deep Learning: Training BERT in 76 minutes](https://arxiv.org/abs/1904.00962).
+
+        Default Value: False
+        
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.lamb = True # by default this is false
+        """
+
         return self.strategy.lamb
 
     @lamb.setter
@@ -721,6 +834,24 @@ class DistributedStrategy(object):
 
     @property
     def lamb_configs(self):
+        """
+        Set Lars training configurations.
+
+        **Notes**:
+        **lamb_weight_decay** (float): weight decay coefficient in lamb formula.
+        **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
+        will be exclude from weight decay in lamb formula.
+
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.lamb = True
+            strategy.lamb_configs = {
+                    'lamb_weight_decay': 0.01,
+                    'exclude_from_weight_decay': [],
+                }
+        """
         return get_msg_dict(self.strategy.lamb_configs)
 
     @lamb_configs.setter
@@ -749,6 +880,68 @@ class DistributedStrategy(object):
             self.strategy.auto = flag
         else:
             print("WARNING: auto should have value of bool type")
+
+    @property
+    def cudnn_exhaustive_search(self):
+        return self.strategy.cudnn_exhaustive_search
+
+    @cudnn_exhaustive_search.setter
+    def cudnn_exhaustive_search(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.cudnn_exhaustive_search = flag
+        else:
+            print(
+                "WARNING: cudnn_exhaustive_search should have value of bool type"
+            )
+
+    @property
+    def conv_workspace_size_limit(self):
+        return self.strategy.conv_workspace_size_limit
+
+    @conv_workspace_size_limit.setter
+    def conv_workspace_size_limit(self, value):
+        if isinstance(value, int):
+            self.strategy.conv_workspace_size_limit = value
+        else:
+            print(
+                "WARNING: conv_workspace_size_limit should have value of int type"
+            )
+
+    @property
+    def cudnn_batchnorm_spatial_persistent(self):
+        return self.strategy.cudnn_batchnorm_spatial_persistent
+
+    @cudnn_batchnorm_spatial_persistent.setter
+    def cudnn_batchnorm_spatial_persistent(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.cudnn_batchnorm_spatial_persistent = flag
+        else:
+            print(
+                "WARNING: cudnn_batchnorm_spatial_persistent should have value of bool type"
+            )
+
+    def _enable_env(self):
+        strategy = self.strategy
+        keys = [
+            "FLAGS_cudnn_batchnorm_spatial_persistent",
+            "FLAGS_conv_workspace_size_limit",
+            "FLAGS_cudnn_exhaustive_search",
+            "FLAGS_sync_nccl_allreduce",
+            "FLAGS_fuse_parameter_memory_size",
+            "FLAGS_fuse_parameter_groups_size",
+        ]
+        values = [
+            bool(strategy.cudnn_batchnorm_spatial_persistent),
+            int(strategy.conv_workspace_size_limit),
+            bool(strategy.cudnn_exhaustive_search),
+            bool(strategy.sync_nccl_allreduce),
+            int(strategy.fuse_grad_size_in_MB),
+            int(strategy.fuse_grad_size_in_TFLOPS),
+        ]
+
+        for i, key in enumerate(keys):
+            if core.globals().is_public(key):
+                core.globals()[key] = values[i]
 
     def __repr__(self):
         fields = self.strategy.DESCRIPTOR.fields
