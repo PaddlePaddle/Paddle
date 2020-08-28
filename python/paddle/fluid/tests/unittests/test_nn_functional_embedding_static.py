@@ -50,20 +50,5 @@ class EmbeddingStatic(unittest.TestCase):
             test_bad_x()
 
 
-class EmbeddingDygraph(unittest.TestCase):
-    def test_1(self):
-        import paddle
-        import paddle.nn as nn
-        import numpy as np
-        paddle.disable_static()
-
-        # example 1
-        inp_word = np.array([[2, 3, 5], [4, 2, 1]]).astype('int64')
-        inp_word.shape  # [2, 3]
-        dict_size = 20
-
-        emb = nn.Embedding(dict_size, 32, weight_attr='emb.w', sparse=False)
-
-
 if __name__ == '__main__':
     unittest.main()
