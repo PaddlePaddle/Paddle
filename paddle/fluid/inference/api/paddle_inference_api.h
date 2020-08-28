@@ -100,7 +100,7 @@ PD_INFER_DECL std::shared_ptr<Predictor> CreatePredictor(
     const Config& config);  // NOLINT
 PD_INFER_DECL int GetNumBytesOfDataType(DataType dtype);
 
-PD_INFER_DECL std::string GetPaddleVersion();
+PD_INFER_DECL std::string GetVersion();
 PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
 
 template <typename T>

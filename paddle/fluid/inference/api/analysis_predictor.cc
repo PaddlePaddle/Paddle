@@ -1131,7 +1131,7 @@ int GetNumBytesOfDataType(DataType dtype) {
   }
 }
 
-std::string GetPaddleVersion() { return paddle::get_version(); }
+std::string GetVersion() { return paddle::get_version(); }
 
 std::string UpdateDllFlag(const char *name, const char *value) {
   return paddle::UpdateDllFlag(name, value);

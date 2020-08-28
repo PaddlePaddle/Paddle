@@ -24,18 +24,15 @@ limitations under the License. */
 namespace paddle_infer {
 
 TEST(Predictor, use_gpu) {
-  LOG(INFO) << GetPaddleVersion();
+  LOG(INFO) << GetVersion();
   UpdateDllFlag("conv_workspace_size_limit", "4000");
   std::string model_dir = FLAGS_infer_model + "/model";
   Config config;
   config.SetModel(model_dir + "/model", model_dir + "/params");
   config.EnableUseGpu(100, 0);
-  Config config1(config);
 
   auto predictor = CreatePredictor(config);
   auto pred_clone = predictor->Clone();
-  services::PredictorPool pred_pool(config1, 4);
-  auto pred2 = pred_pool.Retrive(2);
 
   std::vector<int> in_shape = {1, 3, 318, 318};
   int in_num = std::accumulate(in_shape.begin(), in_shape.end(), 1,
@@ -60,25 +57,38 @@ TEST(Predictor, use_gpu) {
   out_data.resize(out_num);
   output_t->CopyToCpu(out_data.data());
   predictor->ClearIntermediateTensor();
+}
 
-  auto in_names2 = pred2->GetInputNames();
-  auto input_t2 = pred2->GetInputHandle(in_names2[0]);
-  input_t2->name();
-  input_t2->Reshape(in_shape);
-  auto *input_t2_tensor_data = input_t2->mutable_data<float>(PlaceType::kGPU);
+TEST(PredictorPool, basic) {
+  LOG(INFO) << GetVersion();
+  UpdateDllFlag("conv_workspace_size_limit", "4000");
+  std::string model_dir = FLAGS_infer_model + "/model";
+  Config config;
+  config.SetModel(model_dir + "/model", model_dir + "/params");
+  config.EnableUseGpu(100, 0);
 
-  cudaMemcpy(input_t2_tensor_data, input.data(), in_num * sizeof(float),
-             cudaMemcpyHostToDevice);
-  input_t2->CopyFromCpu(input.data());
-  pred2->Run();
-  auto out_names2 = pred2->GetOutputNames();
-  auto output_t2 = pred2->GetOutputHandle(out_names2[0]);
-  auto out2_type = output_t2->type();
-  LOG(INFO) << GetNumBytesOfDataType(out2_type);
-  if (out2_type == DataType::FLOAT32) {
+  services::PredictorPool pred_pool(config, 4);
+  auto pred = pred_pool.Retrive(2);
+
+  std::vector<int> in_shape = {1, 3, 318, 318};
+  int in_num = std::accumulate(in_shape.begin(), in_shape.end(), 1,
+                               [](int &a, int &b) { return a * b; });
+  std::vector<float> input(in_num, 0);
+
+  auto in_names = pred->GetInputNames();
+  auto input_t = pred->GetInputHandle(in_names[0]);
+  input_t->name();
+  input_t->Reshape(in_shape);
+  input_t->CopyFromCpu(input.data());
+  pred->Run();
+  auto out_names = pred->GetOutputNames();
+  auto output_t = pred->GetOutputHandle(out_names[0]);
+  auto out_type = output_t->type();
+  LOG(INFO) << GetNumBytesOfDataType(out_type);
+  if (out_type == DataType::FLOAT32) {
     PlaceType place;
     int size;
-    output_t2->data<float>(&place, &size);
+    output_t->data<float>(&place, &size);
   }
 }
 
