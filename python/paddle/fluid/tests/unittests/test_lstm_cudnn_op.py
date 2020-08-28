@@ -51,17 +51,15 @@ class LSTMCell(LayerMixin):
         self.bias = bias
         self.parameters = dict()
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = np.ones((
-            4 * hidden_size, input_size), dtype=np.float64)
-        self.weight_hh = np.ones((
-            4 * hidden_size, hidden_size)).astype('float64')
+        self.weight_ih = np.ones(
+            (4 * hidden_size, input_size), dtype=np.float64)
+        self.weight_hh = np.ones((4 * hidden_size,
+                                  hidden_size)).astype('float64')
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
         if bias:
-            self.bias_ih = np.ones((
-                4 * hidden_size)).astype('float64')
-            self.bias_hh = np.ones((
-                4 * hidden_size)).astype('float64')
+            self.bias_ih = np.ones((4 * hidden_size)).astype('float64')
+            self.bias_hh = np.ones((4 * hidden_size)).astype('float64')
             self.parameters['bias_ih'] = self.bias_ih
             self.parameters['bias_hh'] = self.bias_hh
         else:
@@ -441,72 +439,10 @@ def lstm_naive(input, w):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNLstmOp(OpTest):
-    # TODO(GaoWei8):when input dtype is fp64, precision threshold should be removed.
     def setUp(self):
         self.op_type = "cudnn_lstm"
         self.dtype = np.float64
-        seq_length = 20
-        batch_size = 5
-        hidden_size = 20
-
-        input_weight_size = (hidden_size * hidden_size) * 4
-        hidden_weight_size = (hidden_size * hidden_size) * 4
-        weight_size = input_weight_size + hidden_weight_size
-        weight_size += hidden_size * 8
-
-        input = np.random.uniform(
-            low=-0.1, high=0.1, size=(seq_length, batch_size,
-                                      hidden_size)).astype(self.dtype)
-        flat_w = np.random.uniform(
-            low=-0.1, high=0.1, size=(weight_size)).astype(self.dtype)
-        output, last_hidden, last_cell = lstm_naive(input, flat_w)
-        init_h = np.zeros((1, batch_size, hidden_size), dtype=np.float64)
-        init_c = np.zeros((1, batch_size, hidden_size), dtype=np.float64)
-        state_out = np.ndarray((300)).astype("uint8")
-
-        self.inputs = {
-            'Input': input,
-            'W': flat_w,
-            'InitH': init_h,
-            'InitC': init_c
-        }
-        self.attrs = {
-            'dropout_prob': 0.5,
-            'is_bidirec': False,
-            'input_size': hidden_size,
-            'hidden_size': hidden_size,
-            'num_layers': 1,
-        }
-        self.outputs = {
-            'Out': output,
-            "LastH": last_hidden,
-            'LastC': last_cell,
-            'Reserve': np.ndarray((400)).astype("uint8"),
-            'StateOut': state_out
-        }
-
-    def test_output_with_place(self):
-        # depend on the scope structure
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(
-            place, no_check_set=['Reserve', 'StateOut'])
-
-    def test_grad_with_place(self):
-        # depend on the scope structure
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            set(['Input', 'W', 'InitH', 'InitC']), ['Out', 'LastH', 'LastC'],
-            max_relative_error=1e-4)
-
-
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestCUDNNLstmPaddingOp(TestCUDNNLstmOp):
-    # TODO(gaowei):add padding computation
-    def setUp(self):
-        self.op_type = "cudnn_lstm"
-        self.dtype = np.float64
+        self.sequence_length = np.array([12, 10, 9, 8, 7], dtype=np.int32)
 
         seq_length = 12
         batch_size = 5
@@ -529,17 +465,15 @@ class TestCUDNNLstmPaddingOp(TestCUDNNLstmOp):
             num_layers,
             time_major=True,
             direction="forward")
-        sequence_length = np.array([12, 10, 9, 8, 7], dtype=np.int32)
 
         output, (last_hidden, last_cell) = rnn1(
-            input, sequence_length=sequence_length)
+            input, sequence_length=self.sequence_length)
 
-        flat_w = np.ones((
-            weight_size)).astype(self.dtype)
+        flat_w = np.ones((weight_size)).astype(self.dtype)
         init_h = np.zeros((num_layers, batch_size,
-                                 hidden_size)).astype("float64")
+                           hidden_size)).astype("float64")
         init_c = np.zeros((num_layers, batch_size,
-                                 hidden_size)).astype("float64")
+                           hidden_size)).astype("float64")
         state_out = np.ndarray((300)).astype("uint8")
 
         self.inputs = {
@@ -554,7 +488,7 @@ class TestCUDNNLstmPaddingOp(TestCUDNNLstmOp):
             'input_size': input_size,
             'hidden_size': hidden_size,
             'num_layers': 1,
-            'sequence_length': [12, 10, 9, 8, 7]
+            'sequence_length': list(self.sequence_length)
         }
         self.outputs = {
             'Out': output,
@@ -564,18 +498,33 @@ class TestCUDNNLstmPaddingOp(TestCUDNNLstmOp):
             'StateOut': state_out
         }
 
+    def set_attrs(self):
+        pass
+
     def test_output_with_place(self):
-        # depend on the scope structure
         place = core.CUDAPlace(0)
         self.check_output_with_place(
             place, no_check_set=['Reserve', 'StateOut'])
 
     def test_grad_with_place(self):
-        # depend on the scope structure
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place,
+                                   set(['Input', 'W', 'InitH', 'InitC']),
+                                   ['Out', 'LastH', 'LastC'])
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCUDNNLstmOp2(TestCUDNNLstmOp):
+    def set_attrs(self):
+        self.sequence_length = np.array([], dtype=np.int32)
+
+    def test_grad_with_place(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
-            set(['Input', 'W', 'InitH', 'InitC']), ['Out', 'LastH', 'LastC'])
+            set(['Input', 'W', 'InitH', 'InitC']), ['Out', 'LastH', 'LastC'],
+            max_relative_error=1e-4)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
