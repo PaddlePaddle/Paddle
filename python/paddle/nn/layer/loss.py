@@ -634,9 +634,12 @@ class KLDivLoss(fluid.dygraph.Layer):
             Default is ``'mean'``.
 
     Shape:
-      - input: (N, *) where * means, any number of additional dimensions.
+
+      - input: (N, *), where * means, any number of additional dimensions.
+
       - label: (N, *), same shape as input
-      - output: tensor with shape: (1) by default.
+
+      - output: tensor with shape: [1] by default.
 
 
     Examples:
