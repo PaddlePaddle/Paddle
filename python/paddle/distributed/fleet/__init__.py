@@ -18,7 +18,7 @@ from .base.distributed_strategy import DistributedStrategy
 from .base.fleet_base import Fleet
 from .base.util_factory import UtilBase
 from .dataset import *
-import metrics
+from . import metrics
 
 __all__ = metrics.__all__ + [
     "DistributedStrategy",
