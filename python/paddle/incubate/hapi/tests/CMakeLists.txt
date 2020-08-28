@@ -12,6 +12,7 @@ endforeach()
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
+set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 150) 
 
 
 function(py_dist_test TARGET_NAME)

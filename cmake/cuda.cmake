@@ -61,6 +61,10 @@ function(detect_installed_gpus out_variable)
   if(NOT CUDA_gpu_detect_output)
     message(STATUS "Automatic GPU detection failed. Building for all known architectures.")
     set(${out_variable} ${paddle_known_gpu_archs} PARENT_SCOPE)
+    #Todo: fix Automatic GPU detection failed on windows
+    if(WIN32)
+      set(${out_variable} "61 75" PARENT_SCOPE)
+    endif()
   else()
     set(${out_variable} ${CUDA_gpu_detect_output} PARENT_SCOPE)
   endif()
@@ -202,6 +206,11 @@ if (NOT WIN32) # windows msvc2015 support c++11 natively.
   set(CMAKE_CUDA_STANDARD 11)
 endif(NOT WIN32)
 
+# (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflic with -w
+# So replace /W[1-4] with /W0
+if (WIN32)
+  string(REGEX REPLACE "/W[1-4]" " /W0 " CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
+endif(WIN32)
 # in cuda9, suppress cuda warning on eigen
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings

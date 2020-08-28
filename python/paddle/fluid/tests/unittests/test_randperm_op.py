@@ -17,7 +17,7 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
-from paddle import Program, program_guard
+from paddle.static import program_guard, Program
 
 
 def check_randperm_out(n, data_np):
@@ -108,7 +108,7 @@ class TestRandpermAPI(unittest.TestCase):
             x1 = paddle.randperm(n)
             x2 = paddle.randperm(n, 'float32')
 
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             res = exe.run(fetch_list=[x1, x2])
 
             self.assertEqual(res[0].dtype, np.int64)
@@ -119,13 +119,14 @@ class TestRandpermAPI(unittest.TestCase):
 
 class TestRandpermImperative(unittest.TestCase):
     def test_out(self):
-        with paddle.imperative.guard():
-            n = 10
-            for dtype in ['int32', np.int64, 'float32', 'float64']:
-                data_p = paddle.randperm(n, dtype)
-                data_np = data_p.numpy()
-                self.assertTrue(
-                    check_randperm_out(n, data_np), msg=error_msg(data_np))
+        paddle.disable_static()
+        n = 10
+        for dtype in ['int32', np.int64, 'float32', 'float64']:
+            data_p = paddle.randperm(n, dtype)
+            data_np = data_p.numpy()
+            self.assertTrue(
+                check_randperm_out(n, data_np), msg=error_msg(data_np))
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

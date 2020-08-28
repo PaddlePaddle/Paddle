@@ -14,13 +14,21 @@
 
 INCLUDE(ExternalProject)
 
+execute_process(COMMAND bash -c "gcc -dumpversion" OUTPUT_VARIABLE GCC_VERSION)
+
 SET(GLOO_PROJECT       "extern_gloo")
 IF((NOT DEFINED GLOO_VER) OR (NOT DEFINED GLOO_URL))
   MESSAGE(STATUS "use pre defined download url")
   SET(GLOO_VER "master" CACHE STRING "" FORCE)
   SET(GLOO_NAME "gloo" CACHE STRING "" FORCE)
-  SET(GLOO_URL "https://pslib.bj.bcebos.com/gloo.tar.gz" CACHE STRING "" FORCE)
+
+  if(${GCC_VERSION} VERSION_EQUAL "8.2.0")
+    SET(GLOO_URL "https://fleet.bj.bcebos.com/gloo/gloo.tar.gz.gcc8" CACHE STRING "" FORCE)
+  else()
+    SET(GLOO_URL "https://fleet.bj.bcebos.com/gloo/gloo.tar.gz.gcc482" CACHE STRING "" FORCE)
+  endif()
 ENDIF()
+
 MESSAGE(STATUS "GLOO_NAME: ${GLOO_NAME}, GLOO_URL: ${GLOO_URL}")
 SET(GLOO_SOURCE_DIR    "${THIRD_PARTY_PATH}/gloo")
 SET(GLOO_DOWNLOAD_DIR  "${GLOO_SOURCE_DIR}/src/${GLOO_PROJECT}")

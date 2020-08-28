@@ -10,6 +10,22 @@ function test_launch_ps(){
         echo "test pserver launch failed"
         exit -1
     fi
+
+    fleetrun --servers="127.0.0.1:6780,127.0.0.1:6781" --workers="127.0.0.1:6782,127.0.0.1:6783" fleet_ps_training.py 2> ut.elog
+    if grep -q "server are killed" ut.elog; then
+        echo "test pserver launch succeed"
+    else
+        echo "test pserver launch failed"
+        exit -1
+    fi
+
+    fleetrun --servers="127.0.0.1:6780,127.0.0.1:6781" --workers="127.0.0.1,127.0.0.1" fleet_ps_training.py 2> ut.elog
+    if grep -q "server are killed" ut.elog; then
+        echo "test pserver launch succeed"
+    else
+        echo "test pserver launch failed"
+        exit -1
+    fi
 }
 
 if [[ ${WITH_GPU} == "OFF" ]]; then

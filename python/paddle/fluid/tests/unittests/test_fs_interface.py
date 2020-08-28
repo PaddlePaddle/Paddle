@@ -20,7 +20,7 @@ import os
 import sys
 import inspect
 
-from paddle.fleet.utils import LocalFS, FS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
+from paddle.distributed.fleet.utils import LocalFS, FS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
 
 
 class FSTest(unittest.TestCase):

@@ -222,10 +222,12 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     } else {
       auto lod = dist_mat->lod().back();
       for (size_t i = 0; i < lod.size() - 1; ++i) {
-        Tensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
-        BipartiteMatch(one_ins, indices + i * col, dist + i * col);
-        if (type == "per_prediction") {
-          ArgMaxMatch(one_ins, indices + i * col, dist + i * col, threshold);
+        if (lod[i + 1] > lod[i]) {
+          Tensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
+          BipartiteMatch(one_ins, indices + i * col, dist + i * col);
+          if (type == "per_prediction") {
+            ArgMaxMatch(one_ins, indices + i * col, dist + i * col, threshold);
+          }
         }
       }
     }

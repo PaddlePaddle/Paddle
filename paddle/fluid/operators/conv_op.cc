@@ -196,7 +196,7 @@ framework::OpKernelType ConvOp::GetKernelTypeForVar(
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
     auto dl = framework::StringToDataLayout(data_format);
-    // Some models may have intentionally set "AnyLayout" for pool
+    // Some models may have intentionally set "AnyLayout" for conv
     // op. Treat this as NCHW (default data_format value)
     if (dl != framework::DataLayout::kAnyLayout) {
       return framework::OpKernelType(expected_kernel_type.data_type_,

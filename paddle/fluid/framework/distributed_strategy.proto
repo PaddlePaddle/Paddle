@@ -55,9 +55,8 @@ message LarsConfig {
 }
 
 message LambConfig {
-  optional float beta1 = 1 [ default = 0.001 ];
-  optional float beta2 = 2 [ default = 0.999 ];
-  optional float epsilon = 3 [ default = 0.000001 ];
+  optional float lamb_weight_decay = 1 [ default = 0.01 ];
+  repeated string exclude_from_weight_decay = 2;
 }
 
 message BuildStrategy {
@@ -80,7 +79,7 @@ message ExecutionStrategy {
 }
 
 message AsyncConfig {
-  optional int32 k_steps = 1 [ default = 1 ];
+  optional int32 k_steps = 1 [ default = -1 ];
   optional int32 max_merge_var_num = 2 [ default = 1 ];
   optional int32 send_queue_size = 3 [ default = 16 ];
   optional bool independent_recv_thread = 4 [ default = false ];
@@ -114,7 +113,9 @@ message DistributedStrategy {
   optional bool fuse_all_reduce_ops = 18 [ default = true ];
   optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
   optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
-  // optional bool enable_backward_optimizer_op_deps = 19 [ default = true ];
+  optional bool cudnn_exhaustive_search = 21 [ default = true ];
+  optional int32 conv_workspace_size_limit = 22 [ default = 4000 ];
+  optional bool cudnn_batchnorm_spatial_persistent = 23 [ default = true ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;

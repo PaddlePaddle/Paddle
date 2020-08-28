@@ -62,20 +62,19 @@ class TestZerosLikeImpeartive(unittest.TestCase):
         shape = [3, 4]
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
-        with paddle.imperative.guard(place):
-            x = paddle.imperative.to_variable(np.ones(shape))
-            for dtype in [np.bool, np.float32, np.float64, np.int32, np.int64]:
-                out = zeros_like(x, dtype)
-                self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(),
-                                 True)
-
-            out = paddle.tensor.zeros_like(x)
+        paddle.disable_static(place)
+        x = paddle.to_variable(np.ones(shape))
+        for dtype in [np.bool, np.float32, np.float64, np.int32, np.int64]:
+            out = zeros_like(x, dtype)
             self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(),
                              True)
 
-            out = paddle.tensor.creation.zeros_like(x)
-            self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(),
-                             True)
+        out = paddle.tensor.zeros_like(x)
+        self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(), True)
+
+        out = paddle.tensor.creation.zeros_like(x)
+        self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(), True)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":
