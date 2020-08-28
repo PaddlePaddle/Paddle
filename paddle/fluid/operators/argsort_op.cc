@@ -48,11 +48,12 @@ class ArgsortOp : public framework::OperatorWithKernel {
         if (axis < 0) {
           axis += num_dims;
         }
-        PADDLE_ENFORCE_LE(in_dims[axis], INT_MAX,
-                          "The element num of the sorted axis is "
-                          "%d, is larger than int32 maximum value:%d, you must "
-                          "set the dtype of argsort to 'int64'.",
-                          in_dims[axis], INT_MAX);
+        PADDLE_ENFORCE_LE(
+            in_dims[axis], INT_MAX,
+            "The element num at sorted axis in argsort/sort op is "
+            "%d, is larger than int32 maximum value:%d, you must "
+            "set the dtype of argsort/sort to 'int64'.",
+            in_dims[axis], INT_MAX);
       }
     }
 

@@ -72,7 +72,7 @@ struct VisitDataArgMinMaxFunctor {
     const bool& flatten = ctx.Attr<bool>("flatten");
     // paddle do not have the scalar tensor, just return the shape [1] tensor
     if (flatten) {
-      keepdims = True;
+      keepdims = true;
     }
 
     // if flatten, will construct the new dims for the cacluate
@@ -128,13 +128,13 @@ class ArgMinMaxKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dtype = ctx.Attr<int>("dtype");
     if (dtype < 0) {
-      framework::VisitDataType(
+      framework::VisitDataTypeInt(
           static_cast<framework::proto::VarType::Type>(
               framework::proto::VarType::INT64),
           VisitDataArgMinMaxFunctor<DeviceContext, T, EnumArgMinMaxValue>(ctx));
       return;
     }
-    framework::VisitDataType(
+    framework::VisitDataTypeInt(
         static_cast<framework::proto::VarType::Type>(dtype),
         VisitDataArgMinMaxFunctor<DeviceContext, T, EnumArgMinMaxValue>(ctx));
   }
@@ -181,11 +181,12 @@ class ArgMinMaxOp : public framework::OperatorWithKernel {
         } else {
           all_element_num = x_dims[axis];
         }
-        PADDLE_ENFORCE_LE(all_element_num, INT_MAX,
-                          "The element num of the argmax/argmin axis is "
-                          "%d, is larger than int32 maximum value:%d, you must "
-                          "set the dtype of argmin/argmax to 'int64'.",
-                          all_element_num, INT_MAX);
+        PADDLE_ENFORCE_LE(
+            all_element_num, INT_MAX,
+            "The element num of the argmin/argmax input at axis is "
+            "%d, is larger than int32 maximum value:%d, you must "
+            "set the dtype of argmin/argmax to 'int64'.",
+            all_element_num, INT_MAX);
       }
     }
 

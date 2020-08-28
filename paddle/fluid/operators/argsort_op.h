@@ -177,7 +177,7 @@ class ArgsortKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const int& dtype = ctx.Attr<int>("dtype");
-    framework::VisitDataType(
+    framework::VisitDataTypeInt(
         static_cast<framework::proto::VarType::Type>(dtype),
         ArgsortFunctor<DeviceContext, T>(ctx));
   }
@@ -264,7 +264,7 @@ class ArgsortGradientKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const int& dtype = ctx.Attr<int>("dtype");
-    framework::VisitDataType(
+    framework::VisitDataTypeInt(
         static_cast<framework::proto::VarType::Type>(dtype),
         ArgsortGradientFunctor<DeviceContext, T>(ctx));
   }

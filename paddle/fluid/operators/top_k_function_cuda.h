@@ -373,9 +373,6 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
               const int64_t num_rows, const int k,
               framework::Tensor* out_tensor, framework::Tensor* indices_tensor,
               bool largest = true) {
-  if (!(std::is_same<T, int32_t>::value || std::is_same<T, int64_t>::value)) {
-    return false;
-  }
   auto cu_stream = ctx.stream();
 
   Tensor input_indices;

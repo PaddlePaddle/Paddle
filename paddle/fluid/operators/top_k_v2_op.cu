@@ -207,9 +207,12 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
 #undef FIXED_BLOCK_DIM_BASE
 #undef FIXED_BLOCK_DIM
 template <typename DeviceContext, typename T>
-class TopkV2OpGradCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
+struct TopKV2OpGradFunctor {
+  const framework::ExecutionContext& context;
+  explicit TopKV2OpGradFunctor(const framework::ExecutionContext& context)
+      : context(context) {}
+  template <typename IndType>
+  void apply() {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(context.GetPlace()), true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
@@ -255,8 +258,19 @@ class TopkV2OpGradCUDAKernel : public framework::OpKernel<T> {
     int grid_size = std::min(max_blocks, pre);
 
     // lanuch the cuda kernel to assign the grad
-    AssignGradWithAxis<T><<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
+    AssignGradWithAxis<
+        T, IndType><<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
         out_grad_data, indices_data, x_grad_data, pre, post, n, k);
+  }
+};
+
+class TopkV2OpGradCUDAKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const int& dtype = context.Attr<int>("dtype");
+    framework::VisitDataTypeInt(
+        static_cast<framework::proto::VarType::Type>(dtype),
+        TopKV2OpGradFunctor<T>(context));
   }
 };
 

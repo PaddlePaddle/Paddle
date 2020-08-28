@@ -76,11 +76,9 @@ static __global__ void FillGrad(const T* dO, const IndType* indices, T* dX,
 // Sort by flag descending, True: descending. False: Ascending.
 // Default is false.
 template <typename T, typename IndType>
-typename std::enable_if<std::is_same<IndType, int32_t>::value ||
-                        std::is_same<IndType, int64_t>::value>::type
-ArgFullSort(const platform::CUDADeviceContext& ctx, const Tensor* input,
-            Tensor* output, Tensor* indices, const int64_t num_rows,
-            const int64_t num_cols, const bool descending) {
+void ArgFullSort(const platform::CUDADeviceContext& ctx, const Tensor* input,
+                 Tensor* output, Tensor* indices, const int64_t num_rows,
+                 const int64_t num_cols, const bool descending) {
   auto cu_stream = ctx.stream();
 
   Tensor input_indices;

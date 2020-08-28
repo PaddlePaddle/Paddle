@@ -53,7 +53,7 @@ class TopkV2Op : public framework::OperatorWithKernel {
       const int& dtype = ctx->Attrs().Get<int>("dtype");
       if (dtype == framework::proto::VarType::INT32) {
         PADDLE_ENFORCE_LE(input_dims[axis], INT_MAX,
-                          "The element num of the topk axis is "
+                          "The element num at the topk axis in topk is "
                           "%d, is larger than int32 maximum value:%d, you must "
                           "set the dtype of topk to 'int64'.",
                           input_dims[axis], INT_MAX);
