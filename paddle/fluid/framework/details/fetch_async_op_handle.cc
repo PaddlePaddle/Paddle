@@ -198,7 +198,7 @@ void FetchAsyncOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name());
   WaitInputVarGenerated();
 
-  // get src tensors
+  // get src vars
   auto &scopes = *local_exec_scopes_;
   std::vector<Variable *> src_vars;
   src_vars.reserve(inputs_.size());
@@ -213,7 +213,6 @@ void FetchAsyncOpHandle::RunImpl() {
 
   if (return_merged_) {
     auto &val = BOOST_GET(FetchList, *data_);
-    auto &dst_tensor = val.at(offset_);
     if (src_vars[0]->IsType<LoDTensor>()) {
       // to lodtensor type
       std::vector<const LoDTensor *> src_lodtensors;
@@ -221,9 +220,10 @@ void FetchAsyncOpHandle::RunImpl() {
       for (size_t i = 0; i < src_vars.size(); ++i) {
         src_lodtensors.emplace_back(&src_vars[i]->Get<framework::LoDTensor>());
       }
-      LoDTensor &dst_lodtensor = BOOST_GET(LoDTensor, dst_tensor);
 
+      LoDTensor dst_lodtensor;
       FetchMergedLodTensor(src_lodtensors, &dst_lodtensor);
+      val.at(offset_) = std::move(dst_lodtensor);
     } else {
       // to lodtensorarray type
       std::vector<const LoDTensorArray *> src_lodtensor_arrays;
@@ -232,9 +232,9 @@ void FetchAsyncOpHandle::RunImpl() {
         src_lodtensor_arrays.emplace_back(
             &src_vars[i]->Get<framework::LoDTensorArray>());
       }
-      LoDTensorArray &dst_lodtensor_array =
-          BOOST_GET(LoDTensorArray, dst_tensor);
-      dst_lodtensor_array.reserve(src_lodtensor_arrays[0]->size());
+
+      LoDTensorArray dst_lodtensor_array;
+      dst_lodtensor_array.resize(src_lodtensor_arrays[0]->size());
 
       for (size_t i = 0; i < dst_lodtensor_array.size(); ++i) {
         std::vector<const LoDTensor *> src_lodtensors;
@@ -244,6 +244,7 @@ void FetchAsyncOpHandle::RunImpl() {
         }
         FetchMergedLodTensor(src_lodtensors, &dst_lodtensor_array[i]);
       }
+      val.at(offset_) = std::move(dst_lodtensor_array);
     }
   } else {
     auto &val = BOOST_GET(FetchUnmergedList, *data_);
@@ -251,17 +252,19 @@ void FetchAsyncOpHandle::RunImpl() {
     dst_tensors.reserve(src_vars.size());
 
     for (size_t i = 0; i < src_vars.size(); ++i) {
-      if (src_vars[0]->IsType<LoDTensor>()) {
+      if (src_vars[i]->IsType<LoDTensor>()) {
         auto &t = src_vars[i]->Get<framework::LoDTensor>();
-        auto &item = BOOST_GET(LoDTensor, dst_tensors[i]);
+        LoDTensor item;
         TransData(&t, &item, *dev_ctxes_[t.place()]);
+        dst_tensors.emplace_back(std::move(item));
       } else {
         auto &t = src_vars[i]->Get<framework::LoDTensorArray>();
-        auto &item = BOOST_GET(LoDTensorArray, dst_tensors[i]);
-        item.reserve(t.size());
+        LoDTensorArray item;
+        item.resize(t.size());
         for (size_t j = 0; j < t.size(); ++j) {
           TransData(&t[j], &item[j], *dev_ctxes_[t[j].place()]);
         }
+        dst_tensors.emplace_back(std::move(item));
       }
     }
   }
