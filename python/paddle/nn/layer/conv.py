@@ -336,8 +336,8 @@ class Conv2d(_ConvNd):
     Parameters:
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of channels produced by convolution.
-        kernel_size (int|list|tuple): The size of convolution kernel.
-        stride (int|list|tuple, optional): The stride size. If stride is a tuple, it must
+        kernel_size(int|list|tuple): The size of convolution kernel.
+        stride(int|list|tuple, optional): The stride size. If stride is a tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. Default: 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
@@ -347,30 +347,34 @@ class Conv2d(_ConvNd):
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             The default value is 0.
-        dilation (int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation. Default: 1.
-        groups (int, optional): The groups number of the Conv2d Layer. According to grouped
+        groups(int, optional): The groups number of the Conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: 1.
-        padding_mode (str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Default: ``'zeros'`` .
-        weight_attr (ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
+        padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Default: ``'zeros'`` .
+        weight_attr(ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
             and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
-        bias_attr (ParamAttr|bool, optional): The attribute for the bias of conv2d.
+        bias_attr(ParamAttr|bool, optional): The attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
-        data_format (str, optional): Data format that specifies the layout of input.
+        data_format(str, optional): Data format that specifies the layout of input.
             It can be "NCHW" or "NHWC". Default: "NCHW".
+
     Attribute:
+
         **weight** (Parameter): the learnable weights of filter of this layer.
+
         **bias** (Parameter or None): the learnable bias of this layer.
+
     Shape:
 
         - x: :math:`(N, C_{in}, H_{in}, W_{in})`
@@ -702,20 +706,24 @@ class ConvTranspose2d(_ConvNd):
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: 1.
-        weight_attr (ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
+        weight_attr(ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
             of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool, optional): The attribute for the bias of conv2d_transpose.
+        bias_attr(ParamAttr|bool, optional): The attribute for the bias of conv2d_transpose.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d_transpose
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
-        data_format (str, optional): Data format that specifies the layout of input.
+        data_format(str, optional): Data format that specifies the layout of input.
             It can be "NCHW" or "NHWC". Default: "NCHW".
+
     Attribute:
+
         **weight** (Parameter): the learnable weights of filters of this layer.
+
         **bias** (Parameter or None): the learnable bias of this layer.
+
     Shape:
 
         - x: :math:`(N, C_{in}, H_{in}, W_{in})`
@@ -829,40 +837,43 @@ class Conv3d(_ConvNd):
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
-        kernel_size (int|list|tuple, optional): The size of the convolving kernel.
-        stride (int|list|tuple, optional): The stride size. If stride is a tuple, it must
+        kernel_size(int|list|tuple, optional): The size of the convolving kernel.
+        stride(int|list|tuple, optional): The stride size. If stride is a tuple, it must
             contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
             stride_D = stride_H = stride_W = stride. The default value is 1.
-        padding (int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
+        padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
             2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` 
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             The default value is 0.
-        dilation (int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        groups (int, optional): The groups number of the Conv3d Layer. According to grouped
+        groups(int, optional): The groups number of the Conv3d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. The default value is 1.
-        padding_mode (str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Default: ``'zeros'``.
-        weight_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
+        padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Default: ``'zeros'``.
+        weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as param_attr. If it is set to None, the parameter
             is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
             :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
-        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv3d.
+        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv3d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. The default value is None.
-        data_format (str, optional): Data format that specifies the layout of input.
+        data_format(str, optional): Data format that specifies the layout of input.
             It can be "NCDHW" or "NDHWC". Default: "NCDHW".
+
     Attribute:
+
         **weight** (Parameter): the learnable weights of filters of this layer.
+
         **bias** (Parameter): the learnable bias of this layer.
 
     Shape:
@@ -884,6 +895,7 @@ class Conv3d(_ConvNd):
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
                     groups mismatch.
+
     Examples:
 
         .. code-block:: python
@@ -988,6 +1000,7 @@ class ConvTranspose3d(_ConvNd):
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     **Note**:
+
           The conv_transpose3d can be seen as the backward of the conv3d. For conv3d, 
           when stride > 1, conv3d maps multiple input shape to the same output shape, 
           so for conv_transpose3d, when stride > 1, input shape maps multiple output shape.
@@ -998,6 +1011,7 @@ class ConvTranspose3d(_ConvNd):
           and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must 
           between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`, 
           conv_transpose3d can compute the kernel size automatically.
+
     Parameters:
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of channels produced by the convolution.
@@ -1026,11 +1040,11 @@ class ConvTranspose3d(_ConvNd):
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             The default value is 1.
-        weight_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
+        weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv3d_transpose. If it is set to None or one attribute of ParamAttr, conv3d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. The default value is None.
-        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv3d_transpose.
+        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv3d_transpose.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv3d_transpose
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
@@ -1040,10 +1054,13 @@ class ConvTranspose3d(_ConvNd):
             filter_size, padding, and stride to calculate output_size.
             if output_size and filter_size are specified at the same time, They
             should follow the formula above. Default: None.
-        data_format (str, optional): Data format that specifies the layout of input.
+        data_format(str, optional): Data format that specifies the layout of input.
             It can be "NCDHW" or "NDHWC". Default: "NCDHW".
+
     Attribute:
+
         **weight** (Parameter): the learnable weights of filters of this layer.
+
         **bias** (Parameter): the learnable bias of this layer.
 
     Shape:
@@ -1068,7 +1085,7 @@ class ConvTranspose3d(_ConvNd):
     Examples:
 
        .. code-block:: python
-       
+
           import numpy as np
           import paddle
           import paddle.nn as nn
