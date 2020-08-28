@@ -83,9 +83,23 @@ class Fleet(object):
         Initialize role_maker in Fleet.
 
         This function is responsible for the distributed architecture 
-        what you want to run your code behind,such as Transpiler,
-        Collective in PaddleCloudRoleMaker or UserDefinedRoleMaker 
-        
+        what you want to run your code behind.
+
+        Args:
+            role_maker (RoleMakerBase, optional): A ``RoleMakerBase`` containing the configuration
+                of environment variables related to distributed training.If you did not initialize 
+                the rolemaker by yourself, it will be automatically initialized to PaddleRoleMaker.
+                The default value is None.
+            is_collective (Boolean, optional): A ``Boolean`` variable determines whether the program 
+                runs on the CPU or GPU. False means set distributed training using CPU, and True means
+                GPU.The default value is False.The default value is False.
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            fleet.init()
         """
         if isinstance(role_maker, RoleMakerBase):
             self._role_maker = role_maker
@@ -112,7 +126,12 @@ class Fleet(object):
         Returns:
             bool: True if this is the first node of worker,
                   False if not.
-        
+
+        Examples:
+            .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            fleet.init()
+            fleet.is_first_worker()
         """
         return self._role_maker.is_first_worker()
 
@@ -122,6 +141,12 @@ class Fleet(object):
 
         Returns:
             int: node id
+
+        Examples:
+            .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            fleet.init()
+            fleet.worker_index()
         """
         return self._role_maker.worker_index()
 
@@ -131,6 +156,12 @@ class Fleet(object):
 
         Returns:
             int: worker numbers
+        
+        Examples:
+            .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            fleet.init()
+            fleet.worker_num()
         """
         return self._role_maker.worker_num()
 
@@ -141,6 +172,12 @@ class Fleet(object):
         Returns:
             bool: True if this is a node of worker,
                   False if not.
+
+        Examples:
+            .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            fleet.init()
+            fleet.is_worker()
         """
         return self._role_maker.is_worker()
 
@@ -165,6 +202,12 @@ class Fleet(object):
 
         Returns:
             int: server number
+
+        Examples:
+            .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            fleet.init()
+            fleet.server_num()
         """
         return len(self._role_maker.get_pserver_endpoints())
 
@@ -174,6 +217,12 @@ class Fleet(object):
 
         Returns:
             int: node id
+
+        Examples:
+            .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            fleet.init()
+            fleet.server_index()
         """
         return self._role_maker.server_index()
 
@@ -199,6 +248,12 @@ class Fleet(object):
         Returns:
             bool: True if this is a node of server,
                   False if not.
+
+        Examples:
+            .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            fleet.init()
+            fleet.is_server()
         """
         return self._role_maker.is_server()
 
@@ -319,11 +374,11 @@ class Fleet(object):
             import paddle
             import paddle.distributed.fleet as fleet
 
-            fc_1 = paddle.layers.fc(input=input_x, size=hid_dim, act='tanh')
-            fc_2 = paddlen.layers.fc(input=fc_1, size=hid_dim, act='tanh')
-            prediction = paddle.layers.fc(input=[fc_2], size=label_dim, act='softmax')
-            cost = paddle.layers.cross_entropy(input=prediction, label=input_y)
-            avg_cost = paddle.layers.mean(x=cost)
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=hid_dim, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=hid_dim, act='tanh')
+            prediction = paddle.fluid.layers.fc(input=[fc_2], size=label_dim, act='softmax')
+            cost = paddle.fluid.layers.cross_entropy(input=prediction, label=input_y)
+            avg_cost = paddle.fluid.layers.mean(x=cost)
 
             role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
