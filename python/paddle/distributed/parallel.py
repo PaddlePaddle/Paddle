@@ -29,13 +29,13 @@ __all__ = ["init_parallel_env"]
 ParallelStrategy = core.ParallelStrategy
 
 
-def init_parallel_env(backend='nccl'):
+def init_parallel_env():
     """
-    Initialize parallel training environments in dynamic mode.
+    Initialize parallel training environment in dynamic graph mode.
 
-    Args:
-        backend(str, optional): The backend to communication between multiple devices.
-            Now only support ``nccl`` . Default value is ``nccl`` .
+    .. note::
+        Now only supports initializing the GPU parallel training 
+        environment and using NCCL for communication.
 
     Returns:
         None
@@ -89,16 +89,7 @@ def init_parallel_env(backend='nccl'):
                 dist.spawn(train)
     """
 
-    # 1. input check
-    if not isinstance(backend, six.string_types):
-        raise TypeError("input `backend` type error, expected type is str, "
-                        "but received type is %s." % type(backend))
-    if cpt.to_text(backend) != 'nccl':
-        raise ValueError(
-            "backend `%s` is not supported, now only supports `nccl` backend." %
-            backend)
-
-    # 2. check env
+    # 1. check env
     def _check_var_exists(var_name):
         var = os.environ.get(var_name, None)
         if var is None:
@@ -112,30 +103,28 @@ def init_parallel_env(backend='nccl'):
     _check_var_exists("PADDLE_TRAINERS_NUM")
     _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
-    # 3. init ParallelStrategy
+    # 2. init NCCL ParallelStrategy
     strategy = ParallelStrategy()
-    if cpt.to_text(backend) == 'nccl':
-        if parallel_helper._is_parallel_ctx_initialized():
-            warnings.warn("The parallel environment has been initialized.")
-        strategy.nranks = ParallelEnv().world_size
-        strategy.local_rank = ParallelEnv().rank
-        strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
-        strategy.current_endpoint = ParallelEnv().current_endpoint
-        if strategy.nranks < 2:
-            return
-        # NOTE(chenweihang): [ why config global place here? ]
-        # the dygraph mode will be set to default mode, 
-        # users will not call `dygraph.guard` or `enable_dygraph`
-        # directly, if they want to switch default place,
-        # they need to call a function to change default place,
-        # here just set correctly place to users
-        place = core.CUDAPlace(ParallelEnv().device_id)
-        _set_expected_place(place)
+    if parallel_helper._is_parallel_ctx_initialized():
+        warnings.warn("The parallel environment has been initialized.")
+    strategy.nranks = ParallelEnv().world_size
+    strategy.local_rank = ParallelEnv().rank
+    strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
+    strategy.current_endpoint = ParallelEnv().current_endpoint
+    if strategy.nranks < 2:
+        return
+    # NOTE(chenweihang): [ why config global place here? ]
+    # the dygraph mode will be set to default mode, 
+    # users will not call `dygraph.guard` or `enable_dygraph`
+    # directly, if they want to switch default place,
+    # they need to call a function to change default place,
+    # here just set correctly place to users
+    place = core.CUDAPlace(ParallelEnv().device_id)
+    _set_expected_place(place)
 
-        # init nccl context
-        parallel_helper._set_parallel_ctx(
-            core.NCCLParallelContext(strategy, place))
-        parallel_helper._init_parallel_ctx()
+    # init nccl context
+    parallel_helper._set_parallel_ctx(core.NCCLParallelContext(strategy, place))
+    parallel_helper._init_parallel_ctx()
 
 
 def get_rank():
@@ -163,7 +152,7 @@ def get_rank():
 
 def get_world_size():
     """
-    The number of trainers (number of processes participating in current job).
+    Returns the number of trainers (number of processes participating in current job).
 
     Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` . 
     The default value is 1.

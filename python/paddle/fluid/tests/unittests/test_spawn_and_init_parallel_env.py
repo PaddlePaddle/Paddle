@@ -31,14 +31,6 @@ from paddle.fluid.dygraph import parallel_helper
 
 
 class TestInitParallelEnv(unittest.TestCase):
-    def test_beckend_type_error(self):
-        with self.assertRaises(TypeError):
-            dist.init_parallel_env(backend=1)
-
-    def test_backend_value_error(self):
-        with self.assertRaises(ValueError):
-            dist.init_parallel_env(backend="mpi")
-
     def test_check_env_failed(self):
         os.environ['FLAGS_selected_gpus'] = '0'
         os.environ['PADDLE_TRAINER_ID'] = '0'
