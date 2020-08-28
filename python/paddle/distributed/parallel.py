@@ -14,6 +14,7 @@
 
 import os
 import six
+import warnings
 
 from paddle import compat as cpt
 
@@ -101,7 +102,7 @@ def init_parallel_env(backend='nccl'):
     def _check_var_exists(var_name):
         var = os.environ.get(var_name, None)
         if var is None:
-            raise ValueError("paddle.distributed initialize error,"
+            raise ValueError("paddle.distributed initialize error, "
                              "environment variable %s is needed, but not set." %
                              var_name)
 
@@ -114,6 +115,8 @@ def init_parallel_env(backend='nccl'):
     # 3. init ParallelStrategy
     strategy = ParallelStrategy()
     if cpt.to_text(backend) == 'nccl':
+        if parallel_helper._is_parallel_ctx_initialized():
+            warnings.warn("The parallel environment has been initialized.")
         strategy.nranks = ParallelEnv().world_size
         strategy.local_rank = ParallelEnv().rank
         strategy.trainer_endpoints = ParallelEnv().trainer_endpoints

@@ -22,6 +22,9 @@ import paddle
 import paddle.distributed as dist
 from paddle.distributed.spawn import _get_subprocess_env_list
 
+from paddle.fluid import core
+from paddle.fluid.dygraph import parallel_helper
+
 # NOTE(chenweihang): Coverage CI is currently not able to count python3
 # unittest, so the unittests here covers some cases that will only be 
 # executed in the python3 sub-process. 
@@ -36,7 +39,27 @@ class TestInitParallelEnv(unittest.TestCase):
         with self.assertRaises(ValueError):
             dist.init_parallel_env(backend="mpi")
 
+    def test_check_env_failed(self):
+        os.environ['FLAGS_selected_gpus'] = '0'
+        os.environ['PADDLE_TRAINER_ID'] = '0'
+        os.environ['PADDLE_CURRENT_ENDPOINT'] = '127.0.0.1:6170'
+        os.environ['PADDLE_TRAINERS_NUM'] = '1'
+        with self.assertRaises(ValueError):
+            dist.init_parallel_env()
 
+    def test_init_parallel_env_break(self):
+        os.environ['FLAGS_selected_gpus'] = '0'
+        os.environ['PADDLE_TRAINER_ID'] = '0'
+        os.environ['PADDLE_CURRENT_ENDPOINT'] = '127.0.0.1:6170'
+        os.environ['PADDLE_TRAINERS_NUM'] = '1'
+        os.environ['PADDLE_TRAINER_ENDPOINTS'] = '127.0.0.1:6170'
+        # coverage success branch
+        dist.init_parallel_env()
+        self.assertFalse(parallel_helper._is_parallel_ctx_initialized())
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestSpawnAssistMethod(unittest.TestCase):
     def test_only_cluster_node_ips_error(self):
         with self.assertRaises(ValueError):
