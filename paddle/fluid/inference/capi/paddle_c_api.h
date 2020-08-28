@@ -235,6 +235,12 @@ PADDLE_CAPI_EXPORT extern void PD_EnableMkldnnQuantizer(
 PADDLE_CAPI_EXPORT extern bool PD_MkldnnQuantizerEnabled(
     const PD_AnalysisConfig* config);
 
+PADDLE_CAPI_EXPORT extern void PD_EnableMkldnnBfloat16(
+    PD_AnalysisConfig* config);
+
+PADDLE_CAPI_EXPORT extern bool PD_MkldnnBfloat16Enabled(
+    const PD_AnalysisConfig* config);
+
 PADDLE_CAPI_EXPORT extern void PD_SetModelBuffer(PD_AnalysisConfig* config,
                                                  const char* prog_buffer,
                                                  size_t prog_buffer_size,
