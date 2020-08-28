@@ -19,8 +19,6 @@ import unittest
 
 class TestFuseBatchNormActPass(unittest.TestCase):
     def build_program(self, main_program, startup_program, use_cuda, seed=1):
-        main_program.random_seed = seed
-        startup_program.random_seed = seed
         with fluid.program_guard(main_program, startup_program):
             x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
             y = fluid.layers.data(name="y", shape=[1], dtype='int64')
@@ -59,6 +57,8 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         return x, y, loss
 
     def check(self, place, use_cuda):
+        paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main_program = fluid.Program()
         startup_program = fluid.Program()
         x, y, loss = self.build_program(main_program, startup_program, use_cuda)
