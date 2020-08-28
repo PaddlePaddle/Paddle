@@ -75,10 +75,10 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
                                const Tensor& in, Tensor* out);
-#endif
 
-template <class T>
-void* GetDataFromTensor(const Tensor& tensor, T type);
+void* GetDataFromTensor(const Tensor& tensor, MKLDNNDataType type);
+
+#endif
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);
 
