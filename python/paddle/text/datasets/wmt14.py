@@ -173,6 +173,24 @@ class WMT14(Dataset):
         return len(self.src_ids)
 
     def get_dict(self, reverse=False):
+        """
+        Get the source and target dictionary.
+
+        Args:
+            reverse (bool): wether to reverse key and value in dictionary,
+                i.e. key: value to value: key.
+    
+        Returns:
+            Two dictionaries, the source and target dictionary.
+    
+        Examples:
+    
+            .. code-block:: python
+    
+                from paddle.text.datasets import WMT14
+                wmt14 = WMT14(mode='train', dict_size=50)
+                src_dict, trg_dict = wmt14.get_dict()
+        """
         if reverse:
             src_dict = {v: k for k, v in six.iteritems(src_dict)}
             trg_dict = {v: k for k, v in six.iteritems(trg_dict)}

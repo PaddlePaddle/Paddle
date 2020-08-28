@@ -59,8 +59,8 @@ class Cifar10(Dataset):
         .. code-block:: python
 
             import paddle
-            from paddle.incubate.hapi.datasets import Cifar10
-            from paddle.incubate.hapi.vision.transforms import Normalize
+            from paddle.vision.datasets import Cifar10
+            from paddle.vision.transforms import Normalize
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
@@ -165,8 +165,8 @@ class Cifar100(Cifar10):
         .. code-block:: python
 
             import paddle
-            from paddle.incubate.hapi.datasets import Cifar100
-            from paddle.incubate.hapi.vision.transforms import Normalize
+            from paddle.vision.datasets import Cifar100
+            from paddle.vision.transforms import Normalize
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):

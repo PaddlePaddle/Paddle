@@ -53,7 +53,7 @@ class VOC2012(Dataset):
         .. code-block:: python
 
             import paddle
-            from paddle.incubate.hapi.datasets import VOC2012
+            from paddle.vision.datasets import VOC2012
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):

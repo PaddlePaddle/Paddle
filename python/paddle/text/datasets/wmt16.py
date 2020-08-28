@@ -235,8 +235,16 @@ class WMT16(Dataset):
 
         Returns:
             dict: The word dictionary for the specific language.
-        """
 
+        Examples:
+    
+            .. code-block:: python
+    
+                from paddle.text.datasets import WMT16
+                wmt16 = WMT16(mode='train', src_dict_size=50, trg_dict_size=50)
+                src_dict, trg_dict = wmt16.get_dict()
+
+        """
         dict_size = self.src_dict_size if lang == self.lang else self.trg_dict_size
 
         dict_path = os.path.join(paddle.dataset.common.DATA_HOME,

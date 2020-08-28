@@ -1326,7 +1326,7 @@ class Model(object):
               label = InputSpec([None, 1], 'int64', 'label')
            
               model = paddle.Model(
-                  paddle.vision.LeNet(classifier_activation=None),
+                  paddle.vision.models.LeNet(classifier_activation=None),
                   input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())
@@ -1363,7 +1363,7 @@ class Model(object):
               label = InputSpec([None, 1], 'int64', 'label')
            
               model = paddle.Model(
-                  paddle.vision.LeNet(classifier_activation=None), input, label)
+                  paddle.vision.models.LeNet(classifier_activation=None), input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())
               model.prepare(
@@ -1489,14 +1489,14 @@ class Model(object):
 
             input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
             label = InputSpec([None, 1], 'int64', 'label')
-            model = paddle.Model(paddle.vision.LeNet(), input, label)
+            model = paddle.Model(paddle.vision.models.LeNet(), input, label)
             model.prepare(metrics=paddle.metric.Accuracy())
             result = model.evaluate(val_dataset, batch_size=64)
             print(result)
 
             # imperative mode
             paddle.disable_static()
-            model = paddle.Model(paddle.vision.LeNet())
+            model = paddle.Model(paddle.vision.models.LeNet())
             model.prepare(metrics=paddle.metric.Accuracy())
             result = model.evaluate(val_dataset, batch_size=64)
             print(result)
@@ -1595,7 +1595,7 @@ class Model(object):
 
             # declarative mode
             input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
-            model = paddle.Model(paddle.vision.LeNet(), input)
+            model = paddle.Model(paddle.vision.models.LeNet(), input)
             model.prepare()
 
             result = model.predict(test_dataset, batch_size=64)
@@ -1604,7 +1604,7 @@ class Model(object):
             # imperative mode
             device = paddle.set_device('cpu')
             paddle.disable_static(device)
-            model = paddle.Model(paddle.vision.LeNet())
+            model = paddle.Model(paddle.vision.models.LeNet())
             model.prepare()
             result = model.predict(test_dataset, batch_size=64)
             print(len(result[0]), result[0][0].shape)
