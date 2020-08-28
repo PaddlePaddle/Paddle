@@ -151,8 +151,8 @@ class RMSProp(Optimizer):
             raise ValueError("Invalid value of epsilon, expect epsilon >= 0.")
         if not 0.0 <= momentum:
             raise ValueError("Invalid value of momentum, expect momentum >= 0.")
-        if not 0.0 <= alpha:
-            raise ValueError("Invalid value of alpha, expect alpha >= 0.")
+        if not 0.0 <= rho:
+            raise ValueError("Invalid value of rho, expect rho >= 0.")
 
         super(RMSProp, self).__init__(
             learning_rate=learning_rate,
