@@ -468,8 +468,8 @@ def build_optimizer(layer, cfg, loss=None):
 
 class DyGraphTrainModel(object):
     def __init__(self, cfg):
-        fluid.default_startup_program().random_seed = cfg.seed
-        fluid.default_main_program().random_seed = cfg.seed
+        paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
 
         self.generator = Generator(cfg)
         self.discriminator = Discriminator(cfg)
@@ -529,12 +529,12 @@ class StaticGraphTrainModel(object):
                 shape=[None, cfg.c_dim], dtype='float32', name='label_trg')
             return image_real, label_org, label_trg
 
+        paddle.manual_seed(cfg.seed)
+        paddle.framework.random._manual_program_seed(cfg.seed)
         self.gen_program = fluid.Program()
         gen_startup_program = fluid.Program()
 
         with fluid.program_guard(self.gen_program, gen_startup_program):
-            self.gen_program.random_seed = cfg.seed
-            gen_startup_program.random_seed = cfg.seed
             with fluid.unique_name.guard():
                 image_real, label_org, label_trg = create_data_layer()
                 generator = Generator(cfg)
@@ -546,8 +546,6 @@ class StaticGraphTrainModel(object):
         self.dis_program = fluid.Program()
         dis_startup_program = fluid.Program()
         with fluid.program_guard(self.dis_program, dis_startup_program):
-            self.dis_program.random_seed = cfg.seed
-            dis_startup_program.random_seed = cfg.seed
             with fluid.unique_name.guard():
                 image_real, label_org, label_trg = create_data_layer()
                 generator = Generator(cfg)
