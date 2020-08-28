@@ -18,6 +18,7 @@
 from .layer import norm
 from .functional import extension
 from .layer import common
+from .layer import rnn
 from .utils import weight_norm_hook
 
 from . import initializer
@@ -26,6 +27,7 @@ __all__ = []
 __all__ += norm.__all__
 __all__ += extension.__all__
 __all__ += common.__all__
+__all__ += rnn.__all__
 __all__ += weight_norm_hook.__all__
 
 # TODO: define alias in nn directory
@@ -113,6 +115,7 @@ from .layer.extension import RowConv  #DEFINE_ALIAS
 # from .layer.learning_rate import NoamDecay        #DEFINE_ALIAS
 # from .layer.learning_rate import PiecewiseDecay        #DEFINE_ALIAS
 # from .layer.learning_rate import PolynomialDecay        #DEFINE_ALIAS
+from .layer.common import Linear
 # from .layer.loss import NCELoss        #DEFINE_ALIAS
 from .layer.loss import BCEWithLogitsLoss  #DEFINE_ALIAS
 from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
@@ -136,6 +139,7 @@ from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
 from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
+from .layer.rnn import *
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS

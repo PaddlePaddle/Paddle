@@ -978,6 +978,13 @@ def diag(x, offset=0, padding_value=0, name=None):
     check_type(x, 'x', (Variable), 'diag_v2')
     check_dtype(x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'],
                 'diag_v2')
+    check_type(offset, 'offset', (int), 'diag_v2')
+    check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
+    if len(x.shape) != 1 and len(x.shape) != 2:
+        raise ValueError(
+            "The dimension of input x must be either 1 or 2, but received {}".
+            format(len(x.shape)))
+
     helper = LayerHelper("diag_v2", **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)

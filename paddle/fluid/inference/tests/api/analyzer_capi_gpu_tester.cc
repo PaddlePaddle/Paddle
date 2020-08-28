@@ -54,6 +54,9 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PD_SwitchIrOptim(config, true);
   bool ir_optim = PD_IrOptim(config);
   CHECK(ir_optim) << "NO";
+  PD_EnableMkldnnBfloat16(config);
+  bool bfloat16_enable = PD_MkldnnBfloat16Enabled(config);
+  CHECK(!bfloat16_enable) << "NO";
   PD_EnableTensorRtEngine(config, 1 << 20, 1, 3, Precision::kFloat32, false,
                           false);
   bool trt_enable = PD_TensorrtEngineEnabled(config);

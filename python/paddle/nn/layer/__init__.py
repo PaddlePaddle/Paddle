@@ -20,6 +20,7 @@ from . import conv
 from . import extension
 from . import activation
 from . import norm
+from . import rnn
 from . import vision
 from . import distance
 from . import transformer
@@ -30,6 +31,7 @@ from .conv import *
 from .extension import *
 from .activation import *
 from .norm import *
+from .rnn import *
 from .vision import *
 
 from .transformer import *
