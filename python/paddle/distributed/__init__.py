@@ -22,8 +22,8 @@ from .parallel import get_world_size
 from paddle.fluid.dygraph.parallel import prepare_context  #DEFINE_ALIAS
 from paddle.fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
 
-from . import collective
-from .collective import *
+from . import collective_op
+from .collective_op import *
 
 # start multiprocess apis
 __all__ = ["spawn"]
@@ -35,4 +35,4 @@ __all__ += [
 ]
 
 # collective apis
-__all__ += collective.__all__
+__all__ += collective_op.__all__
