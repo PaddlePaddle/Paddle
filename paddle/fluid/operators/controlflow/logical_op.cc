@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/logical_op.h"
+#include <algorithm>
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -97,19 +99,19 @@ class BinaryLogicalOp : public LogicalOp {
     OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", comment.type);
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
-
-    int product_x = framework::product(dim_x);
-    int product_y = framework::product(dim_y);
-    bool check = context->IsRuntime() || (product_x >= 0 && product_y >= 0);
-    if (check) {
-      PADDLE_ENFORCE_EQ(product_x, product_y,
-                        platform::errors::InvalidArgument(
-                            "The number of elements in X and Y should be same, "
-                            "but received %d != %d",
-                            product_x, product_y));
+    if (dim_x == dim_y) {
+      context->SetOutputDim("Out", dim_x);
+    } else {
+      int max_dim = std::max(dim_x.size(), dim_y.size());
+      int axis = std::abs(dim_x.size() - dim_y.size());
+      std::vector<int> x_dims_array(max_dim);
+      std::vector<int> y_dims_array(max_dim);
+      std::vector<int> out_dims_array(max_dim);
+      GetBroadcastDimsArrays(dim_x, dim_y, x_dims_array.data(),
+                             y_dims_array.data(), out_dims_array.data(),
+                             max_dim, axis);
+      context->SetOutputDim("Out", framework::make_ddim(out_dims_array));
     }
-
-    context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
   }
 };
