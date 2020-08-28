@@ -162,8 +162,8 @@ def _type_promote(type_x, type_y):
 
 def _type_promote_rules(x, y):
     if in_dygraph_mode():
-        # rule 1 : avoid numpy.ndarray
-        if isinstance(x, numpy.ndarray) or isinstance(y, numpy.ndarray):
+        # rule 1 : avoid np.ndarray
+        if isinstance(x, np.ndarray) or isinstance(y, np.ndarray):
             raise TypeError("arguments must be Tensor or scalar, not numpy.ndarray.")
 
         # rule 2: both the inputs are not Tensor
@@ -195,8 +195,8 @@ def _type_promote_rules(x, y):
             x = paddle.full(shape=[1], dtype=promote_dtype, fill_value=x)
 
         return x, y
-    # rule 1 : avoid numpy.ndarray
-    if isinstance(x, numpy.ndarray) or isinstance(y, numpy.ndarray):
+    # rule 1 : avoid np.ndarray
+    if isinstance(x, np.ndarray) or isinstance(y, np.ndarray):
         raise TypeError("arguments must be Variable or scalar, not numpy.ndarray.")
 
     # rule 2: both the inputs are not Tensor
