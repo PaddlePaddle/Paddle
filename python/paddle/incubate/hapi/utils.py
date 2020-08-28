@@ -231,7 +231,7 @@ def summary(net, input_size, batch_size=-1, dtypes=None):
 
             lenet = LeNetDygraph()
 
-            params_info = summary(lenet)
+            params_info = summary(lenet, (1, 28, 28))
             print(params_info)
 
     """
