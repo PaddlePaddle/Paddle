@@ -176,9 +176,10 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             print(out3.numpy()) 
             # [2 3 1]
     """
-    if not isinstance(axis, int):
-        raise TypeError("The type of 'axis'  must be int, but received %s." %
-                        (type(axis)))
+    if axis is not None and not isinstance(axis, int):
+        raise TypeError(
+            "The type of 'axis'  must be int or None, but received %s." %
+            (type(axis)))
     flatten = False
     if axis is None:
         flatten = True
@@ -251,9 +252,10 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             print(out3.numpy()) 
             # [0 0 2]
     """
-    if not isinstance(axis, int):
-        raise TypeError("The type of 'axis'  must be int, but received %s." %
-                        (type(axis)))
+    if axis is not None and not isinstance(axis, int):
+        raise TypeError(
+            "The type of 'axis'  must be int or None, but received %s." %
+            (type(axis)))
     var_dtype = convert_np_dtype_to_dtype_(dtype)
     flatten = False
     if axis is None:
@@ -755,7 +757,7 @@ def masked_select(x, mask, name=None):
     return out
 
 
-def topk(x, k, axis=None, largest=True, sorted=True, dtype="int64", name=None):
+def topk(x, k, axis=-1, largest=True, sorted=True, dtype="int64", name=None):
     """
     This OP is used to find values and indices of the k largest or smallest at the optional axis.
     If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
@@ -818,6 +820,10 @@ def topk(x, k, axis=None, largest=True, sorted=True, dtype="int64", name=None):
            # [[1 1 0 0]]
 
     """
+    if not isinstance(axis, int):
+        raise TypeError("The type of 'axis'  must be int, but received %s." %
+                        (type(axis)))
+    var_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dygraph_mode():
         k = k.numpy().item(0) if isinstance(k, Variable) else k
         if axis is None:
