@@ -1160,19 +1160,18 @@ def conv3d(x,
     Examples:
         .. code-block:: python
 
-            import paddle.nn.functional as F
-            import paddle.fluid.dygraph as dg
             import numpy as np
+            import paddle
+            import paddle.nn.functional as F
 
             x = np.random.randn(2, 3, 8, 8, 8).astype(np.float32)
             w = np.random.randn(6, 3, 3, 3, 3).astype(np.float32)
 
-            place = fluid.CPUPlace()
-            with dg.guard(place):
-                x_var = dg.to_variable(x)
-                w_var = dg.to_variable(w)
-                y_var = F.conv3d(x_var, w_var, act="relu")
-                y_np = y_var.numpy()
+            paddle.disable_static()
+            x_var = paddle.to_tensor(x)
+            w_var = paddle.to_tensor(w)
+            y_var = F.conv3d(x_var, w_var)
+            y_np = y_var.numpy()
             print(y_np.shape)
 
             # (2, 6, 6, 6, 6)

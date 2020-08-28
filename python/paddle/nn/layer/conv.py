@@ -321,7 +321,9 @@ class Conv2d(_ConvNd):
     For each input :math:`X`, the equation is:
 
     ..  math::
-        Out = \sigma \left ( W * X + b \right )
+
+        Out = \sigma (W \\ast X + b)
+
     Where:
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
@@ -368,12 +370,19 @@ class Conv2d(_ConvNd):
         **weight** (Parameter): the learnable weights of filter of this layer.
         **bias** (Parameter or None): the learnable bias of this layer.
     Shape:
+
         - x: :math:`(N, C_{in}, H_{in}, W_{in})`
+
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
+
         Where
+
         ..  math::
-           H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1 \\\\
+
+           H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1
+
            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+
     Examples:
         .. code-block:: python
           import numpy as np
@@ -650,7 +659,9 @@ class ConvTranspose2d(_ConvNd):
     For each input :math:`X`, the equation is:
 
     ..  math::
-        Out=\sigma (W*X+b)\\
+
+        Out = \sigma (W \\ast X + b)
+
     Where:
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
@@ -701,14 +712,23 @@ class ConvTranspose2d(_ConvNd):
         **weight** (Parameter): the learnable weights of filters of this layer.
         **bias** (Parameter or None): the learnable bias of this layer.
     Shape:
+
         - x: :math:`(N, C_{in}, H_{in}, W_{in})`
+
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
+
         Where
+
         ..  math::
-           H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (kernel\_size[0] - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel\_size[1] - 1) + 1 \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
+
+           H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (kernel\_size[0] - 1) + 1
+
+           W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel\_size[1] - 1) + 1
+
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] )
+
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
+
     Examples:
        .. code-block:: python
           import numpy as np
@@ -785,15 +805,20 @@ class Conv3d(_ConvNd):
     provided, bias is added to the output of the convolution, and the
     corresponding activation function is applied to the final result.
     For each input :math:`X`, the equation is:
+
     ..  math::
-        Out = \sigma \left ( W * X + b \right )
+
+        Out = \sigma (W \\ast X + b)
+
     In the above equation:
+
     * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
@@ -832,14 +857,23 @@ class Conv3d(_ConvNd):
     Attribute:
         **weight** (Parameter): the learnable weights of filters of this layer.
         **bias** (Parameter): the learnable bias of this layer.
+
     Shape:
+
         - x: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+
         - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+
         Where
+
         ..  math::
-           D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1 \\\\
-           H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1 \\\\
+
+           D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1
+
+           H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+
            W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (kernel\_size[2] - 1) + 1))}{strides[2]} + 1
+
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
                     groups mismatch.
@@ -932,14 +966,18 @@ class ConvTranspose3d(_ConvNd):
     For each input :math:`X`, the equation is:
     
     ..  math::
-        \\Out=\sigma (W*X+b)\\
+
+        Out = \sigma (W \\ast X + b)
+
     In the above equation:
+
     * :math:`X`: Input value, a tensor with NCDHW format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
     Example:
     **Note**:
           The conv_transpose3d can be seen as the backward of the conv3d. For conv3d, 
@@ -999,14 +1037,23 @@ class ConvTranspose3d(_ConvNd):
     Attribute:
         **weight** (Parameter): the learnable weights of filters of this layer.
         **bias** (Parameter): the learnable bias of this layer.
+
     Shape:
+
         - x: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
+
         - output: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
+
         Where
+
         ..  math::
-           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (kernel\_size[0] - 1) + 1 \\\\
-           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel\_size[1] - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (kernel\_size[2] - 1) + 1 \\\\
+
+           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (kernel\_size[0] - 1) + 1
+           
+           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (kernel\_size[1] - 1) + 1
+           
+           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (kernel\_size[2] - 1) + 1
+           
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
                     groups mismatch.
