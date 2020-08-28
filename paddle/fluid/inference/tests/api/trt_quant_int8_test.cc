@@ -25,7 +25,7 @@ namespace inference {
 TEST(quant_int8, resnet50) {
   std::string model_dir = FLAGS_infer_model;
   AnalysisConfig config;
-  config.EnableUseGpu(100, 0);
+  config.EnableUseGpu(1000, 0);
   config.SetModel(model_dir);
   config.SwitchUseFeedFetchOps(false);
   config.EnableTensorRtEngine(1 << 30, 1, 1, AnalysisConfig::Precision::kInt8,
