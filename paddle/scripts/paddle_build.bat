@@ -26,7 +26,7 @@ mkdir build
 cd /d build
 tree .
 dir paddle\fluid\pybind\Release
-taskkill /f /im %cd%\paddle\fluid\pybind\Release\op_function_generator.exe  2>NUL
+taskkill /f /im op_function_generator.exe  2>NUL
 
 rem ------initialize the virtual environment------
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
@@ -133,6 +133,7 @@ echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% ^
 -DON_INFER=%ON_INFER% -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR%
+
 cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% ^
 -DON_INFER=%ON_INFER%  -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
@@ -393,7 +394,7 @@ taskkill /f /im git-remote-https.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
-taskkill /f /im %cd%\paddle\fluid\pybind\Release\op_function_generator.exe  2>NUL
+taskkill /f /im op_function_generator.exe  2>NUL
 taskkill /f /im python.exe  2>NUL
 call paddle_winci\Scripts\deactivate.bat 2>NUL
 taskkill /f /im python.exe  2>NUL
