@@ -119,8 +119,9 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     dy_param_init = dict()
                     dy_loss = None
 
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = is_sort_sum_gradient
+                    fluid.set_flags({
+                        'FLAGS_sort_sum_gradient': is_sort_sum_gradient
+                    })
 
                     for i in range(batch_num):
                         x_data = np.arange(12).reshape(4, 3).astype('int64')
@@ -135,7 +136,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         if i == 0:
                             for param in simple_net.parameters():
                                 dy_param_init[param.name] = param.numpy()
-                        dy_loss.backward(backward_strategy)
+                        dy_loss.backward()
                         sgd.minimize(dy_loss)
                         sgd.clear_gradients()
                         if i == batch_num - 1:

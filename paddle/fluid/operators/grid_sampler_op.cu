@@ -31,7 +31,7 @@ static __forceinline__ __device__ void atomic_add(T* data, int h, int w, int sH,
                                                   int sW, int H, int W,
                                                   T delta) {
   if (in_bounds(h, w, H, W)) {
-    atomicAdd(data + h * sH + w * sW, delta);
+    platform::CudaAtomicAdd(data + h * sH + w * sW, delta);
   }
 }
 

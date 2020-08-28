@@ -75,6 +75,7 @@ from .common import interpolate  #DEFINE_ALIAS
 from .common import bilinear  #DEFINE_ALIAS
 from .conv import conv1d  #DEFINE_ALIAS
 from .conv import conv_transpose1d  #DEFINE_ALIAS
+from .common import linear  #DEFINE_ALIAS
 from .conv import conv2d  #DEFINE_ALIAS
 from .conv import conv_transpose2d  #DEFINE_ALIAS
 from .conv import conv3d  #DEFINE_ALIAS
@@ -160,12 +161,12 @@ from .loss import square_error_cost  #DEFINE_ALIAS
 from .loss import ssd_loss  #DEFINE_ALIAS
 from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 from .loss import ctc_loss  #DEFINE_ALIAS
-# from .norm import batch_norm        #DEFINE_ALIAS
 # from .norm import data_norm        #DEFINE_ALIAS
 # from .norm import group_norm        #DEFINE_ALIAS
-# from .norm import instance_norm        #DEFINE_ALIAS
 from .norm import l2_normalize  #DEFINE_ALIAS
-# from .norm import layer_norm        #DEFINE_ALIAS
+from .norm import batch_norm  #DEFINE_ALIAS
+from .norm import instance_norm  #DEFINE_ALIAS
+from .norm import layer_norm  #DEFINE_ALIAS
 from .norm import lrn  #DEFINE_ALIAS
 from .norm import normalize  #DEFINE_ALIAS
 # from .norm import spectral_norm        #DEFINE_ALIAS
@@ -177,6 +178,8 @@ from .pooling import pool2d  #DEFINE_ALIAS
 from .pooling import pool3d  #DEFINE_ALIAS
 from .pooling import adaptive_pool2d  #DEFINE_ALIAS
 from .pooling import adaptive_pool3d  #DEFINE_ALIAS
+from .rnn import rnn  #DEFINE_ALIAS
+from .rnn import birnn  #DEFINE_ALIAS
 from .pooling import avg_pool2d  #DEFINE_ALIAS
 from .pooling import max_pool2d  #DEFINE_ALIAS
 from .pooling import avg_pool3d  #DEFINE_ALIAS

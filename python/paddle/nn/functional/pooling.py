@@ -1238,7 +1238,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
     Args:
         x (Tensor): The input tensor of adaptive avg pool2d operator, which is a 4-D tensor.
-                          The data type can be float16, float32, float64, int32 or int64.
+                          The data type can be float32 or float64.
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two element, (H, W). H and W can be either a int, or None which means
             the size will be the same as that of the input.
@@ -1285,9 +1285,8 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             # pool_out.shape is [2, 3, 3, 3]
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
-            'adaptive_avg_pool2d')
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'adaptive_avg_pool2d')
     check_type(data_format, 'data_format', str, 'adaptive_avg_pool2d')
 
     if data_format not in ["NCHW", "NHWC"]:
@@ -1363,7 +1362,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
 
     Args:
         x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
-                          The data type can be float16, float32, float64, int32 or int64.
+                          The data type can be float32, float64.
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means
             the size will be the same as that of the input.
@@ -1413,9 +1412,8 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             # pool_out.shape is [2, 3, 3, 3, 3]
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
-            'adaptive_avg_pool3d')
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'adaptive_avg_pool3d')
     check_type(data_format, 'data_format', str, 'adaptive_avg_pool3d')
 
     if data_format not in ["NCDHW", "NDHWC"]:
