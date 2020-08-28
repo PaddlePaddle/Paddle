@@ -10699,6 +10699,7 @@ def gaussian_random_batch_size_like(input,
             out = fluid.layers.gaussian_random_batch_size_like(
                 input, shape=[-1, 11], mean=1.0, std=2.0)
     """
+
     helper = LayerHelper('gaussian_random_batch_size_like', **locals())
     check_type(input, 'input', (Variable),
                'fluid.layers.gaussian_random_batch_size_like')
