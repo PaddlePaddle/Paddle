@@ -16,7 +16,6 @@
 from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
 from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
 from ...fluid.dygraph import Embedding  #DEFINE_ALIAS
-from ...fluid.dygraph import Linear  #DEFINE_ALIAS
 from ...fluid.dygraph import Flatten  #DEFINE_ALIAS
 from ...fluid.dygraph import layers
 from .. import functional as F
@@ -47,6 +46,89 @@ __all__ = [
     'Bilinear',
     'AlphaDropout',
 ]
+
+
+class Linear(layers.Layer):
+    """
+    
+    Fully-connected linear transformation layer:
+
+    .. math::
+
+        Out = {XW + b}
+
+    where :math:`X` is the input Tensor, :math:`W` and :math:`b` are weight and bias respectively.
+
+    Linear layer takes only one ``Tensor`` input.
+    The Linear layer multiplies input tensor with weight matrix and
+    produces an output Tensor of shape [N, *, `output_dim`],
+    where N is batch size and `*` means any number of additional dimensions.
+    If ``bias_attr`` is not None, a bias variable will be created and added to the output.
+
+    Parameters:
+        in_features(int): The number of input units in this layer.
+        out_features(int): The number of output units in this layer.
+        weight_attr(ParamAttr or list of ParamAttr, optional): The parameter attribute for learnable
+            weights(Parameter) of this layer. Default: None.
+        bias_attr(ParamAttr or list of ParamAttr, optional): The attribute for the bias
+            of this layer. If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
+        name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. Default: None.
+
+    Attributes:
+        **weight** (Parameter): the learnable weights of this layer.
+
+        **bias** (Parameter or None): the learnable bias of this layer.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          from paddle import nn
+          import numpy as np
+
+          data = np.ones((3,1,2), np.float32)
+          place = paddle.CPUPlace()
+          paddle.disable_static(place)
+          data = paddle.to_tensor(data)
+          weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+          trainable=False, regularizer=None, initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0))
+          bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+          trainable=False, regularizer=None, initializer=paddle.fluid.initializer.ConstantInitializer(value=1.0))
+          linear = nn.Linear(2,2,weight_attr=weight_attr, bias_attr=bias_attr)
+          res = linear(data)  # [3 3 3 3 3 3]
+    """
+
+    def __init__(self,
+                 in_features,
+                 out_features,
+                 weight_attr=None,
+                 bias_attr=None,
+                 name=None):
+        super(Linear, self).__init__()
+        self._dtype = self._helper.get_default_dtype()
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+        self.name = name
+        self.weight = self.create_parameter(
+            shape=[in_features, out_features],
+            attr=self._weight_attr,
+            dtype=self._dtype,
+            is_bias=False)
+        self.bias = self.create_parameter(
+            shape=[out_features],
+            attr=self._bias_attr,
+            dtype=self._dtype,
+            is_bias=True)
+        self.name = name
+
+    def forward(self, input):
+        out = F.linear(
+            x=input, weight=self.weight, bias=self.bias, name=self.name)
+        return out
 
 
 class UpSample(layers.Layer):

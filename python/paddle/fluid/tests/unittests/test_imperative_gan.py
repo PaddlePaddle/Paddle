@@ -179,9 +179,8 @@ class TestDygraphGAN(unittest.TestCase):
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
 
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
             discriminator2 = Discriminator()
             generator2 = Generator()
             sgd2 = SGDOptimizer(
@@ -201,7 +200,7 @@ class TestDygraphGAN(unittest.TestCase):
                     x=d_fake2, label=to_variable(np.zeros([2, 1], np.float32))))
 
             d_loss2 = d_loss_real2 + d_loss_fake2
-            d_loss2.backward(backward_strategy)
+            d_loss2.backward()
             sgd2.minimize(d_loss2)
             discriminator2.clear_gradients()
             generator2.clear_gradients()
@@ -211,7 +210,7 @@ class TestDygraphGAN(unittest.TestCase):
             g_loss2 = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
                     x=d_fake2, label=to_variable(np.ones([2, 1], np.float32))))
-            g_loss2.backward(backward_strategy)
+            g_loss2.backward()
             sgd2.minimize(g_loss2)
             for p in discriminator2.parameters():
                 dy_params2[p.name] = p.numpy()
