@@ -55,8 +55,10 @@ class CSyncCommStreamOp : public framework::OperatorBase {
 class CSyncCommStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(Tensor) Dependency of the variable need to sync");
-    AddOutput("Out", "(Tensor) Dependency of the variable need to sync");
+    AddInput("X", "(Tensor) Dependency of the variable need to sync")
+        .AsDuplicable();
+    AddOutput("Out", "(Tensor) Dependency of the variable need to sync")
+        .AsDuplicable();
     AddAttr<int>("ring_id", "(int default 0) ring id.").SetDefault(0);
     AddComment(R"DOC(
 CSyncCommStream Operator

@@ -22,6 +22,7 @@ from .lars_optimizer import LarsOptimizer
 from .async_graph_execution_optimizer import AsyncGraphExecutionOptimizer
 from .dgc_optimizer import DGCOptimizer
 from .lamb_optimizer import LambOptimizer
+from .zero_optimizer import ZeroOptimizer
 
 __all__ = [
     'AMPOptimizer',
@@ -35,4 +36,5 @@ __all__ = [
     'AsyncGraphExecutionOptimizer',
     'DGCOptimizer',
     'LambOptimizer',
+    'ZeroOptimizer',
 ]

@@ -116,6 +116,7 @@ message DistributedStrategy {
   optional bool cudnn_exhaustive_search = 21 [ default = true ];
   optional int32 conv_workspace_size_limit = 22 [ default = 4000 ];
   optional bool cudnn_batchnorm_spatial_persistent = 23 [ default = true ];
+  optional bool zero = 24 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
