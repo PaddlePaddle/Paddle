@@ -168,7 +168,10 @@ class AdamW(Adam):
             else:
                 assert self._coeff.dtype == param.dtype, \
                     "the type of coeff(%s) and parameter(%s) is not consistent."%(self._coeff.dtype, param.dtype)
-            learning_rate = self.get_lr()
+            if isinstance(self._learning_rate, float):
+                learning_rate = self._learning_rate
+            else:
+                self._learning_rate()
             with param.block.program._optimized_guard(
                 [param, grad]), framework.name_scope('weight decay'):
                 if param.name not in self._params_name:
