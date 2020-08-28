@@ -11,7 +11,6 @@ RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ub
 ARG WITH_GPU
 ARG WITH_AVX
 
-ENV WOBOQ OFF
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 
@@ -149,21 +148,11 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
 # version util jupyter fixes this issue.
 
-# specify sphinx version as 1.5.6 and remove -U option for [pip install -U
-# sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
-# version(1.7.1 for now), which causes building documentation failed.
+
 RUN pip3 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
-    pip3 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
-    pip3 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
     pip3.6 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
-    pip3.6 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
-    pip3.6 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
     pip3.7 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
-    pip3.7 --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
-    pip3.7 --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark && \
     pip --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
-    pip --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
-    pip --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
 
 RUN pip3 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
     pip3 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
@@ -184,9 +173,9 @@ RUN pip3.6 --no-cache-dir install pylint pytest astroid isort
 RUN pip3.7 --no-cache-dir install pylint pytest astroid isort
 RUN pip --no-cache-dir install pylint pytest astroid isort LinkChecker
 
-RUN pip3 --no-cache-dir install coverage                
-RUN pip3.6 --no-cache-dir install coverage             
-RUN pip3.7 --no-cache-dir install coverage            
+RUN pip3 --no-cache-dir install coverage
+RUN pip3.6 --no-cache-dir install coverage
+RUN pip3.7 --no-cache-dir install coverage
 RUN pip --no-cache-dir install coverage
 
 COPY ./python/requirements.txt /root/
@@ -204,12 +193,6 @@ RUN pip3.7 --no-cache-dir install certifi urllib3[secure]
 RUN pip --no-cache-dir install certifi urllib3[secure]
 
 
-# Install woboq_codebrowser to /woboq
-RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
-    (cd /woboq \
-     cmake -DLLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config-3.8 \
-           -DCMAKE_BUILD_TYPE=Release . \
-     make)
 
 # ar mishandles 4GB files
 # https://sourceware.org/bugzilla/show_bug.cgi?id=14625

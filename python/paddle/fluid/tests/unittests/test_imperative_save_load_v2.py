@@ -219,8 +219,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -239,10 +239,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.PiecewiseLR(
+                boundaries=bd, values=lr_arr)
             adam = Adam(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr_arr),
-                parameters=ptb_model.parameters())
+                learning_rate=scheduler, parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -268,7 +268,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
                 adam.minimize(dy_loss)
+                scheduler.step()
                 ptb_model.clear_gradients()
+
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
                         dy_param_updated[param.name] = param.numpy()
@@ -283,7 +285,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 else:
                     self.base_opti[k] = v
 
-            fluid.save_dygraph(self.opti_dict, "./test_dy")
+            fluid.save_dygraph(self.opti_dict, "./test_dy_v2")
 
             self.state_dict = ptb_model.state_dict()
 
@@ -292,7 +294,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 np_t = v.numpy()
                 self.model_base[k] = np_t
 
-            paddle.save(self.state_dict, "./test_dy")
+            paddle.save(self.state_dict, "./test_dy_v2")
 
     def testLoadAndSetVarBase(self):
         seed = 90
@@ -305,8 +307,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -325,10 +327,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.PiecewiseLR(
+                boundaries=bd, values=lr_arr)
             adam = Adam(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr_arr),
-                parameters=ptb_model.parameters())
+                learning_rate=scheduler, parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -354,6 +356,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
                 adam.minimize(dy_loss)
+                scheduler.step()
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
@@ -370,10 +373,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                     self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
 
-            if isinstance(adam._learning_rate, LearningRateDecay):
-                adam._learning_rate.step_num = 0
-
-            para_state_dict, opti_state_dict = paddle.load("./test_dy")
+            para_state_dict, opti_state_dict = paddle.load("./test_dy_v2")
             adam.set_state_dict(opti_state_dict)
 
             opti_dict = adam.state_dict()
@@ -414,8 +414,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -434,10 +434,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.PiecewiseLR(
+                boundaries=bd, values=lr_arr)
             adam = Adam(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr_arr),
-                parameters=ptb_model.parameters())
+                learning_rate=scheduler, parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -463,6 +463,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
                 adam.minimize(dy_loss)
+                scheduler.step()
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
@@ -521,8 +522,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -541,10 +542,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.PiecewiseLR(
+                boundaries=bd, values=lr_arr)
             adam = Adam(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr_arr),
-                parameters=ptb_model.parameters())
+                learning_rate=scheduler, parameters=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -570,6 +571,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
                 adam.minimize(dy_loss)
+                scheduler.step()
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
@@ -634,8 +636,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -713,8 +715,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -745,7 +747,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_hidden = None
             last_cell = None
 
-            state_dict, opti_dict = fluid.load_dygraph("./test_dy")
+            state_dict, opti_dict = fluid.load_dygraph("./test_dy_v2")
             adam.set_state_dict(opti_dict)
             ptb_model.set_dict(state_dict)
 
@@ -804,8 +806,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -825,9 +827,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
+            scheduler = paddle.optimizer.PiecewiseLR(
+                boundaries=bd, values=lr_arr)
             adam = Adam(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr_arr),
+                learning_rate=scheduler,
                 beta1=0.8,
                 beta2=0.6,
                 parameters=ptb_model.parameters())
@@ -867,14 +870,16 @@ class TestDygraphPtbRnn(unittest.TestCase):
                                                             init_cell)
 
                 dy_loss.backward()
+                scheduler.step()
                 adam.minimize(dy_loss)
                 ptb_model.clear_gradients()
 
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                if k == "global_step":
+                if k == "LR_Scheduler":
                     self.assertTrue(
-                        np.array_equal(v.numpy(), self.base_opti[v.name] + 1))
+                        np.array_equal(v['last_epoch'], self.base_opti[k][
+                            'last_epoch'] + 1))
 
                 if k.find("beta1_pow_acc_0") > 0:
                     self.assertTrue(
