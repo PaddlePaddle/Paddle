@@ -17,7 +17,6 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle
 import paddle.fluid as fluid
 
 
@@ -106,6 +105,7 @@ class TestExpandAsOpRank4(OpTest):
 # Test dygraph API
 class TestExpandAsDygraphAPI(unittest.TestCase):
     def test_api(self):
+        import paddle
         paddle.disable_static()
         np_data_x = np.array([1, 2, 3]).astype('int32')
         np_data_y = np.array([1, 2, 3, 1, 2, 3]).astype('int32')
@@ -114,6 +114,7 @@ class TestExpandAsDygraphAPI(unittest.TestCase):
         out = fluid.layers.expand_as(data_x, data_y)
         np_out = out.numpy()
         assert np.array_equal(np_out, np.tile(input1, (2)))
+        paddle.enable_static()
 
 
 # Test python API
