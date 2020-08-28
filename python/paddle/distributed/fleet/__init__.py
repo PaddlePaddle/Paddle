@@ -26,6 +26,7 @@ __all__ = [
     "DatasetFactory",
     "UserDefinedRoleMaker",
     "PaddleCloudRoleMaker",
+    "Fleet",
 ]
 
 fleet = Fleet()

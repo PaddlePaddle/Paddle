@@ -17,7 +17,7 @@ import numpy as np
 from multiprocessing import Process, Manager
 import paddle.fluid as fluid
 
-__all__ = ['UserDefinedRoleMaker', 'PaddleCloudRoleMaker']
+#__all__ = ['UserDefinedRoleMaker', 'PaddleCloudRoleMaker']
 
 
 class Role:

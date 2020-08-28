@@ -30,8 +30,11 @@ __all__ = ["spawn"]
 
 # dygraph parallel apis
 __all__ += [
-    "init_parallel_env", "get_rank", "get_world_size", "prepare_context",
-    "ParallelEnv"
+    "init_parallel_env",
+    "get_rank",
+    "get_world_size",
+    "prepare_context",
+    "ParallelEnv",
 ]
 
 # collective apis
