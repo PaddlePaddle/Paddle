@@ -101,4 +101,4 @@ def monkey_patch_layer():
             for param, state in matched_param_state:
                 _set_var(param, state)
 
-    setattr(fluid.dygraph.Layer, 'load_dict', load_dict)
+    setattr(fluid.dygraph.Layer, 'set_state_dict', load_dict)

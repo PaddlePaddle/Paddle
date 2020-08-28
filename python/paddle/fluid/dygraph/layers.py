@@ -98,6 +98,14 @@ class Layer(core.Layer):
 
         self._forward_pre_hooks = collections.OrderedDict()
         self._forward_post_hooks = collections.OrderedDict()
+        # NOTE(chenweihang): [ why not use `set_dict=set_state_dict` directly? ]
+        # hapi will change `set_state_dict` implement by setattr in runtime,
+        # if use `set_dict=set_state_dict` directly? the `set_dict` will still
+        # keep old implement and cause incompatible error
+        self.__aliases__ = {
+            'set_dict': 'set_state_dict',
+            'load_dict': 'set_state_dict',
+        }
 
     def train(self):
         """
@@ -774,7 +782,13 @@ class Layer(core.Layer):
         return parameter
 
     def __getattr__(self, name):
-        if name in self._parameters:
+        if name == "__aliases__":
+            raise AttributeError("Attribue `__aliases__` can not be accessed.")
+
+        if name in self.__aliases__:
+            name = self.__aliases__.get(name, name)
+            return object.__getattribute__(self, name)
+        elif name in self._parameters:
             return self._parameters[name]
         elif name in self._sub_layers:
             return self._sub_layers[name]
@@ -994,7 +1008,3 @@ class Layer(core.Layer):
             warnings.warn(
                 "Variables [ {} ] are not used, because not included in layers state_dict".
                 format(" ".join(unused_para_list)))
-
-    # [aliases] Compatible with old method names
-    set_dict = set_state_dict
-    load_dict = set_state_dict
