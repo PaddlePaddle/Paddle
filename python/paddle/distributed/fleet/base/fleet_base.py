@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import paddle
+from paddle.fluid.framework import dygraph_only
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
 from .strategy_compiler import StrategyCompiler
 from .distributed_strategy import DistributedStrategy
@@ -322,6 +323,77 @@ class Fleet(object):
         self.model = paddle.fluid.dygraph.parallel.DataParallel(
             model, self.dy_strategy)
         return self.model
+
+    @dygraph_only
+    def step(self):
+        """
+        Execute the optimizer once.
+        Only work in dygraph mode
+        
+        Returns: None
+
+        Examples:
+            .. code-block:: python
+
+            import paddle
+            import paddle.distributed.fleet as fleet
+
+            paddle.disable_static()
+            value = np.arange(26).reshape(2, 13).astype("float32")
+            a = fluid.dygraph.to_variable(value)
+            layer = paddle.nn.Linear(13, 5, dtype="float32")
+            adam = paddle.optimizer.Adam(
+                learning_rate=0.01, parameters=layer.parameters())
+
+            fleet.init(is_collective=True)
+            adam = fleet.distributed_optimizer(adam)
+            dp_layer = fleet.distributed_model(layer)
+            out = dp_layer(a)
+            loss = dp_layer.scale_loss(out)
+            loss.backward()
+            dp_layer.apply_collective_grads()
+
+            adam.step()
+            adam.clear_grad()
+        """
+        # imitate target optimizer retrieval
+        return self.user_defined_optimizer.step()
+
+    @dygraph_only
+    def clear_grad(self):
+        """
+        Execute the optimizer once.
+        Only work in dygraph mode
+        
+        Returns: None
+
+        Examples:
+            .. code-block:: python
+
+            import paddle
+            import paddle.distributed.fleet as fleet
+
+            paddle.disable_static()
+            value = np.arange(26).reshape(2, 13).astype("float32")
+            a = fluid.dygraph.to_variable(value)
+            layer = paddle.nn.Linear(13, 5, dtype="float32")
+            adam = paddle.optimizer.Adam(
+                learning_rate=0.01, parameters=layer.parameters())
+
+            fleet.init(is_collective=True)
+            adam = fleet.distributed_optimizer(adam)
+            dp_layer = fleet.distributed_model(layer)
+
+            out = dp_layer(a)
+            loss = dp_layer.scale_loss(out)
+            loss.backward()
+            dp_layer.apply_collective_grads()
+
+            adam.step()
+            adam.clear_grad()
+        """
+        # imitate target optimizer retrieval
+        return self.user_defined_optimizer.clear_grad()
 
     def minimize(self,
                  loss,
