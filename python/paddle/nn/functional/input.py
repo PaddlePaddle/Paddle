@@ -119,6 +119,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         with emb_size.
         **Note:** The id in :attr:`input` must satisfy :math:`0 =< id < size[0]` ,
         otherwise the program will throw an exception and exit.
+
         .. code-block:: text
 
             Case 1:
@@ -163,6 +164,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             Tensor: Embedding Tensor  mapped by input. The data type is the same as :attr:`weight`.
 
         Examples:
+
             .. code-block:: python
 
                 import paddle
