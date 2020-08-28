@@ -112,9 +112,9 @@ class Distribution(object):
                 arg = np.zeros(1) + arg
             arg_np = np.array(arg)
             arg_dtype = arg_np.dtype
-            if str(arg_dtype) not in ['float32']:
+            if str(arg_dtype) not in ['float32', 'float64']:
                 warnings.warn(
-                    "data type of argument only support float32, your argument will be convert to float32."
+                    "data type of argument only support float32 and float64, your argument will be convert to float32."
                 )
                 arg_np = arg_np.astype('float32')
             tmp = tmp + arg_np
@@ -259,9 +259,10 @@ class Uniform(Distribution):
         else:
             output_shape = shape + batch_shape
             output = nn.uniform_random(
-                output_shape, seed=seed) * (tensor.zeros(
+                output_shape, seed=seed,
+                dtype=convert_dtype(self.low.dtype)) * (tensor.zeros(
                     output_shape, dtype=self.low.dtype) +
-                                            (self.high - self.low))
+                                                        (self.high - self.low))
             output = elementwise_add(output, self.low, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)
@@ -468,7 +469,7 @@ class Normal(Distribution):
             return output
         else:
             output_shape = shape + batch_shape
-            output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed) * \
+            output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed, dtype=convert_dtype(self.loc.dtype)) * \
                      (tensor.zeros(output_shape, dtype=self.loc.dtype) + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             if self.all_arg_is_float:
