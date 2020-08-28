@@ -184,12 +184,6 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     }
     auto dst = dst_lodtensor->Slice(begin, end);
     TransData(src, &dst, *dev_ctxes_[src->place()]);
-    if (platform::is_gpu_place(src_lodtensors[0]->place())) {
-      framework::TensorCopy(*src, platform::CUDAPinnedPlace(), &dst);
-    } else {
-      framework::TensorCopy(*src, platform::CPUPlace(), &dst);
-    }
-
     begin = end;
   }
 }
