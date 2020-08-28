@@ -113,7 +113,7 @@ class TestExpandAsDygraphAPI(unittest.TestCase):
         data_y = paddle.to_tensor(np_data_y)
         out = fluid.layers.expand_as(data_x, data_y)
         np_out = out.numpy()
-        assert np.array_equal(np_out, np.tile(input1, (2)))
+        assert np.array_equal(np_out, np.tile(np_data_x, (2)))
         paddle.enable_static()
 
 
