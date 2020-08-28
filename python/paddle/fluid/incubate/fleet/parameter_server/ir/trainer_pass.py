@@ -472,7 +472,7 @@ def create_heter_program(program, config, heter_program, heter_ops,
         first_op_index = 0
 
         get_type_var_name = comm_info["input_var_reshape_name"][0].split(
-            "@HETER_PARAMETER_SERVER_BLOCK")[0]
+            ".input_reshape@Heter")[0]
         get_type_var = heter_program.global_block().vars[get_type_var_name]
 
         insert_recv_slice_op(
@@ -631,7 +631,7 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list,
     ]
 
     get_type_var_name = comm_info["output_var_reshape_name"][0].split(
-        "@HETER_PARAMETER_SERVER_BLOCK")[0]
+        ".output_reshape@Heter")[0]
     get_type_var = program.global_block().vars[get_type_var_name]
 
     program.global_block().create_var(
@@ -675,7 +675,7 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list,
     # create reshape op
     for i in range(len(comm_info["output_var_reshape_name"])):
         var_name = comm_info["output_var_reshape_name"][i].split(
-            "@HETER_PARAMETER_SERVER_BLOCK")[0]
+            ".output_reshape@Heter")[0]
         insert_reshape_op(
             program,
             program.global_block(),
@@ -746,16 +746,16 @@ def get_communicate_var_info(program, block_index, entrance_var_list,
                              exit_var_list):
     input_var_reshape_dim = []
     input_var_reshape_name = []
-    block_input_var_name = "HETER_PARAMETER_SERVER_BLOCK@{}_TO_{}@JOINT_VAR".format(
-        block_index - 1, block_index)
+    block_input_var_name = "joint_{}_{}@Heter".format(block_index - 1,
+                                                      block_index)
     output_var_reshape_dim = []
     output_var_reshape_name = []
-    block_output_var_name = "HETER_PARAMETER_SERVER_BLOCK@{}_TO_{}@JOINT_VAR".format(
-        block_index, block_index + 1)
+    block_output_var_name = "joint_{}_{}@Heter".format(block_index,
+                                                       block_index + 1)
     entrance_var_list.sort()
     exit_var_list.sort()
     # input
-    # HETER_PARAMETER_SERVER_BLOCK_index@JOINT_VAR -> slice -> var@HETER_PARAMETER_SERVER_BLOCK@INPUT_RESHAPE_VAR -> reshape -> var
+    # Heter_SERVER_BLOCK_index@JOINT_VAR -> slice -> var@Heter_SERVER_BLOCK@INPUT_RESHAPE_VAR -> reshape -> var
     for name in entrance_var_list:
         var = program.global_block().vars[name]
         shape = var.shape
@@ -765,11 +765,10 @@ def get_communicate_var_info(program, block_index, entrance_var_list,
                 format(name, shape))
         recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
         input_var_reshape_dim.append(recv_var_dim)
-        input_var_reshape_name.append(
-            "{}@HETER_PARAMETER_SERVER_BLOCK@INPUT_RESHAPE_VAR".format(name))
+        input_var_reshape_name.append("{}.input_reshape@Heter".format(name))
 
     # output
-    # var -> reshape -> var@HETER_PARAMETER_SERVER_BLOCK@INPUT_RESHAPE_VAR -> concat -> HETER_PARAMETER_SERVER_BLOCK_index@JOINT_VAR
+    # var -> reshape -> var@Heter_SERVER_BLOCK@INPUT_RESHAPE_VAR -> concat -> Heter_SERVER_BLOCK_index@JOINT_VAR
     for var_name in exit_var_list:
         var = program.global_block().vars[var_name]
         shape = var.shape
@@ -779,9 +778,8 @@ def get_communicate_var_info(program, block_index, entrance_var_list,
                 format(var_name, shape))
         send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape)
         output_var_reshape_dim.append(send_reshape_dim)
-        output_var_reshape_name.append(
-            "{}@HETER_PARAMETER_SERVER_BLOCK@OUTPUT_RESHAPE_VAR".format(
-                var_name))
+        output_var_reshape_name.append("{}.output_reshape@Heter".format(
+            var_name))
 
     info = {
         "input_var_reshape_dim": input_var_reshape_dim,
@@ -944,7 +942,7 @@ def insert_reshape_op(program,
         new_var_shape = out.shape
 
     x_shape = program.global_block().create_var(
-        name="{}@XShape".format(var_name), dtype=input_var.dtype)
+        name="{}.xshape@Heter".format(var_name), dtype=input_var.dtype)
     block._insert_op(
         index=index,
         type="reshape2",
