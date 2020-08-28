@@ -195,12 +195,13 @@ def summary(net, input_size, batch_size=-1, dtypes=None):
     Examples:
         .. code-block:: python
 
-            from paddle import fluid
+            import paddle
+
             from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential
             from paddle.incubate.hapi.utils import summary
 
 
-            class LeNetDygraph(fluid.dygraph.Layer):
+            class LeNetDygraph(paddle.nn.Layer):
                 def __init__(self, num_classes=10):
                     super(LeNetDygraph, self).__init__()
                     self.num_classes = num_classes
@@ -225,7 +226,7 @@ def summary(net, input_size, batch_size=-1, dtypes=None):
                     x = self.features(inputs)
 
                     if self.num_classes > 0:
-                        x = fluid.layers.flatten(x, 1)
+                        x = paddle.flatten(x, 1)
                         x = self.fc(x)
                     return x
 
