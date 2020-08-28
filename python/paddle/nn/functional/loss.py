@@ -784,30 +784,30 @@ def kl_div(input, label, reduction='mean', name=None):
             import numpy as np
             import paddle.nn.functional as F
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             shape = (5, 20)
             input = np.random.uniform(-10, 10, shape).astype('float32')
             target = np.random.uniform(-10, 10, shape).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [N]
-            pred_loss = F.kl_div(paddle.to_variable(input),
-                                 paddle.to_variable(target), reduction='batchmean')
+            pred_loss = F.kl_div(paddle.to_tensor(input),
+                                 paddle.to_tensor(target), reduction='batchmean')
             # shape=[5]
 
             # 'mean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_variable(input),
-                                 paddle.to_variable(target), reduction='mean')
+            pred_loss = F.kl_div(paddle.to_tensor(input),
+                                 paddle.to_tensor(target), reduction='mean')
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_variable(input),
-                                 paddle.to_variable(target), reduction='sum')
+            pred_loss = F.kl_div(paddle.to_tensor(input),
+                                 paddle.to_tensor(target), reduction='sum')
             # shape=[1]
 
             # 'none' reduction, loss shape is same with input shape
-            pred_loss = F.kl_div(paddle.to_variable(input),
-                                 paddle.to_variable(target), reduction='none')
+            pred_loss = F.kl_div(paddle.to_tensor(input),
+                                 paddle.to_tensor(target), reduction='none')
             # shape=[5, 20]
 
     """
