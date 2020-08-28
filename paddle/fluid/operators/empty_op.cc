@@ -21,20 +21,28 @@ namespace operators {
 class EmptyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    AddInput("ShapeTensor",
+             "(Tensor<int>), optional). The shape of the output."
+             "It has a higher priority than Attr(shape).")
+        .AsDispensable();
+    AddInput("ShapeTensorList",
+             "(vector<Tensor<int>>, optional). The shape of the output. "
+             "It has a higher priority than Attr(shape)."
+             "The shape of the element in vector must be [1].")
+        .AsDuplicable()
+        .AsDispensable();
+    AddAttr<std::vector<int64_t>>("shape",
+                                  "(vector<int64_t>) The shape of the output")
+        .SetDefault({});
+    AddAttr<int>("dtype", "The data type of output tensor, Default is float")
+        .SetDefault(framework::proto::VarType::FP32);
+    AddOutput("Out", "(Tensor) The output tensor.");
     AddComment(R"DOC(empty operator
 Returns a tensor filled with uninitialized data. The shape of the tensor is
 defined by the variable argument shape.
 
 The type of the tensor is specify by `dtype`.
 )DOC");
-    AddOutput("Out", "(LoDTensor) The output tensor.");
-    AddAttr<std::vector<int>>("shape", "The shape of output tensor");
-    AddAttr<int>("dtype", "The data type of output tensor, Default is float")
-        .SetDefault(framework::proto::VarType::FP32);
-    // AddAttr<bool>("force_cpu",
-    //               "Whether the output tensor must be at CPU memory or not. "
-    //               "Default is false.")
-    //     .SetDefault(false);
   }
 };
 
@@ -44,25 +52,61 @@ class EmptyOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* context) const override {
     OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "empty");
-    auto& shape = context->Attrs().Get<std::vector<int>>("shape");
+
+    auto& shape = context->Attrs().Get<std::vector<int64_t>>("shape");
+    if (!context->HasInput("ShapeTensor") &&
+        !context->HasInputs("ShapeTensorList")) {
+      for (size_t i = 0; i < shape.size(); ++i) {
+        PADDLE_ENFORCE_GE(
+            shape[i], 0,
+            platform::errors::InvalidArgument(
+                "Each value of attribute 'shape' is expected to be no less "
+                "than 0. But recieved: shape[%u] = %d; shape = [%s].",
+                i, shape[i], framework::make_ddim(shape)));
+      }
+    }
+
+    if (shape.empty() && context->HasInput("ShapeTensor")) {
+      auto shape_dims = context->GetInputDim("ShapeTensor");
+      int num_ele = 1;
+      for (int i = 0; i < shape_dims.size(); ++i) {
+        num_ele *= shape_dims[i];
+      }
+      auto vec_dims = std::vector<int>(num_ele, -1);
+      context->SetOutputDim("Out", framework::make_ddim(vec_dims));
+
+      return;
+    }
+
     context->SetOutputDim("Out", framework::make_ddim(shape));
   }
 
  protected:
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
+      return expected_kernel_type;
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
+  }
+
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext& context) const override {
     return framework::OpKernelType(
-        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
-        ctx.GetPlace());
+        framework::proto::VarType::Type(context.Attr<int>("dtype")),
+        context.GetPlace());
   }
 };
 
 class EmptyOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext* ctx) const override {
+  void operator()(framework::InferVarTypeContext* context) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
-    ctx->SetOutputDataType("Out", data_type);
+        BOOST_GET_CONST(int, context->GetAttr("dtype")));
+    context->SetOutputDataType("Out", data_type);
   }
 };
 
@@ -77,8 +121,9 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(empty, ops::EmptyKernel<plat::CPUDeviceContext, float>,
-                       ops::EmptyKernel<plat::CPUDeviceContext, double>,
-                       ops::EmptyKernel<plat::CPUDeviceContext, int64_t>,
+REGISTER_OP_CPU_KERNEL(empty, ops::EmptyKernel<plat::CPUDeviceContext, bool>,
                        ops::EmptyKernel<plat::CPUDeviceContext, int>,
+                       ops::EmptyKernel<plat::CPUDeviceContext, int64_t>,
+                       ops::EmptyKernel<plat::CPUDeviceContext, float>,
+                       ops::EmptyKernel<plat::CPUDeviceContext, double>,
                        ops::EmptyKernel<plat::CPUDeviceContext, plat::float16>);

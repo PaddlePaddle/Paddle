@@ -18,40 +18,32 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-# import paddle.fluid.layers as layers
-# import paddle.fluid.core as core
 from op_test import OpTest
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
+# Situation 1: Attr(shape) is a list(without tensor)
 class TestEmptyOp(OpTest):
     def setUp(self):
         self.op_type = "empty"
         self.init_config()
 
     def test_check_output(self):
-        # self.check_output()
         self.check_output_customized(self.verify_output)
 
     def verify_output(self, outs):
-        # print('----- outs -----: ', outs)
         total_value = np.sum(np.array(outs[0]))
         mean_value = np.mean(np.array(outs[0]))
-        # print('total_value: ', total_value)
-        # print('mean_value: ', mean_value)
         always_non_zero = total_value != 0.0 and mean_value != 0.0
-        self.assertTrue(always_non_zero, 'always non zeros.')
-        # always_zero = total_value == 0.0 and mean_value == 0.0
-        # self.assertTrue(always_zero or always_non_zero,
-        #                 'always_zero or always_non_zero.')
+        always_zero = total_value == 0.0 and mean_value == 0.0
+        self.assertTrue(always_zero or always_non_zero,
+                        'always_zero or always_non_zero.')
 
     def init_config(self):
         shape = [500, 3]
         dtype = 'float32'
-        # dtype = core.VarDesc.VarType.FP32
         dtype_inner = convert_np_dtype_to_dtype_(dtype)
-        # print('----- dtype_inner -----: ', dtype_inner)
         self.attrs = {'shape': shape, 'dtype': dtype_inner}
         self.inputs = {}
         self.outputs = {'Out': np.zeros(shape).astype(dtype)}
@@ -61,9 +53,7 @@ class TestEmptyOp2(TestEmptyOp):
     def init_config(self):
         shape = [500, 3]
         dtype = 'float64'
-        # dtype = core.VarDesc.VarType.FP64
         dtype_inner = convert_np_dtype_to_dtype_(dtype)
-        # print('----- dtype_inner -----: ', dtype_inner)
         self.attrs = {'shape': shape, 'dtype': dtype_inner}
         self.inputs = {}
         self.outputs = {'Out': np.zeros(shape).astype(dtype)}
@@ -73,9 +63,7 @@ class TestEmptyOp3(TestEmptyOp):
     def init_config(self):
         shape = [500, 3]
         dtype = 'int32'
-        # dtype = core.VarDesc.VarType.INT32
         dtype_inner = convert_np_dtype_to_dtype_(dtype)
-        # print('----- dtype_inner -----: ', dtype_inner)
         self.attrs = {'shape': shape, 'dtype': dtype_inner}
         self.inputs = {}
         self.outputs = {'Out': np.zeros(shape).astype(dtype)}
@@ -85,23 +73,87 @@ class TestEmptyOp4(TestEmptyOp):
     def init_config(self):
         shape = [500, 3]
         dtype = 'int64'
-        # dtype = core.VarDesc.VarType.INT64
         dtype_inner = convert_np_dtype_to_dtype_(dtype)
-        # print('----- dtype_inner -----: ', dtype_inner)
         self.attrs = {'shape': shape, 'dtype': dtype_inner}
         self.inputs = {}
         self.outputs = {'Out': np.zeros(shape).astype(dtype)}
 
 
+class TestEmptyOp5(TestEmptyOp):
+    def init_config(self):
+        shape = [500, 3]
+        dtype = 'bool'
+        dtype_inner = convert_np_dtype_to_dtype_(dtype)
+        self.attrs = {'shape': shape, 'dtype': dtype_inner}
+        self.inputs = {}
+        self.outputs = {'Out': np.zeros(shape).astype(dtype)}
+
+
+# Situation 2: shape is a tensor
+class TestEmptyOp_ShapeTensor(OpTest):
+    def setUp(self):
+        self.op_type = "empty"
+        self.init_config()
+
+    def init_config(self):
+        self.shape = [500, 3]
+        dtype = 'float32'
+        dtype_inner = convert_np_dtype_to_dtype_(dtype)
+        self.attrs = {'dtype': dtype_inner}
+        self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
+        self.outputs = {'Out': np.zeros(self.shape).astype(dtype)}
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        total_value = np.sum(np.array(outs[0]))
+        mean_value = np.mean(np.array(outs[0]))
+        always_non_zero = total_value != 0.0 and mean_value != 0.0
+        always_zero = total_value == 0.0 and mean_value == 0.0
+        self.assertTrue(always_zero or always_non_zero,
+                        'always_zero or always_non_zero.')
+
+
+# Situation 3: Attr(shape) is a list(with tensor)
+class TestEmptyOp_ShapeTensorList(OpTest):
+    def setUp(self):
+        self.op_type = "empty"
+        self.init_config()
+
+    def init_config(self):
+        self.shape = [123, 92]
+        self.infer_shape = [-1, 92]
+
+        dtype = 'float32'
+        dtype_inner = convert_np_dtype_to_dtype_(dtype)
+
+        shape_tensor_list = []
+        for index, ele in enumerate(self.shape):
+            shape_tensor_list.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.inputs = {"ShapeTensorList": shape_tensor_list}
+        self.attrs = {'shape': self.infer_shape, 'dtype': dtype_inner}
+        self.outputs = {'Out': np.zeros(self.shape).astype(dtype)}
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        total_value = np.sum(np.array(outs[0]))
+        mean_value = np.mean(np.array(outs[0]))
+        always_non_zero = total_value != 0.0 and mean_value != 0.0
+        always_zero = total_value == 0.0 and mean_value == 0.0
+        self.assertTrue(always_zero or always_non_zero,
+                        'always_zero or always_non_zero.')
+
+
 class TestEmptyAPI(unittest.TestCase):
     def __check_out__(self, out, dtype='float32'):
-        # print('-----out-----:', out)
         total_value = np.sum(np.array(out), dtype=dtype)
         mean_value = np.mean(np.array(out), dtype=dtype)
-        # print('total_value: ', total_value)
-        # print('mean_value: ', mean_value)
         always_non_zero = total_value != 0.0 and mean_value != 0.0
-        # self.assertTrue(always_non_zero, 'always non zeros.')
         always_zero = total_value == 0.0 and mean_value == 0.0
         self.assertTrue(always_zero or always_non_zero,
                         'always_zero or always_non_zero.')
@@ -109,6 +161,22 @@ class TestEmptyAPI(unittest.TestCase):
     def test_dygraph_api_out(self):
         paddle.disable_static()
         shape = [200, 3]
+        out = paddle.empty(shape=shape)
+        self.__check_out__(out)
+        paddle.enable_static()
+
+    def test_dygraph_api_out_2(self):
+        paddle.disable_static()
+        shape_data = np.array([200, 3]).astype('int32')
+        shape = paddle.to_tensor(shape_data)
+        out = paddle.empty(shape=shape)
+        self.__check_out__(out)
+        paddle.enable_static()
+
+    def test_dygraph_api_out_3(self):
+        paddle.disable_static()
+        shape_data = np.array([200, 3]).astype('int64')
+        shape = paddle.to_tensor(shape_data)
         out = paddle.empty(shape=shape)
         self.__check_out__(out)
         paddle.enable_static()
@@ -122,22 +190,44 @@ class TestEmptyAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_static_graph(self):
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
-            shape = [200, 3]
-            dtype = 'float64'
-            out = paddle.empty(shape=shape, dtype=dtype)
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            result = exe.run(feed={}, fetch_list=[out])
-        self.__check_out__(result[0][0], dtype)
+        dtype = 'float64'
+
+        positive_2_int32 = fluid.layers.fill_constant([1], "int32", 3)
+        positive_2_int64 = fluid.layers.fill_constant([1], "int64", 3)
+
+        shape_tensor_int32 = fluid.data(
+            name="shape_tensor_int32", shape=[2], dtype="int32")
+        shape_tensor_int64 = fluid.data(
+            name="shape_tensor_int64", shape=[2], dtype="int64")
+
+        out_1 = paddle.empty(shape=[200, 3], dtype=dtype)
+        out_2 = paddle.empty(shape=shape_tensor_int32, dtype=dtype)
+        out_3 = paddle.empty(shape=shape_tensor_int64, dtype=dtype)
+        out_4 = paddle.empty(shape=[200, positive_2_int32], dtype=dtype)
+        out_5 = paddle.empty(shape=[200, positive_2_int64], dtype=dtype)
+
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        res_1, res_2, res_3, res_4, res_5 = exe.run(
+            fluid.default_main_program(),
+            feed={
+                "shape_tensor_int32": np.array([200, 3]).astype("int32"),
+                "shape_tensor_int64": np.array([200, 3]).astype("int64"),
+            },
+            fetch_list=[out_1, out_2, out_3, out_4, out_5])
+
+        self.__check_out__(res_1[0][0], dtype)
+        self.__check_out__(res_2[0][0], dtype)
+        self.__check_out__(res_3[0][0], dtype)
+        self.__check_out__(res_4[0][0], dtype)
+        self.__check_out__(res_5[0][0], dtype)
 
 
 class TestEmptyError(unittest.TestCase):
     def test_attr(self):
         def test_dtype():
             shape = [200, 3]
-            dtype = 'bool'
+            dtype = 'uint8'
             result = paddle.empty(shape=shape, dtype=dtype)
 
         self.assertRaises(TypeError, test_dtype)

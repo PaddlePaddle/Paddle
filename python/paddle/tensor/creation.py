@@ -986,9 +986,6 @@ def diag(x, offset=0, padding_value=0, name=None):
 
 def empty(shape, dtype=None, name=None):
     """
-	:alias_main: paddle.empty
-	:alias: paddle.tensor.empty, paddle.tensor.creation.empty
-
     This Op return a Tensor with uninitialized which size is same as ``shape``.
     
     Args:
@@ -996,11 +993,11 @@ def empty(shape, dtype=None, name=None):
                 The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
                 the elements of it should be integers or Tensors with shape [1].
                 If ``shape`` is an Tensor, it should be an 1-D Tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output Tensor
-            which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
+        dtype(np.dtype|str, optional): Data type of the output Tensor
+            which can be bool, float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created Tensor is `float32`
-        name(str, optional): The default value is None.  Normally there is no need for user to set this
-            property.  For more information, please refer to :ref:`api_guide_Name`.
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
     
     Returns:
         Tensor: Tensor which is created according to ``shape`` and ``dtype``, and is uninitialized.
@@ -1008,34 +1005,28 @@ def empty(shape, dtype=None, name=None):
     Raises:
         TypeError: The ``dtype`` must be one of None, bool, float16, float32, float64, int32 and int64.
         TypeError: The ``shape`` must be one of Tensor, list and tuple. The data type of ``shape`` must
-            be int32 or int64 when the it's a Tensor
+            be int32 or int64 when the it's a Tensor.
     
     Examples:
         .. code-block:: python
 
           import paddle
 
+          # attr shape is a list which doesn't contain  Tensor.
           paddle.disable_static()  # Now we are in imperative mode
           data1 = paddle.empty(shape=[2,1], dtype='int64') 
           #[[0]
           # [0]]
 
-          # attr shape is a list which contains Tensor.
-          positive_2 = paddle.fill_constant([1], "int32", 2)
-          data3 = paddle.full(shape=[1, positive_2], dtype='float32')
-          # [[1.5 1.5]]
-
           # attr shape is a Tensor.
-          shape = paddle.fill_constant([2], "int32", 2)
-          data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) 
-          # [[True True] 
-          #  [True True]]
-          
-          # attr fill_value is a Tensor.
-          val = paddle.fill_constant([1], "float32", 2.0)
-          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32')
-          # [[2.0] 
-          #  [2.0]]
+          shape_data = np.array([2, 1]).astype('int32')
+          shape = paddle.to_tensor(shape_data)
+          data2 = paddle.empty(shape=shape, dtype='int64')
+
+          # attr shape is a list which contains Tensor.
+          shape_data = np.array([1]).astype('int32')
+          shape = paddle.to_tensor(shape_data)
+          data2 = paddle.empty(shape=[2, shape], dtype='int64')
     """
 
     if dtype is None:
@@ -1056,18 +1047,21 @@ def empty(shape, dtype=None, name=None):
     helper = LayerHelper("empty", **locals())
     inputs = {}
 
-    check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'],
+    check_dtype(dtype, 'dtype',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'empty')
     check_type(shape, 'shape', (Variable, list, tuple), 'empty')
 
     if isinstance(shape, Variable):
         check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'empty')
 
+    attrs = {}
+    utils._get_shape_tensor_inputs(
+        inputs=inputs, attrs=attrs, shape=shape, op_type='empty')
+
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
-    attrs = {}
     attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
-    attrs['shape'] = shape
 
     helper.append_op(
         type='empty',
