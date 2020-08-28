@@ -93,7 +93,7 @@ def get_cudnn_info():
         if cudnn_dll_path:
             cudnn_header_path = cudnn_dll_path.split('bin')[
                 0] + 'include\cudnn.h'
-            cmd = 'type "{}" | findstr "{}" | findstr /v "CUDNN_VERSION"'
+            cmd = 'type "{0}" | findstr "{1}" | findstr /v "CUDNN_VERSION"'
         else:
             envs['cudnn_version'] = None
             return
@@ -102,7 +102,7 @@ def get_cudnn_info():
             'whereis "cudnn.h" | awk \'{print $2}\'')
         if cudnn_header_path:
             cudnn_header_path = cudnn_header_path.strip()
-            cmd = 'cat "{}" | grep "{}" | grep -v "CUDNN_VERSION"'
+            cmd = 'cat "{0}" | grep "{1}" | grep -v "CUDNN_VERSION"'
         else:
             envs['cudnn_version'] = None
             return
