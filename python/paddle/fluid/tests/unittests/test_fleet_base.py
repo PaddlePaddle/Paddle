@@ -17,6 +17,7 @@ import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import os
+import paddle.fluid as fluid
 
 
 class TestFleetBase(unittest.TestCase):
@@ -119,24 +120,9 @@ class TestFleetBase(unittest.TestCase):
         optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         optimizer = fleet.distributed_optimizer(optimizer)
 
-    def test_minimize(self):
-        input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32')
-        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
-
-        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-        fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-        prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
-
-        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-        fleet.init(role)
-        strategy = fleet.DistributedStrategy()
-        optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-        optimizer.minimize(avg_cost)
+    def test_exception(self):
+        import paddle.distributed.fleet as fleet
+        self.assertRaises(Exception, fleet.init_worker)
 
 
 if __name__ == "__main__":

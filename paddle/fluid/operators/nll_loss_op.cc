@@ -55,8 +55,8 @@ class NLLLossOp : public framework::OperatorWithKernel {
                               "Input(Weight) should be a 1D tensor."));
         PADDLE_ENFORCE_EQ(x_dims[1], w_dims[0],
                           platform::errors::InvalidArgument(
-                              "Input(Weight) Tensor's size should match"
-                              "to the class numer."));
+                              "Input(Weight) Tensor's size should match "
+                              "to the the total number of classes."));
       }
     }
     if (x_dims.size() == 2) {

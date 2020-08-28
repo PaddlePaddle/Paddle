@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -158,5 +159,133 @@ void GPUGatherNd(const framework::ExecutionContext& context,
       end_size);
 }
 
+template <typename T, typename U>
+__global__ void GatherGPUKernel(const T* input, const U* index, T* out,
+                                int outer_dim_size, int inner_dim_size,
+                                int out_index_dim_size,
+                                int input_index_dim_size, int size) {
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  for (; idx < size; idx += blockDim.x * gridDim.x) {
+    int inner_dim_index = idx / (outer_dim_size * out_index_dim_size);
+    int next_idx = idx % (outer_dim_size * out_index_dim_size);
+    int index_dim_index = next_idx / (outer_dim_size);
+    int out_dim_index = next_idx % outer_dim_size;
+    int input_index =
+        inner_dim_index * (outer_dim_size * input_index_dim_size) +
+        index[index_dim_index] * outer_dim_size + out_dim_index;
+    out[idx] = input[input_index];
+  }
+}
+
+template <typename T, typename U>
+__global__ void GatherGradGPUKernel(const T* input, const U* index, T* out,
+                                    int outer_dim_size, int inner_dim_size,
+                                    int input_index_dim_size,
+                                    int out_index_dim_size, int size) {
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  for (; idx < size; idx += blockDim.x * gridDim.x) {
+    int inner_dim_index = idx / (outer_dim_size * input_index_dim_size);
+    int next_idx = idx % (outer_dim_size * input_index_dim_size);
+    int index_dim_index = next_idx / (outer_dim_size);
+    int out_dim_index = next_idx % outer_dim_size;
+    int out_index = inner_dim_index * (outer_dim_size * out_index_dim_size) +
+                    index[index_dim_index] * outer_dim_size + out_dim_index;
+    paddle::platform::CudaAtomicAdd(out + out_index, *(input + idx));
+  }
+}
+
+template <typename T, typename U, typename V>
+void GatherV2CUDAFunction(const Tensor* input, const Tensor* index,
+                          const Tensor* axis, Tensor* out,
+                          const paddle::platform::Place& place,
+                          const framework::ExecutionContext& ctx) {
+  int axis_size = axis->numel();
+  int index_size = index->numel();
+  int input_size = input->numel();
+  auto input_dim = input->dims();
+  auto* input_data = input->data<T>();
+  auto* index_data = index->data<U>();
+
+  if (input->numel() == 0) return;
+  PADDLE_ENFORCE_EQ(axis_size, 1,
+                    platform::errors::InvalidArgument(
+                        "Axis size should be 1, but received %d", axis_size));
+  Tensor cpu_axis;
+  framework::TensorCopy(*axis, platform::CPUPlace(), &cpu_axis);
+  int axis_index = cpu_axis.data<V>()[0];
+  int index_dim_size = input_dim[axis_index];
+
+  int inner_dim_size = 1;
+  int outer_dim_size = 1;
+  std::vector<int> out_dim_vec;
+
+  for (int i = 0; i < axis_index; i++) {
+    inner_dim_size *= input_dim[i];
+    out_dim_vec.push_back(input_dim[i]);
+  }
+  out_dim_vec.push_back(index_size);
+  for (int i = axis_index + 1; i < input_dim.size(); i++) {
+    outer_dim_size *= input_dim[i];
+    out_dim_vec.push_back(input_dim[i]);
+  }
+  auto out_dim = framework::make_ddim(out_dim_vec);
+
+  out->Resize(out_dim);
+  auto* out_data = out->mutable_data<T>(place);
+  int out_size = out->numel();
+
+  int threads = 512;
+  int grid = (out_size + threads - 1) / threads;
+  auto stream = ctx.cuda_device_context().stream();
+  GatherGPUKernel<T, U><<<grid, threads, 0, stream>>>(
+      input_data, index_data, out_data, outer_dim_size, inner_dim_size,
+      index_size, index_dim_size, out_size);
+}
+
+template <typename T, typename U, typename V>
+void GatherV2GradCUDAFunction(const Tensor* input, const Tensor* index,
+                              const Tensor* axis, Tensor* out,
+                              const paddle::platform::Place& place,
+                              const framework::ExecutionContext& ctx) {
+  auto* index_data = index->data<U>();
+
+  int axis_size = axis->numel();
+  int index_size = index->numel();
+  int input_size = input->numel();
+  auto input_dim = input->dims();
+  auto* input_data = input->data<T>();
+
+  if (input->numel() == 0) return;
+  PADDLE_ENFORCE_EQ(axis_size, 1,
+                    platform::errors::InvalidArgument(
+                        "Axis size should be 1, but received %d", axis_size));
+  Tensor cpu_axis;
+  framework::TensorCopy(*axis, platform::CPUPlace(), &cpu_axis);
+  int axis_index = cpu_axis.data<V>()[0];
+  int input_index_dim_size = input_dim[axis_index];
+
+  int inner_dim_size = 1;
+  int outer_dim_size = 1;
+
+  for (int i = 0; i < axis_index; i++) {
+    inner_dim_size *= input_dim[i];
+  }
+  for (int i = axis_index + 1; i < input_dim.size(); i++) {
+    outer_dim_size *= input_dim[i];
+  }
+
+  auto* out_data = out->mutable_data<T>(place);
+  auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto out_dim = out->dims();
+  int out_index_dim_size = out_dim[axis_index];
+  operators::math::set_constant(*dev_ctx, out, 0.0);
+
+  int threads = 512;
+  int grid = (input_size + threads - 1) / threads;
+  auto stream = ctx.cuda_device_context().stream();
+  GatherGradGPUKernel<T, U><<<grid, threads, 0, stream>>>(
+      input_data, index_data, out_data, outer_dim_size, inner_dim_size,
+      input_index_dim_size, out_index_dim_size, input_size);
+}
 }  // namespace operators
 }  // namespace paddle

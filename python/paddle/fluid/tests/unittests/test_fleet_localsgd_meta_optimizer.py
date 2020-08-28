@@ -46,7 +46,7 @@ class TestFleetLocalSGDMetaOptimizer(unittest.TestCase):
         config['k_steps'] = 1
         strategy.localsgd_configs = config
 
-        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

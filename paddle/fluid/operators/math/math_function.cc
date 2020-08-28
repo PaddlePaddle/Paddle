@@ -74,6 +74,13 @@ struct TensorSetConstantCPU {
 };
 
 template <>
+void set_constant_with_place<platform::XPUPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
+}
+
+template <>
 void set_constant_with_place<platform::CPUPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {

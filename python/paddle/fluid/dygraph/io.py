@@ -378,7 +378,7 @@ def _load_persistable_vars_by_program(model_path,
             new_var = framework._varbase_creator(
                 type=each_var.type(),
                 name=each_var.name(),
-                shpae=each_var.shape(),
+                shape=each_var.shape(),
                 dtype=each_var.dtype(),
                 persistable=True)
         if params_filename is None:
@@ -437,8 +437,16 @@ def _load_persistable_vars(model_path,
         value: key
         for key, value in program_holder._suffix_varname_dict.items()
     }
-    # NOTE: some var may not be Parameter
-    for name in sorted(extra_var_info):
+
+    # NOTE(chenweihang): we need load persistable vars based the program,
+    # because the program may be pruned when `save_inference_model`, some
+    # var in `extra_var_info` may have been pruned 
+    for name in sorted(inv_suffix_varname_dict):
+        if name not in extra_var_info:
+            raise RuntimeError(
+                "The model to be loaded is not complete."
+                "The variable `%s` of program cannot be found in loaded model.",
+                name)
         # get suffix var name, see [why need to append suffix to persistable vars]
         new_name = inv_suffix_varname_dict[name]
         # create output varbase
@@ -628,7 +636,7 @@ class TranslatedLayer(layers.Layer):
             )
         if not isinstance(persistable_vars, dict):
             raise TypeError(
-                "TranslatedLayer need to use persisatbale variable dict for initialization."
+                "TranslatedLayer need to use persistable variable dict for initialization."
             )
 
         self._program_holder_dict = programs
@@ -641,19 +649,21 @@ class TranslatedLayer(layers.Layer):
         # name contains `.` originally, such as `linear_0.w_0`, so here
         # need to generate new var name for each var
         self._persistable_var_name_dict = dict()
-        for name, var in persistable_vars.items():
-            if isinstance(var, framework.ParamBase):
-                dy_name = _generate_unique_var_name(PARAMETER_NAME_PREFIX)
-                self._persistable_var_name_dict[name] = dy_name
-                self.add_parameter(dy_name, var)
-            elif isinstance(var, core.VarBase):
-                dy_name = _generate_unique_var_name(BUFFER_NAME_PREFIX)
-                self._persistable_var_name_dict[name] = dy_name
-                self.register_buffer(dy_name, var)
-            else:
-                raise TypeError(
-                    "Adding persistent variable which  to layer is not supported now"
-                )
+        # the TranslatedLayer object holded var names count started from 0
+        with unique_name.guard():
+            for name, var in persistable_vars.items():
+                if isinstance(var, framework.ParamBase):
+                    dy_name = _generate_unique_var_name(PARAMETER_NAME_PREFIX)
+                    self._persistable_var_name_dict[name] = dy_name
+                    self.add_parameter(dy_name, var)
+                elif isinstance(var, core.VarBase):
+                    dy_name = _generate_unique_var_name(BUFFER_NAME_PREFIX)
+                    self._persistable_var_name_dict[name] = dy_name
+                    self.register_buffer(dy_name, var)
+                else:
+                    raise TypeError(
+                        "Adding persistent variable which  to layer is not supported now"
+                    )
 
         self._is_test = True
 
@@ -675,7 +685,7 @@ class TranslatedLayer(layers.Layer):
         # 1. load program desc & construct _ProgramHolder
         programs = _construct_program_holders(model_path, model_filename)
 
-        # 2. load layer parameters & parameter attirbutes
+        # 2. load layer parameters & parameter attributes
         persistable_vars = _construct_params_and_buffers(
             model_path, programs, separate_params, params_filename)
 
@@ -743,7 +753,7 @@ class TranslatedLayer(layers.Layer):
                                          core.VarDesc.VarType.STEP_SCOPES, True)
             tmp_scope_vec.value().set_scope(program_holder.scope)
 
-            # 2. run prorgam by op
+            # 2. run program by op
             trace_program = program_holder.infer_program if self._is_test else program_holder.train_program
             end_op_index = program_holder.infer_program.block(0).op_size()
             framework._dygraph_tracer().trace_op(
@@ -764,7 +774,7 @@ class TranslatedLayer(layers.Layer):
             # will be SelectedRows, not LoDTensor. But tracer will just
             # set param grad VarBase by forward VarBase(LoDTensor)
             # If we don't change grad_var type here, RunProgramOp need
-            # transform SelectedRows to LoDTensor forcely, it may not
+            # transform SelectedRows to LoDTensor forcibly, it may not
             # be user wanted result.
             for persistable_var in persistable_vars:
                 grad_var_name = var.name + core.grad_var_suffix()

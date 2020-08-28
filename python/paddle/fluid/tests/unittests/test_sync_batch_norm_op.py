@@ -22,6 +22,7 @@ import unittest
 import numpy as np
 import os
 import six
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler
@@ -209,7 +210,7 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
             return
 
         with program_guard(Program(), Program()):
-            my_sync_batch_norm = fluid.dygraph.SyncBatchNorm(10)
+            my_sync_batch_norm = paddle.nn.SyncBatchNorm(10)
             x1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CUDAPlace(0))
             self.assertRaises(TypeError, my_sync_batch_norm, x1)

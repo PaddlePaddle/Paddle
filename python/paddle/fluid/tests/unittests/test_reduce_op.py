@@ -67,22 +67,6 @@ class TestSumOp6D(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestMeanOp(OpTest):
-    def setUp(self):
-        self.op_type = "reduce_mean"
-        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float64")}
-        self.attrs = {'dim': [1]}
-        self.outputs = {
-            'Out': self.inputs['X'].mean(axis=tuple(self.attrs['dim']))
-        }
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
@@ -318,21 +302,6 @@ class TestReduceAll(Test1DReduce):
         self.outputs = {'Out': self.inputs['X'].sum()}
 
 
-## reduction in multi dims
-class TestReduceMeanOpMultiAxises(OpTest):
-    def setUp(self):
-        self.op_type = "reduce_mean"
-        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float64")}
-        self.attrs = {'dim': [1, 2]}
-        self.outputs = {'Out': self.inputs['X'].mean(axis=(1, 2))}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework.")
@@ -411,40 +380,6 @@ class TestReduceSumWithNumelOne(OpTest):
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']),
                                         keepdims=False)
-        }
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-
-class TestReduceMeanWithDimOne(OpTest):
-    def setUp(self):
-        self.op_type = "reduce_mean"
-        self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
-        self.attrs = {'dim': [1], 'keep_dim': False}
-        self.outputs = {
-            'Out': self.inputs['X'].mean(
-                axis=tuple(self.attrs['dim']), keepdims=False)
-        }
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-
-class TestReduceMeanWithNumelOne(OpTest):
-    def setUp(self):
-        self.op_type = "reduce_mean"
-        self.inputs = {'X': np.random.random((100, 1)).astype("float64")}
-        self.attrs = {'dim': [1], 'keep_dim': True}
-        self.outputs = {
-            'Out': self.inputs['X'].mean(
-                axis=tuple(self.attrs['dim']), keepdims=True)
         }
 
     def test_check_output(self):
@@ -536,18 +471,6 @@ class TestReduceSumOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.reduce_sum, x2)
 
 
-class TestReduceMeanOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The input type of reduce_mean_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.reduce_mean, x1)
-            # The input dtype of reduce_mean_op  must be float32 or float64 or int32 or int64.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
-            self.assertRaises(TypeError, fluid.layers.reduce_mean, x2)
-
-
 class API_TestSumOpError(unittest.TestCase):
     def test_errors(self):
         def test_dtype1():
@@ -580,10 +503,10 @@ class API_TestSumOpError(unittest.TestCase):
 
 
 class API_TestSumOp(unittest.TestCase):
-    def test_1(self):
+    def test_static(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.data("data", shape=[10, 10], dtype="float32")
-            result_sum = paddle.sum(input=data, dim=1, dtype="float64")
+            result_sum = paddle.sum(x=data, axis=1, dtype="float64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input_data = np.random.rand(10, 10).astype(np.float32)
@@ -593,7 +516,7 @@ class API_TestSumOp(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.data("data", shape=[10, 10], dtype="int32")
-            result_sum = paddle.sum(input=data, dim=1, dtype="int64")
+            result_sum = paddle.sum(x=data, axis=1, dtype="int64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int32)
@@ -603,7 +526,7 @@ class API_TestSumOp(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.data("data", shape=[10, 10], dtype="int32")
-            result_sum = paddle.sum(input=data, dim=1)
+            result_sum = paddle.sum(x=data, axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int32)
@@ -612,39 +535,41 @@ class API_TestSumOp(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.data("data", shape=[10, 10], dtype="int32")
-            result_sum = paddle.sum(input=data, dim=1)
+            result_sum = paddle.sum(x=data, axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int32)
             res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
         self.assertEqual((res == np.sum(input_data, axis=1)).all(), True)
 
-        with fluid.dygraph.guard():
-            np_x = np.array([10, 10]).astype('float64')
-            x = fluid.dygraph.to_variable(np_x)
-            z = paddle.sum(x, dim=0)
-            np_z = z.numpy()
-            z_expected = np.array(np.sum(np_x, axis=0))
-        self.assertEqual((np_z == z_expected).all(), True)
-
-
-class API_TestReduceMeanOp(unittest.TestCase):
-    def test_static(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            x = fluid.data("x", shape=[10, 10], dtype="float32")
-            out = fluid.layers.reduce_mean(input=x, dim=1)
+            input_data = np.random.randint(10, size=(5, 5, 5)).astype(np.int32)
+            data = fluid.data("data", shape=[5, 5, 5], dtype="int32")
+            sum1 = paddle.sum(x=data, axis=[0, 1])
+            sum2 = paddle.sum(x=data, axis=())
+
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
-            x_np = np.random.rand(10, 10).astype(np.float32)
-            res = exe.run(feed={"x": x_np}, fetch_list=[out])
-        self.assertEqual(np.allclose(res[0], np.mean(x_np, axis=1)), True)
+            res1, res2 = exe.run(feed={"data": input_data},
+                                 fetch_list=[sum1, sum2])
+
+        self.assertEqual((res1 == np.sum(input_data, axis=(0, 1))).all(), True)
+        self.assertEqual(
+            (res2 == np.sum(input_data, axis=(0, 1, 2))).all(), True)
 
     def test_dygraph(self):
+        np_x = np.random.random([2, 3, 4]).astype('int32')
         with fluid.dygraph.guard():
-            x_np = np.random.rand(10, 10).astype(np.float32)
-            x = fluid.dygraph.to_variable(x_np)
-            out = fluid.layers.reduce_mean(input=x, dim=1)
-        self.assertEqual(np.allclose(out.numpy(), np.mean(x_np, axis=1)), True)
+            x = fluid.dygraph.to_variable(np_x)
+            out0 = paddle.sum(x).numpy()
+            out1 = paddle.sum(x, axis=0).numpy()
+            out2 = paddle.sum(x, axis=(0, 1)).numpy()
+            out3 = paddle.sum(x, axis=(0, 1, 2)).numpy()
+
+        self.assertTrue((out0 == np.sum(np_x, axis=(0, 1, 2))).all())
+        self.assertTrue((out1 == np.sum(np_x, axis=0)).all())
+        self.assertTrue((out2 == np.sum(np_x, axis=(0, 1))).all())
+        self.assertTrue((out3 == np.sum(np_x, axis=(0, 1, 2))).all())
 
 
 if __name__ == '__main__':

@@ -274,7 +274,6 @@ def generate_activation_fn(op_type):
         return output
 
     func.__name__ = op_type
-    func.__module__ = "paddle.fluid.layers"
     func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=[

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <math.h>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
@@ -24,7 +25,36 @@ namespace operators {
 
 template <typename T>
 struct FloorDivFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a / b; }
+  inline HOSTDEVICE T operator()(T a, T b) const {
+#ifdef __CUDA_ARCH__
+    if (b == 0) {
+      printf("Error: Divide by zero encounter in floor_divide\n");
+      asm("trap;");
+    }
+#else
+    if (b == 0)
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Divide by zero encounter in floor_divide"));
+#endif
+    return static_cast<T>(std::trunc(a / b));
+  }
+};
+
+template <typename T>
+struct InverseFloorDivFunctor {
+  inline HOSTDEVICE T operator()(T a, T b) const {
+#ifdef __CUDA_ARCH__
+    if (a == 0) {
+      printf("Error: Divide by zero encounter in floor_divide\n");
+      asm("trap;");
+    }
+#else
+    if (a == 0)
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Divide by zero encounter in floor_divide"));
+#endif
+    return static_cast<T>(std::trunc(b / a));
+  }
 };
 
 template <typename DeviceContext, typename T>
@@ -32,8 +62,15 @@ void elementwise_floor_div(const framework::ExecutionContext &ctx,
                            const framework::Tensor *x,
                            const framework::Tensor *y, framework::Tensor *z) {
   int axis = ctx.Attr<int>("axis");
-  ElementwiseComputeEx<FloorDivFunctor<T>, DeviceContext, T>(
-      ctx, x, y, axis, FloorDivFunctor<T>(), z);
+  auto x_dims = x->dims();
+  auto y_dims = y->dims();
+  if (x_dims.size() >= y_dims.size()) {
+    ElementwiseComputeEx<FloorDivFunctor<T>, DeviceContext, T>(
+        ctx, x, y, axis, FloorDivFunctor<T>(), z);
+  } else {
+    ElementwiseComputeEx<InverseFloorDivFunctor<T>, DeviceContext, T>(
+        ctx, x, y, axis, InverseFloorDivFunctor<T>(), z);
+  }
 }
 
 template <typename DeviceContext, typename T>

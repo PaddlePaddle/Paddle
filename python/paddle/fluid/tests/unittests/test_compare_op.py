@@ -93,8 +93,9 @@ def create_paddle_case(op_type, callback):
 
         def test_broadcast_api_1(self):
             with program_guard(Program(), Program()):
-                x = paddle.nn.data(name='x', shape=[1, 2, 1, 3], dtype='int32')
-                y = paddle.nn.data(name='y', shape=[1, 2, 3], dtype='int32')
+                x = paddle.static.data(
+                    name='x', shape=[1, 2, 1, 3], dtype='int32')
+                y = paddle.static.data(name='y', shape=[1, 2, 3], dtype='int32')
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
                 exe = paddle.static.Executor(self.place)

@@ -13,11 +13,14 @@
 # limitations under the License.
 
 import os
-import logging
 import warnings
 
 import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid.framework import Program
+from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.executor import Executor
+from paddle.fluid.parallel_executor import ParallelExecutor
 
 from .runtime_base import RuntimeBase
 
@@ -241,3 +244,312 @@ class ParameterServerRuntime(RuntimeBase):
         self._communicator.stop()
         executor = fluid.Executor(fluid.CPUPlace())
         executor.close()
+
+    def _get_optimizer_status(self, op, param_name):
+        supported_opts = [
+            "sgd", "adam", "adagrad", "adamax", "momentum", "lars_momentum",
+            "rmsprop", "decayed_adagrad", "ftrl"
+        ]
+
+        reshaped_val_map = {}
+        reshaped_val_map["sgd"] = []
+        reshaped_val_map["adam"] = ["moment1_0", "moment2_0"]
+        reshaped_val_map["adagrad"] = ["moment_0"]
+        reshaped_val_map["adamax"] = ["moment_0", "inf_norm_0"]
+        reshaped_val_map["momentum"] = ["velocity_0"]
+        reshaped_val_map["lars_momentum"] = ["velocity_0"]
+        reshaped_val_map[
+            "rmsprop"] = ["momentum_0", "mean_square_0", "mean_grad_0"]
+        reshaped_val_map["decayed_adagrad"] = ["moment_0"]
+        reshaped_val_map["ftrl"] = ["squared_0", "linear_0"]
+
+        orishaped_val_map = {}
+        orishaped_val_map["adam"] = ["beta1_pow_acc_0", "beta2_pow_acc_0"]
+        orishaped_val_map["adamax"] = ["beta1_pow_acc_0"]
+
+        if op not in supported_opts:
+            raise ValueError(
+                "fleet can not support optimizer: {}, only this can be supported: {}".
+                format(op, supported_opts))
+
+        reshaped_names = [
+            param_name + "_" + val for val in reshaped_val_map[op]
+        ]
+
+        if op not in orishaped_val_map:
+            origin_names = []
+        else:
+            origin_names = [
+                param_name + "_" + val for val in orishaped_val_map[op]
+            ]
+        return reshaped_names, origin_names
+
+    def _get_optimizer_op(self, param_name):
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
+
+        opts = _get_optimize_ops(self.origin_main_program)
+        for op in opts:
+            if "Param" in op.input_names and \
+                            "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
+                return op
+
+    def _save_dense_params(self, executor, dirname, context, main_program):
+        self._communicator.recv()
+
+        prog = Program()
+        block = prog.global_block()
+        local_vars = []
+
+        for name, var_ctx in context.items():
+            if len(var_ctx.origin_varnames()) != 1:
+                raise ValueError("Dense can not support split now.")
+
+            varname = var_ctx.origin_varnames()[0]
+            local_vars.append(varname)
+
+            optimizer = self._get_optimizer_op(varname)
+            reshaped_varnames, origin_varnames = self._get_optimizer_status(
+                optimizer.type, varname)
+
+            for var_name in [varname] + reshaped_varnames + origin_varnames:
+                var = self.origin_main_program.global_block().vars[var_name]
+                block.append_op(
+                    type='recv_save',
+                    attrs={
+                        "trainer_id": self.role_maker.worker_index(),
+                        "shape": var.shape,
+                        "slice_shapes":
+                        [",".join([str(i) for i in var.shape])],
+                        "slice_varnames": [var.name],
+                        "remote_varnames": [var.name],
+                        "is_sparse": False,
+                        "endpoints": var_ctx.split_endpoints(),
+                        "file_path": os.path.join(dirname, var.name)
+                    })
+
+        executor.run(prog)
+        return local_vars
+
+    def _save_sparse_params(self, executor, dirname, context, main_program):
+        prog = Program()
+        block = prog.global_block()
+        local_vars = []
+
+        for name, var_ctx in context.items():
+            if len(var_ctx.origin_varnames()) != 1:
+                raise ValueError("Dense can not support split now.")
+
+            varname = var_ctx.origin_varnames()[0]
+            local_vars.append(varname)
+
+            optimizer = self._get_optimizer_op(varname)
+            reshaped_varnames, origin_varnames = self._get_optimizer_status(
+                optimizer.type, varname)
+
+            var = self.origin_main_program.global_block().vars[varname]
+            slice_shapes = []
+            dims1 = ",".join([str(i) for i in var.shape[1:]])
+
+            for section in var_ctx.sections():
+                slice_shapes.append(str(section) + dims1)
+
+            block.append_op(
+                type='recv_save',
+                attrs={
+                    "trainer_id": self.role_maker.worker_index(),
+                    "shape": var.shape,
+                    "slice_shapes": slice_shapes,
+                    "slice_varnames": var_ctx.split_varnames(),
+                    "remote_varnames": var_ctx.split_varnames(),
+                    "is_sparse": True,
+                    "endpoints": var_ctx.split_endpoints(),
+                    "pserver_num": len(self.role_maker.get_pserver_endpoints()),
+                    "file_path": os.path.join(dirname, var.name)
+                })
+
+            for reshaped_varname in reshaped_varnames:
+                var = self.origin_main_program.global_block().vars[
+                    reshaped_varname]
+
+                slice_varnames = []
+                remote_varnames = []
+                for i in range(len(var_ctx.split_varnames())):
+                    slice_varnames.append("{}.block{}".format(reshaped_varname,
+                                                              i))
+                    remote_varnames.append(reshaped_varname)
+
+                block.append_op(
+                    type='recv_save',
+                    attrs={
+                        "trainer_id": self.role_maker.worker_index(),
+                        "shape": var.shape,
+                        "slice_shapes": slice_shapes,
+                        "slice_varnames": slice_varnames,
+                        "remote_varnames": remote_varnames,
+                        "is_sparse": True,
+                        "endpoints": var_ctx.split_endpoints(),
+                        "pserver_num":
+                        len(self.role_maker.get_pserver_endpoints()),
+                        "file_path": os.path.join(dirname, var.name)
+                    })
+
+            for origin_varname in origin_varnames:
+                var = self.origin_main_program.global_block().vars[
+                    origin_varname]
+
+                block.append_op(
+                    type='recv_save',
+                    attrs={
+                        "trainer_id": self.role_maker.worker_index(),
+                        "shape": var.shape,
+                        "slice_shapes":
+                        [",".join([str(i) for i in var.shape])],
+                        "slice_varnames": [origin_varname],
+                        "remote_varnames": [origin_varname],
+                        "is_sparse": False,
+                        "endpoints": var_ctx.split_endpoints()[:1],
+                        "file_path": os.path.join(dirname, var.name)
+                    })
+        executor.run(prog)
+        return context.keys()
+
+    def _save_distributed_params(self, executor, dirname, context,
+                                 main_program):
+        prog = Program()
+        block = prog.global_block()
+
+        for name, var_ctx in context.items():
+            block.append_op(
+                type='checkpoint_notify',
+                attrs={
+                    "varname": name,
+                    "is_slice": True,
+                    "slice_varnames": var_ctx.split_varnames(),
+                    "remote_varnames": var_ctx.split_varnames(),
+                    "endpoints": var_ctx.split_endpoints(),
+                    "dirname": dirname
+                })
+
+        executor.run(prog)
+        return context.keys()
+
+    def _save_distributed_persistables(self, executor, dirname, main_program):
+        dense_ctx = self.compiled_strategy.get_communicator_recv_context(
+            recv_type=1)
+
+        sparse_ctx = self.compiled_strategy.get_communicator_recv_context(
+            recv_type=2)
+
+        distributed_ctx = self.compiled_strategy.get_communicator_recv_context(
+            recv_type=3)
+
+        recv_dense_varnames = self._save_dense_params(executor, dirname,
+                                                      dense_ctx, main_program)
+
+        recv_sparse_varnames = self._save_sparse_params(
+            executor, dirname, sparse_ctx, main_program)
+
+        recv_distributed_varnames = self._save_distributed_params(
+            executor, dirname, distributed_ctx, main_program)
+
+        saved_varnames = recv_dense_varnames + list(
+            recv_sparse_varnames) + list(recv_distributed_varnames)
+
+        remaining_vars = list(
+            filter(
+                ParameterServerRuntime.__exclude_vars(saved_varnames),
+                main_program.list_vars()))
+
+        fluid.io.save_vars(
+            executor,
+            main_program=main_program,
+            dirname=dirname,
+            vars=remaining_vars)
+
+    def _ps_inference_save_persistables(self,
+                                        executor,
+                                        dirname,
+                                        main_program=None,
+                                        **kwargs):
+        """
+        This function filters out all variables with `persistable==True` from the
+        give `main_program` and then saves these variables to the folder `dirname`
+        or file `filename`.
+
+        The `dirname` is used to specify the folder where persistable variables
+        are going to be saved. If you would like to save variables in separate
+        files, set `filename` None; if you would like to save all variables in a
+        single file, use `filename` to specify the file name.
+        """
+
+        if isinstance(executor, ParallelExecutor):
+            raise TypeError(
+                "in fleet.save_persistables() function, executor must be as Executor type, ParallelExecutor is not allowed"
+            )
+
+        if not isinstance(executor, Executor):
+            raise TypeError(
+                "in fleet.save_persistables() function, executor must be as Executor type"
+            )
+
+        if main_program is None:
+            main_program = fluid.default_main_program()
+
+        if isinstance(main_program, CompiledProgram):
+            raise TypeError(
+                "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
+            )
+
+        self._save_distributed_persistables(executor, dirname, main_program)
+
+    def _ps_inference_save_inference_model(self,
+                                           executor,
+                                           dirname,
+                                           feeded_var_names,
+                                           target_vars,
+                                           main_program=None,
+                                           export_for_deployment=True):
+        """
+        Prune the given `main_program` to build a new program especially for inference,
+        and then save it and all related parameters to given `dirname` by the `executor`.
+        """
+
+        if isinstance(executor, ParallelExecutor):
+            raise TypeError(
+                "in fleet.save_inference_model() function, executor must be as Executor type, ParallelExecutor is not allowed"
+            )
+
+        if not isinstance(executor, Executor):
+            raise TypeError(
+                "in fleet.save_inference_model() function, executor must be as Executor type"
+            )
+
+        if main_program is not None:
+            if isinstance(main_program, CompiledProgram):
+                raise TypeError(
+                    "in fleet.save_inference_model() function, main_program must be as Program type, CompiledProgram is not allowed"
+                )
+            fluid.io.save_inference_model(dirname, feeded_var_names,
+                                          target_vars, executor, main_program,
+                                          None, None, export_for_deployment)
+        else:
+            fluid.io.save_inference_model(dirname, feeded_var_names,
+                                          target_vars, executor,
+                                          self.origin_main_program, None, None,
+                                          export_for_deployment, True)
+
+            model_basename = "__model__"
+            model_filename = os.path.join(dirname, model_basename)
+
+            with open(model_filename, "rb") as f:
+                program_desc_str = f.read()
+
+            program = Program.parse_from_string(program_desc_str)
+            program._copy_dist_param_info_from(fluid.default_main_program())
+            self._ps_inference_save_persistables(executor, dirname, program)
+
+    def _save_inference_model(self, *args, **kwargs):
+        self._ps_inference_save_inference_model(*args, **kwargs)
+
+    def _save_persistables(self, *args, **kwargs):
+        self._ps_inference_save_persistables(*args, **kwargs)

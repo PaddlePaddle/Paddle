@@ -32,7 +32,7 @@ class ApiMaxTest(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
-            data = paddle.nn.data("data", shape=[10, 10], dtype="float32")
+            data = paddle.static.data("data", shape=[10, 10], dtype="float32")
             result_max = paddle.max(x=data, axis=1)
             exe = paddle.static.Executor(self.place)
             input_data = np.random.rand(10, 10).astype(np.float32)
@@ -41,7 +41,7 @@ class ApiMaxTest(unittest.TestCase):
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
-            data = paddle.nn.data("data", shape=[10, 10], dtype="int64")
+            data = paddle.static.data("data", shape=[10, 10], dtype="int64")
             result_max = paddle.max(x=data, axis=0)
             exe = paddle.static.Executor(self.place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
@@ -50,7 +50,7 @@ class ApiMaxTest(unittest.TestCase):
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
-            data = paddle.nn.data("data", shape=[10, 10], dtype="int64")
+            data = paddle.static.data("data", shape=[10, 10], dtype="int64")
             result_max = paddle.max(x=data, axis=(0, 1))
             exe = paddle.static.Executor(self.place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
@@ -71,8 +71,8 @@ class ApiMaxTest(unittest.TestCase):
         def test_axis_type():
             with paddle.static.program_guard(paddle.static.Program(),
                                              paddle.static.Program()):
-                data = paddle.nn.data("data", shape=[10, 10], dtype="int64")
-                axis = paddle.nn.data("axis", shape=[10, 10], dtype="int64")
+                data = paddle.static.data("data", shape=[10, 10], dtype="int64")
+                axis = paddle.static.data("axis", shape=[10, 10], dtype="int64")
                 result_min = paddle.min(data, axis)
 
         self.assertRaises(TypeError, test_axis_type)

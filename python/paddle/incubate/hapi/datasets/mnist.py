@@ -38,7 +38,7 @@ TRAIN_LABEL_MD5 = 'd53e105ee54ea40749a09fcbcd1e9432'
 
 class MNIST(Dataset):
     """
-    Implement of MNIST dataset
+    Implementation of `MNIST <http://yann.lecun.com/exdb/mnist/>`_ dataset
 
     Args:
         image_path(str): path to image file, can be set None if
@@ -48,9 +48,8 @@ class MNIST(Dataset):
         chw_format(bool): If set True, the output shape is [1, 28, 28],
             otherwise, output shape is [1, 784]. Default True.
         mode(str): 'train' or 'test' mode. Default 'train'.
-        download(bool): whether auto download mnist dataset if
-            :attr:`image_path`/:attr:`label_path` unset. Default
-            True
+        download(bool): whether to download dataset automatically if
+            :attr:`image_path` :attr:`label_path` is not set. Default True
 
     Returns:
         Dataset: MNIST Dataset.
@@ -82,7 +81,7 @@ class MNIST(Dataset):
         self.chw_format = chw_format
         self.image_path = image_path
         if self.image_path is None:
-            assert download, "image_path not set and auto download disabled"
+            assert download, "image_path is not set and downloading automatically is disabled"
             image_url = TRAIN_IMAGE_URL if mode == 'train' else TEST_IMAGE_URL
             image_md5 = TRAIN_IMAGE_MD5 if mode == 'train' else TEST_IMAGE_MD5
             self.image_path = _check_exists_and_download(
@@ -90,9 +89,9 @@ class MNIST(Dataset):
 
         self.label_path = label_path
         if self.label_path is None:
-            assert download, "label_path not set and auto download disabled"
-            label_url = TRAIN_LABEL_URL if mode == 'train' else TEST_LABEL_URL
-            label_md5 = TRAIN_LABEL_MD5 if mode == 'train' else TEST_LABEL_MD5
+            assert download, "label_path is not set and downloading automatically is disabled"
+            label_url = TRAIN_LABEL_URL if self.mode == 'train' else TEST_LABEL_URL
+            label_md5 = TRAIN_LABEL_MD5 if self.mode == 'train' else TEST_LABEL_MD5
             self.label_path = _check_exists_and_download(
                 label_path, label_url, label_md5, 'mnist', download)
 
