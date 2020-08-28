@@ -672,7 +672,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
        x1 (Tensor): the first input tensor, it's data type should be float32, float64.
        x2 (Tensor): the second input tensor, it's data type should be float32, float64.
        weight (Parameter): The learnable weights of this layer, shape is [out_features, in1_features, in2_features].
-       bias (Parameter, optional): The learnable bias(Bias) of this layer, shape is [1, out_features]. If it is set to None, no bias will be added to the output units. The default value is None.
+       bias (Parameter, optional): The learnable bias(Bias) of this layer, shape is [out_features]. If it is set to None, no bias will be added to the output units. The default value is None.
        name (str, optional): The default value is None. Normally there is no need for user
            to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
 
@@ -690,7 +690,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
         x1 = numpy.random.random((5, 5)).astype('float32')
         x2 = numpy.random.random((5, 4)).astype('float32')
         w = numpy.random.random((1000, 5, 4)).astype('float32')
-        b = numpy.random.random((1, 1000)).astype('float32')
+        b = numpy.random.random((1000)).astype('float32')
 
         result = F.bilinear(paddle.to_tensor(x1), paddle.to_tensor(x2), paddle.to_tensor(w), paddle.to_tensor(b))           # result shape [5, 1000]
 

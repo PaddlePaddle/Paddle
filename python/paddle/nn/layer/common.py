@@ -624,7 +624,7 @@ class Bilinear(layers.Layer):
      - :math:`x2`: the second input contains in2_features elements, shape is [batch_size, in2_features].
      - :math:`W_{i}`: the i-th learned weight, shape is [in1_features, in2_features], and learned weight's shape is [out_features, in1_features, in2_features].
      - :math:`out_{i}`: the i-th element of out, shape is [batch_size, out_features].
-     - :math:`b`: the learned bias, shape is [1, out_features].
+     - :math:`b`: the learned bias, shape is [out_features].
      - :math:`x2^\mathrm{T}`: the transpose of :math:`x2`.
 
     Parameters:
@@ -687,7 +687,7 @@ class Bilinear(layers.Layer):
             shape=weight_shape,
             dtype=self._dtype,
             is_bias=False)
-        bias_shape = [1, self._out_features]
+        bias_shape = [self._out_features]
         self.bias = self.create_parameter(
             attr=self._bias_attr,
             shape=bias_shape,
