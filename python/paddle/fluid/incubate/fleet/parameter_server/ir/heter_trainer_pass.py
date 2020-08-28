@@ -13,17 +13,18 @@
 # limitations under the License.
 
 from __future__ import print_function
+import warnings
 
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 
 from paddle.fluid.transpiler.details.program_utils import delete_ops
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_heter_ops
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import create_heter_program
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import create_trainer_program
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_block_joints
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import find_op_input_output
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_vars_name_in_block
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_heter_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import create_heter_program
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import create_trainer_program
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_block_joints
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_op_input_output
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import get_vars_name_in_block
 
 
 def split_heter_worker_ops_pass(program, config):
@@ -37,7 +38,11 @@ def split_heter_worker_ops_pass(program, config):
     program, heter_ops, _, program_block_ops = find_heter_ops(program,
                                                               default_deveice)
     if len(heter_ops) == 0:
+        warnings.warn(
+            "Currently running in Heter Parameter Server mode, but no OP running on heterogeneous devices, Please check your code."
+        )
         return program
+
     current_device = "gpu"
     if current_device not in heter_ops:
         raise ValueError("Op which run on device {} not exist.".format(
@@ -57,6 +62,7 @@ def split_trainer_ops_pass(program, config):
     2. find input&output of every heter-block
     3. create cpu-trainer program, add send&recv op 
     """
+    # Todo: support user define default_device (MrChengmo)
     default_deveice = "cpu"
     program, heter_ops, _, program_block_ops = find_heter_ops(program,
                                                               default_deveice)

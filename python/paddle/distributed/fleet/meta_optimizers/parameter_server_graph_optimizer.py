@@ -31,7 +31,7 @@ class ParameterServerGraphOptimizer(ParameterServerOptimizer):
         if self.role_maker.is_server():
             return False
 
-        if self.role_maker._is_heter_parameter_server:
+        if self.role_maker._is_heter_parameter_server_mode:
             return False
 
         return True

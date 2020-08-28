@@ -45,7 +45,7 @@ class RoleMakerBase(object):
         # for heter parameter server mode
         self._heter_trainer_endpoints = []
         self._heter_trainer_device = "CPU"
-        self._is_heter_parameter_server = False
+        self._is_heter_parameter_server_mode = False
 
         self._node_type = None
         self._node_type_comm = None
@@ -421,7 +421,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
             if training_role not in ["TRAINER", "PSERVER", "HETER_TRAINER"]:
                 raise ValueError(
-                    "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER")
+                    "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER, but get {}, please check your environment.".
+                    format(training_role))
 
             # For heter parameter server env setting
             heter_trainer_eplist = os.getenv(
@@ -437,16 +438,16 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                         "Can not Find PADDLE_HETER_TRAINER_IP_PORT_LIST in env or its format doesn't match the requirement: 'IP:PORT,IP:PORT' ."
                     )
 
-                self._is_heter_parameter_server = True
+                self._is_heter_parameter_server_mode = True
                 heter_trainers_num = len(heter_trainer_eplist)
                 current_node_device = heter_trainer_device.upper()
                 if current_node_device not in ["CPU", "GPU", "XPU"]:
                     raise ValueError(
-                        "Heter Trainer doesn't support {} now, please use cpu / gpu / xpu".
+                        "Heter Trainer doesn't support {} device now, please use CPU / GPU / XPU(KunLun)".
                         format(heter_trainer_device))
                 self._heter_trainer_device = current_node_device
             else:
-                self._is_heter_parameter_server = False
+                self._is_heter_parameter_server_mode = False
                 heter_trainers_num = 0
 
             if training_role == "TRAINER":
