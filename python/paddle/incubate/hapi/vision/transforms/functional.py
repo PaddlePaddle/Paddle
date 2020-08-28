@@ -16,6 +16,7 @@ import sys
 import collections
 import random
 import math
+import functools
 
 import cv2
 import numbers
@@ -31,6 +32,23 @@ else:
 __all__ = ['flip', 'resize', 'pad', 'rotate', 'to_grayscale']
 
 
+def keepdims(func):
+    """Keep the dimension of input images unchanged"""
+
+    @functools.wraps(func)
+    def wrapper(image, *args, **kwargs):
+        if len(image.shape) != 3:
+            raise ValueError("Expect image have 3 dims, but got {} dims".format(
+                len(image.shape)))
+        ret = func(image, *args, **kwargs)
+        if len(ret.shape) == 2:
+            ret = ret[:, :, np.newaxis]
+        return ret
+
+    return wrapper
+
+
+@keepdims
 def flip(image, code):
     """
     Accordding to the code (the type of flip), flip the input image
@@ -62,6 +80,7 @@ def flip(image, code):
     return cv2.flip(image, flipCode=code)
 
 
+@keepdims
 def resize(img, size, interpolation=cv2.INTER_LINEAR):
     """
     resize the input data to given size
@@ -103,6 +122,7 @@ def resize(img, size, interpolation=cv2.INTER_LINEAR):
         return cv2.resize(img, size[::-1], interpolation=interpolation)
 
 
+@keepdims
 def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
     """Pads the given CV Image on all sides with speficified padding mode and fill value.
 
@@ -193,6 +213,7 @@ def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
     return img
 
 
+@keepdims
 def rotate(img,
            angle,
            interpolation=cv2.INTER_LINEAR,
@@ -266,6 +287,7 @@ def rotate(img,
     return dst.astype(dtype)
 
 
+@keepdims
 def to_grayscale(img, num_output_channels=1):
     """Converts image to grayscale version of image.
 
