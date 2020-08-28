@@ -10205,6 +10205,7 @@ def unstack(x, axis=0, num=None):
     return outs
 
 
+@deprecated(since='2.0.0', update_to="paddle.expand")
 def expand(x, expand_times, name=None):
     """
     :alias_main: paddle.expand
@@ -10312,6 +10313,7 @@ def expand(x, expand_times, name=None):
     return out
 
 
+@deprecated(since='2.0.0', update_to="paddle.expand_as")
 def expand_as(x, target_tensor, name=None):
     """
     :alias_main: paddle.expand_as
