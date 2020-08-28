@@ -206,11 +206,10 @@ class TestDygraphDeepCF(unittest.TestCase):
         else:
             (users_np, items_np, labels_np, num_users, num_items,
              matrix) = get_data()
-
+        paddle.manual_seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
         startup = fluid.Program()
-        startup.random_seed = seed
         main = fluid.Program()
-        main.random_seed = seed
 
         scope = fluid.core.Scope()
         with new_program_scope(main=main, startup=startup, scope=scope):
@@ -244,8 +243,8 @@ class TestDygraphDeepCF(unittest.TestCase):
                     sys.stderr.write('static loss %s\n' % static_loss)
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             deepcf = DeepCF(num_users, num_items, matrix)
             adam = fluid.optimizer.AdamOptimizer(
@@ -269,8 +268,8 @@ class TestDygraphDeepCF(unittest.TestCase):
                     sys.stderr.write('dynamic loss: %s %s\n' % (slice, dy_loss))
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             deepcf2 = DeepCF(num_users, num_items, matrix)
             adam2 = fluid.optimizer.AdamOptimizer(

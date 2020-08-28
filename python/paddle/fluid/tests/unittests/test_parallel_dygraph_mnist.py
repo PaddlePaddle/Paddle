@@ -13,11 +13,16 @@
 # limitations under the License.
 
 from __future__ import print_function
-import unittest
-from test_dist_base import TestDistBase
-import paddle.fluid as fluid
 
 import os
+import sys
+import unittest
+
+import paddle.fluid as fluid
+from test_dist_base import TestDistBase
+from spawn_runner_base import TestDistSpawnRunner
+from parallel_dygraph_mnist import TestMnist
+
 flag_name = os.path.splitext(__file__)[0]
 
 
@@ -34,6 +39,12 @@ class TestParallelDygraphMnist(TestDistBase):
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)
+
+
+class TestParallelDygraphMnistSpawn(TestDistSpawnRunner):
+    def test_mnist_with_spawn(self):
+        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+            self.check_dist_result_with_spawn(test_class=TestMnist, delta=1e-5)
 
 
 if __name__ == "__main__":

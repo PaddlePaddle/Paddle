@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import six
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear, BatchNorm, Embedding, GRUUnit
@@ -401,9 +402,9 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 dtype='int64').reshape([1, Config.max_length])))
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             ocr_attention = OCRAttention()
 
             if Config.learning_rate_decay == "piecewise_decay":
@@ -453,8 +454,8 @@ class TestDygraphOCRAttention(unittest.TestCase):
                         dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             ocr_attention = OCRAttention()

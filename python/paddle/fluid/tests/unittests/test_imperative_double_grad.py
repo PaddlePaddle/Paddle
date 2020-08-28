@@ -312,6 +312,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
         with fluid.dygraph.guard():
             paddle.manual_seed(123)
+            paddle.framework.random._manual_program_seed(123)
             a = fluid.dygraph.to_variable(value)
             a.stop_gradient = False
 
@@ -328,6 +329,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
         with fluid.dygraph.guard():
             paddle.manual_seed(123)
+            paddle.framework.random._manual_program_seed(123)
             a = fluid.dygraph.to_variable(value)
             a.stop_gradient = False
 
