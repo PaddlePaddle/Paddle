@@ -225,15 +225,12 @@ from .framework import CPUPlace  #DEFINE_ALIAS
 from .framework import CUDAPlace  #DEFINE_ALIAS
 from .framework import CUDAPinnedPlace  #DEFINE_ALIAS
 
-from .framework import BackwardStrategy  #DEFINE_ALIAS
 from .framework import to_variable  #DEFINE_ALIAS
 from .framework import grad  #DEFINE_ALIAS
 from .framework import no_grad  #DEFINE_ALIAS
 from .framework import save  #DEFINE_ALIAS
 from .framework import load  #DEFINE_ALIAS
 from .framework import SaveLoadConfig  #DEFINE_ALIAS
-from .framework import prepare_context  #DEFINE_ALIAS
-from .framework import ParallelEnv  #DEFINE_ALIAS
 from .framework import DataParallel  #DEFINE_ALIAS
 
 from .framework import NoamDecay  #DEFINE_ALIAS

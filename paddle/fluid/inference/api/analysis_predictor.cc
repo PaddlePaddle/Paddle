@@ -32,7 +32,6 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
@@ -517,6 +516,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
+  // TODO(NHZlX): Should add the link to the doc of
+  // paddle_infer::CreatePredictor<paddle_infer::Config>
   if (config.glog_info_disabled()) {
     FLAGS_logtostderr = 1;
     FLAGS_minloglevel = 2;  // GLOG_ERROR
@@ -1058,3 +1059,122 @@ USE_TRT_CONVERTER(skip_layernorm);
 USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
 #endif
+
+namespace paddle_infer {
+
+void Tensor::Reshape(const std::vector<int> &shape) { tensor_->Reshape(shape); }
+
+std::vector<int> Tensor::shape() const { return tensor_->shape(); }
+
+void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
+  return tensor_->SetLoD(x);
+}
+
+std::vector<std::vector<size_t>> Tensor::lod() const { return tensor_->lod(); }
+
+const std::string &Tensor::name() const { return tensor_->name(); }
+
+DataType Tensor::type() const { return tensor_->type(); }
+
+Predictor::Predictor(const Config &config) {
+  const_cast<Config *>(&config)->SwitchUseFeedFetchOps(false);
+  // The second parameter indicates that the discard log is not printed
+  predictor_ = paddle::CreatePaddlePredictor<
+      Config, paddle::PaddleEngineKind::kAnalysis>(config);
+}
+
+std::vector<std::string> Predictor::GetInputNames() {
+  return predictor_->GetInputNames();
+}
+
+std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {
+  auto zero_copy_tensor = predictor_->GetInputTensor(name);
+  std::unique_ptr<Tensor> tensor(new Tensor(std::move(zero_copy_tensor)));
+  return tensor;
+}
+
+std::vector<std::string> Predictor::GetOutputNames() {
+  return predictor_->GetOutputNames();
+}
+
+std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
+  auto zero_copy_tensor = predictor_->GetOutputTensor(name);
+  std::unique_ptr<Tensor> tensor(new Tensor(std::move(zero_copy_tensor)));
+  return tensor;
+}
+
+bool Predictor::Run() { return predictor_->ZeroCopyRun(); }
+
+std::unique_ptr<Predictor> Predictor::Clone() {
+  auto analysis_pred = predictor_->Clone();
+  std::unique_ptr<Predictor> pred(new Predictor(std::move(analysis_pred)));
+  return pred;
+}
+
+void Predictor::ClearIntermediateTensor() {
+  predictor_->ClearIntermediateTensor();
+}
+
+int GetNumBytesOfDataType(DataType dtype) {
+  switch (dtype) {
+    case DataType::FLOAT32:
+      return sizeof(float);
+    case DataType::INT64:
+      return sizeof(int64_t);
+    case DataType::INT32:
+      return sizeof(int32_t);
+    case DataType::UINT8:
+      return sizeof(uint8_t);
+    default:
+      assert(false);
+      return -1;
+  }
+}
+
+std::string GetVersion() { return paddle::get_version(); }
+
+std::string UpdateDllFlag(const char *name, const char *value) {
+  return paddle::UpdateDllFlag(name, value);
+}
+
+}  // namespace paddle_infer
+
+namespace paddle_infer {
+std::shared_ptr<Predictor> CreatePredictor(const Config &config) {  // NOLINT
+  std::shared_ptr<Predictor> predictor(new Predictor(config));
+  return predictor;
+}
+
+namespace services {
+PredictorPool::PredictorPool(const Config &config, size_t size) {
+  PADDLE_ENFORCE_GE(
+      size, 1UL,
+      paddle::platform::errors::InvalidArgument(
+          "The predictor pool size should be greater than 1, but it's (%d)",
+          size));
+  Config copy_config(config);
+  main_pred_.reset(new Predictor(config));
+  for (size_t i = 0; i < size - 1; i++) {
+    if (config.tensorrt_engine_enabled()) {
+      Config config_tmp(copy_config);
+      preds_.push_back(
+          std::move(std::unique_ptr<Predictor>(new Predictor(config_tmp))));
+    } else {
+      preds_.push_back(std::move(main_pred_->Clone()));
+    }
+  }
+}
+
+Predictor *PredictorPool::Retrive(size_t idx) {
+  PADDLE_ENFORCE_LT(
+      idx, preds_.size() + 1,
+      paddle::platform::errors::InvalidArgument(
+          "There are (%d) predictors in the pool, but the idx is (%d)", idx,
+          preds_.size() + 1));
+  if (idx == 0) {
+    return main_pred_.get();
+  }
+  return preds_[idx - 1].get();
+}
+}  // namespace services
+}  // namespace paddle_infer

@@ -16,6 +16,7 @@
 from __future__ import print_function
 import os
 import unittest
+import paddle
 import paddle.fluid.generator as generator
 import time  # temp for debug
 
@@ -34,10 +35,11 @@ class TestGenerator(unittest.TestCase):
         st = gen.get_state()
         gen.set_state(st)
         gen.random()
-        gen.set_cpu_engine(gen.get_cpu_engine())
 
     def test_basic_generator_error(self):
-        self.assertRaises(ValueError, generator.Generator, device="CUDA")
+        if paddle.fluid.core.is_compiled_with_cuda():
+            self.assertRaises(
+                ValueError, generator.Generator, place=paddle.CUDAPlace(0))
 
 
 if __name__ == "__main__":

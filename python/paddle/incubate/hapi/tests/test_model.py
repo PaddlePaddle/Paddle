@@ -22,8 +22,9 @@ import numpy as np
 import shutil
 import tempfile
 
+import paddle
 from paddle import fluid
-from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential
+from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential, Softmax
 from paddle.fluid.dygraph.base import to_variable
 
 import paddle.incubate.hapi as hapi
@@ -53,10 +54,8 @@ class LeNetDygraph(fluid.dygraph.Layer):
 
         if num_classes > 0:
             self.fc = Sequential(
-                Linear(400, 120),
-                Linear(120, 84),
-                Linear(
-                    84, 10, act=classifier_activation))
+                Linear(400, 120), Linear(120, 84), Linear(84, 10),
+                Softmax())  #Todo: accept any activation
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -83,10 +82,8 @@ class LeNetDeclarative(fluid.dygraph.Layer):
 
         if num_classes > 0:
             self.fc = Sequential(
-                Linear(400, 120),
-                Linear(120, 84),
-                Linear(
-                    84, 10, act=classifier_activation))
+                Linear(400, 120), Linear(120, 84), Linear(84, 10),
+                Softmax())  #Todo: accept any activation
 
     @declarative
     def forward(self, inputs):
@@ -174,8 +171,8 @@ class TestModel(unittest.TestCase):
             cls.test_dataset, places=cls.device, batch_size=64)
 
         seed = 333
-        fluid.default_startup_program().random_seed = seed
-        fluid.default_main_program().random_seed = seed
+        paddle.manual_seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
 
         dy_lenet = LeNetDygraph()
         cls.init_param = dy_lenet.state_dict()
@@ -226,8 +223,8 @@ class TestModel(unittest.TestCase):
     def fit(self, dynamic, num_replicas=None, rank=None):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
-        fluid.default_startup_program().random_seed = seed
-        fluid.default_main_program().random_seed = seed
+        paddle.manual_seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
 
         net = LeNet(classifier_activation=None)
         optim_new = fluid.optimizer.Adam(
@@ -320,17 +317,19 @@ class TestModel(unittest.TestCase):
 class MyModel(fluid.dygraph.Layer):
     def __init__(self, classifier_activation='softmax'):
         super(MyModel, self).__init__()
-        self._fc = Linear(20, 10, act=classifier_activation)
+        self._fc = Linear(20, 10)
+        self._act = Softmax()  #Todo: accept any activation
 
     def forward(self, x):
         y = self._fc(x)
+        y = self._act(y)
         return y
 
 
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
-        fluid.default_startup_program().random_seed = seed
-        fluid.default_main_program().random_seed = seed
+        paddle.manual_seed(seed)
+        paddle.framework.random._manual_program_seed(seed)
 
     def test_train_batch(self, dynamic=True):
         dim = 20

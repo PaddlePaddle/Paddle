@@ -21,6 +21,7 @@ import unittest
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
@@ -448,8 +449,8 @@ def do_train(args, to_static):
     place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
     ) else fluid.CPUPlace()
     with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         reader = get_random_input_data(args.batch_size, args.vocab_size,
                                        args.num_labels)
