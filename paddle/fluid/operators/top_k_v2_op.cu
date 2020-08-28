@@ -35,10 +35,14 @@ using Tensor = framework::Tensor;
   FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);  \
   FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
 
-template <typename DeviceContext, typename T>
-class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+template <typename T>
+struct TopkV2OpCUDAFunctor {
+  const framework::ExecutionContext& ctx;
+  explicit TopkV2OpCUDAFunctor(const framework::ExecutionContext& ctx)
+      : ctx(ctx) {}
+
+  template <typename IndType>
+  void apply() {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
     auto* input = ctx.Input<Tensor>("X");
@@ -50,6 +54,7 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
     int axis = static_cast<int>(ctx.Attr<int>("axis"));
     const bool& sorted = static_cast<bool>(ctx.Attr<bool>("sorted"));
     const bool& largest = static_cast<bool>(ctx.Attr<bool>("largest"));
+    const int& dtype = ctx.Attr<int>("dtype");
 
     // get the input dims
     const auto& in_dims = input->dims();
@@ -71,7 +76,7 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
 
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
-    int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
+    IndType* indices_data = indices->mutable_data<IndType>(ctx.GetPlace());
 
     if (axis == in_dims.size() - 1) {
       // if get the topK from the last axis
@@ -83,8 +88,8 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
       if (k > input_width) k = input_width;
 
       if ((input_width <= 1024 || k >= 128 || k == input_width)) {
-        if (SortTopk<T>(dev_ctx, input, input_width, input_height, k, output,
-                        indices, largest)) {
+        if (SortTopk<T, IndType>(dev_ctx, input, input_width, input_height, k,
+                                 output, indices, largest)) {
           // Successed, return.
           return;
         } else {
@@ -99,8 +104,8 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
       int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
       switch (GetDesiredBlockDim(input_width)) {
         FIXED_BLOCK_DIM(
-            KeMatrixTopK<T, 5,
-                         kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
+            KeMatrixTopK<T, 5, kBlockDim,
+                         IndType><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
                 output_data, k, indices_data, input_data, input_width,
                 input_width, static_cast<int>(k), gridx, input_height,
                 largest));
@@ -139,7 +144,7 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
       // third step, calcluate the topk
       // allocate the tmp cuda memory for the tmp result
       Tensor trans_ind;
-      trans_ind.mutable_data<int64_t>(trans_out_dims, ctx.GetPlace());
+      trans_ind.mutable_data<IndType>(trans_out_dims, ctx.GetPlace());
       Tensor trans_out;
       trans_out.mutable_data<T>(trans_out_dims, ctx.GetPlace());
 
@@ -150,10 +155,11 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
       if (k > input_width) k = input_width;
 
       if ((input_width <= 1024 || k >= 128 || k == input_width)) {
-        if (SortTopk<T>(dev_ctx, &trans_input, input_width, input_height, k,
-                        &trans_out, &trans_ind, largest)) {
+        if (SortTopk<T, IndType>(dev_ctx, &trans_input, input_width,
+                                 input_height, k, &trans_out, &trans_ind,
+                                 largest)) {
           // last step, tranpose back the indices and output
-          TransCompute<platform::CUDADeviceContext, int64_t>(
+          TransCompute<platform::CUDADeviceContext, IndType>(
               ndims, dev_ctx, trans_ind, indices, trans);
           TransCompute<platform::CUDADeviceContext, T>(
               ndims, dev_ctx, trans_out, output, trans);
@@ -168,9 +174,9 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
       int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
       switch (GetDesiredBlockDim(input_width)) {
         FIXED_BLOCK_DIM(
-            KeMatrixTopK<T, 5,
-                         kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
-                trans_out.data<T>(), k, trans_ind.data<int64_t>(),
+            KeMatrixTopK<T, 5, kBlockDim,
+                         IndType><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
+                trans_out.data<T>(), k, trans_ind.data<IndType>(),
                 trans_input.data<T>(), input_width, input_width,
                 static_cast<int>(k), gridx, input_height, largest));
         default:
@@ -184,6 +190,17 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
       TransCompute<platform::CUDADeviceContext, T>(ndims, dev_ctx, trans_out,
                                                    output, trans);
     }
+  }
+};
+
+template <typename DeviceContext, typename T>
+class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const int& dtype = ctx.Attr<int>("dtype");
+    framework::VisitDataTypeInt(
+        static_cast<framework::proto::VarType::Type>(dtype),
+        TopkV2OpCUDAFunctor<T>(ctx));
   }
 };
 
