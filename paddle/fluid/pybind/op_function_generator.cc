@@ -39,7 +39,11 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"assign", {"X"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"X", "InScale", "InAccum", "InState"}},
-};
+    {"roi_pool", {"X", "ROIs", "RoisNum"}},
+    {"roi_align", {"X", "ROIs", "RoisNum"}},
+    {"collect_fpn_proposals",
+     {"MultiLevelRois", "MultiLevelScores", "MultiLevelRoIsNum"}},
+    {"distribute_fpn_proposals", {"FpnRois", "RoisNum"}}};
 
 // NOTE(zhiqiu): Like op_ins_map.
 // Commonly, the outputs in auto-generated OP function are determined by the
@@ -55,6 +59,10 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
+    {"generate_proposals", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
+    {"collect_fpn_proposals", {"FpnRois", "RoisNum"}},
+    {"distribute_fpn_proposals",
+     {"MultiFpnRois", "RestoreIndex", "MultiLevelRoIsNum"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are

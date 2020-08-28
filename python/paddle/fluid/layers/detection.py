@@ -20,7 +20,8 @@ from __future__ import print_function
 from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable
+from ..framework import Variable, in_dygraph_mode
+from .. import core
 from .loss import softmax_with_cross_entropy
 from . import tensor
 from . import nn
@@ -2892,8 +2893,8 @@ def generate_proposals(scores,
                        nms_thresh=0.5,
                        min_size=0.1,
                        eta=1.0,
-                       name=None,
-                       return_rois_num=False):
+                       return_rois_num=False,
+                       name=None):
     """
 	:alias_main: paddle.nn.functional.generate_proposals
 	:alias: paddle.nn.functional.generate_proposals,paddle.nn.functional.vision.generate_proposals
@@ -2948,6 +2949,10 @@ def generate_proposals(scores,
             num of each image in one batch. The N is the image's num. For example, the tensor has values [4,5] that represents
             the first image has 4 Rois, the second image has 5 Rois. It only used in rcnn model. 
             'False' by default. 
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default. 
+
     Returns:
         tuple:
         A tuple with format ``(rpn_rois, rpn_roi_probs)``.
@@ -2968,6 +2973,14 @@ def generate_proposals(scores,
                          im_info, anchors, variances)
 
     """
+    if in_dygraph_mode():
+        assert return_rois_num, "return_rois_num should be True in dygraph mode."
+        attrs = ('pre_nms_topN', pre_nms_top_n, 'post_nms_topN', post_nms_top_n,
+                 'nms_thresh', nms_thresh, 'min_size', min_size, 'eta', eta)
+        rpn_rois, rpn_roi_probs, rpn_rois_num = core.ops.generate_proposals(
+            scores, bbox_deltas, im_info, anchors, variances, *attrs)
+        return rpn_rois, rpn_roi_probs, rpn_rois_num
+
     helper = LayerHelper('generate_proposals', **locals())
 
     check_variable_and_dtype(scores, 'scores', ['float32'],
@@ -3600,11 +3613,20 @@ def distribute_fpn_proposals(fpn_rois,
                 refer_level=4,
                 refer_scale=224)
     """
+    num_lvl = max_level - min_level + 1
+
+    if in_dygraph_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        attrs = ('min_level', min_level, 'max_level', max_level, 'refer_level',
+                 refer_level, 'refer_scale', refer_scale)
+        multi_rois, restore_ind, rois_num_per_level = core.ops.distribute_fpn_proposals(
+            fpn_rois, rois_num, num_lvl, num_lvl, *attrs)
+        return multi_rois, restore_ind, rois_num_per_level
+
     check_variable_and_dtype(fpn_rois, 'fpn_rois', ['float32', 'float64'],
                              'distribute_fpn_proposals')
     helper = LayerHelper('distribute_fpn_proposals', **locals())
     dtype = helper.input_dtype('fpn_rois')
-    num_lvl = max_level - min_level + 1
     multi_rois = [
         helper.create_variable_for_type_inference(dtype) for i in range(num_lvl)
     ]
@@ -3790,13 +3812,20 @@ def collect_fpn_proposals(multi_rois,
     """
     check_type(multi_rois, 'multi_rois', list, 'collect_fpn_proposals')
     check_type(multi_scores, 'multi_scores', list, 'collect_fpn_proposals')
+    num_lvl = max_level - min_level + 1
+    input_rois = multi_rois[:num_lvl]
+    input_scores = multi_scores[:num_lvl]
+
+    if in_dygraph_mode():
+        assert rois_num_per_level is not None, "rois_num_per_level should not be None in dygraph mode."
+        attrs = ('post_nms_topN', post_nms_top_n)
+        output_rois, rois_num = core.ops.collect_fpn_proposals(
+            input_rois, input_scores, rois_num_per_level, *attrs)
+
     helper = LayerHelper('collect_fpn_proposals', **locals())
     dtype = helper.input_dtype('multi_rois')
     check_dtype(dtype, 'multi_rois', ['float32', 'float64'],
                 'collect_fpn_proposals')
-    num_lvl = max_level - min_level + 1
-    input_rois = multi_rois[:num_lvl]
-    input_scores = multi_scores[:num_lvl]
     output_rois = helper.create_variable_for_type_inference(dtype)
     output_rois.stop_gradient = True
 

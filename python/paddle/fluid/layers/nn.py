@@ -6785,7 +6785,8 @@ def roi_pool(input,
              pooled_height=1,
              pooled_width=1,
              spatial_scale=1.0,
-             rois_num=None):
+             rois_num=None,
+             name=None):
     """
     :alias_main: paddle.nn.functional.roi_pool
 	:alias: paddle.nn.functional.roi_pool,paddle.nn.functional.vision.roi_pool
@@ -6809,6 +6810,10 @@ def roi_pool(input,
         pooled_width (int, optional): The pooled output height, data type is int32. Default: 1
         spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
         rois_num (Tensor): The number of RoIs in each image. Default: None
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
+
 
     Returns:
         Variable: The pooled feature, 4D-Tensor with the shape of [num_rois, C, pooled_height, pooled_width].
@@ -6847,6 +6852,13 @@ def roi_pool(input,
         print(out)   #array([[[[11.]]], [[[16.]]]], dtype=float32)
         print(np.array(out).shape)  # (2, 1, 1, 1)
     """
+    if in_dygraph_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        pool_out, argmaxes = core.ops.roi_pool(
+            input, rois, rois_num, "pooled_height", pooled_height,
+            "pooled_width", pooled_width, "spatial_scale", spatial_scale)
+        return pool_out, argmaxes
+
     check_variable_and_dtype(input, 'input', ['float32'], 'roi_pool')
     check_variable_and_dtype(rois, 'rois', ['float32'], 'roi_pool')
     helper = LayerHelper('roi_pool', **locals())
@@ -6928,6 +6940,14 @@ def roi_align(input,
                                                sampling_ratio=-1,
                                                rois_num=rois_num)
     """
+    if in_dygraph_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        align_out = core.ops.roi_align(
+            input, rois, rois_num, "pooled_height", pooled_height,
+            "pooled_width", pooled_width, "spatial_scale", spatial_scale,
+            "sampling_ratio", sampling_ratio)
+        return align_out
+
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'roi_align')
     check_variable_and_dtype(rois, 'rois', ['float32', 'float64'], 'roi_align')
