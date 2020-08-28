@@ -4173,6 +4173,7 @@ class PipelineOptimizer(object):
                     'dtype': grad_var.dtype,
                     'value': float(0),
                     self._op_device_key: device,
+                    self._op_role_key: self._op_role.Optimize.LRSched,
                 })
 
     def _accumulate_gradients(self, block):
@@ -4374,7 +4375,6 @@ class PipelineOptimizer(object):
         # and clear them after update
         self._clear_gradients(main_block)
         self._accumulate_gradients(main_block)
-        #self._clear_gradients(main_block)
 
         main_program = main_block.program
 
