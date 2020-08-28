@@ -38,6 +38,7 @@ DECLARE_bool(enable_rpc_profiler);
 DECLARE_int32(multiple_of_cupti_buffer_size);
 DECLARE_bool(reader_queue_speed_test_mode);
 DECLARE_int32(call_stack_level);
+DECLARE_bool(sort_sum_gradient);
 // device management
 DECLARE_int32(paddle_num_threads);
 // executor
@@ -340,7 +341,7 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_PUBLIC_GLOBAL_VAR(
       FLAGS_eager_delete_tensor_gb, FLAGS_enable_parallel_graph,
       FLAGS_allocator_strategy, FLAGS_use_system_allocator, FLAGS_check_nan_inf,
-      FLAGS_call_stack_level, FLAGS_cpu_deterministic,
+      FLAGS_call_stack_level, FLAGS_sort_sum_gradient, FLAGS_cpu_deterministic,
       FLAGS_enable_rpc_profiler, FLAGS_multiple_of_cupti_buffer_size,
       FLAGS_reader_queue_speed_test_mode, FLAGS_pe_profile_fname,
       FLAGS_print_sub_graph_dir, FLAGS_fraction_of_cpu_memory_to_use,
