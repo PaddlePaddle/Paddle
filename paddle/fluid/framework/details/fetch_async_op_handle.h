@@ -26,17 +26,16 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-struct FetchOpHandle : public OpHandleBase {
+struct FetchAsyncOpHandle : public OpHandleBase {
  public:
-  FetchOpHandle(ir::Node *node, FetchResultType *data, size_t offset,
-                std::vector<Scope *> *local_scopes,
-                std::vector<Scope *> *local_exec_scopes, bool return_merged);
+  FetchAsyncOpHandle(ir::Node *node, FetchResultType *data, size_t offset,
+                     std::vector<Scope *> *local_scopes,
+                     std::vector<Scope *> *local_exec_scopes,
+                     bool return_merged);
 
-  ~FetchOpHandle();
+  ~FetchAsyncOpHandle();
 
   void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) override;
-
-  void WaitAndMergeCPUFetchVars() const;
 
   std::string Name() const override;
 
@@ -47,14 +46,15 @@ struct FetchOpHandle : public OpHandleBase {
 
   std::vector<Scope *> GetLocalScopes() override { return *local_scopes_; }
 
-  void WaitInputVarGenerated(const platform::Place &place) override;
+  void FetchMergedLodTensor(
+      const std::vector<const LoDTensor *> &src_lodtensors,
+      LoDTensor *dst_lodtensor);
 
  private:
   FetchResultType *data_;
   size_t offset_;
   std::vector<Scope *> *local_scopes_;
   std::vector<Scope *> *local_exec_scopes_;
-  std::vector<FetchType> tensors_;
   bool return_merged_;
 };
 

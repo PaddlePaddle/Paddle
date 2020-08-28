@@ -19,7 +19,7 @@
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/details/computation_op_handle.h"
-#include "paddle/fluid/framework/details/fetch_op_handle.h"
+#include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -168,8 +168,8 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_,
-                                 &local_exec_scopes_, return_merged);
+    auto *op = new FetchAsyncOpHandle(fetch_node, fetches, i, &local_scopes_,
+                                      &local_exec_scopes_, return_merged);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
@@ -275,7 +275,7 @@ void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {
 const ir::Graph &FastThreadedSSAGraphExecutor::Graph() const { return *graph_; }
 
 void FastThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
-  if (strategy_.num_threads_ == 1 && !dynamic_cast<FetchOpHandle *>(op)) {
+  if (strategy_.num_threads_ == 1 && !dynamic_cast<FetchAsyncOpHandle *>(op)) {
     traced_ops_.emplace_back(op);
   }
 }
