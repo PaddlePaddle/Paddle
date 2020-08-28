@@ -29,14 +29,21 @@ namespace framework {
 namespace compatible {
 
 struct OpUpdateRecord {
-  enum class Type { kInvalid = 0, kModifyAttr, kNewAttr };
+  enum class Type {
+    kInvalid = 0,
+    kModifyAttr,
+    kNewAttr,
+    kNewInput,
+    kNewOutput,
+    kBugfixWithBehaviorChanged,
+  };
   Type type_;
   std::string remark_;
 };
 
 struct ModifyAttr : OpUpdateRecord {
   ModifyAttr(const std::string& name, const std::string& remark,
-             boost::any default_value)
+             const boost::any& default_value)
       : OpUpdateRecord({Type::kModifyAttr, remark}),
         name_(name),
         default_value_(default_value) {
@@ -47,12 +54,38 @@ struct ModifyAttr : OpUpdateRecord {
   std::string name_;
   boost::any default_value_;
 };
+
 struct NewAttr : OpUpdateRecord {
-  NewAttr(const std::string& name, const std::string& remark)
-      : OpUpdateRecord({Type::kNewAttr, remark}), name_(name) {}
+  NewAttr(const std::string& name, const std::string& remark,
+          const boost::any& default_value)
+      : OpUpdateRecord({Type::kNewAttr, remark}),
+        name_(name),
+        default_value_(default_value) {}
 
  private:
   std::string name_;
+  boost::any default_value_;
+};
+
+struct NewInput : OpUpdateRecord {
+  NewInput(const std::string& name, const std::string& remark)
+      : OpUpdateRecord({Type::kNewInput, remark}), name_(name) {}
+
+ private:
+  std::string name_;
+};
+
+struct NewOutput : OpUpdateRecord {
+  NewOutput(const std::string& name, const std::string& remark)
+      : OpUpdateRecord({Type::kNewOutput, remark}), name_(name) {}
+
+ private:
+  std::string name_;
+};
+
+struct BugfixWithBehaviorChanged : OpUpdateRecord {
+  explicit BugfixWithBehaviorChanged(const std::string& remark)
+      : OpUpdateRecord({Type::kBugfixWithBehaviorChanged, remark}) {}
 };
 
 class OpVersionDesc {
@@ -64,9 +97,28 @@ class OpVersionDesc {
     return *this;
   }
 
-  OpVersionDesc& NewAttr(const std::string& name, const std::string& remark) {
-    infos_.push_back(
-        std::shared_ptr<OpUpdateRecord>(new compatible::NewAttr(name, remark)));
+  OpVersionDesc& NewAttr(const std::string& name, const std::string& remark,
+                         boost::any default_value) {
+    infos_.push_back(std::shared_ptr<OpUpdateRecord>(
+        new compatible::NewAttr(name, remark, default_value)));
+    return *this;
+  }
+
+  OpVersionDesc& NewInput(const std::string& name, const std::string& remark) {
+    infos_.push_back(std::shared_ptr<OpUpdateRecord>(
+        new compatible::NewInput(name, remark)));
+    return *this;
+  }
+
+  OpVersionDesc& NewOutput(const std::string& name, const std::string& remark) {
+    infos_.push_back(std::shared_ptr<OpUpdateRecord>(
+        new compatible::NewOutput(name, remark)));
+    return *this;
+  }
+
+  OpVersionDesc& BugfixWithBehaviorChanged(const std::string& remark) {
+    infos_.push_back(std::shared_ptr<OpUpdateRecord>(
+        new compatible::BugfixWithBehaviorChanged(remark)));
     return *this;
   }
 

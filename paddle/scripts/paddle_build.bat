@@ -144,7 +144,7 @@ call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd6
 set build_times=1
 :build_tp
 echo Build third_party for %build_times% time:
-msbuild /m /p:Configuration=Release /verbosity:minimal third_party.vcxproj
+msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
     if %build_times% GTR 3 (
@@ -159,7 +159,7 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 echo Build Paddle for %build_times% time:
-msbuild /m /p:Configuration=Release /verbosity:quiet paddle.sln
+msbuild /m /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 2 (

@@ -123,6 +123,7 @@ endfunction()
 
 if(WIN32)
 	list(REMOVE_ITEM TEST_OPS test_light_nas)
+	list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mnist)
 	list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
     list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
     list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
@@ -270,6 +271,6 @@ endforeach()
 
 # setting timeout value for old unittests
 if(NOT WIN32)
-	set_tests_properties(test_post_training_quantization_mobilenetv1 PROPERTIES TIMEOUT 200)
-	set_tests_properties(test_post_training_quantization_resnet50 PROPERTIES TIMEOUT 200)
+    set_tests_properties(test_post_training_quantization_mobilenetv1 PROPERTIES TIMEOUT 250 LABELS "RUN_TYPE=NIGHTLY")
+	  set_tests_properties(test_post_training_quantization_resnet50 PROPERTIES TIMEOUT 200 LABELS "RUN_TYPE=NIGHTLY")
 endif()

@@ -15,14 +15,16 @@
 math functions
 """
 from __future__ import print_function
+import numpy as np
 
 from paddle.common_ops_import import *
+from paddle.tensor import cast
+import paddle
 from ..fluid import layers
 from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
-import sys
 
 # TODO: define math functions
 # yapf: disable
@@ -64,6 +66,7 @@ from ..fluid.layers import sums    #DEFINE_ALIAS
 from ..fluid import layers
 import paddle
 
+
 __all__ = [
         'abs',
         'acos',
@@ -86,8 +89,8 @@ __all__ = [
         'logsumexp',
         'mul',
         'multiplex',
-        'prod',
         'pow',
+        'prod',
         'reciprocal',
         'reduce_max',
         'reduce_min',
@@ -147,64 +150,87 @@ _supported_float_dtype_ = [
     VarDesc.VarType.FP64,
 ]
 
-@templatedoc()
-def pow(input, exponent, name=None):
+def pow(x, y, name=None):
     """
-	:alias_main: paddle.pow
-	:alias: paddle.pow,paddle.tensor.pow,paddle.tensor.math.pow
+    Compute the power of tensor elements. The equation is:
 
-    This is Pow Activation Operator.
+    .. math::
+        out = x^{y} 
 
-    :math:`out = input^{exponent}`
+    **Note**:
+    ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+
 
     Args:
-        input(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32`` or ``float64``.
-        exponent(float32|Variable): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        y (Tensor): An N-D Tensor with type float32, float64, int32 or int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    
     Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``input``.
+        N-D Tensor. A location into which the result is stored. Its dimension equals with $x$.
 
     Examples:
 
-        .. code-block:: python
+        ..  code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import numpy as np
 
-            x = fluid.data(name="x", shape=[32,32], dtype="float32")
+            paddle.disable_static()
+            
+            # example 1: y is a float
+            x_data = np.array([1, 2, 3])
+            y = 2
+            x = paddle.to_tensor(x_data)
+            res = paddle.pow(x, y)
+            print(res.numpy()) # [1 4 9]
+            
+            # example 2: y is a Tensor
+            y = paddle.fill_constant(shape=[1], value=2, dtype='float32')
+            res = paddle.pow(x, y)
+            print(res.numpy()) # [1 4 9]
 
-            # example 1: argument exponent is float
-            y_1 = paddle.pow(x, 2.0)
-            # y_1 is x^{2.0}
-
-            # example 2: argument exponent is Variable
-            exponent_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
-            y_2 = paddle.pow(x, exponent_tensor)
-            # y_2 is x^{3.0}
     """
+    # in dynamic graph mode
     if in_dygraph_mode():
-        return core.ops.pow(input, "exponent", exponent)
+        if isinstance(y, (int, float)):
+            return core.ops.pow(x, 'factor', y)
+        elif isinstance(y, (paddle.Tensor, Variable)):
 
-    helper = LayerHelper('pow', **locals())
-    inputs = {'X': input}
-    attrs = {}
-    if isinstance(exponent, Variable):
-        exponent.stop_gradient = True
-        inputs['FactorTensor'] = exponent
+            if x.dtype != y.dtype:
+                y = cast(y, dtype='float64')
+                x = cast(x, dtype='float64')
+                out_dygraph = _elementwise_op_in_dygraph(
+                x, y, axis=-1, act=None, op_name='elementwise_pow')
+                return out_dygraph
+
+            return _elementwise_op_in_dygraph(
+                x, y, axis=-1, act=None, op_name='elementwise_pow')
+        else:
+            raise TypeError('y must be scalar or tensor type, but received: %s '% (y.dtype))
+    # in static graph mode
     else:
-        attrs['factor'] = exponent
+        if isinstance(y, (int, float)):
+            helper = LayerHelper('pow', **locals())
+            inputs = {'X': x}
+            attrs = {'factor': y}
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+            return out
+        elif isinstance(y, (paddle.Tensor, Variable)):
+            # TODO A potential speed improvement is supporting different types in C++ and removing the cast ops here
+            helper = LayerHelper('elementwise_pow', **locals())
+            if x.dtype != y.dtype:
+                y = cast(y, dtype='float64')
+                x = cast(x, dtype='float64')
+                out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            else:
+                out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
+        else:
+            raise TypeError('y must be scalar or tensor type, but received: %s '% (type(y)))
 
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    check_dtype(
-        out.dtype, out.name,
-        convert_dtype(input.dtype), 'pow',
-        '(The out data type in pow must be the same with input data type.)')
-
-    helper.append_op(
-        type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
-    return out
 
 
 @dygraph_only
@@ -227,6 +253,8 @@ def _elementwise_op(helper):
     x = helper.kwargs.get('x', None)
     y = helper.kwargs.get('y', None)
 
+    out = helper.kwargs.get('out', None)
+
     assert x is not None, 'x cannot be None in {}'.format(original_op_type)
     assert y is not None, 'y cannot be None in {}'.format(original_op_type)
     check_variable_and_dtype(
@@ -239,11 +267,12 @@ def _elementwise_op(helper):
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+
+    if out is None:
+        if name is None:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        else:
+            out = helper.create_variable(name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type=op_type,
@@ -562,34 +591,52 @@ floor_mod = remainder  #DEFINE_ALIAS
 
 def multiply(x, y, axis=-1, name=None):
     """
-	:alias_main: paddle.multiply
-	:alias: paddle.multiply,paddle.tensor.multiply,paddle.tensor.math.multiply
+    multiply two tensors element-wise. The equation is:
 
-Examples:
+    .. math::
+        out = x * y
 
-    .. code-block:: python
+    **Note**:
+    ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
-        import paddle
-        import numpy as np
+    Args:
+        x (Tensor): the input tensor, its data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, its data type should be float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-        paddle.disable_static()
-        x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
-        y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
-        res = paddle.multiply(x, y)
-        print(res.numpy()) # [[5, 12], [21, 32]]
+    Returns:
+        N-D Tensor. A location into which the result is stored. Its dimension equals with $x$.
 
-        x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
-        y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
-        res = paddle.multiply(x, y, axis=1)
-        print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+            import numpy as np
+
+            paddle.disable_static()
+            x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
+            y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
+            res = paddle.multiply(x, y)
+            print(res.numpy()) # [[5, 12], [21, 32]]
+
+            x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
+            y_data = np.array([1, 2], dtype=np.float32)
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
+            res = paddle.multiply(x, y, axis=1)
+            print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
 
     """
     op_type = 'elementwise_mul'
     act = None
+    if x.dtype != y.dtype:
+        raise TypeError(
+            'Input tensors must be same type, but received type of x: %s, type of y: %s '
+            % (x.dtype, y.dtype))
+
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
@@ -1564,11 +1611,15 @@ def clip(x, min=None, max=None, name=None):
             # [[4.5, 6.4]
     """
 
-    assert min is not None or max is not None, "either min or max should be defined."
+    np_dtype = np.float32
+    if x.dtype == VarDesc.VarType.FP64:
+        np_dtype = np.float64
+    fmin = float(np.finfo(np_dtype).min)
+    fmax = float(np.finfo(np_dtype).max)
 
     if in_dygraph_mode():
-        min = sys.float_info.min if min is None else min
-        max = sys.float_info.max if max is None else max
+        min = fmin if min is None else min
+        max = fmax if max is None else max
         return core.ops.clip(x, "min", min, "max", max)
 
     if min is not None:
@@ -1582,10 +1633,10 @@ def clip(x, min=None, max=None, name=None):
             check_dtype(max.dtype, 'max', ['float32', 'float64', 'int32'],
                         'clip', '(When the type of max in clip is Variable.)')
 
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'clip')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'clip')
 
     inputs = {'X': x}
-    attrs = {'min': sys.float_info.min, 'max': sys.float_info.max}
+    attrs = {'min': fmin, 'max': fmax}
 
     if isinstance(min, Variable):
         min.stop_gradient = True
@@ -1925,7 +1976,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     Compute the product of tensor elements over the given axis.
 
     Args:
-        x(Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        x(Tensor): The input tensor, its data type should be float32, float64, int32, int64.
         axis(int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
             multiply all elements of `x` and return a Tensor with a single element, 
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
@@ -1935,7 +1986,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             This is very useful for avoiding data type overflows. The default value is None, the dtype 
             of output is the same as input Tensor `x`.
         keepdim(bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
-            tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
+            tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
         name(string, optional): The default value is None. Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -2072,6 +2123,7 @@ def tanh(x, name=None):
         return core.ops.tanh(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'tanh')
+    check_type(x, 'x', (Variable), 'tanh')
     helper = LayerHelper('tanh', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='tanh', inputs={'X': x}, outputs={'Out': out})

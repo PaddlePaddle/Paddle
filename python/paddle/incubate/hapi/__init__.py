@@ -20,7 +20,6 @@ from . import download
 from . import model
 from .model import *
 
-from . import metrics
 from . import datasets
 from . import distributed
 from . import vision
@@ -39,7 +38,6 @@ __all__ = [
     'datasets',
     'distributed',
     'download',
-    'metrics',
     'vision',
     'text',
     'utils',
