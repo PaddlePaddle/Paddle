@@ -29,8 +29,6 @@ from .layer_helper_base import LayerHelperBase
 class LayerHelper(LayerHelperBase):
     def __init__(self, layer_type, **kwargs):
         self.kwargs = kwargs
-        self.debug_ = self.kwargs.get('debug', False)
-        self.appended_op = None
         name = self.kwargs.get('name', None)
         # TODO(panyx0718, minqiyang): dygraph mode
         # can not use both `layer_type` and `name`. Deprecate LayerHelper
@@ -42,10 +40,7 @@ class LayerHelper(LayerHelperBase):
             self.kwargs['name'], layer_type=layer_type)
 
     def append_op(self, *args, **kwargs):
-        op = self.main_program.current_block().append_op(*args, **kwargs)
-        if self.debug_:
-            self.appended_op = op
-        return op
+        return self.main_program.current_block().append_op(*args, **kwargs)
 
     def multiple_input(self, input_param_name='input'):
         inputs = self.kwargs.get(input_param_name, [])
@@ -152,13 +147,8 @@ class LayerHelper(LayerHelperBase):
 
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')
-
-        # priority order: use_mkldnn in kwargs then global
-        use_mkldnn = self.kwargs.get(
-            'use_mkldnn', core.globals().get("FLAGS_use_mkldnn", False))
-        if use_mkldnn:
-            act['use_mkldnn'] = use_mkldnn
-
+        if 'use_mkldnn' in self.kwargs:
+            act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
         act_type = act.pop('type')
 
         tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
