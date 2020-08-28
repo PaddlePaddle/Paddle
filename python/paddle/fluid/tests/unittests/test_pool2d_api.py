@@ -17,7 +17,7 @@ import unittest
 from op_test import OpTest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.nn.functional import *
+from paddle.nn.functional import avg_pool2d, max_pool2d
 import paddle.fluid as fluid
 import paddle
 

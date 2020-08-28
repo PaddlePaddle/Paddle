@@ -131,8 +131,8 @@ TEST(QuantizerPlacementPass, enabled_conv_excluded_one) {
 }
 
 TEST(QuantizerPlacementPass, empty_list) {
-  // no operator quantized
-  MainTest({}, {}, 0);
+  // all operators quantized
+  MainTest({}, {}, 6);
 }
 
 TEST(QuantizerPlacementPass, default_attr_value) {

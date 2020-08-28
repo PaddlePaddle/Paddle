@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.nn.functional import *
+from paddle.nn.functional import interpolate
 
 
 def linear_interp_np(input,
