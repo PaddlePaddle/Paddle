@@ -612,11 +612,7 @@ def multiply(x, y, axis=-1, name=None):
     """
     op_type = 'elementwise_mul'
     act = None
-    if x.dtype != y.dtype:
-        raise TypeError(
-            'Input tensors must be same type, but received type of x: %s, type of y: %s '
-            % (x.dtype, y.dtype))
-
+    x, y = _type_promote_rules(x, y)
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)

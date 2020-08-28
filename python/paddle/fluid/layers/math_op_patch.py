@@ -360,6 +360,8 @@ def monkey_patch_variable():
         ('__radd__', _binary_method_creator_('add', False)),
         ('__sub__', _binary_method_creator_('sub', False)),
         ('__rsub__', _binary_method_creator_('sub', True)),
+        ('__mul__', _binary_method_creator_('multiply', False)),
+        ('__rmul__', _binary_method_creator_('multiply', False)),
         ('__div__', _binary_method_creator_('divide', False)),
         ('__truediv__', _binary_method_creator_('divide', False)),
         ('__rtruediv__', _binary_method_creator_('divide', True)),
