@@ -14,7 +14,6 @@
 
 from ..fluid.dygraph.jit import save  #DEFINE_ALIAS
 from ..fluid.dygraph.jit import load  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import SaveLoadConfig  #DEFINE_ALIAS
 from ..fluid.dygraph.jit import TracedLayer  #DEFINE_ALIAS
 from ..fluid.dygraph.jit import set_code_level  #DEFINE_ALIAS
 from ..fluid.dygraph.jit import set_verbosity  #DEFINE_ALIAS
