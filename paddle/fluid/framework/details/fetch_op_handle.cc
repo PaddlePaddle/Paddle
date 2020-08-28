@@ -36,7 +36,8 @@ FetchOpHandle::FetchOpHandle(ir::Node *node, FetchResultType *data,
 FetchOpHandle::~FetchOpHandle() {}
 
 void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
-  PADDLE_THROW("Nobody should wait FetchOp. Unexpceted Error");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "Nobody should wait FetchOp. Unexpceted Error."));
 }
 
 static void CheckDims(const framework::DDim &tensor_dims,

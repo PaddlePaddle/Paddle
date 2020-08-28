@@ -38,7 +38,8 @@ FetchAsyncOpHandle::~FetchAsyncOpHandle() {}
 
 void FetchAsyncOpHandle::RecordWaitEventOnCtx(
     platform::DeviceContext *waited_ctx) {
-  PADDLE_THROW("Nobody should wait FetchAsyncOp. Unexpceted Error");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "Nobody should wait FetchAsyncOp. Unexpceted Error."));
 }
 
 static void CheckTensorAttrs(const LoDTensor *tensor,
