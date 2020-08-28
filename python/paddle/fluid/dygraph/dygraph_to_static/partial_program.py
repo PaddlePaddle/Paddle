@@ -334,7 +334,7 @@ class PartialProgramLayer(layers.Layer):
             param_and_buffer_names_set.add(var.name)
 
         for block in main_program.blocks:
-            for name, var in block.vars.items():
+            for name, var in six.iteritems(block.vars):
                 if isinstance(var, framework.Parameter):
                     if name not in param_and_buffer_names_set:
                         raise ValueError(
