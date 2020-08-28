@@ -27,6 +27,7 @@
 
 # TODO: define normalization api  
 
+import six
 from ...fluid.dygraph.nn import InstanceNorm
 
 from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
@@ -1157,7 +1158,10 @@ class SyncBatchNorm(layers.Layer):
         """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
-            layer_output = SyncBatchNorm.__new__(SyncBatchNorm)
+            if six.PY2:
+                layer_output = object.__new__(SyncBatchNorm)
+            else:
+                layer_output = SyncBatchNorm.__new__(SyncBatchNorm)
             super(SyncBatchNorm, layer_output).__init__()
 
             with no_grad():
