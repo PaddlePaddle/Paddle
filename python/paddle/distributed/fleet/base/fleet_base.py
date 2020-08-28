@@ -43,40 +43,64 @@ inited_runtime_handler = wrap_decorator(_inited_runtime_handler_)
 class Fleet(object):
     """
     Unified API for distributed training of PaddlePaddle
-    Please reference the https://github.com/PaddlePaddle/Fleet for details
+    Please reference the https://github.com/PaddlePaddle/FleetX for details
 
 
     Returns:
         Fleet: A Fleet instance
 
-    Examples:
+    Example for collective training:
         .. code-block:: python
 
             import paddle.distributed.fleet as fleet
-            role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
-            fleet.init(role)
+
+            fleet.init(is_collective=True)
+
             strategy = fleet.DistributedStrategy()
             optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+
+            # do distributed training
+
+
+    Example for parameter server training:
+
+        .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+
+            fleet.init()
+
+            strategy = fleet.DistributedStrategy()
+            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+
             if fleet.is_first_worker():
                 print("this is first worker")
+
             print("current node index: {}".format(fleet.worker_index()))
             print("total number of worker num: {}".format(fleet.worker_num()))
+
             if fleet.is_worker():
                 print("this is worker")
             print("worker endpoints: {}".format(fleet.worker_endpoints(to_string=True)))
+
             print("server num: {}".format(fleet.server_num()))
             print("server endpoints: {}".format(fleet.server_endpoints(to_string=True)))
+
             if fleet.is_server():
                 print("this is server")
             fleet.stop_worker()
+
+
     """
 
     def __init__(self):
+        self._role_maker = None
+        self.strategy_compiler = None
+        self._is_collective = False
         self._runtime_handle = None
         self._util = None
-        self._role_maker = None
-        self._is_collective = False
 
     def init(self, role_maker=None, is_collective=False):
         """
@@ -96,26 +120,46 @@ class Fleet(object):
         Returns:
             None
 
-        Examples:
+        Examples1:
+
             .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            fleet.init()
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+        Examples2:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init(is_collective=True)
+
+        Examples3:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                role = fleet.PaddleCloudRoleMaker
+                fleet.init(role)
+
         """
-        if isinstance(role_maker, RoleMakerBase):
-            self._role_maker = role_maker
-        elif role_maker == None:
+
+        if role_maker is None:
             if isinstance(is_collective, bool):
                 self._is_collective = is_collective
                 self._role_maker = PaddleCloudRoleMaker(
                     is_collective=self._is_collective)
             else:
                 raise ValueError(
-                    "Something wrong occurred, please check whether is_collective is bool value"
-                )
+                    "`is_collective` should be instance of `bool`, but got {}".
+                    format(type(is_collective)))
         else:
-            raise ValueError(
-                "Something wrong occurred, please check whether rolemaker is instance of RoleMakerBase"
-            )
+            if isinstance(role_maker, RoleMakerBase):
+                self._role_maker = role_maker
+            else:
+                raise ValueError(
+                    "`role_maker` should be subclass of `RoleMakerBase`, but got {}".
+                    format(type(role_maker)))
         self.strategy_compiler = StrategyCompiler()
         return None
 
@@ -128,10 +172,13 @@ class Fleet(object):
                   False if not.
 
         Examples:
+
             .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            fleet.init()
-            fleet.is_first_worker()
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.is_first_worker()
+
         """
         return self._role_maker.is_first_worker()
 
@@ -143,10 +190,12 @@ class Fleet(object):
             int: node id
 
         Examples:
+
             .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            fleet.init()
-            fleet.worker_index()
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.worker_index()
+
         """
         return self._role_maker.worker_index()
 
@@ -159,9 +208,11 @@ class Fleet(object):
         
         Examples:
             .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            fleet.init()
-            fleet.worker_num()
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.worker_num()
+
         """
         return self._role_maker.worker_num()
 
@@ -175,18 +226,28 @@ class Fleet(object):
 
         Examples:
             .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            fleet.init()
-            fleet.is_worker()
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.is_worker()
+
         """
         return self._role_maker.is_worker()
 
     def worker_endpoints(self, to_string=False):
         """
-        Get current server endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
+        Get current worker endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
 
         Returns:
             list/string: server endpoints
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.worker_endpoints()
+
         """
         '''
         if to_string:
@@ -220,9 +281,11 @@ class Fleet(object):
 
         Examples:
             .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            fleet.init()
-            fleet.server_index()
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.server_index()
+
         """
         return self._role_maker.server_index()
 
@@ -232,14 +295,20 @@ class Fleet(object):
 
         Returns:
             list/string: server endpoints
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.server_endpoints()
+
         """
-        '''
+
         if to_string:
             return ",".join(self._role_maker.get_pserver_endpoints())
         else:
             return self._role_maker.get_pserver_endpoints()
-        '''
-        return ["127.0.0.1:1001", "127.0.0.1:1002"]
 
     def is_server(self):
         """
@@ -250,10 +319,12 @@ class Fleet(object):
                   False if not.
 
         Examples:
+
             .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            fleet.init()
-            fleet.is_server()
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.is_server()
+
         """
         return self._role_maker.is_server()
 
@@ -262,6 +333,19 @@ class Fleet(object):
         """
         Utility functions that can be used under certain runtime
         return util
+
+        Returns:
+            UtilBase: instance of UtilBase, can use distributed ops/tools easily.
+
+        Examples:
+
+            .. code-block:: python
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                util = fleet.util
+                files = ["1.log", "2.log", "3.log", "4.log"]
+                files = util.get_file_shard()
+
         """
         return self._util
 
@@ -269,13 +353,18 @@ class Fleet(object):
     def util(self, util):
         """
         Set Utility functions for userd-defined runtime
-        set util
+
+        Returns:
+            None
         """
         self._util = util
 
     def barrier_worker(self):
         """
-        barrier between workers
+        barrier all workers
+
+        Returns:
+            None
         """
         self._role_maker.barrier_worker()
 
@@ -283,6 +372,10 @@ class Fleet(object):
     def init_worker(self):
         """
         init worker
+
+        Returns:
+            None
+
         """
         self._runtime_handle._init_worker()
 
@@ -290,6 +383,10 @@ class Fleet(object):
     def init_server(self, *args, **kwargs):
         """
         init server
+
+        Returns:
+            None
+
         """
         self._runtime_handle._init_server(*args, **kwargs)
 
@@ -297,13 +394,21 @@ class Fleet(object):
     def run_server(self):
         """
         run server
+
+        Returns:
+            None
+
         """
         self._runtime_handle._run_server()
 
     @inited_runtime_handler
     def stop_worker(self):
         """
-        stop worker
+        stop server
+
+        Returns:
+            None
+
         """
         self._runtime_handle._stop_worker()
 
@@ -314,27 +419,44 @@ class Fleet(object):
                              target_vars,
                              main_program=None,
                              export_for_deployment=True):
+        """
+        save inference model for inference.
+
+        Returns:
+            None
+
+        """
+
         self._runtime_handle._save_inference_model(
             executor, dirname, feeded_var_names, target_vars, main_program,
             export_for_deployment)
 
     def save_persistables(self, executor, dirname, main_program=None):
+        """
+        save params in program for inference and checkpoint.
+
+        Returns:
+            None
+
+        """
+
         self._runtime_handle._save_persistables(executor, dirname, main_program)
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
         distirbuted_optimizer
+
         Returns:
             Fleet instance with minimize interface like optimizers
 
         Examples:
             .. code-block:: python
-            import paddle.distributed.fleet as fleet
-            role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
-            fleet.init(role)
-            strategy = fleet.DistributedStrategy()
-            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+                import paddle.distributed.fleet as fleet
+                role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
+                fleet.init(role)
+                strategy = fleet.DistributedStrategy()
+                optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         """
         self.user_defined_optimizer = optimizer
         if strategy == None:
@@ -371,23 +493,25 @@ class Fleet(object):
             ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
-            import paddle
-            import paddle.distributed.fleet as fleet
+            .. code-block:: python
 
-            fc_1 = paddle.fluid.layers.fc(input=input_x, size=hid_dim, act='tanh')
-            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=hid_dim, act='tanh')
-            prediction = paddle.fluid.layers.fc(input=[fc_2], size=label_dim, act='softmax')
-            cost = paddle.fluid.layers.cross_entropy(input=prediction, label=input_y)
-            avg_cost = paddle.fluid.layers.mean(x=cost)
+                import paddle
+                import paddle.distributed.fleet as fleet
 
-            role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
-            fleet.init(role)
-            strategy = fleet.DistributedStrategy()
-            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-            optimizer.minimize(avg_cost)
+                fc_1 = paddle.fluid.layers.fc(input=input_x, size=hid_dim, act='tanh')
+                fc_2 = paddle.fluid.layers.fc(input=fc_1, size=hid_dim, act='tanh')
+                prediction = paddle.fluid.layers.fc(input=[fc_2], size=label_dim, act='softmax')
+                cost = paddle.fluid.layers.cross_entropy(input=prediction, label=input_y)
+                avg_cost = paddle.fluid.layers.mean(x=cost)
 
-            # for more examples, please reference https://github.com/PaddlePaddle/Fleet
+                role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
+                fleet.init(role)
+                strategy = fleet.DistributedStrategy()
+                optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+                optimizer.minimize(avg_cost)
+
+                # for more examples, please reference https://github.com/PaddlePaddle/FleetX
 
         """
         context = {}
