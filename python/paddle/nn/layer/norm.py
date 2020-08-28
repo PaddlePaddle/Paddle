@@ -911,7 +911,7 @@ class BatchNorm3d(_BatchNormBase):
                 len(input.shape)))
 
 
-class SyncBatchNorm(layers.Layer):
+class SyncBatchNorm(_BatchNormBase):
     """
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
     It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can 
@@ -997,80 +997,16 @@ class SyncBatchNorm(layers.Layer):
 
     def __init__(self,
                  num_features,
-                 epsilon=1e-05,
                  momentum=0.9,
-                 track_running_stats=True,
+                 epsilon=1e-05,
                  weight_attr=None,
                  bias_attr=None,
                  data_format='NCHW',
+                 track_running_stats=True,
                  name=None):
-        super(SyncBatchNorm, self).__init__()
-        self._weight_attr = weight_attr
-        self._bias_attr = bias_attr
-        self._num_features = num_features
-        self._data_format = data_format
-        self._momentum = momentum
-        self._epsilon = epsilon
-        self._track_running_stats = track_running_stats
-        self._name = name
-
-        if self._track_running_stats == False:
-            warnings.warn(
-                "moving mean and moving variance will be calculated whether `track_running_stats` is set to `True` or `False`, we will fix it in the next version."
-            )
-
-        param_shape = [self._num_features]
-
-        # create parameter
-        if weight_attr == False:
-            self.weight = self.create_parameter(
-                attr=None, shape=param_shape, default_initializer=Constant(1.0))
-            self.weight.stop_gradient = True
-        else:
-            self.weight = self.create_parameter(
-                attr=self._weight_attr,
-                shape=param_shape,
-                default_initializer=Constant(1.0))
-            self.weight.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
-
-        if bias_attr == False:
-            self.bias = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                default_initializer=Constant(0.0),
-                is_bias=True)
-            self.bias.stop_gradient = True
-        else:
-            self.bias = self.create_parameter(
-                attr=self._bias_attr, shape=param_shape, is_bias=True)
-            self.bias.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
-
-        moving_mean_name = None
-        moving_variance_name = None
-
-        if name is not None:
-            moving_mean_name = name + "_mean"
-            moving_variance_name = name + "_variance"
-
-        self._mean = self.create_parameter(
-            attr=ParamAttr(
-                name=moving_mean_name,
-                initializer=Constant(0.0),
-                trainable=False,
-                do_model_average=True),
-            shape=param_shape,
-            dtype=self._dtype)
-        self._mean.stop_gradient = True
-
-        self._variance = self.create_parameter(
-            attr=ParamAttr(
-                name=moving_variance_name,
-                initializer=Constant(1.0),
-                trainable=False,
-                do_model_average=True),
-            shape=param_shape,
-            dtype=self._dtype)
-        self._variance.stop_gradient = True
+        super(SyncBatchNorm,
+              self).__init__(num_features, momentum, epsilon, weight_attr,
+                             bias_attr, data_format, track_running_stats, name)
 
     def forward(self, x):
         # create output
@@ -1158,24 +1094,17 @@ class SyncBatchNorm(layers.Layer):
         """
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
-            if six.PY2:
-                layer_output = object.__new__(SyncBatchNorm)
-            else:
-                layer_output = SyncBatchNorm.__new__(SyncBatchNorm)
-            super(SyncBatchNorm, layer_output).__init__()
+            layer_output = SyncBatchNorm(layer._num_features, layer._epsilon,
+                                         layer._momentum, layer._weight_attr,
+                                         layer._bias_attr, layer._data_format,
+                                         layer._name)
 
-            with no_grad():
-                #weight_attr = False and bias_attr = False also need create param, 
-                #so assign weight and bias from bn always
-                layer_output.weight = layer.weight
-                layer_output.bias = layer.bias
+            if layer._weight_attr != False and layer._bias_attr != False:
+                with no_grad():
+                    layer_output.weight = layer.weight
+                    layer_output.bias = layer.bias
             layer_output._mean = layer._mean
             layer_output._variance = layer._variance
-            layer_output._num_features = layer._num_features
-            layer_output._epsilon = layer._epsilon
-            layer_output._momentum = layer._momentum
-            layer_output._data_format = layer._data_format
-            layer_output._name = layer._name
 
         for name, sublayer in layer.named_sublayers():
             layer_output.add_sublayer(name,
