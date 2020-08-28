@@ -169,9 +169,10 @@ class TestRegularizer(unittest.TestCase):
         return param_sum
 
     def check_l2decay_regularizer(self, place, model):
+        paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
-        startup_prog.random_seed = 1
         with self.scope_prog_guard(
                 main_prog=main_prog, startup_prog=startup_prog):
             data = fluid.layers.data(
@@ -188,9 +189,11 @@ class TestRegularizer(unittest.TestCase):
         return param_sum
 
     def check_l2decay(self, place, model):
+        paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
-        startup_prog.random_seed = 1
+
         with self.scope_prog_guard(
                 main_prog=main_prog, startup_prog=startup_prog):
             data = fluid.layers.data(
@@ -243,7 +246,8 @@ class TestRegularizer(unittest.TestCase):
         with fluid.dygraph.guard():
             input = fluid.dygraph.to_variable(
                 np.random.randn(3, 5).astype('float32'))
-            fluid.default_main_program().random_seed = 1
+            paddle.manual_seed(1)
+            paddle.framework.random._manual_program_seed(1)
 
             linear1 = fluid.dygraph.Linear(
                 5, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr)

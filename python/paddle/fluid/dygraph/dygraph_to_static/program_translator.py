@@ -40,7 +40,6 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
 from paddle.fluid.dygraph.dygraph_to_static.utils import make_hashable
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec

@@ -25,7 +25,7 @@ class TestNormalAPI(unittest.TestCase):
         self.mean = 1.0
         self.std = 0.0
         self.shape = None
-        self.repeat_num = 1000
+        self.repeat_num = 2000
         self.set_attrs()
         self.dtype = self.get_dtype()
         self.place=paddle.CUDAPlace(0) \
@@ -134,8 +134,8 @@ class TestNormalAPI(unittest.TestCase):
                 if isinstance(self.mean, np.ndarray) else self.mean
             std_ref=self.std.reshape([1, -1]) \
                 if isinstance(self.std, np.ndarray) else self.std
-            self.assertTrue(np.allclose(mean_ref, mean, 0.1, 0.1))
-            self.assertTrue(np.allclose(std_ref, std, 0.1, 0.1))
+            self.assertTrue(np.allclose(mean_ref, mean, 0.2, 0.2))
+            self.assertTrue(np.allclose(std_ref, std, 0.2, 0.2))
 
 
 class TestNormalAPI_mean_is_tensor(TestNormalAPI):
