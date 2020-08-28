@@ -14,10 +14,8 @@
 
 import numpy as np
 import unittest
-import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
-import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 import paddle
 import paddle.nn.functional as F
@@ -102,10 +100,10 @@ class TestPool1d_API(unittest.TestCase):
                               fetch_list=[result])
             self.assertTrue(np.allclose(fetches[0], result_np))
 
-
-def test_adaptive_max_pool1d(self):
-    self.check_adaptive_max_dygraph_results(place)
-    self.check_adaptive_max_static_results(place)
+    def test_adaptive_max_pool1d(self):
+        for place in self.places:
+            self.check_adaptive_max_dygraph_results(place)
+            self.check_adaptive_max_static_results(place)
 
 
 if __name__ == '__main__':
