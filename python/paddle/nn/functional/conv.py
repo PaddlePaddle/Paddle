@@ -1336,14 +1336,14 @@ def conv_transpose3d(x,
             If stride is a tuple, it must contain three integers, (stride_depth, stride_height, 
             stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
             Default: stride = 1.
-        padding(int|list|str|tuple, optional): The padding size. The padding argument effectively
-             adds `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a string,
-             either 'VALID' or 'SAME' supported, which is the padding algorithm. If `padding`
-             is a tuple or list, it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings 
+            on both sides for each dimension. If `padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If padding size is a tuple or list,
+            it could be in three forms: `[pad_depth, pad_height, pad_width]` or
             `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `'NCDHW'`, `padding` can be in the form
+            and when `data_format` is `"NCDHW"`, `pool_padding` can be in the form
             `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `'NDHWC'`, `padding` can be in the form
+            when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
