@@ -80,7 +80,7 @@ class LinearNetReturnLoss(fluid.dygraph.Layer):
 
 def train(layer, input_size=784, label_size=1):
     # create optimizer
-    adam = fluid.optimizer.SGDOptimizer(
+    sgd = fluid.optimizer.SGDOptimizer(
         learning_rate=0.01, parameter_list=layer.parameters())
     # create data loader
     train_loader = fluid.io.DataLoader.from_generator(capacity=5)
@@ -97,7 +97,7 @@ def train(layer, input_size=784, label_size=1):
         avg_loss = fluid.layers.mean(loss)
 
         avg_loss.backward()
-        adam.minimize(avg_loss)
+        sgd.minimize(avg_loss)
         layer.clear_gradients()
     return [img], layer, avg_loss
 
@@ -180,25 +180,6 @@ class TestJitSaveLoad(unittest.TestCase):
         model_path = "model.test_jit_save_load.no_path"
         new_layer = LinearNet(784, 1)
         with self.assertRaises(ValueError):
-            model_dict, _ = fluid.dygraph.load_dygraph(model_path)
-
-    def test_load_dygraph_no_var_info(self):
-        model_path = "model.test_jit_save_load.no_var_info"
-        self.train_and_save_model(model_path=model_path)
-        # remove `__variables.info__`
-        var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
-        os.remove(var_info_path)
-        new_layer = LinearNet(784, 1)
-        with self.assertRaises(RuntimeError):
-            model_dict, _ = fluid.dygraph.load_dygraph(model_path)
-
-    def test_load_dygraph_not_var_file(self):
-        model_path = "model.test_jit_save_load.no_var_file"
-        configs = fluid.dygraph.jit.SaveLoadConfig()
-        configs.params_filename = "__params__"
-        self.train_and_save_model(model_path=model_path, configs=configs)
-        new_layer = LinearNet(784, 1)
-        with self.assertRaises(RuntimeError):
             model_dict, _ = fluid.dygraph.load_dygraph(model_path)
 
 

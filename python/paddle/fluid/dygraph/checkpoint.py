@@ -22,6 +22,7 @@ import six
 from . import learning_rate_scheduler
 import warnings
 from .. import core
+from paddle import fluid
 from paddle.fluid.dygraph.jit import SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 
@@ -101,7 +102,7 @@ def save_dygraph(state_dict, model_path):
 
 # TODO(qingqing01): remove dygraph_only to support loading static model.
 # maybe need to unify the loading interface after 2.0 API is ready.
-#@dygraph_only
+# @dygraph_only
 def load_dygraph(model_path, configs=None):
     '''
     :api_attr: imperative
@@ -174,17 +175,18 @@ def load_dygraph(model_path, configs=None):
                                               configs.model_filename)
 
         # 3. load layer parameters & buffers
-        persistable_var_dict = _construct_params_and_buffers(
-            model_prefix,
-            programs,
-            configs.separate_params,
-            configs.params_filename,
-            append_suffix=False)
+        with fluid.dygraph.guard():
+            persistable_var_dict = _construct_params_and_buffers(
+                model_prefix,
+                programs,
+                configs.separate_params,
+                configs.params_filename,
+                append_suffix=False)
 
-        # 4. construct state_dict
-        para_dict = dict()
-        for var_name in persistable_var_dict:
-            para_dict = persistable_var_dict[var_name].numpy()
+            # 4. construct state_dict
+            para_dict = dict()
+            for var_name in persistable_var_dict:
+                para_dict[var_name] = persistable_var_dict[var_name].numpy()
     else:
         # Load state dict by `save_dygraph` save format
         if os.path.exists(params_file_path):

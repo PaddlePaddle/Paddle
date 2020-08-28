@@ -21,6 +21,6 @@ from ..fluid.dygraph import ProgramTranslator  #DEFINE_ALIAS
 from ..fluid.dygraph.io import TranslatedLayer  #DEFINE_ALIAS
 
 __all__ = [
-    'save', 'load', 'SaveLoadConfig', 'TracedLayer', 'to_static',
-    'ProgramTranslator', 'TranslatedLayer'
+    'save', 'load', 'TracedLayer', 'to_static', 'ProgramTranslator',
+    'TranslatedLayer'
 ]
