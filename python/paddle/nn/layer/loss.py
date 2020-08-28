@@ -635,11 +635,11 @@ class KLDivLoss(fluid.dygraph.Layer):
 
     Shape:
 
-      - input: (N, *), where * means, any number of additional dimensions.
+        - input (Tensor): (N, *), where * means, any number of additional dimensions.
 
-      - label: (N, *), same shape as input
+        - label (Tensor): (N, *), same shape as input.
 
-      - output: tensor with shape: [1] by default.
+        - output (Tensor): tensor with shape: [1] by default.
 
 
     Examples:
