@@ -112,10 +112,10 @@ class TestAdadeltaOp2(OpTest):
 
 class TestAdadeltaV2(unittest.TestCase):
     def test_adadelta_dygraph(self):
-        paddle.disable_static()
+        paddle.disable_static(paddle.CPUPlace())
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
-        linear = paddle.nn.Linear(13, 5, dtype="float32")
+        linear = paddle.nn.Linear(13, 5)
         # This can be any optimizer supported by dygraph.
         adam = paddle.optimizer.Adadelta(
             learning_rate=0.01,
