@@ -27,20 +27,32 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 class ConvertMaskPluginDynamic : public DynamicPluginTensorRT {
  public:
-  ConvertMaskPluginDynamic() {}
-  ConvertMaskPluginDynamic(void const* serial_data, size_t serial_length) {}
+  explicit ConvertMaskPluginDynamic(nvinfer1::DataType type) : type_(type) {
+    assert(type == nvinfer1::DataType::kHALF ||
+           type == nvinfer1::DataType::kFLOAT);
+  }
+  ConvertMaskPluginDynamic(void const* serial_data, size_t serial_length) {
+    DeserializeValue(&serial_data, &serial_length, &type_);
+  }
 
   ~ConvertMaskPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new ConvertMaskPluginDynamic();
+    return new ConvertMaskPluginDynamic(type_);
   }
 
   const char* getPluginType() const override { return "convert_mask_plugin"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override { return 0; }
 
-  size_t getSerializationSize() const override { return 0; }
-  void serialize(void* buffer) const override {}
+  size_t getSerializationSize() const override {
+    size_t serialize_size = 0;
+    serialize_size += SerializedSize(type_);
+    return serialize_size;
+  }
+
+  void serialize(void* buffer) const override {
+    SerializeValue(&buffer, type_);
+  }
 
   nvinfer1::DimsExprs getOutputDimensions(
       int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
@@ -71,6 +83,9 @@ class ConvertMaskPluginDynamic : public DynamicPluginTensorRT {
                                        int nb_inputs) const override;
 
   void destroy() override { delete this; }
+
+ private:
+  nvinfer1::DataType type_;
 };
 
 class ConvertMaskPluginV2Creator : public nvinfer1::IPluginCreator {

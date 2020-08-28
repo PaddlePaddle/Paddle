@@ -17,6 +17,7 @@
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/convert_mask_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
+#include "paddle/fluid/operators/math/math_cuda_utils.h"
 
 namespace paddle {
 namespace inference {
@@ -38,15 +39,23 @@ constexpr size_t packedMaskSize128 = xmmasM128 * threadsPerCta128;
 nvinfer1::DimsExprs ConvertMaskPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) {
-  auto cms128 = expr_builder.constant(packedMaskSize128);
-  auto fp16maskSize = expr_builder.operation(
-      nvinfer1::DimensionOperation::kPROD, *cms128, *expr_builder.constant(2));
+  assert(output_index == 0);
+  if (type_ == nvinfer1::DataType::kHALF) {
+    auto cms128 = expr_builder.constant(packedMaskSize128);
+    auto fp16maskSize =
+        expr_builder.operation(nvinfer1::DimensionOperation::kPROD, *cms128,
+                               *expr_builder.constant(2));
 
+    nvinfer1::DimsExprs ret;
+    ret.nbDims = 2;
+    ret.d[0] = inputs[0].d[0];
+    ret.d[1] = fp16maskSize;
+
+    return ret;
+  }
   nvinfer1::DimsExprs ret;
-  ret.nbDims = 2;
+  ret.nbDims = 1;
   ret.d[0] = inputs[0].d[0];
-  ret.d[1] = fp16maskSize;
-
   return ret;
 }
 
@@ -54,22 +63,21 @@ bool ConvertMaskPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
     int nb_outputs) {
   const nvinfer1::PluginTensorDesc& desc = in_out[pos];
-  /*  input: [B, S, S] */
+  /*  input: [B, S, 1] */
   /* output: [B, 2*maskSize] */
   assert(nb_inputs == 1);
   assert(nb_outputs == 1);
 
   if (pos == 0) {
-    std::cerr << "desc.type: " << static_cast<int>(desc.type) << " "
-              << desc.dims.nbDims << std::endl;
     return ((desc.type == nvinfer1::DataType::kFLOAT ||
              desc.type == nvinfer1::DataType::kHALF) &&
             desc.dims.nbDims == 3);
   }
-  std::cerr << "output.type: " << static_cast<int>(desc.type) << " "
-            << desc.dims.nbDims << std::endl;
-  // return desc.type == nvinfer1::DataType::kHALF;
-  return true;
+  // return true;
+  /* fp16 -> fp16, fp32 -> int32 */
+  if (type_ == nvinfer1::DataType::kHALF)
+    return desc.type == nvinfer1::DataType::kHALF;
+  return desc.type == nvinfer1::DataType::kINT32;
 }
 
 nvinfer1::DataType ConvertMaskPluginDynamic::getOutputDataType(
@@ -79,16 +87,36 @@ nvinfer1::DataType ConvertMaskPluginDynamic::getOutputDataType(
                         "The convert mask plugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
-  return nvinfer1::DataType::kHALF;
+  if (type_ == nvinfer1::DataType::kHALF) {
+    return nvinfer1::DataType::kHALF;
+  }
+  return nvinfer1::DataType::kINT32;
 }
 
+/* half [B, S, 1] -> int [S, B, 1] */
 template <typename T>
-__global__ void CastToIntAndReduce(const T* input, int* output, int seq_len,
+__global__ void FullMaskPreprocess(const T* input, int* output, int seq_len,
                                    int batch) {
   int bid = blockIdx.x;
   int sid = threadIdx.x;
-  output[sid * batch + bid] =
-      static_cast<int>(input[bid * seq_len * seq_len + sid]);
+  output[sid * batch + bid] = static_cast<int>(input[bid * seq_len + sid]);
+}
+
+/* float [B, S, 1] -> int [B] */
+/* [[1. 1. 1. 0. 0.], -> [3, 4]
+    [1. 1. 1. 1. 0.]]           */
+__global__ void IMaskPreprocess(const float* input, int* output, int seq_len,
+                                int batch) {
+  float sum = 0.f;
+  int bid = blockIdx.x;
+  int sid = threadIdx.x;
+  float thread_data = input[bid * seq_len + sid];
+
+  sum = paddle::operators::math::blockReduceSum<float>(thread_data, 0xffffffff);
+
+  if (sid == 0) {
+    output[bid] = static_cast<int>(sum);
+  }
 }
 
 __global__ void fillSBSMaskKernel(const uint32_t warps_m,
@@ -159,33 +187,33 @@ int ConvertMaskPluginDynamic::enqueue(
   int batch = input_dims.d[0];
   int seq_len = input_dims.d[1];
 
-  assert(num_elements == out_num_elements * seq_len);
-  assert(seq_len <= 1024);
-  assert(output_desc.type == nvinfer1::DataType::kHALF);
-
-  // temp use, should remove
-  int* inputMaskSB;
-  cudaMalloc(&inputMaskSB, batch * seq_len * sizeof(int));
-
-  if (input_desc[0].type == nvinfer1::DataType::kFLOAT) {
-    CastToIntAndReduce<float><<<batch, seq_len, 0, stream>>>(
-        static_cast<const float*>(inputs[0]), inputMaskSB, seq_len, batch);
-  } else {
-    CastToIntAndReduce<half><<<batch, seq_len, 0, stream>>>(
-        static_cast<const half*>(inputs[0]), inputMaskSB, seq_len, batch);
-  }
-
   assert(seq_len == 128);
-  size_t warps_m = 0, warps_n = 0, warps_k = 1;
-  if (seq_len == 128) {
-    warps_m = 2;
-    warps_n = 2;
+
+  if (type_ == nvinfer1::DataType::kFLOAT) {
+    IMaskPreprocess<<<batch, seq_len, 0, stream>>>(
+        static_cast<const float*>(inputs[0]), static_cast<int*>(outputs[0]),
+        seq_len, batch);
+  } else {
+    int* inputMaskSB;
+    cudaMalloc(&inputMaskSB, batch * seq_len * sizeof(int));
+    if (input_desc[0].type == nvinfer1::DataType::kFLOAT) {
+      FullMaskPreprocess<float><<<batch, seq_len, 0, stream>>>(
+          static_cast<const float*>(inputs[0]), inputMaskSB, seq_len, batch);
+    } else {
+      FullMaskPreprocess<half><<<batch, seq_len, 0, stream>>>(
+          static_cast<const half*>(inputs[0]), inputMaskSB, seq_len, batch);
+    }
+    size_t warps_m = 0, warps_n = 0, warps_k = 1;
+    if (seq_len == 128) {
+      warps_m = 2;
+      warps_n = 2;
+    }
+
+    convertMask(seq_len, batch, warps_m, warps_n, warps_k, inputMaskSB,
+                static_cast<uint32_t*>(outputs[0]), stream);
+    cudaFree(inputMaskSB);
   }
 
-  convertMask(seq_len, batch, warps_m, warps_n, warps_k, inputMaskSB,
-              static_cast<uint32_t*>(outputs[0]), stream);
-
-  cudaFree(inputMaskSB);
   return cudaGetLastError() != cudaSuccess;
 }
 #endif

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/plugin/convert_mask_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -31,17 +32,27 @@ class MulOpConverter : public OpConverter {
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
+
+    bool transpose_x = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_X"));
+    bool transpose_y = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
+
+#ifdef USE_NVINFER_PLUGIN
+    nvinfer1::DataType type = (engine_->WithFp16() == 1)
+                                  ? nvinfer1::DataType::kHALF
+                                  : nvinfer1::DataType::kFLOAT;
+    plugin::ConvertMaskPluginDynamic* plugin =
+        new plugin::ConvertMaskPluginDynamic(type);
+    auto convert_mask_layer = engine_->AddPluginV2(&input1, 1, plugin);
+    engine_->SetITensor("qkv_plugin_mask", convert_mask_layer->getOutput(0));
+#endif
+
     // Both the input1 and input2 do not need transpose.
     auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1), false,
-        *const_cast<nvinfer1::ITensor*>(input2), false);
+        engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1),
+        transpose_x, *const_cast<nvinfer1::ITensor*>(input2), transpose_y);
 
     auto output_name = op_desc.Output("Out")[0];
-    engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {  // the test framework can not determine which is the
-                      // output, so place the declaration inside.
-      engine_->DeclareOutput(output_name);
-    }
+    RreplenishLayerAndOutput(layer, "matmul", {output_name}, test_mode);
   }
 };
 
@@ -49,4 +60,4 @@ class MulOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(mul, MulOpConverter);
+REGISTER_TRT_OP_CONVERTER(matmul, MulOpConverter);

@@ -113,33 +113,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
                              static_cast<void*>(bias_data),
                              static_cast<int32_t>(bias_t->numel())};
 
-      nvinfer1::Permutation permutation{0, 1, 2, 3, 4};
-      auto trans_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-      trans_layer->setFirstTranspose(permutation);
+      auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *input, n,
+                                            weight, bias);
 
-      auto* fc_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, FullyConnected, *trans_layer->getOutput(0), n, weight, bias);
-      /*
-            auto pos_tensor = engine_->GetITensor("eval_placeholder_2");
-            plugin::CastIntPluginDynamic* cast_plugin =
-                new plugin::CastIntPluginDynamic();
-            auto cast_layer = engine_->AddPluginV2(&pos_tensor, 1, cast_plugin);
-
-            auto casted_pos_tensor = cast_layer->getOutput(0);
-            auto reshape_layer =
-                TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *casted_pos_tensor);
-
-            nvinfer1::Dims2 reshape_dim(0, 0);
-            nvinfer1::Permutation perm{1, 0, 2};
-            reshape_layer->setFirstTranspose(perm);
-            reshape_layer->setReshapeDimensions(reshape_dim);
-            auto reduce_layer =
-                TRT_ENGINE_ADD_LAYER(engine_, Reduce,
-         *reshape_layer->getOutput(0),
-                                     nvinfer1::ReduceOperation::kMAX, 1, false);
-      */
-      // auto imask_tensor = engine_->GetITensor("imask_tensor");
-      auto imask_tensor = engine_->GetITensor("fused_mha_mask");
+      auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
 
       auto creator = GetPluginRegistry()->getPluginCreator(
           "CustomQKVToContextPluginDynamic", "1");
@@ -154,28 +131,24 @@ class MultiheadMatMulOpConverter : public OpConverter {
           {"num_heads", &head_number, nvinfer1::PluginFieldType::kINT32, 1},
           {"has_mask", &has_mask, nvinfer1::PluginFieldType::kINT32, 1},
       };
-      nvinfer1::PluginFieldCollection* pluginPtr =
+      nvinfer1::PluginFieldCollection* plugin_collection =
           static_cast<nvinfer1::PluginFieldCollection*>(
-              malloc(sizeof(*pluginPtr) +
+              malloc(sizeof(*plugin_collection) +
                      fields.size() *
                          sizeof(nvinfer1::PluginField)));  // remember to free
-      pluginPtr->nbFields = static_cast<int>(fields.size());
-      pluginPtr->fields = fields.data();
+      plugin_collection->nbFields = static_cast<int>(fields.size());
+      plugin_collection->fields = fields.data();
 
-      auto pluginObj =
-          creator->createPlugin("CustomQKVToContextPluginDynamic", pluginPtr);
+      auto plugin = creator->createPlugin("CustomQKVToContextPluginDynamic",
+                                          plugin_collection);
+      free(plugin_collection);
+
       std::vector<nvinfer1::ITensor*> plugin_inputs;
       plugin_inputs.push_back(fc_layer->getOutput(0));
-      // plugin_inputs.push_back(reduce_layer->getOutput(0));
-      plugin_inputs.push_back(imask_tensor);
+      plugin_inputs.push_back(mask_tensor);
       auto plugin_layer = engine_->network()->addPluginV2(
-          plugin_inputs.data(), plugin_inputs.size(), *pluginObj);
-      assert(plugin_layer != nullptr);
-      auto trans_r_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *plugin_layer->getOutput(0));
-      assert(trans_r_layer != nullptr);
-      trans_r_layer->setFirstTranspose(permutation);
-      layer = trans_r_layer;
+          plugin_inputs.data(), plugin_inputs.size(), *plugin);
+      layer = plugin_layer;
 #else
       // transpose weight_data from m * n to  n * m
       auto* input_bias_qk =
