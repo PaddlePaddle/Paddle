@@ -246,8 +246,8 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             variable CUDA_VISIBLE_DEVICES; If use CPU, the currently available
             CPU number is obtained from the environment variable CPU_NUM. 
             For example, export CPU_NUM=4, if the environment variable is not set, 
-            the executor will add the variable to the environment variable and 
-            set its value to 1.
+            the spawn method will add default value to the environment variable 
+            and set its value to 1.
         join (bool, optional): Perform a blocking join on all spawned processes.
             Default: True.
         daemon (bool, optional): The spawned processes' daemon flag. Default: False.
@@ -266,8 +266,8 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             such as 6170. Default: None; 
             (5) selected_gpus (string): The training process will run on the 
             selected_gpus, such as "0,1,2,3". Default: None; 
-            (6) print_config: Print current parallel training config. Default: False;
-            (7) use_paddlecloud: Whether to use paddlecloud platform to run your 
+            (6) print_config (bool): Print current parallel training config. Default: False;
+            (7) use_paddlecloud (bool): Whether to use paddlecloud platform to run your 
             multi-process job. Default: False.
 
     Returns:
