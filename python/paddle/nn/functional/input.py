@@ -123,7 +123,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
 
             Case 1:
             input is a Tensor. padding_idx = -1
-                input.data = [[[1], [3]], [[2], [4]], [[4], [127]]]
+                input.data = [[1, 3], [2, 4], [4, 127]]
                 input.shape = [3, 2]
             Given size = [128, 16]
             output is a Tensor:
