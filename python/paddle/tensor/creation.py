@@ -73,8 +73,8 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor, paddle\.ComplexTensor.
         dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' , 
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8'. And
-            'complex64' , 'complex128' only for ComplexTensor. 
-            Default: None, infers type from ``data`` if not ``set_default_type`` .
+            'complex64' , 'complex128' only for ComplexTensor. Default: None, if not ``set_default_type`` , 
+            'float32' for float point number, infers from ``data`` for other type .
         place(CPUPlace|CUDAPinnedPlace|CUDAPlace, optional): The place to allocate Tensor. Can be  
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
