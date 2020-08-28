@@ -24,13 +24,19 @@ namespace operators {
 
 template <typename T>
 struct ModFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a % b; }
+  inline HOSTDEVICE T operator()(T a, T b) const {
+    T res = a % b;
+    if ((res != 0) && ((res < 0) != (b < 0))) res += b;
+    return res;
+  }
 };
 
 template <typename T>
 struct ModFunctorFP {
   inline HOSTDEVICE T operator()(T a, T b) const {
-    return fmod(b + fmod(a, b), b);
+    T res = fmod(a, b);
+    if ((res != 0) && ((b < 0) != (res < 0))) res += b;
+    return res;
   }
 };
 

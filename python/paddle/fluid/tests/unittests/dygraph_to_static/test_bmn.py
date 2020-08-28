@@ -15,11 +15,11 @@
 import math
 import numpy as np
 import unittest
-
+from paddle.jit import to_static
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 
 from predictor_utils import PredictorTools
@@ -242,7 +242,7 @@ class BMN(fluid.dygraph.Layer):
             param_attr=ParamAttr(name="PEM_2d4_w"),
             bias_attr=ParamAttr(name="PEM_2d4_b"))
 
-    @declarative
+    @to_static
     def forward(self, x):
         # Base Module
         x = self.b_conv1(x)
