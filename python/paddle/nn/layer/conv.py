@@ -325,12 +325,14 @@ class Conv2d(_ConvNd):
         Out = \sigma (W \\ast X + b)
 
     Where:
+
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D ``Tensor`` with shape [M, 1].
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
     Parameters:
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of channels produced by convolution.
@@ -384,7 +386,9 @@ class Conv2d(_ConvNd):
            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
 
     Examples:
+
         .. code-block:: python
+
           import numpy as np
           import paddle
           import paddle.nn as nn
@@ -663,6 +667,7 @@ class ConvTranspose2d(_ConvNd):
         Out = \sigma (W \\ast X + b)
 
     Where:
+
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
     * :math:`\\ast`: Convolution operation.
@@ -730,7 +735,9 @@ class ConvTranspose2d(_ConvNd):
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
     Examples:
+
        .. code-block:: python
+
           import numpy as np
           import paddle
           import paddle.nn as nn
@@ -878,7 +885,9 @@ class Conv3d(_ConvNd):
         ValueError: If the shapes of input, filter_size, stride, padding and
                     groups mismatch.
     Examples:
+
         .. code-block:: python
+
           import numpy as np
           
           import paddle
@@ -978,7 +987,6 @@ class ConvTranspose3d(_ConvNd):
     * :math:`\\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
-    Example:
     **Note**:
           The conv_transpose3d can be seen as the backward of the conv3d. For conv3d, 
           when stride > 1, conv3d maps multiple input shape to the same output shape, 
@@ -1058,7 +1066,9 @@ class ConvTranspose3d(_ConvNd):
         ValueError: If the shapes of input, filter_size, stride, padding and
                     groups mismatch.
     Examples:
+
        .. code-block:: python
+       
           import numpy as np
           import paddle
           import paddle.nn as nn
