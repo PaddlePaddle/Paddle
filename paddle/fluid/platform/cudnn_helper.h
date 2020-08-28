@@ -245,9 +245,8 @@ class ScopedTensorDescriptor {
 
     if (dims.size() == 4) {
       if (format == CUDNN_TENSOR_NCHW) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
-            desc_, type, dims_with_group.size(), dims_with_group.data(),
-            strides.data()));
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensor4dDescriptor(
+            desc_, format, type, dims[0], dims[1], dims[2], dims[3]));
       } else {  // CUDNN_TENSOR_NHWC
         PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensor4dDescriptor(
             desc_, format, type, dims[0], dims[3], dims[1], dims[2]));
@@ -271,19 +270,6 @@ class ScopedTensorDescriptor {
                                             const int groups = 1) {
     return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims,
                       groups);
-  }
-
-  inline cudnnTensorDescriptor_t descriptor(const cudnnDataType_t type,
-                                            const std::vector<int>& dims) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensor4dDescriptor(
-        desc_, CUDNN_TENSOR_NCHW, type, dims[0], dims[1], dims[2], dims[3]));
-    return desc_;
-  }
-
-  template <typename T>
-  inline cudnnTensorDescriptor_t descriptor(const std::vector<int>& dims,
-                                            const bool softmax) {
-    return descriptor(CudnnDataType<T>::type, dims);
   }
 
  private:
