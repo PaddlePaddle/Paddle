@@ -113,7 +113,10 @@ class BertBasicTokenizer(object):
     Runs basic tokenization (punctuation splitting, lower casing, etc.).
 
     Args:
-        do_lower_case (bool): Whether to convert the input to lowercase. Default: True.
+        do_lower_case (bool): Whether the text strips accents and convert to
+            lower case. If you use the BERT pretrained model, lower is set to
+            Flase when using the cased model, otherwise it is set to True.
+            Default: True.
     """
 
     def __init__(self, do_lower_case=True):
@@ -242,7 +245,7 @@ class WordpieceTokenizer(object):
     Runs WordPiece tokenization.
 
     Args:
-        vocab (Vocab): Vocab of the word piece tokenizer.
+        vocab (Vocab|dict): Vocab of the word piece tokenizer.
         unk_token (str):  A specific token to replace all unkown tokens.
         max_input_chars_per_word (int):  If a word's length is more than max_input_chars_per_word, it will be 
             dealt as unknown word. Default: 100.
@@ -314,7 +317,10 @@ class BertTokenizer(PreTrainedTokenizer):
 
     Args:
         vocab_file (str): file path of the vocabulary
-        do_lower_case (bool): Whether to convert the input to lowercase. Default: True.
+        do_lower_case (bool): Whether the text strips accents and convert to
+            lower case. If you use the BERT pretrained model, lower is set to
+            Flase when using the cased model, otherwise it is set to True.
+            Default: True.
         unk_token (str): The special token for unkown words. Default: "[UNK]".
         sep_token (str): The special token for separator token . Default: "[SEP]".
         pad_token (str): The special token for padding. Default: "[PAD]".
@@ -332,7 +338,6 @@ class BertTokenizer(PreTrainedTokenizer):
             tokens = tokenizer('He was a puppeteer')
             # the following line get: 'he was a puppeteer'
             tokenizer.convert_tokens_to_string(tokens)
-
     """
     resource_files_names = {"vocab_file": "vocab.txt"}  # for save_pretrained
     pretrained_resource_files_map = {

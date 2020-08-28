@@ -351,6 +351,7 @@ class PreTrainedModel(Layer):
     # arguments), handle_name_for_save
     resource_files_names = {"model_state": "model_state"}
     pretrained_resource_files_map = {}
+    base_model_prefix = ""
 
     @classmethod
     def from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
@@ -424,8 +425,23 @@ class PreTrainedModel(Layer):
         weight_path = list(resolved_resource_files.values())[0]
         assert weight_path.endswith(
             ".pdparams"), "suffix of weight must be .pdparams"
-        param, _ = paddle.fluid.load_dygraph(weight_path)
-        model.load_dict(param)
+        state_dict, _ = paddle.fluid.load_dygraph(weight_path)
+
+        # Make sure we are able to load base models as well as derived models
+        # (with heads)
+        start_prefix = ""
+        model_to_load = model
+        if not hasattr(model, cls.base_model_prefix) and any(
+                s.startswith(cls.base_model_prefix) for s in state_dict.keys()):
+            start_prefix = cls.base_model_prefix + "."
+        if hasattr(model, cls.base_model_prefix) and not any(
+                s.startswith(cls.base_model_prefix) for s in state_dict.keys()):
+            model_to_load = getattr(model, cls.base_model_prefix)
+
+        def load(layer, prefix=""):
+            pass
+
+        model.load_dict(state_dict)
         return model
 
     def save_pretrained(self, save_directory):
