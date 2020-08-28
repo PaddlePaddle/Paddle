@@ -346,15 +346,6 @@ def monkey_patch_variable():
         #   b=-a
         ('__neg__', _neg_),
         ('astype', astype),
-        ('__add__', _binary_creator_('__add__', 'elementwise_add', False,
-                                     _scalar_add_)),
-        #  a+b == b+a. Do not need to reverse explicitly
-        ('__radd__',
-         _binary_creator_('__radd__', 'elementwise_add', False, _scalar_add_)),
-        ('__sub__', _binary_creator_('__sub__', 'elementwise_sub', False,
-                                     _scalar_sub_)),
-        ('__rsub__', _binary_creator_('__rsub__', 'elementwise_sub', True,
-                                      _scalar_rsub_)),
         ('__mul__', _binary_creator_('__mul__', 'elementwise_mul', False,
                                      _scalar_mul_)),
         #  a*b == b*a. Do not need to reverse explicitly
@@ -365,10 +356,14 @@ def monkey_patch_variable():
         ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
                                       None)),
         # These binary use paddle.optype
+        ('__add__', _binary_method_creator_('add', False)),
+        ('__radd__', _binary_method_creator_('add', False)),
+        ('__sub__', _binary_method_creator_('sub', False)),
+        ('__rsub__', _binary_method_creator_('sub', True)),
         ('__div__', _binary_method_creator_('divide', False)),
-        ('__rdiv__', _binary_method_creator_('divide', True)),
         ('__truediv__', _binary_method_creator_('divide', False)),
         ('__rtruediv__', _binary_method_creator_('divide', True)),
+        ('__rdiv__', _binary_method_creator_('divide', True)),
         ('__floordiv__', _binary_method_creator_('floor_divide', False)),
         ('__rfloordiv__', _binary_method_creator_('floor_divide', True)),
         ('__mod__', _binary_method_creator_('remainder', False)),

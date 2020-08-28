@@ -11598,6 +11598,7 @@ Examples:
     return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
+@deprecated(since="2.0.0", update_to="paddle.sub")
 def elementwise_sub(x, y, axis=-1, act=None, name=None):
     """
     :alias_main: paddle.elementwise_sub
