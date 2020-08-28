@@ -351,7 +351,7 @@ __global__ void AssignGrad(T* x_grad, const int64_t* indices, const T* out_grad,
 template <typename T, typename IndType>
 __global__ void AssignGradWithAxis(const T* grad_out, const IndType* indices,
                                    T* grad_in, int64_t pre, int64_t post,
-                                   int64_t raw_height, int64_t k) {
+                                   int64_t raw_height, const int64_t k) {
   // raw_height is the length of topk axis
   for (int64_t i = blockIdx.x; i < pre; i += gridDim.x) {
     const auto& base_index = i * post * k;

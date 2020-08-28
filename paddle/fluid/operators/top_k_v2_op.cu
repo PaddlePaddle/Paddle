@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/p_norm_op.h"
+#include "paddle/fluid/operators/norm_op.h"
 #include "paddle/fluid/operators/top_k_function_cuda.h"
 #include "paddle/fluid/operators/top_k_v2_op.h"
 
@@ -206,7 +206,7 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
 
 #undef FIXED_BLOCK_DIM_BASE
 #undef FIXED_BLOCK_DIM
-template <typename DeviceContext, typename T>
+template <typename T>
 struct TopKV2OpGradFunctor {
   const framework::ExecutionContext& context;
   explicit TopKV2OpGradFunctor(const framework::ExecutionContext& context)
@@ -227,16 +227,15 @@ struct TopKV2OpGradFunctor {
 
     // get the real the axis and the k
     if (axis < 0) axis += in_dims.size();
-    const int& k = out_dims[axis];
-    const int& raw_height = in_dims[axis];
+    const int64_t& k = out_dims[axis];
 
     // allocate the cuda memory for the x_grad
     T* x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
     const T* out_grad_data = out_grad->data<T>();
-    const int64_t* indices_data = indices->data<int64_t>();
+    const IndType* indices_data = indices->data<IndType>();
 
-    int pre, n, post;
-    GetDims(in_dims, axis, &pre, &n, &post);
+    int64_t pre, n, post;
+    GetDims<int64_t>(in_dims, axis, &pre, &n, &post);
 
     // calcluate the block and grid num
     auto& dev_ctx = context.cuda_device_context();
@@ -252,9 +251,10 @@ struct TopKV2OpGradFunctor {
       else
         return 64;
     };
-    int block_size = ComputeBlockSize(post * k);
-    int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-    const int max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
+    int64_t block_size = ComputeBlockSize(post * k);
+    int64_t max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+    const int64_t max_blocks =
+        std::max(((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
     int grid_size = std::min(max_blocks, pre);
 
     // lanuch the cuda kernel to assign the grad
@@ -264,6 +264,7 @@ struct TopKV2OpGradFunctor {
   }
 };
 
+template <typename DeviceContext, typename T>
 class TopkV2OpGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
