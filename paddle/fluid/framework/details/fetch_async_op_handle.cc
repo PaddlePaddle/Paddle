@@ -84,9 +84,7 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
                               "parameter `return_merged = False` when you "
                               "call the `Executor.run()` method.",
                               offset));
-  // std::cout << "wanghuan dims size " << tensor_dims.size();
   for (int j = 1; j < dims.size(); j++) {
-    // std::cout << " " << tensor_dims[j];
     PADDLE_ENFORCE_EQ(
         dims[j], tensor_dims[j],
         platform::errors::Fatal("The dimensions of fetched Tensors or "
@@ -98,7 +96,7 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
                                 "you call the `Executor.run()` method.",
                                 offset));
   }
-  // std::cout << std::endl;
+
   // seto4: check lod
   PADDLE_ENFORCE_EQ(
       lod.size(), tensor->lod().size(),
@@ -158,12 +156,6 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     }
   }
 
-  std::cout << "wanghuan new dims";
-  for (auto i = 0; i < new_dim.size(); ++i) {
-    std::cout << " " << new_dim[i];
-  }
-  std::cout << std::endl;
-
   // check src type,layout,dim,lod consistence
   for (size_t i = 1; i < src_lodtensors.size(); ++i) {
     CheckTensorAttrs(src_lodtensors[i], new_type, new_layout, check_dim,
@@ -210,7 +202,6 @@ void FetchAsyncOpHandle::RunImpl() {
     auto *var = scope->FindVar(var_handle->name());
     PADDLE_ENFORCE_NOT_NULL(var, "Cannot find variable %s in execution scope",
                             var_handle->name());
-    std::cout << "wanghuan fetch var " << var_handle->name() << std::endl;
     src_vars.emplace_back(var);
   }
 
