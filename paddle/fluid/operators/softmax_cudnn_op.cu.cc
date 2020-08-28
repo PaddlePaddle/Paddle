@@ -50,8 +50,7 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
 
     ScopedTensorDescriptor desc;
     std::vector<int> tensor_dims = {N, dim, D, 1};
-    DataLayout layout = DataLayout::kNCHW;
-    cudnnTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
+    cudnnTensorDescriptor_t desc_ = desc.descriptor<T>(tensor_dims, true);
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();

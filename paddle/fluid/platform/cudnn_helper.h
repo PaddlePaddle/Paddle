@@ -273,6 +273,19 @@ class ScopedTensorDescriptor {
                       groups);
   }
 
+  inline cudnnTensorDescriptor_t descriptor(const cudnnDataType_t type,
+                                            const std::vector<int>& dims) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensor4dDescriptor(
+        desc_, CUDNN_TENSOR_NCHW, type, dims[0], dims[1], dims[2], dims[3]));
+    return desc_;
+  }
+
+  template <typename T>
+  inline cudnnTensorDescriptor_t descriptor(const std::vector<int>& dims,
+                                            const bool softmax) {
+    return descriptor(CudnnDataType<T>::type, dims);
+  }
+
  private:
   cudnnTensorDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedTensorDescriptor);
