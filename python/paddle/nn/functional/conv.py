@@ -350,7 +350,7 @@ def conv2d(x,
 
     For each input :math:`X`, the equation is:
 
-    .. math::
+    ..  math::
 
         Out = \sigma (W \\ast X + b)
 
@@ -377,7 +377,7 @@ def conv2d(x,
 
         Where
 
-        .. math::
+        ..  math::
 
             H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
@@ -807,10 +807,10 @@ def conv_transpose2d(x,
                      stride=1,
                      padding=0,
                      output_padding=0,
-                     groups=1,
                      dilation=1,
-                     data_format='NCHW',
+                     groups=1,
                      output_size=None,
+                     data_format='NCHW',
                      name=None):
     """
 
@@ -829,7 +829,7 @@ def conv_transpose2d(x,
 
     For each input :math:`X`, the equation is:
 
-    .. math::
+    ..  math::
 
         Out = \sigma (W \\ast X + b)
 
@@ -856,7 +856,7 @@ def conv_transpose2d(x,
 
         Where
 
-        .. math::
+        ..  math::
 
            H^\prime_{out} &= (H_{in} - 1) * strides[0] - pad_height_top - pad_height_bottom + dilations[0] * (H_f - 1) + 1 \\\\
            W^\prime_{out} &= (W_{in} - 1) * strides[1] - pad_width_left - pad_width_right + dilations[1] * (W_f - 1) + 1 \\\\
@@ -883,28 +883,27 @@ def conv_transpose2d(x,
         stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution. 
             If stride is a tuple, it must contain two integers, (stride_height, stride_width). 
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
-        padding(int|list|str|tuple, optional): The padding size. The padding argument effectively adds
-             `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a
-             string, either 'VALID' or 'SAME' supported, which is the padding algorithm.
-             If `padding` is a tuple or list, it could be in three forms:
-             `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and
-            when `data_format` is `'NCHW'`,
-            `padding` can be in the form `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `'NHWC'`, `padding` can be in the form
+        padding(str|int|list|tuple, optional): The padding size. It means the number of zero-paddings 
+            on both sides for each dimension. If `padding` is a string, either 'VALID' or 
+            'SAME' which is the padding algorithm. If padding size is a tuple or list,
+            it could be in three forms: `[pad_height, pad_width]` or 
+            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            and when `data_format` is `"NCHW"`, `pool_padding` can be in the form 
+            `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `"NHWC"`, `pool_padding` can be in the form 
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
-            If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width). 
-            Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups = 1.
+        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
+            If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width). 
+            Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple, it must contain two integers, (image_height, image_width). None if use
             filter_size, padding, and stride to calculate output_size.
@@ -950,7 +949,7 @@ def conv_transpose2d(x,
           paddle.disable_static()
           x_var = paddle.to_tensor(x)
           w_var = paddle.to_tensor(w)
-          y_var = F.conv2d_transpose(x_var, w_var)
+          y_var = F.conv_transpose2d(x_var, w_var)
           y_np = y_var.numpy()
           print(y_np.shape)
 
@@ -1070,7 +1069,7 @@ def conv3d(x,
 
     For each input :math:`X`, the equation is:
 
-    .. math::
+    ..  math::
 
         Out = \sigma (W \\ast X + b)
 
@@ -1096,7 +1095,7 @@ def conv3d(x,
 
         Where
 
-        .. math::
+        ..  math::
 
             D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
             H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
@@ -1160,20 +1159,18 @@ def conv3d(x,
     Examples:
         .. code-block:: python
 
-            from paddle import fluid
-            import paddle.nn.functional as F
-            import paddle.fluid.dygraph as dg
             import numpy as np
+            import paddle
+            import paddle.nn.functional as F
 
             x = np.random.randn(2, 3, 8, 8, 8).astype(np.float32)
             w = np.random.randn(6, 3, 3, 3, 3).astype(np.float32)
 
-            place = fluid.CPUPlace()
-            with dg.guard(place):
-                x_var = dg.to_variable(x)
-                w_var = dg.to_variable(w)
-                y_var = F.conv3d(x_var, w_var, act="relu")
-                y_np = y_var.numpy()
+            paddle.disable_static()
+            x_var = paddle.to_tensor(x)
+            w_var = paddle.to_tensor(w)
+            y_var = F.conv3d(x_var, w_var)
+            y_np = y_var.numpy()
             print(y_np.shape)
 
             # (2, 6, 6, 6, 6)
@@ -1260,8 +1257,8 @@ def conv_transpose3d(x,
                      output_padding=0,
                      groups=1,
                      dilation=1,
-                     data_format='NCDHW',
                      output_size=None,
+                     data_format='NCDHW',
                      name=None):
     """
     The convolution3d transpose layer calculates the output based on the input,
@@ -1279,7 +1276,7 @@ def conv_transpose3d(x,
 
     For each input :math:`X`, the equation is:
 
-    .. math::
+    ..  math::
 
         Out = \sigma (W \\ast X + b)
 
@@ -1306,7 +1303,7 @@ def conv_transpose3d(x,
 
         Where
 
-        .. math::
+        ..  math::
 
            D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\\\
            H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
@@ -1338,37 +1335,37 @@ def conv_transpose3d(x,
             If stride is a tuple, it must contain three integers, (stride_depth, stride_height, 
             stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
             Default: stride = 1.
-        padding(int|list|str|tuple, optional): The padding size. The padding argument effectively
-             adds `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a string,
-             either 'VALID' or 'SAME' supported, which is the padding algorithm. If `padding`
-             is a tuple or list, it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings 
+            on both sides for each dimension. If `padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If padding size is a tuple or list,
+            it could be in three forms: `[pad_depth, pad_height, pad_width]` or
             `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `'NCDHW'`, `padding` can be in the form
+            and when `data_format` is `"NCDHW"`, `pool_padding` can be in the form
             `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `'NDHWC'`, `padding` can be in the form
+            when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
-            If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height, 
-            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
-            Default: dilation = 1.
         groups(int, optional): The groups number of the Conv3d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups=1
-        data_format (str, optional): Specify the data format of the input, and the data format of the output 
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
+        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
+            If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height, 
+            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation. 
+            Default: dilation = 1.
         output_size(int|list|tuple, optional): The output image size. If output size is a
             tuple, it must contain three integers, (image_depth, image_height, image_width). This
             parameter only works when filter_size is None. If output_size and filter_size are 
             specified at the same time, They should follow the formula above. Default: None. 
             Output_size and filter_size should not be None at the same time.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
         name(str, optional): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
