@@ -50,8 +50,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const platform::Place& place, bool trace_backward) {
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
-    auto& mutable_op_attrs = const_cast<framework::AttributeMap&>(attrs);
-    mutable_op_attrs["use_mkldnn"] = true;
+    attrs["use_mkldnn"] = true;
   }
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   const auto& op_info = op->Info();
