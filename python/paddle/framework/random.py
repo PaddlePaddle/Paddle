@@ -16,7 +16,7 @@
 import paddle.fluid as fluid
 from paddle.fluid import core
 
-__all__ = ['manual_seed']
+__all__ = ['manual_seed', 'get_cuda_state', 'set_cuda_state']
 
 
 def manual_seed(seed):
@@ -42,8 +42,33 @@ def manual_seed(seed):
 
     seed = int(seed)
 
+    if core.is_compiled_with_cuda():
+        print("PYTHON>>>>>> gpu nums: {}".format(core.get_cuda_device_count()))
+        for i in range(core.get_cuda_device_count()):
+            core.default_cuda_generator(i)._is_init_py = True
+            core.default_cuda_generator(i).manual_seed(seed)
+
     core.default_cpu_generator()._is_init_py = True
     return core.default_cpu_generator().manual_seed(seed)
+
+
+def get_cuda_state():
+    state_list = []
+    if core.is_compiled_with_cuda():
+        for i in range(core.get_cuda_device_count()):
+            state_list.append(core.default_cuda_generator(i).get_state())
+
+    return state_list
+
+
+def set_cuda_state(state_list):
+    if core.is_compiled_with_cuda():
+        if not len(state_list) == core.get_cuda_device_count():
+            raise ValueError(
+                "Length of cuda state list shoule be equal to the cuda device count"
+            )
+        for i in range(core.get_cuda_device_count()):
+            core.default_cuda_generator(i).set_state(state_list[i])
 
 
 def _manual_program_seed(seed):
