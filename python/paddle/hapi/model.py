@@ -22,6 +22,9 @@ import pickle
 import numpy as np
 import six
 import warnings
+import time
+import socket
+import contextlib
 from collections import Iterable
 
 import paddle
@@ -36,6 +39,7 @@ from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec
 from paddle.fluid.layers.utils import flatten
+from paddle.fluid.layers import collective
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.base import role_maker
 
@@ -797,39 +801,35 @@ class Model(object):
             labels must be set. Otherwise, it could be None.
 
 
-    Usage:
+    Examples:
         .. code-block:: python
 
         import paddle
+        import paddle.nn as nn
         from paddle.static import InputSpec
 
-        class MyNet(paddle.nn.Layer):
-            def __init__(self, classifier_act=None):
-                super(MyNet, self).__init__()
-                self._fc1 = paddle.nn.Linear(784, 200, act=classifier_act)
-
-            def forward(self, x):
-                y = self._fc1(x)
-                return y
-        
         device = paddle.set_device('cpu') # or 'gpu'
         # if use static graph, do not set
         paddle.disable_static(device)
-        
+
+        net = nn.Sequential(
+            nn.Linear(784, 200),
+            nn.Tanh(),
+            nn.Linear(200, 10))
+
         # inputs and labels are not required for dynamic graph.
         input = InputSpec([None, 784], 'float32', 'x')
         label = InputSpec([None, 1], 'int64', 'label')
         
-        model = paddle.Model(MyNet(), input, label)
+        model = paddle.Model(net, input, label)
         optim = paddle.optimizer.SGD(learning_rate=1e-3,
             parameter_list=model.parameters())
         model.prepare(optim,
                       paddle.nn.CrossEntropyLoss(),
                       paddle.metric.Accuracy())
         
-        mnist_data = paddle.vision.datasets.MNIST(mode='train', chw_format=False)
-        model.fit(mnist_data, epochs=2, batch_size=32, verbose=1)
-
+        data = paddle.vision.datasets.MNIST(mode='train', chw_format=False)
+        model.fit(data, epochs=2, batch_size=32, verbose=1)
     """
 
     def __init__(self, network, inputs=None, labels=None):
@@ -877,23 +877,20 @@ class Model(object):
             
               import numpy as np
               import paddle
+              import paddle.nn as nn
               from paddle.static import InputSpec
-
-              class MyNet(paddle.nn.Layer):
-                  def __init__(self, classifier_act=None):
-                      super(MyNet, self).__init__()
-                      self._fc = paddle.nn.Linear(784, 10, act=classifier_act)
-
-                  def forward(self, x):
-                      y = self._fc(x)
-                      return y
 
               device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device)
 
+              net = nn.Sequential(
+                  nn.Linear(784, 200),
+                  nn.Tanh(),
+                  nn.Linear(200, 10))
+
               input = InputSpec([None, 784], 'float32', 'x')
               label = InputSpec([None, 1], 'int64', 'label')
-              model = paddle.Model(MyNet(), input, label)
+              model = paddle.Model(net, input, label)
               optim = paddle.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
               model.prepare(optim, paddle.nn.CrossEntropyLoss())
@@ -925,23 +922,20 @@ class Model(object):
             
               import numpy as np
               import paddle
+              import paddle.nn as nn
               from paddle.static import InputSpec
-
-              class MyNet(paddle.nn.Layer):
-                  def __init__(self, classifier_act=None):
-                      super(MyNet, self).__init__()
-                      self._fc = paddle.nn.Linear(784, 10, act=classifier_act)
-
-                  def forward(self, x):
-                      y = self._fc(x)
-                      return y
 
               device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device)
 
+              net = nn.Sequential(
+                  nn.Linear(784, 200),
+                  nn.Tanh(),
+                  nn.Linear(200, 10))
+
               input = InputSpec([None, 784], 'float32', 'x')
               label = InputSpec([None, 1], 'int64', 'label')
-              model = paddle.Model(MyNet(), input, label)
+              model = paddle.Model(net, input, label)
               optim = paddle.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
               model.prepare(optim,
@@ -971,19 +965,18 @@ class Model(object):
             
               import numpy as np
               import paddle
-
-              class MyNet(paddle.nn.Layer):
-                  def __init__(self):
-                      super(MyNet, self).__init__()
-                      self._fc = paddle.nn.Linear(784, 10, act='softmax')
-                  def forward(self, x):
-                      y = self._fc(x)
-                      return y
+              import paddle.nn as nn
 
               device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device)
 
-              model = paddle.Model(MyNet())
+              net = nn.Sequential(
+                  nn.Linear(784, 200),
+                  nn.Tanh(),
+                  nn.Linear(200, 10),
+                  nn.Softmax())
+
+              model = paddle.Model(net)
               model.prepare()
               data = np.random.random(size=(4,784)).astype(np.float32)
               out = model.test_batch([data])
@@ -1026,19 +1019,22 @@ class Model(object):
             .. code-block:: python
 
                 import paddle
+                import paddle.nn as nn
                 from paddle.static import InputSpec
-                from paddle.nn import Linear
 
-                class Mnist(paddle.nn.Layer):
+                class Mnist(nn.Layer):
                     def __init__(self):
                         super(Mnist, self).__init__()
-                        self._fc = Linear(784, 10, act='softmax')
+                        self.net = nn.Sequential(
+                            nn.Linear(784, 200),
+                            nn.Tanh(),
+                            nn.Linear(200, 10),
+                            nn.Softmax())
 
                     # If save for inference in dygraph, need this
                     @paddle.jit.to_static
                     def forward(self, x):
-                        y = self._fc(x)
-                        return y
+                        return self.net(x)
 
                 dynamic = True  # False
                 device = paddle.set_device('cpu')
@@ -1051,8 +1047,8 @@ class Model(object):
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
                     parameter_list=model.parameters())
                 model.prepare(optim, paddle.nn.CrossEntropyLoss())
-                mnist_data = paddle.vision.datasets.MNIST(mode='train', chw_format=False)
-                model.fit(mnist_data, epochs=1, batch_size=32, verbose=0)
+                data = paddle.vision.datasets.MNIST(mode='train', chw_format=False)
+                model.fit(data, epochs=1, batch_size=32, verbose=0)
                 model.save('checkpoint/test')  # save for training
                 model.save('inference_model', False)  # save for inference
         """
@@ -1097,18 +1093,16 @@ class Model(object):
             .. code-block:: python
             
               import paddle
-              
-              class MyNet(paddle.nn.Layer):
-                  def __init__(self):
-                      super(MyNet, self).__init__()
-                      self._fc = paddle.nn.Linear(784, 10, act='softmax')
-                  def forward(self, x):
-                      y = self._fc(x)
-                      return y
+              import paddle.nn as nn
               
               device = paddle.set_device('cpu')
               paddle.disable_static(device)
-              model = paddle.Model(MyNet())
+
+              model = paddle.Model(nn.Sequential(
+                  nn.Linear(784, 200),
+                  nn.Tanh(),
+                  nn.Linear(200, 10),
+                  nn.Softmax()))
               model.save('checkpoint/test')
               model.load('checkpoint/test')
         """
@@ -1172,17 +1166,14 @@ class Model(object):
             .. code-block:: python
 
               import paddle
-
-              class MyNet(paddle.nn.Layer):
-                  def __init__(self):
-                      super(MyNet, self).__init__()
-                      self._fc = paddle.nn.Linear(20, 10, act='softmax')
-                  def forward(self, x):
-                      y = self._fc(x)
-                      return y
+              import paddle.nn as nn
 
               paddle.disable_static()
-              model = paddle.Model(MyNet())
+
+              model = paddle.Model(nn.Sequential(
+                  nn.Linear(784, 200),
+                  nn.Tanh(),
+                  nn.Linear(200, 10)))
               params = model.parameters()
         """
         return self._adapter.parameters()

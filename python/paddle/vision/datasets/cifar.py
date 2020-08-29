@@ -59,13 +59,16 @@ class Cifar10(Dataset):
         .. code-block:: python
 
             import paddle
+            import paddle.nn as nn
             from paddle.vision.datasets import Cifar10
             from paddle.vision.transforms import Normalize
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
                     super(SimpleNet, self).__init__()
-                    self.fc = paddle.nn.Linear(3072, 10, act='softmax')
+                    self.fc = nn.Sequential(
+                        nn.Linear(3072, 10),
+                        nn.Softmax())
 
                 def forward(self, image, label):
                     image = paddle.reshape(image, (3, -1))
@@ -171,7 +174,9 @@ class Cifar100(Cifar10):
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
                     super(SimpleNet, self).__init__()
-                    self.fc = paddle.nn.Linear(3072, 100, act='softmax')
+                    self.fc = nn.Sequential(
+                        nn.Linear(3072, 10),
+                        nn.Softmax())
 
                 def forward(self, image, label):
                     image = paddle.reshape(image, (3, -1))

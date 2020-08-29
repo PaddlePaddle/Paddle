@@ -20,7 +20,8 @@ import unittest
 import numpy as np
 import contextlib
 
-from paddle import fluid
+import paddle
+import paddle.fluid as fluid
 
 from paddle import Model, set_device
 from paddle.static import InputSpec as Input

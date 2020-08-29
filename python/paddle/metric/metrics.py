@@ -630,8 +630,8 @@ class Auc(Metric):
         
         paddle.disable_static()
         model = paddle.Model(nn.Sequential(
-            nn.Linear(10, 2, act='softmax'),
-        ))
+            nn.Linear(10, 2), nn.Softmax())
+        )
         optim = paddle.optimizer.Adam(
             learning_rate=0.001, parameters=model.parameters())
         

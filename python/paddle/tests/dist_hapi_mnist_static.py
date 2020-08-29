@@ -20,10 +20,11 @@ import unittest
 import numpy as np
 import contextlib
 
-from paddle import fluid
+import paddle
+import paddle.fluid as fluid
 
 from paddle import Model, set_device
-import paddle.static.InputSpec as InputSpec
+from paddle.static import InputSpec as Input
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
 from paddle.vision.models import LeNet
