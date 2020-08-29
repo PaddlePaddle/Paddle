@@ -22,7 +22,7 @@ from .runtime_factory import RuntimeFactory
 from .util_factory import UtilFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
-__all__ = ['Fleet']
+#__all__ = ['Fleet']
 
 
 def _inited_runtime_handler_(func):
