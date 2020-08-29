@@ -150,8 +150,6 @@ class AdamW(Adam):
         Raises:
             Exception: The type of coeff and parameter is not consistent.
         """
-        if isinstance(self._coeff, float) and self._coeff == 0.0:
-            return
 
         scaled_params = []
         for param, grad in params_and_grads:
