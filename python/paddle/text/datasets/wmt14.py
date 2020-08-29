@@ -191,6 +191,7 @@ class WMT14(Dataset):
                 wmt14 = WMT14(mode='train', dict_size=50)
                 src_dict, trg_dict = wmt14.get_dict()
         """
+        src_dict, trg_dict = self.src_dict, self.trg_dict
         if reverse:
             src_dict = {v: k for k, v in six.iteritems(src_dict)}
             trg_dict = {v: k for k, v in six.iteritems(trg_dict)}

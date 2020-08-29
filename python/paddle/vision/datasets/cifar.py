@@ -168,6 +168,7 @@ class Cifar100(Cifar10):
         .. code-block:: python
 
             import paddle
+            import paddle.nn as nn
             from paddle.vision.datasets import Cifar100
             from paddle.vision.transforms import Normalize
 

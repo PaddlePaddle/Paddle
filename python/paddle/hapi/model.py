@@ -823,7 +823,7 @@ class Model(object):
         
         model = paddle.Model(net, input, label)
         optim = paddle.optimizer.SGD(learning_rate=1e-3,
-            parameter_list=model.parameters())
+            parameters=model.parameters())
         model.prepare(optim,
                       paddle.nn.CrossEntropyLoss(),
                       paddle.metric.Accuracy())
@@ -892,7 +892,7 @@ class Model(object):
               label = InputSpec([None, 1], 'int64', 'label')
               model = paddle.Model(net, input, label)
               optim = paddle.optimizer.SGD(learning_rate=1e-3,
-                  parameter_list=model.parameters())
+                  parameters=model.parameters())
               model.prepare(optim, paddle.nn.CrossEntropyLoss())
               data = np.random.random(size=(4,784)).astype(np.float32)
               label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
@@ -937,7 +937,7 @@ class Model(object):
               label = InputSpec([None, 1], 'int64', 'label')
               model = paddle.Model(net, input, label)
               optim = paddle.optimizer.SGD(learning_rate=1e-3,
-                  parameter_list=model.parameters())
+                  parameters=model.parameters())
               model.prepare(optim,
                             paddle.nn.CrossEntropyLoss())
               data = np.random.random(size=(4,784)).astype(np.float32)
@@ -1045,7 +1045,7 @@ class Model(object):
                 label = InputSpec([None, 1], 'int64', 'label')
                 model = paddle.Model(Mnist(), input, label)
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
-                    parameter_list=model.parameters())
+                    parameters=model.parameters())
                 model.prepare(optim, paddle.nn.CrossEntropyLoss())
                 data = paddle.vision.datasets.MNIST(mode='train', chw_format=False)
                 model.fit(data, epochs=1, batch_size=32, verbose=0)
