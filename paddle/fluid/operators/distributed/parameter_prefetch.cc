@@ -221,16 +221,7 @@ void prefetchs(const std::vector<std::string> &id_var_names,
   for (auto &id_name : id_var_names) {
     auto &id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
     std::vector<int64_t> ids;
-
-    if (id_tensor.type() == framework::proto::VarType::INT32) {
-      std::transform(id_tensor.data<int>(),
-                     id_tensor.data<int>() + id_tensor.numel(),
-                     std::back_inserter(ids),
-                     [&](int id) { return static_cast<int64_t>(id); });
-    } else {
-      framework::TensorToVector(id_tensor, &ids);
-    }
-
+    TensorToVector(id_tensor, context.device_context(), &ids);
     ids_union.insert(ids_union.end(), ids.begin(), ids.end());
     ids_group.push_back(ids);
     ids_lods.push_back(id_tensor.lod());
