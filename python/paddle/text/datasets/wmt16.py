@@ -252,4 +252,4 @@ class WMT16(Dataset):
         assert os.path.exists(dict_path), "Word dictionary does not exist. "
         "Please invoke paddle.dataset.wmt16.train/test/validation first "
         "to build the dictionary."
-        return _load_dict(lang, dict_size)
+        return self._load_dict(lang, dict_size)
