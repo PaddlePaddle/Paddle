@@ -243,7 +243,6 @@ UNUSED constexpr char CosDoc[] = R"DOC(
 Cosine Operator. Computes cosine of x element-wise.
 
 Input range is `(-inf, inf)` and output range is `[-1,1]`.
-Return `nan` if input is out of boundary.
 
 $$out = cos(x)$$
 
@@ -341,7 +340,9 @@ $$out = \cos^{-1}(x)$$
 class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of asin operator");
+    AddInput("X",
+             "Input of asin operator, an N-D Tensor, with data type float32, "
+             "float64 or float16.");
     AddOutput("Out", "Output of asin operator");
     AddComment(R"DOC(
 Arcsine Operator.
@@ -355,7 +356,9 @@ $$out = \sin^{-1}(x)$$
 class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of atan operator");
+    AddInput("X",
+             "Input of atan operator, an N-D Tensor, with data type float32, "
+             "float64 or float16.");
     AddOutput("Out", "Output of atan operator");
     AddComment(R"DOC(
 Arctangent Operator.
