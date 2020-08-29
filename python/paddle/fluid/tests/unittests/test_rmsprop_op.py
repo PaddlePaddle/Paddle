@@ -276,7 +276,7 @@ class TestRMSPropV2(unittest.TestCase):
             learning_rate=0.1,
             momentum=None)
 
-    def test_rmsprop_op_invvalid_input(self):
+    def test_rmsprop_op_invalid_input(self):
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
         with self.assertRaises(ValueError):

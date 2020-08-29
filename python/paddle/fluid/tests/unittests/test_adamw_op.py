@@ -76,7 +76,7 @@ class TestAdamWOp(unittest.TestCase):
         rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
         assert rets[0] is not None
 
-    def test_adamw_op_invvalid_input(self):
+    def test_adamw_op_invalid_input(self):
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
         with self.assertRaises(ValueError):

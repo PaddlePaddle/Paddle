@@ -504,7 +504,7 @@ class TestAdamOpV2(unittest.TestCase):
                 shape=[1], value=lr, dtype='float32')
             adam.set_lr(lr_var)
 
-    def test_adam_op_invvalid_input(self):
+    def test_adam_op_invalid_input(self):
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
         with self.assertRaises(ValueError):
