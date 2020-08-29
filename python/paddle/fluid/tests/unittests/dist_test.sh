@@ -61,7 +61,14 @@ for i in {1..2}; do
     fi
 done
 
+echo "dist space:"
+df -h
+
 #display /tmp/files
+echo "ls /tmp/paddle.*"
 ls -l /tmp/paddle.*
+
+echo "ls -l ./"
+ls -l ./
 
 exit 1

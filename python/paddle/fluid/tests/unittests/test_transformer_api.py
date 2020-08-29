@@ -211,7 +211,8 @@ def ffn(src, encoder_layer, ffn_fc1_act="relu"):
 class TestTransformer(unittest.TestCase):
     def test_multi_head_attention(self):
         def multihead_attention_test_helper(self_attention, cache):
-            paddle.framework.manual_seed(2020)
+            paddle.manual_seed(2020)
+            paddle.framework.random._manual_program_seed(2020)
             # self_attention|cross_attention, cache|No cache
             with fluid.dygraph.guard(fluid.CPUPlace()):
 
@@ -275,6 +276,7 @@ class TestTransformer(unittest.TestCase):
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
             paddle.framework.manual_seed(2020)
+            paddle.framework.random._manual_program_seed(2020)
 
             ffn_fc1_act = "relu"
             # 1.generate basic params

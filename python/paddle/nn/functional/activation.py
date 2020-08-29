@@ -168,13 +168,13 @@ def hardshrink(x, threshold=0.5, name=None):
     .. math::
 
         hardshrink(x)=
-            \left\{
-            \begin{aligned}
-            &x, & & if \ x > threshold \\
-            &x, & & if \ x < -threshold \\
-            &0, & & if \ others
-            \end{aligned}
-            \right.
+            \\left\\{
+            \\begin{aligned}
+            &x, & & if \\ x > threshold \\\\
+            &x, & & if \\ x < -threshold \\\\
+            &0, & & if \\ others
+            \\end{aligned}
+            \\right.
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -391,14 +391,14 @@ def leaky_relu(x, negative_slope=0.01, name=None):
     """
     leaky_relu activation
 
-    .. math:
-        leaky_relu(x)=
-            \left\{
-            \begin{aligned}
-            &x, & & if \ x >= 0 \\
-            &negative\_slope * x, & & otherwise \\
-            \end{aligned}
-            \right. \\
+    .. math::
+        leaky\\_relu(x)=
+            \\left\\{
+            \\begin{aligned}
+            &x, & & if \\ x >= 0 \\\\
+            &negative\_slope * x, & & otherwise \\\\
+            \\end{aligned}
+            \\right. \\\\
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -652,8 +652,8 @@ def selu(x,
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        scale (float, optional): The value of scale for selu. Default is 1.0507009873554804934193349852946
-        alpha (float, optional): The value of alpha for selu. Default is 1.6732632423543772848170429916717
+        scale (float, optional): The value of scale(must be greater than 1.0) for selu. Default is 1.0507009873554804934193349852946
+        alpha (float, optional): The value of alpha(must be no less than zero) for selu. Default is 1.6732632423543772848170429916717
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -672,6 +672,14 @@ def selu(x,
             x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
             out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
     """
+    if scale <= 1.0:
+        raise ValueError(
+            "The scale must be greater than 1.0. Received: {}.".format(scale))
+
+    if alpha < 0:
+        raise ValueError(
+            "The alpha must be no less than zero. Received: {}.".format(alpha))
+
     if in_dygraph_mode():
         return core.ops.selu(x, 'scale', scale, 'alpha', alpha)
 
@@ -1033,8 +1041,8 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
 
     .. math::
 
-        Out[i, j] = log(softmax(x)) 
-                  = log(\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])})
+        log\\_softmax[i, j] = log(softmax(x))
+                            = log(\\frac{\exp(X[i, j])}{\\sum_j(exp(X[i, j])})
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.

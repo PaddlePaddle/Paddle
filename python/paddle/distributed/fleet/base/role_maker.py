@@ -18,7 +18,7 @@ import warnings
 from multiprocessing import Process, Manager
 import paddle.fluid as fluid
 
-__all__ = ['RoleMakerBase', 'UserDefinedRoleMaker', 'PaddleCloudRoleMaker']
+#__all__ = ['UserDefinedRoleMaker', 'PaddleCloudRoleMaker']
 
 
 class Role:

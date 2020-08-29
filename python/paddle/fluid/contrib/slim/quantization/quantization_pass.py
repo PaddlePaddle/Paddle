@@ -68,6 +68,7 @@ _out_scale_op_list = [
     "scale",
     "hard_swish",
     "hard_sigmoid",
+    "conv2d_transpose",
 ]
 
 # list op real input and output names, to avoid processing input such as AxisTensor.
