@@ -658,7 +658,7 @@ class TestImperativeExponentialMovingAverage(TestImperativeOptimizerBase):
 class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(learning_rate=0.5,
-                                         parameter_list=parameter_list)
+                                         parameters=parameter_list)
         optimizer = PipelineOptimizer(optimizer)
         return optimizer
 
@@ -670,7 +670,7 @@ class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
 class TestImperativeLookaheadOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(learning_rate=0.5,
-                                         parameter_list=parameter_list)
+                                         parameters=parameter_list)
         optimizer = LookaheadOptimizer(optimizer, alpha=0.5, k=5)
         return optimizer
 
@@ -682,7 +682,7 @@ class TestImperativeLookaheadOptimizer(TestImperativeOptimizerBase):
 class TestImperativeRecomputeOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(learning_rate=0.5,
-                                         parameter_list=parameter_list)
+                                         parameters=parameter_list)
         optimizer = RecomputeOptimizer(optimizer)
         return optimizer
 
