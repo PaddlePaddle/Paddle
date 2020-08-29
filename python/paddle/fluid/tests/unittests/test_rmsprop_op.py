@@ -276,6 +276,19 @@ class TestRMSPropV2(unittest.TestCase):
             learning_rate=0.1,
             momentum=None)
 
+    def test_rmsprop_op_invvalid_input(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.RMSProp(
+                0.1, epsilon=-1, parameters=linear.parameters())
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.RMSProp(
+                0.1, momentum=-1, parameters=linear.parameters())
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.RMSProp(
+                0.1, rho=-1, parameters=linear.parameters())
+
 
 if __name__ == "__main__":
     unittest.main()

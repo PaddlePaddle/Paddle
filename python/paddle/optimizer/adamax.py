@@ -120,10 +120,10 @@ class Adamax(Optimizer):
         assert epsilon is not None
         if not 0 <= beta1 < 1:
             raise ValueError("Invaild value of beta1, expect beta1 in [0,1).")
-        if not 0 <= beta1 < 1:
+        if not 0 <= beta2 < 1:
             raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
         if not 0 <= epsilon:
-            raise ValueError("Invaild value of beta2, expect epsilon >= 0.")
+            raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
         super(Adamax, self).__init__(
             learning_rate=learning_rate,
             parameters=parameters,

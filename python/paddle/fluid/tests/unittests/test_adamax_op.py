@@ -183,6 +183,19 @@ def adamax_step(inputs, attributes):
 
     return param_out, moment_out, inf_norm_out
 
+    def test_adamax_op_invvalid_input(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.Adamax(
+                0.1, beta1=-1, parameters=linear.parameters())
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.Adamax(
+                0.1, beta2=-1, parameters=linear.parameters())
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.Adamax(
+                0.1, epsilon=-1, parameters=linear.parameters())
+
 
 if __name__ == "__main__":
     unittest.main()
