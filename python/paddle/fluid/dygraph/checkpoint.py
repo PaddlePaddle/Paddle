@@ -22,7 +22,7 @@ import six
 from . import learning_rate_scheduler
 import warnings
 from .. import core
-from paddle import fluid
+from paddle.fluid import dygraph
 from paddle.fluid.dygraph.jit import SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 
@@ -175,7 +175,7 @@ def load_dygraph(model_path, configs=None):
                                               configs.model_filename)
 
         # 3. load layer parameters & buffers
-        with fluid.dygraph.guard():
+        with dygraph.guard():
             persistable_var_dict = _construct_params_and_buffers(
                 model_prefix,
                 programs,
