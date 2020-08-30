@@ -60,7 +60,7 @@ class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<float>>("fp32_values", "store the float32 values")
         .SetDefault({});
-    AddAttr<std::vector<double>>("fp64_values", "store the float64 values")
+    AddAttr<std::vector<float>>("fp64_values", "store the float64 values")
         .SetDefault({});
     AddAttr<std::vector<int>>("int32_values", "store the int32 values")
         .SetDefault({});
