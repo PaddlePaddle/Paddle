@@ -73,17 +73,28 @@ class SeqInFile {
 };
 
 class TensorDumpConfig {
- protected:
-  std::string dirname_;
-  bool synchronized_;
-
  public:
+  static TensorDumpConfig& get() {
+    std::cout << "WARNING! I am in get method" << std::endl;
+    if (const char* env_ops = std::getenv("TENSOR_DUMP_OPERATORS")) {
+      std::cout << "WARNING! Used env_ops is " << env_ops << std::endl;
+    }
+    // static TensorDumpConfig inst;
+    // return inst;
+    if (!instance) {
+      instance = new TensorDumConfig();
+      return *instance;
+    }
+  }
+
+ private:
+  static TensorDumpConfig* instance = 0;
+  std::string dirname_;
   std::vector<OperatorDetails> ops;
-  TensorDumpConfig() : dirname_("out/"), synchronized_(false) {
+  TensorDumpConfig() : dirname_("out/") {
+    std::cout << "WARNING! In TensorDumpConfig constructor" << std::endl;
     // Read global required operators
     if (const char* env_ops = std::getenv("TENSOR_DUMP_OPERATORS")) {
-      std::cout << "HAHA! WARNING! Get into achieving Tensor_Dump_Operators"
-                << std::endl;
       auto tmp_ops = string::split_string<std::string>(env_ops, ",");
       auto it = std::back_inserter(ops);
       for (auto& _op : tmp_ops) {
@@ -109,12 +120,13 @@ class TensorDumpConfig {
       MkDir(dirname_.c_str());
       msg_green("output folder " << dirname_);
     }
-    // Read global set if it is required
-    if (const char* sync_ = std::getenv("TENSOR_DUMP_SYNCHRONIZE")) {
-      synchronized_ = true;
-      msg_green("Is synchronized " << sync_);
-    }
   }
+  TensorDumpConfig(
+      const TensorDumpConfig&);  // Don't implement, not callable from outside
+  void operator=(
+      const TensorDumpConfig&);  // Don't implement, not callable from outside
+
+ public:
   bool is_disabled() const { return !ops.size(); }
   auto fetchOperator(const std::string& name) -> decltype(ops.begin()) {
     return std::find_if(
@@ -132,19 +144,18 @@ class TensorDumpConfig {
     }
     return DataLayout::kAnyLayout;
   }
-  bool is_synchronized() const { return synchronized_; }
   const std::string& getFoldername() { return dirname_; }
-  static TensorDumpConfig& get() {
-    std::cout << "HAHA, I am in get method" << std::endl;
-    static TensorDumpConfig inst = TensorDumpConfig();
-    return inst;
-  }
+
   static std::mutex& getMutex() {
     static std::mutex mx;
     return mx;
   }
 };
-// static TensorDumpConfig inst = TensorDumpConfig();
+
+class TestTensorDumConfig : public TensorDumpConfig {
+ public:
+  void
+}
 
 class DumpComposit {
  private:
@@ -224,18 +235,12 @@ class DumpComposit {
     } else {
       std::cout << "WARNING! I am in same layout branch" << std::endl;
       filename = filename + DataLayoutToString(target_layout);
-      if (TensorDumpConfig::get().is_synchronized()) {
-        /* in case of parallel executor , io must be synchronized */
-        std::lock_guard<decltype(TensorDumpConfig::getMutex())> l(
-            TensorDumpConfig::getMutex());
-        std::ofstream(filename, std::ios_base::app)
-            << SeqInFile::Access(filename) << std::endl
-            << _tensor << std::endl;
-      } else {
-        std::ofstream(filename, std::ios_base::app)
-            << SeqInFile::Access(filename) << std::endl
-            << _tensor << std::endl;
-      }
+      /* in case of parallel executor , io must be synchronized */
+      std::lock_guard<decltype(TensorDumpConfig::getMutex())> l(
+          TensorDumpConfig::getMutex());
+      std::ofstream(filename, std::ios_base::app) << SeqInFile::Access(filename)
+                                                  << std::endl
+                                                  << _tensor << std::endl;
     }
   }
 };
