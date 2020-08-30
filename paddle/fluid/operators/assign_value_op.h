@@ -72,6 +72,9 @@ class AssignValueKernel : public framework::OpKernel<T> {
       case framework::proto::VarType::FP32:
         value_name = "fp32_values";
         break;
+      case framework::proto::VarType::FP64:
+        value_name = "fp64_values";
+        break;
       case framework::proto::VarType::INT64:
         value_name = "int64_values";
         break;
