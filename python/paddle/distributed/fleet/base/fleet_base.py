@@ -85,7 +85,7 @@ class Fleet(object):
         This function is responsible for the distributed architecture 
         what you want to run your code behind,such as Transpiler,
         Collective in PaddleCloudRoleMaker or UserDefinedRoleMaker 
-        
+
         """
         if isinstance(role_maker, RoleMakerBase):
             self._role_maker = role_maker
@@ -112,7 +112,7 @@ class Fleet(object):
         Returns:
             bool: True if this is the first node of worker,
                   False if not.
-        
+
         """
         return self._role_maker.is_first_worker()
 
@@ -200,7 +200,8 @@ class Fleet(object):
             bool: True if this is a node of server,
                   False if not.
         """
-        return self._role_maker.is_server()
+        return self._role_maker.is_server(
+        ) or self._role_maker._is_heter_worker()
 
     @property
     def util(self):
@@ -372,10 +373,10 @@ class Fleet(object):
                 can_not_apply_optimizer_list.append(opt)
         # combine recalled meta optimizers to be a valid meta optimizer
         meta_optimizer, graph_optimizer = \
-                self.strategy_compiler.generate_optimizer(
-                    loss, self._role_maker, self.user_defined_optimizer,
-                    self.user_defined_strategy, valid_optimizer_list,
-                    valid_graph_optimizer_list)
+            self.strategy_compiler.generate_optimizer(
+                loss, self._role_maker, self.user_defined_optimizer,
+                self.user_defined_strategy, valid_optimizer_list,
+                valid_graph_optimizer_list)
 
         valid_strategy = self.strategy_compiler._get_valid_strategy(
             self.user_defined_strategy, can_not_apply_optimizer_list)
