@@ -178,7 +178,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis = 0
 
     if in_dygraph_mode():
-        out = core.ops.arg_min(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',
+        out = core.ops.arg_max(x, 'axis', axis, 'dtype', var_dtype, 'keepdims',
                                keepdim, 'flatten', flatten)
         return out
 
@@ -265,7 +265,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
     attrs['keepdims'] = keepdim
     attrs['axis'] = axis
     attrs['flatten'] = flatten
-    attrs['dtype'] = dtype
+    attrs['dtype'] = var_dtype
     helper.append_op(
         type='arg_min', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs)
     out.stop_gradient = True
