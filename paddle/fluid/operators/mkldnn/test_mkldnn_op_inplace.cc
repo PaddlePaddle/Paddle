@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#include <stdlib.h>
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
@@ -44,6 +44,9 @@ template <typename T>
 bool TestMain(const platform::Place &place, const std::string &op_type,
               const framework::DDim &dims, const int num_inputs) {
   framework::Scope scope;
+
+  setenv("TENSOR_DUMP_OPERATORS",
+         "elemwise_fwd{tanh},elemwise_fwd{relu},elemwise_fwd", 1);
 
   std::vector<InputVars> input_names = {
       {"x", scope.Var("x")->GetMutable<framework::LoDTensor>()},

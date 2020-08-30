@@ -509,14 +509,20 @@ static void ExecuteFc(const MKLDNNDeviceContext& dev_ctx,
   if (!is_int8 || force_fp32_output) {
     GetPrimitiveFactory<T_in, T_w, float>(dev_ctx, ctx, input, w, mkldnn_engine)
         ->ExecuteFcPrimitive(input, w, bias, output, ctx);
+    platform::DumpComposit<float>::execute("fc_mkldnn_fwd",
+                                           ctx.OutputName("Out"), *output);
   } else if (fuse_relu) {
     GetPrimitiveFactory<T_in, T_w, uint8_t>(dev_ctx, ctx, input, w,
                                             mkldnn_engine)
         ->ExecuteFcPrimitive(input, w, bias, output, ctx);
+    platform::DumpComposit<uint8_t>::execute("fc_mkldnn_fwd",
+                                             ctx.OutputName("Out"), *output);
   } else {
     GetPrimitiveFactory<T_in, T_w, int8_t>(dev_ctx, ctx, input, w,
                                            mkldnn_engine)
         ->ExecuteFcPrimitive(input, w, bias, output, ctx);
+    platform::DumpComposit<int8_t>::execute("fc_mkldnn_fwd",
+                                            ctx.OutputName("Out"), *output);
   }
 }
 
@@ -537,16 +543,9 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
 
     bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-
+    output->set_layout(DataLayout::kMKLDNN);
     ExecuteFc<T_in, T_w>(dev_ctx, ctx, input, w, bias, output, mkldnn_engine,
                          fuse_relu, force_fp32_output);
-
-    output->set_layout(DataLayout::kMKLDNN);
-
-    std::cout << "WARNING! I am in fc mkldnn op" << std::endl;
-
-    platform::DumpComposit::execute("fc_mkldnn_fwd", ctx.OutputName("Out"),
-                                    *output);
   }
 };
 }  // namespace operators

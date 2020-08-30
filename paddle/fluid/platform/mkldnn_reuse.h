@@ -75,24 +75,14 @@ class SeqInFile {
 class TensorDumpConfig {
  public:
   static TensorDumpConfig& get() {
-    std::cout << "WARNING! I am in get method" << std::endl;
-    if (const char* env_ops = std::getenv("TENSOR_DUMP_OPERATORS")) {
-      std::cout << "WARNING! Used env_ops is " << env_ops << std::endl;
-    }
-    // static TensorDumpConfig inst;
-    // return inst;
-    if (!instance) {
-      instance = new TensorDumConfig();
-      return *instance;
-    }
+    static TensorDumpConfig inst;
+    return inst;
   }
 
- private:
-  static TensorDumpConfig* instance = 0;
+ public:
   std::string dirname_;
   std::vector<OperatorDetails> ops;
   TensorDumpConfig() : dirname_("out/") {
-    std::cout << "WARNING! In TensorDumpConfig constructor" << std::endl;
     // Read global required operators
     if (const char* env_ops = std::getenv("TENSOR_DUMP_OPERATORS")) {
       auto tmp_ops = string::split_string<std::string>(env_ops, ",");
@@ -117,14 +107,12 @@ class TensorDumpConfig {
     // Read global required folder
     if (const char* foler_name = std::getenv("TENSOR_DUMP_FOLDER")) {
       dirname_ = foler_name;
-      MkDir(dirname_.c_str());
-      msg_green("output folder " << dirname_);
     }
+    MkDir(dirname_.c_str());
+    msg_green("output folder " << dirname_);
   }
-  TensorDumpConfig(
-      const TensorDumpConfig&);  // Don't implement, not callable from outside
-  void operator=(
-      const TensorDumpConfig&);  // Don't implement, not callable from outside
+  TensorDumpConfig(const TensorDumpConfig&);
+  void operator=(const TensorDumpConfig&);
 
  public:
   bool is_disabled() const { return !ops.size(); }
@@ -151,16 +139,11 @@ class TensorDumpConfig {
     return mx;
   }
 };
-
-class TestTensorDumConfig : public TensorDumpConfig {
- public:
-  void
-}
-
+template <typename T>
 class DumpComposit {
  private:
   static std::ostream& print_memory(std::ostream& os,
-                                    const std::vector<float>& vout,
+                                    const std::vector<T>& vout,
                                     const size_t& data_limit) {
     for (size_t i = 0; i < data_limit; i++) {
       os << vout[i] << " ";
@@ -169,7 +152,7 @@ class DumpComposit {
     return os;
   }
   static void reorder_via_mkldnn(void* out, const Tensor* tensor_src,
-                                 DataLayout layout) {
+                                 DataLayout target_layout) {
     dnnl::engine::kind engine_kind = dnnl::engine::kind::cpu;
     dnnl::engine engine(engine_kind, 0);
     // Create dnnl::stream.
@@ -179,13 +162,15 @@ class DumpComposit {
     for (decltype(paddle_dims.size()) i = 0; i < paddle_dims.size(); ++i)
       src_dims.push_back(paddle_dims.at(i));
     auto current_layout = tensor_src->layout();
-    auto src_md = dnnl::memory::desc(src_dims, dnnl::memory::data_type::f32,
-                                     framework::ToMKLDNNFormat(current_layout));
-    auto dst_md = dnnl::memory::desc(src_dims, dnnl::memory::data_type::f32,
-                                     framework::ToMKLDNNFormat(layout));
+    auto src_md = dnnl::memory::desc(
+        src_dims, framework::ToMKLDNNDataType(tensor_src->type()),
+        framework::ToMKLDNNFormat(current_layout));
+    auto dst_md = dnnl::memory::desc(
+        src_dims, framework::ToMKLDNNDataType(tensor_src->type()),
+        framework::ToMKLDNNFormat(target_layout));
     auto src_mem = dnnl::memory(
         src_md, engine,
-        reinterpret_cast<void*>(const_cast<float*>(tensor_src->data<float>())));
+        reinterpret_cast<void*>(const_cast<T*>(tensor_src->data<T>())));
     auto dst_mem = dnnl::memory(dst_md, engine, out);
     // Create primitive descriptor.
     auto reorder_pd =
@@ -206,35 +191,35 @@ class DumpComposit {
   static void execute(const std::string& label, const std::string& name,
                       const framework::Tensor& _tensor) {
     // TensorDumpConfig();
-    std::cout << "WARNING! Get into the execute function" << std::endl;
     auto it = TensorDumpConfig::get().fetchOperator(label);
     if (it == TensorDumpConfig::get().fetchOperatorEnd()) {
-      std::cout << "WARNING! ERROR, No operators are found" << std::endl;
       return;
     }
     auto target_layout = TensorDumpConfig::get().getOperatorLayout(label);
-    std::string filename =
-        TensorDumpConfig::get().getFoldername() + label + name;
+    std::string filename = TensorDumpConfig::get().getFoldername() + label +
+                           "_" + name + "_" +
+                           framework::DataTypeToString(_tensor.type());
 
     if (target_layout != OperatorDetails::getDefaultLayout()) {
-      std::cout << "WARNING! I am in the different layout branch" << std::endl;
-      filename = filename + DataLayoutToString(target_layout);
-      std::vector<float> vout(_tensor.numel());
+      filename = filename + "_" + DataLayoutToString(target_layout);
+
+      std::vector<T> vout(_tensor.numel());
       reorder_via_mkldnn(vout.data(), &_tensor, target_layout);
-      // Print out data()
+
       auto data_limit = std::numeric_limits<int64_t>::max();
       if (const char* value = std::getenv("DUMP_LIMIT")) {
         data_limit = atoi(const_cast<char*>(value));
       }
       data_limit = data_limit < _tensor.numel() ? data_limit : _tensor.numel();
+
       std::lock_guard<decltype(TensorDumpConfig::getMutex())> l(
           TensorDumpConfig::getMutex());
       auto ofs = std::ofstream(filename, std::ios_base::app);
       ofs << SeqInFile::Access(filename) << std::endl;
-      DumpComposit::print_memory(ofs, vout, data_limit);
+      print_memory(ofs, vout, data_limit);
     } else {
-      std::cout << "WARNING! I am in same layout branch" << std::endl;
-      filename = filename + DataLayoutToString(target_layout);
+      filename = filename + "_" + DataLayoutToString(target_layout);
+
       /* in case of parallel executor , io must be synchronized */
       std::lock_guard<decltype(TensorDumpConfig::getMutex())> l(
           TensorDumpConfig::getMutex());

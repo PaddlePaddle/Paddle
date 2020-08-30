@@ -68,7 +68,8 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     output->set_layout(DataLayout::kNCHW);
     output->set_format(MKLDNNMemoryFormat::undef);
-    platform::DumpComposit::execute("transpose_mkldnn_fwd", out_name, *output);
+    platform::DumpComposit<T>::execute("transpose_mkldnn_fwd", out_name,
+                                       *output);
   }
 };
 

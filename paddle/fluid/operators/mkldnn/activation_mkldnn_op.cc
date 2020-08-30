@@ -104,6 +104,16 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   y->set_layout(DataLayout::kMKLDNN);
   y->set_format(GetMKLDNNFormat(*dst_memory_p));
+  if (algorithm == mkldnn::algorithm::eltwise_tanh) {
+    platform::DumpComposit<T>::execute("elemwise_fwd{tanh}",
+                                       ctx.OutputName("Out"), *y);
+  } else if (algorithm == mkldnn::algorithm::eltwise_relu) {
+    platform::DumpComposit<T>::execute("elemwise_fwd{relu}",
+                                       ctx.OutputName("Out"), *y);
+  } else {
+    platform::DumpComposit<T>::execute("elemwise_fwd", ctx.OutputName("Out"),
+                                       *y);
+  }
 }
 
 template <typename T>
