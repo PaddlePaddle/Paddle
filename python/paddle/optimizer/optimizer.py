@@ -302,7 +302,7 @@ class Optimizer(object):
         this API cannot be invoked, because it will lead to conflict.
 
         Args:
-            value (float|Tensor): the value of learning rate
+            value (float): the value of learning rate
 
         Returns:
             None
