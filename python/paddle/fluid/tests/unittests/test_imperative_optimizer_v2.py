@@ -74,8 +74,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         with fluid.dygraph.guard(place):
             try:
-                fluid.default_startup_program().random_seed = seed
-                fluid.default_main_program().random_seed = seed
+                paddle.manual_seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
                 mlp = MLP()
                 optimizer = self.get_optimizer_dygraph(
                     parameter_list=mlp.parameters())
@@ -91,8 +91,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             ) else fluid.CUDAPlace(0)
 
         with fluid.dygraph.guard(place):
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             mlp = MLP()
             optimizer = self.get_optimizer_dygraph(
@@ -132,8 +132,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                     dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             if place == None:
                 place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
@@ -658,7 +658,7 @@ class TestImperativeExponentialMovingAverage(TestImperativeOptimizerBase):
 class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(learning_rate=0.5,
-                                         parameter_list=parameter_list)
+                                         parameters=parameter_list)
         optimizer = PipelineOptimizer(optimizer)
         return optimizer
 
@@ -670,7 +670,7 @@ class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
 class TestImperativeLookaheadOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(learning_rate=0.5,
-                                         parameter_list=parameter_list)
+                                         parameters=parameter_list)
         optimizer = LookaheadOptimizer(optimizer, alpha=0.5, k=5)
         return optimizer
 
@@ -682,7 +682,7 @@ class TestImperativeLookaheadOptimizer(TestImperativeOptimizerBase):
 class TestImperativeRecomputeOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = paddle.optimizer.SGD(learning_rate=0.5,
-                                         parameter_list=parameter_list)
+                                         parameters=parameter_list)
         optimizer = RecomputeOptimizer(optimizer)
         return optimizer
 
