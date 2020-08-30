@@ -293,14 +293,6 @@ class Uniform(Distribution):
 
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                  'log_prob')
-        """
-        lb_bool = control_flow.less_than(self.low, value)
-        ub_bool = control_flow.less_than(value, self.high)
-        lb = tensor.cast(lb_bool, dtype=value.dtype)
-        ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_sub(
-            nn.log(lb * ub), nn.log(self.high - self.low), name=name)
-        """
 
         low = self.low
         high = self.high
@@ -338,13 +330,7 @@ class Uniform(Distribution):
 
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                  'log_prob')
-        """
-        lb_bool = control_flow.less_than(self.low, value)
-        ub_bool = control_flow.less_than(value, self.high)
-        lb = tensor.cast(lb_bool, dtype=value.dtype)
-        ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_div((lb * ub), (self.high - self.low), name=name)
-        """
+
         low = self.low
         high = self.high
         if value.dtype != self.low.dtype:
@@ -532,15 +518,7 @@ class Normal(Distribution):
         if not in_dygraph_mode():
             check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                      'log_prob')
-        """
-        name = self.name + '_log_prob'
-        var = self.scale * self.scale
-        log_scale = nn.log(self.scale)
-        return elementwise_sub(
-            -1. * ((value - self.loc) * (value - self.loc)) / (2. * var),
-            log_scale + math.log(math.sqrt(2. * math.pi)),
-            name=name)
-        """
+
         loc = self.loc
         scale = self.scale
         if value.dtype != self.loc.dtype:
@@ -569,14 +547,7 @@ class Normal(Distribution):
         if not in_dygraph_mode():
             check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                      'log_prob')
-        """
-        name = self.name + '_probs'
-        var = self.scale * self.scale
-        return elementwise_div(
-            ops.exp(-1. * ((value - self.loc) * (value - self.loc)) /
-                    (2. * var)), (math.sqrt(2 * math.pi) * self.scale),
-            name=name)
-        """
+
         loc = self.loc
         scale = self.scale
         if value.dtype != self.loc.dtype:
