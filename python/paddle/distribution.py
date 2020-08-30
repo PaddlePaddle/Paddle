@@ -112,9 +112,9 @@ class Distribution(object):
                 arg = np.zeros(1) + arg
             arg_np = np.array(arg)
             arg_dtype = arg_np.dtype
-            if str(arg_dtype) not in ['float32', 'float64']:
+            if str(arg_dtype) not in ['float32']:
                 warnings.warn(
-                    "data type of argument only support float32 and float64, your argument will be convert to float32."
+                    "data type of argument only support float32, your argument will be convert to float32."
                 )
                 arg_np = arg_np.astype('float32')
             tmp = tmp + arg_np
@@ -293,13 +293,26 @@ class Uniform(Distribution):
 
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                  'log_prob')
-
+        """
         lb_bool = control_flow.less_than(self.low, value)
         ub_bool = control_flow.less_than(value, self.high)
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
         return elementwise_sub(
             nn.log(lb * ub), nn.log(self.high - self.low), name=name)
+        """
+
+        low = self.low
+        high = self.high
+        if value.dtype != self.low.dtype:
+            low = tensor.cast(self.low, dtype=value.dtype)
+        if value.dtype != self.high.dtype:
+            high = tensor.cast(self.high, dtype=value.dtype)
+        lb_bool = control_flow.less_than(low, value)
+        ub_bool = control_flow.less_than(value, high)
+        lb = tensor.cast(lb_bool, dtype=value.dtype)
+        ub = tensor.cast(ub_bool, dtype=value.dtype)
+        return elementwise_sub(nn.log(lb * ub), nn.log(high - low), name=name)
 
     def probs(self, value):
         """Probability density/mass function.
@@ -325,12 +338,25 @@ class Uniform(Distribution):
 
         check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                  'log_prob')
-
+        """
         lb_bool = control_flow.less_than(self.low, value)
         ub_bool = control_flow.less_than(value, self.high)
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
         return elementwise_div((lb * ub), (self.high - self.low), name=name)
+        """
+        low = self.low
+        high = self.high
+        if value.dtype != self.low.dtype:
+            low = tensor.cast(self.low, dtype=value.dtype)
+        if value.dtype != self.high.dtype:
+            high = tensor.cast(self.high, dtype=value.dtype)
+
+        lb_bool = control_flow.less_than(low, value)
+        ub_bool = control_flow.less_than(value, high)
+        lb = tensor.cast(lb_bool, dtype=value.dtype)
+        ub = tensor.cast(ub_bool, dtype=value.dtype)
+        return elementwise_div((lb * ub), (high - low), name=name)
 
     def entropy(self):
         """Shannon entropy in nats.
@@ -506,12 +532,27 @@ class Normal(Distribution):
         if not in_dygraph_mode():
             check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                      'log_prob')
-
+        """
         name = self.name + '_log_prob'
         var = self.scale * self.scale
         log_scale = nn.log(self.scale)
         return elementwise_sub(
             -1. * ((value - self.loc) * (value - self.loc)) / (2. * var),
+            log_scale + math.log(math.sqrt(2. * math.pi)),
+            name=name)
+        """
+        loc = self.loc
+        scale = self.scale
+        if value.dtype != self.loc.dtype:
+            loc = tensor.cast(self.loc, dtype=value.dtype)
+        if value.dtype != self.scale.dtype:
+            scale = tensor.cast(self.scale, dtype=value.dtype)
+
+        name = self.name + '_log_prob'
+        var = scale * scale
+        log_scale = nn.log(scale)
+        return elementwise_sub(
+            -1. * ((value - loc) * (value - loc)) / (2. * var),
             log_scale + math.log(math.sqrt(2. * math.pi)),
             name=name)
 
@@ -528,12 +569,26 @@ class Normal(Distribution):
         if not in_dygraph_mode():
             check_variable_and_dtype(value, 'value', ['float32', 'float64'],
                                      'log_prob')
-
+        """
         name = self.name + '_probs'
         var = self.scale * self.scale
         return elementwise_div(
             ops.exp(-1. * ((value - self.loc) * (value - self.loc)) /
                     (2. * var)), (math.sqrt(2 * math.pi) * self.scale),
+            name=name)
+        """
+        loc = self.loc
+        scale = self.scale
+        if value.dtype != self.loc.dtype:
+            loc = tensor.cast(self.loc, dtype=value.dtype)
+        if value.dtype != self.scale.dtype:
+            scale = tensor.cast(self.scale, dtype=value.dtype)
+
+        name = self.name + '_probs'
+        var = scale * scale
+        return elementwise_div(
+            ops.exp(-1. * ((value - loc) * (value - loc)) / (2. * var)),
+            (math.sqrt(2 * math.pi) * scale),
             name=name)
 
     def kl_divergence(self, other):

@@ -49,13 +49,13 @@ class UniformNumpy(DistributionNumpy):
                            (self.high - self.low))
 
     def log_prob(self, value):
-        lb = np.less(self.low, value).astype('float32')
-        ub = np.less(value, self.high).astype('float32')
+        lb = np.less(self.low, value).astype(value.dtype)
+        ub = np.less(value, self.high).astype(value.dtype)
         return np.log(lb * ub) - np.log(self.high - self.low)
 
     def probs(self, value):
-        lb = np.less(self.low, value).astype('float32')
-        ub = np.less(value, self.high).astype('float32')
+        lb = np.less(self.low, value).astype(value.dtype)
+        ub = np.less(value, self.high).astype(value.dtype)
         return (lb * ub) / (self.high - self.low)
 
     def entropy(self):
@@ -271,7 +271,7 @@ class DistributionTest(unittest.TestCase):
             'other_loc': other_loc_np,
             'other_scale': other_scale_np,
             'values': values_np,
-            'values_np_fp64': values_np_fp64
+            'values_fp64': values_np_fp64
         }
         return feed_vars, fetch_list
 
