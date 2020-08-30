@@ -18,7 +18,7 @@ import os
 import pickle
 import unittest
 import numpy as np
-
+import paddle
 from paddle.static import InputSpec
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Linear
@@ -80,7 +80,7 @@ class LinearNetReturnLoss(fluid.dygraph.Layer):
 
 def train(layer, input_size=784, label_size=1):
     # create optimizer
-    adam = fluid.optimizer.SGDOptimizer(
+    sgd = fluid.optimizer.SGDOptimizer(
         learning_rate=0.01, parameter_list=layer.parameters())
     # create data loader
     train_loader = fluid.io.DataLoader.from_generator(capacity=5)
@@ -97,7 +97,7 @@ def train(layer, input_size=784, label_size=1):
         avg_loss = fluid.layers.mean(loss)
 
         avg_loss.backward()
-        adam.minimize(avg_loss)
+        sgd.minimize(avg_loss)
         layer.clear_gradients()
     return [img], layer, avg_loss
 
@@ -108,7 +108,8 @@ class TestJitSaveLoad(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
     def train_and_save_model(self, model_path=None, configs=None):
         layer = LinearNet(784, 1)
@@ -149,8 +150,8 @@ class TestJitSaveLoad(unittest.TestCase):
         train_layer.train()
         load_train_layer.train()
         # train & compare
-        _, _, train_loss = train(train_layer)
-        _, _, load_train_loss = train(load_train_layer)
+        img0, _, train_loss = train(train_layer)
+        img1, _, load_train_loss = train(load_train_layer)
         self.assertTrue(
             np.array_equal(train_loss.numpy(), load_train_loss.numpy()))
 
@@ -293,7 +294,8 @@ class TestJitSaveLoadConfig(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
     def basic_save_load(self, layer, model_path, configs):
         # 1. train & save
@@ -385,7 +387,8 @@ class TestJitMultipleLoading(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
         # train and save base model
         self.train_and_save_orig_model()
 
@@ -426,7 +429,8 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
     def train_and_save(self):
         train_layer = LinearNetReturnHidden(8, 8)

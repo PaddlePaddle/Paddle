@@ -215,8 +215,8 @@ def train(to_static):
     """
     with fluid.dygraph.guard(place):
         np.random.seed(SEED)
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         train_reader = paddle.batch(
             reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),

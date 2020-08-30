@@ -64,6 +64,11 @@ class TestTransforms(unittest.TestCase):
 
         self.do_transform(trans)
 
+    def test_normalize(self):
+        normalize = transforms.Normalize(mean=0.5, std=0.5)
+        trans = transforms.Compose([transforms.Permute(mode='CHW'), normalize])
+        self.do_transform(trans)
+
     def test_trans_resize(self):
         trans = transforms.Compose([
             transforms.Resize(300, [0, 1]),
@@ -165,7 +170,7 @@ class TestTransforms(unittest.TestCase):
         fake_img = np.random.rand(500, 400, 3).astype('float32')
         fake_img_gray = trans_gray(fake_img)
 
-        np.testing.assert_equal(len(fake_img_gray.shape), 2)
+        np.testing.assert_equal(len(fake_img_gray.shape), 3)
         np.testing.assert_equal(fake_img_gray.shape[0], 500)
         np.testing.assert_equal(fake_img_gray.shape[1], 400)
 
