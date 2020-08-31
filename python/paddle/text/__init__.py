@@ -18,5 +18,4 @@ from .text import *
 from . import datasets
 from .datasets import *
 
-__all__ = text.__all__ \
-        + datasets.__all__
+__all__ = datasets.__all__
