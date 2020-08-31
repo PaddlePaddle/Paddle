@@ -1523,10 +1523,10 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
             grid = fluid.data(name='grid', shape=[None, 12, 8, 10, 6], dtype='float32')
 
             # without offset
-            output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=False)
+            output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=False)
             
             # has offset
-            output = fluid.layers.bilateral_slice(x, guide, grid, has_offset=True)
+            output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=True)
 
     """
     helper = LayerHelper("bilateral_slice", **locals())
