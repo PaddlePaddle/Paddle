@@ -272,12 +272,12 @@ def load(program, model_path, executor=None, var_list=None):
             pickle.load = load_bak
 
 
-def load_dygraph(model_path):
+def load_dygraph(model_path, keep_name_table=False):
     """
     To load python2 saved models in python3.
     """
     try:
-        para_dict, opti_dict = fluid.load_dygraph(model_path)
+        para_dict, opti_dict = fluid.load_dygraph(model_path, keep_name_table)
         return para_dict, opti_dict
     except UnicodeDecodeError:
         warnings.warn(
@@ -287,6 +287,7 @@ def load_dygraph(model_path):
         if six.PY3:
             load_bak = pickle.load
             pickle.load = partial(load_bak, encoding="latin1")
-            para_dict, opti_dict = fluid.load_dygraph(model_path)
+            para_dict, opti_dict = fluid.load_dygraph(model_path,
+                                                      keep_name_table)
             pickle.load = load_bak
             return para_dict, opti_dict

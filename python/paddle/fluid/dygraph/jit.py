@@ -612,7 +612,7 @@ class SaveLoadConfig(object):
             raise TypeError(
                 "The SaveLoadConfig.keep_name_table should be bool value, but received input's type is %s."
                 % type(value))
-        self.keep_name_table = value
+        self._keep_name_table = value
 
 
 @switch_to_static_graph

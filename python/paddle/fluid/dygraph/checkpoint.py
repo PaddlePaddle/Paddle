@@ -16,13 +16,14 @@ from __future__ import print_function
 
 import os
 import collections
+import functools
 from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter, ParamBase, _varbase_creator, _dygraph_tracer
 import pickle
 import six
 from . import learning_rate_scheduler
 import warnings
 from .. import core
-from paddle.fluid import dygraph
+from .base import guard
 from paddle.fluid.dygraph.jit import SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 
@@ -30,6 +31,37 @@ __all__ = [
     'save_dygraph',
     'load_dygraph',
 ]
+
+
+# NOTE(chenweihang): deprecate load_dygraph's argument keep_name_table,
+# ensure compatibility when user still use keep_name_table argument
+def deprecate_keep_name_table(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        def __warn_and_build_configs__(keep_name_table):
+            warnings.warn(
+                "The argument `keep_name_table` has deprecated, please use `SaveLoadConfig.keep_name_table`.",
+                DeprecationWarning)
+            configs = SaveLoadConfig()
+            configs.keep_name_table = keep_name_table
+            return configs
+
+        # deal with arg `keep_name_table`
+        if len(args) > 1 and isinstance(args[1], bool):
+            args = list(args)
+            args[1] = __warn_and_build_configs__(args[1])
+        # deal with kwargs
+        elif 'keep_name_table' in kwargs:
+            kwargs['configs'] = __warn_and_build_configs__(kwargs[
+                'keep_name_table'])
+            kwargs.pop('keep_name_table')
+        else:
+            # do nothing
+            pass
+
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 @dygraph_only
@@ -103,6 +135,7 @@ def save_dygraph(state_dict, model_path):
 # TODO(qingqing01): remove dygraph_only to support loading static model.
 # maybe need to unify the loading interface after 2.0 API is ready.
 # @dygraph_only
+@deprecate_keep_name_table
 def load_dygraph(model_path, configs=None):
     '''
     :api_attr: imperative
@@ -175,7 +208,8 @@ def load_dygraph(model_path, configs=None):
                                               configs.model_filename)
 
         # 3. load layer parameters & buffers
-        with dygraph.guard():
+        # NOTE: using fluid.dygraph.guard() here will cause import error in py2
+        with guard():
             persistable_var_dict = _construct_params_and_buffers(
                 model_prefix,
                 programs,
