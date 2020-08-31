@@ -15,6 +15,7 @@
 from __future__ import print_function
 import numpy as np
 import logging
+import six
 
 from paddle.fluid import log_helper
 from paddle.fluid import framework, backward, core
