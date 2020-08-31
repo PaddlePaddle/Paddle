@@ -15,6 +15,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <string>
@@ -25,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -311,6 +313,8 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
+  // TODO(NHZlX): Should add the link to the doc of
+  // paddle_infer::CreatePredictor<paddle_infer::Config>
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memory
