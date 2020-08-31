@@ -196,6 +196,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
+        Tensor: results of norm operation on the specified axis of input tensor,
         it's data type is the same as input's Tensor.
  
     Raises:
