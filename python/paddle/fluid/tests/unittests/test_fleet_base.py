@@ -126,34 +126,5 @@ class TestFleetBase(unittest.TestCase):
         self.assertRaises(Exception, fleet.init_worker)
 
 
-class TestFleetDygraph(unittest.TestCase):
-    def setUp(self):
-        os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213,127.0.0.1:36214"
-        os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
-        os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_TRAINER_ID"] = "0"
-
-    def test_distributed_model(self):
-        paddle.disable_static()
-        paddle.set_device('gpu:%d' % paddle.ParallelEnv().dev_id)
-        value = np.arange(26).reshape(2, 13).astype("float32")
-        a = fluid.dygraph.to_variable(value)
-        layer = paddle.nn.Linear(13, 5, dtype="float32")
-        adam = paddle.optimizer.Adam(
-            learning_rate=0.01, parameters=layer.parameters())
-
-        fleet.init(is_collective=True)
-        adam = fleet.distributed_optimizer(adam)
-        dp_layer = fleet.distributed_model(layer)
-
-        out = dp_layer(a)
-        loss = dp_layer.scale_loss(out)
-        loss.backward()
-        dp_layer.apply_collective_grads()
-        adam.step()
-        adam.clear_grad()
-
-
 if __name__ == "__main__":
     unittest.main()

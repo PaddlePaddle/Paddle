@@ -731,7 +731,8 @@ class TestDistBase(unittest.TestCase):
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             cmd += " -m coverage run --branch -p"
 
-        cmd += " %s --role trainer --lr %f" % (model, self._lr)
+        cmd += " %s --role trainer --update_method local --lr %f" % (model,
+                                                                     self._lr)
 
         if batch_size != DEFAULT_BATCH_SIZE:
             cmd += " --batch_size %d" % batch_size
@@ -1058,41 +1059,6 @@ class TestDistBase(unittest.TestCase):
             dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
-
-    def check_with_dygraph_dist_place(self,
-                                      model_file,
-                                      delta=1e-3,
-                                      check_error_log=False,
-                                      need_envs={},
-                                      log_name=""):
-
-        required_envs = self._get_required_envs(check_error_log, need_envs)
-
-        if self._nccl2_mode:
-            if self._nccl2_reduce_layer:
-                tr0_losses, tr1_losses = self._run_cluster_nccl2(
-                    model_file,
-                    required_envs,
-                    True,
-                    check_error_log,
-                    log_name=log_name)
-            else:
-                tr0_losses, tr1_losses = self._run_cluster_nccl2(
-                    model_file,
-                    required_envs,
-                    False,
-                    check_error_log,
-                    log_name=log_name)
-        else:
-            tr0_losses, tr1_losses = self._run_cluster(
-                model_file, required_envs, check_error_log, log_name=log_name)
-
-        for step_id in range(RUN_STEP):
-            local_loss = local_losses[step_id]
-            tr0_loss = tr0_losses[step_id]
-            tr1_loss = tr1_losses[step_id]
-            print("=======", tr0_loss, ":", tr1_loss, "=======")
-            self.assertAlmostEqual(tr0_loss, tr1_loss, delta=delta)
 
     def check_with_place_multi_cards(self,
                                      model_file,

@@ -56,7 +56,7 @@ class TestFleetDygraphMnist(TestDistBase):
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_dygraph_dist_place(
+            self.check_with_place(
                 "parallel_dygraph_mnist.py",
                 delta=1e-5,
                 check_error_log=True,
