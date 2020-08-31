@@ -294,6 +294,28 @@ class TestStrategyConfig(unittest.TestCase):
         with self.assertRaises(TypeError):
             strategy.unknown_key = 'UNK'
 
+    def test_cudnn_exhaustive_search(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.cudnn_exhaustive_search = False
+        self.assertEqual(strategy.cudnn_exhaustive_search, False)
+        strategy.cudnn_exhaustive_search = "True"
+        self.assertEqual(strategy.cudnn_exhaustive_search, False)
+
+    def test_cudnn_batchnorm_spatial_persistent(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.cudnn_batchnorm_spatial_persistent = False
+        self.assertEqual(strategy.cudnn_batchnorm_spatial_persistent, False)
+        strategy.cudnn_batchnorm_spatial_persistent = "True"
+        self.assertEqual(strategy.cudnn_batchnorm_spatial_persistent, False)
+
+    def test_conv_workspace_size_limit(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.conv_workspace_size_limit = 1000
+        self.assertEqual(strategy.conv_workspace_size_limit, 1000)
+        strategy.conv_workspace_size_limit = "400"
+        self.assertEqual(strategy.conv_workspace_size_limit, 1000)
+        strategy._enable_env()
+
 
 if __name__ == '__main__':
     unittest.main()

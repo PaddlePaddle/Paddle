@@ -54,8 +54,7 @@ if(WITH_TESTING)
                         ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
     set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
     set_tests_properties(test_api_impl PROPERTIES LABELS "RUN_TYPE=DIST")
-  elseif(NOT WIN32)
-    # TODO: Fix this unittest failed on Windows
+  elseif(WIN32)
     inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS ${inference_deps}
                         ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
     set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
@@ -67,8 +66,7 @@ endif()
 if (NOT APPLE AND NOT WIN32)
   cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS paddle_fluid_shared
           ARGS --dirname=${WORD2VEC_MODEL_DIR})
-elseif (NOT WIN32)
-  # TODO: Fix this unittest failed on Windows
+elseif (WIN32)
   cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
           ARGS --dirname=${WORD2VEC_MODEL_DIR})
 endif()

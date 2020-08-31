@@ -73,6 +73,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'mish', \
     'transpose2', \
     'trilinear_interp', \
+    'trilinear_interp_v2', \
     'var_conv_2d', \
     'warpctc', \
     'bilateral_slice'

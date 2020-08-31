@@ -221,5 +221,21 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
             self.assertRaises(TypeError, my_sync_batch_norm, x2)
 
 
+class TestConvertSyncBatchNorm(unittest.TestCase):
+    def test_convert(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        with program_guard(Program(), Program()):
+            model = paddle.nn.Sequential(
+                paddle.nn.Conv2d(3, 5, 3), paddle.nn.BatchNorm2d(5))
+            sync_model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            for idx, sublayer in enumerate(model.sublayers()):
+                if isinstance(sublayer, paddle.nn.BatchNorm2d):
+                    self.assertEqual(
+                        isinstance(sync_model[idx], paddle.nn.SyncBatchNorm),
+                        True)
+
+
 if __name__ == '__main__':
     unittest.main()

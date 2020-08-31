@@ -18,6 +18,7 @@
 from .layer import norm
 from .functional import extension
 from .layer import common
+from .layer import rnn
 from .utils import weight_norm_hook
 
 from . import initializer
@@ -26,6 +27,7 @@ __all__ = []
 __all__ += norm.__all__
 __all__ += extension.__all__
 __all__ += common.__all__
+__all__ += rnn.__all__
 __all__ += weight_norm_hook.__all__
 
 # TODO: define alias in nn directory
@@ -88,13 +90,27 @@ from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
 from .layer.common import Flatten  #DEFINE_ALIAS
 from .layer.common import UpSample  #DEFINE_ALIAS
+from .layer.common import UpsamplingNearest2d  #DEFINE_ALIAS
+from .layer.common import UpsamplingBilinear2d  #DEFINE_ALIAS
 from .layer.common import Bilinear  #DEFINE_ALIAS
 from .layer.common import Dropout  #DEFINE_ALIAS
 from .layer.common import Dropout2D  #DEFINE_ALIAS
 from .layer.common import Dropout3D  #DEFINE_ALIAS
 from .layer.common import AlphaDropout  #DEFINE_ALIAS
+
+from .layer.pooling import AvgPool1d  #DEFINE_ALIAS
+from .layer.pooling import AvgPool2d  #DEFINE_ALIAS
+from .layer.pooling import AvgPool3d  #DEFINE_ALIAS
+from .layer.pooling import MaxPool1d  #DEFINE_ALIAS
+from .layer.pooling import MaxPool2d  #DEFINE_ALIAS
+from .layer.pooling import MaxPool3d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool1d  #DEFINE_ALIAS
 from .layer.pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
 from .layer.pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
+
+from .layer.pooling import AdaptiveMaxPool1d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveMaxPool2d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveMaxPool3d  #DEFINE_ALIAS
 from .layer.conv import Conv1d  #DEFINE_ALIAS
 from .layer.conv import Conv2d  #DEFINE_ALIAS
 from .layer.conv import Conv3d  #DEFINE_ALIAS
@@ -111,6 +127,7 @@ from .layer.extension import RowConv  #DEFINE_ALIAS
 # from .layer.learning_rate import NoamDecay        #DEFINE_ALIAS
 # from .layer.learning_rate import PiecewiseDecay        #DEFINE_ALIAS
 # from .layer.learning_rate import PolynomialDecay        #DEFINE_ALIAS
+from .layer.common import Linear
 # from .layer.loss import NCELoss        #DEFINE_ALIAS
 from .layer.loss import BCEWithLogitsLoss  #DEFINE_ALIAS
 from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
@@ -128,6 +145,13 @@ from .layer.norm import GroupNorm  #DEFINE_ALIAS
 from .layer.norm import LayerNorm  #DEFINE_ALIAS
 from .layer.norm import SpectralNorm  #DEFINE_ALIAS
 from .layer.norm import InstanceNorm  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm1d  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm2d  #DEFINE_ALIAS
+from .layer.norm import InstanceNorm3d  #DEFINE_ALIAS
+from .layer.norm import BatchNorm1d  #DEFINE_ALIAS
+from .layer.norm import BatchNorm2d  #DEFINE_ALIAS
+from .layer.norm import BatchNorm3d  #DEFINE_ALIAS
+from .layer.rnn import *
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS
@@ -139,7 +163,10 @@ from .layer.transformer import TransformerDecoder
 from .layer.transformer import Transformer
 from .layer.distance import PairwiseDistance  #DEFINE_ALIAS
 
+from .layer.vision import PixelShuffle
+
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS
+from .layer import vision  #DEFINE_ALIAS
 from ..fluid.dygraph.layers import Layer  #DEFINE_ALIAS
 from ..fluid.dygraph.container import LayerList, ParameterList, Sequential  #DEFINE_ALIAS

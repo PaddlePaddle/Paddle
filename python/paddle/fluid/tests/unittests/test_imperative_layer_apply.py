@@ -40,9 +40,8 @@ class LeNetDygraph(fluid.dygraph.Layer):
         if num_classes > 0:
             self.fc = nn.Sequential(
                 nn.Linear(400, 120),
-                nn.Linear(120, 84),
-                nn.Linear(
-                    84, 10, act=classifier_activation))
+                nn.Linear(120, 84), nn.Linear(84, 10),
+                nn.Softmax())  #Todo: accept any activation
 
     def forward(self, inputs):
         x = self.features(inputs)
