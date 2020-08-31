@@ -198,7 +198,7 @@ echo    ========================================
 
 set end=%time%-%date%
 call :timestamp "%start%" "%end%" "Build"
-tree %cd%\fluid_inference_install_dir
+tree /F %cd%\fluid_inference_install_dir\paddle
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\fluid_inference_install_dir\paddle\lib > lib_size.txt
 set /p libsize=< lib_size.txt
 for /F %%i in ("%libsize%") do echo "Windows FLuid_Inference Size: %%i"
@@ -208,7 +208,6 @@ for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 
-set start=%time%-%date%
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
 pip install -U %PADDLE_WHL_FILE_WIN% --user
@@ -232,6 +231,7 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
+set start=%time%-%date%
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
