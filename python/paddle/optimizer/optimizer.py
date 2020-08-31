@@ -98,7 +98,7 @@ class Optimizer(object):
 
     """
 
-    @imperative_base.no_grad()
+    @imperative_base.no_grad
     def __init__(self,
                  learning_rate,
                  parameters=None,
@@ -812,7 +812,7 @@ class Optimizer(object):
             if p.trainable:
                 p.clear_gradient()
 
-    @imperative_base.no_grad()
+    @imperative_base.no_grad
     def minimize(self,
                  loss,
                  startup_program=None,
