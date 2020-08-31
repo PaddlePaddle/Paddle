@@ -61,7 +61,7 @@ def StaticLenet(data, num_classes=10, classifier_activation='softmax'):
         padding=1,
         param_attr=conv2d_w1_attr,
         bias_attr=conv2d_b1_attr)
-    #conv1 = paddle.fluid.layers.leaky_relu(conv1)
+    conv1 = paddle.fluid.layers.leaky_relu(conv1)
     pool1 = fluid.layers.pool2d(
         conv1, pool_size=2, pool_type='max', pool_stride=2)
     conv2 = fluid.layers.conv2d(
@@ -115,7 +115,8 @@ class ImperativeLenet(fluid.dygraph.Layer):
                 padding=1,
                 param_attr=conv2d_w1_attr,
                 bias_attr=conv2d_b1_attr),
-            #LeakyReLU(),
+            LeakyReLU(negative_slope=0.02
+                      ),  # in static layer, the default value of alpha is 0.02
             Pool2D(
                 pool_size=2, pool_type='max', pool_stride=2),
             Conv2D(
@@ -292,7 +293,9 @@ class TestImperativeAddQuantDequant(unittest.TestCase):
         imperative_qat = ImperativeQuantAware(
             weight_quantize_type=weight_quantize_type,
             activation_quantize_type=activation_quant_type,
-            quantizable_layer_type=['Conv2D', 'Linear', 'ReLU', 'Pool2D'])
+            quantizable_layer_type=[
+                'Conv2D', 'Linear', 'ReLU', 'Pool2D', 'LeakyReLU'
+            ])
 
         with fluid.dygraph.guard():
             np.random.seed(seed)
@@ -313,13 +316,7 @@ class TestImperativeAddQuantDequant(unittest.TestCase):
                 param_init_map[param.name] = value
             lenet.set_dict(fixed_state)
 
-            print("Before quantize \n")
-            print(lenet.sublayers())
-
             imperative_qat.quantize(lenet)
-
-            print("After quantize \n")
-            print(lenet.sublayers())
 
             adam = AdamOptimizer(
                 learning_rate=lr, parameter_list=lenet.parameters())
@@ -391,7 +388,9 @@ class TestImperativeAddQuantDequant(unittest.TestCase):
             weight_quantize_type=weight_quantize_type,
             quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'])
         add_quant_dequant_pass = AddQuantDequantPass(
-            scope=scope, place=place, quantizable_op_type=['pool2d', 'relu'])
+            scope=scope,
+            place=place,
+            quantizable_op_type=['pool2d', 'relu', 'leaky_relu'])
         add_quant_dequant_pass.apply(main_graph)
         add_quant_dequant_pass.apply(infer_graph)
         transform_pass.apply(main_graph)
