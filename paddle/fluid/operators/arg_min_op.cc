@@ -32,12 +32,19 @@ REGISTER_OP_CPU_KERNEL(
                                     int16_t>,
     paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
                                     uint8_t>);
-REGISTER_OP_VERSION(arg_min)
+REGISTER_OP_VERSION(arg_max)
     .AddCheckpoint(
-        R"ROC(Upgrade argmin add a new attribute [flatten].
-                )ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "flatten",
-            "In order to compute the argmin over the flattened array when the "
-            "argument `axis` in python API is None.",
-            false));
+        R"ROC(
+              Upgrade argmin add a new attribute [flatten] and modify the attribute of dtype)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("flatten",
+                     "In order to compute the argmin over the flattened array "
+                     "when the "
+                     "argument `axis` in python API is None.",
+                     false)
+            .ModifyAttr("dtype",
+                        "change the default value of dtype, the older version "
+                        "is -1, means return the "
+                        "int64 indices. The new version is 3, return the int64 "
+                        "indices directly. ",
+                        3));
