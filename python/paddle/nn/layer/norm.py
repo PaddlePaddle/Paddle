@@ -603,8 +603,7 @@ class _BatchNormBase(layers.Layer):
                 initializer=Constant(0.0),
                 trainable=False,
                 do_model_average=True),
-            shape=param_shape,
-            dtype=self._dtype)
+            shape=param_shape)
         self._mean.stop_gradient = True
 
         self._variance = self.create_parameter(
@@ -613,8 +612,7 @@ class _BatchNormBase(layers.Layer):
                 initializer=Constant(1.0),
                 trainable=False,
                 do_model_average=True),
-            shape=param_shape,
-            dtype=self._dtype)
+            shape=param_shape)
         self._variance.stop_gradient = True
 
         self._data_format = data_format
