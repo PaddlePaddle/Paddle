@@ -103,10 +103,10 @@ class AdamW(Adam):
 
     def __init__(self,
                  learning_rate=0.001,
-                 parameters=None,
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-8,
+                 parameters=None,
                  weight_decay=0.01,
                  apply_decay_param_fun=None,
                  grad_clip=None,
