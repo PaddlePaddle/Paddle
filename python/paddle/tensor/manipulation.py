@@ -1099,17 +1099,28 @@ def tile(x, repeat_times, name=None):
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if in_dygraph_mode():
-        return core.ops.tile(x, 'repeat_times', repeat_times)
-
-    check_variable_and_dtype(
-        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile')
     check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
         raise ValueError(
             "When the date type is bool for the input 'x' of tile op, you "
             "must set its stop_gradient to be True by "
             "some_var.stop_gradient == True supporting some_var is the input.")
+    if isinstance(repeat_times, Variable):
+        assert len(repeat_times.shape) == 1, (
+            'repeat_times must be an 1-D Tensor.')
+    else:
+        for elem in repeat_times:
+            if isinstance(elem, Variable):
+                assert len(elem.shape) == 1, (
+                    'Elements in repeat_times must be 1-D Tensors or integers.')
+            else:
+                assert isinstance(elem, np.int32), (
+                    'Elements in repeat_times must be 1-D Tensors or integers.')
+    if in_dygraph_mode():
+        return core.ops.tile(x, 'repeat_times', repeat_times)
+
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile')
 
     helper = LayerHelper('tile', **locals())
 
@@ -1228,6 +1239,21 @@ def expand(x, shape, name=None):
             out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+        raise ValueError("When the data type of input 'x' for expand is bool, "
+                         "you must set its stop_gradient to be False by "
+                         "some_var.stop_gradient = True, supporting "
+                         "some_var as the input.")
+    if isinstance(shape, Variable):
+        assert len(shape.shape) == 1, ('shape must be an 1-D Tensor.')
+    else:
+        for elem in shape:
+            if isinstance(elem, Variable):
+                assert len(elem.shape) == 1, (
+                    'Elements in shape must be 1-D Tensors or integers.')
+            else:
+                assert isinstance(elem, np.int32), (
+                    'Elements in shape must be 1-D Tensors or integers.')
     if in_dygraph_mode():
         return core.ops.expand_v2(x, 'shape', shape)
 
@@ -1237,11 +1263,6 @@ def expand(x, shape, name=None):
 
     inputs = {"X": [x]}
     attrs = {}
-    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
-        raise ValueError("When the data type of input 'x' for expand is bool, "
-                         "you must set its stop_gradient to be False by "
-                         "some_var.stop_gradient = True, supporting "
-                         "some_var as the input.")
 
     helper = LayerHelper('expand', **locals())
 
