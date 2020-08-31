@@ -565,6 +565,8 @@ EOF
                     ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
                     collect_failed_tests
                     retry_unittests_regular=''
+                done
+        fi
         #mactest_error=$?
         ut_endTime_s=`date +%s`
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
@@ -587,6 +589,7 @@ EOF
                 echo "The following tests FAILED: "
                 echo "${failed_test_lists_ult}"
                 exit 8;
+            fi
         fi
     fi
 }
