@@ -53,7 +53,7 @@ struct GaussianGeneratorOffset {
     thrust::minstd_rand rng;
     rng.seed(seed_);
     thrust::normal_distribution<T> dist(mean_, std_);
-    rng.discard(n + offset_);
+    rng.discard(n);
     return dist(rng);
   }
 };
@@ -64,9 +64,11 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    bool seed_flag = true;
     if (seed == 0) {
       std::random_device rd;
       seed = rd();
+      seed_flag = false;
     }
     T mean = static_cast<T>(context.Attr<float>("mean"));
     T std = static_cast<T>(context.Attr<float>("std"));
@@ -79,19 +81,19 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
     auto gen_cuda = framework::getDefaultCUDAGenerator(-1);
 
-    if (gen_cuda->GetIsInitPy()) {
+    if (gen_cuda->GetIsInitPy() && seed_flag) {
       std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
-      auto seed_offset = gen_cuda->IncrementOffset(1);
-      int offset_step = 100;
+      // auto seed_offset = gen_cuda->IncrementOffset(1);
+      auto seed_gen = static_cast<unsigned int>(gen_cuda->GetCurrentSeed());
+      // int offset_step = 0;
       // NOTE(xuefeng): Currently, we let offset step fixed to avoid
       // unexpected results which may cause ut fail.
       // we will fix this in future.
-      int gen_offset = offset_step * seed_offset.second;
-      std::cout << ">>>>>offset: " << gen_offset << std::endl;
-      thrust::transform(
-          index_sequence_begin, index_sequence_begin + size,
-          thrust::device_ptr<T>(data),
-          GaussianGeneratorOffset<T>(mean, std, seed_offset.first, gen_offset));
+      // int gen_offset = offset_step * seed_offset.second;
+      // std::cout << ">>>>>offset: " << gen_offset << std::endl;
+      thrust::transform(index_sequence_begin, index_sequence_begin + size,
+                        thrust::device_ptr<T>(data),
+                        GaussianGeneratorOffset<T>(mean, std, seed_gen, 0));
     } else {
       std::cout << "COUNT ORIGIN" << std::endl;
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
@@ -108,9 +110,11 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    bool seed_flag = true;
     if (seed == 0) {
       std::random_device rd;
       seed = rd();
+      seed_flag = false;
     }
     T mean = static_cast<T>(context.Attr<float>("mean"));
     T std = static_cast<T>(context.Attr<float>("std"));
@@ -118,19 +122,19 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
     auto gen_cuda = framework::getDefaultCUDAGenerator(-1);
 
-    if (gen_cuda->GetIsInitPy()) {
+    if (gen_cuda->GetIsInitPy() && seed_flag) {
       std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
-      auto seed_offset = gen_cuda->IncrementOffset(1);
-      int offset_step = 100;
+      // auto seed_offset = gen_cuda->IncrementOffset(1);
+      auto seed_gen = static_cast<unsigned int>(gen_cuda->GetCurrentSeed());
+      // int offset_step = 0;
       // NOTE(xuefeng): Currently, we let offset step fixed to avoid
       // unexpected results which may cause ut fail.
       // we will fix this in future.
-      int gen_offset = offset_step * seed_offset.second;
-      std::cout << ">>>>>offset: " << gen_offset << std::endl;
-      thrust::transform(
-          index_sequence_begin, index_sequence_begin + size,
-          thrust::device_ptr<T>(data),
-          GaussianGeneratorOffset<T>(mean, std, seed_offset.first, gen_offset));
+      // int gen_offset = offset_step * seed_offset.second;
+      // std::cout << ">>>>>offset: " << gen_offset << std::endl;
+      thrust::transform(index_sequence_begin, index_sequence_begin + size,
+                        thrust::device_ptr<T>(data),
+                        GaussianGeneratorOffset<T>(mean, std, seed_gen, 0));
     } else {
       std::cout << "COUNT ORIGIN" << std::endl;
       thrust::transform(index_sequence_begin, index_sequence_begin + size,

@@ -71,7 +71,7 @@ struct TruncatedNormalOffset {
     thrust::minstd_rand rng;
     rng.seed(seed);
     thrust::uniform_real_distribution<T> dist(numeric_min, 1);
-    rng.discard(n + offset_);
+    rng.discard(n);
     T value = dist(rng);
     auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
     return std::sqrt(2.0) * erfinvf(2 * p - 1) * std + mean;
@@ -86,9 +86,11 @@ class GPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    bool seed_flag = true;
     if (seed == 0) {
       std::random_device rd;
       seed = rd();
+      seed_flag = false;
     }
     T mean = static_cast<T>(context.Attr<float>("mean"));
     T std = static_cast<T>(context.Attr<float>("std"));
@@ -96,19 +98,20 @@ class GPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
 
     auto gen_cuda = framework::getDefaultCUDAGenerator(-1);
-    if (gen_cuda->GetIsInitPy()) {
+    if (gen_cuda->GetIsInitPy() && seed_flag) {
       std::cout << ">>>>>>>>CUDA TRUNCATED NORMAL GENERATOR" << std::endl;
-      auto seed_offset = gen_cuda->IncrementOffset(1);
-      int offset_step = 100;
+      // auto seed_offset = gen_cuda->IncrementOffset(1);
+      auto seed_gen = static_cast<int>(gen_cuda->GetCurrentSeed());
+      // int offset_step = 0;
       // NOTE(xuefeng): Currently, we let offset step fixed to avoid
       // unexpected results which may cause ut fail.
       // we will fix this in future.
-      int gen_offset = offset_step * seed_offset.second;
+      // int gen_offset = offset_step * seed_offset.second;
       thrust::transform(
           index_sequence_begin, index_sequence_begin + size,
           thrust::device_ptr<T>(data),
           TruncatedNormalOffset<T>(mean, std, std::numeric_limits<T>::min(),
-                                   seed_offset.first, gen_offset));
+                                   seed_gen, 0));
     }
 
     thrust::transform(

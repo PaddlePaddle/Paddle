@@ -169,6 +169,7 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
       probabilities->mutable_data<T>(samples_dim, context.GetPlace());
       // UNDERSTAND: sampling
       const auto seed = context.Attr<int>("seed");
+      std::cout << "####SAMPLING" << std::endl;
       auto sampler_with_prob = math::GPUSampleWithProb<T>();
       sampler_with_prob(context.cuda_device_context(), seed, num_classes, uniq,
                         num_samples, labels, samples, probabilities);
