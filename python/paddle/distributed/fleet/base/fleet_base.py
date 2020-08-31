@@ -370,10 +370,23 @@ class Fleet(object):
     @inited_runtime_handler
     def init_worker(self):
         """
-        init worker
+        initialize `Communicator` for parameter server training.
+
 
         Returns:
             None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.init_worker()
 
         """
         self._runtime_handle._init_worker()
@@ -381,10 +394,24 @@ class Fleet(object):
     @inited_runtime_handler
     def init_server(self, *args, **kwargs):
         """
-        init server
+        init_server executor to initialize startup program,
+        if the `args` is not empty, it will run load_persistables for increment training.
+
 
         Returns:
             None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.init_server()
 
         """
         self._runtime_handle._init_server(*args, **kwargs)
@@ -392,10 +419,23 @@ class Fleet(object):
     @inited_runtime_handler
     def run_server(self):
         """
-        run server
+        run server will run pserver main program with executor.
 
         Returns:
             None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                if fleet.is_server():
+                    fleet.init_server()
 
         """
         self._runtime_handle._run_server()
@@ -403,10 +443,22 @@ class Fleet(object):
     @inited_runtime_handler
     def stop_worker(self):
         """
-        stop server
+        stop `Communicator` and give training complete notice to parameter server.
 
         Returns:
             None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.init_server()
 
         """
         self._runtime_handle._stop_worker()
@@ -424,6 +476,18 @@ class Fleet(object):
         Returns:
             None
 
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                fleet.init_server()
+
         """
 
         self._runtime_handle._save_inference_model(
@@ -432,10 +496,42 @@ class Fleet(object):
 
     def save_persistables(self, executor, dirname, main_program=None):
         """
-        save params in program for inference and checkpoint.
+
+        saves all persistable variables from :code:`main_program` to
+        the folder :code:`dirname`. You can refer to
+
+        The :code:`dirname` is used to specify the folder where persistable variables
+        are going to be saved. If you would like to save variables in separate
+        files, set :code:`filename` None.
+
+        Args:
+            executor(Executor): The executor to run for saving persistable variables.
+                                You can refer to :ref:`api_guide_executor_en` for
+                                more details.
+
+            dirname(str, optional): The saving directory path.
+                                When you need to save the parameter to the memory, set it to None.
+            main_program(Program, optional): The program whose persistbale variables will
+                                             be saved. Default: None.
+
 
         Returns:
             None
+
+        Examples:
+
+            .. code-block:: text
+
+                import paddle.distributed.fleet as fleet
+                import paddle.fluid as fluid
+
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+
+                exe = fluid.Executor(fluid.CPUPlace())
+                fleet.save_persistables(exe, "dirname", fluid.default_main_program())
 
         """
 
@@ -443,19 +539,29 @@ class Fleet(object):
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
-        distirbuted_optimizer
+        Optimizer for distributed training.
+
+        For the distributed training, this method would rebuild a new instance of DistributedOptimizer.
+        Which has basic Optimizer function and special features for distributed training.
+
+        Args:
+            optimizer(Optimizer): The executor to run for init server.
+            strategy(DistributedStrategy): Extra properties for distributed optimizer.
 
         Returns:
-            Fleet instance with minimize interface like optimizers
+            Fleet: instance of fleet.
 
         Examples:
+
             .. code-block:: python
+
                 import paddle.distributed.fleet as fleet
                 role = fleet.role_maker.PaddleCloudRoleMaker(is_collective=True)
                 fleet.init(role)
                 strategy = fleet.DistributedStrategy()
                 optimizer = paddle.optimizer.SGD(learning_rate=0.001)
                 optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+
         """
         self.user_defined_optimizer = optimizer
         if strategy == None:
