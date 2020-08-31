@@ -557,7 +557,7 @@ class DataParallel(layers.Layer):
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix)
 
-    @framework.deprecate_stat_dict()
+    @framework.deprecate_stat_dict
     def set_state_dict(self,
                        state_dict,
                        include_sublayers=True,

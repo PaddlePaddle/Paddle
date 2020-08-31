@@ -244,21 +244,18 @@ def _fake_interface_only_(func):
 # introducing compatibility issues, add this decorator
 # NOTE(chenweihang): not using `wrap_decorator` here is because `wrap_decorator` will
 # move kwargs to args, which doesn't work in this decorate case
-def deprecate_stat_dict():
-    def decorator(func):
-        @functools.wraps(func)
-        def __impl__(*args, **kwargs):
-            if 'stat_dict' in kwargs:
-                warnings.warn(
-                    "The argument `stat_dict` has deprecated, please change it to `state_dict`."
-                )
-                kwargs['state_dict'] = kwargs['stat_dict']
-                kwargs.pop('stat_dict')
-            return func(*args, **kwargs)
+def deprecate_stat_dict(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if 'stat_dict' in kwargs:
+            warnings.warn(
+                "The argument `stat_dict` has deprecated, please change it to `state_dict`.",
+                DeprecationWarning)
+            kwargs['state_dict'] = kwargs['stat_dict']
+            kwargs.pop('stat_dict')
+        return func(*args, **kwargs)
 
-        return __impl__
-
-    return decorator
+    return wrapper
 
 
 dygraph_not_support = wrap_decorator(_dygraph_not_support_)

@@ -20,7 +20,7 @@ from paddle.fluid.framework import _current_expected_place as _get_device
 
 
 def monkey_patch_layer():
-    @fluid.framework.deprecate_stat_dict()
+    @fluid.framework.deprecate_stat_dict
     def load_dict(self,
                   state_dict,
                   include_sublayers=True,

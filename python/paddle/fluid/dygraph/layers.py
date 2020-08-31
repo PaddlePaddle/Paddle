@@ -954,7 +954,7 @@ class Layer(core.Layer):
                     destination = destination_temp
         return destination
 
-    @framework.deprecate_stat_dict()
+    @framework.deprecate_stat_dict
     def set_state_dict(self,
                        state_dict,
                        include_sublayers=True,
