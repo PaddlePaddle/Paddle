@@ -196,6 +196,7 @@ def __bootstrap__():
         'free_idle_chunk',
         'free_when_no_cache_hit',
         'call_stack_level',
+        'sort_sum_gradient',
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')

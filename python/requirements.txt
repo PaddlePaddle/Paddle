@@ -15,11 +15,10 @@ rarfile
 Pillow
 graphviz
 six
-funcsigs
-pyyaml
 decorator
 prettytable
 objgraph
 astor
 pathlib
 netifaces
+psutil
