@@ -436,6 +436,13 @@ class TestDropoutFAPIError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_axis_max)
 
+            def test_axis_min():
+                # minimum of axis should greater equal than 0
+                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
+                paddle.nn.functional.dropout(x2, axis=[0, -1])
+
+            self.assertRaises(ValueError, test_axis_min)
+
             def test_axis_len():
                 # length of axis should not greater than dimensions of x
                 x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
