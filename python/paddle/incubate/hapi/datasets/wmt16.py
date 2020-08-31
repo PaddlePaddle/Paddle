@@ -139,8 +139,11 @@ class WMT16(Dataset):
     def _load_dict(self, lang, dict_size, reverse=False):
         dict_path = os.path.join(paddle.dataset.common.DATA_HOME,
                                  "wmt16/%s_%d.dict" % (lang, dict_size))
-        if not os.path.exists(dict_path) or (
-                len(open(dict_path, "rb").readlines()) != dict_size):
+        dict_found = False
+        if os.path.exists(dict_path):
+            with open(dict_path, "rb") as d:
+                dict_found = len(d.readlines()) == dict_size
+        if not dict_found:
             self._build_dict(dict_path, dict_size, lang)
 
         word_dict = {}

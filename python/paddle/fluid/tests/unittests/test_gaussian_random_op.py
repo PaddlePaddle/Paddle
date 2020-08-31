@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
@@ -37,6 +37,7 @@ class TestGaussianRandomOp(OpTest):
             "seed": 10,
             "use_mkldnn": self.use_mkldnn
         }
+        paddle.manual_seed(10)
 
         self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
 

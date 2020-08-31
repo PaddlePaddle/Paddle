@@ -343,7 +343,7 @@ def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
             (with the shape [1], and the data type int32 or int64). If ``shape``
             is a Tensor, it should be a 1-D Tensor(with the data type int32 or
             int64).
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
+        dtype(str|np.dtype, optional): The data type of
             the output Tensor. Supported data types: float32, float64.
             Default is float32.
         min(float|int, optional): The lower bound on the range of random values
@@ -399,7 +399,6 @@ def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
             # [[-0.8517412,  -0.4006908,   0.2551912 ],
             #  [ 0.3364414,   0.36278176, -0.16085452]]
 
-            paddle.enable_static()
 
     """
     if not isinstance(dtype, core.VarDesc.VarType):

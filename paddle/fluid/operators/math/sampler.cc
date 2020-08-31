@@ -13,11 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/sampler.h"
+
 #include <glog/logging.h>
+
 #include <iostream>
 #include <queue>
 #include <utility>
 #include <vector>
+
+#include "paddle/fluid/framework/generator.h"
 
 namespace paddle {
 namespace operators {
@@ -27,7 +31,7 @@ Sampler::~Sampler() {}
 
 UniformSampler::UniformSampler(int64_t range, unsigned int seed)
     : Sampler(range, seed), inv_range_(1.0 / (range + 1)) {
-  random_engine_ = std::make_shared<std::mt19937_64>(seed_);
+  random_engine_ = framework::GetCPURandomEngine(seed_);
   dist_ = std::make_shared<std::uniform_int_distribution<>>(0, range);
 }
 
@@ -37,7 +41,7 @@ float UniformSampler::Probability(int64_t value) const { return inv_range_; }
 
 LogUniformSampler::LogUniformSampler(int64_t range, unsigned int seed)
     : Sampler(range, seed), log_range_(log(range + 1)) {
-  random_engine_ = std::make_shared<std::mt19937_64>(seed_);
+  random_engine_ = framework::GetCPURandomEngine(seed_);
   dist_ = std::make_shared<std::uniform_real_distribution<>>(0, 1);
 }
 
@@ -46,8 +50,8 @@ int64_t LogUniformSampler::Sample() const {
   // inverse_transform_sampling method
   // More details:
   // https://wanghaoshuang.github.io/2017/11/Log-uniform-distribution-sampler/
-  const int64_t value =
-      static_cast<int64_t>(exp((*dist_)(*random_engine_) * log_range_)) - 1;
+  auto cur_random = (*dist_)(*random_engine_);
+  const int64_t value = static_cast<int64_t>(exp(cur_random * log_range_)) - 1;
   // Mathematically, value should be <= range_, but might not be due to some
   // floating point roundoff, so we mod by range_.
   return value % range_;
@@ -65,7 +69,7 @@ CustomSampler::CustomSampler(int64_t range, const float *probabilities,
                              const int *alias, const float *alias_probabilities,
                              unsigned int seed)
     : Sampler(range, seed) {
-  random_engine_ = std::make_shared<std::mt19937>(seed_);
+  random_engine_ = framework::GetCPURandomEngine(seed_);
   real_dist_ = std::make_shared<std::uniform_real_distribution<>>(0, 1);
   int_dist_ = std::make_shared<std::uniform_int_distribution<>>(0, range);
 

@@ -19,13 +19,15 @@ __all__ = [
     'ExponentialMovingAverage', 'Ftrl', 'FtrlOptimizer', 'LambOptimizer',
     'LarsMomentum', 'LarsMomentumOptimizer', 'LookaheadOptimizer',
     'ModelAverage', 'Momentum', 'MomentumOptimizer', 'PipelineOptimizer',
-    'RecomputeOptimizer', 'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer'
+    'RecomputeOptimizer', 'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer',
+    '_LRScheduler', 'NoamLR', 'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR',
+    'PolynomialLR', 'LinearLrWarmup', 'ExponentialLR', 'MultiStepLR', 'StepLR',
+    'LambdaLR', 'ReduceLROnPlateau', 'CosineAnnealingLR'
 ]
 
 
-from ..fluid.optimizer import  SGD, Momentum, Adagrad, Dpsgd, DecayedAdagrad, \
-            Ftrl, Adadelta, \
-            SGDOptimizer, MomentumOptimizer, AdagradOptimizer,DpsgdOptimizer,\
+from ..fluid.optimizer import Momentum, Adagrad, Dpsgd, DecayedAdagrad, Ftrl,\
+            AdagradOptimizer,DpsgdOptimizer,\
             DecayedAdagradOptimizer,FtrlOptimizer,AdadeltaOptimizer, \
             ModelAverage, LarsMomentum, DGCMomentumOptimizer, LambOptimizer,\
             ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, \
@@ -36,3 +38,10 @@ from .adam import Adam
 from .adamw import AdamW
 from .adamax import Adamax
 from .rmsprop import RMSProp
+from .adadelta import Adadelta
+from .sgd import SGD
+from .momentum import Momentum
+
+from . import lr_scheduler
+from .lr_scheduler import _LRScheduler, NoamLR, PiecewiseLR, NaturalExpLR, InverseTimeLR, PolynomialLR, \
+            LinearLrWarmup, ExponentialLR, MultiStepLR, StepLR, LambdaLR, ReduceLROnPlateau, CosineAnnealingLR

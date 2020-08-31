@@ -25,7 +25,7 @@ from paddle import fluid
 from paddle.incubate.hapi import Model, Input, set_device
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.incubate.hapi.vision.models import LeNet
-from paddle.incubate.hapi.metrics import Accuracy
+from paddle.metric import Accuracy
 from paddle.incubate.hapi.callbacks import ProgBarLogger
 from paddle.incubate.hapi.datasets import MNIST
 

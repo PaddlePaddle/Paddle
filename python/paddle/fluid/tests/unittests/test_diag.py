@@ -83,6 +83,14 @@ class TestDiagV2Error(unittest.TestCase):
 
             self.assertRaises(TypeError, test_diag_v2_type)
 
+            x = paddle.static.data('data', [3, 3])
+            self.assertRaises(TypeError, paddle.diag, x, offset=2.5)
+
+            self.assertRaises(TypeError, paddle.diag, x, padding_value=[9])
+
+            x = paddle.static.data('data2', [3, 3, 3])
+            self.assertRaises(ValueError, paddle.diag, x)
+
 
 class TestDiagV2API(unittest.TestCase):
     def setUp(self):

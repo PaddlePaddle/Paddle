@@ -189,20 +189,6 @@ class TestBCELoss(unittest.TestCase):
             self.assertTrue(np.allclose(static_functional, dy_functional))
             self.assertTrue(np.allclose(dy_functional, expected))
 
-    def test_BCELoss_boardcast(self):
-        input_np = np.random.uniform(
-            0.1, 0.8, size=(2, 3, 4, 10)).astype(np.float64)
-        label_np = np.random.randint(0, 2, size=(3, 4, 10)).astype(np.float64)
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-
-        static_result = test_static_layer(place, input_np, label_np)
-        dy_result = test_dygraph_layer(place, input_np, label_np)
-        expected = calc_bceloss(input_np, label_np)
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
-
     def test_BCELoss_error(self):
         paddle.disable_static()
         self.assertRaises(

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
@@ -266,8 +267,8 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
 
     def training_test(self, is_sparse):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
+            paddle.manual_seed(1)
             start_up = fluid.default_startup_program()
-            start_up.random_seed = 1  # Fix random seed
             x = np.arange(6).reshape(6)
             path_table = np.array([(1, 2, -1), (1, 2, -1)]).astype('int64')
             path_code = np.array([(1, 0, -1), (0, 0, -1)]).astype('int64')
