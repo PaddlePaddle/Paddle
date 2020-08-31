@@ -32,7 +32,7 @@ REGISTER_OP_CPU_KERNEL(
                                     int16_t>,
     paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
                                     uint8_t>);
-REGISTER_OP_VERSION(arg_max)
+REGISTER_OP_VERSION(arg_min)
     .AddCheckpoint(
         R"ROC(
               Upgrade argmin add a new attribute [flatten] and modify the attribute of dtype)ROC",
