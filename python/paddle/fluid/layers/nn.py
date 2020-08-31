@@ -1858,6 +1858,7 @@ def conv3d(input,
     return helper.append_activation(pre_act)
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.pool2d")
 @templatedoc()
 def pool2d(input,
            pool_size=-1,
@@ -2075,6 +2076,7 @@ def pool2d(input,
     return pool_out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.pool3d")
 @templatedoc()
 def pool3d(input,
            pool_size=-1,
@@ -2303,6 +2305,7 @@ def pool3d(input,
     return pool_out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.adaptive_pool2d")
 @templatedoc(op_type="pool2d")
 def adaptive_pool2d(input,
                     pool_size,
@@ -2450,6 +2453,7 @@ def adaptive_pool2d(input,
     return (pool_out, mask) if require_index else pool_out
 
 
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.adaptive_pool3d")
 @templatedoc(op_type="pool3d")
 def adaptive_pool3d(input,
                     pool_size,
@@ -10205,6 +10209,7 @@ def unstack(x, axis=0, num=None):
     return outs
 
 
+@deprecated(since='2.0.0', update_to="paddle.expand")
 def expand(x, expand_times, name=None):
     """
     :alias_main: paddle.expand
@@ -10312,6 +10317,7 @@ def expand(x, expand_times, name=None):
     return out
 
 
+@deprecated(since='2.0.0', update_to="paddle.expand_as")
 def expand_as(x, target_tensor, name=None):
     """
     :alias_main: paddle.expand_as
@@ -10377,6 +10383,9 @@ def expand_as(x, target_tensor, name=None):
         #(3,20)
 
     """
+    if in_dygraph_mode():
+        return core.ops.expand_as(x, target_tensor)
+
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64', 'bool'], 'expand_as')
     check_variable_and_dtype(target_tensor, 'target_tensor',
@@ -12086,6 +12095,13 @@ Examples:
 
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
+    if in_dygraph_mode():
+        op = getattr(core.ops, op_name)
+        if binary_op:
+            return op(x, y)
+        else:
+            return op(x)
+
     check_variable_and_dtype(x, "x", ["bool"], op_name)
     if y is not None:
         check_variable_and_dtype(y, "y", ["bool"], op_name)
@@ -12110,28 +12126,27 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
     return out
 
 
-@templatedoc()
 def logical_and(x, y, out=None, name=None):
     """
-    :alias_main: paddle.logical_and
-    :alias: paddle.logical_and, paddle.tensor.logical_and, paddle.tensor.logic.logical_and
-    :old_api: paddle.fluid.layers.logical_and
 
-    ``logical_and`` operator computes element-wise logical AND on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Variable``.
+    ``logical_and`` operator computes element-wise logical AND on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Tensor``.
     Each element of ``out`` is calculated by
 
     .. math::
 
         out = x \&\& y
 
+    .. note::
+        ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+
     Args:
-        x(${x_type}): ${x_comment}.
-        y(${y_type}): ${y_comment}.
-        out(Variable): The ``Variable`` that specifies the output of the operator, which can be any ``Variable`` that has been created in the program. The default value is None, and a new ``Variable`` will be created to save the output.
-        name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        x (Tensor): the input tensor, it's data type should be bool.
+        y (Tensor): the input tensor, it's data type should be bool.
+        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        ${out_type}: ${out_comment}
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
         .. code-block:: python
@@ -12140,43 +12155,38 @@ def logical_and(x, y, out=None, name=None):
             import numpy as np
 
             paddle.disable_static()
-            x_data = np.array([True, True, False, False], dtype=np.bool)
+            x_data = np.array([True], dtype=np.bool)
             y_data = np.array([True, False, True, False], dtype=np.bool)
             x = paddle.to_tensor(x_data)
             y = paddle.to_tensor(y_data)
             res = paddle.logical_and(x, y)
-            print(res.numpy()) # [True False False False]
+            print(res.numpy()) # [True False True False]
     """
-    if x.shape != y.shape:
-        raise TypeError(
-            'Input tensors must be same shape, but received x \'s shape: %s, y \'s shape: %s '
-            % (x.shape, y.shape))
     return _logical_op(
         op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True)
 
 
-@templatedoc()
 def logical_or(x, y, out=None, name=None):
     """
-    :alias_main: paddle.logical_or
-    :alias: paddle.logical_or, paddle.tensor.logical_or, paddle.tensor.logic.logical_or
-    :old_api: paddle.fluid.layers.logical_or
 
-    ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Variable``.
+    ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Tensor``.
     Each element of ``out`` is calculated by
 
     .. math::
 
         out = x || y
 
+    .. note::
+        ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+    
     Args:
-        x(${x_type}): ${x_comment}.
-        y(${y_type}): ${y_comment}.
-        out(Variable): The ``Variable`` that specifies the output of the operator, which can be any ``Variable`` that has been created in the program. The default value is None, and a new ``Variable`` will be created to save the output.
-        name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        x (Tensor): the input tensor, it's data type should be bool.
+        y (Tensor): the input tensor, it's data type should be bool.
+        out(Tensor): The ``Variable`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        ${out_type}: ${out_comment}
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
         .. code-block:: python
@@ -12185,43 +12195,38 @@ def logical_or(x, y, out=None, name=None):
             import numpy as np
 
             paddle.disable_static()
-            x_data = np.array([True, True, False, False], dtype=np.bool)
-            y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.to_variable(x_data)
-            y = paddle.to_variable(y_data)
+            x_data = np.array([True, False], dtype=np.bool).reshape(2, 1)
+            y_data = np.array([True, False, True, False], dtype=np.bool).reshape(2, 2)
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
             res = paddle.logical_or(x, y)
-            print(res.numpy()) # [True  True  True False]
+            print(res.numpy()) # [[ True  True] [ True False]]
     """
-    if x.shape != y.shape:
-        raise TypeError(
-            'Input tensors must be same shape, but received x \'s shape: %s, y \'s shape: %s '
-            % (x.shape, y.shape))
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True)
 
 
-@templatedoc()
 def logical_xor(x, y, out=None, name=None):
     """
-    :alias_main: paddle.logical_xor
-    :alias: paddle.logical_xor, paddle.tensor.logical_xor, paddle.tensor.logic.logical_xor
-    :old_api: paddle.fluid.layers.logical_xor
 
-    ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Variable``.
+    ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Tensor``.
     Each element of ``out`` is calculated by
 
     .. math::
 
         out = (x || y) \&\& !(x \&\& y)
 
+    .. note::
+        ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+
     Args:
-        x(${x_type}): ${x_comment}.
-        y(${y_type}): ${y_comment}.
-        out(Variable): The ``Variable`` that specifies the output of the operator, which can be any ``Variable`` that has been created in the program. The default value is None, and a new ``Variable`` will be created to save the output.
-        name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        x (Tensor): the input tensor, it's data type should be bool.
+        y (Tensor): the input tensor, it's data type should be bool.
+        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        ${out_type}: ${out_comment}
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
         .. code-block:: python
@@ -12230,17 +12235,13 @@ def logical_xor(x, y, out=None, name=None):
             import numpy as np
 
             paddle.disable_static()
-            x_data = np.array([True, True, False, False], dtype=np.bool)
-            y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.to_variable(x_data)
-            y = paddle.to_variable(y_data)
+            x_data = np.array([True, False], dtype=np.bool).reshape([2, 1])
+            y_data = np.array([True, False, True, False], dtype=np.bool).reshape([2, 2])
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
             res = paddle.logical_xor(x, y)
-            print(res.numpy()) # [False  True  True False]
+            print(res.numpy()) # [[False,  True], [ True, False]]
     """
-    if x.shape != y.shape:
-        raise TypeError(
-            'Input tensors must be same shape, but received x \'s shape: %s, y \'s shape: %s '
-            % (x.shape, y.shape))
     return _logical_op(
         op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -15012,6 +15013,7 @@ def gather_tree(ids, parents):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.uniform")
 @templatedoc()
 def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
                    name=None):

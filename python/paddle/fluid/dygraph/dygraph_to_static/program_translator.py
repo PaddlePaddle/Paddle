@@ -40,7 +40,6 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
 from paddle.fluid.dygraph.dygraph_to_static.utils import make_hashable
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec
@@ -618,7 +617,7 @@ class ProgramCache(object):
         return len(self._caches)
 
     def concrete_programs(self):
-        return [cp for key, (cp, _) in self._caches.iteritems()]
+        return [cp for key, (cp, _) in six.iteritems(self._caches)]
 
 
 def synchronized(func):

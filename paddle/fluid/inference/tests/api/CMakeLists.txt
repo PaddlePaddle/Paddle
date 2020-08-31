@@ -431,9 +431,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
      
-    set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant_small_model")
+    set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_quant_model")
     if (NOT EXISTS ${TRT_MODEL_QUANT_RESNET_DIR})
-        inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "quant_small_model.tar.gz")
+        inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "small_quant_model.tgz")
     endif()
     inference_analysis_test(trt_quant_int8_test SRCS trt_quant_int8_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
@@ -515,3 +515,9 @@ if(WITH_MKLDNN)
 inference_analysis_test(test_analyzer_capi_ner SRCS analyzer_capi_ner_tester.cc 
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
         ARGS --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
+
+if(WITH_GPU)
+  inference_analysis_test(paddle_infer_api_test SRCS paddle_infer_api_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${RESNET50_MODEL_DIR})
+endif()

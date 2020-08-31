@@ -132,6 +132,9 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Enable MKLDNN quantize optimization.
   virtual void EnableMkldnnQuantizer() {}
 
+  /// \brief Enable MKLDNN bfloat16.
+  virtual void EnableMkldnnBfloat16() {}
+
   /// \brief Check if we are using gpu.
   /// \return A bool variable implying whether we are in gpu mode.
   bool use_gpu() const { return use_gpu_; }
@@ -161,6 +164,7 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
     use_gpu_ = other.use_gpu_;
     use_mkldnn_ = other.use_mkldnn_;
     use_mkldnn_quantizer_ = other.use_mkldnn_quantizer_;
+    use_mkldnn_bfloat16_ = other.use_mkldnn_bfloat16_;
   }
   /// \brief Default destructor.
   virtual ~CpuPassStrategy() = default;
@@ -174,9 +178,13 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   /// \brief Enable MKLDNN quantize optimization.
   void EnableMkldnnQuantizer() override;
 
+  /// \brief Enable MKLDNN bfloat16.
+  void EnableMkldnnBfloat16() override;
+
  protected:
   /// \cond Protected
   bool use_mkldnn_quantizer_{false};
+  bool use_mkldnn_bfloat16_{false};
   /// \endcond
 };
 
@@ -204,6 +212,9 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
 
   /// \brief Not supported in GPU mode yet.
   void EnableMkldnnQuantizer() override;
+
+  /// \brief Not supported in GPU mode yet.
+  void EnableMkldnnBfloat16() override;
 
   /// \brief Default destructor.
   virtual ~GpuPassStrategy() = default;

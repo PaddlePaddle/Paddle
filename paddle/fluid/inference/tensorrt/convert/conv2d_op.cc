@@ -51,7 +51,13 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
-    CHECK(op_desc.HasAttr("Input_scale"));
+    if (op_desc.Type() != "conv2d_transpose") {
+      PADDLE_ENFORCE_EQ(
+          op_desc.HasAttr("Input_scale"), true,
+          platform::errors::InvalidArgument("Input scale not found. TRT int8"
+                                            " requires conv/deconv to have "
+                                            "input quantization scales."));
+    }
     float in_scale =
         BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale")) * 127;
     auto weight_scale =

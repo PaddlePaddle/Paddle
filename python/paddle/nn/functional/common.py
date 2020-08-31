@@ -17,7 +17,8 @@ import paddle
 from ...fluid.framework import in_dygraph_mode, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
-
+from ...fluid.layers import core
+from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
 from ...fluid.layers import label_smooth  #DEFINE_ALIAS
 from ...fluid import one_hot  #DEFINE_ALIAS
@@ -30,6 +31,10 @@ from ...fluid.layers import elementwise_mul  #DEFINE_ALIAS
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
+from ...tensor import sum  #DEFINE_ALIAS
+from ...tensor import sqrt  #DEFINE_ALIAS
+from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
+from ...fluid.framework import Variable, in_dygraph_mode, _varbase_creator
 
 #from ...fluid.layers import fc  #DEFINE_ALIAS
 from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
@@ -46,6 +51,7 @@ __all__ = [
     #       'embedding',
     #       'fc',
     'label_smooth',
+    'linear',
     'one_hot',
     'pad',
     'pad_constant_like',
@@ -1224,7 +1230,19 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     x_dim = len(x.shape)
 
-    original_data_format = data_format
+    assert x_dim in [
+        3, 4, 5
+    ], "input tesor dimension must be in [3, 4, 5] but got {}".format(x_dim)
+
+    supported_format_map = {
+        3: ["NCL", "NLC"],
+        4: ["NCHW", "NHWC"],
+        5: ["NCDHW", "NDHWC"],
+    }
+    assert data_format in supported_format_map[x_dim], \
+    "input tensor dimension is {}, it's data format should be in {} but got {}".format(
+        x_dim, supported_format_map[x_dim], data_format)
+
     unsqueezed_dim = []
 
     if isinstance(pad, Variable):
@@ -1348,3 +1366,83 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
     n12 = sqrt(clip(w1 * w2, min=eps * eps))
     cos_sim = w12 / n12
     return cos_sim
+
+
+def linear(x, weight, bias=None, name=None):
+    """
+
+    Fully-connected linear transformation op
+
+    .. math::
+
+        Out = {XW + b}
+
+    where :math:`X` is the input Tensor, :math:`W` and :math:`b` are weight and bias respectively.
+
+    The linear op multiplies input tensor with weight matrix and
+    produces an output Tensor of shape [N, *, output_dim], 
+    where N is batch size and `*` means any number of additional dimensions and output_dim is the last dim of ``weight``.
+    If ``bias`` is not None, a bias will be added to the output.
+
+    Args:
+        x(Tensor): Input tensor, its data type is float16, float32 or float64
+        weight(Tensor): Weight tensor, its data type is float16, float32 or float64
+        bias(Tensor|None, optional): Bias tensor, its data type is float16, float32 or float64. If it is set to None, no bias will be added to the output units.
+        name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        Output tensor
+
+    Examples:
+        .. code-block:: python
+          
+          import numpy as np
+          import paddle
+          import paddle.nn.functional as F
+          
+          input = np.ones((3,1,2), dtype=np.float32)
+          weight = np.ones((2,2), dtype=np.float32)
+          bias = np.ones((2), dtype=np.float32)
+          place = paddle.CPUPlace()
+          paddle.disable_static(place)
+          input = paddle.to_tensor(input)
+          weight = paddle.to_tensor(weight)
+          bias = paddle.to_tensor(bias)
+          out = F.linear(input, weight, bias)
+          print(out) #[3 3 3 3 3 3]
+    
+    """
+    if in_dygraph_mode():
+        pre_bias = _varbase_creator(dtype=x.dtype)
+        core.ops.matmul(x, weight, pre_bias, 'transpose_X', False,
+                        'transpose_Y', False, "alpha", 1)
+        return dygraph_utils._append_bias_in_dygraph(
+            pre_bias, bias, axis=len(x.shape) - 1)
+    else:
+        helper = LayerHelper('linear', **locals())
+        dtype = x.dtype
+
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 'linear')
+        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
+
+        inputs = {'X': [x], 'Y': [weight]}
+        attrs = {
+            'transpose_X': False,
+            'transpose_Y': False,
+            'alpha': 1,
+        }
+        tmp = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='matmul', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
+        if bias is not None:
+            res = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [tmp],
+                        'Y': [bias]},
+                outputs={'Out': [res]},
+                attrs={'axis': len(x.shape) - 1})
+        else:
+            res = tmp
+        return res

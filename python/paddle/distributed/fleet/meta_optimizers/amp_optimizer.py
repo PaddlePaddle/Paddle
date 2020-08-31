@@ -14,8 +14,6 @@
 import paddle.fluid.contrib.mixed_precision as mixed_precision
 from .meta_optimizer_base import MetaOptimizerBase
 
-__all__ = ["AMPOptimizer"]
-
 
 class AMPOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):

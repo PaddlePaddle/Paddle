@@ -219,8 +219,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -305,8 +305,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -414,8 +414,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -521,8 +521,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -634,8 +634,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -713,8 +711,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
@@ -804,9 +802,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
         batch_num = 200
 
         with fluid.dygraph.guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             # TODO: marsyang1993 Change seed to
+
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,

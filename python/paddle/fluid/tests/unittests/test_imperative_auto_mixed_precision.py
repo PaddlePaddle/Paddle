@@ -121,6 +121,7 @@ class TestAmpScaler(unittest.TestCase):
 
         def run_simple_conv(inp_np, use_scaler=True):
             paddle.manual_seed(10)
+            paddle.framework.random._manual_program_seed(10)
             with fluid.dygraph.guard():
                 model = SimpleConv(
                     num_channels=3,
@@ -204,6 +205,7 @@ class TestResnet(unittest.TestCase):
 
         with fluid.dygraph.guard():
             paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
 
             resnet = ResNet(use_cudnn=True)
             optimizer = optimizer_setting(
