@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import warnings
 import paddle
 from paddle.fluid import compiler
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
@@ -38,7 +39,26 @@ def _inited_runtime_handler_(func):
     return __impl__
 
 
+def _is_non_distributed_check_(func):
+    def __impl__(*args, **kwargs):
+        cls = args[0]
+
+        print("into ", func.__name__,
+              "  cls._role_maker._is_non_distributed(): ",
+              cls._role_maker._is_non_distributed())
+        if cls._role_maker._is_non_distributed() is True:
+            warnings.warn("{}() function doesn't work when not use fleetrun or"
+                          "paddle.distributed.launch/launch_ps.".format(
+                              func.__name__))
+            return
+
+        return func(*args, **kwargs)
+
+    return __impl__
+
+
 inited_runtime_handler = wrap_decorator(_inited_runtime_handler_)
+is_non_distributed_check = wrap_decorator(_is_non_distributed_check_)
 
 
 class Fleet(object):
@@ -226,6 +246,7 @@ class Fleet(object):
         """
         self._role_maker.barrier_worker()
 
+    @is_non_distributed_check
     @inited_runtime_handler
     def init_worker(self):
         """
@@ -233,6 +254,7 @@ class Fleet(object):
         """
         self._runtime_handle._init_worker()
 
+    @is_non_distributed_check
     @inited_runtime_handler
     def init_server(self, *args, **kwargs):
         """
@@ -240,6 +262,7 @@ class Fleet(object):
         """
         self._runtime_handle._init_server(*args, **kwargs)
 
+    @is_non_distributed_check
     @inited_runtime_handler
     def run_server(self):
         """
@@ -247,20 +270,13 @@ class Fleet(object):
         """
         self._runtime_handle._run_server()
 
+    @is_non_distributed_check
     @inited_runtime_handler
     def stop_worker(self):
         """
         stop worker
         """
         self._runtime_handle._stop_worker()
-
-    def _is_non_distributed(self):
-        """
-        Return True if indispensable environment for fleetrun is not found
-        (use python-run to launch fleet-code directly)
-        Fleet-code will roll back the non_distributed code
-        """
-        return self._role_maker._is_non_distributed()
 
     def save_inference_model(self,
                              executor,
@@ -274,7 +290,7 @@ class Fleet(object):
             export_for_deployment)
 
     def save_persistables(self, executor, dirname, main_program=None):
-        if self._is_non_distributed():
+        if self._role_maker._is_non_distributed():
             paddle.fluid.io.save_persistables(
                 executor, dirname, main_program=main_program)
         self._runtime_handle._save_persistables(executor, dirname, main_program)
@@ -401,7 +417,7 @@ class Fleet(object):
         optimize_ops = []
         params_grads = []
 
-        if self._is_non_distributed() and not self._is_collective:
+        if self._role_maker._is_non_distributed() and not self._is_collective:
             if self._runtime_handle is None:
                 self._runtime_handle = RuntimeFactory()._create_runtime(context)
 

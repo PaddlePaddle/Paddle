@@ -377,7 +377,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
     def _is_non_distributed(self):
         """
-        Return True if indispensable environment for fleetrun is not found 
+        Return True if indispensable environment for fleetrun is not found
         (use python-run to launch fleet-code directly)
         """
         if not self._role_is_generated:
@@ -424,11 +424,20 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                                "").split(",")
             if self._server_endpoints is None:
+                # back to non_distributed execution.
                 self._server_endpoints = ""
+                self._trainers_num = 1
+                self._role = Role.WORKER
+                self._current_id = 0
+                self._node_num = 1
+                self._heter_trainers_num = 0
+                self._heter_trainer_endpoints = None
                 self._non_distributed = True
+                return
+
             self._server_endpoints = self._server_endpoints.split(",")
-            trainers_num = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-            training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+            trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
+            training_role = os.environ["TRAINING_ROLE"]
 
             if training_role not in ["TRAINER", "PSERVER", "HETER_TRAINER"]:
                 raise ValueError(
@@ -463,13 +472,13 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
             if training_role == "TRAINER":
                 role = Role.WORKER
-                current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-                if len(self._worker_endpoints) > 0:
+                current_id = int(os.environ["PADDLE_TRAINER_ID"])
+                if len(self._worker_endpoints) > 1:
                     self._cur_endpoint = self._worker_endpoints[current_id]
             elif training_role == "PSERVER":
                 role = Role.SERVER
-                port = os.getenv("PADDLE_PORT", "6170")
-                ip = os.getenv("POD_IP", "127.0.0.1")
+                port = os.environ["PADDLE_PORT"]
+                ip = os.environ["POD_IP"]
                 self._cur_endpoint = ip + ":" + port
                 current_id = self._server_endpoints.index(self._cur_endpoint)
             elif training_role == "HETER_TRAINER":

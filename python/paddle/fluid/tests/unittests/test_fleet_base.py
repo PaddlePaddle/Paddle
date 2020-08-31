@@ -134,14 +134,13 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
         input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-        prediction = paddle.fluid.layers.fc(input=fc_1, size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y)
+        fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
+        prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+        cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
         avg_cost = paddle.mean(x=cost)
 
         fleet.init(is_collective=True)
-        optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+        optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(avg_cost)
 
@@ -161,15 +160,14 @@ class TestFleetBaseSingleRunPS(unittest.TestCase):
         input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-        prediction = paddle.fluid.layers.fc(input=fc_1, size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y)
+        fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
+        prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+        cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
         avg_cost = paddle.mean(x=cost)
 
         fleet.init()
         strategy = paddle.distributed.fleet.DistributedStrategy()
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
         if fleet.is_server():
