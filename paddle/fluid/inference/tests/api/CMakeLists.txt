@@ -167,7 +167,9 @@ inference_analysis_api_test(test_analyzer_save_model ${DAM_SMALL_INSTALL_DIR} an
 # chinese_ner
 set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
 download_model_and_data(${CHINESE_NER_INSTALL_DIR} "chinese_ner_model.tar.gz" "chinese_ner-data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_ner ${CHINESE_NER_INSTALL_DIR} analyzer_ner_tester.cc)
+if (NOT WIN32)
+    inference_analysis_api_test(test_analyzer_ner ${CHINESE_NER_INSTALL_DIR} analyzer_ner_tester.cc)
+endif()
 
 # lac
 set(LAC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lac")
@@ -241,7 +243,9 @@ set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
 set(IMG_CLASS_TEST_APP_SRC "analyzer_image_classification_tester.cc")
 
 # build test binary to be used in subsequent tests
-inference_analysis_api_test_with_fake_data_build(${IMG_CLASS_TEST_APP} ${IMG_CLASS_TEST_APP_SRC})
+if (NOT WIN32)
+    inference_analysis_api_test_with_fake_data_build(${IMG_CLASS_TEST_APP} ${IMG_CLASS_TEST_APP_SRC})
+endif()
 
 # googlenet
 set(GOOGLENET_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/googlenet")
