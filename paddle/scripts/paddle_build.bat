@@ -73,6 +73,7 @@ if "%WITH_TPCACHE%"=="OFF" (
     goto :CASE_%1
 )
 
+
 echo set -ex > cache.sh
 echo md5_content=$(cat %work_dir:\=/%/cmake/external/*.cmake  ^|md5sum ^| awk '{print $1}') >> cache.sh
 echo echo ${md5_content}^>md5.txt >> cache.sh
