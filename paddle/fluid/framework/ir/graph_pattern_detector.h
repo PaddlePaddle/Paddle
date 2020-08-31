@@ -1120,6 +1120,15 @@ struct MultipleQuantize : public PatternBase {
   PATTERN_DECL_NODE(prev_out);
 };
 
+struct QuantizePlacement : public PatternBase {
+  QuantizePlacement(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quantize_placement") {}
+  PDNode* operator()(
+      const std::unordered_set<std::string>& quantize_enabled_op_types);
+
+  PATTERN_DECL_NODE(op);
+};
+
 // Pattern used for enforcing inplace computation for in-place computation
 // supporting DNNL ops. softmax, batch_norm and layer_norm
 struct MKLDNNInPlace : public PatternBase {
