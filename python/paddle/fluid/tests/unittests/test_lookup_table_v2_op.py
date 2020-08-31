@@ -100,7 +100,7 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
 class TestLookupTableWIsSelectedRows(unittest.TestCase):
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
-        ids_array = np.array([0, 4, 3, 5]).astype("int64")
+        ids_array = np.array([0, 4, 3, 5]).astype("int32")
         ids_tensor.set(ids_array, place)
         return ids_array
 
