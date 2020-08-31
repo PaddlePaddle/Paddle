@@ -1407,12 +1407,18 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_and_check)
-        check_style
+        $(check_style >&2)
+        check_style_code=$?
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
-        example
+        $(example >&2)
+        example_code=$?
+        [ $check_style_code -ne 0 ] && echo "Please check the log and fix code style problems."
+        [ $example_code -ne 0 ] && echo "Please check the log and fix example problems."
+        [ $check_style_code -ne 0 ] && exit $check_style_code
+        [ $example_code -ne 0 ] && exit $example_code
         assert_api_spec_approvals
         ;;
       build)

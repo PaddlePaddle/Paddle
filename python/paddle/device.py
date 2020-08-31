@@ -68,27 +68,6 @@ def get_cudnn_version():
 
 
 def set_device(device):
-    """
-    Paddle supports running calculations on various types of devices, including CPU and GPU.
-    They are represented by string identifiers. This function can specify the global device
-    which the OP will run.
-
-    Parameters:
-        device(str): This parameter determines the specific running device.
-            It can be ``cpu`` or ``gpu:0``. When ``device`` is ``cpu``, the
-            program is running on the cpu. When ``device`` is ``gpu``, the
-            program is running ont the gpu.
-    Examples:
-
-     .. code-block:: python
-            
-        import paddle
-        paddle.disable_static()
-        paddle.set_device("cpu")
-        x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
-        x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
-        data = paddle.stack([x1,x2], axis=1)
-    """
     lower_device = device.lower()
     if lower_device == 'cpu':
         place = core.CPUPlace()
@@ -122,15 +101,6 @@ def get_device():
     It's a string which is like 'cpu' and 'gpu:0'. if the global device is not
     set, it will return a string which is 'gpu:0' when cuda is avaliable or it 
     will return a string which is 'cpu' when cuda is not avaliable.
-
-    Examples:
-
-     .. code-block:: python
-            
-        import paddle
-        paddle.disable_static()
-        device = paddle.get_device()
-
     """
     device = ''
     place = framework._current_expected_place()
