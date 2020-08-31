@@ -63,7 +63,7 @@ if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=OFF
 if not defined WITH_TPCACHE set WITH_TPCACHE=ON
 
 rem ------set cache third_party------
-set cache_dir=%work_dir%\..\cache
+set cache_dir=%work_dir:Paddle=cache%
 dir %cache_dir%
 set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
