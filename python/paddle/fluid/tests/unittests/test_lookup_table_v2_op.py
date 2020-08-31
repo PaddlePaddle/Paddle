@@ -59,7 +59,7 @@ class TestLookupTableOpWithTensorIds(OpTest):
     def setUp(self):
         self.op_type = "lookup_table_v2"
         table = np.random.random((17, 31)).astype("float64")
-        ids = np.random.randint(low=0, high=17, size=(2, 4, 5)).astype("int64")
+        ids = np.random.randint(low=0, high=17, size=(2, 4, 5)).astype("int32")
         self.inputs = {'W': table, 'Ids': ids}
         self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
 
