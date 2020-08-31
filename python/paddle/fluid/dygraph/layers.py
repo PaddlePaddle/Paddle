@@ -782,9 +782,6 @@ class Layer(core.Layer):
         return parameter
 
     def __getattr__(self, name):
-        if name == "__aliases__":
-            raise AttributeError("Attribue `__aliases__` can not be accessed.")
-
         if name in self.__aliases__:
             name = self.__aliases__.get(name, name)
             return object.__getattribute__(self, name)
