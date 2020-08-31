@@ -617,7 +617,7 @@ class ProgramCache(object):
         return len(self._caches)
 
     def concrete_programs(self):
-        return [cp for key, (cp, _) in self._caches.iteritems()]
+        return [cp for key, (cp, _) in six.iteritems(self._caches)]
 
 
 def synchronized(func):

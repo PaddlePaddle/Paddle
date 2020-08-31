@@ -191,6 +191,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             out_1 = foo(to_variable(x_data), to_variable(y_data))
             self.assertTrue(np.allclose(x_data + y_data, out_1.numpy()))
             self.assertTrue(len(foo.program_cache) == 1)
+            self.assertTrue(len(foo.program_cache.concrete_programs()) == 1)
 
             # [16, 10] + [10] (numpy)
             out_2 = foo(to_variable(x_data), y_data)
