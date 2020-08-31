@@ -23,6 +23,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -38,8 +39,8 @@ static std::vector<std::shared_ptr<Generator>> default_cuda_generators;
 #endif
 
 static void InitCUDAGenerators() {
-  num_cuda_devices = platform::GetCUDADeviceCount();
 #ifdef PADDLE_WITH_CUDA
+  num_cuda_devices = paddle::platform::GetCUDADeviceCount();
   cuda_device_flags.resize(num_cuda_devices);
   default_cuda_generators.resize(num_cuda_devices);
 #else
