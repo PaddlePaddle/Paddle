@@ -37,7 +37,7 @@ LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 
 def _is_optimizer_op(op):
     if "Param" in op.input_names and \
-                    "LearningRate" in op.input_names:
+            "LearningRate" in op.input_names:
         return True
     return False
 
@@ -49,7 +49,7 @@ def _same_or_split_var(p_name, var_name):
 def _get_optimizer_input_shape(op_type, varkey, orig_shape, param_shape):
     """
     Returns the shape for optimizer inputs that need to be reshaped when
-    Param and Grad is split to multiple servers.
+    Param and Grad is split to multiple servers. 
     """
     # HACK(typhoonzero) : Should use functions of corresponding optimizer in
     # optimizer.py to get the shape, do not bind this in the transpiler.
@@ -542,7 +542,7 @@ def add_optimizer_pass(program, config):
             for _, op in enumerate(optimize_ops):
                 # optimizer is connected to itself
                 if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name and \
-                                op not in global_ops:
+                        op not in global_ops:
                     __append_optimize_op__(op, per_opt_block, grad_to_block_id,
                                            merged_var, lr_ops)
 

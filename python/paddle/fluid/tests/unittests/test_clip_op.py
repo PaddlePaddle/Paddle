@@ -166,12 +166,16 @@ class TestClipAPI(unittest.TestCase):
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float32')
         images = paddle.to_variable(data, dtype='float32')
+        v_min = paddle.to_variable(np.array([0.2], dtype=np.float32))
+        v_max = paddle.to_variable(np.array([0.8], dtype=np.float32))
 
         out_1 = paddle.clip(images, min=0.2, max=0.8)
         out_2 = paddle.clip(images, min=0.2, max=0.9)
+        out_3 = paddle.clip(images, min=v_min, max=v_max)
 
         self.assertTrue(np.allclose(out_1.numpy(), data.clip(0.2, 0.8)))
         self.assertTrue(np.allclose(out_2.numpy(), data.clip(0.2, 0.9)))
+        self.assertTrue(np.allclose(out_3.numpy(), data.clip(0.2, 0.8)))
 
     def test_errors(self):
         paddle.enable_static()
