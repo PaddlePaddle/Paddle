@@ -199,9 +199,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         Tensor: results of norm operation on the specified axis of input tensor,
         it's data type is the same as input's Tensor.
  
-    Raises:
-        ValueError, If `p` or `axis` is invalid.
-    
     Examples:
         .. code-block:: python
             
