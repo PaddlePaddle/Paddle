@@ -78,7 +78,7 @@ class _InstanceNormBase(layers.Layer):
         super(_InstanceNormBase, self).__init__()
 
         if weight_attr == False or bias_attr == False:
-            assert weight_attr == param_attr, "weight_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
+            assert weight_attr == bias_attr, "weight_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
         self._epsilon = epsilon
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
@@ -626,7 +626,12 @@ class _BatchNormBase(layers.Layer):
     def _check_input_dim(self, input):
         raise NotImplementedError("BatchNorm Base error")
 
+    def _check_data_format(self, input):
+        raise NotImplementedError("BatchNorm Base data format error")
+
     def forward(self, input):
+
+        self._check_data_format(self._data_format)
 
         self._check_input_dim(input)
 
@@ -731,6 +736,12 @@ class BatchNorm1d(_BatchNormBase):
           print(batch_norm_out.numpy)
     """
 
+    def _check_data_format(self, input):
+        if input == 'NCHW' or 'NC' or 'NCL':
+            self._data_format = 'NCHW'
+        else:
+            raise ValueError('expected NC , NCL or None for data_format input')
+
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError('expected 2D or 3D input (got {}D input)'.format(
@@ -817,6 +828,12 @@ class BatchNorm2d(_BatchNormBase):
           print(batch_norm_out.numpy)
     """
 
+    def _check_data_format(self, input):
+        if input == 'NCHW' or 'NCWH':
+            pass
+        else:
+            raise ValueError('expected NCHW or NCWH for data_format input')
+
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
             raise ValueError('expected 4D input (got {}D input)'.format(
@@ -902,6 +919,12 @@ class BatchNorm3d(_BatchNormBase):
 
           print(batch_norm_out.numpy)
     """
+
+    def _check_data_format(self, input):
+        if input == 'NCHW' or 'NCDHW':
+            self._data_format = 'NCHW'
+        else:
+            raise ValueError('expected NCDHW or None for data_format input')
 
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
