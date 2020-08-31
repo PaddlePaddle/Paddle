@@ -147,7 +147,6 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
             label = paddle.to_tensor(label_data)
             output = paddle.nn.functional.binary_cross_entropy(input, label)
             print(output.numpy())  # [0.65537095]
-            paddle.enable_static()
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -165,8 +164,7 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
             return core.ops.reduce_sum(out, 'dim', [0], 'keep_dim', False,
                                        "reduce_all", True)
         elif reduction == 'mean':
-            return core.ops.reduce_mean(out, 'dim', [0], 'keep_dim', False,
-                                        "reduce_all", True)
+            return core.ops.mean(out)
         else:
             return out
 
@@ -467,14 +465,12 @@ def margin_ranking_loss(input,
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
-
             paddle.disable_static()
 
-            input = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype('float32'))
-            other = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype('float32'))
-            label = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype('float32'))
+            input = paddle.to_tensor([[1, 2], [3, 4]], dtype='float32')
+            other = paddle.to_tensor([[2, 1], [2, 4]], dtype='float32')
+            label = paddle.to_tensor([[1, -1], [-1, -1]], dtype='float32')
             loss = paddle.nn.functional.margin_ranking_loss(input, other, label)
             print(loss.numpy()) # [0.75]
     """
@@ -578,8 +574,8 @@ def l1_loss(input, label, reduction='mean', name=None):
             paddle.disable_static()
             input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
             label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            input = paddle.to_variable(input_data)
-            label = paddle.to_variable(label_data)
+            input = paddle.to_tensor(input_data)
+            label = paddle.to_tensor(label_data)
 
             l1_loss = paddle.nn.functional.l1_loss(input, label)
             print(l1_loss.numpy())
@@ -675,9 +671,9 @@ def nll_loss(input,
 
                 place = paddle.CPUPlace()
                 paddle.disable_static(place)
-                input = paddle.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 log_out = log_softmax(input)
-                label = paddle.to_variable(label_np)
+                label = paddle.to_tensor(label_np)
                 result = nll_loss(log_out, label)
                 print(result.numpy()) # [1.0720209]
     """
