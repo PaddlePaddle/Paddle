@@ -776,7 +776,7 @@ class DynamicGraphAdapter(object):
                                      accum_name + "_0")
                     converted_state[dy_state_name] = state_var
 
-        if not self.model._optimizer.set_state_dict:
+        if not hasattr(self.model._optimizer, 'set_state_dict'):
             warnings.warn(
                 "paddle.fluid.optimizer is deprecated in API 2.0, please use paddle.optimizer instead"
             )
