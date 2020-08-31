@@ -509,7 +509,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
         self._cur_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
         if self._worker_endpoints is None:
-            assert self._cur_endpoint is None, "can't find PADDLE_TRAINER_ENDPOINTS"
+            # back to non_distributed execution.
             self._worker_endpoints = "127.0.0.1:6170"
             self._cur_endpoint = self._worker_endpoints
             self._non_distributed = True
