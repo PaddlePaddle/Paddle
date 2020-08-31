@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = []
-__all__ += ["reader"]
+from . import folder
+from . import mnist
+from . import flowers
+from . import cifar
+from . import voc2012
 
-from ..fluid.contrib import reader
+from .folder import *
+from .mnist import *
+from .flowers import *
+from .cifar import *
+from .voc2012 import *
+
+__all__ = folder.__all__ \
+          + mnist.__all__ \
+          + flowers.__all__ \
+          + cifar.__all__ \
+          + voc2012.__all__
