@@ -15,8 +15,6 @@ rarfile
 Pillow
 graphviz
 six
-funcsigs
-pyyaml
 decorator
 prettytable
 objgraph

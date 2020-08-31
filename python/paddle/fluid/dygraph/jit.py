@@ -768,7 +768,7 @@ def save(layer, model_path, input_spec=None, configs=None):
     # saved to inference program may not need by dygraph Layer, 
     # we only record the state_dict variable's structured name
     state_names_dict = dict()
-    for structured_name, var in layer.state_dict().items():
+    for structured_name, var in six.iteritems(layer.state_dict()):
         state_names_dict[var.name] = structured_name
 
     # 3. share parameters from Layer to scope & record var info

@@ -393,19 +393,43 @@ class StaticLayer(object):
     def concrete_program(self):
         """
         Returns recent ConcreteProgram instance of decorated function.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.jit import to_static
+                from paddle.static import InputSpec
+
+                paddle.disable_static()
+
+                def foo(x, y):
+                    z = x + y
+                    return z
+                
+                # usage 1:
+                decorated_foo = to_static(foo, input_spec=[InputSpec([10], name='x'), InputSpec([10], name='y')])
+                print(decorated_foo.concrete_program)
+
+                # usage 2:
+                decorated_foo = to_static(foo)
+                out_foo = decorated_foo(paddle.rand([10]), paddle.rand([10]))
+                print(decorated_foo.concrete_program)
         """
         # if specific the `input_spec`, the length of program_cache will always 1,
         # else, return the last one.
         cached_program_len = len(self._program_cache)
         # If specific `input_spec`, apply convertion from dygraph layers into static Program.
         if cached_program_len == 0:
-            if len(self._function_spec.flat_input_spec) > 0:
-                input_spec = self._function_spec.input_spec
+            input_spec = self._function_spec.input_spec
+            has_input_spec = (input_spec is not None and len(input_spec) > 0)
+            if has_input_spec:
                 concrete_program, _ = self.get_concrete_program(*input_spec)
                 return concrete_program
             else:
-                raise ValueError("No valid transformed program for {}".format(
-                    self._function_spec))
+                raise ValueError(
+                    "No valid transformed program for {}.\n\t    Please specific `input_spec` in `@paddle.jit.to_static` or feed input tensor to call the decorated function at once.\n".
+                    format(self._function_spec))
         # If more than one programs have been cached, return the recent converted program by default.
         elif cached_program_len > 1:
             logging.warning(
@@ -617,7 +641,7 @@ class ProgramCache(object):
         return len(self._caches)
 
     def concrete_programs(self):
-        return [cp for key, (cp, _) in self._caches.iteritems()]
+        return [cp for key, (cp, _) in six.iteritems(self._caches)]
 
 
 def synchronized(func):
