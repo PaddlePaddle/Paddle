@@ -55,7 +55,7 @@ const std::shared_ptr<Generator>& getDefaultCUDAGenerator(int64_t device_id) {
   platform::Place place;
   if (device_id == -1)
     device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
-
+  std::cout << "start device id: " << device_id << std::endl;
   std::call_once(cuda_device_flags[device_id], [device_id]() {
     default_cuda_generators[device_id] =
         std::make_shared<Generator>(GetRandomSeed(), device_id);
@@ -69,6 +69,7 @@ const std::shared_ptr<Generator>& getDefaultCUDAGenerator(int64_t device_id) {
   });
   // std::call_once(cuda_device_flags[device_id], initGlobalCUDAGeneratorState,
   //               device_id);
+  std::cout << "return device id: " << device_id << std::endl;
   return default_cuda_generators[device_id];
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(

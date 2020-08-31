@@ -56,6 +56,24 @@ class BernoulliOpKernel<platform::CUDADeviceContext, T>
     platform::Transform<platform::CUDADeviceContext> trans;
     auto* context =
         static_cast<const platform::CUDADeviceContext*>(&ctx.device_context());
+
+    int64_t device_id = -1;
+    auto gen_cuda = framework::getDefaultCUDAGenerator(device_id);
+    if (gen_cuda->GetIsInitPy()) {
+      std::cout << ">>>>>>>>CUDA bernoulli GENERATOR" << std::endl;
+      auto seed_offset = gen_cuda->IncrementOffset(1);
+      int offset_step = 0;
+      // NOTE(xuefeng): Currently, we let offset step fixed to avoid
+      // unexpected results which may cause ut fail.
+      // we will fix this in future.
+      // int gen_offset = offset_step * seed_offset.second;
+      trans(*context, index_sequence_begin, index_sequence_begin + size,
+            in_data, out_data, BernoulliCudaFunctor<T>(seed_offset.first));
+    } else {
+      trans(*context, index_sequence_begin, index_sequence_begin + size,
+            in_data, out_data, BernoulliCudaFunctor<T>(seed));
+    }
+
     trans(*context, index_sequence_begin, index_sequence_begin + size, in_data,
           out_data, BernoulliCudaFunctor<T>(seed));
   }

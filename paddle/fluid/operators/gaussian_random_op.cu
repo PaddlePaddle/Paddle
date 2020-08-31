@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
+// #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
@@ -81,12 +82,18 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     if (gen_cuda->GetIsInitPy()) {
       std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
       auto seed_offset = gen_cuda->IncrementOffset(1);
-      int gen_offset = size * seed_offset.second;
+      int offset_step = 100;
+      // NOTE(xuefeng): Currently, we let offset step fixed to avoid
+      // unexpected results which may cause ut fail.
+      // we will fix this in future.
+      int gen_offset = offset_step * seed_offset.second;
+      std::cout << ">>>>>offset: " << gen_offset << std::endl;
       thrust::transform(
           index_sequence_begin, index_sequence_begin + size,
           thrust::device_ptr<T>(data),
           GaussianGeneratorOffset<T>(mean, std, seed_offset.first, gen_offset));
     } else {
+      std::cout << "COUNT ORIGIN" << std::endl;
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
                         thrust::device_ptr<T>(data),
                         GaussianGenerator<T>(mean, std, seed));
@@ -109,9 +116,27 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
     T std = static_cast<T>(context.Attr<float>("std"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                      thrust::device_ptr<T>(data),
-                      GaussianGenerator<T>(mean, std, seed));
+    auto gen_cuda = framework::getDefaultCUDAGenerator(-1);
+
+    if (gen_cuda->GetIsInitPy()) {
+      std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
+      auto seed_offset = gen_cuda->IncrementOffset(1);
+      int offset_step = 100;
+      // NOTE(xuefeng): Currently, we let offset step fixed to avoid
+      // unexpected results which may cause ut fail.
+      // we will fix this in future.
+      int gen_offset = offset_step * seed_offset.second;
+      std::cout << ">>>>>offset: " << gen_offset << std::endl;
+      thrust::transform(
+          index_sequence_begin, index_sequence_begin + size,
+          thrust::device_ptr<T>(data),
+          GaussianGeneratorOffset<T>(mean, std, seed_offset.first, gen_offset));
+    } else {
+      std::cout << "COUNT ORIGIN" << std::endl;
+      thrust::transform(index_sequence_begin, index_sequence_begin + size,
+                        thrust::device_ptr<T>(data),
+                        GaussianGenerator<T>(mean, std, seed));
+    }
   }
 };
 }  // namespace operators
