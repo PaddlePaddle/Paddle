@@ -1114,7 +1114,7 @@ def tile(x, repeat_times, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in repeat_times must be 1-D Tensors or integers.')
             else:
-                assert isinstance(elem, np.int32), (
+                assert isinstance(elem, int), (
                     'Elements in repeat_times must be 1-D Tensors or integers.')
     if in_dygraph_mode():
         return core.ops.tile(x, 'repeat_times', repeat_times)
@@ -1252,7 +1252,7 @@ def expand(x, shape, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in shape must be 1-D Tensors or integers.')
             else:
-                assert isinstance(elem, np.int32), (
+                assert isinstance(elem, int), (
                     'Elements in shape must be 1-D Tensors or integers.')
     if in_dygraph_mode():
         return core.ops.expand_v2(x, 'shape', shape)
