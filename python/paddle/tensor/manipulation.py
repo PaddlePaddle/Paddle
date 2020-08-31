@@ -1100,11 +1100,6 @@ def tile(x, repeat_times, name=None):
             # [[1, 2, 3], [1, 2, 3]]
     """
     check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
-    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
-        raise ValueError(
-            "When the date type is bool for the input 'x' of tile op, you "
-            "must set its stop_gradient to be True by "
-            "some_var.stop_gradient == True supporting some_var is the input.")
     if isinstance(repeat_times, Variable):
         assert len(repeat_times.shape) == 1, (
             'repeat_times must be an 1-D Tensor.')
@@ -1121,6 +1116,11 @@ def tile(x, repeat_times, name=None):
 
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile')
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+        raise ValueError(
+            "When the date type is bool for the input 'x' of tile op, you "
+            "must set its stop_gradient to be True by "
+            "some_var.stop_gradient == True supporting some_var is the input.")
 
     helper = LayerHelper('tile', **locals())
 
@@ -1239,11 +1239,6 @@ def expand(x, shape, name=None):
             out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
-        raise ValueError("When the data type of input 'x' for expand is bool, "
-                         "you must set its stop_gradient to be False by "
-                         "some_var.stop_gradient = True, supporting "
-                         "some_var as the input.")
     if isinstance(shape, Variable):
         assert len(shape.shape) == 1, ('shape must be an 1-D Tensor.')
     else:
@@ -1260,6 +1255,11 @@ def expand(x, shape, name=None):
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
     check_type(shape, 'shape', (list, tuple, Variable), 'expand')
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+        raise ValueError("When the data type of input 'x' for expand is bool, "
+                         "you must set its stop_gradient to be False by "
+                         "some_var.stop_gradient = True, supporting "
+                         "some_var as the input.")
 
     inputs = {"X": [x]}
     attrs = {}
