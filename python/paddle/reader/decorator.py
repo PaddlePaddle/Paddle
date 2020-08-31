@@ -50,6 +50,7 @@ def cache(reader):
     
     Examples:
         .. code-block:: python
+
             import paddle
             def reader():
                 for i in range(3):
@@ -91,14 +92,14 @@ def map_readers(func, *readers):
 
         .. code-block:: python
 
-         import paddle.reader
-         d = {"h": 0, "i": 1}
-         def func(x):
-             return d[x]
-         def reader():
-             yield "h"
-             yield "i"
-         map_reader_result = paddle.reader.map_readers(func, reader)
+            import paddle
+            d = {"h": 0, "i": 1}
+            def func(x):
+                return d[x]
+            def reader():
+                yield "h"
+                yield "i"
+            map_reader_result = paddle.io.map_readers(func, reader)
     """
 
     def reader():
@@ -194,7 +195,7 @@ def chain(*readers):
                         yield [i, i, i]
                 return reader
 
-            c = paddle.reader.chain(reader_creator_3(0), reader_creator_3(10), reader_creator_3(20))
+            c = paddle.io.chain(reader_creator_3(0), reader_creator_3(10), reader_creator_3(20))
             for e in c():
                 print(e)
             # Output:
@@ -302,6 +303,7 @@ def buffered(reader, size):
     
     Examples:
         .. code-block:: python
+
             import paddle
             def reader():
                 for i in range(3):
