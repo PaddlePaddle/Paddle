@@ -416,6 +416,24 @@ class TestModelFunction(unittest.TestCase):
             shutil.rmtree(path)
             fluid.disable_dygraph() if dynamic else None
 
+    def test_save_load_use_paddle_optimizer(self):
+        path = tempfile.mkdtemp()
+        for dynamic in [True, False]:
+            device = paddle.set_device('cpu')
+            fluid.enable_dygraph(device) if dynamic else None
+            net = MyModel(classifier_activation=None)
+            inputs = [InputSpec([None, 20], 'float32', 'x')]
+            labels = [InputSpec([None, 1], 'int64', 'label')]
+            optim = paddle.optimizer.Adam(learning_rate=0.001,
+                                        parameters=net.parameters())
+            model = Model(net, inputs, labels)
+            model.prepare(
+                optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+            model.save(path + '/test')
+            model.load(path + '/test')
+            shutil.rmtree(path)
+            fluid.disable_dygraph() if dynamic else None
+
     def test_dynamic_save_static_load(self):
         path = tempfile.mkdtemp()
         # dynamic saving
