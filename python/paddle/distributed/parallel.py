@@ -89,7 +89,14 @@ def init_parallel_env():
                 dist.spawn(train)
     """
 
-    # 1. check env
+    # 1. gpu check
+    if not core.is_compiled_with_cuda():
+        raise NotImplementedError(
+            "Cannot initialize parallel environment in CPU-only version, now only "
+            "supports initializing the GPU parallel environment. Please recompile "
+            "or reinstall paddle with GPU support.")
+
+    # 2. check env
     def _check_var_exists(var_name):
         var = os.environ.get(var_name, None)
         if var is None:
@@ -103,7 +110,7 @@ def init_parallel_env():
     _check_var_exists("PADDLE_TRAINERS_NUM")
     _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
-    # 2. init NCCL ParallelStrategy
+    # 3. init NCCL ParallelStrategy
     strategy = ParallelStrategy()
     if parallel_helper._is_parallel_ctx_initialized():
         warnings.warn("The parallel environment has been initialized.")
