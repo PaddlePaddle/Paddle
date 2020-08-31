@@ -305,19 +305,50 @@ class Fleet(object):
         Examples:
             .. code-block:: python
             import paddle
-            import paddle.distributed.fleet as fleet
+            import paddle.nn as nn
+            import paddle.optimizer as opt
+            from paddle.distributed import fleet
 
-            paddle.disable_static()
-            value = np.arange(26).reshape(2, 13).astype("float32")
-            a = fluid.dygraph.to_variable(value)
-            linear = paddle.nn.Linear(13, 5, dtype="float32")
-            layer = linear(a)
-            optimizer = paddle.optimizer.Adam(
-                learning_rate=0.01, parameters=layer.parameters())
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear1 = nn.Linear(10, 10)
+                    self._linear2 = nn.Linear(10, 1)
+                    
+                def forward(self, x):
+                    return self._linear2(self._linear1(x))
 
-            fleet.init(is_collective=True)
-            optimizer = fleet.distributed_optimizer(optimizer)
-            dp_layer = fleet.distributed_model(layer)
+            def train():
+                # 1. enable dynamic mode
+                paddle.disable_static()
+                
+                # 2. create layer & optimizer
+                layer = LinearNet()
+                loss_fn = nn.MSELoss()
+                adam = opt.Adam(
+                    learning_rate=0.001, parameters=layer.parameters())
+
+                # 3. get data_parallel model using fleet
+                fleet.init(is_collective=True)
+                adam = fleet.distributed_optimizer(adam)
+                # call after distributed_optimizer so as to apply dist_strategy
+                dp_layer = fleet.build_distributed_model(layer)
+                
+                # 4. run layer
+                inputs = paddle.randn([10, 10], 'float32')
+                outputs = dp_layer(inputs)
+                labels = paddle.randn([10, 1], 'float32')
+                loss = loss_fn(outputs, labels)
+                
+                loss = dp_layer.scale_loss(loss)
+                loss.backward()
+                dp_layer.apply_collective_grads()
+
+                adam.step()
+                adam.clear_grad()
+
+            if __name__ == '__main__':
+                paddle.distributed.spawn(train)
         """
         assert model is not None
         self.model = paddle.DataParallel(model)
