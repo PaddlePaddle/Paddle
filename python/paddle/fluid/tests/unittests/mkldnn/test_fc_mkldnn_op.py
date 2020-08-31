@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-import os
+
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
