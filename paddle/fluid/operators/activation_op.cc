@@ -1257,7 +1257,7 @@ REGISTER_OP_VERSION(softplus)
         R"ROC(add new attributes [beta] and [threshold], and the formula is changed to "
          " softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\ \\text{For numerical"
          " stability, the implementation reverts to the linear function when: beta * x > threshold.})ROC",
-        framework::compatible::OpVersionDesc()
+        paddle::framework::compatible::OpVersionDesc()
             .NewAttr("beta", "The beta value of the new formula", 1.0f)
             .NewAttr("threshold", "The threshold value of the new formula",
                      20.0f));
