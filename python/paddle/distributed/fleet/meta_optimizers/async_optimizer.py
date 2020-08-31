@@ -13,6 +13,18 @@
 
 from paddle import fluid
 from .meta_optimizer_base import MetaOptimizerBase
+from paddle.fluid import core
+
+dtype_to_size = {
+    core.VarDesc.VarType.FP16: 2,
+    core.VarDesc.VarType.FP32: 4,
+    core.VarDesc.VarType.FP64: 8,
+    core.VarDesc.VarType.INT16: 2,
+    core.VarDesc.VarType.INT32: 4,
+    core.VarDesc.VarType.INT64: 8,
+    core.VarDesc.VarType.BOOL: 1,
+    core.VarDesc.VarType.UINT8: 1,
+}
 
 
 class AsyncMetaOptimizer(MetaOptimizerBase):
@@ -28,6 +40,9 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
     def _can_apply(self):
         if self.role_maker._is_collective:
             return False
+        if self.user_defined_strategy.auto == True:
+            return True
+
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         return True if k_steps >= 0 else False
 
@@ -112,6 +127,81 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
 
         return _main, _startup
 
+    def _try_auto_apply_geo(self, program, compiled_config):
+        if self.user_defined_strategy.auto == False:
+            return
+
+        a_sync_configs = self.user_defined_strategy.a_sync_configs
+        if a_sync_configs["k_steps"] >= 0:
+            return
+
+        self.user_defined_strategy.a_sync = True
+        if not isinstance(self.inner_opt, fluid.optimizer.SGDOptimizer):
+            # auto async
+            a_sync_configs["k_steps"] = 0
+            self.user_defined_strategy.a_sync_configs = a_sync_configs
+            return
+
+        import psutil
+        free = psutil.virtual_memory().free
+
+        param_grad_pairs = compiled_config.origin_sparse_pairs + compiled_config.origin_dense_pairs
+        processed_var_names = set(["@EMPTY@"])
+
+        param_memory_size = 0
+        for param_grad_pair in param_grad_pairs:
+            param, grad = param_grad_pair
+            param_memory_size += param.m_size
+            param_memory_size += grad.m_size
+            processed_var_names.add(param.name)
+            processed_var_names.add(grad.name)
+        print("param_grads memory: %d" % param_memory_size)
+
+        upper_mem_use = param_memory_size * 2.5
+
+        _tmp_vars = dict()
+        batch_size = 1024
+        for op in program.global_block().ops:
+            for var_name in op.output_arg_names:
+                if var_name in processed_var_names:
+                    continue
+                processed_var_names.add(var_name)
+                var = program.global_block().vars[var_name]
+
+                if var.desc.type() != core.VarDesc.VarType.LOD_TENSOR:
+                    continue
+
+                data_count = 1
+                neg_dim_count = 0
+                for x in var.shape:
+                    if x < 0:
+                        if neg_dim_count >= 1:
+                            raise ValueError(
+                                "Var %s has more than one negative dim." %
+                                (var_name))
+                        neg_dim_count += 1
+                        data_count *= (-x)
+                    else:
+                        data_count *= x
+                _tmp_vars[var_name] = (data_count, neg_dim_count,
+                                       dtype_to_size[var.dtype])
+
+        for varname in _tmp_vars:
+            data_count, neg_dim_count, _ = _tmp_vars[varname]
+            if neg_dim_count == 1:
+                data_count *= batch_size
+            var_memory = data_count * _
+            upper_mem_use += var_memory
+        print("upper mem: %d" % (upper_mem_use))
+
+        if upper_mem_use < psutil.virtual_memory().free:
+            # auto geo
+            a_sync_configs["k_steps"] = 400
+        else:
+            # auto async
+            a_sync_configs["k_steps"] = 0
+        self.user_defined_strategy.a_sync_configs = a_sync_configs
+
     def minimize_impl(self,
                       loss,
                       startup_program=None,
@@ -119,7 +209,6 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         self.inner_opt.minimize(loss, startup_program, parameter_list,
                                 no_grad_set)
-        strategy = self._get_distributed_strategy()
 
         _origin_main_program = loss.block.program
         _origin_startup_program = startup_program
@@ -127,7 +216,12 @@ class AsyncMetaOptimizer(MetaOptimizerBase):
 
         compiled_config = public.CompileTimeStrategy(_origin_main_program,
                                                      _origin_startup_program,
-                                                     strategy, self.role_maker)
+                                                     None, self.role_maker)
+
+        self._try_auto_apply_geo(_origin_main_program, compiled_config)
+
+        strategy = self._get_distributed_strategy()
+        compiled_config.strategy = strategy
 
         main_program, startup_program = \
             self._build_trainer_programs(compiled_config) if self.role_maker.is_worker() \
