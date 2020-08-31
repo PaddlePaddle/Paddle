@@ -31,25 +31,37 @@ class TestGeneratorSeed(unittest.TestCase):
     """
 
     def test_gen_dropout_dygraph(self):
-        gen = paddle.manual_seed(123431)
+        gen = paddle.manual_seed(12343)
 
         fluid.enable_dygraph()
 
         gen.manual_seed(111111111)
         st = paddle.get_cuda_state()
-        x_data = np.arange(1, 101).reshape(2, 50).astype("float32")
-        x = paddle.to_variable(x_data)
-        #x = fluid.layers.uniform_random(
-        #    [2, 10], dtype="float32", min=0.0, max=1.0)
+        #x_data = np.arange(1, 101).reshape(2, 50).astype("float32")
+        #x = paddle.to_variable(x_data)
+        x = fluid.layers.uniform_random(
+            [2, 10], dtype="float32", min=0.0, max=1.0)
+        x_again = fluid.layers.uniform_random(
+            [2, 10], dtype="float32", min=0.0, max=1.0)
+        x_third = fluid.layers.uniform_random(
+            [2, 10], dtype="float32", min=0.0, max=1.0)
+        print("x: {}".format(x.numpy()))
+        print("x_again: {}".format(x_again.numpy()))
+        x = x + x_again + x_third
         y = fluid.layers.dropout(x, 0.5)
         #gen.manual_seed(111111111)
         # gen.set_state(st)
         paddle.set_cuda_state(st)
         #gen = paddle.manual_seed(123431)
         #x1 = np.arange(1,101).reshape(2,50).astype("float32")
-        x1 = paddle.to_variable(x_data)
-        #x1 = fluid.layers.uniform_random(
-        #    [2, 10], dtype="float32", min=0.0, max=1.0)
+        #x1 = paddle.to_variable(x_data)
+        x1 = fluid.layers.uniform_random(
+            [2, 10], dtype="float32", min=0.0, max=1.0)
+        x1_again = fluid.layers.uniform_random(
+            [2, 10], dtype="float32", min=0.0, max=1.0)
+        x1_third = fluid.layers.uniform_random(
+            [2, 10], dtype="float32", min=0.0, max=1.0)
+        x1 = x1 + x1_again + x1_third
         y1 = fluid.layers.dropout(x1, 0.5)
         y_np = y.numpy()
         y1_np = y1.numpy()
@@ -58,6 +70,102 @@ class TestGeneratorSeed(unittest.TestCase):
         if core.is_compiled_with_cuda():
             print(">>>>>>> dropout dygraph >>>>>>>")
             self.assertTrue(np.allclose(y_np, y1_np))
+
+    def test_generator_gaussian_random_dygraph(self):
+        """Test Generator seed."""
+        fluid.enable_dygraph()
+
+        paddle.manual_seed(12312321111)
+        x = fluid.layers.gaussian_random([10], dtype="float32")
+        st1 = paddle.get_cuda_state()
+        x1 = fluid.layers.gaussian_random([10], dtype="float32")
+        paddle.set_cuda_state(st1)
+        x2 = fluid.layers.gaussian_random([10], dtype="float32")
+        paddle.manual_seed(12312321111)
+        x3 = fluid.layers.gaussian_random([10], dtype="float32")
+        x_np = x.numpy()
+        x1_np = x1.numpy()
+        x2_np = x2.numpy()
+        x3_np = x3.numpy()
+        print("x: {}".format(x_np))
+        print("x1: {}".format(x1_np))
+        print("x2: {}".format(x2_np))
+        print("x3: {}".format(x3_np))
+
+        if core.is_compiled_with_cuda():
+            print(">>>>>>> gaussian random dygraph >>>>>>>")
+            self.assertTrue(np.allclose(x1_np, x2_np))
+            self.assertTrue(np.allclose(x_np, x3_np))
+
+    def test_generator_randint_dygraph(self):
+        """Test Generator seed."""
+
+        fluid.enable_dygraph()
+
+        gen = paddle.manual_seed(12312321111)
+        x = paddle.randint(low=10, shape=[10], dtype="int32")
+        st1 = gen.get_state()
+        x1 = paddle.randint(low=10, shape=[10], dtype="int32")
+        gen.set_state(st1)
+        x2 = paddle.randint(low=10, shape=[10], dtype="int32")
+        paddle.manual_seed(12312321111)
+        x3 = paddle.randint(low=10, shape=[10], dtype="int32")
+        x_np = x.numpy()
+        x1_np = x1.numpy()
+        x2_np = x2.numpy()
+        x3_np = x3.numpy()
+
+        if core.is_compiled_with_cuda():
+            print(">>>>>>> randint dygraph >>>>>>>")
+            self.assertTrue(np.allclose(x1_np, x2_np))
+            self.assertTrue(np.allclose(x_np, x3_np))
+
+    def test_gen_TruncatedNormal_initializer(self):
+        fluid.disable_dygraph()
+
+        gen = paddle.manual_seed(123123143)
+        cur_state = paddle.get_cuda_state()
+
+        startup_program = fluid.Program()
+        train_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            # example 1:
+            # attr shape is a list which doesn't contain tensor Variable.
+            x = fluid.layers.uniform_random(shape=[2, 10])
+            result_1 = fluid.layers.fc(
+                input=x,
+                size=10,
+                param_attr=fluid.initializer.TruncatedNormal(
+                    loc=0.0, scale=2.0))
+            result_2 = fluid.layers.fc(
+                input=x,
+                size=10,
+                param_attr=fluid.initializer.TruncatedNormal(
+                    loc=0.0, scale=2.0))
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(startup_program)
+            out1 = exe.run(train_program,
+                           feed={},
+                           fetch_list=[result_1, result_2])
+
+        paddle.manual_seed(123123143)
+        with fluid.program_guard(train_program, startup_program):
+            exe.run(startup_program)
+            out2 = exe.run(train_program,
+                           feed={},
+                           fetch_list=[result_1, result_2])
+
+        out1_res1 = np.array(out1[0])
+        out1_res2 = np.array(out1[1])
+        out2_res1 = np.array(out2[0])
+        out2_res2 = np.array(out2[1])
+
+        if core.is_compiled_with_cuda():
+            print(">>>>>>> truncated normal static >>>>>>>")
+            self.assertTrue(np.allclose(out1_res1, out2_res1))
+            self.assertTrue(np.allclose(out1_res2, out2_res2))
+            self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
 
 if __name__ == "__main__":

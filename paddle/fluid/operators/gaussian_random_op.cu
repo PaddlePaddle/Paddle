@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <thrust/random.h>
 #include <thrust/transform.h>
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
@@ -38,6 +39,25 @@ struct GaussianGenerator {
 };
 
 template <typename T>
+struct GaussianGeneratorOffset {
+  T mean_, std_;
+  unsigned int seed_;
+  int offset_;
+
+  __host__ __device__ GaussianGeneratorOffset(T mean, T std, int seed,
+                                              int offset)
+      : mean_(mean), std_(std), seed_(seed), offset_(offset) {}
+
+  __host__ __device__ T operator()(const unsigned int n) const {
+    thrust::minstd_rand rng;
+    rng.seed(seed_);
+    thrust::normal_distribution<T> dist(mean_, std_);
+    rng.discard(n + offset_);
+    return dist(rng);
+  }
+};
+
+template <typename T>
 class GPUGaussianRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -56,9 +76,21 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
     int64_t size = tensor->numel();
-    thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                      thrust::device_ptr<T>(data),
-                      GaussianGenerator<T>(mean, std, seed));
+    auto gen_cuda = framework::getDefaultCUDAGenerator(-1);
+
+    if (gen_cuda->GetIsInitPy()) {
+      std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
+      auto seed_offset = gen_cuda->IncrementOffset(1);
+      int gen_offset = size * seed_offset.second;
+      thrust::transform(
+          index_sequence_begin, index_sequence_begin + size,
+          thrust::device_ptr<T>(data),
+          GaussianGeneratorOffset<T>(mean, std, seed_offset.first, gen_offset));
+    } else {
+      thrust::transform(index_sequence_begin, index_sequence_begin + size,
+                        thrust::device_ptr<T>(data),
+                        GaussianGenerator<T>(mean, std, seed));
+    }
   }
 };
 

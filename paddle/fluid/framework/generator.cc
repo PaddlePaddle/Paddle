@@ -29,16 +29,17 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#ifdef PADDLE_WITH_CUDA
 static int64_t num_cuda_devices = -1;
 static std::once_flag num_devices_init_flag;
 static std::deque<std::once_flag> cuda_device_flags;
 
 static std::vector<std::shared_ptr<Generator>> default_cuda_generators;
+#endif
 
 static void InitCUDAGenerators() {
-#ifdef PADDLE_WITH_CUDA
   num_cuda_devices = platform::GetCUDADeviceCount();
-
+#ifdef PADDLE_WITH_CUDA
   cuda_device_flags.resize(num_cuda_devices);
   default_cuda_generators.resize(num_cuda_devices);
 #else
@@ -152,6 +153,7 @@ uint64_t Generator::Seed() {
 void Generator::SetCurrentSeed(uint64_t seed) {
   std::lock_guard<std::mutex> lock(this->mu_);
   this->state_.current_seed = seed;
+  this->state_.thread_offset = 0;
   std::seed_seq seq({seed});
   this->engine_->seed(seq);
 }
