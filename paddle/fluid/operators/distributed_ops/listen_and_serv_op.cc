@@ -268,7 +268,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
-
   std::vector<int> block_list;
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
     block_list.push_back(blkid);
@@ -295,6 +294,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
+  request_send_and_recv_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
   while (true) {
     if (rpc_service_->IsExit()) {
@@ -394,6 +394,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       new distributed::RequestGetNoBarrierHandler());
   request_notify_handler_.reset(
       new distributed::RequestNotifyHandler(distributed_mode, fan_in));
+  request_send_and_recv_handler_.reset(
+      new distributed::RequestSendAndRecvHandler(distributed_mode));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(), rpc_send_thread_num);
@@ -408,6 +410,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             request_get_no_barrier_handler_.get());
   rpc_service_->RegisterRPC(distributed::kRequestNotify,
                             request_notify_handler_.get(), rpc_send_thread_num);
+  rpc_service_->RegisterRPC(distributed::kRequestSendAndRecv,
+                            request_send_and_recv_handler_.get(),
+                            rpc_get_thread_num);
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
@@ -416,6 +421,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                         "optimize blocks is less than 1. Optimize blocks "
                         "should be 1 at least on the pserver side."));
   auto *program = optimize_blocks[0]->Program();
+
   framework::Executor executor(dev_place);
 
   std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;
@@ -488,6 +494,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   f(request_checkpoint_handler_.get());
   f(request_get_no_barrier_handler_.get());
   f(request_notify_handler_.get());
+  f(request_send_and_recv_handler_.get());
 
   // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
   signal(SIGINT, SignalHandler::StopAndExit);

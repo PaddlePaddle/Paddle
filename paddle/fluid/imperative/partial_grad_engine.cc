@@ -578,7 +578,6 @@ class PartialGradTask {
   bool retain_graph_;
   bool allow_unused_;
   bool only_inputs_;
-  bool sorted_sum_gradient_{FLAGS_sort_sum_gradient};
 };
 
 PartialGradTask::PartialGradTask(
@@ -981,7 +980,7 @@ void PartialGradTask::PrepareInitialGradientAccumulators(const OpBase *op) {
 
       if (!accumulator) {
         accumulator.reset(new GradientAccumulationInfo(
-            var, sorted_sum_gradient_, create_graph_));
+            var, FLAGS_sort_sum_gradient, create_graph_));
       }
 
       accumulator->IncreaseTotalRefCnt();
