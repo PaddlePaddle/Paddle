@@ -1618,6 +1618,10 @@ def clip(x, min=None, max=None, name=None):
     fmax = float(np.finfo(np_dtype).max)
 
     if in_dygraph_mode():
+        if isinstance(min, Variable):
+            min = min.numpy().item(0)
+        if isinstance(max, Variable):
+            max = max.numpy().item(0)
         min = fmin if min is None else min
         max = fmax if max is None else max
         return core.ops.clip(x, "min", min, "max", max)
