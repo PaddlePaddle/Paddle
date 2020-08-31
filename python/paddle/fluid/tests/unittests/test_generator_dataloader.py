@@ -35,10 +35,10 @@ def random_reader():
 
 
 def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
+    paddle.manual_seed(1)
+    paddle.framework.random._manual_program_seed(1)
     startup_prog = fluid.Program()
     main_prog = fluid.Program()
-    startup_prog.random_seed = 1
-    main_prog.random_seed = 1
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
@@ -124,14 +124,8 @@ class TestBase(unittest.TestCase):
                             label = item['label']
                             assert image.shape() == [BATCH_SIZE, 784]
                             assert label.shape() == [BATCH_SIZE, 1]
-                            if ps[i]._equals(fluid.CPUPlace()):
-                                assert image._place()._equals(fluid.CPUPlace())
-                                assert label._place()._equals(fluid.CPUPlace())
-                            else:
-                                assert image._place()._equals(
-                                    fluid.CUDAPinnedPlace())
-                                assert label._place()._equals(
-                                    fluid.CUDAPinnedPlace())
+                            assert image._place()._equals(ps[i])
+                            assert label._place()._equals(ps[i])
                         L, = exe.run(program=prog,
                                      feed=d,
                                      fetch_list=[loss],

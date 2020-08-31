@@ -16,7 +16,7 @@
 from __future__ import print_function
 import os
 import unittest
-import paddle.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet.base.role_maker as role_maker
 
 
 class TestRoleMakerBase(unittest.TestCase):
@@ -34,6 +34,7 @@ class TestRoleMakerBase(unittest.TestCase):
         self.assertRaises(Exception, role.worker_index)
         self.assertRaises(Exception, role.server_index)
         self.assertRaises(Exception, role.role_id)
+        self.assertRaises(Exception, role.node_num)
 
         trainer_endpoints = role.get_trainer_endpoints()
         self.assertTrue(len(trainer_endpoints) == 0)
@@ -80,10 +81,12 @@ class TestCloudRoleMaker(unittest.TestCase):
         worker_endpoints = ro.get_trainer_endpoints()
         self.assertEqual(worker_endpoints[0], '127.0.0.1:36001')
         self.assertEqual(ro.role_id(), 0)
+        self.assertEqual(ro.node_num(), 2)
 
     def test_tr_rolemaker_collective(self):
         ro = role_maker.PaddleCloudRoleMaker(is_collective=True)
         self.assertEqual(ro.worker_num(), 2)
+        self.assertEqual(ro.node_num(), 2)
 
     def test_ps_rolemaker(self):
         """Test ps rolemaker."""

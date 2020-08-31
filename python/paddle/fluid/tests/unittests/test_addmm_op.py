@@ -240,13 +240,13 @@ class TestAddMMAPI(unittest.TestCase):
         data_y = np.ones((2, 2)).astype(np.float32)
         data_input = np.ones((2, 2)).astype(np.float32)
 
-        paddle.enable_imperative()
+        paddle.disable_static()
 
         def test_error1():
             data_x_wrong = np.ones((2, 3)).astype(np.float32)
-            x = paddle.imperative.to_variable(data_x_wrong)
-            y = paddle.imperative.to_variable(data_y)
-            input = paddle.imperative.to_variable(data_input)
+            x = paddle.to_variable(data_x_wrong)
+            y = paddle.to_variable(data_y)
+            input = paddle.to_variable(data_input)
             out = paddle.tensor.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
         self.assertRaises(ValueError, test_error1)
 '''

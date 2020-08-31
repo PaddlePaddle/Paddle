@@ -21,7 +21,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
 
 from paddle.fluid.incubate.fleet.base.mode import Mode
-from paddle.fleet.base.role_maker import RoleMakerBase
+from paddle.distributed.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
 from . import mode
 
@@ -145,7 +145,7 @@ class Fleet(object):
 
         Returns:
             bool: True if this is a node of server,
-                  False if not.
+                  False if not
         """
         return self._role_maker.is_server()
 

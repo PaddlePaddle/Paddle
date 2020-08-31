@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import paddle
 from paddle.fluid import core
-from paddle import program_guard, Program
+from paddle.static import program_guard, Program
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -82,7 +82,7 @@ class TestArangeAPI(unittest.TestCase):
 
             place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             out = exe.run(fetch_list=[x1])
 
         expected_data = np.arange(0, 5, 1).astype(np.float32)
@@ -93,15 +93,16 @@ class TestArangeImperative(unittest.TestCase):
     def test_out(self):
         place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
-        with paddle.imperative.guard(place):
-            x1 = paddle.arange(0, 5, 1)
-            x2 = paddle.tensor.arange(5)
-            x3 = paddle.tensor.creation.arange(5)
+        paddle.disable_static(place)
+        x1 = paddle.arange(0, 5, 1)
+        x2 = paddle.tensor.arange(5)
+        x3 = paddle.tensor.creation.arange(5)
 
-            start = paddle.imperative.to_variable(np.array([0], 'float32'))
-            end = paddle.imperative.to_variable(np.array([5], 'float32'))
-            step = paddle.imperative.to_variable(np.array([1], 'float32'))
-            x4 = paddle.arange(start, end, step, 'int64')
+        start = paddle.to_variable(np.array([0], 'float32'))
+        end = paddle.to_variable(np.array([5], 'float32'))
+        step = paddle.to_variable(np.array([1], 'float32'))
+        x4 = paddle.arange(start, end, step, 'int64')
+        paddle.enable_static()
 
         expected_data = np.arange(0, 5, 1).astype(np.int64)
         for i in [x1, x2, x3, x4]:

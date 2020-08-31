@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -54,24 +55,22 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         std::memset(mask_data, 0, size * sizeof(*mask_data));  // NOLINT
         return;
       }
-
+      // std::minstd_rand engine;
       // NOTE: fixed seed should only be used in unittest or for debug.
       // Guarantee to use random seed in training.
-      std::random_device rnd;
-      std::minstd_rand engine;
-      int seed_data;
+      int seed_data = 0;
       if (seed) {
         seed_data = *(seed->data<int>());
       } else {
         seed_data =
-            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;
       }
-      engine.seed(seed_data);
+      auto engine = framework::GetCPURandomEngine(seed_data);
 
       std::uniform_real_distribution<float> dist(0, 1);
 
       for (size_t i = 0; i < size; ++i) {
-        if (dist(engine) < dropout_prob) {
+        if (dist(*engine) < dropout_prob) {
           mask_data[i] = 0;
           y_data[i] = 0;
         } else {

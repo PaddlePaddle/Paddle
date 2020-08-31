@@ -20,15 +20,19 @@ namespace paddle {
 namespace operators {
 
 inline void GetDims(const framework::DDim& dim, int axis, int* pre, int* n,
-                    int* post) {
+                    int* post, bool asvector) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];
-  for (int i = 0; i < axis; ++i) {
-    (*pre) *= dim[i];
-  }
-  for (int i = axis + 1; i < dim.size(); ++i) {
-    (*post) *= dim[i];
+  if (asvector) {
+    *n = product(dim);
+  } else {
+    for (int i = 0; i < axis; ++i) {
+      (*pre) *= dim[i];
+    }
+    for (int i = axis + 1; i < dim.size(); ++i) {
+      (*post) *= dim[i];
+    }
   }
 }
 
@@ -43,9 +47,10 @@ class PnormKernel : public framework::OpKernel<T> {
     auto xdim = in_x->dims();
     float porder = ctx.Attr<float>("porder");
     int axis = ctx.Attr<int>("axis");
+    bool asvector = ctx.Attr<bool>("asvector");
     if (axis < 0) axis = xdim.size() + axis;
     int pre, n, post;
-    GetDims(xdim, axis, &pre, &n, &post);
+    GetDims(xdim, axis, &pre, &n, &post, asvector);
 
     auto* place = ctx.template device_context<DeviceContext>().eigen_device();
 
@@ -58,10 +63,20 @@ class PnormKernel : public framework::OpKernel<T> {
     auto x = x_e.reshape(shape);
     auto norm = norm_e.reshape(norm_shape);
 
+    // p=0 means number of non-zero elements of (x)
+    // p=inf means the maximum of |x|
+    // p=-inf means the minimum of |x|
+    // otherwise, Lp-norm = pow(sum(pow(|x|, p)), 1/p)
     Eigen::DSizes<int, 1> rdim(1);
-    auto xp = (x.abs()).pow(porder);
-    auto sum = xp.sum(rdim);
-    norm.device(*place) = sum.pow(1.0f / porder);
+    if (porder == 0) {
+      norm.device(*place) = (x != x.constant(0)).template cast<T>().sum(rdim);
+    } else if (porder == INFINITY) {
+      norm.device(*place) = x.abs().maximum(rdim);
+    } else if (porder == -INFINITY) {
+      norm.device(*place) = x.abs().minimum(rdim);
+    } else {
+      norm.device(*place) = x.abs().pow(porder).sum(rdim).pow(1.0f / porder);
+    }
   }
 };
 
@@ -81,9 +96,10 @@ class PnormGradKernel : public framework::OpKernel<T> {
     float porder = ctx.Attr<float>("porder");
 
     int axis = ctx.Attr<int>("axis");
+    bool asvector = ctx.Attr<bool>("asvector");
     if (axis < 0) axis = xdim.size() + axis;
     int pre, n, post;
-    GetDims(xdim, axis, &pre, &n, &post);
+    GetDims(xdim, axis, &pre, &n, &post, asvector);
     Eigen::DSizes<int, 3> shape(pre, n, post);
     Eigen::DSizes<int, 3> rshape(pre, 1, post);
 
@@ -102,10 +118,20 @@ class PnormGradKernel : public framework::OpKernel<T> {
     Eigen::DSizes<int, 1> rdim(1);
     Eigen::DSizes<int, 3> bcast(1, n, 1);
 
-    dx.device(*place) = (x.abs()).pow(porder - 1.0f);
-    dx.device(*place) =
-        dx / ((norm.broadcast(bcast)).pow(porder - 1.0f) + x.constant(eps));
-    dx.device(*place) = dx * norm_dy.broadcast(bcast) * x.sign();
+    if (porder == 0) {
+      math::SetConstant<DeviceContext, T> set_zero;
+      auto& dev_ctx = ctx.template device_context<DeviceContext>();
+      set_zero(dev_ctx, out_dx, static_cast<T>(0));
+    } else if (porder == INFINITY || porder == -INFINITY) {
+      dx.device(*place) =
+          (x.abs() == norm.broadcast(bcast)).template cast<T>() * x.sign() *
+          norm_dy.broadcast(bcast);
+    } else {
+      dx.device(*place) =
+          (x.abs()).pow(porder - 1.0f) /
+          ((norm.broadcast(bcast)).pow(porder - 1.0f) + x.constant(eps));
+      dx.device(*place) = dx * norm_dy.broadcast(bcast) * x.sign();
+    }
   }
 };
 }  // namespace operators

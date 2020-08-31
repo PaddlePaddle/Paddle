@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import numpy as np
 import six
@@ -283,6 +284,223 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
 
             self.assertEqual((a != b).dtype, fluid.core.VarDesc.VarType.BOOL)
             self.assertTrue(np.array_equal((a != b).numpy(), a_np != b_np))
+
+    def test_tensor_patch_method(self):
+        paddle.disable_static()
+        x_np = np.random.uniform(-1, 1, [2, 3]).astype(self.dtype)
+        y_np = np.random.uniform(-1, 1, [2, 3]).astype(self.dtype)
+        z_np = np.random.uniform(-1, 1, [6, 9]).astype(self.dtype)
+
+        x = paddle.to_tensor(x_np)
+        y = paddle.to_tensor(y_np)
+        z = paddle.to_tensor(z_np)
+
+        a = paddle.to_tensor([[1, 1], [2, 2], [3, 3]])
+        b = paddle.to_tensor([[1, 1], [2, 2], [3, 3]])
+
+        # 1. Unary operation for Tensor
+        self.assertEqual(x.dim(), 2)
+        self.assertEqual(x.ndimension(), 2)
+        self.assertEqual(x.ndim, 2)
+        self.assertEqual(x.size(), [2, 3])
+        self.assertTrue(
+            np.array_equal(x.sigmoid().numpy(), fluid.layers.sigmoid(x).numpy(
+            )))
+        self.assertTrue(
+            np.array_equal(x.logsigmoid().numpy(),
+                           fluid.layers.logsigmoid(x).numpy()))
+        self.assertTrue(np.array_equal(x.exp().numpy(), paddle.exp(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.tanh().numpy(), paddle.tanh(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.atan().numpy(), paddle.atan(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.tanh_shrink().numpy(),
+                           fluid.layers.tanh_shrink(x).numpy()))
+        self.assertTrue(np.array_equal(x.abs().numpy(), paddle.abs(x).numpy()))
+        m = x.abs()
+        self.assertTrue(
+            np.array_equal(m.sqrt().numpy(), paddle.sqrt(m).numpy()))
+        self.assertTrue(
+            np.array_equal(m.rsqrt().numpy(), paddle.rsqrt(m).numpy()))
+        self.assertTrue(
+            np.array_equal(x.ceil().numpy(), paddle.ceil(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.floor().numpy(), paddle.floor(x).numpy()))
+        self.assertTrue(np.array_equal(x.cos().numpy(), paddle.cos(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.acos().numpy(), paddle.acos(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.asin().numpy(), paddle.asin(x).numpy()))
+        self.assertTrue(np.array_equal(x.sin().numpy(), paddle.sin(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.sinh().numpy(), paddle.sinh(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.cosh().numpy(), paddle.cosh(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.round().numpy(), paddle.round(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.reciprocal().numpy(), paddle.reciprocal(x).numpy(
+            )))
+        self.assertTrue(
+            np.array_equal(x.square().numpy(), paddle.square(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.softplus().numpy(),
+                           fluid.layers.softplus(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.softsign().numpy(),
+                           fluid.layers.softsign(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.rank().numpy(), paddle.rank(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x[0].t().numpy(), paddle.t(x[0]).numpy()))
+        m = paddle.to_tensor(np.random.uniform(1, 2, [3, 3]), 'float32')
+        m = m.matmul(m.t())
+        self.assertTrue(
+            np.array_equal(m.cholesky().numpy(), paddle.cholesky(m).numpy()))
+
+        self.assertTrue(
+            np.array_equal(x.is_empty().numpy(), paddle.is_empty(x).numpy()))
+        self.assertTrue(
+            np.array_equal(x.isfinite().numpy(), paddle.isfinite(x).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.cast('int32').numpy(), paddle.cast(x, 'int32').numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.expand([3, 2, 3]).numpy(),
+                paddle.expand(x, [3, 2, 3]).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.tile([2, 2]).numpy(), paddle.tile(x, [2, 2]).numpy()))
+        self.assertTrue(
+            np.array_equal(x.flatten().numpy(), paddle.flatten(x).numpy()))
+        index = paddle.to_tensor([0, 1])
+        self.assertTrue(
+            np.array_equal(
+                x.gather(index).numpy(), paddle.gather(x, index).numpy()))
+        index = paddle.to_tensor([[0, 1], [1, 2]])
+        self.assertTrue(
+            np.array_equal(
+                x.gather_nd(index).numpy(), paddle.gather_nd(x, index).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.reverse([0, 1]).numpy(), paddle.reverse(x, [0, 1]).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                a.reshape([3, 2]).numpy(), paddle.reshape(a, [3, 2]).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.slice([0, 1], [0, 0], [1, 2]).numpy(),
+                paddle.slice(x, [0, 1], [0, 0], [1, 2]).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.split(2)[0].numpy(), paddle.split(x, 2)[0].numpy()))
+        m = paddle.to_tensor(
+            np.random.uniform(-1, 1, [1, 6, 1, 1]).astype(self.dtype))
+        self.assertTrue(
+            np.array_equal(
+                m.squeeze([]).numpy(), paddle.squeeze(m, []).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                m.squeeze([1, 2]).numpy(), paddle.squeeze(m, [1, 2]).numpy()))
+        m = paddle.to_tensor([2, 3, 3, 1, 5, 3], 'float32')
+        self.assertTrue(
+            np.array_equal(m.unique()[0].numpy(), paddle.unique(m)[0].numpy()))
+        self.assertTrue(
+            np.array_equal(m.unique_with_counts()[2],
+                           paddle.unique_with_counts(m)[2]))
+        self.assertTrue(np.array_equal(x.flip([0]), paddle.flip(x, [0])))
+        self.assertTrue(np.array_equal(x.unbind(0), paddle.unbind(x, 0)))
+        self.assertTrue(np.array_equal(x.roll(1), paddle.roll(x, 1)))
+        self.assertTrue(np.array_equal(x.cumsum(1), paddle.cumsum(x, 1)))
+        m = paddle.to_tensor(1)
+        self.assertTrue(np.array_equal(m.increment(), paddle.increment(m)))
+        m = x.abs()
+        self.assertTrue(np.array_equal(m.log(), paddle.log(m)))
+        self.assertTrue(np.array_equal(x.pow(2), paddle.pow(x, 2)))
+        self.assertTrue(np.array_equal(x.reciprocal(), paddle.reciprocal(x)))
+
+        # 2. Binary operation
+        self.assertTrue(
+            np.array_equal(
+                x.matmul(y, True, False).numpy(),
+                paddle.matmul(x, y, True, False).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.norm(
+                    p='fro', axis=[0, 1]).numpy(),
+                paddle.norm(
+                    x, p='fro', axis=[0, 1]).numpy()))
+        self.assertTrue(
+            np.array_equal(x.dist(y).numpy(), paddle.dist(x, y).numpy()))
+        self.assertTrue(
+            np.array_equal(x.cross(y).numpy(), paddle.cross(x, y).numpy()))
+        m = x.expand([2, 2, 3])
+        n = y.expand([2, 2, 3]).transpose([0, 2, 1])
+        self.assertTrue(
+            np.array_equal(m.bmm(n).numpy(), paddle.bmm(m, n).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.histogram(5, -1, 1).numpy(),
+                paddle.histogram(x, 5, -1, 1).numpy()))
+        self.assertTrue(
+            np.array_equal(x.equal(y).numpy(), paddle.equal(x, y).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.greater_equal(y).numpy(), paddle.greater_equal(x, y).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.greater_than(y).numpy(), paddle.greater_than(x, y).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.less_equal(y).numpy(), paddle.less_equal(x, y).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.less_than(y).numpy(), paddle.less_than(x, y).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.not_equal(y).numpy(), paddle.not_equal(x, y).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.equal_all(y).numpy(), paddle.equal_all(x, y).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.allclose(y).numpy(), paddle.allclose(x, y).numpy()))
+        m = x.expand([2, 2, 3])
+        self.assertTrue(
+            np.array_equal(
+                x.expand_as(m).numpy(), paddle.expand_as(x, m).numpy()))
+        index = paddle.to_tensor([2, 1, 0])
+        self.assertTrue(
+            np.array_equal(
+                a.scatter(index, b).numpy(),
+                paddle.scatter(a, index, b).numpy()))
+
+        # 3. Bool tensor operation
+        x = paddle.to_tensor([[True, False], [True, False]])
+        y = paddle.to_tensor([[False, False], [False, True]])
+        self.assertTrue(
+            np.array_equal(x.reduce_all().numpy(), paddle.reduce_all(x).numpy(
+            )))
+        self.assertTrue(
+            np.array_equal(x.reduce_any().numpy(), paddle.reduce_any(x).numpy(
+            )))
+        self.assertTrue(
+            np.array_equal(
+                x.logical_and(y).numpy(), paddle.logical_and(x, y).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.logical_not(y).numpy(), paddle.logical_not(x, y).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.logical_or(y).numpy(), paddle.logical_or(x, y).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.logical_xor(y).numpy(), paddle.logical_xor(x, y).numpy()))
+        self.assertTrue(
+            np.array_equal(
+                x.logical_and(y).numpy(), paddle.logical_and(x, y).numpy()))
 
 
 if __name__ == '__main__':

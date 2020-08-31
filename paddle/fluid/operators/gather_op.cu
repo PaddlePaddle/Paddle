@@ -31,6 +31,33 @@ class GatherOpCUDAKernel : public framework::OpKernel<T> {
     auto *index = ctx.Input<Tensor>("Index");
     auto *output = ctx.Output<Tensor>("Out");
 
+    if (ctx.HasInput("Axis")) {
+      const Tensor *axis = ctx.Input<Tensor>("Axis");
+      const auto &index_type = index->type();
+      const auto &axis_type = axis->type();
+      auto place = ctx.GetPlace();
+      if (index_type == framework::proto::VarType::INT32 &&
+          axis_type == framework::proto::VarType::INT32) {
+        GatherV2CUDAFunction<T, int32_t, int32_t>(x, index, axis, output, place,
+                                                  ctx);
+      }
+      if (index_type == framework::proto::VarType::INT32 &&
+          axis_type == framework::proto::VarType::INT64) {
+        GatherV2CUDAFunction<T, int32_t, int64_t>(x, index, axis, output, place,
+                                                  ctx);
+      }
+      if (index_type == framework::proto::VarType::INT64 &&
+          axis_type == framework::proto::VarType::INT32) {
+        GatherV2CUDAFunction<T, int64_t, int32_t>(x, index, axis, output, place,
+                                                  ctx);
+      }
+      if (index_type == framework::proto::VarType::INT64 &&
+          axis_type == framework::proto::VarType::INT64) {
+        GatherV2CUDAFunction<T, int64_t, int64_t>(x, index, axis, output, place,
+                                                  ctx);
+      }
+      return;
+    }
     output->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == 0) return;
     const auto &index_type = index->type();
@@ -63,6 +90,34 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
     auto *index = ctx.Input<Tensor>("Index");
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
+
+    if (ctx.HasInput("Axis")) {
+      const Tensor *axis = ctx.Input<Tensor>("Axis");
+      const auto &index_type = index->type();
+      const auto &axis_type = axis->type();
+      auto place = ctx.GetPlace();
+      if (index_type == framework::proto::VarType::INT32 &&
+          axis_type == framework::proto::VarType::INT32) {
+        GatherV2GradCUDAFunction<T, int32_t, int32_t>(dO, index, axis, dX,
+                                                      place, ctx);
+      }
+      if (index_type == framework::proto::VarType::INT32 &&
+          axis_type == framework::proto::VarType::INT64) {
+        GatherV2GradCUDAFunction<T, int32_t, int64_t>(dO, index, axis, dX,
+                                                      place, ctx);
+      }
+      if (index_type == framework::proto::VarType::INT64 &&
+          axis_type == framework::proto::VarType::INT32) {
+        GatherV2GradCUDAFunction<T, int64_t, int32_t>(dO, index, axis, dX,
+                                                      place, ctx);
+      }
+      if (index_type == framework::proto::VarType::INT64 &&
+          axis_type == framework::proto::VarType::INT64) {
+        GatherV2GradCUDAFunction<T, int64_t, int64_t>(dO, index, axis, dX,
+                                                      place, ctx);
+      }
+      return;
+    }
 
     dX->mutable_data<T>(ctx.GetPlace());
     auto dxt = framework::EigenVector<T>::Flatten(*dX);

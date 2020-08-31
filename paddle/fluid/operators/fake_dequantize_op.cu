@@ -45,14 +45,32 @@ struct DequantizeFunctor<platform::CUDADeviceContext, T> {
 };
 
 template <typename T>
-__global__ void DequantizeOneScale(const T* in, const T* scale, T max_range,
-                                   int num, int channel, T* out) {
+__global__ void DequantizeOneScaleQuantAxis0(const T* in, const T* scale,
+                                             T max_range, int num, int channel,
+                                             T* out) {
   int tid = threadIdx.x;
   int channel_size = num / channel;
   const T* in_c = in + blockIdx.x * channel_size;
   T* out_c = out + blockIdx.x * channel_size;
   for (int i = tid; i < channel_size; i += blockDim.x) {
     out_c[i] = in_c[i] * scale[blockIdx.x] / max_range;
+  }
+}
+
+template <typename T>
+__global__ void DequantizeOneScaleQuantAxis1(const T* in, const T* scale,
+                                             T max_range, const int num,
+                                             const int cin, const int cout,
+                                             T* out) {
+  int cout_wh_size = num / cin;
+  int wh_size = cout_wh_size / cout;
+
+  T s = scale[blockIdx.x];
+  const T* in_current = in + threadIdx.x * cout_wh_size + blockIdx.x * wh_size;
+  T* out_current = out + threadIdx.x * cout_wh_size + blockIdx.x * wh_size;
+
+  for (int i = 0; i < wh_size; i++) {
+    out_current[i] = in_current[i] * s / max_range;
   }
 }
 
@@ -74,18 +92,29 @@ template <typename T>
 struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& dev_ctx,
                   const framework::Tensor* in, const framework::Tensor** scales,
-                  const int scale_num, T max_range, framework::Tensor* out) {
+                  const int scale_num, T max_range, const int quant_axis,
+                  framework::Tensor* out) {
+    auto in_dims = in->dims();
     const T* in_data = in->data<T>();
     T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
     if (scale_num == 1) {
       int num = in->numel();
-      int channel = in->dims()[0];
       const T* scale_factor = scales[0]->data<T>();
-      int block = 1024;
-      int grid = channel;
-      DequantizeOneScale<T><<<grid, block, 0, dev_ctx.stream()>>>(
-          in_data, scale_factor, max_range, num, channel, out_data);
+      if (quant_axis == 0) {
+        int grid = in_dims[0];
+        int block = 1024;
+        DequantizeOneScaleQuantAxis0<T><<<grid, block, 0, dev_ctx.stream()>>>(
+            in_data, scale_factor, max_range, num, in_dims[0], out_data);
+      } else if (quant_axis == 1) {
+        // Dequantize weight of Cin * Cout * W * H
+        int grid = in_dims[1];
+        int block = in_dims[0];
+        DequantizeOneScaleQuantAxis1<T><<<grid, block, 0, dev_ctx.stream()>>>(
+            in_data, scale_factor, max_range, num, in_dims[0], in_dims[1],
+            out_data);
+      }
     } else if (scale_num == 2) {
+      // Not need to consider quant_axis
       int num = in->numel();
       int batch_size = in->dims()[0];
       int channel = in->dims()[1];

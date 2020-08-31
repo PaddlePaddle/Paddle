@@ -40,6 +40,9 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"assign", {"X"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"X", "InScale", "InAccum", "InState"}},
+    {"nll_loss", {"X", "Label", "Weight"}},
+    {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
+    {"gather", {"X", "Index", "Axis"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -56,6 +59,10 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
+    {"sync_batch_norm",
+     {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
+      "ReserveSpace"}},
+    {"unique", {"Out", "Index", "Indices", "Counts"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -75,9 +82,23 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"momentum", {"ParamOut", "VelocityOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
+    {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
     {"accuracy", {"Correct", "Total"}},
     {"fill_constant", {"Out"}},
     {"matmul", {"Out"}},
+    {"c_broadcast", {"Out"}},
+    {"c_allreduce_sum", {"Out"}},
+    {"c_allreduce_max", {"Out"}},
+    {"c_allreduce_min", {"Out"}},
+    {"c_allreduce_prod", {"Out"}},
+    {"c_reduce_sum", {"Out"}},
+    {"c_reduce_max", {"Out"}},
+    {"c_reduce_min", {"Out"}},
+    {"c_reduce_prod", {"Out"}},
+    {"c_reduce", {"Out"}},
+    {"c_allgather", {"Out"}},
+    {"c_scatter", {"Out"}},
+    {"barrier", {"Out"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},
@@ -115,8 +136,19 @@ const char* OUTPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST = R"(
 const char* ARG_OUT_NUM = R"(%sNum)";
 const char* ARG_OUT_NUM_TYPE = R"(size_t )";
 
-const char* VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
-const char* VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
+const char* IN_VAR_TYPE = R"(py::handle)";
+const char* IN_VAR_LIST_TYPE = R"(py::handle)";
+
+const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
+const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
+
+const char* CAST_VAR_TEMPLATE = R"(
+  auto %s = CastPyHandleToVarBase("%s", "%s", %d, %s);)";
+
+const char* CAST_VAR_LIST_TEMPLATE = R"(
+  auto %s = CastPyHandleToVarBaseList("%s", "%s", %d, %s);)";
+
+
 const char* ARG_TEMPLATE = R"(const %s& %s)";
 
 const char* RETURN_TUPLE_TYPE = R"(std::tuple<%s>)";
@@ -132,8 +164,9 @@ const char* OP_FUNCTION_TEMPLATE =
 R"(
 %s %s(%s)
 {
+  %s
   framework::AttributeMap attrs;
-  ConstructAttrMapFromPyArgs(&attrs, args);
+  ConstructAttrMapFromPyArgs("%s", %d, &attrs, args);
   {
     py::gil_scoped_release release;
     auto tracer = imperative::GetCurrentTracer();
@@ -163,6 +196,10 @@ static inline bool FindPassingOutsMap(const std::string& op_type,
   return op_passing_outs_map[op_type].count(out_name);
 }
 
+static inline std::string TempName(const std::string& name) {
+  return name + '_';
+}
+
 static std::tuple<std::vector<std::string>, std::vector<std::string>>
 GenerateOpFunctions(const std::string& module_name) {
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
@@ -186,16 +223,26 @@ GenerateOpFunctions(const std::string& module_name) {
     std::string ins_initializer = "{";
     std::string ins_initializer_with_null = "";
     std::string py_arg = "";
+    int arg_idx = 0;
+    int input_args_num = 0;
+    std::string ins_cast_str = "";
     for (auto& input : op_proto->inputs()) {
       auto& in_name = input.name();
       // skip those dispensable inputs, like ResidualData in conv2d
       if (input.dispensable() && !FindInsMap(op_type, in_name)) {
         continue;
       }
-      const auto in_type = input.duplicable() ? VAR_LIST_TYPE : VAR_TYPE;
-      auto input_arg = paddle::string::Sprintf(ARG_TEMPLATE, in_type, in_name);
+      const auto in_type = input.duplicable() ? IN_VAR_LIST_TYPE : IN_VAR_TYPE;
+      auto input_arg =
+          paddle::string::Sprintf(ARG_TEMPLATE, in_type, TempName(in_name));
       input_args += input_arg;
       input_args += ",";
+      input_args_num++;
+      const auto in_cast_type =
+          input.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
+      ins_cast_str +=
+          paddle::string::Sprintf(in_cast_type, in_name, op_type, in_name,
+                                  arg_idx++, TempName(in_name));
 
       if (input.dispensable()) {
         const auto in_template = input.duplicable()
@@ -234,7 +281,8 @@ GenerateOpFunctions(const std::string& module_name) {
       if (output.dispensable() && !FindOutsMap(op_type, out_name)) {
         continue;
       }
-      const auto out_type = output.duplicable() ? VAR_LIST_TYPE : VAR_TYPE;
+      const auto out_type =
+          output.duplicable() ? OUT_VAR_LIST_TYPE : OUT_VAR_TYPE;
       const auto return_template =
           output.duplicable() ? RETURN_LIST_TEMPLATE : RETURN_TEMPLATE;
       if (FindPassingOutsMap(op_type, out_name)) {
@@ -243,6 +291,7 @@ GenerateOpFunctions(const std::string& module_name) {
         }
         input_args += out_type;
         input_args += out_name;
+        input_args_num++;
 
         if (output.dispensable()) {
           const auto out_template =
@@ -269,6 +318,7 @@ GenerateOpFunctions(const std::string& module_name) {
           auto out_num_str = paddle::string::Sprintf(ARG_OUT_NUM, out_name);
           input_args += ARG_OUT_NUM_TYPE;
           input_args += out_num_str;
+          input_args_num++;
           outs_initializer += paddle::string::Sprintf(
               OUT_DUPLICABLE_INITIALIZER_TEMPLATE, out_name, out_num_str);
         } else {
@@ -308,9 +358,9 @@ GenerateOpFunctions(const std::string& module_name) {
     // generate op funtcion body
     auto op_function_str = paddle::string::Sprintf(
         OP_FUNCTION_TEMPLATE, return_type, func_name, function_args,
-        outs_initializer, ins_initializer,
-        ins_initializer_with_null + outs_initializer_with_null, op_type,
-        return_str);
+        ins_cast_str, op_type, input_args_num, outs_initializer,
+        ins_initializer, ins_initializer_with_null + outs_initializer_with_null,
+        op_type, return_str);
 
     // generate pybind item
     auto bind_function_str = paddle::string::Sprintf(
