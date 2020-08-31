@@ -22,8 +22,6 @@ from .runtime_factory import RuntimeFactory
 from .util_factory import UtilFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
-__all__ = ['Fleet']
-
 
 def _inited_runtime_handler_(func):
     def __impl__(*args, **kwargs):
@@ -106,7 +104,7 @@ class Fleet(object):
         """
         Initialize role_maker in Fleet.
 
-        This function is responsible for the distributed architecture 
+        This function is responsible for the distributed architecture
         what you want to run your code behind.
 
         Args:
@@ -326,7 +324,8 @@ class Fleet(object):
                 fleet.is_server()
 
         """
-        return self._role_maker.is_server()
+        return self._role_maker.is_server(
+        ) or self._role_maker._is_heter_worker()
 
     @property
     def util(self):
@@ -551,10 +550,10 @@ class Fleet(object):
                 can_not_apply_optimizer_list.append(opt)
         # combine recalled meta optimizers to be a valid meta optimizer
         meta_optimizer, graph_optimizer = \
-                self.strategy_compiler.generate_optimizer(
-                    loss, self._role_maker, self.user_defined_optimizer,
-                    self.user_defined_strategy, valid_optimizer_list,
-                    valid_graph_optimizer_list)
+            self.strategy_compiler.generate_optimizer(
+                loss, self._role_maker, self.user_defined_optimizer,
+                self.user_defined_strategy, valid_optimizer_list,
+                valid_graph_optimizer_list)
 
         valid_strategy = self.strategy_compiler._get_valid_strategy(
             self.user_defined_strategy, can_not_apply_optimizer_list)

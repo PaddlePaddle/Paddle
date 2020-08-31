@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Embedding, LayerNorm, Linear, Layer
 from paddle.fluid.dygraph import to_variable, guard
@@ -949,9 +950,9 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
         seed = 90
 
         with guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,
@@ -1034,8 +1035,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             dy_token_num_value = dy_token_num.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,

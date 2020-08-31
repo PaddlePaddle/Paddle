@@ -53,6 +53,8 @@ namespace distributed {
 
 void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
+void ProcGetRecvResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
+
 class BaseProcessor {
  public:
   BaseProcessor() { context_ = nullptr; }
@@ -129,6 +131,28 @@ class GetProcessor : public BaseProcessor {
   ::grpc::ByteBuffer reply_;
   ::grpc::GenericStub stub_g_;
   RequestGetCallBack response_call_back_ = ProcGetResponse;
+};
+
+class SendAndRecvProcessor : public BaseProcessor {
+ public:
+  explicit SendAndRecvProcessor(std::shared_ptr<grpc::Channel> ch)
+      : BaseProcessor(), stub_g_(ch) {}
+
+  virtual ~SendAndRecvProcessor() {}
+
+  void ProcessImpl() override {
+    if (response_call_back_) {
+      response_call_back_(*var_h_recv_.get(), reply_);
+      var_h_recv_->Finish(true);
+    }
+  }
+
+  void RecvPrepare(VarHandlePtr h_recv) { var_h_recv_ = h_recv; }
+
+  ::grpc::ByteBuffer reply_;
+  ::grpc::GenericStub stub_g_;
+  RequestGetCallBack response_call_back_ = ProcGetResponse;
+  VarHandlePtr var_h_recv_;
 };
 
 class BatchBarrierProcessor : public BaseProcessor {
@@ -230,6 +254,14 @@ class GRPCClient : public RPCClient {
       const std::string& ep, const platform::DeviceContext& ctx,
       const framework::Scope& scope, const std::string& var_name,
       int64_t time_out = FLAGS_rpc_deadline) override;
+
+  VarHandlePtr AsyncSendAndRecv(const std::string& ep,
+                                const platform::DeviceContext& ctx,
+                                const framework::Scope& scope,
+                                const std::string& send_var_name,
+                                const std::string& recv_var_name,
+                                const std::string& table_name = "",
+                                int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncSendComplete(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
