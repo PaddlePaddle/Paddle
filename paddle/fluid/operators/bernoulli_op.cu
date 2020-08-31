@@ -31,6 +31,10 @@ struct BernoulliCudaFunctor {
   __host__ __device__ BernoulliCudaFunctor(int seed) : seed_(seed) {}
 
   __host__ __device__ T operator()(const unsigned int n, const T p) const {
+    // NOTE(zhiqiu): currently, PADDLE_ENFORCE in cuda kernel may print several
+    // lines of error messages if, and it should be refined.
+    PADDLE_ENFORCE(p >= 0.0 && p <= 1.0,
+                   "The probability should >=0 and <= 1, but got %f", p);
     thrust::minstd_rand rng;
     rng.seed(seed_);
     thrust::uniform_real_distribution<T> dist(0.0, 1.0);
