@@ -682,7 +682,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             beta2_pow_o = main_program.global_block().vars[op.output(
                 "Beta2PowOut")[0]]
 
-            beta1 = op.attr('shape')
+            beta1 = op.attr('beta1')
             beta2 = op.attr('beta2')
             epsilon = op.attr('epsilon')
 
