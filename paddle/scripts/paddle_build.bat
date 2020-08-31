@@ -128,7 +128,8 @@ echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
 
-set start=%time%-%date%
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
+set start=%start:~4,10%
 echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% ^
 -DON_INFER=%ON_INFER% -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
@@ -196,7 +197,8 @@ echo    ========================================
 echo    Step 3. Test pip install whl package ...
 echo    ========================================
 
-set end=%time%-%date%
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
+set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "Build"
 tree /F %cd%\fluid_inference_install_dir\paddle
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\fluid_inference_install_dir\paddle\lib > lib_size.txt
@@ -231,7 +233,8 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
-set start=%time%-%date%
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
+set start=%start:~4,10%
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
@@ -254,7 +257,8 @@ echo    ========================================
 echo    Step 5. Testing fluid library for inference ...
 echo    ========================================
 
-set end=%time%-%date%
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
+set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "TestCases Total"
 
 cd %work_dir%\paddle\fluid\inference\api\demo_ci
@@ -342,36 +346,37 @@ goto:eof
 call paddle_winci\Scripts\deactivate.bat 2>NUL
 exit /b 1
 
+
 :timestamp
 echo on
 setlocal enabledelayedexpansion
 set start=%~1
-set dd=%start:~20,2%
+set dd=%start:~2,2%
 set /a dd=100%dd%%%100
-set hh=%start:~0,2%
+set hh=%start:~4,2%
 set /a hh=100%hh%%%100
-set nn=%start:~3,2%
+set nn=%start:~6,2%
 set /a nn=100%nn%%%100
-set ss=%start:~6,2%
+set ss=%start:~8,2%
 set /a ss=100%ss%%%100
 set /a start_sec=dd*86400+hh*3600+nn*60+ss
 echo %start_sec%
 
 set end=%~2
-set dd=%end:~20,2%
+set dd=%end:~2,2%
 set /a dd=100%dd%%%100
-if %start:~17,2% NEQ %end:~17,2% (
+if %start:~0,2% NEQ %end:~0,2% (
     set month_day=0
-    for %%i in (01 03 05 07 08 10 12) DO if %%i EQU %start:~17,2% set month_day=31
-    for %%i in (04 06 09 11) DO if %%i EQU %start:~17,2% set month_day=30
-    for %%i in (02) DO if %%i EQU %start:~17,2% set month_day=28
+    for %%i in (01 03 05 07 08 10 12) DO if %%i EQU %start:~0,2% set month_day=31
+    for %%i in (04 06 09 11) DO if %%i EQU %start:~0,2% set month_day=30
+    for %%i in (02) DO if %%i EQU %start:~0,2% set month_day=28
     set /a dd=%dd%+!month_day!
 )
-set hh=%end:~0,2%
+set hh=%end:~4,2%
 set /a hh=100%hh%%%100
-set nn=%end:~3,2%
+set nn=%end:~6,2%
 set /a nn=100%nn%%%100
-set ss=%end:~6,2%
+set ss=%end:~8,2%
 set /a ss=100%ss%%%100
 set /a end_secs=dd*86400+hh*3600+nn*60+ss
 set /a cost_secs=end_secs-start_sec
