@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
+#include <gflags/gflags.h>
 #include <limits>
 #include <map>
 #include <memory>
@@ -28,6 +29,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/string_helper.h"
+DECLARE_string(tensor_dump_ops);
+DECLARE_int64(dump_limit);
 
 namespace paddle {
 namespace platform {
@@ -83,8 +86,8 @@ class TensorDumpConfig {
   std::string dirname_;
   std::vector<OperatorDetails> ops;
   TensorDumpConfig() : dirname_("out/") {
-    // Read global required operators
-    if (const char* env_ops = std::getenv("TENSOR_DUMP_OPERATORS")) {
+    auto env_ops = FLAGS_tensor_dump_ops;
+    if (!env_ops.empty()) {
       auto tmp_ops = string::split_string<std::string>(env_ops, ",");
       auto it = std::back_inserter(ops);
       for (auto& _op : tmp_ops) {
@@ -206,12 +209,11 @@ class DumpComposit {
       std::vector<T> vout(_tensor.numel());
       reorder_via_mkldnn(vout.data(), &_tensor, target_layout);
 
-      auto data_limit = std::numeric_limits<int64_t>::max();
-      if (const char* value = std::getenv("DUMP_LIMIT")) {
-        data_limit = atoi(const_cast<char*>(value));
-      }
-      data_limit = data_limit < _tensor.numel() ? data_limit : _tensor.numel();
-
+      // auto flag_limit = std::getenv("FLAGS_dump_limit"))
+      //   // data_limit = atoi(const_cast<char*>(value));
+      // auto data_limit = (flag_limit > 0 && flag_limit < _tensor.numel()) ?
+      // flag_limit : _tensor.numel();
+      auto data_limit = _tensor.numel();
       std::lock_guard<decltype(TensorDumpConfig::getMutex())> l(
           TensorDumpConfig::getMutex());
       auto ofs = std::ofstream(filename, std::ios_base::app);

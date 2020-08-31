@@ -101,6 +101,8 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory));
+    platform::DumpComposit<float>::execute("dequantize_mkldnn_fwd",
+                                           ctx.OutputName("Output"), *output);
   }
 };
 

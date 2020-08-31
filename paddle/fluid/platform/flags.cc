@@ -521,3 +521,7 @@ DEFINE_int32(
 DEFINE_bool(sort_sum_gradient, false,
             "Sum gradients by the reverse order of "
             "the forward execution sequence.");
+
+DEFINE_string(tensor_dump_ops, "fc_mkldnn_fwd", "Sum");
+
+DEFINE_int64(dump_limit, 32, "Sum");

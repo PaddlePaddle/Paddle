@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/tensor_util.h"
+#include <gflags/gflags.h>
 #include <algorithm>
 #include <limits>
 #include <memory>
@@ -20,6 +21,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/profiler.h"
+
+DECLARE_int64(dump_limit);
 
 namespace paddle {
 namespace framework {
@@ -911,24 +914,25 @@ template <typename T>
 std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
   auto inspect = tensor.data<T>();
   auto tensor_numel = tensor.numel();
-  auto data_limit = std::numeric_limits<int64_t>::max();
-  if (const char* value = std::getenv("DUMP_LIMIT")) {
-    data_limit = atoi(const_cast<char*>(value));
-  }
-  auto element_num = tensor_numel < data_limit ? tensor_numel : data_limit;
+  //   data_limit = atoi(const_cast<char*>(value));
+  // }
+  int64_t element_num =
+      (FLAGS_dump_limit > 0 && FLAGS_dump_limit < tensor_numel)
+          ? FLAGS_dump_limit
+          : tensor_numel;
   os << "  - data: [";
   // Note: int8_t && uint8_t is typedf of char, ostream unable to print properly
   if (typeid(int8_t) == typeid(T) || typeid(uint8_t) == typeid(T)) {
     if (element_num > 0) {
       os << signed(inspect[0]);
-      for (int j = 1; j < element_num; ++j) {
+      for (int64_t j = 1; j < element_num; ++j) {
         os << " " << signed(inspect[j]);
       }
     }
   } else {
     if (element_num > 0) {
       os << inspect[0];
-      for (int j = 1; j < element_num; ++j) {
+      for (int64_t j = 1; j < element_num; ++j) {
         os << " " << inspect[j];
       }
     }

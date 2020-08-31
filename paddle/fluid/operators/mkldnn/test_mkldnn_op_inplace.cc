@@ -45,9 +45,6 @@ bool TestMain(const platform::Place &place, const std::string &op_type,
               const framework::DDim &dims, const int num_inputs) {
   framework::Scope scope;
 
-  setenv("TENSOR_DUMP_OPERATORS",
-         "elemwise_fwd{tanh},elemwise_fwd{relu},elemwise_fwd", 1);
-
   std::vector<InputVars> input_names = {
       {"x", scope.Var("x")->GetMutable<framework::LoDTensor>()},
       {"x1", num_inputs > 1
