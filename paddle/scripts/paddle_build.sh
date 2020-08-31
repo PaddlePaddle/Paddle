@@ -536,6 +536,7 @@ EOF
         failed_test_lists=''
         collect_failed_tests
         #rm -f $tmp_dir/*
+        mactest_error=0
         retry_unittests_record=''
         retry_time=3
         exec_times=0
