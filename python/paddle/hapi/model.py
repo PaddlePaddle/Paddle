@@ -731,8 +731,8 @@ class DynamicGraphAdapter(object):
         if not self.model._optimizer or not optim_state:
             return
 
-        # If optimizer performs set_dict when state vars haven't been created,
-        # which would happen when set_dict before minimize, the state would be
+        # If optimizer performs set_state_dict when state vars haven't been created,
+        # which would happen when set_state_dict before minimize, the state would be
         # stored in optimizer._accumulators_holder and loaded lazily.
         # To contrive this when loading from static-graph saved states, extend
         # state dict to include keys named accoring to dygraph naming rules.
@@ -776,7 +776,13 @@ class DynamicGraphAdapter(object):
                                      accum_name + "_0")
                     converted_state[dy_state_name] = state_var
 
-        self.model._optimizer.set_dict(converted_state)
+        if not self.model._optimizer.set_state_dict:
+            warnings.warn(
+                "paddle.fluid.optimizer is deprecated in API 2.0, please use paddle.optimizer instead"
+            )
+            self.model._optimizer.set_dict(converted_state)
+        else:
+            self.model._optimizer.set_state_dict(converted_state)
 
 
 class Model(object):
