@@ -488,6 +488,50 @@ class TestParallelDyGraphRunnerBase(object):
             model.clear_gradients()
         return out_losses
 
+    def run_gpu_fleet_api_trainer(self, args):
+        import paddle.distributed.fleet as fleet
+        import paddle.distributed.fleet.base.role_maker as role_maker
+        # 1. enable dygraph
+        paddle.disable_static()
+
+        # 2. init seed
+        seed = 90
+        paddle.static.default_startup_program().random_seed = seed
+        paddle.static.default_main_program().random_seed = seed
+        np.random.seed(seed)
+        random.seed = seed
+        # get trainer id
+        args.trainer_id = paddle.distributed.get_rank()
+
+        # 3. init parallel env
+        if args.update_method == "nccl2":
+            fleet.init(is_collective=True)
+
+        # 4. train model
+        model, train_reader, opt = self.get_model()
+        if args.update_method == "nccl2":
+            opt = fleet.distributed_optimizer(opt)
+            model = fleet.distributed_model(model)
+
+        out_losses = []
+        for step_id, data in enumerate(train_reader()):
+            data = self._get_data(data, args)
+            if step_id == RUN_STEP:
+                break
+            loss = self.run_one_loop(model, opt, data)
+            out_losses.append(loss.numpy())
+
+            if args.update_method == "nccl2":
+                loss = model.scale_loss(loss)
+
+            loss.backward()
+            if args.update_method == "nccl2":
+                model.apply_collective_grads()
+
+            opt.step()
+            opt.clear_grad()
+        print_to_out(out_losses)
+
 
 def runtime_main(test_class):
     parser = argparse.ArgumentParser(description='Run dist test.')
@@ -850,6 +894,7 @@ class TestDistBase(unittest.TestCase):
         if self.__use_cuda:
             tr_cmd += " --use_cuda"
             env.update({
+                "FLAGS_selected_gpus": "{}".format(0),
                 "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id % 2),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
@@ -1013,6 +1058,41 @@ class TestDistBase(unittest.TestCase):
             dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
+
+    def check_with_dygraph_dist_place(self,
+                                      model_file,
+                                      delta=1e-3,
+                                      check_error_log=False,
+                                      need_envs={},
+                                      log_name=""):
+
+        required_envs = self._get_required_envs(check_error_log, need_envs)
+
+        if self._nccl2_mode:
+            if self._nccl2_reduce_layer:
+                tr0_losses, tr1_losses = self._run_cluster_nccl2(
+                    model_file,
+                    required_envs,
+                    True,
+                    check_error_log,
+                    log_name=log_name)
+            else:
+                tr0_losses, tr1_losses = self._run_cluster_nccl2(
+                    model_file,
+                    required_envs,
+                    False,
+                    check_error_log,
+                    log_name=log_name)
+        else:
+            tr0_losses, tr1_losses = self._run_cluster(
+                model_file, required_envs, check_error_log, log_name=log_name)
+
+        for step_id in range(RUN_STEP):
+            local_loss = local_losses[step_id]
+            tr0_loss = tr0_losses[step_id]
+            tr1_loss = tr1_losses[step_id]
+            print("=======", tr0_loss, ":", tr1_loss, "=======")
+            self.assertAlmostEqual(tr0_loss, tr1_loss, delta=delta)
 
     def check_with_place_multi_cards(self,
                                      model_file,

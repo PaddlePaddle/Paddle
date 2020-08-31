@@ -105,7 +105,8 @@ class Fleet(object):
             )
         self.strategy_compiler = StrategyCompiler()
         if paddle.fluid.framework.in_dygraph_mode():
-            self.dy_strategy = paddle.fluid.dygraph.parallel.prepare_context()
+            #self.dy_strategy = paddle.fluid.dygraph.parallel.prepare_context()
+            paddle.distributed.init_parallel_env()
         return None
 
     def is_first_worker(self):
@@ -294,6 +295,7 @@ class Fleet(object):
         self.valid_strategy = None
         return self
 
+    @dygraph_only
     def distributed_model(self, model):
         """
         Return dygraph distributed data parallel model (Layer)
@@ -316,20 +318,156 @@ class Fleet(object):
             optimizer = fleet.distributed_optimizer(optimizer)
             dp_layer = fleet.distributed_model(layer)
         """
-        if not paddle.fluid.framework.in_dygraph_mode():
-            return model
-
         assert model is not None
-        self.model = paddle.fluid.dygraph.parallel.DataParallel(
-            model, self.dy_strategy)
+        self.model = paddle.DataParallel(model)
         return self.model
+
+    @dygraph_only
+    def state_dict(self):
+        """
+        Get state dict information from optimizer.
+        Only work in dygraph mode
+
+        Returns: 
+            state_dict(dict) : dict contains all the Tensor used by optimizer
+
+        Examples:
+            .. code-block:: python
+
+            import paddle
+            import paddle.distributed.fleet as fleet
+
+            paddle.disable_static()
+            value = np.arange(26).reshape(2, 13).astype("float32")
+            a = fluid.dygraph.to_variable(value)
+            layer = paddle.nn.Linear(13, 5, dtype="float32")
+            adam = paddle.optimizer.Adam(
+                learning_rate=0.01, parameters=layer.parameters())
+
+            fleet.init(is_collective=True)
+            adam = fleet.distributed_optimizer(adam)
+            dp_layer = fleet.distributed_model(layer)
+            state_dict = adam.state_dict()
+        """
+        # imitate target optimizer retrieval
+        return self.user_defined_optimizer.state_dict()
+
+    @dygraph_only
+    def set_state_dict(self, state_dict):
+        """
+        Load optimizer state dict.
+        Only work in dygraph mode
+
+        Args: 
+            state_dict(dict) : Dict contains all the Tensor needed by optimizer
+
+        Returns: None 
+
+        Examples:
+            .. code-block:: python
+
+            import paddle
+            import paddle.distributed.fleet as fleet
+
+            paddle.disable_static()
+            value = np.arange(26).reshape(2, 13).astype("float32")
+            a = fluid.dygraph.to_variable(value)
+            layer = paddle.nn.Linear(13, 5, dtype="float32")
+            adam = paddle.optimizer.Adam(
+                learning_rate=0.01, parameters=layer.parameters())
+
+            fleet.init(is_collective=True)
+            adam = fleet.distributed_optimizer(adam)
+            dp_layer = fleet.distributed_model(layer)
+            state_dict = adam.state_dict()
+            paddle.framework.save(state_dict, "paddle_dy")
+            para_state_dict, opti_state_dict = paddle.framework.load( "paddle_dy")
+            adam.set_state_dict(opti_state_dict)
+        """
+        # imitate target optimizer retrieval
+        return self.user_defined_optimizer.set_state_dict(state_dict)
+
+    @dygraph_only
+    def set_lr(self, value):
+        """
+        Set the value of the learning rate manually in the optimizer. 
+        Only work in dygraph mode
+ 
+        Args:
+            value (float|Tensor): the value of learning rate
+
+        Returns: None 
+
+        Examples:
+            .. code-block:: python
+
+            import paddle
+            import paddle.distributed.fleet as fleet
+
+            paddle.disable_static()
+            value = np.arange(26).reshape(2, 13).astype("float32")
+            a = fluid.dygraph.to_variable(value)
+            layer = paddle.nn.Linear(13, 5, dtype="float32")
+            adam = paddle.optimizer.Adam(
+                learning_rate=0.01, parameters=layer.parameters())
+
+            fleet.init(is_collective=True)
+            adam = fleet.distributed_optimizer(adam)
+            dp_layer = fleet.distributed_model(layer)
+
+            lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
+            for i in range(5):
+                adam.set_lr(lr_list[i])
+                lr = adam.get_lr()
+                print("current lr is {}".format(lr))
+            # Print:
+            #    current lr is 0.2
+            #    current lr is 0.3
+            #    current lr is 0.4
+            #    current lr is 0.5
+            #    current lr is 0.6
+        """
+        # imitate target optimizer retrieval
+        return self.user_defined_optimizer.set_lr(value)
+
+    @dygraph_only
+    def get_lr(self):
+        """
+        Get current step learning rate.
+        Only work in dygraph mode
+
+        Returns:
+            float: The learning rate of the current step.
+
+        Examples:
+            .. code-block:: python
+
+            import paddle
+            import paddle.distributed.fleet as fleet
+
+            paddle.disable_static()
+            value = np.arange(26).reshape(2, 13).astype("float32")
+            a = fluid.dygraph.to_variable(value)
+            layer = paddle.nn.Linear(13, 5, dtype="float32")
+            adam = paddle.optimizer.Adam(
+                learning_rate=0.01, parameters=layer.parameters())
+
+            fleet.init(is_collective=True)
+            adam = fleet.distributed_optimizer(adam)
+            dp_layer = fleet.distributed_model(layer)
+
+            lr = adam.get_lr()
+            print(lr) # 0.001
+        """
+        # imitate target optimizer retrieval
+        return self.user_defined_optimizer.get_lr()
 
     @dygraph_only
     def step(self):
         """
         Execute the optimizer once.
         Only work in dygraph mode
-        
+
         Returns: None
 
         Examples:
@@ -364,7 +502,7 @@ class Fleet(object):
         """
         Execute the optimizer once.
         Only work in dygraph mode
-        
+ 
         Returns: None
 
         Examples:
