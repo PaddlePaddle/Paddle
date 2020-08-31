@@ -1602,9 +1602,9 @@ class Embedding(layers.Layer):
         sparse(bool): The flag indicating whether to use sparse update. This parameter only
             affects the performance of the backwards gradient update. It is recommended to set
             True because sparse update is faster. But some optimizer does not support sparse update,
-            such as :ref:`api_fluid_optimizer_AdadeltaOptimizer` , :ref:`api_fluid_optimizer_AdamaxOptimizer` ,
-            :ref:`api_fluid_optimizer_DecayedAdagradOptimizer` , :ref:`api_fluid_optimizer_FtrlOptimizer` ,
-            :ref:`api_fluid_optimizer_LambOptimizer` and :ref:`api_fluid_optimizer_LarsMomentumOptimizer` .
+            such as :ref:`api_optimizer_AdadeltaOptimizer` , :ref:`api_optimizer_AdamaxOptimizer` ,
+            :ref:`api_optimizer_DecayedAdagradOptimizer` , :ref:`api_optimizer_FtrlOptimizer` ,
+            :ref:`api_optimizer_LambOptimizer` and :ref:`api_optimizer_LarsMomentumOptimizer` .
             In these case, is_sparse must be False. Default: False.
         weight_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` . In addition,
@@ -1636,10 +1636,10 @@ class Embedding(layers.Layer):
           inp_word.shape  # [2, 3]
           dict_size = 20
 
-          emb = nn.Embedding(dict_size,
-                  32,
-                  weight_attr='emb.w',
-                  sparse=False)
+          emb = nn.Embedding(
+                    dict_size,
+                    32,
+                    sparse=False)
     """
 
     def __init__(self,
