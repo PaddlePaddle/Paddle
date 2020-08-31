@@ -94,7 +94,7 @@ def bernoulli(x, name=None):
     return out
 
 
-def gaussian_random(shape, mean=0.0, std=1.0, dtype='float32', name=None):
+def gaussian_random(shape, mean=0.0, std=1.0, dtype=None, name=None):
     """
     This OP returns a Tensor filled with random values sampled from a Gaussian
     distribution, with ``shape`` and ``dtype``.
@@ -109,9 +109,10 @@ def gaussian_random(shape, mean=0.0, std=1.0, dtype='float32', name=None):
         std(float|int, optional): Standard deviation of the output tensor, default
             is 1.0.
         seed(int, optional): ${seed_comment}
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
-            the output Tensor. Supported data types: float32, float64.
-            Default is float32.
+        dtype(str|np.dtype, optional): The data type of the output Tensor.
+            Supported data types: float32, float64.
+            Default is None, use global default dtype (see ``get_default_dtype``
+            for details).
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -120,6 +121,13 @@ def gaussian_random(shape, mean=0.0, std=1.0, dtype='float32', name=None):
         Tensor: A Tensor filled with random values sampled from a Gaussian
         distribution, with ``shape`` and ``dtype``. 
     """
+    if dtype is None:
+        dtype = paddle.framework.get_default_dtype()
+        if dtype not in ['float32', 'float64']:
+            raise TypeError(
+                "gaussian_random only supports [float32, float64], but the default dtype is %s"
+                % dtype)
+
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     seed = 0
@@ -169,9 +177,10 @@ def standard_normal(shape, dtype=None, name=None):
             (with the shape [1], and the data type int32 or int64). If ``shape``
             is a Tensor, it should be a 1-D Tensor(with the data type int32 or
             int64).
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
-            output tensor. Supported data types: float32, float64. If ``dytpe``
-            is None, the data type is float32. Default is None.
+        dtype(str|np.dtype, optional): The data type of the output Tensor.
+            Supported data types: float32, float64.
+            Default is None, use global default dtype (see ``get_default_dtype``
+            for details).
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -216,7 +225,11 @@ def standard_normal(shape, dtype=None, name=None):
 
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.framework.get_default_dtype()
+        if dtype not in ['float32', 'float64']:
+            raise TypeError(
+                "standard_normal only supports [float32, float64], but the default dtype is %s"
+                % dtype)
 
     return gaussian_random(
         shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
@@ -325,7 +338,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
     return out
 
 
-def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
+def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     """
     This OP returns a Tensor filled with random values sampled from a uniform
     distribution in the range [``min``, ``max``), with ``shape`` and ``dtype``.
@@ -343,9 +356,10 @@ def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
             (with the shape [1], and the data type int32 or int64). If ``shape``
             is a Tensor, it should be a 1-D Tensor(with the data type int32 or
             int64).
-        dtype(str|np.dtype, optional): The data type of
-            the output Tensor. Supported data types: float32, float64.
-            Default is float32.
+        dtype(str|np.dtype, optional): The data type of the output Tensor.
+            Supported data types: float32, float64.
+            Default is None, use global default dtype (see ``get_default_dtype``
+            for details).
         min(float|int, optional): The lower bound on the range of random values
             to generate, ``min`` is included in the range. Default is -1.0.
         max(float|int, optional): The upper bound on the range of random values
@@ -401,6 +415,13 @@ def uniform(shape, dtype='float32', min=-1.0, max=1.0, seed=0, name=None):
 
 
     """
+    if dtype is None:
+        dtype = paddle.framework.get_default_dtype()
+        if dtype not in ['float32', 'float64']:
+            raise TypeError(
+                "uniform only supports [float32, float64], but the default dtype is %s"
+                % dtype)
+
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -447,7 +468,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
             (with the shape [1], and the data type int32 or int64). If ``shape``
             is a Tensor, it should be a 1-D Tensor(with the data type int32 or
             int64). Default is [1].
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
+        dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: int32, int64. If ``dytpe``
             is None, the data type is int64. Default is None.
         name(str, optional): The default value is None.  Normally there is no
@@ -550,7 +571,7 @@ def randperm(n, dtype="int64", name=None):
 
     Args:
         n(int): The upper bound (exclusive), and it should be greater than 0.
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of
+        dtype(str|np.dtype, optional): The data type of
             the output Tensor. Supported data types: int32, int64, float32,
             float64. Default is int64.
         name(str, optional): The default value is None. Normally there is no
@@ -622,9 +643,10 @@ def rand(shape, dtype=None, name=None):
             (with the shape [1], and the data type int32 or int64). If ``shape``
             is a Tensor, it should be a 1-D Tensor(with the data type int32 or
             int64).
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
-            output tensor. Supported data types: float32, float64. If ``dytpe``
-            is None, the data type is float32. Default is None.
+        dtype(str|np.dtype, optional): The data type of the output Tensor.
+            Supported data types: float32, float64.
+            Default is None, use global default dtype (see ``get_default_dtype``
+            for details).
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -668,7 +690,11 @@ def rand(shape, dtype=None, name=None):
 
     """
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.framework.get_default_dtype()
+        if dtype not in ['float32', 'float64']:
+            raise TypeError(
+                "rand only supports [float32, float64], but the default dtype is %s"
+                % dtype)
 
     out = uniform(shape, dtype, min=0.0, max=1.0, name=name)
     out.stop_gradient = True

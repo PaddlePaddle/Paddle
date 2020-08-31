@@ -44,7 +44,6 @@ class BasicEngine : public Engine {
 
  private:
   std::shared_ptr<GradOpNode> init_node_;
-  bool sorted_sum_gradient_;
   std::unordered_map<GradOpNode*, size_t> node_deps_;
   std::unordered_map<VariableWrapper*, std::unique_ptr<GradientAccumulator>>
       accumulators_;

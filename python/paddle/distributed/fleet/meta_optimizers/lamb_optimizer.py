@@ -16,8 +16,6 @@ from paddle.fluid.optimizer import LambOptimizer as LAMB
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
-__all__ = ["LambOptimizer"]
-
 
 class LambOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
