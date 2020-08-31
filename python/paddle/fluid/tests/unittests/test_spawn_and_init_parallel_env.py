@@ -30,6 +30,8 @@ from paddle.fluid.dygraph import parallel_helper
 # executed in the python3 sub-process. 
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestInitParallelEnv(unittest.TestCase):
     def test_check_env_failed(self):
         os.environ['FLAGS_selected_gpus'] = '0'
