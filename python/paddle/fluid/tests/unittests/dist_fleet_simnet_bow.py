@@ -70,6 +70,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
     """
 
     def train_network(self,
+                      args,
                       batch_size,
                       is_distributed=False,
                       is_sparse=False,
@@ -102,10 +103,6 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
-                name="__emb__",
-                learning_rate=emb_lr)
-            if is_self_contained_lr else fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__"),
             is_sparse=is_sparse)
         q_emb = fluid.layers.reshape(q_emb, [-1, emb_dim])
@@ -119,7 +116,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__q_fc__",
-                learning_rate=base_lr))
+                learning_rate=base_lr), )
 
         # embedding
         pt_emb = fluid.embedding(
@@ -129,10 +126,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__",
-                learning_rate=emb_lr)
-            if is_self_contained_lr else fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
-                name="__emb__"),
+                learning_rate=emb_lr),
             is_sparse=is_sparse)
         pt_emb = fluid.layers.reshape(pt_emb, [-1, emb_dim])
         # vsum
@@ -144,8 +138,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
             size=hid_dim,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
-                name="__fc__",
-                learning_rate=base_lr),
+                name="__fc__"),
             bias_attr=fluid.ParamAttr(name="__fc_b__"))
 
         # embedding
@@ -154,10 +147,6 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
-                name="__emb__",
-                learning_rate=emb_lr)
-            if is_self_contained_lr else fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__"),
             is_sparse=is_sparse)
@@ -171,13 +160,12 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
             size=hid_dim,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
-                name="__fc__",
-                learning_rate=base_lr),
+                name="__fc__"),
             bias_attr=fluid.ParamAttr(name="__fc_b__"))
         cos_q_pt = fluid.layers.cos_sim(q_fc, pt_fc)
         cos_q_nt = fluid.layers.cos_sim(q_fc, nt_fc)
         # loss
-        avg_cost = self.build_roleget_loss(cos_q_pt, cos_q_nt)
+        avg_cost = self.get_loss(cos_q_pt, cos_q_nt)
         # acc
         acc = self.get_acc(cos_q_nt, cos_q_pt, batch_size)
         return [avg_cost, acc, cos_q_pt]
@@ -208,7 +196,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
 
     def net(self, args, batch_size=4, lr=0.01):
         avg_cost, _, predict = \
-            self.train_network(batch_size=batch_size, is_distributed=False,
+            self.train_network(args, batch_size=batch_size, is_distributed=False,
                                is_sparse=True, is_self_contained_lr=False)
         self.avg_cost = avg_cost
         self.predict = predict

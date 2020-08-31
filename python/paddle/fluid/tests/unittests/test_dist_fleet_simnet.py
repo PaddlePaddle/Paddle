@@ -20,7 +20,7 @@ import tempfile
 from test_dist_fleet_base import TestFleetBase
 
 
-class TestDistMnistSync2x2(TestFleetBase):
+class TestDistSimnetASync2x2(TestFleetBase):
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"

@@ -42,7 +42,8 @@ op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 
-SPARSE_OP_LIST=["lookup_table", "lookup_table_v2"]
+SPARSE_OP_LIST = ["lookup_table", "lookup_table_v2"]
+
 
 def _get_lr_ops(program):
     lr_ops = []
@@ -79,7 +80,7 @@ def is_sparse_op(op):
 
 
 def is_distributed_sparse_op(op):
-    if op.type in SPARSE_OP_LIST" and op.attr('is_distributed') is True:
+    if op.type in SPARSE_OP_LIST and op.attr('is_distributed') is True:
         return True
 
     if op.type == "distributed_lookup_table" and op.attr(
