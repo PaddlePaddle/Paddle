@@ -91,8 +91,8 @@ def enabled():
     """
     This function checks whether the program runs in dynamic graph mode or not.
     You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
-    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
-    and :ref:`api_fluid_dygraph_disable` api .
+    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable_dygraph`
+    and :ref:`api_fluid_dygraph_disable_dygraph` api .
 
     **Note**:
         ``fluid.dygraph.enabled`` is the alias of ``fluid.in_dygraph_mode``, and
@@ -319,8 +319,7 @@ def grad(outputs,
          create_graph=False,
          only_inputs=True,
          allow_unused=False,
-         no_grad_vars=None,
-         backward_strategy=None):
+         no_grad_vars=None):
     ''' 
     .. note::
         **This API is ONLY available in Dygraph mode.**
@@ -328,19 +327,19 @@ def grad(outputs,
     This API computes the sum of gradients of `outputs` with respect to each `inputs` .
 
     Parameters:
-        outputs (Variable|list(Variable)|tuple(Variable)): the output Variable or 
-            Variable list/tuple of the graph to compute gradients.
-        inputs (Variable|list(Variable)|tuple(Variable)): the input Variable or 
-            Variable list/tuple of the graph to compute gradients. The returned
+        outputs (Tensor|list(Tensor)|tuple(Tensor)): the output Tensor or 
+            Tensor list/tuple of the graph to compute gradients.
+        inputs (Tensor|list(Tensor)|tuple(Tensor)): the input Tensor or 
+            Tensor list/tuple of the graph to compute gradients. The returned
             values of this API are the gradients of `inputs` . 
-        grad_outputs (Variable|list(Variable|None)|tuple(Variable|None), optional): 
+        grad_outputs (Tensor|list(Tensor|None)|tuple(Tensor|None), optional): 
             initial gradient values of `outputs` . If `grad_outputs` is None, 
             the initial gradient values of `outputs` would be Tensors filled with 1; 
             if `grad_outputs` is not None, it must have the same length as `outputs` , 
             and in this case, the initial gradient value of the i-th `outputs` would
             be: (1) a Tensor filled with 1 when the i-th element of `grad_outputs` 
             is None; (2) the i-th element of `grad_outputs` when the i-th element of
-            `grad_outputs` is a Variable. Default None.
+            `grad_outputs` is a Tensor. Default None.
         retain_graph (bool, optional): whether to retain the forward graph which 
             is used to calculate the gradient. When it is True, the graph would 
             be retained, in which way users can calculate backward twice for the 
@@ -352,24 +351,21 @@ def grad(outputs,
             computing process would be discarded. Default False.
         only_inputs (bool, optional): whether to only compute the gradients of
             `inputs` . If it is False, the gradients of all remaining leaf 
-            Variables in the graph would be also computed and accumulated. 
+            Tensors in the graph would be also computed and accumulated. 
             If it is True, only the gradients of `inputs` would be computed.
             Default True. only_inputs=False is under development, and it is
             not supported yet.    
         allow_unused (bool, optional): whether to raise error or return None if some 
-            Variables of `inputs` are unreachable in the graph. If some Variables of 
+            Tensors of `inputs` are unreachable in the graph. If some Tensors of 
             `inputs` are unreachable in the graph (i.e., their gradients are None),  
             error would be raised if allow_unused=False, or None would be returned as
             their gradients if allow_unused=True. Default False.
-        no_grad_vars (Variable|list(Variable)|tuple(Variable)|set(Variable), optional): 
-            the Variables whose gradients are not needed to compute. Default None.
-        backward_strategy (BackwardStrategy, optional): The backward strategy to
-            compute gradients. See :ref:`api_fluid_dygraph_BackwardStrategy` for
-            details. Default None.
+        no_grad_vars (Tensor|list(Tensor)|tuple(Tensor)|set(Tensor), optional): 
+            the Tensors whose gradients are not needed to compute. Default None.
 
     Returns:
-        tuple: a tuple of Variables, whose length is the same as the Variable number 
-        inside `inputs`, and the i-th returned Variable is the sum of gradients of 
+        tuple: a tuple of Tensors, whose length is the same as the Tensor number 
+        inside `inputs`, and the i-th returned Tensor is the sum of gradients of 
         `outputs` with respect to the i-th `inputs`.
 
     Examples 1:
@@ -503,12 +499,6 @@ def grad(outputs,
         raise AssertionError(
             "no_grad_vars must be None, Variable or list/tuple/set of Variables")
 
-    if backward_strategy is None:
-        backward_strategy = core.BackwardStrategy()
-
-    assert isinstance(backward_strategy, core.BackwardStrategy), \
-        "backward_strategy must be type paddle.fluid.dygraph.BackwardStrategy"
-
     assert isinstance(create_graph, bool), "create_graph must be True or False"
 
     if retain_graph is None:
@@ -524,9 +514,9 @@ def grad(outputs,
 
     place = core.Place()
     place.set_place(framework._current_expected_place())
-    return core.dygraph_partial_grad(
-        inputs, outputs, grad_outputs, no_grad_vars, place, backward_strategy,
-        create_graph, retain_graph, allow_unused, only_inputs)
+    return core.dygraph_partial_grad(inputs, outputs, grad_outputs,
+                                     no_grad_vars, place, create_graph,
+                                     retain_graph, allow_unused, only_inputs)
 
 
 @framework.dygraph_only

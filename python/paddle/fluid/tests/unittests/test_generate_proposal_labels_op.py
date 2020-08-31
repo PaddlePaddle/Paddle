@@ -224,7 +224,8 @@ def _expand_bbox_targets(bbox_targets_input, class_nums, is_cls_agnostic):
 
 class TestGenerateProposalLabelsOp(OpTest):
     def set_data(self):
-        self.use_random = False
+        #self.use_random = False
+        self.init_use_random()
         self.init_test_cascade()
         self.init_test_params()
         self.init_test_input()
@@ -266,6 +267,9 @@ class TestGenerateProposalLabelsOp(OpTest):
 
     def init_test_cascade(self, ):
         self.is_cascade_rcnn = False
+
+    def init_use_random(self):
+        self.use_random = False
 
     def init_test_params(self):
         self.batch_size_per_im = 512
@@ -327,6 +331,28 @@ class TestGenerateProposalLabelsOp(OpTest):
 class TestCascade(TestGenerateProposalLabelsOp):
     def init_test_cascade(self):
         self.is_cascade_rcnn = True
+
+
+class TestUseRandom(TestGenerateProposalLabelsOp):
+    def init_use_random(self):
+        self.use_random = True
+        self.is_cascade_rcnn = False
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_out)
+
+    def verify_out(self, outs):
+        print("skip")
+
+    def init_test_params(self):
+        self.batch_size_per_im = 512
+        self.fg_fraction = 0.025
+        self.fg_thresh = 0.5
+        self.bg_thresh_hi = 0.5
+        self.bg_thresh_lo = 0.0
+        self.bbox_reg_weights = [0.1, 0.1, 0.2, 0.2]
+        self.is_cls_agnostic = False
+        self.class_nums = 2 if self.is_cls_agnostic else 81
 
 
 class TestClsAgnostic(TestCascade):

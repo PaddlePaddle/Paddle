@@ -253,9 +253,6 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
 class MSELoss(fluid.dygraph.layers.Layer):
     """
-	:alias_main: paddle.nn.MSELoss
-	:alias: paddle.nn.MSELoss,paddle.nn.layer.MSELoss,paddle.nn.layer.loss.MSELoss
-
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
 
@@ -277,8 +274,6 @@ class MSELoss(fluid.dygraph.layers.Layer):
     where `input` and `label` are `float32` tensors of same shape.
 
     Parameters:
-        input (Variable): Input tensor, the data type is float32,
-        label (Variable): Label tensor, the data type is float32,
         reduction (string, optional): The reduction method for the output,
             could be 'none' | 'mean' | 'sum'.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned.
@@ -286,46 +281,27 @@ class MSELoss(fluid.dygraph.layers.Layer):
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
 
-    Returns:
-        The tensor variable storing the MSE loss of input and label.
-
-    Return type:
-        Variable.
+    Shape:
+        input (Tensor): Input tensor, the data type is float32 or float64
+        label (Tensor): Label tensor, the data type is float32 or float64
+        output (Tensor): output tensor storing the MSE loss of input and label, the data type is same as input.
 
     Examples:
         .. code-block:: python
 
             import numpy as np
             import paddle
-            from paddle import fluid
-            import paddle.fluid.dygraph as dg
 
-            mse_loss = paddle.nn.loss.MSELoss()
-            input = fluid.data(name="input", shape=[1])
-            label = fluid.data(name="label", shape=[1])
-            place = fluid.CPUPlace()
             input_data = np.array([1.5]).astype("float32")
             label_data = np.array([1.7]).astype("float32")
 
-            # declarative mode
-            output = mse_loss(input,label)
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            output_data = exe.run(
-                fluid.default_main_program(),
-                feed={"input":input_data, "label":label_data},
-                fetch_list=[output],
-                return_numpy=True)
-            print(output_data)
-            # [array([0.04000002], dtype=float32)]
-
-            # imperative mode
-            with dg.guard(place) as g:
-                input = dg.to_variable(input_data)
-                label = dg.to_variable(label_data)
-                output = mse_loss(input, label)
-                print(output.numpy())
-                # [0.04000002]
+            paddle.disable_static()
+            mse_loss = paddle.nn.loss.MSELoss()
+            input = paddle.to_tensor(input_data)
+            label = paddle.to_tensor(label_data)
+            output = mse_loss(input, label)
+            print(output.numpy())
+            # [0.04000002]
     """
 
     def __init__(self, reduction='mean'):
@@ -338,10 +314,10 @@ class MSELoss(fluid.dygraph.layers.Layer):
 
     def forward(self, input, label):
         if not fluid.framework.in_dygraph_mode():
-            fluid.data_feeder.check_variable_and_dtype(input, 'input',
-                                                       ['float32'], 'MSELoss')
-            fluid.data_feeder.check_variable_and_dtype(label, 'label',
-                                                       ['float32'], 'MSELoss')
+            fluid.data_feeder.check_variable_and_dtype(
+                input, 'input', ['float32', 'float64'], 'MSELoss')
+            fluid.data_feeder.check_variable_and_dtype(
+                label, 'label', ['float32', 'float64'], 'MSELoss')
 
         square_out = fluid.layers.square(
             fluid.layers.elementwise_sub(input, label))
@@ -400,8 +376,8 @@ class L1Loss(fluid.dygraph.Layer):
             paddle.disable_static()
             input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
             label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            input = paddle.to_variable(input_data)
-            label = paddle.to_variable(label_data)
+            input = paddle.to_tensor(input_data)
+            label = paddle.to_tensor(label_data)
 
             l1_loss = paddle.nn.loss.L1Loss()
             output = l1_loss(input, label)
@@ -479,7 +455,7 @@ class BCELoss(fluid.dygraph.Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input (Tensor): 2-D tensor with shape: (N, *), N is batch_size, `*` means
+        input (Tensor): 2-D tensor with shape: [N, *], N is batch_size, `*` means
             number of additional dimensions. The input ``input`` should always
             be the output of sigmod.  Available dtype is float32, float64.
         label (Tensor): 2-D tensor with the same shape as ``input``. The target
@@ -500,12 +476,11 @@ class BCELoss(fluid.dygraph.Layer):
             label_data = np.array([1.0, 0.0, 1.0]).astype("float32")
 
             paddle.disable_static()
-            input = paddle.to_variable(input_data)
-            label = paddle.to_variable(label_data)
+            input = paddle.to_tensor(input_data)
+            label = paddle.to_tensor(label_data)
             bce_loss = paddle.nn.loss.BCELoss()
             output = bce_loss(input, label)
             print(output.numpy())  # [0.65537095]
-            paddle.enable_static()
 
     """
 
@@ -608,9 +583,9 @@ class NLLLoss(fluid.dygraph.Layer):
 
                 place = paddle.CPUPlace()
                 paddle.disable_static(place)
-                input = paddle.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 log_out = log_softmax(input)
-                label = paddle.to_variable(label_np)
+                label = paddle.to_tensor(label_np)
                 result = nll_loss(log_out, label)
                 print(result.numpy()) # [1.0720209]
 
@@ -658,9 +633,12 @@ class KLDivLoss(fluid.dygraph.Layer):
             Default is ``'mean'``.
 
     Shape:
-      - input: (N, *) where * means, any number of additional dimensions.
-      - label: (N, *), same shape as input
-      - output: tensor with shape: (1) by default.
+
+        - input (Tensor): (N, *), where * means, any number of additional dimensions.
+
+        - label (Tensor): (N, *), same shape as input.
+
+        - output (Tensor): tensor with shape: [1] by default.
 
 
     Examples:
@@ -670,7 +648,7 @@ class KLDivLoss(fluid.dygraph.Layer):
             import numpy as np
             import paddle.nn as nn
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             shape = (5, 20)
             x = np.random.uniform(-10, 10, shape).astype('float32')
@@ -678,26 +656,26 @@ class KLDivLoss(fluid.dygraph.Layer):
 
             # 'batchmean' reduction, loss shape will be [N]
             kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
-            pred_loss = kldiv_criterion(paddle.to_variable(x),
-                                        paddle.to_variable(target))
+            pred_loss = kldiv_criterion(paddle.to_tensor(x),
+                                        paddle.to_tensor(target))
             # shape=[5]
 
             # 'mean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='mean')
-            pred_loss = kldiv_criterion(paddle.to_variable(x),
-                                        paddle.to_variable(target))
+            pred_loss = kldiv_criterion(paddle.to_tensor(x),
+                                        paddle.to_tensor(target))
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='sum')
-            pred_loss = kldiv_criterion(paddle.to_variable(x),
-                                        paddle.to_variable(target))
+            pred_loss = kldiv_criterion(paddle.to_tensor(x),
+                                        paddle.to_tensor(target))
             # shape=[1]
 
             # 'none' reduction, loss shape is same with X shape
             kldiv_criterion = nn.KLDivLoss(reduction='none')
-            pred_loss = kldiv_criterion(paddle.to_variable(x),
-                                        paddle.to_variable(target))
+            pred_loss = kldiv_criterion(paddle.to_tensor(x),
+                                        paddle.to_tensor(target))
             # shape=[5, 20]
     """
 
@@ -750,14 +728,12 @@ class MarginRankingLoss(fluid.dygraph.Layer):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
-
             paddle.disable_static()
 
-            input = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype("float32"))
-            other = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype("float32"))
-            label = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype("float32"))
+            input = paddle.to_tensor([[1, 2], [3, 4]]), dtype="float32")
+            other = paddle.to_tensor([[2, 1], [2, 4]]), dtype="float32")
+            label = paddle.to_tensor([[1, -1], [-1, -1]], dtype="float32")
             margin_rank_loss = paddle.nn.MarginRankingLoss()
             loss = margin_rank_loss(input, other, label)
             print(loss.numpy()) # [0.75]
