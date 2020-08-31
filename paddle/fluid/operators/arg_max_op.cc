@@ -42,9 +42,9 @@ REGISTER_OP_VERSION(arg_max)
                      "when the "
                      "argument `axis` in python API is None.",
                      false)
-            .ModifyAttr("dtype",
-                        "change the default value of dtype, the older version "
-                        "is -1, means return the "
-                        "return the int64 indices. The new version is 3, "
-                        "return the int64 indices directly. ",
-                        3));
+            .ModifyAttr(
+                "dtype",
+                "change the default value of dtype, the older version "
+                "is -1, means return the int64 indices."
+                "The new version is 3, return the int64 indices directly. ",
+                3));
