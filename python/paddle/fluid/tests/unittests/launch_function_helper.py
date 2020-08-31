@@ -16,6 +16,7 @@ import os
 import socket
 from contextlib import closing
 import time
+import sys
 
 
 def launch_func(func, env_dict):
@@ -25,17 +26,16 @@ def launch_func(func, env_dict):
     return proc
 
 
-def wait(procs, timeout=None):
+def wait(procs, timeout=30):
     error = False
     begin = time.time()
     while True:
         for p in procs:
-            ret = p.proc.poll()
-            if ret is None:
-                pass
-            elif ret != 0:
-                error = True
-                break
+            if not p.is_alive():
+                p.join()
+                if p.exitcode != 0:
+                    error = True
+                    break
 
         if timeout is not None and time.time() - begin >= timeout:
             error = True
@@ -44,8 +44,8 @@ def wait(procs, timeout=None):
         time.sleep(3)
 
     for p in procs:
-        if p.proc.poll() is None:  # not termniate
-            os.kill(p.proc.pid, signal.SIGKILL)
+        if p.is_alive():
+            p.terminate()
 
     if error:
         sys.exit(1)
