@@ -28,6 +28,10 @@ __all__ = [
 
 
 class BertEmbeddings(Layer):
+    """
+    Include embeddings from word, position and token_type embeddings
+    """
+
     def __init__(self,
                  vocab_size,
                  hidden_size=768,
@@ -63,6 +67,10 @@ class BertEmbeddings(Layer):
 
 
 class BertPooler(Layer):
+    """
+
+    """
+
     def __init__(self, hidden_size):
         super(BertPooler).__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
@@ -78,38 +86,41 @@ class BertPooler(Layer):
 
 
 class BertPreTrainedModel(PreTrainedModel):
-    """ An abstract class to handle weights initialization and
-        a simple interface for downloading and loading pretrained models.
+    """
+    An abstract class for pretrained BERT models. It provides BERT related
+    `model_config_file`, `resource_files_names`, `pretrained_resource_files_map`,
+    `pretrained_init_configuration`, `base_model_prefix` for downloading and
+    loading pretrained models. See `PreTrainedModel` for more details.
     """
 
     model_config_file = "model_config.json"
     pretrained_init_configuration = {
         "bert-base-uncased": {
-            "do_lower_case": True
+            "vocab_size": 30522,
+            "hidden_size": 768,
+            "num_hidden_layers": 12,
+            "num_attention_heads": 12,
+            "intermediate_size": 3072,
+            "hidden_act": "gelu",
+            "hidden_dropout_prob": 0.1,
+            "attention_probs_dropout_prob": 0.1,
+            "max_position_embeddings": 512,
+            "type_vocab_size": 2,
+            "initializer_range": 0.02,
+            "pad_token_id": 0,
         },
     }
-    # TODO: more flexible resource handle, namedtuple with fileds as:
-    # resource_name, saved_file, handle_name_for_load(None for used as __init__
-    # arguments), handle_name_for_save
     resource_files_names = {"model_state": "model_state"}
     pretrained_resource_files_map = {"model_state": {"bert-base-uncased": None}}
     base_model_prefix = "bert"
-
-    def _init_weights(self, module):
-        """ Initialize the weights """
-        if isinstance(module, (nn.Linear, nn.Embedding)):
-            # Slightly different from the TF version which uses truncated_normal for initialization
-            # cf https://github.com/pytorch/pytorch/pull/5617
-            module.weight.data.normal_(
-                mean=0.0, std=self.config.initializer_range)
-        elif isinstance(module, nn.LayerNorm):
-            module.bias.data.zero_()
-            module.weight.data.fill_(1.0)
-        if isinstance(module, nn.Linear) and module.bias is not None:
-            module.bias.data.zero_()
+    # TODO(guosheng): add bert same initialization
 
 
 class BertModel(BertPreTrainedModel):
+    """
+
+    """
+
     def __init__(self,
                  vocab_size,
                  hidden_size=768,
@@ -120,7 +131,9 @@ class BertModel(BertPreTrainedModel):
                  hidden_dropout_prob=0.1,
                  attention_probs_dropout_prob=0.1,
                  max_position_embeddings=512,
-                 type_vocab_size=16):
+                 type_vocab_size=16,
+                 initializer_range=0.02,
+                 pad_token_id=0):
         self.embeddings = BertEmbeddings(
             vocab_size, hidden_size, hidden_dropout_prob,
             max_position_embeddings, type_vocab_size)
@@ -155,12 +168,16 @@ class BertModel(BertPreTrainedModel):
 
 class BertForSequenceClassification(BertPreTrainedModel):
     """
-    Bert class, which is used to complete sequence classification.
+    Model for sentence (pair) classification task with BERT.
 
     Args:
-        bert (Layers|str|dict): An instance of BertModel. Or a string representing a 
-            name of or a file path to a pretrained bert model. Or a dict for 
-
+        bert (Layers|str|dict): An instance of BertModel. Or a string representing
+            a name of or a file path to a pretrained bert model. Or a dict for key
+            word arguments of BertModel.
+        num_classes (int, optional): The number of classes. Default 2
+        dropout (float, optional): The dropout probability for output of BERT.
+            If None, use the same value as `hidden_dropout_prob` of `BertModel`
+            instance `bert`. Default None
     """
 
     def __init__(self, bert, num_classes=2, dropout=None):
@@ -170,8 +187,9 @@ class BertForSequenceClassification(BertPreTrainedModel):
             BertModel(**bert)
             if isinstance(bert, dict) else BertModel.from_pretrained(bert))
         self.dropout = nn.Dropout(dropout if dropout is not None else
-                                  self.bert.init_config["hidden_dropout_prob"])
-        self.classifier = nn.Linear(self.bert.hidden_size, num_classes)
+                                  self.bert.config["hidden_dropout_prob"])
+        self.classifier = nn.Linear(self.bert.config["hidden_size"],
+                                    num_classes)
 
     def forward(self,
                 input_ids,
@@ -189,15 +207,3 @@ class BertForSequenceClassification(BertPreTrainedModel):
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
         return logits
-
-
-class BertPreTrainingHeads(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.predictions = BertLMPredictionHead(config)
-        self.seq_relationship = nn.Linear(config.hidden_size, 2)
-
-    def forward(self, sequence_output, pooled_output):
-        prediction_scores = self.predictions(sequence_output)
-        seq_relationship_score = self.seq_relationship(pooled_output)
-        return prediction_scores, seq_relationship_score
