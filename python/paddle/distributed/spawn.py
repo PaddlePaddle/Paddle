@@ -236,8 +236,6 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
         func (function): The target function is called by spawned process.
             This function need to be able to pickled, so it must be defined
             at the top level of a module.
-            This function should be called as ``func(i, *args)``, ``i`` is
-            the process index and ``args`` contains other arguments as tuple.
         args (tuple, optional): Arguments passed to ``func``.
         nprocs (int, optional): Number of processed to start. Default: -1.
             when nprocs is -1, the available device will be obtained from 
