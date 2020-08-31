@@ -392,7 +392,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 var.set(np.zeros_like(np_t), place)
 
-            ptb_model.set_state_dict(para_state_dict)
+            ptb_model.set_state_dict(stat_dict=para_state_dict)
 
             state_dict = ptb_model.state_dict()
 

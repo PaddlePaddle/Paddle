@@ -4600,6 +4600,7 @@ class RecomputeOptimizer(Optimizer):
             ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 
+    @framework.deprecate_stat_dict()
     def load(self, state_dict):
         """
 	    :api_attr: Static Graph
