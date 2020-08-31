@@ -559,6 +559,7 @@ EOF
                                 retry_unittests_regular="^$line$"
                             else
                                 retry_unittests_regular="$retry_unittests_regular|^$line$"
+                            fi
                         done
                     rm -f $tmp_dir/*
                     failed_test_lists=''
