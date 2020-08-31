@@ -15013,6 +15013,7 @@ def gather_tree(ids, parents):
     return out
 
 
+@deprecated(since="2.0.0", update_to="paddle.uniform")
 @templatedoc()
 def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
                    name=None):
