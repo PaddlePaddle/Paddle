@@ -25,6 +25,9 @@
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -51,12 +54,16 @@ void NaiveExecutor::Run() {
 
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc, int block_id,
                                     bool persistable, Scope *scope) {
-  PADDLE_ENFORCE_NOT_NULL(scope);
+  PADDLE_ENFORCE_NOT_NULL(scope,
+                          platform::errors::InvalidArgument(
+                              "The Scope to hold variables is nullptr."));
 
   auto &global_block = desc.Block(block_id);
 
   const auto *anc = scope;
-  PADDLE_ENFORCE(anc->parent() != anc);
+  PADDLE_ENFORCE_NE(
+      anc->parent(), anc,
+      platform::errors::InvalidArgument("Input scope should be child scope."));
   while (anc->parent()) {
     anc = anc->parent();
   }
@@ -101,9 +108,12 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
 }
 
 LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
-  PADDLE_ENFORCE(scope_, "Need to init scope first");
+  PADDLE_ENFORCE_NOT_NULL(scope_,
+                          platform::errors::PreconditionNotMet(
+                              "Need to init scope in NaiveExecutor firstly."));
   auto *var = scope_->FindVar(name);
-  PADDLE_ENFORCE(var, "No variable [%s] in the scope");
+  PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
+                                   "No variable [%s] in current scope.", name));
   auto *tensor = const_cast<LoDTensor *>(&var->Get<LoDTensor>());
   return tensor;
 }
@@ -122,14 +132,7 @@ NaiveExecutor::~NaiveExecutor() {
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  if (platform::is_cpu_place(place_)) {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    platform::MKLDNNDeviceContext *dev_ctx =
-        (platform::MKLDNNDeviceContext *)pool.Get(place_);
-    dev_ctx->ResetBlobMap();
-    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-        paddle::framework::DataLayout::kNCHW);
-  }
+  ClearMKLDNNCache(place_);
 #endif
 }
 

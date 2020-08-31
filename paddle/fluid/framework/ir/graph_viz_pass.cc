@@ -42,7 +42,10 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
   const std::string& graph_viz_path = Get<std::string>(kGraphvizPath);
   VLOG(3) << "draw IR graph viz to " << graph_viz_path;
   std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path));
-  PADDLE_ENFORCE(fout->good());
+  PADDLE_ENFORCE_EQ(
+      fout->good(), true,
+      platform::errors::Unavailable(
+          "Can not open file %s for printing the graph.", graph_viz_path));
   std::ostream& sout = *fout;
 
   std::unordered_map<const ir::Node*, std::string> node2dot;

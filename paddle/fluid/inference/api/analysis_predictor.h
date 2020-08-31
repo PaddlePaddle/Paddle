@@ -188,6 +188,12 @@ class AnalysisPredictor : public PaddlePredictor {
   void OptimizeInferenceProgram();
 
   ///
+  /// \brief Clear the intermediate tensors of the predictor
+  ///
+  ///
+  void ClearIntermediateTensor();
+
+  ///
   /// \brief Get the argument used by predictor
   ///
   /// \return the argument obtained by config

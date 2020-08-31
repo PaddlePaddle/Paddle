@@ -33,52 +33,28 @@ namespace plugin {
 
 template <typename T>
 int EmbEltwiseLayernormPluginDynamic<T>::initialize() {
-  int nb_emb = embs_.size();
-  std::vector<void *> ptr_vector(nb_emb);
-  std::vector<std::vector<half>> emb_fp16(nb_emb);
-
-  if (sizeof(T) == sizeof(float)) {
-    // FP32
-    for (int i = 0; i < nb_emb; ++i) {
-      ptr_vector[i] = embs_[i];
-    }
-  } else {
-    // FP16
-    for (int i = 0; i < nb_emb; ++i) {
-      auto emb_size = emb_sizes_[i];
-      auto &tmp = emb_fp16[i];
-      tmp.resize(emb_size);
-
-      for (int j = 0; j < emb_size; ++j) {
-        tmp[j] = static_cast<half>(embs_[i][j]);
-      }
-      ptr_vector[i] = tmp.data();
-    }
-  }
   embs_gpu_.resize(embs_.size());
   for (int i = 0; i < embs_.size(); i++) {
-    cudaMalloc(&embs_gpu_[i], sizeof(T) * emb_sizes_[i]);
-    cudaMemcpy(embs_gpu_[i], ptr_vector[i], emb_sizes_[i] * sizeof(T),
+    if (embs_[i]) {
+      cudaMalloc(&embs_gpu_[i], sizeof(float) * emb_sizes_[i]);
+      cudaMemcpy(embs_gpu_[i], embs_[i], emb_sizes_[i] * sizeof(float),
+                 cudaMemcpyHostToDevice);
+    }
+  }
+
+  if (bias_) {
+    cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
+    cudaMemcpy(bias_gpu_, bias_, bias_size_ * sizeof(float),
+               cudaMemcpyHostToDevice);
+  }
+  if (scale_) {
+    cudaMalloc(&scale_gpu_, sizeof(float) * scale_size_);
+    cudaMemcpy(scale_gpu_, scale_, scale_size_ * sizeof(float),
                cudaMemcpyHostToDevice);
   }
 
-  cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
-  cudaMemcpy(bias_gpu_, bias_, bias_size_ * sizeof(float),
-             cudaMemcpyHostToDevice);
-  cudaMalloc(&scale_gpu_, sizeof(float) * scale_size_);
-  cudaMemcpy(scale_gpu_, scale_, scale_size_ * sizeof(float),
-             cudaMemcpyHostToDevice);
-
   return 0;
 }
-
-template <typename T>
-size_t EmbEltwiseLayernormPluginDynamic<T>::getSerializationSize() const {
-  return 0;
-}
-
-template <typename T>
-void EmbEltwiseLayernormPluginDynamic<T>::serialize(void *buffer) const {}
 
 template <typename T>
 nvinfer1::DimsExprs EmbEltwiseLayernormPluginDynamic<T>::getOutputDimensions(
@@ -98,6 +74,16 @@ nvinfer1::DimsExprs EmbEltwiseLayernormPluginDynamic<T>::getOutputDimensions(
   ret.d[3] = expr_builder.constant(1);
   ret.d[4] = expr_builder.constant(1);
   return ret;
+}
+
+template <typename T>
+void EmbEltwiseLayernormPluginDynamic<T>::terminate() {
+  for (auto ptr : embs_gpu_) {
+    if (ptr) cudaFree(ptr);
+  }
+
+  if (bias_gpu_) cudaFree(bias_gpu_);
+  if (scale_gpu_) cudaFree(scale_gpu_);
 }
 
 template <typename T>
@@ -177,7 +163,7 @@ int EmbEltwiseLayernormPluginDynamic<T>::enqueue(
   int64_t *emb_ptr_gpu_d =
       emb_ptr_tensor.mutable_data<int64_t>(platform::CUDAPlace(device_id));
 
-  std::vector<int64_t> in_ptr, emb_ptr;
+  std::vector<uintptr_t> in_ptr, emb_ptr;
   for (int i = 0; i < input_num; i++) {
     in_ptr.push_back(reinterpret_cast<uintptr_t>(inputs[i]));
     emb_ptr.push_back(reinterpret_cast<uintptr_t>(embs_gpu_[i]));

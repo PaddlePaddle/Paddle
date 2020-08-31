@@ -320,7 +320,7 @@ std::vector<Node *> FuseBatchNormActPass::ReplaceNode(
                    return node;
                  });
   PADDLE_ENFORCE_EQ(has_replaced, true,
-                    platform::errors::NotFound("Not find %s in the node list.",
+                    platform::errors::NotFound("Not found %s in the node list.",
                                                cur_node->Name()));
   return new_list;
 }

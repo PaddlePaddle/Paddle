@@ -115,7 +115,18 @@ inline void TransposeQKV(const int batch, const int seq_len,
                          const half *input, half *output, cudaStream_t stream) {
   int scratch_size = batch * head_num * seq_len * seq_len;
   const dim3 grid(seq_len, batch, 3);
-  if (head_size % 2 == 0 && scratch_size % 2 == 0) {
+  if (head_size % 8 == 0 && scratch_size % 8 == 0) {
+    int h = head_size / 8;
+    const int4 *input4 = reinterpret_cast<const int4 *>(input);
+    int4 *output4 = reinterpret_cast<int4 *>(output);
+    dim3 block(h, head_num, 1);
+    // limit h * head_num to max block size(1024).
+    PADDLE_ENFORCE_LE(h * head_num, 1024,
+                      platform::errors::InvalidArgument(
+                          "head_num (%d) * head_size (%d) should <= %d",
+                          head_num, head_size, 1024 * 8));
+    TransposeQkvKernel<int4><<<grid, block, 0, stream>>>(h, input4, output4);
+  } else if (head_size % 2 == 0 && scratch_size % 2 == 0) {
     const int h = head_size / 2;
     const half2 *input2 = reinterpret_cast<const half2 *>(input);
     half2 *output2 = reinterpret_cast<half2 *>(output);
@@ -141,10 +152,6 @@ inline void TransposeQKV(const int batch, const int seq_len,
 
 int QkvToContextPluginDynamic::initialize() { return 0; }
 
-size_t QkvToContextPluginDynamic::getSerializationSize() const { return 0; }
-
-void QkvToContextPluginDynamic::serialize(void *buffer) const {}
-
 nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) {
@@ -167,7 +174,7 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
   ret.nbDims = 5;
   ret.d[0] = inputs[0].d[0];
   ret.d[1] = inputs[0].d[1];
-  ret.d[2] = expr_builder.constant(hidden_);
+  ret.d[2] = expr_builder.constant(head_size_ * head_number_);
   ret.d[3] = expr_builder.constant(1);
   ret.d[4] = expr_builder.constant(1);
   return ret;

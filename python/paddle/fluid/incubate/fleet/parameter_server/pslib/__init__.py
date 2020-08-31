@@ -20,9 +20,10 @@ import paddle.fluid as fluid
 from paddle.fluid.framework import Program
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
-from paddle.fluid.incubate.fleet.base.fleet_base import Mode
+from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
+from paddle.fluid.incubate.fleet.base.role_maker import HeterRoleMaker
 
 
 class PSLib(Fleet):
@@ -44,6 +45,9 @@ class PSLib(Fleet):
             role_maker = MPISymetricRoleMaker()
         super(PSLib, self).init(role_maker)
         self._fleet_ptr = fluid.core.Fleet()
+        self._heter_ptr = None
+        if isinstance(role_maker, HeterRoleMaker):
+            self._heter_ptr = fluid.core.Heter()
 
     def _set_client_communication_config(self, request_timeout_ms,
                                          connect_timeout_ms, max_retry):
@@ -59,7 +63,6 @@ class PSLib(Fleet):
         init_worker(): will be called by user. When a user knows current process is_server(), he/she
                     should call init_worker() to initialize global information about worker and connect
                     worker with pserver. You should run startup program before init_worker.
-
         Args:
             executor(Executor): The executor to run for init server.
             programs(Program|None): The program that need to run.
@@ -78,23 +81,35 @@ class PSLib(Fleet):
                 raise Exception(
                     "You should run DistributedOptimizer.minimize() first")
             # barrier_all for init_server, wait for server starts
+            if isinstance(self._role_maker, HeterRoleMaker):
+                if self._role_maker.is_xpu():
+                    local_endpoint = self._role_maker.get_local_endpoint()
+                    local_endpoint = local_endpoint.split(":")
+                    self._heter_ptr.start_xpu_service(
+                        str(local_endpoint[0]), int(local_endpoint[1]))
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
             # worker_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self._role_maker._get_size(),
                                         self._role_maker.worker_index() * 2)
+            if isinstance(self._role_maker, HeterRoleMaker):
+                if self._role_maker.is_worker():
+                    self._heter_ptr.set_xpu_list(
+                        self._role_maker._xpu_endpoints)
+                    self._heter_ptr.create_client2xpu_connection()
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
-            info = self._fleet_ptr.get_clients_info()
-            all_info = self._role_maker._worker_gather(info[0])
-            self._fleet_ptr.gather_clients(all_info)
-            self._fleet_ptr.set_client2client_config(
-                self._client2client_request_timeout_ms,
-                self._client2client_connect_timeout_ms,
-                self._client2client_max_retry)
-            self._fleet_ptr.create_client2client_connection()
+            if self._role_maker.is_worker():
+                info = self._fleet_ptr.get_clients_info()
+                all_info = self._role_maker._worker_gather(info[0])
+                self._fleet_ptr.gather_clients(all_info)
+                self._fleet_ptr.set_client2client_config(
+                    self._client2client_request_timeout_ms,
+                    self._client2client_connect_timeout_ms,
+                    self._client2client_max_retry)
+                self._fleet_ptr.create_client2client_connection()
             # barrier for init model
             self._role_maker._barrier_worker()
             if self._role_maker.is_first_worker():
@@ -134,7 +149,6 @@ class PSLib(Fleet):
     def init_server(self, model_dir=None, **kwargs):
         """
         init_server() will be called by user. It will load model from model_dir.
-
         Args:
             model_dir(str): load model path, can be local or hdfs/afs path.
             kwargs: user-defined attributes, currently support following:
@@ -142,16 +156,20 @@ class PSLib(Fleet):
                             0 is for load whole model,
                             1 is for load delta model (load diff),
                             default is 0.
-
         Example:
             >>> fleet.init_server("/you/path/to/model", mode = 0)
-
         """
         mode = kwargs.get("mode", 0)
-        self._role_maker._barrier_worker()
-        if self._role_maker.is_first_worker():
-            self._fleet_ptr.load_model(model_dir, mode)
-        self._role_maker._barrier_worker()
+        if isinstance(self._role_maker, HeterRoleMaker):
+            self._role_maker._barrier_xpu()
+            if self._role_maker.is_first_xpu():
+                self._fleet_ptr.load_model(model_dir, mode)
+            self._role_maker._barrier_xpu()
+        else:
+            self._role_maker._barrier_worker()
+            if self._role_maker.is_first_worker():
+                self._fleet_ptr.load_model(model_dir, mode)
+            self._role_maker._barrier_worker()
 
     def run_server(self):
         """
@@ -189,6 +207,54 @@ class PSLib(Fleet):
             raise Exception(
                 "You should run DistributedOptimizer.minimize() first")
 
+    def end_pass(self, scope):
+        if self._role_maker.worker_index() < self._role_maker.xpu_num():
+            self._heter_ptr.end_pass(scope, self._role_maker.worker_index())
+            self._heter_ptr.stop_xpu_service(self._role_maker.worker_index())
+
+    def train_from_dataset(self,
+                           executor,
+                           program=None,
+                           dataset=None,
+                           scope=None,
+                           thread=0,
+                           debug=False,
+                           fetch_list=None,
+                           fetch_info=None,
+                           print_period=100,
+                           fetch_handler=None):
+        """
+
+        """
+
+        if self._role_maker.is_worker():
+            self._role_maker._barrier_heter()
+        executor.train_from_dataset(program, dataset, scope, thread, debug,
+                                    fetch_list, fetch_info, print_period,
+                                    fetch_handler)
+
+    def start_heter_trainer(self,
+                            executor,
+                            program=None,
+                            scope=None,
+                            debug=False,
+                            fetch_list=None,
+                            fetch_info=None,
+                            print_period=100,
+                            fetch_handler=None):
+        """
+
+        """
+
+        trainer_instance = executor.start_heter_trainer(
+            program, scope, debug, fetch_list, fetch_info, print_period,
+            fetch_handler)
+        if self._role_maker.is_xpu():
+            print("barrier heter")
+            self._role_maker._barrier_heter()
+            print("barrier heter")
+        executor._default_executor.release_trainer(trainer_instance)
+
     def stop_worker(self):
         """
         stop(): will be called after a user finishes his/her training task. Fleet instance will be
@@ -201,6 +267,7 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.stop_server()
+            self._heter_ptr.stop_xpu_service()
         self._role_maker._barrier_worker()
         self._role_maker._barrier_all()
         self._role_maker._finalize()
@@ -208,19 +275,14 @@ class PSLib(Fleet):
     def distributed_optimizer(self, optimizer, strategy={}):
         """
         distributed_optimizer
-
         Args:
             optimizer(Optimizer): optimizer
             strategy(dict): strategy
-
         Examples:
             .. code-block:: python
-
               fleet.distributed_optimizer(optimizer)
-
         Returns:
             optimizer(DownpourOptimizer): downpour optimizer
-
         """
         self._optimizer = DownpourOptimizer(optimizer, strategy)
         return self._optimizer
@@ -234,7 +296,6 @@ class PSLib(Fleet):
                              export_for_deployment=True):
         """
         save pserver model called from a worker
-
         Args:
             executor(Executor): fluid executor
             dirname(str): save model path
@@ -242,12 +303,9 @@ class PSLib(Fleet):
             target_vars(list): default None
             main_program(Program): default None
             export_for_deployment(bool): default None
-
         Examples:
             .. code-block:: python
-
               fleet.save_inference_model(dirname="hdfs:/my/path")
-
         """
         self._fleet_ptr.save_model(dirname, 0)
 
@@ -255,15 +313,11 @@ class PSLib(Fleet):
         """
         print stat info of table_id,
         format: tableid, feasign size, mf size
-
         Args:
             table_id(int): the id of table
-
         Example:
             .. code-block:: python
-
               fleet.print_table_stat(0)
-
         """
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
@@ -273,6 +327,35 @@ class PSLib(Fleet):
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
         save presistable parameters,
+        when using fleet, it will save sparse and dense feature
+        Args:
+            executor(Executor): fluid executor
+            dirname(str): save path. It can be hdfs/afs path or local path
+            main_program(Program): fluid program, default None
+            kwargs: use define property, current support following
+                mode(int): 0 means save all pserver model,
+                           1 means save delta pserver model (save diff),
+                           2 means save xbox base,
+                           3 means save batch model.
+        Example:
+            .. code-block:: python
+              fleet.save_persistables(dirname="/you/path/to/model", mode = 0)
+        """
+        mode = kwargs.get("mode", 0)
+        self._fleet_ptr.client_flush()
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_model(dirname, mode)
+        self._role_maker._barrier_worker()
+
+    def save_model_with_whitelist(self,
+                                  executor,
+                                  dirname,
+                                  whitelist_path,
+                                  main_program=None,
+                                  **kwargs):
+        """
+        save whitelist, mode is consistent with fleet.save_persistables,
         when using fleet, it will save sparse and dense feature
 
         Args:
@@ -292,17 +375,18 @@ class PSLib(Fleet):
 
         """
         mode = kwargs.get("mode", 0)
+        table_id = kwargs.get("table_id", 0)
         self._fleet_ptr.client_flush()
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
-            self._fleet_ptr.save_model(dirname, mode)
+            self._fleet_ptr.save_model_with_whitelist(table_id, dirname, mode,
+                                                      whitelist_path)
         self._role_maker._barrier_worker()
 
     def save_cache_model(self, executor, dirname, main_program=None, **kwargs):
         """
         save sparse cache table,
         when using fleet, it will save sparse cache table
-
         Args:
             executor(Executor): fluid executor
             dirname(str): save path. It can be hdfs/afs path or local path
@@ -311,15 +395,11 @@ class PSLib(Fleet):
                 mode(int): define for feature extension in the future,
                            currently no use, will pass a default value 0
                 table_id(int): which table to save cache, default is 0
-
         Returns:
             feasign_num(int): cache feasign num
-
         Example:
             .. code-block:: python
-
               fleet.save_cache_model(None, dirname="/you/path/to/model", mode = 0)
-
         """
         mode = kwargs.get("mode", 0)
         table_id = kwargs.get("table_id", 0)
@@ -349,10 +429,8 @@ class PSLib(Fleet):
         """
         shrink cvm of all sparse embedding in pserver, the decay rate
         is defined as "show_click_decay_rate" in fleet_desc.prototxt
-
         Example:
             >>> fleet.shrink_sparse_table()
-
         """
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
@@ -367,7 +445,6 @@ class PSLib(Fleet):
     def shrink_dense_table(self, decay, emb_dim=11, scope=None, table_id=None):
         """
         shrink batch_sum in pserver by multiplying by decay
-
         Args:
             decay(float): the decay rate, usually range in (0, 1)
             emb_dim(int): one element's length in datanorm layer
@@ -375,12 +452,10 @@ class PSLib(Fleet):
             table_id(int): table id of shrinking dense table. None means shrink all,
                            you should specify it when using multiple scopes,
                            default is None.
-
         Example:
             >>> fleet.shrink_dense_table(0.98, 11, myscope1, 1)
             >>> fleet.shrink_dense_table(0.98, 11, myscope1, 2)
             >>> fleet.shrink_dense_table(0.98, 11, myscope2, 3)
-
         """
         if scope is None:
             scope = fluid.global_scope()
@@ -405,13 +480,10 @@ class PSLib(Fleet):
     def clear_one_table(self, table_id):
         """
         clear_one_table() will be called by user. It will clear one table.
-
         Args:
             table_id(int): table id
-
         Examples:
             .. code-block:: python
-
               fleet.clear_one_table(0)
         """
         self._role_maker._barrier_worker()
@@ -422,12 +494,9 @@ class PSLib(Fleet):
     def clear_model(self):
         """
         clear_model() will be called by user. It will clear sparse model.
-
         Examples:
             .. code-block:: python
-
               fleet.clear_model()
-
         """
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
@@ -437,21 +506,18 @@ class PSLib(Fleet):
     def clear_model(self):
         """
         clear_model() will be called by user. It will clear sparse model.
-
         Examples:
             .. code-block:: python
-
               fleet.clear_model()
-
         """
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.clear_model()
         self._role_maker._barrier_worker()
 
-    def load_one_table(self, table_id, model_path, **kwargs):
+    def load_pslib_whitelist(self, table_id, model_path, **kwargs):
         """
-        load pslib model for one table or load params from paddle model
+        load pslib model for one table with whitelist
 
         Args:
             table_id(int): load table id
@@ -489,6 +555,45 @@ class PSLib(Fleet):
         """
         self._role_maker._barrier_worker()
         mode = kwargs.get("mode", 0)
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.load_table_with_whitelist(table_id, model_path,
+                                                      mode)
+        self._role_maker._barrier_worker()
+
+    def load_one_table(self, table_id, model_path, **kwargs):
+        """
+        load pslib model for one table or load params from paddle model
+        Args:
+            table_id(int): load table id
+            model_path(str): load model path, can be local or hdfs/afs path
+            kwargs(dict): user defined params, currently support following:
+                only for load pslib model for one table:
+                    mode(int): load model mode. 0 is for load whole model, 1 is
+                               for load delta model (load diff), default is 0.
+                only for load params from paddle model:
+                    scope(Scope): Scope object
+                    model_proto_file(str): path of program desc proto binary
+                                           file, can be local or hdfs/afs file
+                    var_names(list): var name list
+                    load_combine(bool): load from a file or split param files
+                                        default False.
+        Examples:
+            .. code-block:: python
+              # load pslib model for one table
+              fleet.load_one_table(0, "hdfs:/my_fleet_model/20190714/0/")
+              fleet.load_one_table(1, "hdfs:/xx/xxx", mode = 0)
+              # load params from paddle model
+              fleet.load_one_table(2, "hdfs:/my_paddle_model/",
+                                   scope = my_scope,
+                                   model_proto_file = "./my_program.bin",
+                                   load_combine = False)
+              # below is how to save proto binary file
+              with open("my_program.bin", "wb") as fout:
+                  my_program = fluid.default_main_program()
+                  fout.write(my_program.desc.serialize_to_string())
+        """
+        self._role_maker._barrier_worker()
+        mode = kwargs.get("mode", 0)
         scope = kwargs.get("scope", None)
         model_proto_file = kwargs.get("model_proto_file", None)
         var_names = kwargs.get("var_names", None)
@@ -511,7 +616,6 @@ class PSLib(Fleet):
                                           load_combine=False):
         """
         load params from paddle model, and push params to pserver
-
         Args:
             scope(Scope): Scope object
             table_id(int): the id of table to load
@@ -520,7 +624,6 @@ class PSLib(Fleet):
                                    can be local or hdfs/afs file
             var_names(list): load var names
             load_combine(bool): load from a file or split param files
-
         """
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
@@ -595,18 +698,14 @@ class PSLib(Fleet):
            usually for online predict)
         3: load batch model (do some statistic works in checkpoint, such as
            calculate unseen days of each feasign)
-
         Args:
             model_dir(str): if you use hdfs, model_dir should starts with
                             'hdfs:', otherwise means local dir
             kwargs(dict): user-defined properties.
                           mode(int): the modes illustrated above, default 0
-
         Examples:
             .. code-block:: python
-
               fleet.load_model("afs:/user/path/")
-
         """
         mode = kwargs.get("mode", 0)
         self._role_maker._barrier_worker()
@@ -617,18 +716,14 @@ class PSLib(Fleet):
     def save_model(self, model_dir=None, **kwargs):
         """
         save pslib model, the modes are same with load model.
-
         Args:
             model_dir(str): if you use hdfs, model_dir should starts with
                             'hdfs:', otherwise means local dir
             kwargs(dict): user-defined properties.
                           mode(int): the modes illustrated above, default 0
-
         Examples:
             .. code-block:: python
-
               fleet.save_model("afs:/user/path/")
-
         """
         mode = kwargs.get("mode", 0)
         prefix = kwargs.get("prefix", None)
@@ -640,7 +735,6 @@ class PSLib(Fleet):
     def save_one_table(self, table_id, model_dir, **kwargs):
         """
         save pslib model's one table, the modes are same with load model.
-
         Args:
             table_id(int): table id
             model_dir(str): if you use hdfs, model_dir should starts with
@@ -649,12 +743,9 @@ class PSLib(Fleet):
                           mode(int): the modes illustrated above, default 0
                           prefix(str): the parts to save can have prefix,
                                        for example, part-prefix-000-00000
-
         Examples:
             .. code-block:: python
-
               fleet.save_one_table("afs:/user/path/")
-
         """
         mode = kwargs.get("mode", 0)
         prefix = kwargs.get("prefix", None)
@@ -686,7 +777,6 @@ def _prepare_params(input,
                     dtype='float32'):
     """
     preprocess params, this interface is not for users.
-
     Args:
         input(Variable|list of Variable): Input is a Tensor<int64> Variable
         size(list of int): the embedding dim
@@ -695,7 +785,6 @@ def _prepare_params(input,
         padding_idx(int): padding idx of input
         param_attr(ParamAttr): To specify the weight parameter property
         dtype(str): data type of output
-
     """
     if param_attr is None:
         raise ValueError("param_attr must be set")
@@ -749,7 +838,6 @@ def _fleet_embedding(input,
                      dtype='float32'):
     """
     add fleet embedding, this interface is not for users.
-
     Args:
         input(Variable|list of Variable): Input is a Tensor<int64> Variable
         size(list of int): the embedding dim
@@ -758,7 +846,6 @@ def _fleet_embedding(input,
         padding_idx(int): padding idx of input
         param_attr(ParamAttr): To specify the weight parameter property
         dtype(str): data type of output
-
     """
     # check and set params
     _prepare_params(input, size, is_sparse, is_distributed, padding_idx,
@@ -789,7 +876,6 @@ def _fleet_embedding_v2(input,
                         dtype='float32'):
     """
     add fleet embedding v2, this interface is not for users.
-
     Args:
         input(Variable|list of Variable): Input is a Tensor<int64> Variable
         size(list of int): the embedding dim
@@ -798,7 +884,6 @@ def _fleet_embedding_v2(input,
         padding_idx(int): padding idx of input
         param_attr(ParamAttr): To specify the weight parameter property
         dtype(str): data type of output
-
     """
     # check and set params
     _prepare_params(input, size, is_sparse, is_distributed, padding_idx,
@@ -823,10 +908,8 @@ def _fleet_embedding_v2(input,
 class fleet_embedding(object):
     """
     fleet embedding class, it is used as a wrapper
-
     Example:
         .. code-block:: python
-
           with fleet_embedding(click_name=label.name):
               emb = fluid.layers.embedding(
                   input=var,
@@ -834,7 +917,6 @@ class fleet_embedding(object):
                   is_sparse=True,
                   is_distributed=True,
                   param_attr=fluid.ParamAttr(name="embedding"))
-
     """
 
     def __init__(self, click_name, scale_sparse_grad=True):
@@ -873,11 +955,9 @@ class DownpourOptimizer(DistributedOptimizer):
     run distributed training. The optimized information will be stored in
     Fleet() instance who holds the global information about current distributed
     training.
-
     Args:
         optimizer(Optimizer): subclass of Optimizer.
         strategy(any): config for DownpourOptimizer.
-
     Returns:
         None
     """
@@ -925,7 +1005,6 @@ class DownpourOptimizer(DistributedOptimizer):
         Because optimizer algorithms run on pserver side. We will make this usable in pserver
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
-
         Args:
             losses (Variable|Variable List): loss variable or loss variable list to run optimization.
             scopes (Scope| Scope List): scope instance.
@@ -933,7 +1012,6 @@ class DownpourOptimizer(DistributedOptimizer):
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.
-
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
@@ -943,12 +1021,12 @@ class DownpourOptimizer(DistributedOptimizer):
             losses = [losses]
 
         optimize_ops, param_grads, opt_info = \
-                      self._distributed_optimizer._minimize(
-                          losses,
-                          startup_programs,
-                          parameter_list,
-                          no_grad_set,
-                          self._strategy)
+            self._distributed_optimizer._minimize(
+                losses,
+                startup_programs,
+                parameter_list,
+                no_grad_set,
+                self._strategy)
         opt_info["mpi_rank"] = fleet.worker_index()
         opt_info["mpi_size"] = fleet.worker_num()
         fleet._set_opt_info(opt_info)

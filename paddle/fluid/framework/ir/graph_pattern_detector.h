@@ -231,7 +231,7 @@ class PDPattern {
 
   std::vector<std::unique_ptr<PDNode>> nodes_;
   std::vector<edge_t> edges_;
-  std::unordered_map<std::string, PDNode*> node_map_;
+  std::map<std::string, PDNode*> node_map_;
   static size_t id_;
 };
 
@@ -263,7 +263,7 @@ class PDPattern {
  */
 class GraphPatternDetector {
  public:
-  using subgraph_t = std::unordered_map<PDNode*, Node*>;
+  using subgraph_t = std::map<PDNode*, Node*>;
 
   // Operate on the detected pattern.
   using handle_t =
@@ -1118,6 +1118,15 @@ struct MultipleQuantize : public PatternBase {
   PDNode* operator()();
 
   PATTERN_DECL_NODE(prev_out);
+};
+
+struct QuantizePlacement : public PatternBase {
+  QuantizePlacement(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quantize_placement") {}
+  PDNode* operator()(
+      const std::unordered_set<std::string>& quantize_enabled_op_types);
+
+  PATTERN_DECL_NODE(op);
 };
 
 // Pattern used for enforcing inplace computation for in-place computation

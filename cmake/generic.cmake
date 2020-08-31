@@ -89,6 +89,8 @@
 
 # including binary directory for generated headers.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+# including io directory for inference lib paddle_api.h
+include_directories("${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io")
 
 if(NOT APPLE)
   find_package(Threads REQUIRED)
@@ -382,8 +384,12 @@ function(cc_test_run TARGET_NAME)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
-    # No unit test should exceed 10 minutes.
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+    # No unit test should exceed 2 minutes.
+    if (APPLE OR WIN32)
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+    else()
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)
+    endif()
   endif()
 endfunction()
 
@@ -740,9 +746,14 @@ function(py_test TARGET_NAME)
                ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
+    
+    if (APPLE OR WIN32)
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+    else()
+        # No unit test should exceed 2 minutes in Linux.
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)
+    endif()
 
-    # No unit test should exceed 10 minutes.
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
   endif()
 endfunction()
 
@@ -817,20 +828,18 @@ function(brpc_library TARGET_NAME)
   cc_library("${TARGET_NAME}" SRCS "${brpc_library_SRCS}" DEPS "${TARGET_NAME}_proto" "${brpc_library_DEPS}")
 endfunction()
 
-# copy_if_different from src_file to dst_file before barrier_target.
-function(copy_if_different src_file dst_file barrier_target)
-  # this is a dummy target, should always be run to update ${dst_file}
-  add_custom_target(before_${barrier_target} ALL
-      DEPENDS before_${barrier_target}_custom_command
-  )
-  add_dependencies(${barrier_target} before_${barrier_target})
+# copy_if_different from src_file to dst_file At the beginning of the build.
+function(copy_if_different src_file dst_file)
+  get_filename_component(FILE_NAME ${dst_file} NAME_WE)
 
-  add_custom_command(
-      OUTPUT before_${barrier_target}_custom_command
+  # this is a dummy target for custom command, should always be run firstly to update ${dst_file}
+  add_custom_target(copy_${FILE_NAME}_command ALL
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${src_file} ${dst_file}
       COMMENT "copy_if_different ${dst_file}"
       VERBATIM
   )
+
+  add_dependencies(extern_glog copy_${FILE_NAME}_command)
 endfunction()
 
 # create a dummy source file, then create a static library.

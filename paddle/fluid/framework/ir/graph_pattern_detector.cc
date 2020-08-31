@@ -140,7 +140,7 @@ void GraphPatternDetector::ValidateByNodeRole(
           subgraphs->begin(), subgraphs->end(),
           [](const GraphPatternDetector::subgraph_t &subgraph) -> bool {
             // Collect the inputs and outputs.
-            std::unordered_set<Node *> ios;
+            std::set<Node *> ios;
             for (auto &item : subgraph) {
               if (!item.first->IsIntermediate()) {
                 ios.insert(item.second);
@@ -166,7 +166,7 @@ void GraphPatternDetector::ValidateByNodeRole(
 }
 
 struct HitGroup {
-  std::unordered_map<PDNode *, Node *> roles;
+  std::map<PDNode *, Node *> roles;
 
   bool Match(Node *node, PDNode *pat) {
     if (nodes_.count(node)) {
@@ -184,7 +184,7 @@ struct HitGroup {
   }
 
  private:
-  std::unordered_set<Node *> nodes_;
+  std::set<Node *> nodes_;
 };
 
 // Tell whether Node a links to b.
@@ -283,7 +283,7 @@ void GraphPatternDetector::UniquePatterns(
   if (subgraphs->empty()) return;
   std::vector<GraphPatternDetector::subgraph_t> result;
 
-  std::unordered_set<size_t> set;
+  std::set<size_t> set;
   std::hash<std::string> hasher;
   for (auto &g : *subgraphs) {
     // Sort the items in the sub-graph, and transform to a string key.
@@ -305,7 +305,7 @@ void GraphPatternDetector::UniquePatterns(
 void GraphPatternDetector::RemoveOverlappedMatch(
     std::vector<subgraph_t> *subgraphs) {
   std::vector<subgraph_t> result;
-  std::unordered_set<Node *> node_set;
+  std::set<Node *> node_set;
 
   for (const auto &subgraph : *subgraphs) {
     bool valid = true;
@@ -1877,6 +1877,19 @@ PDNode *patterns::MultipleQuantize::operator()() {
   });
 
   return prev_out;
+}
+
+PDNode *patterns::QuantizePlacement::operator()(
+    const std::unordered_set<std::string> &quantize_enabled_op_types) {
+  std::unordered_set<std::string> supported_op_types =
+      std::unordered_set<std::string>({"concat", "conv2d", "elementwise_add",
+                                       "fc", "matmul", "pool2d", "prior_box",
+                                       "relu", "reshape2", "transpose2"});
+  if (!quantize_enabled_op_types.empty()) {
+    supported_op_types = quantize_enabled_op_types;
+  }
+  auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
+  return op;
 }
 
 PDNode *patterns::MKLDNNInPlace::operator()() {

@@ -15,6 +15,7 @@
 import os
 import time
 import unittest
+import sys
 from multiprocessing import Process
 import signal
 
@@ -29,6 +30,8 @@ import paddle.fluid.layers.ops as ops
 
 
 class TestProgram2Code(unittest.TestCase):
+    @unittest.skipIf(sys.platform == "win32",
+                     "Windows does not support distribution")
     def test_print(self):
         place = fluid.CPUPlace()
         self.init_serv(place)

@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 
 class TestPyramidHashOpApi(unittest.TestCase):
@@ -59,11 +58,7 @@ class TestPyramidHashOpApi(unittest.TestCase):
 
         fleet.init(role)
 
-        strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = False
-        strategy.geo_sgd_mode = True
-        strategy.geo_sgd_need_push_nums = 5
-
+        strategy = StrategyFactory.create_geo_strategy(5)
         optimizer = fluid.optimizer.SGD(0.1)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(cost)

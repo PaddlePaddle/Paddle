@@ -25,10 +25,10 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.io import Dataset, BatchSampler, DataLoader
 
-EPOCH_NUM = 5
-BATCH_SIZE = 16
-IMAGE_SIZE = 784
-SAMPLE_NUM = 400
+EPOCH_NUM = 3
+BATCH_SIZE = 8
+IMAGE_SIZE = 32
+SAMPLE_NUM = 100
 CLASS_NUM = 10
 
 

@@ -124,6 +124,7 @@ void TensorRTEngine::FreezeNetwork() {
                   << ", this might be ok when trt does not need this range";
         }
       }
+#if IS_TRT_VERSION_GE(5122)
       auto is_layer_int8 = [&](nvinfer1::ILayer *layer) -> bool {
         for (int j = 0; j < layer->getNbInputs(); j++) {
           auto *temp_in = layer->getInput(j);
@@ -161,6 +162,11 @@ void TensorRTEngine::FreezeNetwork() {
           layer->setPrecision(nvinfer1::DataType::kFLOAT);
         }
       }
+#else
+      LOG(WARNING) << "If your TensorRT version is lower than 5.1.2.2, you "
+                      "must provide quantization scales for all tensors using "
+                      "TRT to run.";
+#endif
 #endif
     }
   }
@@ -180,6 +186,14 @@ void TensorRTEngine::FreezeNetwork() {
           Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
     }
     infer_builder_config_->addOptimizationProfile(optim_profile_);
+    infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
+    if (enable_int8) {
+      // Due to a bug of TRT, we must set precision BuilderFlag to kFP16 before
+      // kINT8 here to perform INT8 inference.
+      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kINT8);
+      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
+    }
     if (WithFp16()) {
       infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
       if (disable_trt_plugin_fp16()) {

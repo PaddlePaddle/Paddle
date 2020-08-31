@@ -379,7 +379,7 @@ void DownpourWorker::CopyDenseTable() {
       pull_dense_status.resize(0);
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, dest_table,
                                      dense_value_names_[dest_table],
-                                     &pull_dense_status);
+                                     &pull_dense_status, true);
       for (auto& t : pull_dense_status) {
         t.wait();
         auto status = t.get();
@@ -556,9 +556,11 @@ void DownpourWorker::TrainFilesWithProfiler() {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
-                        "Tensor %s contains Inf", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
-                        "Tensor %s contains NAN", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {
@@ -829,9 +831,11 @@ void DownpourWorker::TrainFiles() {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
-                        "Tensor %s contains Inf", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
-                        "Tensor %s contains NAN", var_name);
+                        platform::errors::InvalidArgument(
+                            "Tensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {

@@ -314,21 +314,19 @@ class YOLOv3(fluid.dygraph.Layer):
                         scores, perm=[0, 2, 1]))
             self.downsample //= 2
 
-        # TODO(liym27): Uncomment code after "return" statement can be transformed correctly.
-        # if not self.is_train:
-        #     # get pred
-        #     yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
-        #     yolo_scores = fluid.layers.concat(self.scores, axis=2)
-        #
-        #     pred = fluid.layers.multiclass_nms(
-        #         bboxes=yolo_boxes,
-        #         scores=yolo_scores,
-        #         score_threshold=cfg.valid_thresh,
-        #         nms_top_k=cfg.nms_topk,
-        #         keep_top_k=cfg.nms_posk,
-        #         nms_threshold=cfg.nms_thresh,
-        #         background_label=-1)
-        #     return pred
-        # else:
-        #     return sum(self.losses)
-        return sum(self.losses)
+        if not self.is_train:
+            # get pred
+            yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
+            yolo_scores = fluid.layers.concat(self.scores, axis=2)
+
+            pred = fluid.layers.multiclass_nms(
+                bboxes=yolo_boxes,
+                scores=yolo_scores,
+                score_threshold=cfg.valid_thresh,
+                nms_top_k=cfg.nms_topk,
+                keep_top_k=cfg.nms_posk,
+                nms_threshold=cfg.nms_thresh,
+                background_label=-1)
+            return pred
+        else:
+            return sum(self.losses)

@@ -570,7 +570,7 @@ void PrintProfiler(
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Except profiler state must to be one of ['CPU', 'GPU' 'ALL'], but "
-          "received Invalid profiler state"));
+          "received Invalid profiler state."));
     }
 
     if (merge_thread) {

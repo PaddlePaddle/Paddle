@@ -175,34 +175,56 @@ class TestFP16MulOp2(TestMulOp2):
                 no_grad_set=set('Y'))
 
 
-class TestMulOpAttr(unittest.TestCase):
-    def test_out(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
-            y = fluid.data(name='y', shape=[3, 2], dtype='float32')
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXPUMulOp1(TestMulOp):
+    def init_dtype_type(self):
+        self.dtype = np.float32
 
-            res = fluid.data(name="output", shape=[2, 2], dtype="float32")
-            y_1 = paddle.mul(x, y, out=res)
+    def test_check_output(self):
+        place = core.XPUPlace(0)
+        self.check_output_with_place(place, atol=1e-1)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            data1 = np.array([[1, 2, 3], [4, 5, 6]], dtype='float32')
-            data2 = np.array([[1, 2], [1, 2], [1, 2]], dtype='float32')
-            np_res, np_y_1 = exe.run(feed={'x': data1,
-                                           'y': data2},
-                                     fetch_list=[res, y_1])
+    def test_check_grad_normal(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', max_relative_error=0.5)
 
-            self.assertEqual((np_res == np_y_1).all(), True)
+    def test_check_grad_ingore_x(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
 
-    def test_name(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
-            y = fluid.data(name='y', shape=[3, 2], dtype='float32')
+    def test_check_grad_ingore_y(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
 
-            res = fluid.data(name="output", shape=[2, 2], dtype="float32")
-            y_1 = paddle.mul(x, y, name='mul_res')
-            y_2 = paddle.mul(x, y, out=res, name='mul_res')
-            self.assertEqual(('mul_res' in y_1.name), True)
+
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXPUMulOp2(TestMulOp2):
+    def init_dtype_type(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        place = core.XPUPlace(0)
+        self.check_output_with_place(place, atol=2e-1)
+
+    def test_check_grad_normal(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', max_relative_error=0.9)
+
+    def test_check_grad_ingore_x(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', max_relative_error=0.9, no_grad_set=set('Y'))
 
 
 if __name__ == "__main__":

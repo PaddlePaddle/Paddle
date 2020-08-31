@@ -64,9 +64,6 @@ constexpr char kZeroVarSuffix[] = "@ZERO";
 /// Variables with this suffix are the new Gradient.
 constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 
-/// Variables with this suffix are the loaded from pre-train model.
-constexpr char kLoadedVarSuffix[] = "@LOADED";
-
 /// RuntimeContext is used to relate input/output names of Operator with
 /// the corresponding variables in name scope.
 /// If an Op has attribute kEnableCacheRuntimeContext, it means that in a same
@@ -155,8 +152,9 @@ class OperatorBase {
   bool HasAttr(const std::string& name) const { return attrs_.count(name); }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    PADDLE_ENFORCE(attrs_.find(name) != attrs_.end(),
-                   "%s should be in AttributeMap", name);
+    PADDLE_ENFORCE_NE(
+        attrs_.find(name), attrs_.end(),
+        platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
     return BOOST_GET_CONST(T, attrs_.at(name));
   }
   const AttributeMap& Attrs() const { return attrs_; }
@@ -165,7 +163,9 @@ class OperatorBase {
   const VariableNameMap& Outputs() const { return outputs_; }
 
   const OpInfo& Info() const {
-    PADDLE_ENFORCE_NOT_NULL(info_, "OpInfo of %s is not found", type_);
+    PADDLE_ENFORCE_NOT_NULL(
+        info_, platform::errors::NotFound(
+                   "OpInfo of operator (%s) is not found.", type_));
     return *info_;
   }
 
@@ -369,7 +369,9 @@ class ExecutionContext {
 
 #ifdef PADDLE_WITH_CUDA
   const inline platform::CUDADeviceContext& cuda_device_context() const {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()), true);
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "Current device context place is not GPUPlace."));
     return *reinterpret_cast<const platform::CUDADeviceContext*>(
         &device_context_);
   }
@@ -384,8 +386,12 @@ class ExecutionContext {
     auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
         allocation_ptr, deleter);
 
-    PADDLE_ENFORCE_GE(allocation_ptr->size(),
-                      framework::product(dim) * sizeof(T));
+    PADDLE_ENFORCE_GE(
+        allocation_ptr->size(), framework::product(dim) * sizeof(T),
+        platform::errors::PreconditionNotMet(
+            "The data memory size(%d) is less than the tensor needed memory "
+            "size(%d).",
+            allocation_ptr->size(), framework::product(dim) * sizeof(T)));
 
     paddle::framework::Tensor temp_tensor(
         framework::ToDataType(std::type_index(typeid(T))));

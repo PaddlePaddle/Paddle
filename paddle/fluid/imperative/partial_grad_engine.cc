@@ -33,8 +33,19 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
 
+DECLARE_bool(sort_sum_gradient);
+
 namespace paddle {
 namespace imperative {
+
+struct HashPair {
+  template <class T1, class T2>
+  size_t operator()(const std::pair<T1, T2> &p) const noexcept {
+    auto hash1 = std::hash<T1>{}(p.first);
+    auto hash2 = std::hash<T2>{}(p.second);
+    return hash1 ^ hash2;
+  }
+};
 
 /**
  * This function prunes the graph to get the ops between `output_targets`
@@ -152,8 +163,10 @@ static void GetGraphInfoBetweenTargets(
   target_vars = *input_target_grads;
 
   std::queue<std::pair<OpBase * /*op*/, OpBase * /*pending op*/>> op_queue;
+  std::unordered_set<std::pair<OpBase *, OpBase *>, HashPair> op_base_visited;
   for (auto &endpoint_op : endpoint_ops) {
     op_queue.emplace(endpoint_op, nullptr);
+    op_base_visited.emplace(endpoint_op, nullptr);
   }
 
   while (!op_queue.empty()) {
@@ -207,6 +220,7 @@ static void GetGraphInfoBetweenTargets(
     if (pending_op) {
       VLOG(10) << "Pending op of " << op->Type() << " is "
                << pending_op->Type();
+
       pending_ops[op].insert(pending_op);
       ++op_deps[pending_op];
     } else {
@@ -216,7 +230,10 @@ static void GetGraphInfoBetweenTargets(
     auto iter = preceding_ops.find(op);
     if (iter != preceding_ops.end()) {
       for (auto &preceding_op : iter->second) {
-        op_queue.emplace(preceding_op, op);
+        if (op_base_visited.count(std::make_pair(preceding_op, op)) == 0) {
+          op_queue.emplace(preceding_op, op);
+          op_base_visited.emplace(preceding_op, op);
+        }
       }
     }
   }
@@ -514,8 +531,7 @@ class PartialGradTask {
                   const std::vector<std::shared_ptr<VarBase>> &output_targets,
                   const std::vector<std::shared_ptr<VarBase>> &output_grads,
                   const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-                  const platform::Place &place,
-                  const detail::BackwardStrategy &strategy, bool create_graph,
+                  const platform::Place &place, bool create_graph,
                   bool retain_graph, bool allow_unused, bool only_inputs);
 
   std::vector<std::shared_ptr<VarBase>> Run();
@@ -562,7 +578,6 @@ class PartialGradTask {
   bool retain_graph_;
   bool allow_unused_;
   bool only_inputs_;
-  detail::BackwardStrategy strategy_;
 };
 
 PartialGradTask::PartialGradTask(
@@ -570,15 +585,14 @@ PartialGradTask::PartialGradTask(
     const std::vector<std::shared_ptr<VarBase>> &output_targets,
     const std::vector<std::shared_ptr<VarBase>> &output_grads,
     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-    const platform::Place &place, const detail::BackwardStrategy &strategy,
-    bool create_graph, bool retain_graph, bool allow_unused, bool only_inputs) {
+    const platform::Place &place, bool create_graph, bool retain_graph,
+    bool allow_unused, bool only_inputs) {
   input_targets_ = input_targets;
   place_ = place;
   create_graph_ = create_graph;
   retain_graph_ = retain_graph;
   allow_unused_ = allow_unused;
   only_inputs_ = only_inputs;
-  strategy_ = strategy;
 
   PADDLE_ENFORCE_EQ(only_inputs_, true,
                     platform::errors::Unimplemented(
@@ -870,12 +884,17 @@ void PartialGradTask::RunEachOp(OpBase *op) {
   if (create_graph_) {
     auto double_grad_node = CreateGradOpNode(op->InnerOp(), tmp_ins, tmp_outs,
                                              op->Attrs(), op->place());
-    if (double_grad_node) {
-      VLOG(10) << "Create " << double_grad_node->size()
-               << " double grad op(s) for " << op->Type()
-               << ", pending ops: " << GradPendingOpTypes(*double_grad_node);
-      double_grad_nodes_.emplace_back(std::move(double_grad_node));
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        double_grad_node,
+        platform::errors::NotFound("The Op %s doesn't have any grad op. If you "
+                                   "don't intend calculating higher order "
+                                   "derivatives, please set `create_graph` to "
+                                   "False.",
+                                   op->Type()));
+    VLOG(10) << "Create " << double_grad_node->size()
+             << " double grad op(s) for " << op->Type()
+             << ", pending ops: " << GradPendingOpTypes(*double_grad_node);
+    double_grad_nodes_.emplace_back(std::move(double_grad_node));
   }
 
   VLOG(10) << "There are " << grads_to_accumulate_.size() << " to sum gradient";
@@ -961,7 +980,7 @@ void PartialGradTask::PrepareInitialGradientAccumulators(const OpBase *op) {
 
       if (!accumulator) {
         accumulator.reset(new GradientAccumulationInfo(
-            var, strategy_.sorted_sum_gradient_, create_graph_));
+            var, FLAGS_sort_sum_gradient, create_graph_));
       }
 
       accumulator->IncreaseTotalRefCnt();
@@ -1013,11 +1032,11 @@ PartialGradEngine::PartialGradEngine(
     const std::vector<std::shared_ptr<VarBase>> &output_targets,
     const std::vector<std::shared_ptr<VarBase>> &output_grads,
     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-    const platform::Place &place, const detail::BackwardStrategy &strategy,
-    bool create_graph, bool retain_graph, bool allow_unused, bool only_inputs)
+    const platform::Place &place, bool create_graph, bool retain_graph,
+    bool allow_unused, bool only_inputs)
     : task_(new PartialGradTask(input_targets, output_targets, output_grads,
-                                no_grad_vars, place, strategy, create_graph,
-                                retain_graph, allow_unused, only_inputs)) {}
+                                no_grad_vars, place, create_graph, retain_graph,
+                                allow_unused, only_inputs)) {}
 
 PartialGradEngine::~PartialGradEngine() { Clear(); }
 

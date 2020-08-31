@@ -26,9 +26,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/parameter_recv.h"
-#include "paddle/fluid/operators/distributed/rpc_common.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -44,7 +44,7 @@ class RecvSaveOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
-        ctx.GetPlace());
+        platform::CPUPlace());
   }
 };
 
@@ -105,6 +105,10 @@ This operator will serialize and write LoDTensor variable to file on disk.
         .SetDefault({});
 
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<bool>("is_sparse", "sparse or dense param");
+    AddAttr<int>("pserver_num", "the number of pserver").SetDefault(0);
+    AddAttr<bool>("is_distributed", "sparse id range [0, N) or [0, INT64]")
+        .SetDefault(false);
   }
 };
 
@@ -159,8 +163,6 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto place = ctx.GetPlace();
-
     auto filename = ctx.Attr<std::string>("file_path");
     auto overwrite = ctx.Attr<bool>("overwrite");
 
@@ -177,6 +179,11 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     auto remote_varnames =
         ctx.Attr<std::vector<std::string>>("remote_varnames");
     auto endpoints = ctx.Attr<std::vector<std::string>>("endpoints");
+
+    auto trainer_id = ctx.Attr<int>("trainer_id");
+    auto is_sparse = ctx.Attr<bool>("is_sparse");
+    auto pserver_num = ctx.Attr<int>("pserver_num");
+    // auto is_distributed = ctx.Attr<int>("is_distributed");
 
     PADDLE_ENFORCE_EQ(slice_shapes.size(), slice_varnames.size(),
                       platform::errors::InvalidArgument(
@@ -202,44 +209,105 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
                                   framework::make_ddim(origin_shape));
 
     framework::Scope &local_scope = ctx.scope().NewScope();
-
-    auto trainer_id = ctx.Attr<int>("trainer_id");
-
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto place = ctx.GetPlace();
     auto &device_ctx = *pool.Get(place);
 
     distributed::RPCClient *rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
-    for (size_t i = 0; i < slice_varnames.size(); i++) {
-      auto &varname = slice_varnames[i];
-      auto *var = local_scope.Var(varname);
-      auto *tensor = var->GetMutable<framework::LoDTensor>();
+    if (!is_sparse) {
+      for (size_t i = 0; i < slice_varnames.size(); i++) {
+        auto &varname = slice_varnames[i];
+        auto *var = local_scope.Var(varname);
+        auto *tensor = var->GetMutable<framework::LoDTensor>();
 
-      auto slice_string =
-          string::split_string<std::string>(slice_shapes[i], ",");
-      std::vector<int64_t> slice_shape;
+        auto slice_string =
+            string::split_string<std::string>(slice_shapes[i], ",");
+        std::vector<int64_t> slice_shape;
 
-      for (auto &dim : slice_string) {
-        slice_shape.push_back(static_cast<int64_t>(std::stoull(dim)));
+        for (auto &dim : slice_string) {
+          slice_shape.push_back(static_cast<int64_t>(std::stoull(dim)));
+        }
+
+        tensor->Resize(framework::make_ddim(slice_shape));
+
+        distributed::VarHandlePtr ret;
+
+        ret = rpc_client->AsyncGetVarNoBarrier(
+            endpoints[i], device_ctx, local_scope, remote_varnames[i], varname);
+
+        PADDLE_ENFORCE_NE(
+            ret->Wait(), 0U,
+            platform::errors::ExecutionTimeout(
+                "rpc error when communication with %s", endpoints[i]));
+
+        auto &c_tensor = var->Get<framework::LoDTensor>();
+
+        SerializeTensorAppendToStream(fout, c_tensor);
+        local_scope.EraseVars({varname});
+      }
+    } else {
+      PADDLE_ENFORCE_GT(
+          pserver_num, 0,
+          platform::errors::InvalidArgument(
+              "Expected attr len(pserver_num) must gather than 0"));
+
+      std::vector<std::string> varnames;
+      auto *var = local_scope.Var("tmp_for_sparse_merge");
+      auto *o_t = var->GetMutable<framework::LoDTensor>();
+      o_t->Resize(framework::make_ddim(origin_shape));
+      auto *out_d = o_t->mutable_data<float>(place);
+
+      varnames.push_back("tmp_for_sparse_merge");
+      for (size_t i = 0; i < slice_varnames.size(); i++) {
+        varnames.push_back(slice_varnames[i]);
       }
 
-      tensor->Resize(framework::make_ddim(slice_shape));
+      std::vector<const float *> tensors;
 
-      distributed::VarHandlePtr ret;
+      for (size_t i = 0; i < slice_varnames.size(); i++) {
+        auto &varname = slice_varnames[i];
+        auto *local_var = local_scope.Var(varname);
+        auto *tensor = local_var->GetMutable<framework::LoDTensor>();
 
-      ret = rpc_client->AsyncGetVarNoBarrier(
-          endpoints[i], device_ctx, local_scope, remote_varnames[i], varname);
+        auto slice_string =
+            string::split_string<std::string>(slice_shapes[i], ",");
+        std::vector<int64_t> slice_shape;
 
-      PADDLE_ENFORCE_NE(
-          ret->Wait(), 0U,
-          platform::errors::ExecutionTimeout(
-              "rpc error when communication with %s", endpoints[i]));
+        for (auto &dim : slice_string) {
+          slice_shape.push_back(static_cast<int64_t>(std::stoull(dim)));
+        }
+
+        tensor->Resize(framework::make_ddim(slice_shape));
+
+        distributed::VarHandlePtr ret;
+
+        ret = rpc_client->AsyncGetVarNoBarrier(
+            endpoints[i], device_ctx, local_scope, remote_varnames[i], varname);
+
+        PADDLE_ENFORCE_NE(
+            ret->Wait(), 0U,
+            platform::errors::ExecutionTimeout(
+                "rpc error when communication with %s", endpoints[i]));
+
+        const auto *value =
+            local_var->Get<framework::LoDTensor>().data<float>();
+        tensors.push_back(value);
+      }
+
+      auto dims1 = origin_shape[1];
+      for (int j = 0; j < origin_shape[0]; ++j) {
+        auto id = j % pserver_num;
+        auto idx = j / pserver_num;
+        std::memcpy(out_d + j * dims1, tensors[id] + idx * dims1,
+                    sizeof(float) * dims1);
+      }
 
       auto &c_tensor = var->Get<framework::LoDTensor>();
-
       SerializeTensorAppendToStream(fout, c_tensor);
-      local_scope.EraseVars({varname});
+
+      local_scope.EraseVars(varnames);
     }
 
     fout.close();

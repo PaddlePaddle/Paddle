@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,143 +13,191 @@
 # limitations under the License.
 
 from __future__ import print_function
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import numpy as np
 import os
 import shutil
 import unittest
+import math
 
 
-class TestPipelineConfig(unittest.TestCase):
-    """  TestCases for Config in Pipeline Training. """
+def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
+                  act=None):
+    conv = fluid.layers.conv2d(
+        input=input,
+        num_filters=num_filters,
+        filter_size=filter_size,
+        stride=stride,
+        padding=(filter_size - 1) // 2,
+        groups=groups,
+        act=None,
+        bias_attr=False)
+    return fluid.layers.batch_norm(
+        input=conv,
+        act=act, )
 
-    def config(self, filelist_length, pipeline_num, reader_concurrency):
-        filelist = []
-        for i in range(filelist_length):
-            filelist.append("file" + str(i))
-        self.dataset.set_filelist(filelist)
-        self.pipeline_opt["concurrency_list"][0] = reader_concurrency
-        self.pipeline_num = pipeline_num
 
-    def helper(self, in_filelist_length, in_pipeline_num, in_reader_concurrency,
-               out_pipeline_num, out_reader_concurrency, out_dataset_thread):
-        self.config(in_filelist_length, in_pipeline_num, in_reader_concurrency)
-        res = self.exe._adjust_pipeline_resource(
-            self.pipeline_opt, self.dataset, self.pipeline_num)
-        self.assertEqual(self.pipeline_opt["concurrency_list"][0],
-                         out_reader_concurrency)
-        self.assertEqual(res, out_pipeline_num)
-        self.assertEqual(self.dataset.thread_num, out_dataset_thread)
+def shortcut(input, ch_out, stride, is_first):
+    ch_in = input.shape[1]
+    if ch_in != ch_out or stride != 1 or is_first == True:
+        return conv_bn_layer(input, ch_out, 1, stride)
+    else:
+        return input
 
-    def test_adjust_pipeline_resource(self):
-        self.exe = fluid.Executor(fluid.CPUPlace())
-        self.dataset = fluid.DatasetFactory().create_dataset(
-            "FileInstantDataset")
-        self.pipeline_opt = {"concurrency_list": [0, 1, 2]}
-        self.pipeline_num = 0
 
-        self.helper(7, 2, 2, 2, 2, 4)
-        self.helper(7, 2, 3, 2, 3, 6)
-        self.helper(7, 2, 4, 2, 3, 6)
+def bottleneck_block(input, num_filters, stride):
+    conv0 = conv_bn_layer(
+        input=input, num_filters=num_filters, filter_size=1, act='relu')
+    conv1 = conv_bn_layer(
+        input=conv0,
+        num_filters=num_filters,
+        filter_size=3,
+        stride=stride,
+        act='relu')
+    conv2 = conv_bn_layer(
+        input=conv1, num_filters=num_filters * 4, filter_size=1, act=None)
 
-        self.helper(8, 2, 3, 2, 3, 6)
-        self.helper(8, 2, 4, 2, 4, 8)
-        self.helper(8, 2, 5, 2, 4, 8)
+    short = shortcut(input, num_filters * 4, stride, is_first=False)
 
-        self.helper(3, 4, 1, 3, 1, 3)
-        self.helper(3, 4, 2, 3, 1, 3)
+    return fluid.layers.elementwise_add(x=short, y=conv2, act='relu')
+
+
+def basic_block(input, num_filters, stride, is_first):
+    conv0 = conv_bn_layer(
+        input=input,
+        num_filters=num_filters,
+        filter_size=3,
+        act='relu',
+        stride=stride)
+    conv1 = conv_bn_layer(
+        input=conv0, num_filters=num_filters, filter_size=3, act=None)
+    short = shortcut(input, num_filters, stride, is_first)
+    return fluid.layers.elementwise_add(x=short, y=conv1, act='relu')
+
+
+def build_network(input, layers=50, class_dim=1000):
+    supported_layers = [18, 34, 50, 101, 152]
+    assert layers in supported_layers
+    depth = None
+    if layers == 18:
+        depth = [2, 2, 2, 2]
+    elif layers == 34 or layers == 50:
+        depth = [3, 4, 6, 3]
+    elif layers == 101:
+        depth = [3, 4, 23, 3]
+    elif layers == 152:
+        depth = [3, 8, 36, 3]
+    num_filters = [64, 128, 256, 512]
+    with fluid.device_guard("cpu"):
+        conv = conv_bn_layer(
+            input=input, num_filters=64, filter_size=7, stride=2, act='relu')
+        conv = fluid.layers.pool2d(
+            input=conv,
+            pool_size=3,
+            pool_stride=2,
+            pool_padding=1,
+            pool_type='max')
+    if layers >= 50:
+        for block in range(len(depth)):
+            with fluid.device_guard("gpu:0"):
+                for i in range(depth[block]):
+                    conv = bottleneck_block(
+                        input=conv,
+                        num_filters=num_filters[block],
+                        stride=2 if i == 0 and block != 0 else 1)
+
+        with fluid.device_guard("gpu:0"):
+            pool = fluid.layers.pool2d(
+                input=conv, pool_size=7, pool_type='avg', global_pooling=True)
+            stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
+            out = fluid.layers.fc(
+                input=pool,
+                size=class_dim,
+                param_attr=fluid.param_attr.ParamAttr(
+                    initializer=fluid.initializer.Uniform(-stdv, stdv)))
+    else:
+        for block in range(len(depth)):
+            with fluid.device_guard("gpu:0"):
+                for i in range(depth[block]):
+                    conv = basic_block(
+                        input=conv,
+                        num_filters=num_filters[block],
+                        stride=2 if i == 0 and block != 0 else 1,
+                        is_first=block == i == 0)
+        with fluid.device_guard("gpu:0"):
+            pool = fluid.layers.pool2d(
+                input=conv, pool_size=7, pool_type='avg', global_pooling=True)
+            stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
+            out = fluid.layers.fc(
+                input=pool,
+                size=class_dim,
+                param_attr=fluid.param_attr.ParamAttr(
+                    initializer=fluid.initializer.Uniform(-stdv, stdv)))
+    return out
 
 
 class TestPipeline(unittest.TestCase):
     """  TestCases for Pipeline Training. """
 
-    def test_pipeline(self):
-        x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
-        y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
-        emb_x = layers.embedding(
-            input=x,
-            param_attr=fluid.ParamAttr(name="embx"),
-            size=[10, 2],
-            is_sparse=False)
-        emb_y = layers.embedding(
-            input=y,
-            param_attr=fluid.ParamAttr(
-                name="emby", learning_rate=0.9),
-            size=[10, 2],
-            is_sparse=False)
+    def _run(self, debug):
+        main_prog = fluid.Program()
+        startup_prog = fluid.Program()
+        with fluid.program_guard(main_prog, startup_prog):
+            with fluid.device_guard("cpu"):
+                image = fluid.layers.data(
+                    name="image", shape=[3, 224, 224], dtype="float32")
+                label = fluid.layers.data(
+                    name="label", shape=[1], dtype="int64")
+                data_loader = fluid.io.DataLoader.from_generator(
+                    feed_list=[image, label],
+                    capacity=64,
+                    use_double_buffer=True,
+                    iterable=False)
+                fc = build_network(image, layers=50)
+            with fluid.device_guard("gpu:0"):
+                out, prob = fluid.layers.softmax_with_cross_entropy(
+                    logits=fc, label=label, return_softmax=True)
+                loss = fluid.layers.mean(out)
+                acc_top1 = fluid.layers.accuracy(input=prob, label=label, k=1)
+                acc_top5 = fluid.layers.accuracy(input=prob, label=label, k=5)
 
-        concat = layers.concat([emb_x, emb_y], axis=1)
+            base_lr = 0.1
+            passes = [30, 60, 80, 90]
+            total_images = 1281167
+            steps_per_pass = total_images // 128
+            bd = [steps_per_pass * p for p in passes]
+            lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
+            lr_val = fluid.layers.piecewise_decay(boundaries=bd, values=lr)
+            optimizer = fluid.optimizer.MomentumOptimizer(
+                lr_val,
+                momentum=0.9,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+            optimizer = fluid.optimizer.PipelineOptimizer(
+                optimizer, num_microbatches=2)
+            optimizer.minimize(loss)
 
-        fc = layers.fc(input=concat,
-                       name="fc",
-                       size=1,
-                       num_flatten_dims=1,
-                       bias_attr=False)
-        loss = layers.reduce_mean(fc)
+        def train_reader():
+            for _ in range(4):
+                img = np.random.random(size=[3, 224, 224]).astype('float32')
+                label = np.random.random(size=[1]).astype('int64')
+                yield img, label
 
-        optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-        optimizer = fluid.optimizer.PipelineOptimizer(
-            optimizer,
-            cut_list=[[emb_x, emb_y], [loss]],
-            place_list=[
-                fluid.CPUPlace(), fluid.CUDAPlace(0), fluid.CPUPlace()
-            ],
-            concurrency_list=[1, 1, 1],
-            queue_size=1,
-            sync_steps=10000000, )
-        optimizer.minimize(loss)
+        data_loader.set_sample_generator(train_reader, batch_size=1)
         place = fluid.CPUPlace()
+
         exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        #prepare data
-        batch_size = 100
+        exe.run(startup_prog)
+        data_loader.start()
+        exe.train_from_dataset(main_prog, debug=debug)
 
-        def binary_print(slot, fout):
-            num = np.int16(len(slot) + 1)
-            num.tofile(fout)
-            a = np.int64(batch_size)
-            a.tofile(fout)
-            slot.tofile(fout)
+    def test_pipeline(self):
+        self._run(False)
+        self._run(True)
 
-        #batch1 = np.array([[0,1], [1,2], [2,3]]).astype("int64").reshape(batch_size,2,1)
-        #batch2 = np.array([[1,2], [2,3], [3,4]]).astype("int64").reshape(batch_size,2,1)
-        batch1 = np.ones(
-            (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
-        batch2 = np.ones(
-            (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
-        data = [batch1, batch2]
-        filelist = []
-        for i in range(2):
-            filelist.append("test_pipeline_input_" + str(i))
-        for f in filelist:
-            with open(f, "wb") as fout:
-                for batch_data in data:
-                    for ins in batch_data:
-                        for slot in ins:
-                            binary_print(slot, fout)
-
-        dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
-        dataset.set_use_var([x, y])
-        dataset.set_batch_size(batch_size)
-        dataset.set_filelist(filelist)
-
-        for epoch in range(1):
-            exe.train_from_dataset(
-                fluid.default_main_program(),
-                dataset,
-                thread=1,
-                debug=False,
-                fetch_list=[],
-                fetch_info=[],
-                print_period=1)
-
-        for f in filelist:
-            os.remove(f)
-
-    def single_section(self, random_dump):
-        program = fluid.Program()
-        with fluid.program_guard(program):
+    def test_pipeline_noneoptimizer(self):
+        with fluid.device_guard("gpu:0"):
             x = fluid.layers.data(
                 name='x', shape=[1], dtype='int64', lod_level=0)
             y = fluid.layers.data(
@@ -159,94 +207,18 @@ class TestPipeline(unittest.TestCase):
                 param_attr=fluid.ParamAttr(name="embx"),
                 size=[10, 2],
                 is_sparse=False)
-            emb_y = layers.embedding(
-                input=y,
-                param_attr=fluid.ParamAttr(
-                    name="emby", learning_rate=0.9),
-                size=[10, 2],
-                is_sparse=False)
 
-            concat = layers.concat([emb_x, emb_y], axis=1)
-
-            fc = layers.fc(input=concat,
+            fc = layers.fc(input=emb_x,
                            name="fc",
                            size=1,
                            num_flatten_dims=1,
                            bias_attr=False)
             loss = layers.reduce_mean(fc)
 
-            optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+        optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+        with self.assertRaises(ValueError):
             optimizer = fluid.optimizer.PipelineOptimizer(
-                optimizer,
-                cut_list=[],
-                #place_list=[fluid.CPUPlace()],
-                place_list=[fluid.CUDAPlace(0)],
-                concurrency_list=[1],
-                queue_size=1,
-                sync_steps=-1)
-            optimizer.minimize(loss)
-
-            program._pipeline_opt["dump_fields"] = ["fc.tmp_0", "fc.tmp_0@GRAD"]
-            program._pipeline_opt["dump_fields_path"] = "./dump_log/"
-            program._pipeline_opt["dump_param"] = ["embx"]
-            program._pipeline_opt["enable_random_dump"] = random_dump
-            program._pipeline_opt["dump_interval"] = 10
-            program._pipeline_opt["random_with_lineid"] = False
-            #print(program._pipeline_opt)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            #prepare data
-            batch_size = 100
-
-            def binary_print(slot, fout):
-                num = np.int16(len(slot) + 1)
-                num.tofile(fout)
-                a = np.int64(batch_size)
-                a.tofile(fout)
-                slot.tofile(fout)
-
-            #batch1 = np.array([[0,1], [1,2], [2,3]]).astype("int64").reshape(batch_size,2,1)
-            #batch2 = np.array([[1,2], [2,3], [3,4]]).astype("int64").reshape(batch_size,2,1)
-            batch1 = np.ones(
-                (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
-            batch2 = np.ones(
-                (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
-            data = [batch1, batch2]
-            filelist = []
-            for i in range(2):
-                filelist.append("test_pipeline_input_" + str(i))
-            for f in filelist:
-                with open(f, "wb") as fout:
-                    for batch_data in data:
-                        for ins in batch_data:
-                            for slot in ins:
-                                binary_print(slot, fout)
-
-            dataset = fluid.DatasetFactory().create_dataset(
-                "FileInstantDataset")
-            dataset.set_use_var([x, y])
-            dataset.set_batch_size(batch_size)
-            dataset.set_filelist(filelist)
-
-            for epoch in range(1):
-                exe.train_from_dataset(
-                    fluid.default_main_program(),
-                    dataset,
-                    thread=1,
-                    debug=True,
-                    fetch_list=[],
-                    fetch_info=[],
-                    print_period=1)
-
-            for f in filelist:
-                os.remove(f)
-            if os.path.isdir("dump_log"):
-                shutil.rmtree("dump_log")
-
-    def test_pipeline(self):
-        self.single_section(True)
-        self.single_section(False)
+                dict(), num_microbatches=2)
 
 
 if __name__ == '__main__':

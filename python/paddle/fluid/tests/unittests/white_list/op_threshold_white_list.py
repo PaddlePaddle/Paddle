@@ -15,6 +15,7 @@
 NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'affine_channel', \
     'bilinear_interp', \
+    'bilinear_interp_v2',\
     'bilinear_tensor_product', \
     'conv2d', \
     'conv3d', \
@@ -40,7 +41,11 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'teacher_student_sigmoid_loss', \
     'unpool', \
     'yolov3_loss', \
-    'inverse'
+    'inverse', \
+    'bilateral_slice',\
+    'cudnn_lstm'
 ]
 
-NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST = ['bilinear_interp']
+NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST = ['bilinear_interp',\
+                                                'bilinear_interp_v2'
+                                                ]

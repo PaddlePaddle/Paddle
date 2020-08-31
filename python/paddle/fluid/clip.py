@@ -129,7 +129,7 @@ class GradientClipBase(object):
     def __str__(self):
         raise NotImplementedError()
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
         raise NotImplementedError
 
@@ -258,7 +258,7 @@ class GradientClipByValue(GradientClipBase):
     def __str__(self):
         return "Gradient Clip By Value, min = %f, max=%f" % (self.min, self.max)
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
         for p, g in params_grads:
@@ -413,7 +413,7 @@ class GradientClipByNorm(GradientClipBase):
     def __str__(self):
         return "Gradient Clip By Norm, clip_norm=%f" % self.clip_norm
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
         for p, g in params_grads:
@@ -565,7 +565,7 @@ class GradientClipByGlobalNorm(GradientClipBase):
     def __str__(self):
         return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
         sum_square_list = []

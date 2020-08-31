@@ -16,17 +16,17 @@ import numpy as np
 from .... import core
 from ....framework import IrGraph
 
-__all__ = ['Qat2Int8MkldnnPass']
+__all__ = ['Quant2Int8MkldnnPass']
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 
 
-class Qat2Int8MkldnnPass(object):
+class Quant2Int8MkldnnPass(object):
     """
-    Transform a QAT model IrGraph into MKL-DNN supported INT8 IrGraph.
+    Transform a quant model IrGraph into MKL-DNN supported INT8 IrGraph.
     The pass consists of the following transformations:
         1. gather scale values from fake quantize/dequantize operators,
-        2. extract FP32 inference model graph from the QAT graph, i.e.
+        2. extract FP32 inference model graph from the quant graph, i.e.
             a.  remove fake quantize/dequantize operators,
             b.  dequantize conv2d and mul's weights,
         3. optimize the FP32 graph using standard FP32 optimization fuses
@@ -55,7 +55,7 @@ class Qat2Int8MkldnnPass(object):
             'fake_dequantize_max_abs', 'fake_channel_wise_dequantize_max_abs'
         ]
         self._ops_to_quantize = _ops_to_quantize
-        self._op_ids_to_skip = _op_ids_to_skip if _op_ids_to_skip != None else set(
+        self._op_ids_to_skip = _op_ids_to_skip if _op_ids_to_skip is not None else set(
             [-1])
         self._scale_immutable_ops = [
             'transpose2', 'reshape2', 'pool2d', 'scale'
@@ -67,15 +67,18 @@ class Qat2Int8MkldnnPass(object):
         self._relu_ops = ['relu', 'relu6']
         self._matmul_ops = ['matmul']
         self._weight_scales = {}
-        # Collect the Input and Output sclaes from Fake QAT models
+        # Collect the Input and Output sclaes from Fake quant models
         self._var_quant_scales = {}
         self._max_range = {}
         self._s8_max = 127
+        self._pass_idx = 0
+        self._pass_group = 'int8'
 
     def apply(self, graph):
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
 
+        self._reset_pass_idx_and_group('int8')
         graph = self._gather_weight_scales_from_fake(graph)
         graph = self._gather_output_scales_from_attr(graph)
         graph = self._gather_input_scales_from_fake(graph)
@@ -86,20 +89,23 @@ class Qat2Int8MkldnnPass(object):
         graph = self._update_relu_output_scales(graph)
         graph = self._propagate_scales(graph)
         graph = self._quantize_fp32_graph(graph)
-        graph = self._optimize_int8_graph(graph)
+        graph = self._final_optimizations(graph)
         graph = self._cleanup(graph)
         return graph
 
-    def apply_fp32(self, graph):
+    def prepare_and_optimize_fp32(self, graph):
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
 
-        graph = self._gather_weight_scales_from_fake(graph)
-        graph = self._remove_fake_ops(graph)
-        graph = self._dequantize_weights(graph)
+        self._reset_pass_idx_and_group('fp32')
         graph = self._optimize_fp32_graph(graph)
+        graph = self._final_optimizations(graph)
         graph = self._cleanup(graph)
         return graph
+
+    def _reset_pass_idx_and_group(self, group):
+        self._pass_idx = 0
+        self._pass_group = group
 
     def _convert_scale2tensor(self, scale):
         tensor = core.LoDTensor()
@@ -333,20 +339,38 @@ class Qat2Int8MkldnnPass(object):
     def _optimize_fp32_graph(self, graph):
         graph = self._update_activations(graph)
         graph = self._remove_ctrl_vars(graph)
+        graph = self._apply_pass(graph, 'attention_lstm_fuse_pass')
+        graph = self._apply_pass(graph, 'seqconv_eltadd_relu_fuse_pass')
+        #  graph = self._apply_pass(graph, 'seqpool_concat_fuse_pass')
+        graph = self._apply_pass(graph, 'seqpool_cvm_concat_fuse_pass')
+        #  graph = self._apply_pass(graph, 'embedding_fc_lstm_fuse_pass')
+        graph = self._apply_pass(graph, 'fc_lstm_fuse_pass')
+        graph = self._apply_pass(graph, 'mul_lstm_fuse_pass')
+        graph = self._apply_pass(graph, 'fc_gru_fuse_pass')
+        graph = self._apply_pass(graph, 'mul_gru_fuse_pass')
+        graph = self._apply_pass(graph, 'seq_concat_fc_fuse_pass')
+        graph = self._apply_pass(graph, 'squared_mat_sub_fuse_pass')
+        graph = self._apply_pass(graph, 'is_test_pass')
         graph = self._apply_pass(graph, 'mkldnn_placement_pass',
                                  ['mkldnn_enabled_op_types'], [set()])
         graph = self._apply_pass(graph, 'depthwise_conv_mkldnn_pass')
         graph = self._apply_pass(graph, 'conv_bn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_eltwiseadd_bn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_transpose_bn_fuse_pass')
+        graph = self._apply_pass(graph,
+                                 'conv_transpose_eltwiseadd_bn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_bias_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_elementwise_add_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_relu_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_relu6_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'fc_fuse_pass',
                                  ['use_gpu', 'use_fc_padding'], [False, False])
+        graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')
         if self._is_fc_quantized(graph):
             graph = self._apply_pass(graph, 'fc_mkldnn_pass')
         graph = self._apply_pass(graph, 'matmul_transpose_reshape_fuse_pass')
+        # the following pass should be the last one since it will work on all fused ops.
+        graph = self._apply_pass(graph, 'runtime_context_cache_pass')
         return graph
 
     def _apply_pass(self, graph, pass_name, attrs=None, attr_values=None):
@@ -362,12 +386,13 @@ class Qat2Int8MkldnnPass(object):
                 ir_pass.set(attr, value)
         ir_pass.apply(cpp_graph)
         if self._debug:
-            graph.draw('.', 'qat_fp32_{}'.format(pass_name),
-                       graph.all_op_nodes())
+            graph.draw('.', '{}_{}_{}'.format(self._pass_group, self._pass_idx,
+                                              pass_name), graph.all_op_nodes())
         self._remove_unused_var_nodes(graph)
+        self._pass_idx += 1
         return graph
 
-    def _optimize_int8_graph(self, graph):
+    def _final_optimizations(self, graph):
         # remove dropout ops
         graph = self._apply_pass(graph, 'simplify_with_basic_ops_pass')
         # make some MKL-DNN ops working inplace
@@ -448,8 +473,7 @@ class Qat2Int8MkldnnPass(object):
                         self._var_quant_scales[out_name] = (True, tensor)
             return graph
 
-        conv_predicate = lambda op: op.attr("fuse_activation") in self._relu_ops and \
-            op.attr("fuse_residual_connection") == False
+        conv_predicate = lambda op: op.attr("fuse_activation") in self._relu_ops
         graph = _set_unsigned_scale(graph, self._conv_ops, "Output",
                                     conv_predicate)
 
@@ -465,15 +489,10 @@ class Qat2Int8MkldnnPass(object):
         return 'NHWC' if self._is_conv_quantized(graph) else 'NCHW'
 
     def _quantize_fp32_graph(self, graph):
-        ir_pass = self._core.get_pass('cpu_quantize_placement_pass')
-        cpp_graph = graph.graph
-        ir_pass.set('quantize_enabled_op_types', self._ops_to_quantize)
-        ir_pass.set('quantize_excluded_op_ids',
-                    self._find_avg_pooling_ids(graph))
-        ir_pass.apply(cpp_graph)
-        if self._debug:
-            graph.draw('.', 'qat_int8_{}'.format(ir_pass.type()),
-                       graph.all_op_nodes())
+        graph = self._apply_pass(
+            graph, 'cpu_quantize_placement_pass',
+            ['quantize_enabled_op_types', 'quantize_excluded_op_ids'],
+            [self._ops_to_quantize, self._find_avg_pooling_ids(graph)])
         graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
         graph = self._apply_pass(graph,
                                  'reshape_transpose_matmul_mkldnn_fuse_pass')

@@ -27,10 +27,10 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "crypto/cipher.h"
 #include "paddle_infer_declare.h"  // NOLINT
-
-/*! \namespace paddle
- */
+                                   /*! \namespace paddle
+                                    */
 namespace paddle {
 
 /// \brief Paddle data type.
@@ -313,6 +313,12 @@ class PD_INFER_DECL PaddlePredictor {
   /// \return Whether the run is successful
   virtual bool ZeroCopyRun() { return false; }
 
+  ///
+  /// \brief Clear the intermediate tensors of the predictor
+  ///
+  ///
+  virtual void ClearIntermediateTensor() {}
+
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,
   /// and the parameters between them are shared.
@@ -341,6 +347,7 @@ class PD_INFER_DECL PaddlePredictor {
 /// place of inference, etc.)
 ///
 struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
+  NativeConfig();
   /// GPU related fields.
   bool use_gpu{false};
   int device{0};
@@ -415,7 +422,8 @@ enum class PaddleEngineKind {
 };
 
 template <typename ConfigT, PaddleEngineKind engine>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
+PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
+    const ConfigT& config);
 
 template <>
 PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<

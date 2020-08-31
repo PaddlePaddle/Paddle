@@ -1,16 +1,16 @@
 # SLIM Quantization-aware training (QAT) for INT8 MKL-DNN
 
-This document describes how to use [Paddle Slim](https://paddlepaddle.github.io/PaddleSlim/index.html) to convert a quantization-aware trained model into INT8 MKL-DNN quantized model and run it.
+This document describes how to use [Paddle Slim](https://paddlepaddle.github.io/PaddleSlim/index.html) to convert a quantization-aware trained model (Quant model) into INT8 MKL-DNN quantized model and run it.
 
-In **Release 1.5**, we have released the first approach to the MKL-DNN-based quantization of QAT models, called QAT1. It enabled the `conv2d` and `mul` INT8 MKL-DNN kernels for QAT trained models (GoogleNet, MobileNetV1, MobileNetV2, ResNet50, ResNet101, VGG16, and VGG19) with 0.05% accuracy diff.
+In **Release 1.5**, we have released the first approach to the MKL-DNN-based quantization of Quant models, called Quant1. It enabled the `conv2d` and `mul` INT8 MKL-DNN kernels for Quant trained models (GoogleNet, MobileNetV1, MobileNetV2, ResNet50, ResNet101, VGG16, and VGG19) with 0.05% accuracy diff.
 
-In **Release 1.6**, a new approach was introduced, called QAT2, which adds support for more performance optimizations and more INT8 MKL-DNN kernels. INT8 MKL-DNN models obtained using QAT2 have much better inference performance than using QAT1, with only a little bit bigger accuracy diff.
+In **Release 1.6**, a new approach was introduced, called Quant2, which adds support for more performance optimizations and more INT8 MKL-DNN kernels. INT8 MKL-DNN models obtained using Quant2 have much better inference performance than using Quant1, with only a little bit bigger accuracy diff.
 
-In **Release 1.7**, a support for [Ernie (NLP) QAT trained model](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie/mkldnn) was added to the QAT2.
+In **Release 1.7**, a support for [Ernie (NLP) Quant trained model](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie/mkldnn) was added to the Quant2.
 
-In **Release 2.0**, further optimizations were added to the QAT2: INT8 `matmul` kernel, inplace execution of activation and `elementwise_add` operators, and broader support for quantization aware strategy from PaddleSlim.
+In **Release 2.0**, further optimizations were added to the Quant2: INT8 `matmul` kernel, inplace execution of activation and `elementwise_add` operators, and broader support for quantization aware strategy from PaddleSlim.
 
-In this document we focus on the QAT2 approach only. 
+In this document we focus on the Quant2 approach only. 
 
 ## 0. Prerequisites
 * PaddlePaddle in version 2.0 or higher is required. For instructions on how to install it see the [installation document](https://www.paddlepaddle.org.cn/install/quick).
@@ -20,15 +20,15 @@ In this document we focus on the QAT2 approach only.
 
 ## 1. Introduction
 
-There are two forms of quantization supported in PaddlePaddle: [post-training quantization](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/api/int8_mkldnn_quantization.md) (PTQ) and quantization-aware training (QAT). Using both PTQ and QAT a user can convert models created by PaddleSlim into INT8 models and run INT8 inference on CPU. PTQ is more automatic and requires less model preparation than QAT, but usually QAT gives better accuracy with similar performance. In this document we focus on QAT2 approach to the QAT and INT8 quantization.
+There are two approaches to quantization supported in PaddlePaddle: [post-training quantization](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/api/int8_mkldnn_quantization.md) (PTQ) and quantization-aware training (QAT). Using both PTQ and QAT a user can convert models created by PaddleSlim into INT8 models and run INT8 inference on CPU. PTQ is more automatic and requires less model preparation. However, QAT usually gives better accuracy with similar performance. In this document we focus on a transformation from intermediate models obtained during the QAT process (Quant models) into MKL-DNN INT8 models. We call this procedure Quant2.
 
-## 2. How to turn an FP32 model into a QAT model?
+## 2. How to turn an FP32 model into a Quant model?
 
-A procedure on how to transform an FP32 model into a QAT model supported by the QAT2 approach is described in [this document](https://github.com/PaddlePaddle/PaddleSlim/blob/80c9fab3f419880dd19ca6ea30e0f46a2fedf6b3/demo/mkldnn_quant/quant_aware/PaddleCV_mkldnn_quantaware_tutorial.md).
+A procedure on how to transform an FP32 model into a Quant model supported by the Quant2 approach is described in [this document](https://github.com/PaddlePaddle/PaddleSlim/blob/develop/demo/mkldnn_quant/README.md).
 
-## 3. How to turn a QAT model into an INT8 MKL-DNN model?
+## 3. How to turn a Quant model into an INT8 MKL-DNN model?
 
-A QAT model can be transformed into an INT8 quantized model if it contains enough information about quantization scales for every quantized operator in the graph. The process of quantization is done by the `Qat2Int8MkldnnPass` pass which comprises several steps:
+A Quant model can be transformed into an INT8 quantized model if it contains enough information about quantization scales for every quantized operator in the graph. The process of quantization is done by the `Quant2Int8MkldnnPass` pass which comprises several steps:
 
 ### Gathering scales
 
@@ -51,7 +51,7 @@ Notes:
    ```... → input1 → conv2d → output1 → batch_norm → output2 → relu → output3 → ...```
    and we want to quantize the `conv2d` op, then after applying FP32 optimizations the sequence will become
    ```... → input1 → conv2d → output3 → ...```
-   and the quantization scales have to be collected for the `input1` and `outpu3` tensors in the QAT model.
+   and the quantization scales have to be collected for the `input1` and `outpu3` tensors in the Quant model.
 2. Quantization of the following operators is supported: `conv2d`, `depthwise_conv2d`, `mul`, `fc`, `matmul`, `pool2d`, `reshape2`, `transpose2`, `concat`.
 3. The longest sequence of consecutive quantizable operators in the model, the biggest performance boost can be achieved through quantization:
    ```... → conv2d → conv2d → pool2d → conv2d → conv2d → ...``` 
@@ -64,7 +64,7 @@ All the `fake_quantize_*` and `fake_dequantize_*` operators are being removed fr
 
 ### Dequantizing weights
 
-Weights of `conv2d`, `depthwise_conv2d` and `mul` operators are assumed to be fake-quantized (with integer values in the `int8` range, but kept as `float`s) in QAT models. Here, the information about the scale from `fake_dequantize_max_abs` and `fake_channel_wise_dequantize_max_abs` operators is used to fake-dequantize the weights back to the full float range of values. At this moment the model becomes an unoptimized clean FP32 inference model.
+Weights of `conv2d`, `depthwise_conv2d` and `mul` operators are assumed to be fake-quantized (with integer values in the `int8` range, but kept as `float`s) in Quant models. Here, the information about the scale from `fake_dequantize_max_abs` and `fake_channel_wise_dequantize_max_abs` operators is used to fake-dequantize the weights back to the full float range of values. At this moment the model becomes an unoptimized clean FP32 inference model.
 
 ### Optimizing FP32 graph
 
@@ -88,11 +88,11 @@ Having gathered all the data needed for quantization we apply the `cpu_quantize_
 
 ## 4. Code example
 
-The code snipped shows how the `Qat2Int8MkldnnPass` can be applied to a model graph:
+The code snipped shows how the `Quant2Int8MkldnnPass` can be applied to a model graph:
 
 ```python
     import paddle.fluid as fluid
-    from paddle.fluid.contrib.slim.quantization import Qat2Int8MkldnnPass
+    from paddle.fluid.contrib.slim.quantization import Quant2Int8MkldnnPass
     from paddle.fluid.framework import IrGraph
     from paddle.fluid import core	
     
@@ -100,16 +100,16 @@ The code snipped shows how the `Qat2Int8MkldnnPass` can be applied to a model gr
     graph = IrGraph(core.Graph(fluid.Program().desc), for_test=False)
     place = fluid.CPUPlace()
     # Convert the IrGraph to MKL-DNN supported INT8 IrGraph using the
-    # Qat2Int8MkldnnPass. It requires a list of operators to be quantized
-    mkldnn_pass = Qat2Int8MkldnnPass({'conv2d', 'pool2d'}, fluid.global_scope(), place, fluid.core, False)
-    # Apply Qat2Int8MkldnnPass to IrGraph
+    # Quant2Int8MkldnnPass. It requires a list of operators to be quantized
+    mkldnn_pass = Quant2Int8MkldnnPass({'conv2d', 'pool2d'}, fluid.global_scope(), place, fluid.core, False)
+    # Apply Quant2Int8MkldnnPass to IrGraph
     mkldnn_pass.apply(graph)
 
 ```
 
 ## 5. Accuracy and Performance benchmark
 
-This section contain QAT2 MKL-DNN accuracy and performance benchmark results measured on the following server:
+This section contain Quant2 MKL-DNN accuracy and performance benchmark results measured on the following server:
 
 * Intel(R) Xeon(R) Gold 6271 (with AVX512 VNNI support),
 
@@ -134,7 +134,7 @@ Performance benchmarks were run with the following environment settings:
 
 >**Intel(R) Xeon(R) Gold 6271**
 
-|    Model     | FP32 Top1 Accuracy | INT8 QAT Top1 Accuracy | Top1 Diff | FP32 Top5 Accuracy | INT8 QAT Top5 Accuracy | Top5 Diff |
+|    Model     | FP32 Top1 Accuracy | INT8 Quant Top1 Accuracy | Top1 Diff | FP32 Top5 Accuracy | INT8 Quant Top5 Accuracy | Top5 Diff |
 | :----------: | :----------------: | :--------------------: | :-------: | :----------------: | :--------------------: | :-------: |
 | MobileNet-V1 |       70.78%       |         70.71%         |  -0.07%   |       89.69%       |         89.41%         |  -0.28%   |
 | MobileNet-V2 |       71.90%       |         72.11%         |  +0.21%   |       90.56%       |         90.62%         |  +0.06%   |
@@ -150,7 +150,7 @@ Image classification models performance was measured using a single thread. The 
 
 >**Intel(R) Xeon(R) Gold 6271**
 
-|    Model     | FP32 (images/s) | INT8 QAT (images/s) | Ratio (INT8/FP32)  |
+|    Model     | FP32 (images/s) | INT8 Quant (images/s) | Ratio (INT8/FP32)  |
 | :----------: | :-------------: | :-----------------: | :---------------:  |
 | MobileNet-V1 |      74.05      |       196.98        |      2.66          |
 | MobileNet-V2 |      88.60      |       187.67        |      2.12          |
@@ -169,7 +169,7 @@ Notes:
 
 >**Intel(R) Xeon(R) Gold 6271**
 
-|     Model    |  FP32 Accuracy | QAT INT8 Accuracy | Accuracy Diff |
+|     Model    |  FP32 Accuracy | Quant INT8 Accuracy | Accuracy Diff |
 |:------------:|:----------------------:|:----------------------:|:---------:|
 |   Ernie      |      80.20%            |        79.44%        |  -0.76%  |
 
@@ -179,7 +179,7 @@ Notes:
 
 >**Intel(R) Xeon(R) Gold 6271**
 
-|  Model  |     Threads  | FP32 Latency (ms) | QAT INT8 Latency (ms)    | Ratio (FP32/INT8) |
+|  Model  |     Threads  | FP32 Latency (ms) | Quant INT8 Latency (ms)    | Ratio (FP32/INT8) |
 |:------------:|:----------------------:|:-------------------:|:---------:|:---------:|
 | Ernie | 1 thread     |       237.21        |     79.26    |   2.99x    |
 | Ernie | 20 threads   |       22.08         |     12.57    |   1.76x    |
@@ -188,7 +188,7 @@ Notes:
 ## 6. How to reproduce the results
 
 The steps below show, taking ResNet50 as an example, how to reproduce the above accuracy and performance results for Image Classification models. 
-To reproduce NLP models results (Ernie), please follow [How to reproduce Ernie QAT results on MKL-DNN](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie/mkldnn/README.md).
+To reproduce NLP models results (Ernie), please follow [How to reproduce Ernie Quant results on MKL-DNN](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie/mkldnn/README.md).
 
 ### Prepare dataset
 
@@ -202,18 +202,18 @@ The converted data binary file is saved by default in `$HOME/.cache/paddle/datas
 
 ### Prepare models
 
-Run the following commands to download and extract QAT model:
+Run the following commands to download and extract Quant model:
 
 ```bash
 mkdir -p /PATH/TO/DOWNLOAD/MODEL/
 cd /PATH/TO/DOWNLOAD/MODEL/
-export QAT_MODEL_NAME=resnet50
-export QAT_MODEL_ARCHIVE=${QAT_MODEL_NAME}_quant.tar.gz
-wget http://paddle-inference-dist.bj.bcebos.com/int8/QAT2_models/${QAT_MODEL_ARCHIVE}
-mkdir ${QAT_MODEL_NAME} && tar -xvf ${QAT_MODEL_ARCHIVE} -C ${QAT_MODEL_NAME}
+export QUANT_MODEL_NAME=resnet50
+export QUANT_MODEL_ARCHIVE=${QUANT_MODEL_NAME}_quant.tar.gz
+wget http://paddle-inference-dist.bj.bcebos.com/int8/QAT2_models/${QUANT_MODEL_ARCHIVE}
+mkdir ${QUANT_MODEL_NAME} && tar -xvf ${QUANT_MODEL_ARCHIVE} -C ${QUANT_MODEL_NAME}
 ```
 
-To download other QAT models, set the `QAT_MODEL_NAME` variable in the above commands to one of the values: `resnet101`, `mobilenetv1`, `mobilenetv2`, `vgg16`, `vgg19`.
+To download other Quant models, set the `QUANT_MODEL_NAME` variable in the above commands to one of the values: `resnet101`, `mobilenetv1`, `mobilenetv2`, `vgg16`, `vgg19`.
 
 Download clean FP32 model for accuracy comparison against the INT8 model:
 
@@ -231,23 +231,23 @@ To download other FP32 models, set the `FP32_MODEL_NAME` variable to on of the v
 
 #### Accuracy benchmark commands
 
-You can use the `qat2_int8_image_classification_comparison.py` script to reproduce the accuracy result of the INT8 QAT models. The following options are required:
+You can use the `quant2_int8_image_classification_comparison.py` script to reproduce the accuracy result of the INT8 Quant models. The following options are required:
 
-* `--qat_model` - a path to a QAT model that will be transformed into INT8 model.
+* `--quant_model` - a path to a Quant model that will be transformed into INT8 model.
 * `--fp32_model` - a path to an FP32 model whose accuracy will be measured and compared to the accuracy of the INT8 model.
 * `--infer_data` - a path to the validation dataset.
 
 The following options are also accepted:
-* `--ops_to_quantize` - a comma-separated list of operator types to quantize. If the option is not used, an attempt to quantize all quantizable operators will be made, and in that case only quantizable operators which have quantization scales provided in the QAT model will be quantized. When deciding which operators to put on the list, the following have to be considered:
+* `--ops_to_quantize` - a comma-separated list of operator types to quantize. If the option is not used, an attempt to quantize all quantizable operators will be made, and in that case only quantizable operators which have quantization scales provided in the Quant model will be quantized. When deciding which operators to put on the list, the following have to be considered:
   * Only operators which support quantization will be taken into account.
   * All the quantizable operators from the list, which are present in the model, must have quantization scales provided in the model. Otherwise, quantization of the operator will be skipped with a message saying which variable is missing a quantization scale.
   * Sometimes it may be suboptimal to quantize all quantizable operators in the model (cf. *Notes* in the **Gathering scales** section above). To find the optimal configuration for this option, user can run benchmark a few times with different lists of quantized operators present in the model and compare the results. For Image Classification models mentioned above the list usually comprises of `conv2d` and `pool2d` operators.
-* `--op_ids_to_skip` - a comma-separated list of operator ids to skip in quantization. To get an id of a particular operator run the script with the `--debug` option first (see below for the description of the option), and having opened the generated file `qat_int8_cpu_quantize_placement_pass.dot` find the id number written in parentheses next to the name of the operator.
+* `--op_ids_to_skip` - a comma-separated list of operator ids to skip in quantization. To get an id of a particular operator run the script with the `--debug` option first (see below for the description of the option), and having opened the generated file `int8_<some_number>_cpu_quantize_placement_pass.dot` find the id number written in parentheses next to the name of the operator.
 * `--debug` - add this option to generate a series of `*.dot` files containing the model graphs after each step of the transformation. For a description of the DOT format see [DOT]( https://graphviz.gitlab.io/_pages/doc/info/lang.html). The files will be saved in the current location. To open the `*.dot` files use any of the Graphviz tools available on your system (e.g. `xdot` tool on Linux or `dot` tool on Windows, for documentation see [Graphviz](http://www.graphviz.org/documentation/)).
 
 ```bash
 cd /PATH/TO/PADDLE
-OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat2_int8_image_classification_comparison.py --qat_model=/PATH/TO/DOWNLOADED/QAT/MODEL --fp32_model=/PATH/TO/DOWNLOADED/FP32/MODEL --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --ops_to_quantize="conv2d,pool2d"
+OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/quant2_int8_image_classification_comparison.py --quant_model=/PATH/TO/DOWNLOADED/QUANT/MODEL --fp32_model=/PATH/TO/DOWNLOADED/FP32/MODEL --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --ops_to_quantize="conv2d,pool2d"
 ```
 
 > Notes: Due to a large amount of images in the `int8_full_val.bin` dataset (50 000), the accuracy benchmark may last long. To accelerate accuracy measuring, it is recommended to set `OMP_NUM_THREADS` to the maximum number of physical cores available on the server.
@@ -256,16 +256,16 @@ OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim
 
 To reproduce the performance results, the environment variable `OMP_NUM_THREADS=1` and `--batch_size=1` option should be set.
 
-1. Transform the QAT model into INT8 model by applying the `Qat2Int8MkldnnPass` pass and save the result. You can use the script `save_qat_model.py` for this purpose. It also accepts the option `--ops_to_quantize` with a list of operators to quantize.
+1. Transform the Quant model into INT8 model by applying the `Quant2Int8MkldnnPass` pass and save the result. You can use the script `save_quant_model.py` for this purpose. It also accepts the option `--ops_to_quantize` with a list of operators to quantize.
 
    ```bash
    cd /PATH/TO/PADDLE/build
-   python ../python/paddle/fluid/contrib/slim/tests/save_qat_model.py --qat_model_path=/PATH/TO/DOWNLOADED/QAT/MODEL --int8_model_save_path=/PATH/TO/SAVE/QAT/INT8/MODEL --ops_to_quantize="conv2d,pool2d"
+   python ../python/paddle/fluid/contrib/slim/tests/save_quant_model.py --quant_model_path=/PATH/TO/DOWNLOADED/QUANT/MODEL --int8_model_save_path=/PATH/TO/SAVE/QUANT/INT8/MODEL --ops_to_quantize="conv2d,pool2d"
    ```
 
 2. Run the C-API test for performance benchmark.
 
    ```bash
    cd /PATH/TO/PADDLE/build
-   OMP_NUM_THREADS=1 paddle/fluid/inference/tests/api/test_analyzer_qat_image_classification ARGS --enable_fp32=false --with_accuracy_layer=false --int8_model=/PATH/TO/SAVED/QAT/INT8/MODEL --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
+   OMP_NUM_THREADS=1 paddle/fluid/inference/tests/api/test_analyzer_quant_image_classification ARGS --enable_fp32=false --with_accuracy_layer=false --int8_model=/PATH/TO/SAVED/QUANT/INT8/MODEL --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
    ```

@@ -59,12 +59,12 @@ DeviceContextPool* DeviceContextPool::pool = nullptr;
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
-    PADDLE_THROW(
-        "Place %s is not supported, Please check that your paddle compiles "
-        "with WITH_GPU "
-        "option or check that your train process hold the correct gpu_id if "
-        "you use Executor",
-        place);
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Place %s is not supported. Please check that your paddle compiles "
+        "with WITH_GPU or WITH_XPU option or check that your train process "
+        "hold the "
+        "correct gpu_id if you use Executor.",
+        place));
   }
   return it->second.get().get();
 }
@@ -84,7 +84,11 @@ inline void EmplaceDeviceContext(
 
 DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
-  PADDLE_ENFORCE_GT(places.size(), 0);
+  PADDLE_ENFORCE_GT(
+      places.size(), 0,
+      platform::errors::InvalidArgument("The number of platform places should "
+                                        "be larger than 0. But received %d.",
+                                        places.size()));
   std::set<Place> set;
   for (auto& p : places) {
     set.insert(p);
@@ -101,17 +105,25 @@ DeviceContextPool::DeviceContextPool(
       EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_, p);
 #else
       PADDLE_THROW(
-          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
-          "option");
+          platform::errors::Unimplemented("CUDAPlace is not supported. Please "
+                                          "re-compile with WITH_GPU option."));
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
 #ifdef PADDLE_WITH_CUDA
       EmplaceDeviceContext<CUDAPinnedDeviceContext, CUDAPinnedPlace>(
           &device_contexts_, p);
 #else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CUDAPlace is not supported. Please re-compile with WITH_GPU "
+          "option."));
+#endif
+    } else if (platform::is_xpu_place(p)) {
+#ifdef PADDLE_WITH_XPU
+      EmplaceDeviceContext<XPUDeviceContext, XPUPlace>(&device_contexts_, p);
+#else
       PADDLE_THROW(
-          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
-          "option");
+          platform::errors::Unimplemented("XPUPlace is not supported. Please "
+                                          "re-compile with WITH_XPU option."));
 #endif
     }
   }
@@ -130,6 +142,49 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 }
 
 Place CPUDeviceContext::GetPlace() const { return place_; }
+
+#ifdef PADDLE_WITH_XPU
+XPUDeviceContext::XPUDeviceContext() { context_ = xpu::create_context(); }
+
+XPUDeviceContext::~XPUDeviceContext() { xpu::destroy_context(context_); }
+
+XPUDeviceContext::XPUDeviceContext(XPUPlace place) : place_(place) {
+  int dev_id = -1;
+  int ret = xpu_current_device(&dev_id);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+  ret = xpu_set_device(place.device);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+  context_ = xpu::create_context();
+  ret = xpu_set_device(dev_id);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+}
+
+void XPUDeviceContext::Wait() const {
+  int ret = xpu_set_device(place_.device);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+  xpu_wait();
+}
+
+Place XPUDeviceContext::GetPlace() const { return place_; }
+
+xpu::Context* XPUDeviceContext::x_context() const { return context_; }
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 
@@ -409,9 +464,21 @@ MKLDNNDeviceContextThreadLocals::Body::get_cur_paddle_data_layout(void) {
   return cur_paddle_data_layout;
 }
 
-void MKLDNNDeviceContext::ResetBlobMap() const {
-  VLOG(3) << "Clearing DNNL cache.";
-  p_blobmap_->clear();
+void MKLDNNDeviceContext::ResetBlobMap() {
+  std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
+  if (!block_next_cache_clearing_) {
+    VLOG(3) << "Clearing DNNL cache.";
+    p_blobmap_->clear();
+  } else {
+    VLOG(3) << "Prevented Clearing DNNL cache.";
+    block_next_cache_clearing_ = false;
+  }
+}
+
+void MKLDNNDeviceContext::BlockNextCacheClearing() {
+  std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
+  VLOG(3) << "Next DNNL cache clearing has been blocked.";
+  block_next_cache_clearing_ = true;
 }
 
 size_t MKLDNNDeviceContext::GetShapeBlobSize() const {

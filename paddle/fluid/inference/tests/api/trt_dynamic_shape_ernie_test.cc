@@ -120,13 +120,13 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
   if (with_fp16) {
     precision = AnalysisConfig::Precision::kHalf;
   }
-  config.EnableTensorRtEngine(1 << 30, 1, 5, precision, false, true);
+  config.EnableTensorRtEngine(1 << 30, 1, 5, precision, false, false);
   config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
                                 opt_input_shape);
   std::vector<float> out_data;
   run(config, &out_data);
   for (size_t i = 0; i < out_data.size(); i++) {
-    EXPECT_NEAR(result[i], out_data[i], 1e-6);
+    EXPECT_NEAR(result[i], out_data[i], 1e-5);
   }
 }
 

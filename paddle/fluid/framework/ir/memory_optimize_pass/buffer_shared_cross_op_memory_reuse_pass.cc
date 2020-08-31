@@ -116,7 +116,10 @@ std::vector<OpHandleBase *> BufferSharedCrossOpMemoryReusePass::SortOp(
   graph_view.BreadthFirstVisit(
       [&](OpHandleBase *cur_op) { sorted_ops.emplace_back(cur_op); });
   PADDLE_ENFORCE_EQ(sorted_ops.size(), graph_view.OpNumber(),
-                    "There are unvisited ops");
+                    platform::errors::InvalidArgument(
+                        "Sorted ops size(%d) not equal to graph op size(%d). "
+                        "There are unvisited ops.",
+                        sorted_ops.size(), graph_view.OpNumber()));
   return sorted_ops;
 }
 
@@ -181,7 +184,9 @@ void BufferSharedCrossOpMemoryReusePass::RunOnScopeIdx(size_t idx) const {
       auto *out_node = *(out_nodes.begin());
       auto *out_var =
           dynamic_cast<VarHandle *>(&(out_node->Wrapper<VarHandleBase>()));
-      PADDLE_ENFORCE_NOT_NULL(out_var);
+      PADDLE_ENFORCE_NOT_NULL(
+          out_var, platform::errors::NotFound(
+                       "Can not find a valid Var Node for Var %s.", out_arg));
 
       // If out_arg is not reusable, skip it
       if (!IsOutVarReusable(*out_var)) {
@@ -269,7 +274,8 @@ size_t BufferSharedCrossOpMemoryReusePass::ResolveDependencyBetween(
     auto op_dep = GetOpDep(prev_op, op);
     if (op_dep == NodeDependency::kBefore) continue;
     PADDLE_ENFORCE_EQ(op_dep, NodeDependency::kNoDep,
-                      "The graph has circle, this may be a bug");
+                      platform::errors::InvalidArgument(
+                          "The graph has circle, this may be a bug."));
 
     auto iter =
         std::find_if(prev_op->Outputs().begin(), prev_op->Outputs().end(),
@@ -316,9 +322,13 @@ size_t BufferSharedCrossOpMemoryReusePass::ResolveDependencyBetween(
 }
 
 void BufferSharedCrossOpMemoryReusePass::BuildOpDependencyMap() const {
-  PADDLE_ENFORCE(ops_.empty(), "ops_ must be initialized here");
-  PADDLE_ENFORCE(op_to_idx_.empty(), "op_to_idx_ must be initialized here");
-  PADDLE_ENFORCE(deps_.empty(), "deps_ must be initialized here");
+  PADDLE_ENFORCE_EQ(ops_.empty(), true, platform::errors::InvalidArgument(
+                                            "Ops must be initialized here."));
+  PADDLE_ENFORCE_EQ(
+      op_to_idx_.empty(), true,
+      platform::errors::InvalidArgument("Op to idx must be initialized here."));
+  PADDLE_ENFORCE_EQ(deps_.empty(), true, platform::errors::InvalidArgument(
+                                             "Deps must be initialized here."));
 
   // Toposort ops
   OpGraphView graph_view(ir::FilterByNodeWrapper<OpHandleBase>(*graph_));
@@ -344,7 +354,10 @@ void BufferSharedCrossOpMemoryReusePass::BuildOpDependencyMap() const {
                                          prev_preceding_ops.end());
     }
   });
-  PADDLE_ENFORCE_EQ(preceding_ops.size(), op_num);
+  PADDLE_ENFORCE_EQ(preceding_ops.size(), op_num,
+                    platform::errors::InvalidArgument(
+                        "Preceding ops size(%d) must equal to op num(%d).",
+                        preceding_ops.size(), op_num));
 
   // Find out ComputationOpHandles only
   ops_.resize(scope_num);
@@ -384,28 +397,43 @@ void BufferSharedCrossOpMemoryReusePass::BuildOpDependencyMap() const {
 size_t BufferSharedCrossOpMemoryReusePass::OpIndex(
     const ComputationOpHandle *op) const {
   auto iter = op_to_idx_[op->GetScopeIdx()].find(op);
-  PADDLE_ENFORCE(iter != op_to_idx_[op->GetScopeIdx()].end());
+  PADDLE_ENFORCE_NE(iter, op_to_idx_[op->GetScopeIdx()].end(),
+                    platform::errors::NotFound(
+                        "Can not find op(%s) in op_to_idx_.", op->Name()));
   return iter->second;
 }
 
 NodeDependency BufferSharedCrossOpMemoryReusePass::GetOpDep(
     const ComputationOpHandle *op1, const ComputationOpHandle *op2) const {
-  PADDLE_ENFORCE_EQ(op1->GetScopeIdx(), op2->GetScopeIdx());
+  PADDLE_ENFORCE_EQ(op1->GetScopeIdx(), op2->GetScopeIdx(),
+                    platform::errors::InvalidArgument(
+                        "Op(%s) and op(%s) must in the same scope.",
+                        op1->Name(), op2->Name()));
   return deps_[op1->GetScopeIdx()][OpIndex(op1)][OpIndex(op2)];
 }
 
 void BufferSharedCrossOpMemoryReusePass::SetOpDep(
     const ComputationOpHandle *op1, const ComputationOpHandle *op2,
     NodeDependency dep) const {
-  PADDLE_ENFORCE_EQ(op1->GetScopeIdx(), op2->GetScopeIdx());
+  PADDLE_ENFORCE_EQ(op1->GetScopeIdx(), op2->GetScopeIdx(),
+                    platform::errors::InvalidArgument(
+                        "Op(%s) and op(%s) must in the same scope.",
+                        op1->Name(), op2->Name()));
   if (op1 == op2) {
-    PADDLE_ENFORCE(dep == NodeDependency::kSame);
+    PADDLE_ENFORCE_EQ(
+        dep, NodeDependency::kSame,
+        platform::errors::InvalidArgument(
+            "Set Same Op(%s) Dep, dep must be kSame type.", op1->Name()));
     auto idx = OpIndex(op1);
     deps_[op1->GetScopeIdx()][idx][idx] = NodeDependency::kSame;
   } else {
     auto idx1 = OpIndex(op1);
     auto idx2 = OpIndex(op2);
-    PADDLE_ENFORCE(dep != NodeDependency::kSame && idx1 != idx2);
+    PADDLE_ENFORCE_EQ((dep != NodeDependency::kSame && idx1 != idx2), true,
+                      platform::errors::InvalidArgument(
+                          "Op(%s) and Op(%s) should not have same "
+                          "index(%d), and dep should not kSame type.",
+                          op1->Name(), op2->Name(), idx1));
     deps_[op1->GetScopeIdx()][idx1][idx2] = dep;
     deps_[op1->GetScopeIdx()][idx2][idx1] = ReverseNodeDependency(dep);
   }

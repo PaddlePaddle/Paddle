@@ -77,6 +77,7 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
         if use_recompute:
             dgc_momentum_optimizer = optimizer.RecomputeOptimizer(
                 dgc_momentum_optimizer)
+            dgc_momentum_optimizer._set_checkpoints([])
             dgc_momentum_optimizer.get_accumulators = dgc_momentum_optimizer._optimizer.get_accumulators
             dgc_momentum_optimizer.get_velocity_str = dgc_momentum_optimizer._optimizer.get_velocity_str
 

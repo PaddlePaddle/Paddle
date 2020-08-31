@@ -77,11 +77,13 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   for (auto var_name : fetch_var_names) {
     auto var_desc = block.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        var_desc, platform::errors::NotFound("%s is not found.", var_name));
+        var_desc, platform::errors::NotFound(
+                      "Variable %s is not found in main program.", var_name));
     auto shapes = var_desc->GetShape();
-    PADDLE_ENFORCE(shapes[shapes.size() - 1] == 1,
-                   "var %s: Fetched var has wrong shape, "
-                   "only variables with the last dimension size 1 supported",
+    PADDLE_ENFORCE_EQ(shapes[shapes.size() - 1], 1,
+        platform::errors::InvalidArgument(
+                   "Fetched variable %s has wrong shape, "
+                   "only variables whose last dimension is 1 are supported",
                    var_name);
   }
 
@@ -95,7 +97,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   actual_thread_num_ = thread_num;
   int file_cnt = filelist.size();
   PADDLE_ENFORCE_GT(file_cnt, 0,
-                    platform::errors::NotFound("Input file list is empty"));
+                    platform::errors::NotFound("Input file list is empty."));
 
   if (actual_thread_num_ > file_cnt) {
     VLOG(1) << "Thread num = " << thread_num << ", file num = " << file_cnt

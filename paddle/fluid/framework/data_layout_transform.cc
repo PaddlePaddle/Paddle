@@ -25,14 +25,17 @@ namespace paddle {
 namespace framework {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
-  PADDLE_ENFORCE_NE(from, to,
-                    "layout transform should transform different layout");
+  PADDLE_ENFORCE_NE(
+      from, to,
+      platform::errors::InvalidArgument(
+          "Layout transform should transform between different layout."));
   if (from == DataLayout::kNCHW && to == DataLayout::kNHWC) {
     return {0, 2, 3, 1};
   } else if (from == DataLayout::kNHWC && to == DataLayout::kNCHW) {
     return {0, 3, 1, 2};
   } else {
-    PADDLE_THROW("unsupported transform");
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("Unsupported layout transform."));
   }
 }
 
@@ -55,7 +58,8 @@ struct CastDataLayout {
       auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
       trans4(*context, in_, out_, axis_);
     } else {
-      PADDLE_THROW("Unsupport CPU <-> GPU!");
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "Unsupported data layout cast from CPU to GPU."));
     }
   }
 };
@@ -66,9 +70,14 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
   PADDLE_ENFORCE(
       platform::places_are_same_class(kernel_type_for_var.place_,
                                       expected_kernel_type.place_),
-      "TransDataLayout only support DataLayout transform on same place!");
+      platform::errors::PreconditionNotMet(
+          "TransDataLayout only support DataLayout transform on same place."));
 
-  PADDLE_ENFORCE(arity(in.dims()) == 4, "Input Arity only support 4!");
+  PADDLE_ENFORCE_EQ(
+      arity(in.dims()), 4,
+      platform::errors::InvalidArgument(
+          "Input dimension arity only can be 4, the input dimension is %s.",
+          in.dims()));
 
   auto& pool = platform::DeviceContextPool::Instance();
 
@@ -108,7 +117,8 @@ void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
     case mkldnn::memory::data_type::s32:
       return platform::to_void_cast(tensor.data<int32_t>());
     default:
-      PADDLE_THROW("wrong mkldnn type provided");
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("Wrong mkldnn type provided."));
   }
 }
 
@@ -121,8 +131,9 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 
   PADDLE_ENFORCE(
       in_layout == DataLayout::kMKLDNN && out_layout != DataLayout::kMKLDNN,
-      "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
-      "non-MKLDNN");
+      platform::errors::InvalidArgument(
+          "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
+          "non-MKLDNN"));
 
   innerTransDataLayoutFromMKLDNN(
       in_layout,
@@ -155,7 +166,9 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
 
   memory::data_type in_type = ToMKLDNNDataType(in.type());
   PADDLE_ENFORCE_NE(in_type, memory::data_type::undef,
-                    "Input tensor type is not supported: %s", in.type());
+                    platform::errors::InvalidArgument(
+                        "Input tensor type (%s) is not supported.",
+                        DataTypeToString(in.type())));
 
   auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
   auto out_format =

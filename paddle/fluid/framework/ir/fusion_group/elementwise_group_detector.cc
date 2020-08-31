@@ -63,7 +63,7 @@ static bool IsEqualAndNotEmpty(const std::vector<int64_t>& l,
 bool GroupDetector::CheckPrecondition(const Node* n) {
   auto check_data_type = [&](const std::vector<Node*>& nodes) -> bool {
     bool is_first = true;
-    proto::VarType::Type data_type_0;
+    proto::VarType::Type data_type_0 = proto::VarType::BOOL;
     for (auto* n : nodes) {
       if (n && n->IsVar() && n->Var()) {
         if (n->Var()->GetType() != proto::VarType::LOD_TENSOR) {

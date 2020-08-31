@@ -93,8 +93,7 @@ class TestKronLayer(unittest.TestCase):
             with fluid.program_guard(main, start):
                 a_var = fluid.data("a", [-1, -1], dtype="float64")
                 b_var = fluid.data("b", [-1, -1], dtype="float64")
-                out_var = fluid.layers.create_tensor("float64", "c")
-                paddle.kron(a_var, b_var, out=out_var)
+                out_var = paddle.kron(a_var, b_var)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)

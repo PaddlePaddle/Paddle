@@ -15,7 +15,6 @@
 import inspect
 from .. import framework
 from .. import core
-from . import BackwardStrategy
 from ..framework import Variable, Parameter, ParamBase
 from .base import switch_to_static_graph
 import numpy as np
@@ -50,14 +49,19 @@ def monkey_patch_varbase():
                     static_var = var_base._to_static_var()
 
         """
+
+        # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph. 
+        # It will fail. So, for propery in dygraph only, should not let it getattr(self, attr, None).
+        attr_not_need_keys = ['grad']
         if isinstance(self, ParamBase):
             attr_kwargs = self.__dict__.copy()
         else:
-            attr_names = [
-                name for name in dir(self)
-                if not (inspect.ismethod(getattr(self, name)) or
-                        name.startswith('_'))
-            ]
+            attr_names = []
+            for name in dir(self):
+                if name not in attr_not_need_keys and not (
+                        inspect.ismethod(getattr(self, name)) or
+                        name.startswith('_')):
+                    attr_names.append(name)
             attr_kwargs = {name: getattr(self, name) for name in attr_names}
 
         attr_keys = ['block', 'shape', 'dtype', 'type', 'name', 'persistable']
@@ -124,15 +128,18 @@ def monkey_patch_varbase():
                                       framework._current_expected_place())
 
     @framework.dygraph_only
-    def backward(self, backward_strategy=None):
+    def backward(self, retain_graph=False):
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
-        Run backward of current Graph which starts from current Variable
+        Run backward of current Graph which starts from current Tensor.
 
         Args:
-            backward_strategy( :ref:`api_fluid_dygraph_BackwardStrategy` ): The Backward Strategy to run backward
+            retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
+                like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
+                :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+                Defaults to False.
 
         Returns:
             NoneType: None
@@ -140,31 +147,25 @@ def monkey_patch_varbase():
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
                 import numpy as np
+                import paddle
+                paddle.disable_static()
 
                 x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    inputs2 = []
-                    for _ in range(10):
-                        tmp = fluid.dygraph.base.to_variable(x)
-                        # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
-                        # there is no one need gradient on it.
-                        tmp.stop_gradient=False
-                        inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                inputs = []
+                for _ in range(10):
+                    tmp = paddle.to_tensor(x)
+                    # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
+                    # there is no one need gradient on it.
+                    tmp.stop_gradient=False
+                    inputs.append(tmp)
+                ret = paddle.sums(inputs)
+                loss = paddle.reduce_sum(ret)
+                loss.backward()
 
         """
         if framework.in_dygraph_mode():
-            if backward_strategy is None:
-                backward_strategy = BackwardStrategy()
-                backward_strategy.sort_sum_gradient = False
-
-            self._run_backward(backward_strategy, framework._dygraph_tracer())
+            self._run_backward(framework._dygraph_tracer(), retain_graph)
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")
@@ -195,9 +196,7 @@ def monkey_patch_varbase():
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
                     loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                    loss2.backward()
                     print(loss2.gradient())
 
         """
@@ -211,47 +210,44 @@ def monkey_patch_varbase():
         else:
             return np.array(new_ivar.value().get_tensor())
 
-    def __str__(self):
-        return self.to_string(True)
-
     @property
-    def block(self):
-        return framework.default_main_program().global_block()
-
-    def to_string(self, throw_on_error, with_details=False):
+    def grad(self):
         """
-        Get debug string.
+        The alias of gradient().
+        """
 
-        Args:
+        return self.gradient()
 
-            throw_on_error (bool): True if raise an exception when self is not initialized.
+    def __str__(self):
+        """
+        Convert a VarBase object to a readable string.
 
-            with_details (bool): more details about variables and parameters (e.g. trainable, optimize_attr, ...) will be printed when with_details is True. Default value is False;
-
-        Returns:
-            str: The debug string.
+        Returns(str): A readable string.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-
-                cur_program = fluid.Program()
-                cur_block = cur_program.current_block()
-                new_variable = cur_block.create_var(name="X",
-                                                    shape=[-1, 23, 48],
-                                                    dtype='float32')
-                print(new_variable.to_string(True))
-                print("=============with detail===============")
-                print(new_variable.to_string(True, True))
+                import paddle
+                paddle.disable_static()
+                x = paddle.rand([1, 5])
+                print(x)
+                # Variable: eager_tmp_0
+                #   - place: CUDAPlace(0)
+                #   - shape: [1, 5]
+                #   - layout: NCHW
+                #   - dtype: float
+                #   - data: [0.645307 0.597973 0.732793 0.646921 0.540328]
+                paddle.enable_static()
         """
-        if framework.in_dygraph_mode():
-            # TODO(panyx0718): add more dygraph debug info.
-            tensor = self.value().get_tensor()
-            if tensor._is_initialized():
-                return 'Variable: %s\n%s' % (self.name, str(tensor))
-            else:
-                return 'Variable: %s, not initialized' % (self.name)
+        tensor = self.value().get_tensor()
+        if tensor._is_initialized():
+            return 'Tensor: %s\n%s' % (self.name, str(tensor))
+        else:
+            return 'Tensor: %s, not initialized' % (self.name)
+
+    @property
+    def block(self):
+        return framework.default_main_program().global_block()
 
     def __nonzero__(self):
         numel = np.prod(self.shape)
@@ -266,8 +262,9 @@ def monkey_patch_varbase():
     for method_name, method in (
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
-        ("block", block), ("backward", backward), ("gradient", gradient),
-        ("__str__", __str__), ("to_string", to_string)):
+        ("block", block), ("backward", backward), ("grad", grad),
+        ("gradient", gradient), ("__str__", __str__), ("__repr__", __str__),
+        ("__module__", "paddle"), ("__name__", "Tensor")):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase

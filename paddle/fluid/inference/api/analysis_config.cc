@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -88,6 +87,12 @@ void AnalysisConfig::DisableFCPadding() {
   Update();
 }
 
+void AnalysisConfig::EnableXpu(int l3_workspace_size) {
+  use_xpu_ = true;
+  xpu_l3_workspace_size_ = l3_workspace_size;
+  Update();
+}
+
 AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #define CP_MEMBER(member__) member__ = other.member__;
 
@@ -97,8 +102,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
                                   // params_file_ fields.
 
   CP_MEMBER(opt_cache_dir_);
-  prog_file_ = std::move(other.prog_file_);
-  params_file_ = std::move(other.params_file_);
+  CP_MEMBER(prog_file_);
+  CP_MEMBER(params_file_);
 
   CP_MEMBER(use_fc_padding_);
   // GPU related.
@@ -132,6 +137,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(lite_precision_mode_);
   CP_MEMBER(lite_passes_filter_);
   CP_MEMBER(lite_ops_filter_);
+  CP_MEMBER(lite_zero_copy_);
+
+  CP_MEMBER(use_xpu_);
+  CP_MEMBER(xpu_l3_workspace_size_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -203,6 +212,17 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
   use_mkldnn_quantizer_ = false;
+#endif
+
+  Update();
+}
+
+void AnalysisConfig::EnableMkldnnBfloat16() {
+#ifdef PADDLE_WITH_MKLDNN
+  use_mkldnn_bfloat16_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnBfloat16";
+  use_mkldnn_bfloat16_ = false;
 #endif
 
   Update();
@@ -321,6 +341,12 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  if (use_mkldnn_bfloat16_) {
+#ifdef PADDLE_WITH_MKLDNN
+    pass_builder()->EnableMkldnnBfloat16();
+#endif
+  }
+
 #ifdef PADDLE_WITH_MKLDNN
   // Do not optimize when mkldnn is on
   if (enable_memory_optim_ && !use_mkldnn_) {
@@ -342,6 +368,22 @@ void AnalysisConfig::Update() {
         pass_builder()->AppendPass(pass);
       }
     }
+  }
+
+  if (use_xpu_) {
+#ifndef PADDLE_WITH_XPU
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use an XPU device, but Paddle was not compiled "
+        "with XPU-runtime."));
+#endif
+    if (!use_lite_) {
+      LOG(WARNING) << "Because XPU currently only works in Paddle-Lite "
+                      "subgraph mode, please make sure you have enabled it.";
+    }
+    PADDLE_ENFORCE_EQ(use_gpu_, false,
+                      platform::errors::Unavailable(
+                          "Currently, XPU and GPU cannot be enabled in the "
+                          "same analysis configuration."));
   }
 
   if (ir_debug_) {
@@ -373,6 +415,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ";";
 
   ss << use_mkldnn_quantizer_;
+  ss << use_mkldnn_bfloat16_;
   ss << model_from_memory_;
 
   ss << with_profile_;
@@ -387,6 +430,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << cpu_math_library_num_threads_;
 
   ss << use_lite_;
+  ss << use_xpu_;
+  ss << xpu_l3_workspace_size_;
 
   ss << thread_local_stream_;
 
@@ -464,13 +509,14 @@ void AnalysisConfig::DisableGlogInfo() {
 }
 
 void AnalysisConfig::EnableLiteEngine(
-    AnalysisConfig::Precision precision_mode,
+    AnalysisConfig::Precision precision_mode, bool zero_copy,
     const std::vector<std::string> &passes_filter,
     const std::vector<std::string> &ops_filter) {
   use_lite_ = true;
   lite_precision_mode_ = precision_mode;
   lite_passes_filter_ = passes_filter;
   lite_ops_filter_ = ops_filter;
+  lite_zero_copy_ = zero_copy;
   Update();
 }
 

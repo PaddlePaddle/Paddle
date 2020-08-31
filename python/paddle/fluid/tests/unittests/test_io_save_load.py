@@ -48,5 +48,26 @@ class TestSaveLoadAPIError(unittest.TestCase):
                 vars="vars")
 
 
+class TestSaveInferenceModelAPIError(unittest.TestCase):
+    def test_useless_feeded_var_names(self):
+        start_prog = fluid.Program()
+        main_prog = fluid.Program()
+        with fluid.program_guard(main_prog, start_prog):
+            x = fluid.data(name='x', shape=[10, 16], dtype='float32')
+            y = fluid.data(name='y', shape=[10, 16], dtype='float32')
+            z = fluid.layers.fc(x, 4)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(start_prog)
+        with self.assertRaisesRegexp(
+                ValueError, "not involved in the target_vars calculation"):
+            fluid.io.save_inference_model(
+                dirname='./model',
+                feeded_var_names=['x', 'y'],
+                target_vars=[z],
+                executor=exe,
+                main_program=main_prog)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -133,11 +133,14 @@ bool DataFeed::PickOneFile(std::string* filename) {
 }
 
 void DataFeed::CheckInit() {
-  PADDLE_ENFORCE(finish_init_, "Initialization did not succeed.");
+  PADDLE_ENFORCE_EQ(finish_init_, true, platform::errors::PreconditionNotMet(
+                                            "DataFeed initialization failed."));
 }
 
 void DataFeed::CheckSetFileList() {
-  PADDLE_ENFORCE(finish_set_filelist_, "Set filelist did not succeed.");
+  PADDLE_ENFORCE_EQ(
+      finish_set_filelist_, true,
+      platform::errors::PreconditionNotMet("DataFeed set filelist failed."));
 }
 
 void DataFeed::CheckStart() {
@@ -160,14 +163,18 @@ void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
 #ifdef PADDLE_WITH_CUDA
     cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
 #else
-    PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Not supported GPU, please compile with option WITH_GPU=ON."));
 #endif
   }
 }
 
 template <typename T>
 void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
-  PADDLE_ENFORCE(queue_size > 0, "Illegal queue size: %d.", queue_size);
+  PADDLE_ENFORCE_GT(
+      queue_size, 0,
+      platform::errors::InvalidArgument(
+          "Queue size %d is illegal in PrivateQueueDataFeed.", queue_size));
   queue_size_ = queue_size;
   queue_ = paddle::framework::MakeChannel<T>();
   queue_->SetCapacity(queue_size);
@@ -418,8 +425,10 @@ void MultiSlotDataFeed::Init(
   finish_set_filelist_ = false;
   finish_start_ = false;
 
-  PADDLE_ENFORCE(data_feed_desc.has_multi_slot_desc(),
-                 "Multi_slot_desc has not been set.");
+  PADDLE_ENFORCE_EQ(
+      data_feed_desc.has_multi_slot_desc(), true,
+      platform::errors::PreconditionNotMet(
+          "Multi_slot_desc has not been set in MultiSlotDataFeed."));
   paddle::framework::MultiSlotDesc multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
@@ -668,13 +677,14 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
-      PADDLE_ENFORCE(
-          num,
-          "The number of ids can not be zero, you need padding "
-          "it in data generator; or if there is something wrong with "
-          "the data, please check if the data contains unresolvable "
-          "characters.\nplease check this error line: %s",
-          str);
+      PADDLE_ENFORCE_NE(
+          num, 0,
+          platform::errors::InvalidArgument(
+              "The number of ids can not be zero, you need padding "
+              "it in data generator; or if there is something wrong with "
+              "the data, please check if the data contains unresolvable "
+              "characters.\nplease check this error line: %s.",
+              str));
 
       if (idx != -1) {
         (*instance)[idx].Init(all_slots_type_[i]);
@@ -765,8 +775,10 @@ void MultiSlotInMemoryDataFeed::Init(
   finish_set_filelist_ = false;
   finish_start_ = false;
 
-  PADDLE_ENFORCE(data_feed_desc.has_multi_slot_desc(),
-                 "Multi_slot_desc has not been set.");
+  PADDLE_ENFORCE_EQ(
+      data_feed_desc.has_multi_slot_desc(), true,
+      platform::errors::PreconditionNotMet(
+          "Multi_slot_desc has not been set in MultiSlotInMemoryDataFeed."));
   paddle::framework::MultiSlotDesc multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
@@ -898,13 +910,14 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
-      PADDLE_ENFORCE(
-          num,
-          "The number of ids can not be zero, you need padding "
-          "it in data generator; or if there is something wrong with "
-          "the data, please check if the data contains unresolvable "
-          "characters.\nplease check this error line: %s",
-          str);
+      PADDLE_ENFORCE_NE(
+          num, 0,
+          platform::errors::InvalidArgument(
+              "The number of ids can not be zero, you need padding "
+              "it in data generator; or if there is something wrong with "
+              "the data, please check if the data contains unresolvable "
+              "characters.\nplease check this error line: %s.",
+              str));
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {
@@ -963,13 +976,14 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
-      PADDLE_ENFORCE(
-          num,
-          "The number of ids can not be zero, you need padding "
-          "it in data generator; or if there is something wrong with "
-          "the data, please check if the data contains unresolvable "
-          "characters.\nplease check this error line: %s",
-          str);
+      PADDLE_ENFORCE_NE(
+          num, 0,
+          platform::errors::InvalidArgument(
+              "The number of ids can not be zero, you need padding "
+              "it in data generator; or if there is something wrong with "
+              "the data, please check if the data contains unresolvable "
+              "characters.\nplease check this error line: %s.",
+              str));
 
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
@@ -1085,7 +1099,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
         PADDLE_ENFORCE_EQ(slot_offset.size(), 2,
                           platform::errors::InvalidArgument(
                               "In batch reader, the sparse tensor lod size "
-                              "must be 2, but received %d",
+                              "must be 2, but received %d.",
                               slot_offset.size()));
         const auto& max_size = slot_offset[1];
         tmp_offset.reserve(max_size + 1);
@@ -1137,10 +1151,13 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
       for (const auto e : use_slots_shape_[i]) {
         total_dims *= e;
       }
-      PADDLE_ENFORCE(
-          total_dims == total_instance,
-          "The actual data size of slot[%s] doesn't match its declaration",
-          use_slots_[i].c_str());
+      PADDLE_ENFORCE_EQ(
+          total_dims, total_instance,
+          platform::errors::InvalidArgument(
+              "The actual data size of slot[%s] doesn't match its declaration. "
+              "The actual data size of slot is %lld"
+              ", and its declaration is %lld.",
+              use_slots_[i].c_str(), total_dims, total_instance));
       feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
     }
   }
@@ -1162,7 +1179,9 @@ int PrivateInstantDataFeed<T>::Next() {
     return -1;
   }
 
-  PADDLE_ENFORCE(true == ParseOneMiniBatch(), "Fail to parse mini-batch data");
+  PADDLE_ENFORCE_EQ(
+      true, ParseOneMiniBatch(),
+      platform::errors::InvalidArgument("Fail to parse mini-batch data."));
   PutToFeedVec();
   return ins_vec_[0].GetBatchSize();
 }
@@ -1173,8 +1192,10 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
   finish_set_filelist_ = false;
   finish_start_ = false;
 
-  PADDLE_ENFORCE(data_feed_desc.has_multi_slot_desc(),
-                 "Multi_slot_desc has not been set.");
+  PADDLE_ENFORCE_EQ(
+      data_feed_desc.has_multi_slot_desc(), true,
+      platform::errors::PreconditionNotMet(
+          "Multi_slot_desc has not been set in PrivateInstantDataFeed."));
   paddle::framework::MultiSlotDesc multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
@@ -1217,7 +1238,10 @@ template class PrivateInstantDataFeed<std::vector<MultiSlotType>>;
 
 bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
   fd_ = open(filename.c_str(), O_RDONLY);
-  PADDLE_ENFORCE(fd_ != -1, "Fail to open file: %s", filename.c_str());
+  PADDLE_ENFORCE_NE(
+      fd_, -1, platform::errors::Unavailable(
+                   "Fail to open file: %s in MultiSlotFileInstantDataFeed.",
+                   filename.c_str()));
 
   struct stat sb;
   fstat(fd_, &sb);
@@ -1225,7 +1249,11 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
 
   buffer_ =
       reinterpret_cast<char*>(mmap(NULL, end_, PROT_READ, MAP_PRIVATE, fd_, 0));
-  PADDLE_ENFORCE(buffer_ != MAP_FAILED, strerror(errno));
+  PADDLE_ENFORCE_NE(
+      buffer_, MAP_FAILED,
+      platform::errors::Unavailable(
+          "Memory map failed when create shared memory, error number is %s.",
+          strerror(errno)));
 
   offset_ = 0;
   return true;
@@ -1257,12 +1285,13 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
       char type = all_slots_type_[i][0];
 
       uint16_t num = *reinterpret_cast<uint16_t*>(buffer_ + offset_);
-      PADDLE_ENFORCE(
-          num,
-          "The number of ids can not be zero, you need padding "
-          "it in data generator; or if there is something wrong with "
-          "the data, please check if the data contains unresolvable "
-          "characters.");
+      PADDLE_ENFORCE_NE(
+          num, 0,
+          platform::errors::InvalidArgument(
+              "The number of ids can not be zero, you need padding "
+              "it in data generator; or if there is something wrong with "
+              "the data, please check if the data contains unresolvable "
+              "characters."));
       offset_ += sizeof(uint16_t);
 
       if (idx != -1) {
@@ -1304,7 +1333,12 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
   }
 
   PADDLE_ENFORCE(batch_size_ == default_batch_size_ || offset_ == end_,
-                 "offset_ != end_");
+                 platform::errors::InvalidArgument(
+                     "The batch size id not equal to default batch size, or "
+                     "the offset is not equal to end index."
+                     "The batch size is %d, default batcch size is %d, offset "
+                     "is %d, end index is %d.",
+                     batch_size_, default_batch_size_, offset_, end_));
   return true;
 }
 #endif

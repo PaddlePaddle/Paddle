@@ -35,26 +35,14 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   }
 
   std::ostringstream sout;
-  std::ostringstream sout_py_trace;
   // Step 1. Construct python call stack string
   if (callstack) {
-    sout_py_trace << "\n------------------------------------------\n";
-    sout_py_trace << "Python Call Stacks (More useful to users):";
-    sout_py_trace << "\n------------------------------------------\n";
+    sout << "\n\n  Compile Traceback (most recent call last):";
     for (auto &line : *callstack) {
-      sout_py_trace << line;
+      sout << "\n  " << line;
     }
   }
-  // Step 2. Insert python traceback into err_str_
-  std::size_t found = exception->err_str_.rfind(
-      "\n----------------------\nError Message "
-      "Summary:\n----------------------\n");
-  if (found != std::string::npos) {
-    exception->err_str_.insert(found, sout_py_trace.str());
-  } else {
-    exception->err_str_.append(sout_py_trace.str());
-  }
-  // Step 3. Construct final call stack & append error op name
+  // Step 2. Construct final call stack & append error op name
   sout << exception->err_str_;
   sout << "  [operator < " << type << " > error]";
   exception->err_str_ = sout.str();

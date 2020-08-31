@@ -83,7 +83,12 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
     } else if (shape.size() == 3UL) {
       return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
     }
-    return nvinfer1::Dims4(shape[0], shape[1], 1, 1);
+    nvinfer1::Dims dims;
+    dims.nbDims = shape.size();
+    for (size_t i = 0; i < shape.size(); i++) {
+      dims.d[i] = shape[i];
+    }
+    return dims;
   }
 }
 }  // NOLINT
@@ -200,9 +205,23 @@ class TensorRTEngine {
   void Deserialize(const std::string& engine_serialized_data) {
     freshDeviceId();
     infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
-    infer_engine_.reset(runtime->deserializeCudaEngine(
-        engine_serialized_data.c_str(), engine_serialized_data.size(),
-        &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+    if (with_dynamic_shape_) {
+#if IS_TRT_VERSION_GE(6000)
+      infer_engine_.reset(runtime->deserializeCudaEngine(
+          engine_serialized_data.c_str(), engine_serialized_data.size(),
+          nullptr));
+#else
+
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "To enable dynamic shape support, the TensorRT version should be "
+          "greater than 6.0.0"));
+
+#endif
+    } else {
+      infer_engine_.reset(runtime->deserializeCudaEngine(
+          engine_serialized_data.c_str(), engine_serialized_data.size(),
+          &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+    }
     PADDLE_ENFORCE(infer_engine_ != nullptr,
                    "build cuda engine failed when deserialize engine info.!");
   }

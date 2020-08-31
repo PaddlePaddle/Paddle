@@ -179,16 +179,23 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           out_desc[i], cudnn_dtype, 4, out_dims[i].data(),
           out_strides[i].data()));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnGetConvolutionForwardAlgorithm(
-              handle, in_desc[i], filter_desc[i], conv_desc[i], out_desc[i],
-              CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-              workspace_size_limit, &algo[i]));
+
+      int perf_count;
+      int best_algo_idx = 0;
       size_t tmp_size = 0;
+      std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results(
+          new cudnnConvolutionFwdAlgoPerf_t[kNUM_CUDNN_FWD_ALGS]);
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
+              handle, in_desc[i], filter_desc[i], conv_desc[i], out_desc[i],
+              kNUM_CUDNN_FWD_ALGS, &perf_count, perf_results.get()));
+      algo[i] = (perf_results.get())[best_algo_idx].algo;
+
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
               handle, in_desc[i], filter_desc[i], conv_desc[i], out_desc[i],
               algo[i], &tmp_size));
+
       workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
     }
     cudnnActivationDescriptor_t cudnn_act_desc =

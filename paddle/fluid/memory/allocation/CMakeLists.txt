@@ -23,30 +23,29 @@ cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)
 nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
 if (WITH_GPU)
     set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard thread_local_allocator)
+elseif(WITH_XPU)
+    set(AllocatorFacadeDeps xpu_info)
 else ()
     set(AllocatorFacadeDeps)
 endif()
 
-# TODO: Fix this unittest failed on Windows
-if(NOT WIN32)
-  if (WITH_GPU)
-      nv_test(best_fit_allocator_test
-              SRCS best_fit_allocator_test.cc
-                  best_fit_allocator_test.cu
-              DEPS best_fit_allocator
-                  locked_allocator
-                  cpu_allocator
-                  cuda_allocator
-                  device_context
-                  memcpy)
-  else()
-      cc_test(best_fit_allocator_test
-              SRCS best_fit_allocator_test.cc
-              DEPS best_fit_allocator
-                  locked_allocator
-                  cpu_allocator)
-  endif()
-endif(NOT WIN32)
+if (WITH_GPU)
+    nv_test(best_fit_allocator_test
+            SRCS best_fit_allocator_test.cc
+                best_fit_allocator_test.cu
+            DEPS best_fit_allocator
+                locked_allocator
+                cpu_allocator
+                cuda_allocator
+                device_context
+                memcpy)
+else()
+    cc_test(best_fit_allocator_test
+            SRCS best_fit_allocator_test.cc
+            DEPS best_fit_allocator
+                locked_allocator
+                cpu_allocator)
+endif()
 
 list(APPEND AllocatorFacadeDeps cpu_allocator locked_allocator aligned_allocator retry_allocator buffered_allocator naive_best_fit_allocator auto_growth_best_fit_allocator best_fit_allocator)
 

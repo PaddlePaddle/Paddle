@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
@@ -70,9 +71,9 @@ def hsigmoid(x, w, label, bias, num_classes):
     batch_size = x.shape[0]
     code_length = find_latest_set(num_classes - 1)
     code_table = [0 for _ in range(code_length)]
-    pre_output = np.zeros((batch_size, code_length))
-    pre_sum = np.zeros((batch_size, 1))
-    out = np.zeros((batch_size, 1))
+    pre_output = np.zeros((batch_size, code_length)).astype('float64')
+    pre_sum = np.zeros((batch_size, 1)).astype('float64')
+    out = np.zeros((batch_size, 1)).astype('float64')
     for i in range(batch_size):
         code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
@@ -105,9 +106,9 @@ def hsigmoid(x, w, label, bias, num_classes):
 
 def hsigmoid_grad(x, w, label, bias, num_classes):
     batch_size = x.shape[0]
-    dx = np.zeros(x.shape)
-    dw = np.zeros(w.shape)
-    db = np.zeros(bias.shape)
+    dx = np.zeros(x.shape).astype('float64')
+    dw = np.zeros(w.shape).astype('float64')
+    db = np.zeros(bias.shape).astype('float64')
     for i in range(batch_size):
         code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
@@ -133,9 +134,9 @@ def hsigmoidWithCustomTree(x, w, path_table, path_code, label, bias,
     code_length = len(path_table[0])
     code_table = [0 for _ in range(code_length)]
     # init pre_out with shape [N, code_length]
-    pre_output = np.zeros((batch_size, code_length))
-    pre_sum = np.zeros((batch_size, 1))
-    out = np.zeros((batch_size, 1))
+    pre_output = np.zeros((batch_size, code_length)).astype('float64')
+    pre_sum = np.zeros((batch_size, 1)).astype('float64')
+    out = np.zeros((batch_size, 1)).astype('float64')
     if isinstance(bias, np.ndarray):
         for i in range(batch_size):
             code_table = CodeTableWithCustomTree(path_table, path_code, i)
@@ -173,10 +174,13 @@ class TestHSigmoidOp(OpTest):
         num_classes = 101
         feature_size = 5
         batch_size = 20
-        x = np.random.uniform(-1, 1, (batch_size, feature_size))
-        w = np.random.uniform(-1, 1, (num_classes - 1, feature_size))
-        label = np.random.randint(0, num_classes, (batch_size, 1))
-        bias = np.random.uniform(-1, 1, (num_classes - 1, 1))
+        x = np.random.uniform(-1, 1,
+                              (batch_size, feature_size)).astype('float64')
+        w = np.random.uniform(-1, 1,
+                              (num_classes - 1, feature_size)).astype('float64')
+        label = np.random.randint(0, num_classes,
+                                  (batch_size, 1)).astype('int64')
+        bias = np.random.uniform(-1, 1, (num_classes - 1, 1)).astype('float64')
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {'X': x, 'W': w, 'Label': label, 'Bias': bias}
         pre_output, out = hsigmoid(x, w, label, bias, num_classes)
@@ -189,7 +193,6 @@ class TestHSigmoidOp(OpTest):
     def test_check_grad(self):
         self.check_grad(
             ['X', 'W', 'Bias'], ['Out'], user_defined_grads=self.user_grads)
-        #self.check_grad(['X', 'W', 'Bias'], ['Out'])
 
 
 @skip_check_grad_ci(
@@ -203,13 +206,15 @@ class TestHSigmoidOpSparse(OpTest):
         batch_size = 4
         x = np.random.random((batch_size, feature_size))
         w = np.random.random((num_classes - 1, feature_size))
-        label = np.array([0, 1, 4, 5])
-        path_table = np.array(
-            [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
-             (0, 2, -1, -1,
-              -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
-            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
+        label = np.array([0, 1, 4, 5]).astype('int64')
+        path_table = np.array([
+            (0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1), (0, 2, -1,
+                                                                       -1, -1)
+        ]).astype(
+            'int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+        path_code = np.array(
+            [(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (1, 0, 0, -1, -1),
+             (0, 1, -1, -1, -1)]).astype('int64')  #np.array to store 
         bias = np.random.random((num_classes - 1, 1))
         self.attrs = {'num_classes': num_classes, 'is_sparse': True}
         self.inputs = {
@@ -262,12 +267,12 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
 
     def training_test(self, is_sparse):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
+            paddle.manual_seed(1)
             start_up = fluid.default_startup_program()
-            start_up.random_seed = 1  # Fix random seed
             x = np.arange(6).reshape(6)
-            path_table = np.array([(1, 2, -1), (1, 2, -1)])
-            path_code = np.array([(1, 0, -1), (0, 0, -1)])
-            label = np.array([1, 4])
+            path_table = np.array([(1, 2, -1), (1, 2, -1)]).astype('int64')
+            path_code = np.array([(1, 0, -1), (0, 0, -1)]).astype('int64')
+            label = np.array([1, 4]).astype('int64')
 
             loss, data_list = self.hs_net_conf(is_sparse)
             optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
@@ -307,13 +312,15 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         batch_size = 4
         x = np.random.uniform(-1, 1, (batch_size, feature_size))
         w = np.random.uniform(-1, 1, (num_classes - 1, feature_size))
-        label = np.array([0, 1, 4, 5])
-        path_table = np.array(
-            [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
-             (0, 2, -1, -1,
-              -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
-            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
+        label = np.array([0, 1, 4, 5]).astype('int64')
+        path_table = np.array([
+            (0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1), (0, 2, -1,
+                                                                       -1, -1)
+        ]).astype(
+            'int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+        path_code = np.array(
+            [(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (1, 0, 0, -1, -1),
+             (0, 1, -1, -1, -1)]).astype('int64')  #np.array to store 
         bias = np.random.random((num_classes - 1, 1))
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {
@@ -346,13 +353,15 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         batch_size = 4
         x = np.random.uniform(-1, 1, (batch_size, feature_size))
         w = np.random.uniform(-1, 1, (num_classes - 1, feature_size))
-        label = np.array([0, 1, 4, 5])
-        path_table = np.array(
-            [(0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
-             (0, 2, -1, -1,
-              -1)])  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (
-            1, 0, 0, -1, -1), (0, 1, -1, -1, -1)])  #np.array to store 
+        label = np.array([0, 1, 4, 5]).astype('int64')
+        path_table = np.array([
+            (0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1), (0, 2, -1,
+                                                                       -1, -1)
+        ]).astype(
+            'int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+        path_code = np.array(
+            [(0, 0, -1, -1, -1), (1, 1, 1, -1, -1), (1, 0, 0, -1, -1),
+             (0, 1, -1, -1, -1)]).astype('int64')  #np.array to store 
         # bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {

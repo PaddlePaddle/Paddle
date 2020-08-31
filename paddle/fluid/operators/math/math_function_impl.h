@@ -21,6 +21,8 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+using framework::To32BitIndex;
+
 template <typename DeviceContext, typename T>
 void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
                                                framework::Tensor* tensor,
@@ -40,7 +42,15 @@ void Transpose<DeviceContext, T, Rank>::operator()(
   auto eigen_in = framework::EigenTensor<T, Rank>::From(in);
   auto eigen_out = framework::EigenTensor<T, Rank>::From(*out);
   auto* dev = context.eigen_device();
-  eigen_out.device(*dev) = eigen_in.shuffle(permute);
+  // use 32bit index to speed up computation
+  bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
+  bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
+  if (use_32bit_index && is_gpu_place) {
+    To32BitIndex(eigen_out).device(*dev) =
+        To32BitIndex(eigen_in).shuffle(permute);
+  } else {
+    eigen_out.device(*dev) = eigen_in.shuffle(permute);
+  }
 }
 
 template <typename DeviceContext, typename T>

@@ -176,6 +176,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void DisableGpu();
+
+  void EnableXpu(int l3_workspace_size = 0xfffc00);
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
@@ -319,6 +321,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableLiteEngine(
       AnalysisConfig::Precision precision_mode = Precision::kFloat32,
+      bool zero_copy = false,
       const std::vector<std::string>& passes_filter = {},
       const std::vector<std::string>& ops_filter = {});
 
@@ -397,6 +400,19 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMkldnnQuantizer();
+
+  ///
+  /// \brief Turn on MKLDNN bfloat16.
+  ///
+  ///
+  void EnableMkldnnBfloat16();
+
+  ///
+  /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
+  ///
+  /// \return bool Whether to use the MKLDNN Bfloat16.
+  ///
+  bool mkldnn_bfloat16_enabled() const { return use_mkldnn_bfloat16_; }
 
   ///
   /// \brief A boolean state telling whether the thread local CUDA stream is
@@ -579,13 +595,17 @@ struct PD_INFER_DECL AnalysisConfig {
   std::vector<std::string> lite_passes_filter_;
   std::vector<std::string> lite_ops_filter_;
   Precision lite_precision_mode_;
+  bool lite_zero_copy_;
 
   bool thread_local_stream_{false};
+  bool use_xpu_{false};
+  int xpu_l3_workspace_size_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
+  bool use_mkldnn_bfloat16_{false};
 
   // If the config is already used on a predictor, it becomes invalid.
   // Any config can only be used with one predictor.

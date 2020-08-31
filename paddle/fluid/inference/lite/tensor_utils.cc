@@ -14,8 +14,10 @@
 
 #include "paddle/fluid/inference/lite/tensor_utils.h"
 #include <map>
+#include <memory>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/inference/lite/engine.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 
 namespace paddle {
 namespace inference {
@@ -46,6 +48,9 @@ platform::Place GetNativePlace(const TargetType& type, int id = 0) {
       return platform::CPUPlace();
     case TargetType::kCUDA:
       return platform::CUDAPlace(id);
+    case TargetType::kXPU:
+      LOG(ERROR) << "No corresponding device for XPU yet.";
+      return platform::Place();
     default:
       PADDLE_THROW(
           platform::errors::Unavailable("Unsupported target type. Now only "
@@ -189,6 +194,31 @@ void TensorCopyAsync(framework::LoDTensor* dst, const paddle::lite::Tensor& src,
           << ", dst = " << dst << ", src_type = " << dst->type();
   MemoryCopyAsync(dst_place, dst_data, src_place, src_data, bytes, ctx);
   VLOG(3) << "[Lite memory size] Bytes = " << src.memory_size();
+}
+
+template <>
+void TensorDataShare(paddle::lite::Tensor* dst, framework::LoDTensor* src) {
+  const size_t bytes =
+      static_cast<size_t>(src->numel()) * framework::SizeOfType(src->type());
+  auto buf = std::make_shared<paddle::lite::Buffer>(paddle::lite::Buffer(
+      src->data<void>(), GetLiteTargetType(src->place()), src->memory_size()));
+  dst->Resize(framework::vectorize(src->dims()));
+  dst->set_precision(GetLitePrecisionType(src->type()));
+  SetLoD(dst->mutable_lod(), src->lod());
+  dst->ResetBuffer(buf, bytes);
+}
+
+template <>
+void TensorDataShare(framework::LoDTensor* dst, paddle::lite::Tensor* src) {
+  constexpr framework::proto::VarType::Type dtype =
+      framework::proto::VarType_Type_FP32;
+  void* src_raw_data = src->raw_data();
+  std::shared_ptr<memory::allocation::Allocation> holder(
+      new memory::allocation::Allocation(src_raw_data, src->memory_size(),
+                                         GetNativePlace(src->target())));
+  dst->Resize(paddle::framework::make_ddim(src->dims().Vectorize()));
+  SetLoD(dst->mutable_lod(), src->lod());
+  dst->ResetHolderWithType(holder, dtype);
 }
 
 }  // namespace utils

@@ -25,7 +25,7 @@ from paddle.fluid.communicator import Communicator
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 
 class TestCommunicator(unittest.TestCase):
@@ -49,11 +49,7 @@ class TestCommunicator(unittest.TestCase):
         avg_cost = self.net()
 
         optimizer = fluid.optimizer.SGD(0.01)
-
-        strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = False
-        strategy.runtime_split_send_recv = True
-        strategy.wait_port = False
+        strategy = StrategyFactory.create_async_strategy()
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 

@@ -119,7 +119,7 @@ TEST(PassTest, TestPassAttrCheck) {
   } catch (paddle::platform::EnforceNotMet& e) {
     exception = std::string(e.what());
   }
-  ASSERT_TRUE(exception.find("shouldn't have cycle") != exception.npos);
+  ASSERT_TRUE(exception.find("shouldn't contain cycle") != exception.npos);
 
   pass = PassRegistry::Instance().Get("test_pass");
   pass->Set<int>("test_pass_attr", new int);

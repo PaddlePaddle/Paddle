@@ -117,7 +117,7 @@ static void TransData(const framework::LoDTensor &src_item,
       TensorCopy(src_item, platform::CPUPlace(), dst_item);
 #endif
     } else {
-      dst_item->ShareDataWith(src_item);
+      TensorCopy(src_item, platform::CPUPlace(), dst_item);
     }
   } else {
     dst_item->clear();

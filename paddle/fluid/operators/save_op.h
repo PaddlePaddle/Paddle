@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -45,10 +42,23 @@ class SaveOpKernel : public framework::OpKernel<T> {
         input_var, platform::errors::InvalidArgument(
                        "The variable %s to be saved cannot be found.", iname));
 
+    auto filename = ctx.Attr<std::string>("file_path");
+    auto overwrite = ctx.Attr<bool>("overwrite");
+
+    VLOG(4) << "save output file_path: " << filename;
+
+    PADDLE_ENFORCE_EQ(
+        FileExists(filename) && !overwrite, false,
+        platform::errors::PreconditionNotMet(
+            "%s exists!, cannot save to it when overwrite is set to false.",
+            filename, overwrite));
+
+    MkDirRecursively(DirName(filename).c_str());
+
     if (input_var->IsType<framework::LoDTensor>()) {
-      SaveLodTensor(ctx, place, input_var);
+      SaveLodTensor(ctx, place, input_var, filename);
     } else if (input_var->IsType<framework::SelectedRows>()) {
-      SaveSelectedRows(ctx, place, input_var);
+      SaveSelectedRows(ctx, place, input_var, filename);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Save operator only supports saving LoDTensor and SelectedRows "
@@ -59,18 +69,8 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
   void SaveLodTensor(const framework::ExecutionContext &ctx,
                      const platform::Place &place,
-                     const framework::Variable *var) const {
-    auto filename = ctx.Attr<std::string>("file_path");
-    auto overwrite = ctx.Attr<bool>("overwrite");
-
-    PADDLE_ENFORCE_EQ(
-        FileExists(filename) && !overwrite, false,
-        platform::errors::PreconditionNotMet(
-            "%s exists!, cannot save to it when overwrite is set to false.",
-            filename, overwrite));
-
-    MkDirRecursively(DirName(filename).c_str());
-
+                     const framework::Variable *var,
+                     const std::string &filename) const {
     auto &tensor = var->Get<framework::LoDTensor>();
 
     // get device context from pool
@@ -104,32 +104,8 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
   void SaveSelectedRows(const framework::ExecutionContext &ctx,
                         const platform::Place &place,
-                        const framework::Variable *var) const {
-    auto file_path = ctx.Attr<std::string>("file_path");
-    auto overwrite = ctx.Attr<bool>("overwrite");
-
-    std::string filename = file_path;
-    VLOG(4) << "SaveSelectedRows output file_path: " << file_path;
-
-    framework::Variable *out_put_var = ctx.scope().FindVar(LOOKUP_TABLE_PATH);
-    if (out_put_var != nullptr) {
-      auto *lt_var = out_put_var->GetMutable<std::string>();
-      if (lt_var->length() > 0) {
-        VLOG(4) << "SaveSelectedRows output var name: " << *lt_var;
-        filename = *lt_var;
-      }
-    }
-
-    PADDLE_ENFORCE_EQ(
-        FileExists(filename) && !overwrite, false,
-        platform::errors::PreconditionNotMet(
-            "%s exists!, cannot save to it when overwrite is set to false.",
-            filename, overwrite));
-
-    VLOG(4) << "SaveSelectedRows get File name: " << filename;
-
-    MkDirRecursively(DirName(filename).c_str());
-
+                        const framework::Variable *var,
+                        const std::string &filename) const {
     auto &selectedRows = var->Get<framework::SelectedRows>();
 
     // get device context from pool

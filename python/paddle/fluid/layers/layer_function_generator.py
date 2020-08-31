@@ -25,8 +25,7 @@ from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype
 
 __all__ = [
-    'deprecated', 'generate_layer_fn', 'generate_activation_fn', 'autodoc',
-    'templatedoc'
+    'generate_layer_fn', 'generate_activation_fn', 'autodoc', 'templatedoc'
 ]
 
 
@@ -82,8 +81,9 @@ def _generate_doc_string_(op_proto,
     buf.write(escape_math(op_proto.comment))
     buf.write('\nArgs:\n')
     for each_input in op_proto.inputs:
-        line_begin = '    {0}: '.format(_convert_(each_input.name))
+        line_begin = '    {0}'.format(_convert_(each_input.name))
         buf.write(line_begin)
+        buf.write(" (Tensor): ")
         buf.write(escape_math(each_input.comment))
         if each_input.duplicable:
             buf.write("  Duplicatable.")
@@ -125,6 +125,8 @@ def _generate_doc_string_(op_proto,
         for each_opt in op_proto.outputs:
             if not each_opt.intermediate:
                 break
+        buf.write(_convert_(each_opt.name))
+        buf.write(' (Tensor): ')
         buf.write(escape_math(each_opt.comment))
 
     return buf.getvalue()
@@ -275,52 +277,9 @@ def generate_activation_fn(op_type):
     func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=[
-            "name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` ."
+            "name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`."
         ])
-    func.__doc__ = func.__doc__ + """
-
-Return type
-  Variable
-Examples:
-    .. code-block:: python
-
-        import paddle.fluid as fluid
-        import numpy as np
-
-        inputs = fluid.data(name="x", shape = [None, 4], dtype='float32')
-        output = fluid.layers.%s(inputs)
-
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
-
-        #input.shape=1X4, batch_size=1
-        img = np.array([[1.0, 2.0, 3.0, 4.0]]).astype(np.float32)
-        res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-        print(res)
-""" % op_type
     return func
-
-
-def deprecated(func_or_class):
-    """
-    Deprecated warning decorator. It will result a warning message.
-    Should be used before class or function, member function
-    """
-
-    @functools.wraps(func)
-    def func_wrapper(*args, **kwargs):
-        """
-        Wrap func with deprecated warning
-        """
-        warnings.simplefilter('always', DeprecationWarning)  # turn off filter
-        warnings.warn(
-            "Call to deprecated function {}.".format(func.__name__),
-            category=DeprecationWarning,
-            stacklevel=2)
-        warnings.simplefilter('default', DeprecationWarning)  # reset filter
-        return func(*args, **kwargs)
-
-    return func_wrapper
 
 
 def autodoc(comment=""):
@@ -388,3 +347,14 @@ def templatedoc(op_type=None):
         return func
 
     return __impl__
+
+
+def add_sample_code(func, sample_code):
+    """
+    Append sample code for dynamically generated functions. 
+
+    Args:
+       func: The function of the function to be append sample code to.
+       sample_code: sample code session in rst format.
+    """
+    func.__doc__ = func.__doc__ + sample_code

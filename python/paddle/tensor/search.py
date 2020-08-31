@@ -19,10 +19,8 @@ from ..fluid import core, layers
 
 # TODO: define searching & indexing functions of a tensor  
 from ..fluid.layers import argmin  #DEFINE_ALIAS
-from ..fluid.layers import argsort  #DEFINE_ALIAS
 from ..fluid.layers import has_inf  #DEFINE_ALIAS
 from ..fluid.layers import has_nan  #DEFINE_ALIAS
-from ..fluid.layers import topk  #DEFINE_ALIAS
 
 __all__ = [
     'argmax',
@@ -30,172 +28,334 @@ __all__ = [
     'argsort',
     'has_inf',
     'has_nan',
-    #       'masked_select',
+    'masked_select',
     'topk',
     'where',
     'index_select',
     'nonzero',
     'sort',
-    'index_sample'
+    'index_sample',
 ]
 
 from paddle.common_ops_import import *
 
 
-def argmax(input, axis=None, dtype=None, out=None, keepdims=False, name=None):
+def argsort(x, axis=-1, descending=False, name=None):
     """
-	:alias_main: paddle.argmax
-	:alias: paddle.argmax,paddle.tensor.argmax,paddle.tensor.search.argmax
+	:alias_main: paddle.argsort
+	:alias: paddle.argsort,paddle.tensor.argsort,paddle.tensor.search.argsort
 
-    This OP computes the indices of the max elements of the input tensor's
-    element along the provided axis.
+    This OP sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
-        input(Variable): An input N-D Tensor with type float32, float64, int16,
+        x(Tensor): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
-            is [-R, R), where R is Rank(input). when axis<0, it works the same way
-            as axis+R. Default is None, it will use the last dim to select indices of max value.
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
-                    be int32, int64. The default value is None, and it will
-                    return the int64 indices.
-        out(Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result. Defalut is None.
-        keepdims(bool, optional): Keep the axis that do the select max.
-        name(str, optional): The name of output variable, normally there is no need for user to set this this property. 
-            Default value is None, the framework set the name of output variable.  
-
+            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+            as axis+R. Default is 0.
+        descending(bool, optional) : Descending is a flag, if set to true,
+            algorithm will sort by descending order, else sort by
+            ascending order. Default is false.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A Tensor with data type int64.
+        Tensor: sorted indices(with the same shape as ``x``
+        and with data type int64).
 
     Examples:
         .. code-block:: python
-
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
-
-            in1 = np.array([[[5,8,9,5],
+            
+            paddle.disable_static()
+            input_array = np.array([[[5,8,9,5],
                             [0,0,1,7],
                             [6,9,2,4]],
                             [[5,2,4,2],
                             [4,7,7,9],
-                            [1,7,0,6]]])
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(in1)
-                out1 = paddle.argmax(input=x, axis=-1)
-                out2 = paddle.argmax(input=x, axis=0)
-                out3 = paddle.argmax(input=x, axis=1)
-                out4 = paddle.argmax(input=x, axis=2)
-                out5 = paddle.argmax(input=x, axis=2, keepdims=True)
-                print(out1.numpy())
-                # [[2 3 1]
-                #  [0 3 1]]
-                print(out2.numpy())
-                # [[0 0 0 0]
-                #  [1 1 1 1]
-                #  [0 0 0 1]]
-                print(out3.numpy())
-                # [[2 2 0 1]
-                #  [0 1 1 1]]
-                print(out4.numpy())
-                # [[2 3 1]
-                #  [0 3 1]]
-                print(out5.numpy())
-                #array([[[2],
-                #        [3],
-                #        [1]],
-                #       [[0],
-                #        [3],
-                #        [1]]])
+                            [1,7,0,6]]]).astype(np.float32)
+            x = paddle.to_variable(input_array)
+            out1 = paddle.argsort(x=x, axis=-1)
+            out2 = paddle.argsort(x=x, axis=0)
+            out3 = paddle.argsort(x=x, axis=1)
+            print(out1.numpy())
+            #[[[0 3 1 2]
+            #  [0 1 2 3]
+            #  [2 3 0 1]]
+            # [[1 3 2 0]
+            #  [0 1 2 3]
+            #  [2 0 3 1]]]
+            print(out2.numpy())
+            #[[[0 1 1 1]
+            #  [0 0 0 0]
+            #  [1 1 1 0]]
+            # [[1 0 0 0]
+            #  [1 1 1 1]
+            #  [0 0 0 1]]]
+            print(out3.numpy())
+            #[[[1 1 1 2]
+            #  [0 0 2 0]
+            #  [2 2 0 1]]
+            # [[2 0 2 0]
+            #  [1 1 0 2]
+            #  [0 2 1 1]]]
     """
-    helper = LayerHelper("arg_max", **locals())
+    if in_dygraph_mode():
+        _, ids = core.ops.argsort(x, 'axis', axis, 'descending', descending)
+        return ids
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
+        'argsort')
+
+    helper = LayerHelper("argsort", **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
+    ids = helper.create_variable_for_type_inference(
+        VarDesc.VarType.INT64, stop_gradient=True)
+    helper.append_op(
+        type='argsort',
+        inputs={'X': x},
+        outputs={'Out': out,
+                 'Indices': ids},
+        attrs={'axis': axis,
+               'descending': descending})
+    return ids
+
+
+def argmax(x, axis=None, dtype=None, keepdim=False, name=None):
+    """
+    This OP computes the indices of the max elements of the input tensor's
+    element along the provided axis.
+
+    Args:
+        x(Tensor): An input N-D Tensor with type float32, float64, int16,
+            int32, int64, uint8.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
+            as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
+        dtype(str): Data type of the output tensor which can
+                    be int32, int64. The default value is None, and it will
+                    return the int64 indices.
+        keepdim(bool, optional): Keep the axis that selecting max. The defalut value is False.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            paddle.disable_static()
+            data = np.array([[5,8,9,5],
+                             [0,0,1,7],
+                             [6,9,2,4]])
+            x =  paddle.to_variable(data)
+            out1 = paddle.argmax(x)
+            print(out1.numpy()) # 2
+            out2 = paddle.argmax(x, axis=1)
+            print(out2.numpy()) 
+            # [2 3 1]
+            out3 = paddle.argmax(x, axis=-1)
+            print(out3.numpy()) 
+            # [2 3 1]
+    """
+    flatten = False
+    if axis is None:
+        flatten = True
+        axis = 0
+
+    if in_dygraph_mode():
+        if dtype != None:
+            var_dtype = convert_np_dtype_to_dtype_(dtype)
+            out = core.ops.arg_max(x, 'axis', axis, 'dtype', var_dtype,
+                                   'keepdim', keepdim, 'flatten', flatten)
+        else:
+            out = core.ops.arg_max(x, 'axis', axis, 'keepdim', keepdim,
+                                   'flatten', flatten)
+        return out
+
+    helper = LayerHelper("argmax", **locals())
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
+        'paddle.argmax')
     var_dtype = None
     attrs = {}
     if dtype is not None:
-        check_dtype(dtype, 'create data type', ['int32', 'int64'], 'arg_max')
+        if dtype not in ['int32', 'int64']:
+            raise ValueError(
+                "The value of 'dtype' in argmax op must be int32, int64, but received of {}".
+                format(dtype))
         var_dtype = convert_np_dtype_to_dtype_(dtype)
         attrs["dtype"] = var_dtype
     else:
         var_dtype = VarDesc.VarType.INT64
-    if out is None:
-        out = helper.create_variable_for_type_inference(var_dtype)
-    if axis is None:
-        axis = -1
-    attrs['keepdims'] = keepdims
+
+    out = helper.create_variable_for_type_inference(var_dtype)
+    attrs['keepdims'] = keepdim
     attrs['axis'] = axis
+    attrs['flatten'] = flatten
     helper.append_op(
-        type='arg_max',
-        inputs={'X': input},
-        outputs={'Out': [out]},
-        attrs=attrs)
+        type='arg_max', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs)
     out.stop_gradient = True
     return out
 
 
-def index_select(input, index, dim=0):
+def argmin(x, axis=None, dtype=None, keepdim=False, name=None):
     """
-	:alias_main: paddle.index_select
-	:alias: paddle.index_select,paddle.tensor.index_select,paddle.tensor.search.index_select
-
-    Returns a new tensor which indexes the `input` tensor along dimension `dim` using 
-    the entries in `index` which is a Tensor. The returned tensor has the same number 
-    of dimensions as the original `input` tensor. The dim-th dimension has the same 
-    size as the length of `index`; other dimensions have the same size as in the `input` tensor. 
+    This OP computes the indices of the min elements of the input tensor's
+    element along the provided axis.
 
     Args:
-        input (Variable): The input tensor variable.
-        index (Variable): The 1-D tensor containing the indices to index.
-        dim (int): The dimension in which we index.
+        x(Tensor): An input N-D Tensor with type float32, float64, int16,
+            int32, int64, uint8.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
+            as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
+        dtype(str): Data type of the output tensor which can
+                    be int32, int64. The default value is None, and it will
+                    return the int64 indices.
+        keepdim(bool, optional): Keep the axis that selecting min. The defalut value is False.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A Tensor with same data type as `input`.
+        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`
 
     Examples:
         .. code-block:: python
+
+            import numpy as np
             import paddle
-            import paddle.fluid as fluid
+
+            paddle.disable_static()
+            data = np.array([[5,8,9,5],
+                             [0,0,1,7],
+                             [6,9,2,4]])
+            x =  paddle.to_variable(data)
+            out1 = paddle.argmin(x)
+            print(out1.numpy()) # 4
+            out2 = paddle.argmin(x, axis=1)
+            print(out2.numpy()) 
+            # [0 0 2]
+            out3 = paddle.argmin(x, axis=-1)
+            print(out3.numpy()) 
+            # [0 0 2]
+    """
+    flatten = False
+    if axis is None:
+        flatten = True
+        axis = 0
+
+    if in_dygraph_mode():
+        if dtype != None:
+            var_dtype = convert_np_dtype_to_dtype_(dtype)
+            out = core.ops.arg_min(x, 'axis', axis, 'dtype', var_dtype,
+                                   'keepdim', keepdim, 'flatten', flatten)
+        else:
+            out = core.ops.arg_min(x, 'axis', axis, 'keepdim', keepdim,
+                                   'flatten', flatten)
+        return out
+
+    helper = LayerHelper("argmin", **locals())
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
+        'paddle.argmin')
+    var_dtype = None
+    attrs = {}
+    if dtype is not None:
+        if dtype not in ['int32', 'int64']:
+            raise ValueError(
+                "The value of 'dtype' in argmin op must be int32, int64, but received of {}".
+                format(dtype))
+        var_dtype = convert_np_dtype_to_dtype_(dtype)
+        attrs["dtype"] = var_dtype
+    else:
+        var_dtype = VarDesc.VarType.INT64
+
+    out = helper.create_variable_for_type_inference(var_dtype)
+    attrs['keepdims'] = keepdim
+    attrs['axis'] = axis
+    attrs['flatten'] = flatten
+    helper.append_op(
+        type='arg_min', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs)
+    out.stop_gradient = True
+    return out
+
+
+def index_select(x, index, axis=0, name=None):
+    """
+	:alias_main: paddle.index_select
+	:alias: paddle.tensor.index_select, paddle.tensor.search.index_select
+
+    Returns a new tensor which indexes the ``input`` tensor along dimension ``axis`` using 
+    the entries in ``index`` which is a Tensor. The returned tensor has the same number 
+    of dimensions as the original ``x`` tensor. The dim-th dimension has the same 
+    size as the length of ``index``; other dimensions have the same size as in the ``x`` tensor. 
+
+    Args:
+        x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
+        index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
+        axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A Tensor with same data type as ``x``.
+    
+    Raises:
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
+        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle
             import numpy as np
 
+            paddle.disable_static()  # Now we are in imperative mode
             data = np.array([[1.0, 2.0, 3.0, 4.0],
                              [5.0, 6.0, 7.0, 8.0],
                              [9.0, 10.0, 11.0, 12.0]])
             data_index = np.array([0, 1, 1]).astype('int32')
 
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(data)
-                index = fluid.dygraph.to_variable(data_index)
-                out_z1 = paddle.index_select(x, index)
-                print(out_z1.numpy())
-                #[[1. 2. 3. 4.]
-                # [5. 6. 7. 8.]
-                # [5. 6. 7. 8.]]
-                out_z2 = paddle.index_select(x, index, dim=1)
-                print(out_z2.numpy())
-                #[[ 1.  2.  2.]
-                # [ 5.  6.  6.]
-                # [ 9. 10. 10.]]
+            x = paddle.to_tensor(data)
+            index = paddle.to_tensor(data_index)
+            out_z1 = paddle.index_select(x=x, index=index)
+            #[[1. 2. 3. 4.]
+            # [5. 6. 7. 8.]
+            # [5. 6. 7. 8.]]
+            out_z2 = paddle.index_select(x=x, index=index, axis=1)
+            #[[ 1.  2.  2.]
+            # [ 5.  6.  6.]
+            # [ 9. 10. 10.]]
     """
-    helper = LayerHelper("index_select", **locals())
+
     if in_dygraph_mode():
-        return core.ops.index_select(input, index, 'dim', dim)
+        return core.ops.index_select(x, index, 'dim', axis)
 
-    check_variable_and_dtype(input, 'x',
-                             ['float32', 'float64', 'int32', 'int64'],
-                             'paddle.tensor.search.index_sample')
+    helper = LayerHelper("index_select", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.tensor.search.index_select')
     check_variable_and_dtype(index, 'index', ['int32', 'int64'],
-                             'paddle.tensor.search.index_sample')
+                             'paddle.tensor.search.index_select')
 
-    out = helper.create_variable_for_type_inference(input.dtype)
+    out = helper.create_variable_for_type_inference(x.dtype)
 
     helper.append_op(
         type='index_select',
-        inputs={'X': input,
+        inputs={'X': x,
                 'Index': index},
         outputs={'Out': out},
-        attrs={'dim': dim})
+        attrs={'dim': axis})
     return out
 
 
@@ -286,19 +446,15 @@ def nonzero(input, as_tuple=False):
         return tuple(list_out)
 
 
-def sort(input, axis=-1, descending=False, out=None, name=None):
+def sort(x, axis=-1, descending=False, name=None):
     """
 	:alias_main: paddle.sort
 	:alias: paddle.sort,paddle.tensor.sort,paddle.tensor.search.sort
 
-    This OP sorts the input along the given axis, and returns sorted output
-    data Varibale and its corresponding index Variable with the same shape as
-    :attr:`input`.
+    This OP sorts the input along the given axis, and returns the sorted output tensor. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
-    **NOTICE**: The Variable in the output of this OP has gradient. You could\
-        set Variable :attr:`stop_gradient`.
     Args:
-        input(Variable): An input N-D Tensor with type float32, float64, int16,
+        x(Tensor): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -306,76 +462,65 @@ def sort(input, axis=-1, descending=False, out=None, name=None):
         descending(bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
-        out(Variable, optional): The default value is None. Optional output 
-            which can be any created Variable that meets the requirements to
-            store the result of operation. if out is None, a new Varibale will
-            be create to store the result.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Returns:
-        tuple: A tuple of sorted data Variable(with the same shape and data
-        type as input) and the sorted indices(with the same shape as input's
-        and with data type int64).
+        Tensor: sorted tensor(with the same shape and data type as ``x``).
     Examples:
         .. code-block:: python
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
-            in1 = np.array([[[5,8,9,5],
+            
+            paddle.disable_static()
+            input_array = np.array([[[5,8,9,5],
                             [0,0,1,7],
                             [6,9,2,4]],
                             [[5,2,4,2],
                             [4,7,7,9],
                             [1,7,0,6]]]).astype(np.float32)
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(in1)
-                out1 = paddle.sort(input=x, axis=-1)
-                out2 = paddle.sort(input=x, axis=0)
-                out3 = paddle.sort(input=x, axis=1)
-                print(out1[0].numpy())
-                # [[[5. 5. 8. 9.]
-                #   [0. 0. 1. 7.]
-                #   [2. 4. 6. 9.]]
-                #  [[2. 2. 4. 5.]
-                #   [4. 7. 7. 9.]
-                #   [0. 1. 6. 7.]]]
-                print(out1[1].numpy())
-                # [[[0 3 1 2]
-                #   [0 1 2 3]
-                #   [2 3 0 1]]
-                #  [[1 3 2 0]
-                #   [0 1 2 3]
-                #   [2 0 3 1]]]
-                print(out2[0].numpy())
-                # [[[5. 2. 4. 2.]
-                #   [0. 0. 1. 7.]
-                #   [1. 7. 0. 4.]]
-                #  [[5. 8. 9. 5.]
-                #   [4. 7. 7. 9.]
-                #   [6. 9. 2. 6.]]]
-                print(out3[0].numpy())
-                # [[[0. 0. 1. 4.]
-                #   [5. 8. 2. 5.]
-                #   [6. 9. 9. 7.]]
-                #  [[1. 2. 0. 2.]
-                #   [4. 7. 4. 6.]
-                #   [5. 7. 7. 9.]]]
+            x = paddle.to_variable(input_array)
+            out1 = paddle.sort(x=x, axis=-1)
+            out2 = paddle.sort(x=x, axis=0)
+            out3 = paddle.sort(x=x, axis=1)
+            print(out1.numpy())
+            #[[[5. 5. 8. 9.]
+            #  [0. 0. 1. 7.]
+            #  [2. 4. 6. 9.]]
+            # [[2. 2. 4. 5.]
+            #  [4. 7. 7. 9.]
+            #  [0. 1. 6. 7.]]]
+            print(out2.numpy())
+            #[[[5. 2. 4. 2.]
+            #  [0. 0. 1. 7.]
+            #  [1. 7. 0. 4.]]
+            # [[5. 8. 9. 5.]
+            #  [4. 7. 7. 9.]
+            #  [6. 9. 2. 6.]]]
+            print(out3.numpy())
+            #[[[0. 0. 1. 4.]
+            #  [5. 8. 2. 5.]
+            #  [6. 9. 9. 7.]]
+            # [[1. 2. 0. 2.]
+            #  [4. 7. 4. 6.]
+            #  [5. 7. 7. 9.]]]
     """
+    if in_dygraph_mode():
+        out, _ = core.ops.argsort(x, 'axis', axis, 'descending', descending)
+        return out
     helper = LayerHelper("sort", **locals())
-    if out is None:
-        out = helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=False)
+    out = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=False)
     ids = helper.create_variable_for_type_inference(
         VarDesc.VarType.INT64, stop_gradient=True)
     helper.append_op(
         type='argsort',
-        inputs={'X': input},
+        inputs={'X': x},
         outputs={'Out': out,
                  'Indices': ids},
         attrs={'axis': axis,
                'descending': descending})
-    return out, ids
+    return out
 
 
 def where(condition, x, y, name=None):
@@ -556,3 +701,154 @@ def index_sample(x, index):
                 'Index': index},
         outputs={'Out': out})
     return out
+
+
+def masked_select(x, mask, name=None):
+    """
+    This OP Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
+    which is a tensor with data type of bool.
+
+    Args:
+        x (Tensor): The input Tensor, the data type can be int32, int64, float32, float64. 
+        mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns: A 1-D Tensor which is the same data type  as ``x``.
+    
+    Raises:
+        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
+        TypeError: ``mask`` must be a Tensor and the data type of ``mask`` must be bool.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            
+            paddle.disable_static()
+            data = np.array([[1.0, 2.0, 3.0, 4.0],
+                                [5.0, 6.0, 7.0, 8.0],
+                                [9.0, 10.0, 11.0, 12.0]]).astype('float32')
+            
+            mask_data = np.array([[True, False, False, False],
+                            [True, True, False, False],
+                            [True, False, False, False]]).astype('bool')
+            x = paddle.to_tensor(data)
+            mask = paddle.to_tensor(mask_data)
+            out = paddle.masked_select(x, mask)
+            #[1.0 5.0 6.0 9.0]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.masked_select(x, mask)
+
+    helper = LayerHelper("masked_select", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.tensor.search.mask_select')
+    check_variable_and_dtype(mask, 'mask', ['bool'],
+                             'paddle.tensor.search.masked_select')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='masked_select', inputs={'X': x,
+                                      'Mask': mask}, outputs={'Y': out})
+    return out
+
+
+def topk(x, k, axis=None, largest=True, sorted=True, name=None):
+    """
+    This OP is used to find values and indices of the k largest or smallest at the optional axis.
+    If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
+    If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`axis`.
+
+    Args:
+        x(Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
+        k(int, Tensor): The number of top elements to look for along the axis.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
+            as axis + R. Default is -1.
+        largest(bool, optional) : largest is a flag, if set to true,
+            algorithm will sort by descending order, otherwise sort by
+            ascending order. Default is True.
+        sorted(bool, optional): controls whether to return the elements in sorted order, default value is True. In gpu device, it always return the sorted value. 
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
+
+    Examples:
+
+        .. code-block:: python
+
+           import numpy as np
+           import paddle
+
+           paddle.disable_static()
+
+           data_1 = np.array([1, 4, 5, 7])
+           tensor_1 = paddle.to_tensor(data_1)
+           value_1, indices_1 = paddle.topk(tensor_1, k=1)
+           print(value_1.numpy())
+           # [7]
+           print(indices_1.numpy())
+           # [3] 
+           data_2 = np.array([[1, 4, 5, 7], [2, 6, 2, 5]])
+           tensor_2 = paddle.to_tensor(data_2)
+           value_2, indices_2 = paddle.topk(tensor_2, k=1)
+           print(value_2.numpy())
+           # [[7]
+           #  [6]]
+           print(indices_2.numpy())
+           # [[3]
+           #  [1]]
+           value_3, indices_3 = paddle.topk(tensor_2, k=1, axis=-1)
+           print(value_3.numpy())
+           # [[7]
+           #  [6]]
+           print(indices_3.numpy())
+           # [[3]
+           #  [1]]
+           value_4, indices_4 = paddle.topk(tensor_2, k=1, axis=0)
+           print(value_4.numpy())
+           # [[2 6 5 7]]
+           print(indices_4.numpy())
+           # [[1 1 0 0]]
+
+    """
+    if in_dygraph_mode():
+        k = k.numpy().item(0) if isinstance(k, Variable) else k
+        if axis is None:
+            out, indices = core.ops.top_k_v2(x, 'k',
+                                             int(k), 'largest', largest,
+                                             'sorted', sorted)
+        else:
+            out, indices = core.ops.top_k_v2(x, 'k',
+                                             int(k), 'axis', axis, 'largest',
+                                             largest, 'sorted', sorted)
+        return out, indices
+
+    helper = LayerHelper("top_k_v2", **locals())
+    inputs = {"X": [x]}
+    attrs = {}
+    if isinstance(k, Variable):
+        inputs['K'] = [k]
+    else:
+        attrs = {'k': k}
+    attrs['largest'] = largest
+    attrs['sorted'] = sorted
+    if axis is not None:
+        attrs['axis'] = axis
+
+    values = helper.create_variable_for_type_inference(dtype=x.dtype)
+    indices = helper.create_variable_for_type_inference(dtype="int64")
+
+    helper.append_op(
+        type="top_k_v2",
+        inputs=inputs,
+        outputs={"Out": [values],
+                 "Indices": [indices]},
+        attrs=attrs)
+    indices.stop_gradient = True
+    return values, indices

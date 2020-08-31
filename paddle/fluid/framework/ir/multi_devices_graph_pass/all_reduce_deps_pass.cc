@@ -45,7 +45,9 @@ class AllReduceDepsPass : public ir::Pass {
     for (size_t i = 0; i < all_reduce_op_handles.size(); ++i) {
       auto op_handle =
           dynamic_cast<details::NCCLOpHandleBase*>(all_reduce_op_handles[i]);
-      PADDLE_ENFORCE(op_handle, "op_handle must be NCCLOpHandleBase");
+      PADDLE_ENFORCE_NOT_NULL(op_handle,
+                              platform::errors::InvalidArgument(
+                                  "Op handle must be NCCLOpHandleBase."));
       op_handle->SetRunEnv(i, use_hierarchical_allreduce);
     }
 #endif
@@ -95,7 +97,9 @@ class AllReduceDepsPass : public ir::Pass {
         }
       }
 
-      PADDLE_ENFORCE_NE(next_ready_ops.size(), 0, "There maybe have a cycle.");
+      PADDLE_ENFORCE_NE(
+          next_ready_ops.size(), 0,
+          platform::errors::InvalidArgument("There may be a cycle."));
       ready_ops.clear();
       std::swap(ready_ops, next_ready_ops);
       GetSortedAllReduceOps(ready_ops, &all_reduce_op_handles);
@@ -122,18 +126,25 @@ class AllReduceDepsPass : public ir::Pass {
     // NOTE(zcd): For distributed training, it is important to keep the order of
     // allReduce on each node consistent. Otherwise, hang may occur.
     // Sort the current_all_reduce_op_handles according to the name of input.
-    sort(current_all_reduce_op_handles.begin(),
-         current_all_reduce_op_handles.end(),
-         [](const details::OpHandleBase* left,
-            const details::OpHandleBase* right) -> bool {
-           auto left_in_vars =
-               details::DynamicCast<details::VarHandle>(left->Inputs());
-           auto right_in_vars =
-               details::DynamicCast<details::VarHandle>(right->Inputs());
-           PADDLE_ENFORCE_GT(left_in_vars.size(), 0);
-           PADDLE_ENFORCE_GT(right_in_vars.size(), 0);
-           return left_in_vars[0]->Name() > right_in_vars[0]->Name();
-         });
+    sort(
+        current_all_reduce_op_handles.begin(),
+        current_all_reduce_op_handles.end(),
+        [](const details::OpHandleBase* left,
+           const details::OpHandleBase* right) -> bool {
+          auto left_in_vars =
+              details::DynamicCast<details::VarHandle>(left->Inputs());
+          auto right_in_vars =
+              details::DynamicCast<details::VarHandle>(right->Inputs());
+          PADDLE_ENFORCE_GT(left_in_vars.size(), 0,
+                            platform::errors::InvalidArgument(
+                                "OpHandle(%s) inputs size must greater than 0.",
+                                left->Name()));
+          PADDLE_ENFORCE_GT(right_in_vars.size(), 0,
+                            platform::errors::InvalidArgument(
+                                "OpHandle(%s) inputs size must greater than 0.",
+                                right->Name()));
+          return left_in_vars[0]->Name() > right_in_vars[0]->Name();
+        });
 
     all_reduce_op_handles->insert(all_reduce_op_handles->end(),
                                   current_all_reduce_op_handles.begin(),
@@ -170,7 +181,10 @@ class AllReduceDepsPass : public ir::Pass {
           break;
         }
       }
-      PADDLE_ENFORCE(find_valid_input, "Doesn't find valid input.");
+      PADDLE_ENFORCE_EQ(
+          find_valid_input, true,
+          platform::errors::NotFound(
+              "In OpHandle(%s) Doesn't find valid input.", op->Name()));
     }
     VLOG(10) << out2.str();
     if (grads_of_stale_program != all_reduce_op_handles.size()) {

@@ -30,11 +30,13 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_bool(sort_sum_gradient);
+
 namespace paddle {
 namespace imperative {
 
-void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
-  backward_strategy_ = strategy;
+void BasicEngine::Init(VarBase* var, bool retain_graph) {
+  retain_graph_ = retain_graph;
   init_node_ = var->GradVarBase()->GradNode();
   var->GradVarBase()->ClearGradNode();
 
@@ -103,7 +105,7 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
 
       auto& accumulator = accumulators_[var.get()];
       if (!accumulator) {
-        if (backward_strategy_.sorted_sum_gradient_) {
+        if (FLAGS_sort_sum_gradient) {
           accumulator.reset(new SortedGradientAccumulator(var.get()));
         } else {
           accumulator.reset(new EagerGradientAccumulator(var.get()));
@@ -205,7 +207,9 @@ void BasicEngine::Execute() {
             continue;
           }
 
-          var = std::make_shared<VariableWrapper>(var->Name());
+          auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
+          tmp_var->SetType(var->Type());
+          var = tmp_var;
           need_accu_var_list_.emplace_back(iter->second.get(), var);
         }
       }
@@ -224,7 +228,9 @@ void BasicEngine::Execute() {
       need_accu_var_list_.clear();
 
       VLOG(3) << "Remove op after op " << cur_op.Type() << " runs";
-      cur_op.ClearBackwardTrace();
+      if (!retain_graph_) {
+        cur_op.ClearBackwardTrace();
+      }
     }
 
     // Step 3: Collect ready ops

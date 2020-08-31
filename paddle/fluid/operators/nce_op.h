@@ -195,8 +195,6 @@ class NCEKernel : public framework::OpKernel<T> {
 
       framework::Scope &local_scope = context.scope().NewScope();
 
-      auto height_sections =
-          context.Attr<std::vector<int64_t>>("height_sections");
       auto table_names = context.Attr<std::vector<std::string>>("table_names");
 
       auto *ids = local_scope.Var("Ids@Prefetch");
@@ -220,7 +218,7 @@ class NCEKernel : public framework::OpKernel<T> {
       auto weight = context.InputNames("Weight").front();
       operators::distributed::prefetch("Ids@Prefetch", "Weight@Prefetch",
                                        weight, false, table_names, epmap,
-                                       height_sections, context, local_scope);
+                                       context, local_scope);
 #else
       PADDLE_THROW(
           "paddle is not compiled with distribute support, can not do "

@@ -20,4 +20,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SplitOpKernel<plat::CUDADeviceContext, float>,
     ops::SplitOpKernel<plat::CUDADeviceContext, int64_t>,
     ops::SplitOpKernel<plat::CUDADeviceContext, int>,
+    ops::SplitOpKernel<plat::CUDADeviceContext, bool>,
     ops::SplitOpKernel<plat::CUDADeviceContext, plat::float16>);
