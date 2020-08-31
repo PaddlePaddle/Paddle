@@ -207,9 +207,9 @@ def interpolate(x,
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|Tensor|list|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.Has to match input size if it is a list.
+        scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
+             least one of :attr:`size` or :attr:`scale_factor` must be set.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is a list.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
@@ -349,14 +349,15 @@ def interpolate(x,
 
     out_shape = size
     scale = scale_factor
+    if out_shape is not None and scale is not None:
+        raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
         if isinstance(out_shape, Variable):
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
         else:
             if not (_is_list_or_turple_(out_shape)):
-                raise TypeError(
-                    "out_shape should be a list or tuple or Variable.")
+                raise TypeError("size should be a list or tuple or Variable.")
             # Validate the shape
             contain_var = False
             for dim_idx, dim_size in enumerate(out_shape):
@@ -388,7 +389,7 @@ def interpolate(x,
             if len(x.shape) == 3:
                 if len(out_shape) != 1:
                     raise ValueError(
-                        "out_shape length should be 2 for input 3-D tensor")
+                        "size length should be 2 for input 3-D tensor")
                 if contain_var:
                     attrs['out_w'] = size_list[0]
                 else:
@@ -396,7 +397,7 @@ def interpolate(x,
                     attrs['out_w'] = out_shape[0]
             if len(x.shape) == 4:
                 if len(out_shape) != 2:
-                    raise ValueError("out_shape length should be 2 for "
+                    raise ValueError("size length should be 2 for "
                                      "input 4-D tensor.")
                 if contain_var:
                     attrs['out_h'] = size_list[0]
@@ -407,7 +408,7 @@ def interpolate(x,
                     attrs['out_w'] = out_shape[1]
             if len(x.shape) == 5:
                 if len(out_shape) != 3:
-                    raise ValueError("out_shape length should be 3 for "
+                    raise ValueError("size length should be 3 for "
                                      "input 5-D tensor.")
                 if contain_var:
                     attrs['out_d'] = size_list[0]
@@ -430,7 +431,7 @@ def interpolate(x,
             for i in range(len(x.shape) - 2):
                 scale_list.append(scale)
             attrs['scale'] = list(map(float, scale_list))
-        elif isinstance(scale, list):
+        elif isinstance(scale, list) or isinstance(scale, float):
             if len(scale) != len(x.shape) - 2:
                 raise ValueError("scale_shape length should be {} for "
                                  "input {}-D tensor.".format(
@@ -441,7 +442,8 @@ def interpolate(x,
             attrs['scale'] = list(map(float, scale))
         else:
             raise TypeError(
-                "Attr(scale)'s type should be float, int, list or Tensor.")
+                "Attr(scale)'s type should be float, int, list, tuple, or Tensor."
+            )
 
     if in_dygraph_mode():
         attr_list = []
@@ -605,9 +607,9 @@ def upsample(x,
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|Tensor|list|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
+        scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
+             least one of :attr:`size` or :attr:`scale_factor` must be set.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
