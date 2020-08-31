@@ -508,3 +508,16 @@ DEFINE_int32(
     "summary will be shown."
     "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
     "error message summary will be shown.");
+
+/**
+ * Debug related FLAG
+ * Name: sort_sum_gradient
+ * Since Version: 2.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, gradients are summed by the reverse order of
+ * the forward execution sequence.
+ */
+DEFINE_bool(sort_sum_gradient, false,
+            "Sum gradients by the reverse order of "
+            "the forward execution sequence.");

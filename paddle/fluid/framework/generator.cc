@@ -12,67 +12,122 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/generator.h"
+
+#include <glog/logging.h>
+
 #include <deque>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
-#include "paddle/fluid/framework/generator.h"
-
 namespace paddle {
 namespace framework {
 
-std::shared_ptr<Generator> Generator::gen_instance_ = NULL;
-
-GeneratorState* Generator::GetState() {
-  std::lock_guard<std::mutex> lock(this->mutex);
-  return this->state_.get();
+const std::shared_ptr<Generator>& DefaultCPUGenerator() {
+  static auto default_cpu_generator =
+      std::make_shared<Generator>(GetRandomSeed());
+  VLOG(4) << "initial seed: " << default_cpu_generator->GetCurrentSeed()
+          << ", cpu engine: " << default_cpu_generator->GetCPUEngine().get();
+  return default_cpu_generator;
 }
 
-void Generator::SetState(GeneratorState* state_in) {
-  std::lock_guard<std::mutex> lock(this->mutex);
-  *this->state_ = *state_in;
+std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine() {
+  static auto op_default_cpu_engine = std::make_shared<std::mt19937_64>();
+  return op_default_cpu_engine;
+}
+
+// NOTE(zhiqiu): there are 3 conditions:
+// (1) op seed is not set and DefaultCPUGenerator is inited, use
+// DefaultCPUGenerator
+// (2) op seed is not set and DefaultCPUGenerator is not inited, use se
+// OpDefaultCPUEngine() and set a radnom seed
+// (3) op seed is set, use OpDefaultCPUEngine() and set the seed
+std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
+  if (DefaultCPUGenerator()->GetIsInitPy() && seed == 0) {
+    VLOG(4) << "Use random engine from generator";
+    return DefaultCPUGenerator()->GetCPUEngine();
+  } else {
+    // NOTE(zhiqiu): creating an engine instance everytime instead of using
+    // OpDefaultCPUEngine(), this is the legacy behavior of random operators.
+    // The benefit is that when runing PE with fixed-seed in multiple thrads,
+    // each thread has their own engine, and doesn't affect each other.
+    //
+    // And we need to measure the determinacy of Generator in PE.
+    auto engine = std::make_shared<std::mt19937_64>();
+    if (seed == 0) {
+      seed = GetRandomSeed();
+      VLOG(4) << "Use default random engine with random seed = " << seed;
+    } else {
+      VLOG(4) << "Use default random engine with fixed random seed = " << seed;
+    }
+    static std::mutex mu_;
+    {
+      std::lock_guard<std::mutex> lock(mu_);
+      engine->seed(seed);
+    }
+    return engine;
+  }
+}
+
+GeneratorState Generator::GetState() {
+  std::lock_guard<std::mutex> lock(this->mu_);
+  state_.cpu_engine = *engine_;
+  return this->state_;
+}
+
+void Generator::SetState(const GeneratorState& state) {
+  std::lock_guard<std::mutex> lock(this->mu_);
+  this->state_ = state;
+  this->engine_ = std::make_shared<std::mt19937_64>(state.cpu_engine);
 }
 
 uint64_t Generator::GetCurrentSeed() {
-  std::lock_guard<std::mutex> lock(this->mutex);
-  return this->state_->current_seed;
+  std::lock_guard<std::mutex> lock(this->mu_);
+  return this->state_.current_seed;
 }
 
 uint64_t Generator::Seed() {
-  std::lock_guard<std::mutex> lock(this->mutex);
+  std::lock_guard<std::mutex> lock(this->mu_);
   uint64_t seed;
   std::random_device de;
   seed = ((((uint64_t)de()) << 32) + de()) & 0x1FFFFFFFFFFFFF;
-  this->state_->current_seed = seed;
+  this->state_.current_seed = seed;
   std::seed_seq seq({seed});
-  this->state_->cpu_engine.seed(seq);
+  this->engine_->seed(seq);
 
-  return this->state_->current_seed;
+  return this->state_.current_seed;
 }
 
 void Generator::SetCurrentSeed(uint64_t seed) {
-  std::lock_guard<std::mutex> lock(this->mutex);
-  this->state_->current_seed = uint64_t(seed);
+  std::lock_guard<std::mutex> lock(this->mu_);
+  this->state_.current_seed = seed;
   std::seed_seq seq({seed});
-  this->state_->cpu_engine.seed(seq);
+  this->engine_->seed(seq);
 }
 
-std::mt19937_64& Generator::GetCPUEngine() {
-  std::lock_guard<std::mutex> lock(this->mutex);
-  return this->state_->cpu_engine;
+std::shared_ptr<std::mt19937_64> Generator::GetCPUEngine() {
+  std::lock_guard<std::mutex> lock(this->mu_);
+  return this->engine_;
 }
 
-void Generator::SetCPUEngine(std::mt19937_64 engine) {
-  std::lock_guard<std::mutex> lock(this->mutex);
-  this->state_->cpu_engine = std::mt19937_64(engine);
+void Generator::SetCPUEngine(std::shared_ptr<std::mt19937_64> engine) {
+  std::lock_guard<std::mutex> lock(this->mu_);
+  this->engine_ = engine;
 }
 
 uint64_t Generator::Random64() {
-  std::lock_guard<std::mutex> lock(this->mutex);
-  return this->state_->cpu_engine();
+  std::lock_guard<std::mutex> lock(this->mu_);
+  auto engine = this->engine_;
+  return (*engine)();
 }
+
+void Generator::SetIsInitPy(bool is_init_py) {
+  this->is_init_py_ = is_init_py;
+  VLOG(4) << "SetIsInitPy:" << this->is_init_py_;
+}
+bool Generator::GetIsInitPy() const { return this->is_init_py_; }
 
 }  // namespace framework
 }  // namespace paddle
