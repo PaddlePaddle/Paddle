@@ -40,6 +40,23 @@ class TestDropoutOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestDropoutOpInput1d(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((2000)).astype("float32")}
+        self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((2000)).astype('uint8')
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestDropoutOp2(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"

@@ -911,7 +911,7 @@ def dropout(x,
             input_shape = x.shape
             drop_axes = [axis] if isinstance(axis, int) else axis
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
-                raise ValueError("axis value should greater equal than 0 and less than dimensions of x:{}, but get axis value:{} " \
+                raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
                                  .format(len(input_shape), max(drop_axes)))
             if len(drop_axes) > len(input_shape):
                 raise ValueError(
