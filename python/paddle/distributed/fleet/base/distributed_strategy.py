@@ -774,8 +774,7 @@ class DistributedStrategy(object):
         **Note**:
             k_steps(int): the update period of the parameters.
 
-            avg(bool): whether to average the gradients of each mini-batch,
-                the default value is `True`
+            avg(bool): whether to average the gradients of each mini-batch, the default value is `True`
 
         Examples:
           .. code-block:: python
