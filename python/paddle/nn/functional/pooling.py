@@ -847,8 +847,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
                               with shape [N, C, L].  The format of input tensor is NCL,
                               where N is batch size, C is the number of channels, L is the
                               length of the feature. The data type is float32 or float64.
-        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-                it must contain one int.
+        output_size (int): The target output size. It must be an integer.
         name(str, optional): For detailed information, please refer
                                  to :ref:`api_guide_Name`. Usually name is no need to set and
                                  None by default.
@@ -856,7 +855,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
             Tensor: The output tensor of adaptive average pooling result. The data type is same
                       as input tensor.
     Raises:
-            ValueError: 'output_size' should be an integer or list or tuple with length as 1.
+            ValueError: 'output_size' should be an integer.
     Examples:
         .. code-block:: python
               # average adaptive pool1d
