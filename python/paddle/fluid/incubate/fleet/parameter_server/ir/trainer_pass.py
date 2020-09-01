@@ -451,16 +451,20 @@ def create_heter_program(program, config, heter_program, heter_ops,
             block_append_op(heter_program, program, heter_block, op)
 
             # add relate variables
-            inputs = _get_input_map_from_op(program.global_block().vars, op)
-            add_vars_by_op_map(inputs, heter_program)
+            # inputs = _get_input_map_from_op(program.global_block().vars, op)
+            # add_vars_by_op_map(inputs, heter_program, heter_block)
 
-            outputs = _get_output_map_from_op(program.global_block().vars, op)
-            add_vars_by_op_map(outputs, heter_program)
+            # outputs = _get_output_map_from_op(program.global_block().vars, op)
+            # add_vars_by_op_map(outputs, heter_program, heter_block)
+
+        print("step 1 program: {}".format(heter_program))
 
         entrance_vars = block_var_detail[index]["entrance"]
-        add_vars_by_var_list(entrance_vars, program, heter_program)
+        add_vars_by_var_list(entrance_vars, program, heter_program, heter_block)
         exit_vars = block_var_detail[index]["exit"]
-        add_vars_by_var_list(exit_vars, program, heter_program)
+        add_vars_by_var_list(exit_vars, program, heter_program, heter_block)
+
+        print("step 2 program: {}".format(heter_program))
 
         comm_info = get_communicate_var_info(program, index, entrance_vars,
                                              exit_vars)
@@ -473,7 +477,7 @@ def create_heter_program(program, config, heter_program, heter_ops,
 
         get_type_var_name = comm_info["input_var_reshape_name"][0].split(
             ".input_reshape@Heter")[0]
-        get_type_var = heter_program.global_block().vars[get_type_var_name]
+        get_type_var = heter_block.vars[get_type_var_name]
 
         insert_recv_slice_op(
             heter_program, heter_block, first_op_index,
@@ -484,6 +488,13 @@ def create_heter_program(program, config, heter_program, heter_ops,
                 for i in range(len(comm_info["input_var_reshape_dim"]))
             ])
         first_op_index += len(comm_info["input_var_reshape_dim"])
+
+        heter_program.global_block().create_var(
+            name=comm_info["block_input_var_name"],
+            shape=(-1, sum(comm_info["input_var_reshape_dim"])),
+            dtype=get_type_var.dtype,
+            type=get_type_var.type)
+
         # create reshape op
         for i in range(len(comm_info["input_var_reshape_name"])):
             var_name = entrance_vars[i]
@@ -513,6 +524,8 @@ def create_heter_program(program, config, heter_program, heter_ops,
         check_op_device(heter_block, current_device)
         send_grad_var_list = send_grad_var_list + add_heter_send_op(
             program, heter_program, heter_block, block_var_detail[index])
+
+    print("step 3 program: {}".format(heter_program))
 
     # add step conter
     send_input_vars = []
@@ -552,7 +565,7 @@ def create_heter_program(program, config, heter_program, heter_ops,
     # append the listen_and_serv op
     heter_program.global_block().append_op(
         type="listen_and_serv", inputs={'X': []}, outputs={}, attrs=attrs)
-
+    print("step 4 program: {}".format(heter_program))
     check_heter_compile_time_strategy(program, config, send_grad_var_list)
 
 
@@ -929,19 +942,19 @@ def insert_reshape_op(program,
                       var_name,
                       new_var_name,
                       new_var_shape=None):
-    input_var = program.global_block().vars[var_name]
+    input_var = block.vars[var_name]
 
-    if new_var_name not in program.global_block().vars:
-        out = program.global_block().create_var(
+    if new_var_name not in block.vars:
+        out = block.create_var(
             name=new_var_name,
             shape=new_var_shape,
             dtype=input_var.dtype,
             type=input_var.type)
     else:
-        out = program.global_block().vars[new_var_name]
+        out = block.vars[new_var_name]
         new_var_shape = out.shape
 
-    x_shape = program.global_block().create_var(
+    x_shape = block.create_var(
         name="{}.xshape@Heter".format(var_name), dtype=input_var.dtype)
     block._insert_op(
         index=index,
@@ -954,9 +967,7 @@ def insert_reshape_op(program,
 
 def insert_send_concat_op(program, block, index, var_name_list, new_var_name,
                           new_var_shape):
-    input_var_list = [
-        program.global_block().vars[var_name] for var_name in var_name_list
-    ]
+    input_var_list = [block.vars[var_name] for var_name in var_name_list]
 
     out = program.global_block().create_var(
         name=new_var_name,
@@ -984,14 +995,14 @@ def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype,
 
     out_list = []
     for i in range(len(new_var_name_list)):
-        if new_var_name_list[i] not in program.global_block().vars:
-            out = program.global_block().create_var(
+        if new_var_name_list[i] not in block.vars:
+            out = block.create_var(
                 name=new_var_name_list[i],
                 shape=new_var_shape_list[i],
                 dtype=input_var.dtype,
                 type=input_var.type)
         else:
-            out = program.global_block().vars[new_var_name_list[i]]
+            out = block.vars[new_var_name_list[i]]
         out_list.append(out)
 
     start_index = 0
@@ -1034,21 +1045,33 @@ def deleter_trainer_useless_var(program):
 
 
 def block_append_op(program, origin_program, block, op):
-    inputs = _get_input_map_from_op(origin_program.global_block().vars, op)
+    merge_ordereddict = origin_program.global_block().vars.copy()
+    merge_ordereddict.update(block.vars)
+    inputs = _get_input_map_from_op(merge_ordereddict, op)
     for key, varlist in six.iteritems(inputs):
         if not isinstance(varlist, list):
             varlist = [varlist]
         for var in varlist:
-            if var.name not in program.global_block().vars:
-                program.global_block()._clone_variable(var)
+            if var.name not in program.global_block(
+            ).vars and var.name not in block.vars:
+                if var.persistable:
+                    program.global_block()._clone_variable(
+                        var, force_persistable=False)
+                else:
+                    block._clone_variable(var, force_persistable=False)
 
     outputs = _get_output_map_from_op(origin_program.global_block().vars, op)
     for key, varlist in six.iteritems(outputs):
         if not isinstance(varlist, list):
             varlist = [varlist]
         for var in varlist:
-            if var.name not in program.global_block().vars:
-                program.global_block()._clone_variable(var)
+            if var.name not in program.global_block(
+            ).vars and var.name not in block.vars:
+                if var.persistable:
+                    program.global_block()._clone_variable(
+                        var, force_persistable=False)
+                else:
+                    block._clone_variable(var, force_persistable=False)
 
     if "_grad" not in op.type:
         # for forward op
@@ -1073,21 +1096,30 @@ def block_append_op(program, origin_program, block, op):
         block._sync_with_cpp()
 
 
-def add_vars_by_op_map(var_map, program):
+def add_vars_by_op_map(var_map, program, block):
     for key, varlist in six.iteritems(var_map):
         if not isinstance(varlist, list):
             varlist = [varlist]
         for i in range(len(varlist)):
             var = varlist[i]
-            if var.name not in program.global_block().vars:
-                program.global_block()._clone_variable(var)
+            if var.name not in program.global_block(
+            ).vars and var.name not in block.vars:
+                if var.persistable:
+                    program.global_block()._clone_variable(
+                        var, force_persistable=False)
+                else:
+                    block._clone_variable(var, force_persistable=False)
 
 
-def add_vars_by_var_list(var_name_list, origin_program, program):
+def add_vars_by_var_list(var_name_list, origin_program, program, block):
     for var_name in var_name_list:
         if var_name not in program.global_block().vars:
             var = origin_program.global_block().vars[var_name]
-            program.global_block()._clone_variable(var)
+            if var.persistable:
+                program.global_block()._clone_variable(
+                    var, force_persistable=False)
+            else:
+                block._clone_variable(var, force_persistable=False)
 
 
 def get_varlist_from_op_map(var_map):

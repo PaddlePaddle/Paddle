@@ -126,7 +126,8 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
             if grad_block:
                 varlist[i] = grad_block
             elif var.name not in program.global_block().vars:
-                tmpvar = program.global_block()._clone_variable(var)
+                tmpvar = program.global_block()._clone_variable(
+                    var, force_persistable=False)
                 varlist[i] = tmpvar
             else:
                 varlist[i] = program.global_block().vars[var.name]
@@ -144,7 +145,8 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
             if grad_block:
                 varlist[i] = grad_block
             elif var.name not in program.global_block().vars:
-                tmpvar = program.global_block()._clone_variable(var)
+                tmpvar = program.global_block()._clone_variable(
+                    var, force_persistable=False)
                 varlist[i] = tmpvar
             else:
                 varlist[i] = program.global_block().vars[var.name]
@@ -839,7 +841,8 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
 
     created_var_map = collections.OrderedDict()
     for _, var in six.iteritems(pserver_vars):
-        tmpvar = program.global_block()._clone_variable(var)
+        tmpvar = program.global_block()._clone_variable(
+            var, force_persistable=False)
         created_var_map[var.name] = tmpvar
 
     # 2. rename op outputs
