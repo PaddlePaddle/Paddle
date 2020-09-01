@@ -30,18 +30,25 @@ def wait(procs, timeout=30):
     error = False
     begin = time.time()
     while True:
+        alive = False
         for p in procs:
-            if not p.is_alive():
-                p.join()
-                if p.exitcode != 0:
-                    error = True
-                    break
+            p.join(timeout=10)
+            if p.exitcode is None:
+                alive = True
+                continue
+            elif p.exitcode != 0:
+                error = True
+                break
+
+        if not alive:
+            break
+
+        if error:
+            break
 
         if timeout is not None and time.time() - begin >= timeout:
             error = True
             break
-
-        time.sleep(3)
 
     for p in procs:
         if p.is_alive():
