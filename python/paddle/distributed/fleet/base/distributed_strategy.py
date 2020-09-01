@@ -603,6 +603,7 @@ class DistributedStrategy(object):
 
         **Notes**:
             **Detailed arguments for pipeline_configs**
+
             **micro_batch**: the number of small batches in each user defined batch
 
         Examples:
@@ -771,13 +772,14 @@ class DistributedStrategy(object):
         the key-value configs of distribute_strategy
 
         **Notes**:
-            **k_steps(int)**: the update period of the parameters
+            **k_steps(int)**: the update period of the parameters.
+
             **avg(bool)**: whether to average the gradients of each mini-batch,
                 the default value is `True`
 
         Examples:
-
           .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.gradient_merge = True
