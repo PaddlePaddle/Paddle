@@ -40,8 +40,11 @@ class DistributionNumpy():
 
 class UniformNumpy(DistributionNumpy):
     def __init__(self, low, high):
-        self.low = np.array(low).astype('float32')
-        self.high = np.array(high).astype('float32')
+        self.low = np.array(low)
+        self.high = np.array(high)
+        if str(self.low.dtype) not in ['float32', 'float64']:
+            self.low = self.low.astype('float32')
+            self.high = self.high.astype('float32')
 
     def sample(self, shape):
         shape = tuple(shape) + (self.low + self.high).shape
@@ -49,13 +52,13 @@ class UniformNumpy(DistributionNumpy):
                            (self.high - self.low))
 
     def log_prob(self, value):
-        lb = np.less(self.low, value).astype(value.dtype)
-        ub = np.less(value, self.high).astype(value.dtype)
+        lb = np.less(self.low, value).astype(self.low.dtype)
+        ub = np.less(value, self.high).astype(self.low.dtype)
         return np.log(lb * ub) - np.log(self.high - self.low)
 
     def probs(self, value):
-        lb = np.less(self.low, value).astype(value.dtype)
-        ub = np.less(value, self.high).astype(value.dtype)
+        lb = np.less(self.low, value).astype(self.low.dtype)
+        ub = np.less(value, self.high).astype(self.low.dtype)
         return (lb * ub) / (self.high - self.low)
 
     def entropy(self):
@@ -64,8 +67,11 @@ class UniformNumpy(DistributionNumpy):
 
 class NormalNumpy(DistributionNumpy):
     def __init__(self, loc, scale):
-        self.loc = np.array(loc).astype('float32')
-        self.scale = np.array(scale).astype('float32')
+        self.loc = np.array(loc)
+        self.scale = np.array(scale)
+        if str(self.loc.dtype) not in ['float32', 'float64']:
+            self.loc = self.loc.astype('float32')
+            self.scale = self.scale.astype('float32')
 
     def sample(self, shape):
         shape = tuple(shape) + (self.loc + self.scale).shape
@@ -83,8 +89,8 @@ class NormalNumpy(DistributionNumpy):
                       (2. * var)) / (math.sqrt(2 * math.pi) * self.scale)
 
     def entropy(self):
-        return 0.5 + 0.5 * np.log(np.array(2. * math.pi).astype(
-            'float32')) + np.log(self.scale)
+        return 0.5 + 0.5 * np.log(
+            np.array(2. * math.pi).astype(self.loc.dtype)) + np.log(self.scale)
 
     def kl_divergence(self, other):
         var_ratio = (self.scale / other.scale)
