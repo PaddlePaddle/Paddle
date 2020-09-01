@@ -146,6 +146,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
+
             import paddle
             exe_strategy = paddle.fluid.ExecutionStrategy()
             exe_strategy.num_threads = 10
@@ -178,6 +179,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
+
             import paddle
             build_strategy = paddle.fluid.BuildStrategy()
             build_strategy.enable_sequential_execution = True
@@ -832,6 +834,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.lars = True
@@ -888,6 +891,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.lamb = True
