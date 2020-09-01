@@ -26,5 +26,6 @@ limitations under the License. */
 #endif
 
 #if defined(__FLT_MAX__)
+#undef FLT_MAX // redefined
 #define FLT_MAX __FLT_MAX__
 #endif  // __FLT_MAX__
