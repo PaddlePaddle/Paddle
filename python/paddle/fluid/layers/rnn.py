@@ -507,6 +507,9 @@ class ArrayWrapper(object):
         self.array.append(x)
         return self
 
+    def __getitem__(self, item):
+        return self.array.__getitem__(item)
+
 
 def _maybe_copy(state, new_state, step_mask):
     """update rnn state or just pass the old state through"""
@@ -1324,98 +1327,103 @@ class BeamSearchDecoder(Decoder):
         return True
 
 
-def dynamic_decode(decoder,
-                   inits=None,
-                   max_step_num=None,
-                   output_time_major=False,
-                   impute_finished=False,
-                   is_test=False,
-                   return_length=False,
-                   **kwargs):
-    """
-	:api_attr: Static Graph
+def _dynamic_decode_imperative(decoder,
+                               inits=None,
+                               max_step_num=None,
+                               output_time_major=False,
+                               impute_finished=False,
+                               is_test=False,
+                               return_length=False,
+                               **kwargs):
+    def _maybe_copy(state, new_state, step_mask):
+        # TODO: use where_op
+        state_dtype = state.dtype
+        if convert_dtype(state_dtype) in ["bool"]:
+            state = tensor.cast(state, dtype="float32")
+            new_state = tensor.cast(new_state, dtype="float32")
+        if step_mask.dtype != state.dtype:
+            step_mask = tensor.cast(step_mask, dtype=state.dtype)
+            # otherwise, renamed bool gradients of would be summed up leading
+            # to sum(bool) error.
+            step_mask.stop_gradient = True
+        new_state = nn.elementwise_mul(
+            state, step_mask, axis=0) - nn.elementwise_mul(
+                new_state, (step_mask - 1), axis=0)
+        if convert_dtype(state_dtype) in ["bool"]:
+            new_state = tensor.cast(new_state, dtype=state_dtype)
+        return new_state
 
-    Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
-    Tensor indicating finished status contains all True values or the number of
-    decoding step reaches to :attr:`max_step_num`.
+    initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
+    inputs, states, finished = (initial_inputs, initial_states,
+                                initial_finished)
+    cond = control_flow.logical_not((nn.reduce_all(initial_finished)))
+    sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
+    outputs = None
 
-    :code:`decoder.initialize()` would be called once before the decoding loop.
-    If the `decoder` has implemented `finalize` method, :code:`decoder.finalize()`
-    would be called once after the decoding loop.
+    step_idx = 0
+    step_idx_tensor = tensor.fill_constant(
+        shape=[1], dtype="int64", value=step_idx)
+    while cond.numpy():
+        (step_outputs, next_states, next_inputs, next_finished) = decoder.step(
+            step_idx_tensor, inputs, states, **kwargs)
+        if not decoder.tracks_own_finished:
+            # BeamSearchDecoder would track it own finished, since
+            # beams would be reordered and the finished status of each
+            # entry might change. Otherwise, perform logical OR which
+            # would not change the already finished.
+            next_finished = control_flow.logical_or(next_finished, finished)
+            # To confirm states.finished/finished be consistent with
+            # next_finished.
+            tensor.assign(next_finished, finished)
+        next_sequence_lengths = nn.elementwise_add(
+            sequence_lengths,
+            tensor.cast(
+                control_flow.logical_not(finished), sequence_lengths.dtype))
 
-    Parameters:
-        decoder(Decoder): An instance of `Decoder`.
-        inits(object, optional): Argument passed to `decoder.initialize`. 
-            Default `None`.
-        max_step_num(int, optional): The maximum number of steps. If not provided,
-            decode until the decoder is fully done, or in other words, the returned
-            Tensor by :code:`decoder.step()` indicating finished status contains
-            all True. Default `None`.
-        output_time_major(bool, optional): Indicate the data layout of Tensor included
-            in the final outputs(the first returned value of this method). If
-            attr:`False`, the data layout would be batch major with shape
-            `[batch_size, seq_len, ...]`.  If attr:`True`, the data layout would
-            be time major with shape `[seq_len, batch_size, ...]`. Default: `False`.
-        impute_finished(bool, optional): If `True`, then states get copied through
-            for batch entries which are marked as finished, which differs with the
-            unfinished using the new states returned by :code:`decoder.step()` and
-            ensures that the final states have the correct values. Otherwise, states
-            wouldn't be copied through when finished. If the returned `final_states`
-            is needed, it should be set as True, which causes some slowdown.
-            Default `False`.
-        is_test(bool, optional): A flag indicating whether to use test mode. In
-            test mode, it is more memory saving. Default `False`.
-        return_length(bool, optional):  A flag indicating whether to return an
-            extra Tensor variable in the output tuple, which stores the actual
-            lengths of all decoded sequences. Default `False`.
-        **kwargs: Additional keyword arguments. Arguments passed to `decoder.step`. 
+        if impute_finished:  # rectify the states for the finished.
+            next_states = map_structure(
+                lambda x, y: _maybe_copy(x, y, finished), states, next_states)
+        outputs = map_structure(
+            lambda x: ArrayWrapper(x),
+            step_outputs) if step_idx == 0 else map_structure(
+                lambda x, x_array: x_array.append(x), step_outputs, outputs)
+        inputs, states, finished, sequence_lengths = (
+            next_inputs, next_states, next_finished, next_sequence_lengths)
 
-    Returns:
-        tuple: A tuple( :code:`(final_outputs, final_states, sequence_lengths)` ) \
-            when `return_length` is True, otherwise a tuple( :code:`(final_outputs, final_states)` ). \
-            The final outputs and states, both are Tensor or nested structure of Tensor. \
-            `final_outputs` has the same structure and data types as the :code:`outputs` \
-            returned by :code:`decoder.step()` , and each Tenser in `final_outputs` \
-            is the stacked of all decoding steps' outputs, which might be revised \
-            by :code:`decoder.finalize()` if the decoder has implemented `finalize`. \
-            `final_states` is the counterpart at last time step of initial states \
-            returned by :code:`decoder.initialize()` , thus has the same structure \
-            with it and has tensors with same shapes and data types. `sequence_lengths` \
-            is an `int64` tensor with the same shape as `finished` returned \
-            by :code:`decoder.initialize()` , and it stores the actual lengths of \
-            all decoded sequences.
-            
+        control_flow.increment(x=step_idx_tensor, value=1.0, in_place=True)
+        step_idx += 1
 
-    Examples:
+        control_flow.logical_not(nn.reduce_all(finished), cond)
+        if max_step_num is not None and step_idx > max_step_num:
+            break
 
-        .. code-block:: python
-            
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            from paddle.fluid.layers import GRUCell, BeamSearchDecoder, dynamic_decode
+    final_outputs = map_structure(lambda x: nn.stack(x.array, axis=0), outputs)
+    final_states = states
 
-            encoder_output = fluid.data(name="encoder_output",
-                                    shape=[-1, 32, 128],
-                                    dtype="float32")
-            trg_embeder = lambda x: fluid.embedding(
-                x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
-            output_layer = lambda x: layers.fc(x,
-                                            size=10000,
-                                            num_flatten_dims=len(x.shape) - 1,
-                                            param_attr=fluid.ParamAttr(name=
-                                                                        "output_w"),
-                                            bias_attr=False)
-            decoder_cell = GRUCell(hidden_size=128)
-            decoder = BeamSearchDecoder(decoder_cell,
-                                        start_token=0,
-                                        end_token=1,
-                                        beam_size=4,
-                                        embedding_fn=trg_embeder,
-                                        output_fn=output_layer)
+    try:
+        final_outputs, final_states = decoder.finalize(
+            final_outputs, final_states, sequence_lengths)
+    except NotImplementedError:
+        pass
 
-            outputs = dynamic_decode(
-                decoder=decoder, inits=decoder_cell.get_initial_states(encoder_output))
-    """
+    if not output_time_major:
+        final_outputs = map_structure(
+            lambda x: nn.transpose(x, [1, 0] + list(range(2, len(x.shape)))),
+            final_outputs)
+
+    return (final_outputs, final_states,
+            sequence_lengths) if return_length else (final_outputs,
+                                                     final_states)
+
+
+def _dynamic_decode_declarative(decoder,
+                                inits=None,
+                                max_step_num=None,
+                                output_time_major=False,
+                                impute_finished=False,
+                                is_test=False,
+                                return_length=False,
+                                **kwargs):
     initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
     global_inputs, global_states, global_finished = (
         initial_inputs, initial_states, initial_finished)
@@ -1552,6 +1560,108 @@ def dynamic_decode(decoder,
     return (final_outputs, final_states,
             sequence_lengths) if return_length else (final_outputs,
                                                      final_states)
+
+
+def dynamic_decode(decoder,
+                   inits=None,
+                   max_step_num=None,
+                   output_time_major=False,
+                   impute_finished=False,
+                   is_test=False,
+                   return_length=False,
+                   **kwargs):
+    """
+	:api_attr: Static Graph
+
+    Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
+    Tensor indicating finished status contains all True values or the number of
+    decoding step reaches to :attr:`max_step_num`.
+
+    :code:`decoder.initialize()` would be called once before the decoding loop.
+    If the `decoder` has implemented `finalize` method, :code:`decoder.finalize()`
+    would be called once after the decoding loop.
+
+    Parameters:
+        decoder(Decoder): An instance of `Decoder`.
+        inits(object, optional): Argument passed to `decoder.initialize`. 
+            Default `None`.
+        max_step_num(int, optional): The maximum number of steps. If not provided,
+            decode until the decoder is fully done, or in other words, the returned
+            Tensor by :code:`decoder.step()` indicating finished status contains
+            all True. Default `None`.
+        output_time_major(bool, optional): Indicate the data layout of Tensor included
+            in the final outputs(the first returned value of this method). If
+            attr:`False`, the data layout would be batch major with shape
+            `[batch_size, seq_len, ...]`.  If attr:`True`, the data layout would
+            be time major with shape `[seq_len, batch_size, ...]`. Default: `False`.
+        impute_finished(bool, optional): If `True`, then states get copied through
+            for batch entries which are marked as finished, which differs with the
+            unfinished using the new states returned by :code:`decoder.step()` and
+            ensures that the final states have the correct values. Otherwise, states
+            wouldn't be copied through when finished. If the returned `final_states`
+            is needed, it should be set as True, which causes some slowdown.
+            Default `False`.
+        is_test(bool, optional): A flag indicating whether to use test mode. In
+            test mode, it is more memory saving. Default `False`.
+        return_length(bool, optional):  A flag indicating whether to return an
+            extra Tensor variable in the output tuple, which stores the actual
+            lengths of all decoded sequences. Default `False`.
+        **kwargs: Additional keyword arguments. Arguments passed to `decoder.step`. 
+
+    Returns:
+        tuple: A tuple( :code:`(final_outputs, final_states, sequence_lengths)` ) \
+            when `return_length` is True, otherwise a tuple( :code:`(final_outputs, final_states)` ). \
+            The final outputs and states, both are Tensor or nested structure of Tensor. \
+            `final_outputs` has the same structure and data types as the :code:`outputs` \
+            returned by :code:`decoder.step()` , and each Tenser in `final_outputs` \
+            is the stacked of all decoding steps' outputs, which might be revised \
+            by :code:`decoder.finalize()` if the decoder has implemented `finalize`. \
+            `final_states` is the counterpart at last time step of initial states \
+            returned by :code:`decoder.initialize()` , thus has the same structure \
+            with it and has tensors with same shapes and data types. `sequence_lengths` \
+            is an `int64` tensor with the same shape as `finished` returned \
+            by :code:`decoder.initialize()` , and it stores the actual lengths of \
+            all decoded sequences.
+            
+
+    Examples:
+
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            from paddle.fluid.layers import GRUCell, BeamSearchDecoder, dynamic_decode
+
+            encoder_output = fluid.data(name="encoder_output",
+                                    shape=[-1, 32, 128],
+                                    dtype="float32")
+            trg_embeder = lambda x: fluid.embedding(
+                x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
+            output_layer = lambda x: layers.fc(x,
+                                            size=10000,
+                                            num_flatten_dims=len(x.shape) - 1,
+                                            param_attr=fluid.ParamAttr(name=
+                                                                        "output_w"),
+                                            bias_attr=False)
+            decoder_cell = GRUCell(hidden_size=128)
+            decoder = BeamSearchDecoder(decoder_cell,
+                                        start_token=0,
+                                        end_token=1,
+                                        beam_size=4,
+                                        embedding_fn=trg_embeder,
+                                        output_fn=output_layer)
+
+            outputs = dynamic_decode(
+                decoder=decoder, inits=decoder_cell.get_initial_states(encoder_output))
+    """
+    if in_dygraph_mode():
+        return _dynamic_decode_imperative(decoder, inits, max_step_num,
+                                          output_time_major, impute_finished,
+                                          is_test, return_length, **kwargs)
+    else:
+        return _dynamic_decode_declarative(decoder, inits, max_step_num,
+                                           output_time_major, impute_finished,
+                                           is_test, return_length, **kwargs)
 
 
 class DecodeHelper(object):
