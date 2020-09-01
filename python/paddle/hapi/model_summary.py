@@ -43,7 +43,6 @@ def summary(net, input_size, batch_size=None, dtypes=None):
 
             import paddle
             import paddle.nn as nn
-            from paddle.utils import summary
 
             class LeNet(nn.Layer):
                 def __init__(self, num_classes=10):
@@ -76,7 +75,7 @@ def summary(net, input_size, batch_size=None, dtypes=None):
 
             lenet = LeNet()
 
-            params_info = summary(lenet, (1, 28, 28))
+            params_info = paddle.hapi.summary(lenet, (1, 28, 28))
             print(params_info)
 
     """
