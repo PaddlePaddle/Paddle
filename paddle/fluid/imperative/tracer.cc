@@ -21,6 +21,8 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
 
+DECLARE_bool(use_mkldnn);
+
 namespace paddle {
 namespace imperative {
 
@@ -47,6 +49,9 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward) {
   VLOG(1) << "Trace Op: " << type;
+  if (FLAGS_use_mkldnn) {
+    attrs["use_mkldnn"] = true;
+  }
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
