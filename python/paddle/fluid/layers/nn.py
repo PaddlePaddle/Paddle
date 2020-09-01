@@ -10018,15 +10018,16 @@ def stack(x, axis=0, name=None):
 
 
     Args:
-        x (Variable|list(Variable)): Input :code:`x` can be a single Tensor, a :code:`list` of Tensors.
-                                     If :code:`x` is a :code:`list`, the shapes of all these Tensors
+        x (list(Variable)|tuple(Variable)): Input :code:`x` can be a :code:`list` or :code:`tuple` of Tensors, the shapes of all these Tensors
                                      must be the same. Supposing input is N dims
                                      Tensors :math:`[d_0, d_1, ..., d_{n-1}]`, the output is N+1 dims
                                      Tensor :math:`[d_0, d_1, d_{axis-1}, len(x), d_{axis}, ..., d_{n-1}]`.
                                      Supported data types: float32, float64, int32, int64.
-        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is :math:`[-(R+1), R+1)`.
-                              R is the first tensor of inputs. If ``axis`` < 0, :math:`axis=axis+rank(x[0])+1`.
-                              The default value of axis is 0.
+        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
+                              where ``R`` is the number of dimensions of the first input tensor ``x[0]``. 
+                              If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
+    
 
     Returns:
         Variable: The stacked Tensor, has same data type with input Tensors. Output dim is :math:`rank(x[0])+1`.
@@ -10048,12 +10049,15 @@ def stack(x, axis=0, name=None):
             data = layers.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
 
     """
-    axis = 0 if axis is None else axis
-    if not isinstance(x, list) and not isinstance(x, tuple):
-        x = [x]
+    if axis is None:
+        axis = 0
 
     if in_dygraph_mode():
         return core.ops.stack(x, 'axis', axis)
+
+    if not isinstance(x, list) and not isinstance(x, tuple):
+        raise TypeError("The type of '%s' in %s must be %s, but received %s" % (
+            'x', 'stack', 'list[Tensor] or tuple[Tensor]', type(x)))
 
     helper = LayerHelper('stack', **locals())
     out = helper.create_variable_for_type_inference(x[0].dtype)
