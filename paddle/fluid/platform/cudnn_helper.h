@@ -560,9 +560,13 @@ class ScopedRNNBase {
   std::vector<cudnnTensorDescriptor_t> y_desc_;
   cudnnRNNDataDescriptor_t x_seq_desc_;
   cudnnRNNDataDescriptor_t y_seq_desc_;
+  // A tensor descriptor describing the initial hidden state of the RNN.
   cudnnTensorDescriptor_t hx_desc_;
+  // A tensor descriptor describing the initial cell state for LSTM networks.
   cudnnTensorDescriptor_t cx_desc_;
+  // A tensor descriptor describing the final hidden state of the RNN.
   cudnnTensorDescriptor_t hy_desc_;
+  // A tensor descriptor describing the final cell state for LSTM networks.
   cudnnTensorDescriptor_t cy_desc_;
   cudnnDropoutDescriptor_t dropout_desc_;
   cudnnFilterDescriptor_t w_desc_;
