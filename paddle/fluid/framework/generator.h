@@ -128,7 +128,7 @@ std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine();
 
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
 
-const std::shared_ptr<Generator>& getDefaultCUDAGenerator(
+const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(
     int64_t device_id = -1);
 
 }  // namespace framework

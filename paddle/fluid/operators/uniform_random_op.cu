@@ -122,11 +122,11 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     }
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    bool seed_flag = true;
+    bool seed_flag = false;
     if (seed == 0) {
       std::random_device rd;
       seed = rd();
-      seed_flag = false;
+      seed_flag = true;
     }
 
     T min = static_cast<T>(context.Attr<float>("min"));
@@ -139,7 +139,7 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
     int64_t device_id = -1;
-    auto gen_cuda = framework::getDefaultCUDAGenerator(device_id);
+    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
     if (gen_cuda->GetIsInitPy() && seed_flag) {
       std::cout << ">>>>>>>>CUDA UNIFORM GENERATOR" << std::endl;
       // auto seed_offset = gen_cuda->IncrementOffset(1);

@@ -64,11 +64,11 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    bool seed_flag = true;
+    bool seed_flag = false;
     if (seed == 0) {
       std::random_device rd;
       seed = rd();
-      seed_flag = false;
+      seed_flag = true;
     }
     T mean = static_cast<T>(context.Attr<float>("mean"));
     T std = static_cast<T>(context.Attr<float>("std"));
@@ -79,7 +79,7 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
     int64_t size = tensor->numel();
-    auto gen_cuda = framework::getDefaultCUDAGenerator(-1);
+    auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
 
     if (gen_cuda->GetIsInitPy() && seed_flag) {
       std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
@@ -110,17 +110,17 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    bool seed_flag = true;
+    bool seed_flag = false;
     if (seed == 0) {
       std::random_device rd;
       seed = rd();
-      seed_flag = false;
+      seed_flag = true;
     }
     T mean = static_cast<T>(context.Attr<float>("mean"));
     T std = static_cast<T>(context.Attr<float>("std"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    auto gen_cuda = framework::getDefaultCUDAGenerator(-1);
+    auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
 
     if (gen_cuda->GetIsInitPy() && seed_flag) {
       std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
