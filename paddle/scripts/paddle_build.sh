@@ -1395,6 +1395,26 @@ function example() {
     fi
 }
 
+function summary_check_problems() {
+    set +x
+    local check_style_code=$1
+    local example_code=$2
+    if [ $check_style_code -ne 0 -o $example_code -ne 0 ];then
+      echo "========================================"
+      echo "summary problems:"
+      echo "========================================"
+      if [ $check_style_code -ne 0 ];then
+        echo "- Check code style failed! Please check the log and fix problems."
+      fi
+      if [ $example_code -ne 0 ];then
+        echo "- Check example code failed! Please check the log and fix problems."
+      fi
+      [ $check_style_code -ne 0 ] && exit $check_style_code
+      [ $example_code -ne 0 ] && exit $example_code
+    fi
+    set -x
+}
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -1415,10 +1435,7 @@ function main() {
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         $(example >&2)
         example_code=$?
-        [ $check_style_code -ne 0 ] && echo "Please check the log and fix code style problems."
-        [ $example_code -ne 0 ] && echo "Please check the log and fix example problems."
-        [ $check_style_code -ne 0 ] && exit $check_style_code
-        [ $example_code -ne 0 ] && exit $example_code
+        summary_check_problems $check_style_code $example_code
         assert_api_spec_approvals
         ;;
       build)
