@@ -80,7 +80,6 @@ class Optimizer(object):
         .. code-block:: python
 
             #Take the subclass adam as an example
-            #Optimizer 
             import paddle
             import numpy as np
 
@@ -215,6 +214,8 @@ class Optimizer(object):
                 adam.set_state_dict(opti_state_dict)
 
         '''
+        if isinstance(self._learning_rate, _LRScheduler):
+            self._learning_rate.set_dict(state_dict["LR_Scheduler"])
 
         if isinstance(self._learning_rate, _LRScheduler):
             self._learning_rate.set_state_dict(state_dict["LR_Scheduler"])
@@ -270,6 +271,7 @@ class Optimizer(object):
                 main_prog = framework.default_main_program()
                 main_prog.lr_sheduler = self._learning_rate
                 main_prog.lr_var = lr_var
+
                 self._learning_rate_map[framework.default_main_program(
                 )] = lr_var
 
@@ -300,7 +302,7 @@ class Optimizer(object):
         this API cannot be invoked, because it will lead to conflict.
 
         Args:
-            value (float|Tensor): the value of learning rate
+            value (float): the value of learning rate
 
         Returns:
             None
@@ -357,6 +359,7 @@ class Optimizer(object):
         
         Get current step learning rate. The return value is all the same When _LRScheduler is not used,
         otherwise return the current step learning rate.
+
 
         Returns:
             float: The learning rate of the current step.
@@ -655,7 +658,7 @@ class Optimizer(object):
                 paddle.disable_static()
                 value = np.arange(26).reshape(2, 13).astype("float32")
                 a = paddle.to_tensor(value)
-                linear = paddle.nn.Linear(13, 5, dtype="float32")
+                linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01, 
                                             parameters = linear.parameters())
@@ -798,7 +801,7 @@ class Optimizer(object):
                 paddle.disable_static()
                 value = np.arange(26).reshape(2, 13).astype("float32")
                 a = paddle.to_tensor(value)
-                linear = paddle.nn.Linear(13, 5, dtype="float32")
+                linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01, 
                                             parameters = linear.parameters())
@@ -836,36 +839,33 @@ class Optimizer(object):
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) tensor pairs, param is
             ``Parameter``, grad is the gradient value corresponding to the parameter.
-            The returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
+            In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
             indicate program pruning. If so, the program will be pruned by ``feed`` and 
             ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
             .. code-block:: python
-
+ 
                 import paddle
-                import paddle.fluid as fluid
+                import numpy as np
 
-                place = fluid.CPUPlace()
-                main = fluid.Program()
-                with fluid.program_guard(main):
-                    x = fluid.data(name='x', shape=[None, 13], dtype='float32')
-                    y = fluid.data(name='y', shape=[None, 1], dtype='float32')
-                    y_predict = fluid.layers.fc(input=x, size=1, act=None)
-                    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                    avg_cost = fluid.layers.mean(cost)
+                paddle.disable_static()
+                inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+                linear = paddle.nn.Linear(10, 10)
+                inp = paddle.to_tensor(inp)
+                out = linear(inp)
+                loss = paddle.mean(out)
 
-                    adam_optimizer = paddle.optimizer.Adam(0.01)
-                    adam_optimizer.minimize(avg_cost)
+                beta1 = paddle.to_tensor([0.9], dtype="float32")
+                beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-                    fetch_list = [avg_cost]
-                    train_reader = paddle.batch(
-                        paddle.dataset.uci_housing.train(), batch_size=1)
-                    feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-                    exe = fluid.Executor(place)
-                    exe.run(fluid.default_startup_program())
-                    for data in train_reader():
-                        exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+                adam = paddle.optimizer.Adam(learning_rate=0.1,
+                        parameters=linear.parameters(),
+                        weight_decay=0.01)
+                out.backward()
+                adam.minimize(loss)
+                adam.clear_grad()
+
         """
         assert isinstance(loss, Variable), "The loss should be an Tensor."
 
@@ -885,7 +885,7 @@ class Optimizer(object):
     @framework.dygraph_only
     def step(self):
         """
-        Execute the optimizer once.
+        Execute the optimizer and update parameters once.
         
         Returns:
             None
@@ -898,7 +898,7 @@ class Optimizer(object):
                 paddle.disable_static()
                 value = np.arange(26).reshape(2, 13).astype("float32")
                 a = paddle.to_tensor(value)
-                linear = paddle.nn.Linear(13, 5, dtype="float32")
+                linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01, 
                                             parameters = linear.parameters())
