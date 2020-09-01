@@ -19,8 +19,8 @@ API_FILES=("CMakeLists.txt"
            "paddle/fluid/framework/ir/node.h"
            "paddle/fluid/framework/ir/graph.h"
            "paddle/fluid/framework/framework.proto"
-	       "python/paddle/distributed/__init"
-	       "python/paddle/distributed/fleet/__init__.py"
+	    "python/paddle/distributed/__init"
+	    "python/paddle/distributed/fleet/__init__.py"
            "python/requirements.txt"
            "python/paddle/fluid/__init__.py"
            "python/paddle/fluid/compiler.py"
@@ -160,8 +160,6 @@ if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD lanxianghit approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag.\n"
     check_approval 1 47554610
 fi
-
-
 
 HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
 if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
