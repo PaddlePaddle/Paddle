@@ -36,7 +36,7 @@ def summary(net, input_size, batch_size=None, dtypes=None):
         dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
 
     Returns:
-        Dict: a summary of the network.
+        Dict: a summary of the network including total params and total trainable params.
 
     Examples:
         .. code-block:: python
