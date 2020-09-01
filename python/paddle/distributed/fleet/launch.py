@@ -355,6 +355,7 @@ def launch_ps(args):
     for idx, cur_worker in enumerate(pod.workers):
         proc_env = {
             "PADDLE_PSERVERS_IP_PORT_LIST": server_endpoints,
+            "PADDLE_TRAINER_ENDPOINTS": worker_endpoints,
             "PADDLE_TRAINERS_NUM": str(worker_num),
             "TRAINING_ROLE": "TRAINER",
             "PADDLE_TRAINER_ID": str(cur_worker.rank)
