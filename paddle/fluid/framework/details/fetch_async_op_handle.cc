@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ FetchAsyncOpHandle::~FetchAsyncOpHandle() {}
 void FetchAsyncOpHandle::RecordWaitEventOnCtx(
     platform::DeviceContext *waited_ctx) {
   PADDLE_THROW(platform::errors::PermissionDenied(
-      "Nobody should wait FetchAsyncOp. Unexpceted Error."));
+      "No nodes need to wait FetchAsyncOp. Unexpceted Error."));
 }
 
 static void CheckTensorAttrs(const LoDTensor *tensor,
@@ -75,30 +75,30 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
 
   // step3: check dims
   auto tensor_dims = tensor->dims();
-  PADDLE_ENFORCE_EQ(
-      dims.size(), tensor_dims.size(),
-      platform::errors::Fatal("The dimension sizes of fetched Tensors or "
-                              "the items of fetched LoDTensorArray are "
-                              "different from each other on different "
-                              "devices. And the error is caused by the %zu "
-                              "(th) fetched variable. Please set the "
-                              "parameter `return_merged = False` when you "
-                              "call the `Executor.run()` method.",
-                              offset));
+  PADDLE_ENFORCE_EQ(dims.size(), tensor_dims.size(),
+                    platform::errors::InvalidArgument(
+                        "The dimension sizes of fetched Tensors or "
+                        "the items of fetched LoDTensorArray are "
+                        "different from each other on different "
+                        "devices(%s vs %s). And the error is caused by the %zu "
+                        "(th) fetched variable. Please set the "
+                        "parameter `return_merged = False` when you "
+                        "call the `Executor.run()` method.",
+                        dims, tensor_dims, offset));
   for (int j = 1; j < dims.size(); j++) {
-    PADDLE_ENFORCE_EQ(
-        dims[j], tensor_dims[j],
-        platform::errors::Fatal("The dimensions of fetched Tensors or "
-                                "the items of fetched LoDTensorArray are "
-                                "different from each other on different "
-                                "devices. And the error is caused by the "
-                                "%zu (th) fetched variable. Please set the "
-                                "parameter `return_merged = False` when "
-                                "you call the `Executor.run()` method.",
-                                offset));
+    PADDLE_ENFORCE_EQ(dims[j], tensor_dims[j],
+                      platform::errors::InvalidArgument(
+                          "The dimensions of fetched Tensors or "
+                          "the items of fetched LoDTensorArray are "
+                          "different from each other on different "
+                          "devices(%s vs %s). And the error is caused by the "
+                          "%zu (th) fetched variable. Please set the "
+                          "parameter `return_merged = False` when "
+                          "you call the `Executor.run()` method.",
+                          dims, tensor_dims, offset));
   }
 
-  // seto4: check lod
+  // step4: check lod
   PADDLE_ENFORCE_EQ(
       lod.size(), tensor->lod().size(),
       platform::errors::InvalidArgument(
@@ -200,8 +200,10 @@ void FetchAsyncOpHandle::RunImpl() {
     auto *var_handle = static_cast<VarHandle *>(inputs_[i]);
     auto &scope = scopes.at(var_handle->scope_idx());
     auto *var = scope->FindVar(var_handle->name());
-    PADDLE_ENFORCE_NOT_NULL(var, "Cannot find variable %s in execution scope",
-                            var_handle->name());
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::NotFound(
+            "Cannot find variable %s in execution scope.", var_handle->name()));
     src_vars.emplace_back(var);
   }
 
