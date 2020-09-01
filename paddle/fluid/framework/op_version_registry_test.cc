@@ -55,6 +55,72 @@ TEST(test_operator_version, test_operator_version) {
               .NewInput("X2", "The second input.")
               .NewOutput("Y2", "The second output."));
 }
+
+TEST(test_pass_op_version_checker, test_pass_op_version_checker) {
+  ASSERT_TRUE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
+      "no_bind_pass"));
+
+  REGISTER_PASS_CAPABILITY(test_pass1)
+      .AddCombination(
+          paddle::framework::compatible::OpVersionComparatorCombination()
+              .AddLE("mul", 1)
+              .AddEQ("fc", 0));
+  ASSERT_TRUE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
+      "test_pass1"));
+
+  REGISTER_PASS_CAPABILITY(test_pass2)
+      .AddCombination(
+          paddle::framework::compatible::OpVersionComparatorCombination()
+              .AddGE("mul", 0)
+              .AddNE("fc", 0));
+  ASSERT_FALSE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
+      "test_pass2"));
+
+  REGISTER_PASS_CAPABILITY(test_pass3)
+      .AddCombination(
+          paddle::framework::compatible::OpVersionComparatorCombination()
+              .AddGE("mul", 0)
+              .AddNE("fc", 0))
+      .AddCombination(
+          paddle::framework::compatible::OpVersionComparatorCombination()
+              .AddLE("mul", 1)
+              .AddEQ("fc", 0));
+  ASSERT_TRUE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
+      "test_pass3"));
+
+  REGISTER_PASS_CAPABILITY(test_pass4)
+      .AddCombination(
+          paddle::framework::compatible::OpVersionComparatorCombination()
+              .AddGE("test__", 5)
+              .AddEQ("fc", 0));
+  ASSERT_FALSE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
+      "test_pass4"));
+
+  REGISTER_PASS_CAPABILITY(test_pass5)
+      .AddCombination(
+          paddle::framework::compatible::OpVersionComparatorCombination()
+              .AddGE("test__", 4)
+              .AddEQ("fc", 0));
+  ASSERT_TRUE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
+      "test_pass5"));
+
+  REGISTER_PASS_CAPABILITY(test_pass6)
+      .AddCombination(
+          paddle::framework::compatible::OpVersionComparatorCombination()
+              .AddEQ("test__", 4)
+              .AddEQ("fc", 0));
+  ASSERT_TRUE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
+      "test_pass6"));
+
+  REGISTER_PASS_CAPABILITY(test_pass7)
+      .AddCombination(
+          paddle::framework::compatible::OpVersionComparatorCombination()
+              .AddNE("test__", 4)
+              .AddEQ("fc", 0));
+  ASSERT_FALSE(PassVersionCheckerRegistrar::GetInstance().IsPassCompatible(
+      "test_pass7"));
+}
+
 }  // namespace compatible
 }  // namespace framework
 }  // namespace paddle

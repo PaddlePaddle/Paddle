@@ -133,6 +133,7 @@ class OpVersion {
     checkpoints_.push_back(Checkpoint({note, op_version_desc}));
     return *this;
   }
+  uint32_t GetVersionID() { return static_cast<uint32_t>(checkpoints_.size()); }
 
  private:
   struct Checkpoint {
@@ -156,12 +157,134 @@ class OpVersionRegistrar {
     op_version_map_.insert({op_type, OpVersion()});
     return op_version_map_[op_type];
   }
+  uint32_t GetVersionID(const std::string& op_type) {
+    if (op_version_map_.find(op_type) == op_version_map_.end()) {
+      return 0;
+    } else {
+      return op_version_map_[op_type].GetVersionID();
+    }
+  }
 
  private:
   std::unordered_map<std::string, OpVersion> op_version_map_;
 
   OpVersionRegistrar() = default;
   OpVersionRegistrar& operator=(const OpVersionRegistrar&) = delete;
+};
+
+class OpVersionComparator {
+ public:
+  virtual bool operator()() = 0;
+  virtual ~OpVersionComparator() {}
+};
+
+#define ADD_OP_VERSION_COMPARATOR(cmp_name, cmp_math)                   \
+  class OpVersion##cmp_name##Comparator : public OpVersionComparator {  \
+   public:                                                              \
+    explicit OpVersion##cmp_name##Comparator(const std::string op_name, \
+                                             uint32_t target_version)   \
+        : op_name_(op_name), target_version_(target_version) {}         \
+    virtual bool operator()() {                                         \
+      return OpVersionRegistrar::GetInstance().GetVersionID(op_name_)   \
+          cmp_math target_version_;                                     \
+    }                                                                   \
+    virtual ~OpVersion##cmp_name##Comparator() {}                       \
+                                                                        \
+   private:                                                             \
+    std::string op_name_;                                               \
+    uint32_t target_version_;                                           \
+  };
+
+ADD_OP_VERSION_COMPARATOR(LE, <=);
+ADD_OP_VERSION_COMPARATOR(EQ, ==);
+ADD_OP_VERSION_COMPARATOR(GE, >=);
+ADD_OP_VERSION_COMPARATOR(NE, !=);
+
+class OpVersionComparatorCombination {
+ public:
+  OpVersionComparatorCombination() {}
+
+  OpVersionComparatorCombination& AddLE(const std::string& op_name,
+                                        int target_version) {
+    op_version_comparators_.push_back(std::shared_ptr<OpVersionComparator>(
+        new OpVersionLEComparator(op_name, target_version)));
+    return *this;
+  }
+  OpVersionComparatorCombination& AddEQ(const std::string& op_name,
+                                        int target_version) {
+    op_version_comparators_.push_back(std::shared_ptr<OpVersionComparator>(
+        new OpVersionEQComparator(op_name, target_version)));
+    return *this;
+  }
+  OpVersionComparatorCombination& AddGE(const std::string& op_name,
+                                        int target_version) {
+    op_version_comparators_.push_back(std::shared_ptr<OpVersionComparator>(
+        new OpVersionGEComparator(op_name, target_version)));
+    return *this;
+  }
+  OpVersionComparatorCombination& AddNE(const std::string& op_name,
+                                        int target_version) {
+    op_version_comparators_.push_back(std::shared_ptr<OpVersionComparator>(
+        new OpVersionNEComparator(op_name, target_version)));
+    return *this;
+  }
+
+  bool IsMatched() {
+    for (auto& cmp : op_version_comparators_) {
+      if (!(*cmp.get())()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+ private:
+  std::vector<std::shared_ptr<OpVersionComparator>> op_version_comparators_;
+};
+
+class PassVersionCheckers {
+ public:
+  PassVersionCheckers& AddCombination(
+      const OpVersionComparatorCombination& combinations) {
+    pass_version_checkers_.push_back(combinations);
+    return *this;
+  }
+  bool IsPassCompatible() {
+    if (pass_version_checkers_.size() == 0) {
+      return true;
+    }
+    for (auto& checker : pass_version_checkers_) {
+      if (checker.IsMatched()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+ private:
+  std::vector<OpVersionComparatorCombination> pass_version_checkers_;
+};
+
+class PassVersionCheckerRegistrar {
+ public:
+  static PassVersionCheckerRegistrar& GetInstance() {
+    static PassVersionCheckerRegistrar instance;
+    return instance;
+  }
+  PassVersionCheckers& Register(const std::string& pass_name) {
+    return pass_version_checkers_map_[pass_name];
+  }
+  bool IsPassCompatible(const std::string& fuse_pass_name) {
+    return pass_version_checkers_map_[fuse_pass_name].IsPassCompatible();
+  }
+
+ private:
+  std::unordered_map<std::string, PassVersionCheckers>
+      pass_version_checkers_map_;
+
+  PassVersionCheckerRegistrar() = default;
+  PassVersionCheckerRegistrar& operator=(const PassVersionCheckerRegistrar&) =
+      delete;
 };
 
 }  // namespace compatible
@@ -173,3 +296,9 @@ class OpVersionRegistrar {
       RegisterOpVersion__##op_type =                                       \
           paddle::framework::compatible::OpVersionRegistrar::GetInstance() \
               .Register(#op_type)
+
+#define REGISTER_PASS_CAPABILITY(pass_name)                        \
+  static auto RegisterOpPassVersionChecker__##pass_name =          \
+      paddle::framework::compatible::PassVersionCheckerRegistrar:: \
+          GetInstance()                                            \
+              .Register(#pass_name)
