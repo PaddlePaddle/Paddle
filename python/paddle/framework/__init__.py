@@ -20,8 +20,8 @@ __all__ = [
 ]
 
 __all__ += [
-    'grad', 'LayerList', 'load', 'save', 'prepare_context', 'to_variable',
-    'no_grad', 'ParallelEnv', 'DataParallel'
+    'grad', 'LayerList', 'load', 'save', 'to_variable', 'no_grad',
+    'DataParallel'
 ]
 
 __all__ += [
