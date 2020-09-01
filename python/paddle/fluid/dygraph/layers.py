@@ -29,6 +29,7 @@ from .layer_object_helper import LayerObjectHelper
 from .base import program_desc_tracing_guard, param_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
+from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 
@@ -1005,23 +1006,23 @@ class Layer(core.Layer):
         else:
 
             def _set_var(var, ndarray):
-                t = fluid.global_scope().find_var(var.name).get_tensor()
+                t = global_scope().find_var(var.name).get_tensor()
                 p = t._place()
                 if p.is_cpu_place():
-                    place = fluid.CPUPlace()
+                    place = core.CPUPlace()
                 elif p.is_cuda_pinned_place():
-                    place = fluid.CUDAPinnedPlace()
+                    place = core.CUDAPinnedPlace()
                 else:
-                    p = fluid.core.Place()
+                    p = core.Place()
                     p.set_place(t._place())
-                    place = fluid.CUDAPlace(p.gpu_device_id())
+                    place = core.CUDAPlace(p.gpu_device_id())
                 t.set(ndarray, place)
 
-            executor = fluid.Executor(_get_device())._default_executor
+            executor = Executor(_get_device())._default_executor
             # restore parameter states
-            fluid.core._create_loaded_parameter(
+            core._create_loaded_parameter(
                 [param for param, state in matched_param_state],
-                fluid.global_scope(), executor)
+                global_scope(), executor)
             for param, state in matched_param_state:
                 _set_var(param, state)
 
