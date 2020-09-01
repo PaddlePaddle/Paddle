@@ -177,7 +177,7 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
         fleet.init_worker()
         exe.run(fluid.default_startup_program())
 
-        thread_num = 1
+        thread_num = int(os.getenv("CPU_NUM", 2))
         batch_size = 128
         filelist = fleet_util.get_file_shard(train_file_list)
         print("filelist: {}".format(filelist))
