@@ -35,13 +35,13 @@ class TestDygraphGroupNormv2(unittest.TestCase):
 
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
-                    gn = fluid.dygraph.GroupNorm(channels=2, groups=2)
+                    gn = fluid.dygraph.GroupNorm(channels=6, groups=2)
                     y = gn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
             def compute_v2(x):
                 with fluid.dygraph.guard(p):
-                    gn = paddle.nn.GroupNorm(num_channels=2, num_groups=2)
+                    gn = paddle.nn.GroupNorm(num_channels=6, num_groups=2)
                     y = gn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
@@ -52,7 +52,7 @@ class TestDygraphGroupNormv2(unittest.TestCase):
 
     def test_static(self):
         places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
+        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             exe = fluid.Executor(p)
@@ -60,7 +60,7 @@ class TestDygraphGroupNormv2(unittest.TestCase):
 
             def compute_v1(x_np):
                 with program_guard(Program(), Program()):
-                    gn = fluid.dygraph.GroupNorm(channels=2, groups=2)
+                    gn = fluid.dygraph.GroupNorm(channels=6, groups=2)
                     x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = gn(x)
                     exe.run(fluid.default_startup_program())
@@ -69,7 +69,7 @@ class TestDygraphGroupNormv2(unittest.TestCase):
 
             def compute_v2(x_np):
                 with program_guard(Program(), Program()):
-                    gn = paddle.nn.GroupNorm(num_channels=2, num_groups=2)
+                    gn = paddle.nn.GroupNorm(num_channels=6, num_groups=2)
                     x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = gn(x)
                     exe.run(fluid.default_startup_program())

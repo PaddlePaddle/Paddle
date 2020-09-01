@@ -311,10 +311,10 @@ def layer_norm(x,
     # create output
     helper = LayerHelper('layer_norm', **locals())
     mean_out = helper.create_variable_for_type_inference(
-        dtype=x.type, stop_gradient=True)
+        dtype=x.dtype, stop_gradient=True)
     variance_out = helper.create_variable_for_type_inference(
-        dtype=x.type, stop_gradient=True)
-    layer_norm_out = helper.create_variable_for_type_inference(x.type)
+        dtype=x.dtype, stop_gradient=True)
+    layer_norm_out = helper.create_variable_for_type_inference(x.dtype)
 
     helper.append_op(
         type="layer_norm",
