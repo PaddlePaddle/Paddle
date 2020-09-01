@@ -493,7 +493,7 @@ def recover_globals_attribute(src_obj, dst_obj):
     src_globals = getattr(src_obj, attr_name, {})
     dst_globals = getattr(dst_obj, attr_name, {})
 
-    for k, v in src_globals.items():
+    for k, v in six.iteritems(src_globals):
         # ignore builtin attribute.
         if not (k.startswith('__') and k.endswith('__')):
             dst_globals[k] = v

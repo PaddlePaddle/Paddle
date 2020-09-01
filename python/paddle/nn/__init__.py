@@ -94,8 +94,8 @@ from .layer.common import UpsamplingNearest2d  #DEFINE_ALIAS
 from .layer.common import UpsamplingBilinear2d  #DEFINE_ALIAS
 from .layer.common import Bilinear  #DEFINE_ALIAS
 from .layer.common import Dropout  #DEFINE_ALIAS
-from .layer.common import Dropout2D  #DEFINE_ALIAS
-from .layer.common import Dropout3D  #DEFINE_ALIAS
+from .layer.common import Dropout2d  #DEFINE_ALIAS
+from .layer.common import Dropout3d  #DEFINE_ALIAS
 from .layer.common import AlphaDropout  #DEFINE_ALIAS
 
 from .layer.pooling import AvgPool1d  #DEFINE_ALIAS
