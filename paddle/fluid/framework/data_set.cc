@@ -1513,7 +1513,19 @@ void PadBoxSlotDataset::LoadIntoMemory() {
   VLOG(1) << "PadBoxSlotDataset::LoadIntoMemory() end"
           << ", memory data size=" << input_records_.size()
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
+  UnrollInstance();
 }
+
+
+void PadBoxSlotDataset::UnrollInstance() {
+  VLOG(3) << "DatasetImpl<T>::LoadIntoMemory() begin";
+  auto feed_obj = reinterpret_cast<SlotPaddleBoxDataFeed*>(readers_[0].get());
+  feed_obj->UnrollInstance(input_records_);
+
+}
+
+
+
 // add fea keys
 void PadBoxSlotDataset::MergeInsKeys(const Channel<SlotRecord>& in) {
   platform::Timer timeline;

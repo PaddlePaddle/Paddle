@@ -337,6 +337,8 @@ class PadBoxSlotDataset : public DatasetImpl<SlotRecord> {
   virtual void SetFileList(const std::vector<std::string>& filelist);
   // create input channel and output channel
   virtual void CreateChannel();
+  // merge ins from multiple sources and unroll
+  virtual void UnrollInstance();
   // load all data into memory
   virtual void LoadIntoMemory();
   // release all memory data
