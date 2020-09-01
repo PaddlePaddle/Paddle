@@ -118,7 +118,7 @@ class DistributedStrategy(object):
             strategy = fleet.DistributedStrategy()
             strategy.dgc = True
             strategy.recompute = True
-            strategy.recompute_configs = {"checkpoint": ["x"]}
+            strategy.recompute_configs = {"checkpoints": ["x"]}
             strategy.save_to_prototxt("dist_strategy.prototxt")
         """
         with open(output, "w") as fout:
@@ -553,7 +553,7 @@ class DistributedStrategy(object):
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.recompute = True
-            strategy.recompute_configs = {"checkpionts": ["x", "y"]}
+            strategy.recompute_configs = {"checkpoints": ["x", "y"]}
 
         """
         return get_msg_dict(self.strategy.recompute_configs)
@@ -749,7 +749,7 @@ class DistributedStrategy(object):
         to model parameters.
 
         Examples:
-        .. code-block:: python
+          .. code-block:: python
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.gradient_merge = True
@@ -773,6 +773,7 @@ class DistributedStrategy(object):
             avg (bool): whether to average the gradients of each mini-batch,
                 the default value is `True`
         Example:
+          .. code-block:: python
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.gradient_merge = True
