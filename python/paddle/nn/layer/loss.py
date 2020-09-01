@@ -376,8 +376,8 @@ class L1Loss(fluid.dygraph.Layer):
             paddle.disable_static()
             input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
             label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            input = paddle.to_variable(input_data)
-            label = paddle.to_variable(label_data)
+            input = paddle.to_tensor(input_data)
+            label = paddle.to_tensor(label_data)
 
             l1_loss = paddle.nn.loss.L1Loss()
             output = l1_loss(input, label)
@@ -455,7 +455,7 @@ class BCELoss(fluid.dygraph.Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input (Tensor): 2-D tensor with shape: (N, *), N is batch_size, `*` means
+        input (Tensor): 2-D tensor with shape: [N, *], N is batch_size, `*` means
             number of additional dimensions. The input ``input`` should always
             be the output of sigmod.  Available dtype is float32, float64.
         label (Tensor): 2-D tensor with the same shape as ``input``. The target
@@ -476,12 +476,11 @@ class BCELoss(fluid.dygraph.Layer):
             label_data = np.array([1.0, 0.0, 1.0]).astype("float32")
 
             paddle.disable_static()
-            input = paddle.to_variable(input_data)
-            label = paddle.to_variable(label_data)
+            input = paddle.to_tensor(input_data)
+            label = paddle.to_tensor(label_data)
             bce_loss = paddle.nn.loss.BCELoss()
             output = bce_loss(input, label)
             print(output.numpy())  # [0.65537095]
-            paddle.enable_static()
 
     """
 
@@ -584,9 +583,9 @@ class NLLLoss(fluid.dygraph.Layer):
 
                 place = paddle.CPUPlace()
                 paddle.disable_static(place)
-                input = paddle.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 log_out = log_softmax(input)
-                label = paddle.to_variable(label_np)
+                label = paddle.to_tensor(label_np)
                 result = nll_loss(log_out, label)
                 print(result.numpy()) # [1.0720209]
 
@@ -634,9 +633,12 @@ class KLDivLoss(fluid.dygraph.Layer):
             Default is ``'mean'``.
 
     Shape:
-      - input: (N, *) where * means, any number of additional dimensions.
-      - label: (N, *), same shape as input
-      - output: tensor with shape: (1) by default.
+
+        - input (Tensor): (N, *), where * means, any number of additional dimensions.
+
+        - label (Tensor): (N, *), same shape as input.
+
+        - output (Tensor): tensor with shape: [1] by default.
 
 
     Examples:
@@ -646,7 +648,7 @@ class KLDivLoss(fluid.dygraph.Layer):
             import numpy as np
             import paddle.nn as nn
 
-            paddle.enable_imperative()
+            paddle.disable_static()
 
             shape = (5, 20)
             x = np.random.uniform(-10, 10, shape).astype('float32')
@@ -654,26 +656,26 @@ class KLDivLoss(fluid.dygraph.Layer):
 
             # 'batchmean' reduction, loss shape will be [N]
             kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
-            pred_loss = kldiv_criterion(paddle.to_variable(x),
-                                        paddle.to_variable(target))
+            pred_loss = kldiv_criterion(paddle.to_tensor(x),
+                                        paddle.to_tensor(target))
             # shape=[5]
 
             # 'mean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='mean')
-            pred_loss = kldiv_criterion(paddle.to_variable(x),
-                                        paddle.to_variable(target))
+            pred_loss = kldiv_criterion(paddle.to_tensor(x),
+                                        paddle.to_tensor(target))
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='sum')
-            pred_loss = kldiv_criterion(paddle.to_variable(x),
-                                        paddle.to_variable(target))
+            pred_loss = kldiv_criterion(paddle.to_tensor(x),
+                                        paddle.to_tensor(target))
             # shape=[1]
 
             # 'none' reduction, loss shape is same with X shape
             kldiv_criterion = nn.KLDivLoss(reduction='none')
-            pred_loss = kldiv_criterion(paddle.to_variable(x),
-                                        paddle.to_variable(target))
+            pred_loss = kldiv_criterion(paddle.to_tensor(x),
+                                        paddle.to_tensor(target))
             # shape=[5, 20]
     """
 
@@ -726,14 +728,12 @@ class MarginRankingLoss(fluid.dygraph.Layer):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
-
             paddle.disable_static()
 
-            input = paddle.to_variable(np.array([[1, 2], [3, 4]]).astype("float32"))
-            other = paddle.to_variable(np.array([[2, 1], [2, 4]]).astype("float32"))
-            label = paddle.to_variable(np.array([[1, -1], [-1, -1]]).astype("float32"))
+            input = paddle.to_tensor([[1, 2], [3, 4]]), dtype="float32")
+            other = paddle.to_tensor([[2, 1], [2, 4]]), dtype="float32")
+            label = paddle.to_tensor([[1, -1], [-1, -1]], dtype="float32")
             margin_rank_loss = paddle.nn.MarginRankingLoss()
             loss = margin_rank_loss(input, other, label)
             print(loss.numpy()) # [0.75]
