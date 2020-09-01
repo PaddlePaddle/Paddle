@@ -68,59 +68,26 @@ class StackPluginDynamic : public DynamicPluginTensorRT {
   int num_stack_;
 };
 
-class StackPluginV2Creator : public nvinfer1::IPluginCreator {
+class StackPluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
-  StackPluginV2Creator() {}
-  const char* getPluginName() const override { return "stack_plugin"; }
-
-  const char* getPluginVersion() const override { return "1"; }
-
-  const nvinfer1::PluginFieldCollection* getFieldNames() override {
-    return &field_collection_;
-  }
-
+  StackPluginDynamicCreator();
+  const char* getPluginName() const override;
+  const char* getPluginVersion() const override;
+  const nvinfer1::PluginFieldCollection* getFieldNames() override;
   nvinfer1::IPluginV2* createPlugin(
-      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    int axis = -1;
-    int num_stack = -1;
-
-    for (int i = 0; i < fc->nbFields; ++i) {
-      const std::string name(fc->fields[i].name);
-      if (name == "axis") {
-        axis = static_cast<const int*>(fc->fields[i].data)[0];
-      } else if (name == "num_stack") {
-        num_stack = static_cast<const int*>(fc->fields[i].data)[0];
-      } else {
-        PADDLE_THROW(
-            platform::errors::Fatal("Meet an unknown plugin field '" + name +
-                                    "' when creating stack op plugin."));
-      }
-    }
-    return new StackPluginDynamic(axis, num_stack);
-  }
-
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override;
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                          const void* serial_data,
-                                         size_t serial_length) override {
-    auto plugin = new StackPluginDynamic(serial_data, serial_length);
-    return plugin;
-  }
-
-  void setPluginNamespace(const char* lib_namespace) override {
-    plugin_namespace_ = lib_namespace;
-  }
-
-  const char* getPluginNamespace() const override {
-    return plugin_namespace_.c_str();
-  }
+                                         size_t serial_length) override;
+  void setPluginNamespace(const char* lib_namespace) override;
+  const char* getPluginNamespace() const override;
 
  private:
   std::string plugin_namespace_;
-  std::string plugin_name_;
   nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
-REGISTER_TRT_PLUGIN_V2(StackPluginV2Creator);
+REGISTER_TRT_PLUGIN_V2(StackPluginDynamicCreator);
 #endif
 
 }  // namespace plugin

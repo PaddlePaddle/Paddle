@@ -191,6 +191,54 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   }
   return cudaGetLastError() != cudaSuccess;
 }
+
+StackPluginDynamicCreator::StackPluginDynamicCreator() {}
+
+const char* StackPluginDynamicCreator::getPluginName() const {
+  return "stack_plugin";
+}
+
+const char* StackPluginDynamicCreator::getPluginVersion() const { return "1"; }
+
+const nvinfer1::PluginFieldCollection*
+StackPluginDynamicCreator::getFieldNames() {
+  return &field_collection_;
+}
+
+nvinfer1::IPluginV2* StackPluginDynamicCreator::createPlugin(
+    const char* name, const nvinfer1::PluginFieldCollection* fc) {
+  int axis = -1;
+  int num_stack = -1;
+
+  for (int i = 0; i < fc->nbFields; ++i) {
+    const std::string name(fc->fields[i].name);
+    if (name == "axis") {
+      axis = static_cast<const int*>(fc->fields[i].data)[0];
+    } else if (name == "num_stack") {
+      num_stack = static_cast<const int*>(fc->fields[i].data)[0];
+    } else {
+      PADDLE_THROW(platform::errors::Fatal("Meet an unknown plugin field '" +
+                                           name +
+                                           "' when creating stack op plugin."));
+    }
+  }
+  return new StackPluginDynamic(axis, num_stack);
+}
+
+nvinfer1::IPluginV2* StackPluginDynamicCreator::deserializePlugin(
+    const char* name, const void* serial_data, size_t serial_length) {
+  auto plugin = new StackPluginDynamic(serial_data, serial_length);
+  return plugin;
+}
+
+void StackPluginDynamicCreator::setPluginNamespace(const char* lib_namespace) {
+  plugin_namespace_ = lib_namespace;
+}
+
+const char* StackPluginDynamicCreator::getPluginNamespace() const {
+  return plugin_namespace_.c_str();
+}
+
 #endif
 
 }  // namespace plugin
