@@ -469,7 +469,8 @@ class TrainEpochRange(SerializableBase):
                     self._save_checkpoint()
                 else:
                     assert False, "not supported acp_type:{}".format(g_acp_type)
-            self._last_checkpoint_time = time.time()
+
+                self._last_checkpoint_time = time.time()
 
     def _save_checkpoint(self):
         """
