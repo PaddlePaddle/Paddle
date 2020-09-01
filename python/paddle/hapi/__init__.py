@@ -18,8 +18,6 @@ from . import callbacks
 from . import model
 from .model import *
 
-from .dygraph_layer_patch import monkey_patch_layer
-
 logger.setup_logger()
 
 __all__ = ['callbacks'] + model.__all__
