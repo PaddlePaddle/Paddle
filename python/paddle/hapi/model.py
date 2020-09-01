@@ -1835,7 +1835,7 @@ class Model(object):
             dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
 
         Returns:
-            Dict: a summary of the network.
+            Dict: a summary of the network including total params and total trainable params.
 
         Examples:
             .. code-block:: python
