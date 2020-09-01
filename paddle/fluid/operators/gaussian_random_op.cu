@@ -81,7 +81,7 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
     auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
 
-    if (gen_cuda->GetIsInitPy() && seed_flag) {
+    if (gen_cuda->GetIsInitPy() && seed_flag && false) {
       std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
       // auto seed_offset = gen_cuda->IncrementOffset(1);
       auto seed_gen = static_cast<unsigned int>(gen_cuda->GetCurrentSeed());
@@ -122,7 +122,7 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
     auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
 
-    if (gen_cuda->GetIsInitPy() && seed_flag) {
+    if (gen_cuda->GetIsInitPy() && seed_flag && false) {
       std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
       // auto seed_offset = gen_cuda->IncrementOffset(1);
       auto seed_gen = static_cast<unsigned int>(gen_cuda->GetCurrentSeed());

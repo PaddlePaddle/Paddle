@@ -38,7 +38,7 @@ static uint64_t GetRandomSeed() {
 struct GeneratorState {
   int64_t device = -1;
   uint64_t current_seed = 34342423252;
-  uint64_t thread_offset;
+  uint64_t thread_offset = 0;
   std::mt19937_64 cpu_engine;
 };
 
