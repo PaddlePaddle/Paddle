@@ -176,7 +176,7 @@ class InstanceNorm1d(_InstanceNormBase):
           instance_norm = paddle.nn.InstanceNorm1d(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy)
+          print(instance_norm_out.numpy())
 
     """
 
@@ -253,7 +253,7 @@ class InstanceNorm2d(_InstanceNormBase):
           instance_norm = paddle.nn.InstanceNorm2d(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy)
+          print(instance_norm_out.numpy())
     """
 
     def _check_input_dim(self, input):
@@ -329,7 +329,7 @@ class InstanceNorm3d(_InstanceNormBase):
           instance_norm = paddle.nn.InstanceNorm3d(2)
           instance_norm_out = instance_norm(x)
 
-          print(instance_norm_out.numpy)
+          print(instance_norm_out.numpy())
     """
 
     def _check_input_dim(self, input):
@@ -346,8 +346,8 @@ class GroupNorm(layers.Layer):
     Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
     Parameters:
-        num_channels(int): The number of channels of input.
         num_groups(int): The number of groups that divided from channels.
+        num_channels(int): The number of channels of input.
         epsilon(float, optional): The small value added to the variance to prevent
                                   division by zero. Default: 1e-05.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
@@ -375,19 +375,19 @@ class GroupNorm(layers.Layer):
           np.random.seed(123)
           x_data = np.random.random(size=(2, 6, 2, 2)).astype('float32')
           x = paddle.to_tensor(x_data) 
-          group_norm = paddle.nn.GroupNorm(num_channels=3, num_groups=6)
+          group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
           group_norm_out = group_norm(x)
 
-          print(group_norm_out.numpy)
+          print(group_norm_out.numpy())
     """
 
     def __init__(self,
-                 num_channels,
                  num_groups,
+                 num_channels,
                  epsilon=1e-05,
                  weight_attr=None,
                  bias_attr=None,
-                 data_layout='NCHW',
+                 data_format='NCHW',
                  name=None):
         super(GroupNorm, self).__init__()
         self._weight_attr = weight_attr
@@ -395,18 +395,33 @@ class GroupNorm(layers.Layer):
         self._epsilon = epsilon
         self._num_channels = num_channels
         self._num_groups = num_groups
-        if data_layout != 'NCHW':
+        if data_format != 'NCHW':
             raise ValueError("unsupported data layout:" + data_layout)
 
         param_shape = [self._num_channels]
 
-        self.weight = self.create_parameter(
-            attr=self._weight_attr or False,
-            shape=param_shape,
-            default_initializer=Constant(1.0))
+        if weight_attr == False:
+            self.weight = self.create_parameter(
+                attr=None, shape=param_shape, default_initializer=Constant(1.0))
+            self.weight.stop_gradient = True
+        else:
+            self.weight = self.create_parameter(
+                attr=self._weight_attr,
+                shape=param_shape,
+                default_initializer=Constant(1.0))
+            self.weight.stop_gradient = self._weight_attr != None and self._weight_attr.learning_rate == 0.
 
-        self.bias = self.create_parameter(
-            attr=self._weight_attr or False, shape=param_shape, is_bias=True)
+        if bias_attr == False:
+            self.bias = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                default_initializer=Constant(0.0),
+                is_bias=True)
+            self.bias.stop_gradient = True
+        else:
+            self.bias = self.create_parameter(
+                attr=self._bias_attr, shape=param_shape, is_bias=True)
+            self.bias.stop_gradient = self._bias_attr != None and self._bias_attr.learning_rate == 0.
 
     def forward(self, input):
         inputs = {'X': input}
@@ -500,7 +515,7 @@ class LayerNorm(layers.Layer):
           layer_norm = paddle.nn.LayerNorm(x_data.shape[1:])
           layer_norm_out = layer_norm(x)
 
-          print(layer_norm_out.numpy)
+          print(layer_norm_out.numpy())
     """
 
     def __init__(self,
@@ -733,11 +748,11 @@ class BatchNorm1d(_BatchNormBase):
           batch_norm = paddle.nn.BatchNorm1d(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy)
+          print(batch_norm_out.numpy())
     """
 
     def _check_data_format(self, input):
-        if input == 'NCHW' or 'NC' or 'NCL':
+        if input == 'NCHW' or input == 'NC' or input == 'NCL':
             self._data_format = 'NCHW'
         else:
             raise ValueError('expected NC , NCL or None for data_format input')
@@ -825,11 +840,11 @@ class BatchNorm2d(_BatchNormBase):
           batch_norm = paddle.nn.BatchNorm2d(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy)
+          print(batch_norm_out.numpy())
     """
 
     def _check_data_format(self, input):
-        if input == 'NCHW' or 'NCWH':
+        if input == 'NCHW' or input == 'NCWH':
             pass
         else:
             raise ValueError('expected NCHW or NCWH for data_format input')
@@ -917,11 +932,11 @@ class BatchNorm3d(_BatchNormBase):
           batch_norm = paddle.nn.BatchNorm3d(1)
           batch_norm_out = batch_norm(x)
 
-          print(batch_norm_out.numpy)
+          print(batch_norm_out.numpy())
     """
 
     def _check_data_format(self, input):
-        if input == 'NCHW' or 'NCDHW':
+        if input == 'NCHW' or input == 'NCDHW':
             self._data_format = 'NCHW'
         else:
             raise ValueError('expected NCDHW or None for data_format input')
