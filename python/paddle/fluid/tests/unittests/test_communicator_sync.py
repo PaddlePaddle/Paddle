@@ -28,9 +28,7 @@ import paddle.distributed.fleet as fleet
 class TestCommunicator(unittest.TestCase):
     def net(self):
         x = fluid.layers.data(name='x', shape=[1], dtype='float32')
-        #        y_predict = fluid.layers.fc(input=x, size=1, act=None)
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-
         cost = fluid.layers.square_error_cost(input=x, label=y)
         avg_cost = fluid.layers.mean(cost)
         return avg_cost
