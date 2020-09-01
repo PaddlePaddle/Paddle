@@ -450,7 +450,7 @@ class TestAdamOpV2(unittest.TestCase):
 
         import paddle
         paddle.disable_static()
-        emb = paddle.nn.Embedding([10, 10])
+        emb = paddle.nn.Embedding(10, 10)
 
         adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
         state_dict = adam.state_dict()
