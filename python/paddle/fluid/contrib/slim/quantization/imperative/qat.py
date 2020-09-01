@@ -15,7 +15,7 @@
 import logging
 import numpy as np
 import sys
-from paddle.fluid import dygraph
+from paddle.fluid import dygraph, core
 from paddle.fluid.dygraph.nn import Conv2D, Linear, BatchNorm, Pool2D, PRelu
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid
 from paddle.fluid.log_helper import get_logger
@@ -319,8 +319,12 @@ class ImperativeOutScale(object):
             output = [output]
         scale_out_list = []
         for var in output:
+            if var.dtype not in [
+                    core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP64
+            ]:
+                continue
             self._out_scale = quant_nn.MovingAverageAbsMaxScale(
                 var.name, self._moving_rate, dtype)
             scale_out = self._out_scale(var)
-            scale_out_list.append(scale_out)
+            scale_out_list.append(float(scale_out.numpy()))
         self._out_scale_dict[layer.full_name()] = scale_out_list

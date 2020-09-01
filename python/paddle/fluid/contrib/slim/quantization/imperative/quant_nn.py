@@ -426,7 +426,7 @@ class MovingAverageAbsMaxScale(layers.Layer):
                 input, accum, state, scale_out, state, accum, *attrs)
             return out_scale
 
-        check_variable_and_dtype(input, 'input', ['float32'],
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'MovingAverageAbsMaxScale')
 
         attrs = {'moving_rate': self._moving_rate, 'is_test': not self.training}
