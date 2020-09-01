@@ -23,5 +23,3 @@ from .dygraph_layer_patch import monkey_patch_layer
 logger.setup_logger()
 
 __all__ = ['callbacks'] + model.__all__
-
-monkey_patch_layer()

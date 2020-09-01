@@ -29,6 +29,8 @@ from .layer_object_helper import LayerObjectHelper
 from .base import program_desc_tracing_guard, param_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _current_expected_place as _get_device
 
 __all__ = ['Layer']
 
@@ -98,14 +100,6 @@ class Layer(core.Layer):
 
         self._forward_pre_hooks = collections.OrderedDict()
         self._forward_post_hooks = collections.OrderedDict()
-        # NOTE(chenweihang): [ why not use `set_dict=set_state_dict` directly? ]
-        # hapi will change `set_state_dict` implement by setattr in runtime,
-        # if use `set_dict=set_state_dict` directly? the `set_dict` will still
-        # keep old implement and cause incompatible error
-        self.__aliases__ = {
-            'set_dict': 'set_state_dict',
-            'load_dict': 'set_state_dict',
-        }
 
     def train(self):
         """
@@ -782,10 +776,7 @@ class Layer(core.Layer):
         return parameter
 
     def __getattr__(self, name):
-        if name in self.__aliases__:
-            name = self.__aliases__.get(name, name)
-            return object.__getattribute__(self, name)
-        elif name in self._parameters:
+        if name in self._parameters:
             return self._parameters[name]
         elif name in self._sub_layers:
             return self._sub_layers[name]
@@ -987,22 +978,53 @@ class Layer(core.Layer):
                 emb.set_state_dict(para_state_dict)
 
         '''
-        inner_state_dict = self.state_dict()
 
-        for name, param_or_buffer in inner_state_dict.items():
-            key_name = name if use_structured_name else param_or_buffer.name
-            if key_name in state_dict:
-                param_or_buffer.set_value(state_dict[key_name])
-            else:
-                raise RuntimeError(
-                    "Parameter or persistable buffer not found, Can't find [ {} ] in state_dict"
-                    "use_structured_name is set to [{}]".format(
-                        key_name, use_structured_name))
-        unused_para_list = []
-        for k, v in state_dict.items():
-            if k not in inner_state_dict:
-                unused_para_list.append(k)
-        if len(unused_para_list) > 0:
-            warnings.warn(
-                "Variables [ {} ] are not used, because not included in layers state_dict".
-                format(" ".join(unused_para_list)))
+        def _check_match(key, param):
+            state = state_dict.get(key, None)
+            if state is None:
+                raise ValueError("{} is not found in the provided dict.".format(
+                    key))
+            if list(state.shape) != list(param.shape):
+                raise ValueError(
+                    "{} receives a shape {}, but the expected shape is {}.".
+                    format(key, list(state.shape), list(param.shape)))
+            return param, state
+
+        matched_param_state = []
+        for key, param in self.state_dict().items():
+            key_name = key if use_structured_name else param.name
+            try:
+                match_res = _check_match(key_name, param)
+                matched_param_state.append(match_res)
+            except ValueError as err:
+                warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
+
+        if in_dygraph_mode():
+            for param, state in matched_param_state:
+                param.set_value(state)
+        else:
+
+            def _set_var(var, ndarray):
+                t = fluid.global_scope().find_var(var.name).get_tensor()
+                p = t._place()
+                if p.is_cpu_place():
+                    place = fluid.CPUPlace()
+                elif p.is_cuda_pinned_place():
+                    place = fluid.CUDAPinnedPlace()
+                else:
+                    p = fluid.core.Place()
+                    p.set_place(t._place())
+                    place = fluid.CUDAPlace(p.gpu_device_id())
+                t.set(ndarray, place)
+
+            executor = fluid.Executor(_get_device())._default_executor
+            # restore parameter states
+            fluid.core._create_loaded_parameter(
+                [param for param, state in matched_param_state],
+                fluid.global_scope(), executor)
+            for param, state in matched_param_state:
+                _set_var(param, state)
+
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
+    load_dict = set_state_dict
