@@ -81,7 +81,7 @@ def set_device(device):
     Examples:
 
      .. code-block:: python
-
+            
         import paddle
         paddle.disable_static()
         paddle.set_device("cpu")
@@ -126,7 +126,7 @@ def get_device():
     Examples:
 
      .. code-block:: python
-
+            
         import paddle
         paddle.disable_static()
         device = paddle.get_device()
