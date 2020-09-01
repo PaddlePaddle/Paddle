@@ -23,28 +23,6 @@
 namespace paddle {
 namespace operators {
 
-inline framework::DDim GetShape(const framework::ExecutionContext &context,
-                                std::string op_type) {
-  // 1. shape is a Tensor
-  if (context.HasInput("ShapeTensor")) {
-    auto *shape_tensor = context.Input<framework::LoDTensor>("ShapeTensor");
-    auto vec_shape = GetDataFromTensor<int>(shape_tensor);
-    return framework::make_ddim(vec_shape);
-  }
-
-  // 2. shape is a list/tuple containing Tensor
-  auto shape_tensor_list =
-      context.MultiInput<framework::Tensor>("ShapeTensorList");
-  if (shape_tensor_list.size() > 0) {
-    auto vec_shape = GetDataFromTensorList(shape_tensor_list);
-    return framework::make_ddim(vec_shape);
-  }
-
-  // 3. shape is a list/tuple without containing Tensor
-  auto vec_shape = context.Attr<std::vector<int64_t>>("shape");
-  return framework::make_ddim(vec_shape);
-}
-
 template <typename DeviceContext, typename T>
 class EmptyKernel : public framework::OpKernel<T> {
  public:
@@ -66,9 +44,7 @@ class EmptyKernel : public framework::OpKernel<T> {
           "In empty Op, the output only supports LoDTensor."));
     }
 
-    // @NOTE
-    // only use cpu device for uninitialized memory
-    out_tensor->mutable_data(platform::CPUPlace(), dtype);
+    out_tensor->mutable_data(context.GetPlace(), dtype);
   }
 };
 

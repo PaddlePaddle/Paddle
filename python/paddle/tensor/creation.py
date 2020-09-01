@@ -1011,9 +1011,11 @@ def empty(shape, dtype=None, name=None):
         .. code-block:: python
 
           import paddle
+          import numpy as np
 
-          # attr shape is a list which doesn't contain  Tensor.
           paddle.disable_static()  # Now we are in imperative mode
+
+          # attr shape is a list which doesn't contain Tensor.
           data1 = paddle.empty(shape=[2,1], dtype='int64') 
           #[[0]
           # [0]]
@@ -1026,7 +1028,7 @@ def empty(shape, dtype=None, name=None):
           # attr shape is a list which contains Tensor.
           shape_data = np.array([1]).astype('int32')
           shape = paddle.to_tensor(shape_data)
-          data2 = paddle.empty(shape=[2, shape], dtype='int64')
+          data3 = paddle.empty(shape=[2, shape], dtype='int64')
     """
 
     if dtype is None:

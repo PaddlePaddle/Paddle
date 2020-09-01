@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@ class EmptyOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(empty operator
 Returns a tensor filled with uninitialized data. The shape of the tensor is
 defined by the variable argument shape.
+
 
 The type of the tensor is specify by `dtype`.
 )DOC");
