@@ -44,7 +44,7 @@ void zero_copy_run() {
   const int channels = 3;
   const int height = 318;
   const int width = 318;
-  float input[batch_size * channels * height * width] = {0};
+  float *input = new float[batch_size * channels * height * width]();
 
   int shape[4] = {batch_size, channels, height, width};
   int shape_size = 4;
@@ -65,6 +65,7 @@ void zero_copy_run() {
 
   PD_PredictorZeroCopyRun(config, inputs, in_size, &outputs, &out_size);
 
+  delete[] input;
   delete[] inputs;
   delete[] outputs;
 }
