@@ -48,7 +48,6 @@ TEST(DataTransform, DataLayoutFunction) {
 TEST(DataTransform, GetDataFromTensorDNNL) {
   auto place = paddle::platform::CPUPlace();
   paddle::framework::Tensor in = paddle::framework::Tensor();
-  paddle::framework::Tensor out = paddle::framework::Tensor();
   in.mutable_data<paddle::platform::bfloat16>(
       paddle::framework::make_ddim({2, 3, 1, 2}), place);
 
