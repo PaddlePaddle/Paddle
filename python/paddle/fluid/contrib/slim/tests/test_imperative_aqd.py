@@ -163,7 +163,9 @@ class TestImperativeAddQuantDequant(unittest.TestCase):
         imperative_qat = ImperativeQuantAware(
             weight_quantize_type='abs_max',
             activation_quantize_type='moving_average_abs_max',
-            quantizable_layer_type=['Conv2D', 'Linear', 'ReLU', 'Pool2D'])
+            quantizable_layer_type=[
+                'Conv2D', 'Linear', 'ReLU', 'Pool2D', 'LeakyReLU'
+            ])
 
         with fluid.dygraph.guard():
             lenet = ImperativeLenet()
