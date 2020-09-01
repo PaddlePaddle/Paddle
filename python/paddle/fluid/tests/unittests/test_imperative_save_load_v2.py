@@ -297,6 +297,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             paddle.save(self.state_dict, "./test_dy_v2")
 
     def testLoadAndSetVarBase(self):
+        self.setUp()
         seed = 90
         hidden_size = 10
         vocab_size = 1000
