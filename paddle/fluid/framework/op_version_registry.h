@@ -158,11 +158,12 @@ class OpVersionRegistrar {
     return op_version_map_[op_type];
   }
   uint32_t GetVersionID(const std::string& op_type) {
-    if (op_version_map_.find(op_type) == op_version_map_.end()) {
+    auto it = op_version_map_.find(op_type);
+    if (it == op_version_map_.end()) {
       return 0;
-    } else {
-      return op_version_map_[op_type].GetVersionID();
     }
+
+    return it->second.GetVersionID();
   }
 
  private:
@@ -204,26 +205,26 @@ class OpVersionComparatorCombination {
  public:
   OpVersionComparatorCombination() {}
 
-  OpVersionComparatorCombination& AddLE(const std::string& op_name,
-                                        int target_version) {
+  OpVersionComparatorCombination& LE(const std::string& op_name,
+                                     int target_version) {
     op_version_comparators_.push_back(std::shared_ptr<OpVersionComparator>(
         new OpVersionLEComparator(op_name, target_version)));
     return *this;
   }
-  OpVersionComparatorCombination& AddEQ(const std::string& op_name,
-                                        int target_version) {
+  OpVersionComparatorCombination& EQ(const std::string& op_name,
+                                     int target_version) {
     op_version_comparators_.push_back(std::shared_ptr<OpVersionComparator>(
         new OpVersionEQComparator(op_name, target_version)));
     return *this;
   }
-  OpVersionComparatorCombination& AddGE(const std::string& op_name,
-                                        int target_version) {
+  OpVersionComparatorCombination& GE(const std::string& op_name,
+                                     int target_version) {
     op_version_comparators_.push_back(std::shared_ptr<OpVersionComparator>(
         new OpVersionGEComparator(op_name, target_version)));
     return *this;
   }
-  OpVersionComparatorCombination& AddNE(const std::string& op_name,
-                                        int target_version) {
+  OpVersionComparatorCombination& NE(const std::string& op_name,
+                                     int target_version) {
     op_version_comparators_.push_back(std::shared_ptr<OpVersionComparator>(
         new OpVersionNEComparator(op_name, target_version)));
     return *this;
@@ -250,7 +251,7 @@ class PassVersionCheckers {
     return *this;
   }
   bool IsPassCompatible() {
-    if (pass_version_checkers_.size() == 0) {
+    if (pass_version_checkers_.empty()) {
       return true;
     }
     for (auto& checker : pass_version_checkers_) {
