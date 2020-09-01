@@ -41,8 +41,8 @@ __all__ = [
     'ReplicationPad3d',
     'CosineSimilarity',
     'Dropout',
-    'Dropout2D',
-    'Dropout3D',
+    'Dropout2d',
+    'Dropout3d',
     'Bilinear',
     'AlphaDropout',
 ]
@@ -766,7 +766,7 @@ class Dropout(layers.Layer):
         return out
 
 
-class Dropout2D(layers.Layer):
+class Dropout2d(layers.Layer):
     """
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
     a channel is a 2D feature map with the shape `HW`). Each channel will be zeroed out independently
@@ -798,7 +798,7 @@ class Dropout2D(layers.Layer):
             paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
             x = paddle.to_tensor(x)
-            m = paddle.nn.Dropout2D(p=0.5)
+            m = paddle.nn.Dropout2d(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
@@ -808,7 +808,7 @@ class Dropout2D(layers.Layer):
    """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
-        super(Dropout2D, self).__init__()
+        super(Dropout2d, self).__init__()
 
         self.p = p
         self.data_format = data_format
@@ -824,7 +824,7 @@ class Dropout2D(layers.Layer):
         return out
 
 
-class Dropout3D(layers.Layer):
+class Dropout3d(layers.Layer):
     """
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
     a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
@@ -856,7 +856,7 @@ class Dropout3D(layers.Layer):
             paddle.disable_static()
             x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
             x = paddle.to_tensor(x)
-            m = paddle.nn.Dropout3D(p=0.5)
+            m = paddle.nn.Dropout3d(p=0.5)
             y_train = m(x)
             m.eval()  # switch the model to test phase
             y_test = m(x)
@@ -866,7 +866,7 @@ class Dropout3D(layers.Layer):
    """
 
     def __init__(self, p=0.5, data_format='NCDHW', name=None):
-        super(Dropout3D, self).__init__()
+        super(Dropout3d, self).__init__()
 
         self.p = p
         self.data_format = data_format

@@ -19,10 +19,14 @@ rem =================================================
 rem       Paddle CI Task On Windows Platform
 rem =================================================
 
+rem -------clean up environment-----------
 set work_dir=%cd%
 if exist build rmdir build /s/q
 mkdir build
 cd /d build
+tree .
+dir paddle\fluid\pybind\Release
+taskkill /f /im op_function_generator.exe  2>NUL
 
 rem ------initialize the virtual environment------
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
@@ -59,13 +63,12 @@ if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=OFF
 if not defined WITH_TPCACHE set WITH_TPCACHE=ON
 
 rem ------set cache third_party------
-set cache_dir=%work_dir%\..\cache
+set cache_dir=%work_dir:Paddle=cache%
 dir %cache_dir%
 set INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo
 
 if not exist %cache_dir%\tools (
     git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
-    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 )
 
 if "%WITH_TPCACHE%"=="OFF" (
@@ -125,6 +128,8 @@ echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
 
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
+set start=%start:~4,10%
 echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% ^
 -DON_INFER=%ON_INFER% -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
@@ -150,7 +155,7 @@ call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd6
 
 set build_times=1
 :build_tp
-echo Build third_party for %build_times% time:
+echo Build third_party the %build_times% time:
 msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
@@ -165,7 +170,7 @@ echo Build third_party successfully!
 
 set build_times=1
 :build_paddle
-echo Build Paddle for %build_times% time:
+echo Build Paddle the %build_times% time:
 msbuild /m /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
@@ -176,7 +181,9 @@ if %ERRORLEVEL% NEQ 0 (
         goto :build_paddle
     )
 )
+
 echo Build Paddle successfully!
+
 goto:eof
 
 :build_error
@@ -189,6 +196,17 @@ rem ----------------------------------------------------------------------------
 echo    ========================================
 echo    Step 3. Test pip install whl package ...
 echo    ========================================
+
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
+set end=%end:~4,10%
+call :timestamp "%start%" "%end%" "Build"
+tree /F %cd%\fluid_inference_install_dir\paddle
+%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\fluid_inference_install_dir\paddle\lib > lib_size.txt
+set /p libsize=< lib_size.txt
+for /F %%i in ("%libsize%") do echo "Windows FLuid_Inference Size: %%i"
+%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
+set /p whlsize=< whl_size.txt
+for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 
@@ -215,6 +233,8 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
+set start=%start:~4,10%
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
@@ -237,8 +257,11 @@ echo    ========================================
 echo    Step 5. Testing fluid library for inference ...
 echo    ========================================
 
-cd %work_dir%\paddle\fluid\inference\api\demo_ci
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
+set end=%end:~4,10%
+call :timestamp "%start%" "%end%" "TestCases Total"
 
+cd %work_dir%\paddle\fluid\inference\api\demo_ci
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo
 goto:eof
 
@@ -253,7 +276,6 @@ echo    ========================================
 echo    Step 6. Check whether deleting a unit test ...
 echo    ========================================
 
-set PATH=%PYTHON_ROOT%;%PATH%
 cd /d %work_dir%\build
 echo set -ex>  check_change_of_unittest.sh
 echo GITHUB_API_TOKEN=%GITHUB_API_TOKEN% >>  check_change_of_unittest.sh
@@ -325,6 +347,43 @@ call paddle_winci\Scripts\deactivate.bat 2>NUL
 exit /b 1
 
 
+:timestamp
+echo on
+setlocal enabledelayedexpansion
+set start=%~1
+set dd=%start:~2,2%
+set /a dd=100%dd%%%100
+set hh=%start:~4,2%
+set /a hh=100%hh%%%100
+set nn=%start:~6,2%
+set /a nn=100%nn%%%100
+set ss=%start:~8,2%
+set /a ss=100%ss%%%100
+set /a start_sec=dd*86400+hh*3600+nn*60+ss
+echo %start_sec%
+
+set end=%~2
+set dd=%end:~2,2%
+set /a dd=100%dd%%%100
+if %start:~0,2% NEQ %end:~0,2% (
+    set month_day=0
+    for %%i in (01 03 05 07 08 10 12) DO if %%i EQU %start:~0,2% set month_day=31
+    for %%i in (04 06 09 11) DO if %%i EQU %start:~0,2% set month_day=30
+    for %%i in (02) DO if %%i EQU %start:~0,2% set month_day=28
+    set /a dd=%dd%+!month_day!
+)
+set hh=%end:~4,2%
+set /a hh=100%hh%%%100
+set nn=%end:~6,2%
+set /a nn=100%nn%%%100
+set ss=%end:~8,2%
+set /a ss=100%ss%%%100
+set /a end_secs=dd*86400+hh*3600+nn*60+ss
+set /a cost_secs=end_secs-start_sec
+echo "Windows %~3 Time: %cost_secs%s"
+goto:eof
+
+
 rem ---------------------------------------------------------------------------------------------
 :success
 echo    ========================================
@@ -340,7 +399,7 @@ taskkill /f /im git-remote-https.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
-taskkill /f /im %cd%\paddle\fluid\pybind\Release\op_function_generator.exe  2>NUL
+taskkill /f /im op_function_generator.exe  2>NUL
 taskkill /f /im python.exe  2>NUL
 call paddle_winci\Scripts\deactivate.bat 2>NUL
 taskkill /f /im python.exe  2>NUL
