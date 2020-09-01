@@ -17,6 +17,7 @@ from __future__ import print_function
 import multiprocessing
 import os
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import compiler
@@ -64,10 +65,11 @@ class TestParallelExecutorBase(unittest.TestCase):
                 feed_data_reader, FeedDataReader
             ), "feed_data_reader must be type of FeedDataReader"
 
+        paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main = fluid.Program()
         startup = fluid.Program()
-        startup.random_seed = 1
-        main.random_seed = 1
+
         with fluid.program_guard(main, startup):
             feed_dict, loss = cls.build_model(feed_dict, get_data_from_feeder,
                                               main, method, optimizer)

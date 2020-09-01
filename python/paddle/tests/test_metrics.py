@@ -22,7 +22,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 
-from paddle.incubate.hapi.utils import to_list
+from paddle.hapi.model import to_list
 
 
 def accuracy(pred, label, topk=(1, )):

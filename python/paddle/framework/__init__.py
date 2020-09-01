@@ -20,8 +20,8 @@ __all__ = [
 ]
 
 __all__ += [
-    'BackwardStrategy', 'grad', 'LayerList', 'load', 'save', 'prepare_context',
-    'to_variable', 'no_grad', 'ParallelEnv', 'DataParallel'
+    'grad', 'LayerList', 'load', 'save', 'to_variable', 'no_grad',
+    'DataParallel'
 ]
 
 __all__ += [
@@ -50,8 +50,6 @@ from ..fluid.dygraph.base import to_variable  #DEFINE_ALIAS
 from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
 from ..fluid.dygraph.checkpoint import load_dygraph as load  #DEFINE_ALIAS
 from ..fluid.dygraph.checkpoint import save_dygraph as save  #DEFINE_ALIAS
-from ..fluid.dygraph.parallel import prepare_context  #DEFINE_ALIAS
-from ..fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
 from ..fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS
 
 from ..fluid.dygraph.learning_rate_scheduler import NoamDecay  #DEFINE_ALIAS
@@ -61,5 +59,3 @@ from ..fluid.dygraph.learning_rate_scheduler import ExponentialDecay  #DEFINE_AL
 from ..fluid.dygraph.learning_rate_scheduler import InverseTimeDecay  #DEFINE_ALIAS
 from ..fluid.dygraph.learning_rate_scheduler import PolynomialDecay  #DEFINE_ALIAS
 from ..fluid.dygraph.learning_rate_scheduler import CosineDecay  #DEFINE_ALIAS
-
-BackwardStrategy = core.BackwardStrategy
