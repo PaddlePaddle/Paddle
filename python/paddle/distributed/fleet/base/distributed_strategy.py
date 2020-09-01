@@ -750,6 +750,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.gradient_merge = True
@@ -768,11 +769,14 @@ class DistributedStrategy(object):
     def gradient_merge_configs(self):
         """
         the key-value configs of distribute_strategy
-        Keys: 
-            k_steps (int): the update period of the parameters
-            avg (bool): whether to average the gradients of each mini-batch,
+
+        **Notes**:
+            **k_steps(int)**: the update period of the parameters
+            **avg(bool)**: whether to average the gradients of each mini-batch,
                 the default value is `True`
-        Example:
+
+        Examples:
+
           .. code-block:: python
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
