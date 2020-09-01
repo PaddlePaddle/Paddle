@@ -771,9 +771,8 @@ class DistributedStrategy(object):
         """
         the key-value configs of distribute_strategy
 
-        **Notes**:
+        Args:
             **k_steps(int)**: the update period of the parameters.
-
             **avg(bool)**: whether to average the gradients of each mini-batch,
                 the default value is `True`
 
