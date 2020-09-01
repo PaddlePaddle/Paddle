@@ -24,6 +24,39 @@ namespace tensorrt {
 namespace plugin {
 
 #if IS_TRT_VERSION_GE(6000)
+StackPluginDynamic::StackPluginDynamic(int axis, int num_stack)
+    : axis_(axis), num_stack_(num_stack) {}
+
+StackPluginDynamic::StackPluginDynamic(void const* serial_data,
+                                       size_t serial_length) {
+  DeserializeValue(&serial_data, &serial_length, &axis_);
+  DeserializeValue(&serial_data, &serial_length, &num_stack_);
+}
+
+StackPluginDynamic::~StackPluginDynamic() {}
+
+nvinfer1::IPluginV2DynamicExt* StackPluginDynamic::clone() const {
+  return new StackPluginDynamic(axis_, num_stack_);
+}
+
+const char* StackPluginDynamic::getPluginType() const { return "stack_plugin"; }
+
+int StackPluginDynamic::getNbOutputs() const { return 1; }
+
+int StackPluginDynamic::initialize() { return 0; }
+
+size_t StackPluginDynamic::getSerializationSize() const {
+  size_t serialize_size = 0;
+  serialize_size += SerializedSize(axis_);
+  serialize_size += SerializedSize(num_stack_);
+  return serialize_size;
+}
+
+void StackPluginDynamic::serialize(void* buffer) const {
+  SerializeValue(&buffer, axis_);
+  SerializeValue(&buffer, num_stack_);
+}
+
 nvinfer1::DimsExprs StackPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) {
@@ -36,6 +69,20 @@ nvinfer1::DimsExprs StackPluginDynamic::getOutputDimensions(
   output.d[axis_] = expr_builder.constant(nb_inputs);
   return output;
 }
+
+void StackPluginDynamic::configurePlugin(
+    const nvinfer1::DynamicPluginTensorDesc* in, int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc* out, int nbOutputs) {}
+
+size_t StackPluginDynamic::getWorkspaceSize(
+    const nvinfer1::PluginTensorDesc* inputs, int nbInputs,
+    const nvinfer1::PluginTensorDesc* outputs, int nbOutputs) const {
+  return num_stack_ * sizeof(uintptr_t);
+}
+
+void StackPluginDynamic::destroy() { delete this; }
+
+void StackPluginDynamic::terminate() {}
 
 bool StackPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
@@ -109,8 +156,11 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     lead_unit *= out_dims.d[i];
   }
 
-  cudaMemcpyAsync(reinterpret_cast<void*>(in_ptr_gpu_),
-                  reinterpret_cast<const void* const>(inputs),
+  PADDLE_ENFORCE_EQ(
+      out_dims.d[axis_], num_stack_,
+      platform::errors::InvalidArgument("number of stack axis should be same"));
+
+  cudaMemcpyAsync(workspace, reinterpret_cast<const void* const>(inputs),
                   sizeof(void*) * out_dims.d[axis_], cudaMemcpyHostToDevice,
                   stream);
 
@@ -122,13 +172,13 @@ int StackPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   if (infer_type == nvinfer1::DataType::kFLOAT) {
     float* output = static_cast<float*>(outputs[0]);
     StackKernel<float><<<num_blocks, num_threads, 0, stream>>>(
-        reinterpret_cast<const float* const*>(in_ptr_gpu_), output, num_stacks,
+        reinterpret_cast<const float* const*>(workspace), output, num_stacks,
         base_unit);
   } else if (infer_type == nvinfer1::DataType::kHALF) {
 #ifdef SUPPORTS_CUDA_FP16
     __half* output = static_cast<__half*>(outputs[0]);
     StackKernel<__half><<<num_blocks, num_threads, 0, stream>>>(
-        reinterpret_cast<const __half* const*>(in_ptr_gpu_), output, num_stacks,
+        reinterpret_cast<const __half* const*>(workspace), output, num_stacks,
         base_unit);
 #else
     PADDLE_THROW(platform::errors::Fatal(

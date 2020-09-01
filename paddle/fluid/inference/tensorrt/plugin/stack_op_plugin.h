@@ -28,68 +28,24 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 class StackPluginDynamic : public DynamicPluginTensorRT {
  public:
-  StackPluginDynamic(int axis, int num_stack)
-      : axis_(axis), num_stack_(num_stack) {
-    init();
-  }
-
-  StackPluginDynamic(void const* serialData, size_t serialLength) {
-    DeserializeValue(&serialData, &serialLength, &axis_);
-    DeserializeValue(&serialData, &serialLength, &num_stack_);
-    init();
-  }
-
-  ~StackPluginDynamic() {}
-  nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new StackPluginDynamic(axis_, num_stack_);
-  }
-
-  void init() {
-    int device_id;
-    cudaGetDevice(&device_id);
-    in_ptr_tensor_.Resize({num_stack_});
-    in_ptr_gpu_ =
-        in_ptr_tensor_.mutable_data<int64_t>(platform::CUDAPlace(device_id));
-  }
-
-  const char* getPluginType() const override { return "stack_plugin"; }
-  int getNbOutputs() const override { return 1; }
-  int initialize() override { return 0; }
-
-  size_t getSerializationSize() const override {
-    size_t serialize_size = 0;
-
-    serialize_size += SerializedSize(axis_);
-    serialize_size += SerializedSize(num_stack_);
-
-    return serialize_size;
-  }
-
-  void serialize(void* buffer) const override {
-    SerializeValue(&buffer, axis_);
-    SerializeValue(&buffer, num_stack_);
-  }
-
+  explicit StackPluginDynamic(int axis, int num_stack);
+  StackPluginDynamic(void const* serial_data, size_t serial_length);
+  ~StackPluginDynamic();
+  nvinfer1::IPluginV2DynamicExt* clone() const override;
   nvinfer1::DimsExprs getOutputDimensions(
       int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
       nvinfer1::IExprBuilder& exprBuilder) override;
-
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
                                  int nbInputs, int nbOutputs) override;
-
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nbInputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nbOutputs) override {}
-
+                       int nbOutputs) override;
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nbInputs,
                           const nvinfer1::PluginTensorDesc* outputs,
-                          int nbOutputs) const override {
-    return 0;
-  }
-
+                          int nbOutputs) const override;
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
               const void* const* inputs, void* const* outputs, void* workspace,
@@ -99,13 +55,17 @@ class StackPluginDynamic : public DynamicPluginTensorRT {
                                        const nvinfer1::DataType* inputTypes,
                                        int nbInputs) const override;
 
-  void destroy() override { delete this; }
+  const char* getPluginType() const override;
+  int getNbOutputs() const override;
+  int initialize() override;
+  void terminate() override;
+  size_t getSerializationSize() const override;
+  void serialize(void* buffer) const override;
+  void destroy() override;
 
  private:
   int axis_;
   int num_stack_;
-  framework::Tensor in_ptr_tensor_;
-  int64_t* in_ptr_gpu_;
 };
 
 class StackPluginV2Creator : public nvinfer1::IPluginCreator {
