@@ -29,6 +29,7 @@ namespace ir {
 class ConvAffineChannelFusePass : public FusePassBase {
  public:
   virtual ~ConvAffineChannelFusePass() {}
+  virtual std::string conv_type() const { return "conv2d"; }
 
  protected:
   void ApplyImpl(ir::Graph*) const override;
@@ -38,10 +39,22 @@ class ConvAffineChannelFusePass : public FusePassBase {
 class ConvEltwiseAddAffineChannelFusePass : public FusePassBase {
  public:
   virtual ~ConvEltwiseAddAffineChannelFusePass() {}
+  virtual std::string conv_type() const { return "conv2d"; }
 
  protected:
   void ApplyImpl(ir::Graph*) const override;
   const std::string name_scope_{"conv_eltwiseadd_affine_channel_fuse"};
+};
+
+class DepthwiseConvAffineChannelFusePass : public ConvAffineChannelFusePass {
+ public:
+  std::string conv_type() const { return "depthwise_conv2d"; }
+};
+
+class DepthwiseConvEltwiseAddAffineChannelFusePass
+    : public ConvEltwiseAddAffineChannelFusePass {
+ public:
+  std::string conv_type() const { return "depthwise_conv2d"; }
 };
 
 }  // namespace ir
