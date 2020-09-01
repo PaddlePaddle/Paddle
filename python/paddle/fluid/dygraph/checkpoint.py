@@ -140,7 +140,13 @@ def load_dygraph(model_path, configs=None):
     '''
     :api_attr: imperative
     
-    Load parameter state_dict from disk.
+    Load parameter state dict from disk.
+
+    .. note::
+        Due to some historical reasons, if you load ``state_dict`` from the saved 
+        result of `paddle.io.save_inference_model`, the structured variable name 
+        will cannot be restored. You need to set the argument `use_structured_name=False` 
+        when using `Layer.set_state_dict` later.
 
     Args:
         model_path(str) : The file prefix store the state_dict. 
@@ -156,20 +162,24 @@ def load_dygraph(model_path, configs=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
             
-            with fluid.dygraph.guard():
-                emb = fluid.dygraph.Embedding([10, 10])
+            paddle.disable_static()
 
-                state_dict = emb.state_dict()
-                fluid.save_dygraph( state_dict, "paddle_dy")
+            emb = paddle.nn.Embedding([10, 10])
 
-                adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000),
-                                             parameter_list = emb.parameters() )
-                state_dict = adam.state_dict()
-                fluid.save_dygraph( state_dict, "paddle_dy")
+            state_dict = emb.state_dict()
+            paddle.save(state_dict, "paddle_dy")
 
-                para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
+            scheduler = paddle.optimizer.lr_scheduler.NoamLR(
+                d_model=0.01, warmup_steps=100, verbose=True)
+            adam = paddle.optimizer.Adam(
+                learning_rate=scheduler,
+                parameters=emb.parameters())
+            state_dict = adam.state_dict()
+            paddle.save(state_dict, "paddle_dy")
+
+            para_state_dict, opti_state_dict = paddle.load("paddle_dy")
 
     '''
     # deal with argument `model_path`

@@ -488,7 +488,7 @@ def _load_persistable_vars(model_path,
     return load_var_dict
 
 
-# NOTE(chenweihang): to adapt paddle.save to get state_dict
+# NOTE(chenweihang): to adapt paddle.load to get state_dict
 def _remove_varname_suffix(var_dict, program_holder):
     no_suffix_var_dict = dict()
     for var_name in var_dict:
