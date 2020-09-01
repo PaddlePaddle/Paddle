@@ -561,7 +561,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
       PADDLE_ENFORCE_EQ(
           !fuse_residual_conn || !force_fp32_output, true,
-          "residual fusion does not support force output with fp32");
+          platform::errors::Unimplemented(
+              "residual fusion does not support force output with fp32"));
 
       auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
 
@@ -625,7 +626,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
               ? dilations.size() == 3 && dilations[0] == 1 &&
                     dilations[1] == 1 && dilations[2] == 1
               : dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
-          true, "dilation in convolution is not implemented yet");
+          true, platform::errors::Unimplemented(
+                    "dilation in convolution is not implemented yet"));
 
       const K* filter_data = filter->data<K>();
       auto scale_in_data = ctx.Attr<float>("Scale_in");
@@ -887,7 +889,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
             "The output_grad tensor's layout should be %d, but got %d.",
             DataLayout::kMKLDNN, output_grad->layout()));
     PADDLE_ENFORCE_NE(output_grad->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for output_grad tensor");
+                      platform::errors::InvalidArgument(
+                          "Wrong format set for output_grad tensor"));
 
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"), false,
