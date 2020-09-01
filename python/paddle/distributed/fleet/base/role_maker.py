@@ -473,7 +473,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             if training_role == "TRAINER":
                 role = Role.WORKER
                 current_id = int(os.environ["PADDLE_TRAINER_ID"])
-                if len(self._worker_endpoints) > 1:
+                if len(self._worker_endpoints) > 0:
                     self._cur_endpoint = self._worker_endpoints[current_id]
             elif training_role == "PSERVER":
                 role = Role.SERVER
