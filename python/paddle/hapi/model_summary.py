@@ -81,7 +81,8 @@ def summary(net, input_size, batch_size=None, dtypes=None):
     """
     if isinstance(input_size, InputSpec):
         _input_size = tuple(input_size.shape[1:])
-        batch_size = input_size.shape[0]
+        if batch_size is None:
+            batch_size = input_size.shape[0]
     elif isinstance(input_size, list):
         _input_size = []
         for item in input_size:
@@ -92,7 +93,8 @@ def summary(net, input_size, batch_size=None, dtypes=None):
 
             if isinstance(item, InputSpec):
                 _input_size.append(tuple(item.shape[1:]))
-                batch_size = item.shape[0]
+                if batch_size is None:
+                    batch_size = item.shape[0]
             else:
                 _input_size.append(item)
     else:
