@@ -47,7 +47,7 @@ from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.fluid.executor import scope_guard, Executor
 from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
-from paddle.utils.summary import summary
+from paddle.utils import summary
 from paddle.static import InputSpec as Input
 
 from .callbacks import config_callbacks
@@ -1859,13 +1859,6 @@ class Model(object):
               print(params_info)
 
         """
-
-        # assert input_size is not None or self._inputs is not None, \
-        #         'input size must be set when input of Model is None'
-        # input_size = input_size if input_size is not None else [
-        #     tuple(x.shape[1:]) for x in self._inputs
-        # ]
-        # batch_size = -1 if batch_size is None else self._inputs[0].shape[0]
 
         return summary(self.network, self._inputs, batch_size, dtype)
 

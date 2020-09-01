@@ -41,30 +41,28 @@ def summary(net, input_size, batch_size=None, dtypes=None):
         .. code-block:: python
 
             import paddle
+            import paddle.nn as nn
+            from paddle.utils import summary
 
-            from paddle.nn import Conv2d, Pool2D, Linear, ReLU, Sequential
-            from paddle.incubate.hapi.utils import summary
-
-
-            class LeNet(paddle.nn.Layer):
+            class LeNet(nn.Layer):
                 def __init__(self, num_classes=10):
                     super(LeNet, self).__init__()
                     self.num_classes = num_classes
-                    self.features = Sequential(
-                        Conv2d(
+                    self.features = nn.Sequential(
+                        nn.Conv2d(
                             1, 6, 3, stride=1, padding=1),
-                        ReLU(),
-                        Pool2D(2, 'max', 2),
-                        Conv2d(
+                        nn.ReLU(),
+                        nn.MaxPool2d(2, 2),
+                        nn.Conv2d(
                             6, 16, 5, stride=1, padding=0),
-                        ReLU(),
-                        Pool2D(2, 'max', 2))
+                        nn.ReLU(),
+                        nn.MaxPool2d(2, 2))
 
                     if num_classes > 0:
-                        self.fc = Sequential(
-                            Linear(400, 120),
-                            Linear(120, 84),
-                            Linear(
+                        self.fc = nn.Sequential(
+                            nn.Linear(400, 120),
+                            nn.Linear(120, 84),
+                            nn.Linear(
                                 84, 10))
 
                 def forward(self, inputs):
@@ -82,19 +80,26 @@ def summary(net, input_size, batch_size=None, dtypes=None):
 
     """
     if isinstance(input_size, InputSpec):
-        _input_size = tuple(input_size.shape)
+        _input_size = tuple(input_size.shape[1:])
+        batch_size = input_size.shape[0]
     elif isinstance(input_size, list):
         _input_size = []
         for item in input_size:
             assert isinstance(item,
-                              (list, InputSpec)), 'when input_size is list, \
+                              (list, InputSpec)), 'When input_size is list, \
             expect item in input_size is a tuple or InputSpec, but got {}'.format(
                                   type(item))
 
             if isinstance(item, InputSpec):
-                _input_size.append(tuple(item.shape))
+                _input_size.append(tuple(item.shape[1:]))
+                batch_size = item.shape[0]
             else:
                 _input_size.append(item)
+    else:
+        _input_size = input_size
+
+    if batch_size is None:
+        batch_size = -1
 
     if batch_size is None:
         batch_size = -1
