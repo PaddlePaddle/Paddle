@@ -15,6 +15,7 @@
 math functions
 """
 from __future__ import print_function
+import numpy as np
 
 from paddle.common_ops_import import *
 from paddle.tensor import cast
@@ -24,7 +25,6 @@ from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.layers.layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
-import sys
 
 # TODO: define math functions
 # yapf: disable
@@ -1611,11 +1611,19 @@ def clip(x, min=None, max=None, name=None):
             # [[4.5, 6.4]
     """
 
-    assert min is not None or max is not None, "either min or max should be defined."
+    np_dtype = np.float32
+    if x.dtype == VarDesc.VarType.FP64:
+        np_dtype = np.float64
+    fmin = float(np.finfo(np_dtype).min)
+    fmax = float(np.finfo(np_dtype).max)
 
     if in_dygraph_mode():
-        min = sys.float_info.min if min is None else min
-        max = sys.float_info.max if max is None else max
+        if isinstance(min, Variable):
+            min = min.numpy().item(0)
+        if isinstance(max, Variable):
+            max = max.numpy().item(0)
+        min = fmin if min is None else min
+        max = fmax if max is None else max
         return core.ops.clip(x, "min", min, "max", max)
 
     if min is not None:
@@ -1629,10 +1637,10 @@ def clip(x, min=None, max=None, name=None):
             check_dtype(max.dtype, 'max', ['float32', 'float64', 'int32'],
                         'clip', '(When the type of max in clip is Variable.)')
 
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'clip')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'clip')
 
     inputs = {'X': x}
-    attrs = {'min': sys.float_info.min, 'max': sys.float_info.max}
+    attrs = {'min': fmin, 'max': fmax}
 
     if isinstance(min, Variable):
         min.stop_gradient = True

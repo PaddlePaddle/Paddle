@@ -15,4 +15,4 @@
 from .fs import *
 from .http_server import KVHandler, KVHTTPServer, KVServer
 
-__all__ = ['KVHandler', 'KVHTTPServer', 'KVServer'] + fs.__all__
+#__all__ = ['KVHandler', 'KVHTTPServer', 'KVServer'] + fs.__all__

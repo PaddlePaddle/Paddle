@@ -20,7 +20,7 @@ import random
 import sys
 import time
 import unittest
-
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator, to_variable
 from paddle.fluid.dygraph.nn import Conv2D, BatchNorm, Linear, Pool2D
@@ -272,8 +272,8 @@ def train(args, fake_data_reader, to_static):
     random.seed(0)
     np.random.seed(0)
     with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = 1000
-        fluid.default_main_program().random_seed = 1000
+        paddle.manual_seed(1000)
+        paddle.framework.random._manual_program_seed(1000)
 
         video_model = TSM_ResNet("TSM", train_config, 'Train')
 

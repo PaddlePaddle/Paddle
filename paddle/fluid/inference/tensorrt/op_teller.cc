@@ -45,15 +45,22 @@ struct SimpleOpTypeSetTeller : public Teller {
 
  private:
   // use this set for no calib int8.
-  std::unordered_set<std::string> int8_teller_set{
-      "matmul",           "conv2d",
-      "pool2d",           "relu",
-      "depthwise_conv2d", "softmax",
-      "batch_norm",       "elementwise_add",
-      "leaky_relu",       "fc",
-      "concat",           "scale",
-      "elementwise_mul",  "conv2d_transpose",
-      "hard_swish"};
+  std::unordered_set<std::string> int8_teller_set{"matmul",
+                                                  "conv2d",
+                                                  "pool2d",
+                                                  "relu",
+                                                  "depthwise_conv2d",
+                                                  "softmax",
+                                                  "sigmoid",
+                                                  "batch_norm",
+                                                  "elementwise_add",
+                                                  "leaky_relu",
+                                                  "fc",
+                                                  "concat",
+                                                  "scale",
+                                                  "elementwise_mul",
+                                                  "conv2d_transpose",
+                                                  "hard_swish"};
   std::unordered_set<std::string> teller_set{
       "matmul",
       "conv2d",
@@ -81,6 +88,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gelu",
       "layer_norm",
       "scale",
+      "stack",
   };
 };
 

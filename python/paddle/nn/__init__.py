@@ -94,11 +94,23 @@ from .layer.common import UpsamplingNearest2d  #DEFINE_ALIAS
 from .layer.common import UpsamplingBilinear2d  #DEFINE_ALIAS
 from .layer.common import Bilinear  #DEFINE_ALIAS
 from .layer.common import Dropout  #DEFINE_ALIAS
-from .layer.common import Dropout2D  #DEFINE_ALIAS
-from .layer.common import Dropout3D  #DEFINE_ALIAS
+from .layer.common import Dropout2d  #DEFINE_ALIAS
+from .layer.common import Dropout3d  #DEFINE_ALIAS
 from .layer.common import AlphaDropout  #DEFINE_ALIAS
+
+from .layer.pooling import AvgPool1d  #DEFINE_ALIAS
+from .layer.pooling import AvgPool2d  #DEFINE_ALIAS
+from .layer.pooling import AvgPool3d  #DEFINE_ALIAS
+from .layer.pooling import MaxPool1d  #DEFINE_ALIAS
+from .layer.pooling import MaxPool2d  #DEFINE_ALIAS
+from .layer.pooling import MaxPool3d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveAvgPool1d  #DEFINE_ALIAS
 from .layer.pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
 from .layer.pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
+
+from .layer.pooling import AdaptiveMaxPool1d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveMaxPool2d  #DEFINE_ALIAS
+from .layer.pooling import AdaptiveMaxPool3d  #DEFINE_ALIAS
 from .layer.conv import Conv1d  #DEFINE_ALIAS
 from .layer.conv import Conv2d  #DEFINE_ALIAS
 from .layer.conv import Conv3d  #DEFINE_ALIAS
@@ -115,6 +127,7 @@ from .layer.extension import RowConv  #DEFINE_ALIAS
 # from .layer.learning_rate import NoamDecay        #DEFINE_ALIAS
 # from .layer.learning_rate import PiecewiseDecay        #DEFINE_ALIAS
 # from .layer.learning_rate import PolynomialDecay        #DEFINE_ALIAS
+from .layer.common import Linear
 # from .layer.loss import NCELoss        #DEFINE_ALIAS
 from .layer.loss import BCEWithLogitsLoss  #DEFINE_ALIAS
 from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
