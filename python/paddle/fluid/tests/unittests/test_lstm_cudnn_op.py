@@ -350,93 +350,6 @@ class LSTM(RNNMixin):
         self.state_components = 2
 
 
-def lstm_naive(input, w):
-    seq_len, batch_size, hidden_size = input.shape
-
-    offset = 0
-    wi = w[offset:offset + hidden_size * hidden_size].reshape(
-        (hidden_size, hidden_size)).transpose()
-    offset += hidden_size * hidden_size
-    wf = w[offset:offset + hidden_size * hidden_size].reshape(
-        (hidden_size, hidden_size)).transpose()
-    offset += hidden_size * hidden_size
-    wc = w[offset:offset + hidden_size * hidden_size].reshape(
-        (hidden_size, hidden_size)).transpose()
-    offset += hidden_size * hidden_size
-    wo = w[offset:offset + hidden_size * hidden_size].reshape(
-        (hidden_size, hidden_size)).transpose()
-    offset += hidden_size * hidden_size
-    ri = w[offset:offset + hidden_size * hidden_size].reshape(
-        (hidden_size, hidden_size)).transpose()
-    offset += hidden_size * hidden_size
-    rf = w[offset:offset + hidden_size * hidden_size].reshape(
-        (hidden_size, hidden_size)).transpose()
-    offset += hidden_size * hidden_size
-    rc = w[offset:offset + hidden_size * hidden_size].reshape(
-        (hidden_size, hidden_size)).transpose()
-    offset += hidden_size * hidden_size
-    ro = w[offset:offset + hidden_size * hidden_size].reshape(
-        (hidden_size, hidden_size)).transpose()
-    offset += hidden_size * hidden_size
-
-    bi_1 = w[offset:offset + hidden_size]
-    offset += hidden_size
-    bf_1 = w[offset:offset + hidden_size]
-    offset += hidden_size
-    bc_1 = w[offset:offset + hidden_size]
-    offset += hidden_size
-    bo_1 = w[offset:offset + hidden_size]
-    offset += hidden_size
-
-    bi_2 = w[offset:offset + hidden_size]
-    offset += hidden_size
-    bf_2 = w[offset:offset + hidden_size]
-    offset += hidden_size
-    bc_2 = w[offset:offset + hidden_size]
-    offset += hidden_size
-    bo_2 = w[offset:offset + hidden_size]
-
-    def sigmoid(x):
-        y = np.copy(x)
-        y[x < SIGMOID_THRESHOLD_MIN] = SIGMOID_THRESHOLD_MIN
-        y[x > SIGMOID_THRESHOLD_MAX] = SIGMOID_THRESHOLD_MAX
-        return 1. / (1. + np.exp(-y))
-
-    def tanh(x):
-        y = -2. * x
-        y[y > EXP_MAX_INPUT] = EXP_MAX_INPUT
-        return (2. / (1. + np.exp(y))) - 1.
-
-    output = []
-    pre_h = np.zeros((1, batch_size, hidden_size), dtype=input.dtype)
-    pre_c = np.zeros((1, batch_size, hidden_size), dtype=input.dtype)
-
-    for i in range(seq_len):
-        emb_1 = input[i]
-
-        input_gate = sigmoid(
-            np.matmul(emb_1, wi) + np.matmul(pre_h, ri) + bi_1 + bi_2)
-        forget_gate = sigmoid(
-            np.matmul(emb_1, wf) + np.matmul(pre_h, rf) + bf_1 + bf_2)
-        output_gate = sigmoid(
-            np.matmul(emb_1, wo) + np.matmul(pre_h, ro) + bo_1 + bo_2)
-        c_t_temp = tanh(
-            np.matmul(emb_1, wc) + np.matmul(pre_h, rc) + bc_1 + bc_2)
-        new_c = input_gate * c_t_temp + forget_gate * pre_c
-        new_h = output_gate * tanh(new_c)
-
-        pre_h = new_h
-        pre_c = new_c
-
-        output.append(new_h)
-
-    output = np.concatenate(output, -1)
-    output = output.reshape((batch_size, -1, hidden_size))
-    output = output.transpose((1, 0, 2))
-
-    return output, pre_h, pre_c
-
-
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNLstmOp(OpTest):
@@ -553,7 +466,7 @@ class TestCUDNNlstmAPI(unittest.TestCase):
                                       'float64', 0.0)
         rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
                                               hidden_size, num_layers,
-                                              dropout_prob)
+                                              dropout_prob, False, True)
         exe = fluid.Executor(fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
         input_i = np.random.uniform(
@@ -562,12 +475,6 @@ class TestCUDNNlstmAPI(unittest.TestCase):
         out = exe.run(fluid.default_main_program(),
                       feed={'input': input_i},
                       fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'])
-
-        output, last_hidden, last_cell = lstm_naive(input_i, out[3])
-
-        self.assertTrue(np.allclose(output, out[0], atol=1e-5))
-        self.assertTrue(np.allclose(last_hidden, out[1], atol=1e-5))
-        self.assertTrue(np.allclose(last_cell, out[2], atol=1e-5))
 
 
 if __name__ == '__main__':
