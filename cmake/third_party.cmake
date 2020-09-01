@@ -203,10 +203,9 @@ include(external/eigen)     # download eigen3
 include(external/threadpool)# download threadpool
 include(external/dlpack)    # download dlpack
 include(external/xxhash)    # download, build, install xxhash
-include(external/warpctc)   # download, build, install warpctc
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
-list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
+list(APPEND third_party_deps extern_zlib extern_dlpack extern_threadpool)
 
 if(WITH_AMD_GPU)
     include(external/rocprim)   # download, build, install rocprim
