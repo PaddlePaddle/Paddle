@@ -49,7 +49,7 @@ class LSTMCell(LayerMixin):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.parameters = dict()
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = np.ones(
@@ -443,7 +443,7 @@ class TestCUDNNLstmOp(OpTest):
     #TODO(gaowei): satisfy the result through the new interface
     def setUp(self):
         self.op_type = "cudnn_lstm"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
 
         seq_length = 12
@@ -474,7 +474,6 @@ class TestCUDNNLstmOp(OpTest):
 
         output, (last_hidden, last_cell) = rnn1(
             input, sequence_length=self.sequence_length)
-        np.set_printoptions(precision=16)
 
         flat_w = np.ones((weight_size)).astype(self.dtype)
         init_h = np.zeros((num_layers, batch_size,
@@ -495,7 +494,7 @@ class TestCUDNNLstmOp(OpTest):
             'input_size': input_size,
             'hidden_size': hidden_size,
             'num_layers': 1,
-            'sequence_length': list(self.sequence_length)
+            'sequence_length': self.sequence_length.tolist()
         }
         self.outputs = {
             'Out': output,
@@ -513,13 +512,18 @@ class TestCUDNNLstmOp(OpTest):
         self.check_output_with_place(
             place, no_check_set=['Reserve', 'StateOut'])
 
+    def test_grad_with_place(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place,
+                                   set(['Input', 'W', 'InitH', 'InitC']),
+                                   ['Out', 'LastH', 'LastC'])
+
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNLstmOp2(TestCUDNNLstmOp):
     def set_attrs(self):
         self.sequence_length = np.array([], dtype=np.int32)
-        self.dtype = np.float64
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

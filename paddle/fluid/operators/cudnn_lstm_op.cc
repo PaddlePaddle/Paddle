@@ -39,6 +39,7 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("Input");
     auto init_h_dims = ctx->GetInputDim("InitH");
     auto init_c_dims = ctx->GetInputDim("InitC");
+
     PADDLE_ENFORCE_EQ(in_dims.size(), 3,
                       platform::errors::InvalidArgument(
                           "The rank of Input in CudnnLSTM  must be 3. But "
@@ -49,11 +50,6 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
                           "The rank of InitH in CudnnLSTM  must be 3. But "
                           "received InitH's rank is %d.",
                           init_h_dims.size()));
-    PADDLE_ENFORCE_EQ(init_c_dims.size(), 3,
-                      platform::errors::InvalidArgument(
-                          "The rank of InitH in CudnnLSTM  must be 3. But "
-                          "received InitH's rank is %d.",
-                          init_c_dims.size()));
 
     PADDLE_ENFORCE_EQ(
         in_dims[1], init_h_dims[1],
@@ -63,29 +59,12 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
             "received in_dims[1] is %d and init_h_dims[1] is %d.",
             in_dims[1], init_h_dims[1]));
 
-    PADDLE_ENFORCE_EQ(
-        init_c_dims[0], init_h_dims[0],
-        platform::errors::InvalidArgument(
-            "The init_c_dims[0] (InitC dims) and init_h_dims[0] (InitH "
-            "dims) should be equal. But "
-            "received init_c_dims[0] is %d and init_h_dims[0] is %d.",
-            init_c_dims[0], init_h_dims[0]));
-
-    PADDLE_ENFORCE_EQ(
-        init_c_dims[1], init_h_dims[1],
-        platform::errors::InvalidArgument(
-            "The init_c_dims[1] (InitC dims) and init_h_dims[1] (InitH "
-            "dims) should be equal. But "
-            "received init_c_dims[1] is %d and init_h_dims[1] is %d.",
-            init_c_dims[1], init_h_dims[1]));
-
-    PADDLE_ENFORCE_EQ(
-        init_c_dims[2], init_h_dims[2],
-        platform::errors::InvalidArgument(
-            "The init_c_dims[2] (InitC dims) and init_h_dims[2] (InitH "
-            "dims) should be equal. But "
-            "received init_c_dims[2] is %d and init_h_dims[2] is %d.",
-            init_c_dims[2], init_h_dims[2]));
+    PADDLE_ENFORCE_EQ(init_c_dims, init_h_dims,
+                      platform::errors::InvalidArgument(
+                          "The InitC dims and InitH "
+                          "dims should be equal. But "
+                          "received init_c_dims is %d and init_h_dims is %d.",
+                          init_c_dims, init_h_dims));
 
     auto out_dims = in_dims;
     auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
@@ -176,9 +155,12 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(0);
-    AddAttr<std::vector<int>>(
-        "sequence_length",
-        "(list<int>) When the input data is padding, set this parameter.")
+    AddAttr<std::vector<int>>("sequence_length",
+                              "(vector<int>) When the input data is padding, "
+                              "set this parameter. This parameter represents "
+                              "the variable sequence"
+                              "lengths in a batch. The size of the vector has "
+                              "to equal the batch_size.")
         .SetDefault({});
     AddComment(R"DOC(
 CUDNN LSTM implementation

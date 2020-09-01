@@ -292,20 +292,20 @@ class ScopedTensorDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedTensorDescriptor);
 };
 
-class ScopedRNNSeqTensorDescriptor {
+class ScopedRNNTensorDescriptor {
  public:
-  ScopedRNNSeqTensorDescriptor() {
+  ScopedRNNTensorDescriptor() {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateRNNDataDescriptor(&desc_));
   }
 
-  ~ScopedRNNSeqTensorDescriptor() PADDLE_MAY_THROW {
+  ~ScopedRNNTensorDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyRNNDataDescriptor(desc_));
   }
 
   inline cudnnRNNDataDescriptor_t descriptor(
       const cudnnDataType_t cudnn_type, int max_seq_length, int batch_size,
       int input_size, bool time_major, const std::vector<int>& seq_length) {
-    float padding_fill = 0.0f;
+    static float padding_fill = 0.0f;
     cudnnRNNDataLayout_t layout;
 
     if (time_major) {
@@ -331,7 +331,7 @@ class ScopedRNNSeqTensorDescriptor {
 
  private:
   cudnnRNNDataDescriptor_t desc_;
-  DISABLE_COPY_AND_ASSIGN(ScopedRNNSeqTensorDescriptor);
+  DISABLE_COPY_AND_ASSIGN(ScopedRNNTensorDescriptor);
 };
 
 class ScopedDropoutDescriptor {
@@ -348,17 +348,12 @@ class ScopedDropoutDescriptor {
                                              bool initialized,
                                              float dropout_prob_,
                                              framework::Tensor* dropout_state_,
-                                             int seed) {
-    size_t state_size;
+                                             int seed, size_t state_size) {
+    auto* dropout_state_data = dropout_state_->data<uint8_t>();
     if (!initialized) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          dynload::cudnnDropoutGetStatesSize(handle, &state_size));
-      dropout_state_->Resize({static_cast<int64_t>(state_size)});
-      auto* dropout_state_data = dropout_state_->mutable_data<uint8_t>(place);
       PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetDropoutDescriptor(
           desc_, handle, dropout_prob_, dropout_state_data, state_size, seed));
     } else {
-      auto* dropout_state_data = dropout_state_->data<uint8_t>();
       auto dropout_state_dims = dropout_state_->dims();
       state_size = dropout_state_dims[0];
       PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnRestoreDropoutDescriptor(
@@ -446,16 +441,13 @@ class ScopedRNNBase {
         is_bidirec_(is_bidirec) {}
 
   template <typename T>
-  void Creat(const cudnnHandle_t& handle, const platform::Place& place,
-             std::vector<int> sequence_length, size_t* workspace_size,
-             size_t* reserve_size, framework::Tensor* dropout_state) {
+  void Create(const cudnnHandle_t& handle, const platform::Place& place,
+              std::vector<int> sequence_length, size_t* workspace_size,
+              size_t* reserve_size, framework::Tensor* dropout_state) {
     int numDirections = is_bidirec_ ? 2 : 1;
     cudnnDataType_t cudnn_type = platform::CudnnDataType<T>::type;
 
     // ------------------- cudnn x, y descriptors ---------------------
-    x_desc_ = new cudnnTensorDescriptor_t[seq_length_];
-    y_desc_ = new cudnnTensorDescriptor_t[seq_length_];
-
     std::vector<int> dims_x = {batch_size_, input_size_, 1};
     std::vector<int> strides_x = {input_size_, 1, 1};
 
@@ -463,8 +455,8 @@ class ScopedRNNBase {
     std::vector<int> strides_y = {hidden_size_ * numDirections, 1, 1};
 
     for (int i = 0; i < seq_length_; ++i) {
-      x_desc_[i] = x_d.descriptor<T>(dims_x, strides_x);
-      y_desc_[i] = y_d.descriptor<T>(dims_y, strides_y);
+      x_desc_.emplace_back(x_d.descriptor<T>(dims_x, strides_x));
+      y_desc_.emplace_back(y_d.descriptor<T>(dims_y, strides_y));
     }
 
     if (!sequence_length.empty()) {
@@ -486,8 +478,16 @@ class ScopedRNNBase {
     cy_desc_ = cy_d.descriptor<T>(dims_hx, strides_hx);
 
     // ------------------- cudnn dropout descriptors ---------------------
-    dropout_desc_ = dropout_d.descriptor(handle, place, initialized_,
-                                         dropout_prob_, dropout_state, seed_);
+    size_t state_size;
+    if (!initialized_) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cudnnDropoutGetStatesSize(handle, &state_size));
+      dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
+                                           place);
+    }
+    dropout_desc_ =
+        dropout_d.descriptor(handle, place, initialized_, dropout_prob_,
+                             dropout_state, seed_, state_size);
 
     // ------------------- cudnn rnn descriptors ---------------------
     rnn_desc_ = rnn_d.descriptor();
@@ -526,14 +526,14 @@ class ScopedRNNBase {
 
     // ------------------- cudnn workspace, reserve size ---------------------
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNWorkspaceSize(
-        handle, rnn_desc_, seq_length_, x_desc_, workspace_size));
+        handle, rnn_desc_, seq_length_, x_desc_.data(), workspace_size));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnGetRNNTrainingReserveSize(
-            handle, rnn_desc_, seq_length_, x_desc_, reserve_size));
+            handle, rnn_desc_, seq_length_, x_desc_.data(), reserve_size));
   }
 
-  cudnnTensorDescriptor_t* x_desc() { return x_desc_; }
-  cudnnTensorDescriptor_t* y_desc() { return y_desc_; }
+  cudnnTensorDescriptor_t* x_desc() { return x_desc_.data(); }
+  cudnnTensorDescriptor_t* y_desc() { return y_desc_.data(); }
   cudnnRNNDataDescriptor_t x_seq_desc() { return x_seq_desc_; }
   cudnnRNNDataDescriptor_t y_seq_desc() { return y_seq_desc_; }
   cudnnTensorDescriptor_t hx_desc() { return hx_desc_; }
@@ -556,8 +556,8 @@ class ScopedRNNBase {
   bool initialized_;
   bool is_bidirec_;
 
-  cudnnTensorDescriptor_t* x_desc_;
-  cudnnTensorDescriptor_t* y_desc_;
+  std::vector<cudnnTensorDescriptor_t> x_desc_;
+  std::vector<cudnnTensorDescriptor_t> y_desc_;
   cudnnRNNDataDescriptor_t x_seq_desc_;
   cudnnRNNDataDescriptor_t y_seq_desc_;
   cudnnTensorDescriptor_t hx_desc_;
@@ -570,8 +570,8 @@ class ScopedRNNBase {
 
   ScopedTensorDescriptor x_d;
   ScopedTensorDescriptor y_d;
-  ScopedRNNSeqTensorDescriptor x_seq_d;
-  ScopedRNNSeqTensorDescriptor y_seq_d;
+  ScopedRNNTensorDescriptor x_seq_d;
+  ScopedRNNTensorDescriptor y_seq_d;
   ScopedTensorDescriptor hx_d;
   ScopedTensorDescriptor cx_d;
   ScopedTensorDescriptor hy_d;
