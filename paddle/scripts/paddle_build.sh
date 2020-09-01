@@ -959,7 +959,7 @@ set +x
                     
                     retry_unittests_record="$retry_unittests_record$failed_test_lists"
                     failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                     echo "========================================="
                     echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                     echo "========================================="
