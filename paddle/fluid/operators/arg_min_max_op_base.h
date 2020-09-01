@@ -218,8 +218,7 @@ class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
                  "(int, 3), the dtype of indices, the indices dtype must be "
                  "int32, int64."
                  "default dtype is int64, and proto value is 3.")
-        .SetDefault(3)
-        .InEnum({2, 3});
+        .SetDefault(3);
     AddComment(string::Sprintf(R"DOC(
       %s Operator.
 
