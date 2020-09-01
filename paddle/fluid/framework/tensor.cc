@@ -45,7 +45,10 @@ void* Tensor::mutable_data(const platform::Place& place,
                     dims(), "] now");
   size_t size = numel() * SizeOfType(type);
   if (requested_size) {
-    PADDLE_ENFORCE_GE(requested_size, size);
+    PADDLE_ENFORCE_GE(requested_size, size,
+                      platform::errors::InvalidArgument(
+                          "The requested memory size is less than the tensor "
+                          "expected memory size."));
     size = requested_size;
   }
   /* some versions of boost::variant don't have operator!= */
