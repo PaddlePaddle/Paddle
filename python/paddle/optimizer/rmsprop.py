@@ -69,8 +69,8 @@ class RMSProp(Optimizer):
 
 
     Parameters:
-        learning_rate (float|LearningRateDecay): The learning rate used to update ``Parameter``.
-            It can be a float value or a LearningRateDecay.
+        learning_rate (float|_LRScheduler): The learning rate used to update ``Parameter``.
+            It can be a float value or a _LRScheduler.
         rho(float): rho is :math: `\\rho` in equation, default is 0.95.
         epsilon(float): :math: `\\epsilon` in equation is smoothing term to
             avoid division by zero, default is 1e-6.
@@ -80,7 +80,7 @@ class RMSProp(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
-	parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
+	parameters (list, optional): List of ``Tensor`` to update to minimize ``loss``. \
 	    This parameter is required in dygraph mode. \
 	    The default value is None in static mode, at this time all parameters will be updated.
 	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
@@ -147,6 +147,12 @@ class RMSProp(Optimizer):
             raise ValueError("epsilon is not set.")
         if momentum is None:
             raise ValueError("momentum is not set.")
+        if not 0.0 <= epsilon:
+            raise ValueError("Invalid value of epsilon, expect epsilon >= 0.")
+        if not 0.0 <= momentum:
+            raise ValueError("Invalid value of momentum, expect momentum >= 0.")
+        if not 0.0 <= rho:
+            raise ValueError("Invalid value of rho, expect rho >= 0.")
 
         super(RMSProp, self).__init__(
             learning_rate=learning_rate,
