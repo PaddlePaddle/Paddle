@@ -440,22 +440,23 @@ def lstm_naive(input, w):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNLstmOp(OpTest):
-    #TODO(gaowei): satisfy the result through the new interface
+    #TODO(GaoWei8): Need to satisfy the result through the new interface
     def setUp(self):
         self.op_type = "cudnn_lstm"
         self.dtype = np.float64
         self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
+        self.num_layers = 1
 
         seq_length = 12
         batch_size = 5
         input_size = 21
         hidden_size = 21
-        num_layers = 1
 
         input_weight_size = (hidden_size * hidden_size) * 4
         hidden_weight_size = (hidden_size * hidden_size) * 4
         weight_size = input_weight_size + hidden_weight_size
         weight_size += hidden_size * 8
+        weight_size *= self.num_layers
 
         input = np.random.uniform(
             low=-0.1, high=0.1,
@@ -468,7 +469,7 @@ class TestCUDNNLstmOp(OpTest):
         rnn1 = LSTM(
             input_size,
             hidden_size,
-            num_layers,
+            self.num_layers,
             time_major=True,
             direction="forward")
 
@@ -476,9 +477,9 @@ class TestCUDNNLstmOp(OpTest):
             input, sequence_length=self.sequence_length)
 
         flat_w = np.ones((weight_size)).astype(self.dtype)
-        init_h = np.zeros((num_layers, batch_size,
+        init_h = np.zeros((self.num_layers, batch_size,
                            hidden_size)).astype(self.dtype)
-        init_c = np.zeros((num_layers, batch_size,
+        init_c = np.zeros((self.num_layers, batch_size,
                            hidden_size)).astype(self.dtype)
         state_out = np.ndarray((300)).astype("uint8")
 
@@ -524,6 +525,13 @@ class TestCUDNNLstmOp(OpTest):
 class TestCUDNNLstmOp2(TestCUDNNLstmOp):
     def set_attrs(self):
         self.sequence_length = np.array([], dtype=np.int32)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCUDNNLstmOp3(TestCUDNNLstmOp):
+    def set_attrs(self):
+        self.num_layers = 2
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
