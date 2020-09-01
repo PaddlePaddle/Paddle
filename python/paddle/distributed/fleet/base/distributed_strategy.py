@@ -133,7 +133,7 @@ class DistributedStrategy(object):
 
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
-            strategy.load_from_prototxt("dist_strategy.protoxt")
+            strategy.load_from_prototxt("dist_strategy.prototxt")
         """
         with open(pb_file, 'r') as f:
             self.strategy = google.protobuf.text_format.Merge(
@@ -146,7 +146,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
-
+            import paddle
             exe_strategy = paddle.fluid.ExecutionStrategy()
             exe_strategy.num_threads = 10
             exe_strategy.num_iteration_per_drop_scope = 10
@@ -178,7 +178,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
-
+            import paddle
             build_strategy = paddle.fluid.BuildStrategy()
             build_strategy.enable_sequential_execution = True
             build_strategy.fuse_elewise_add_act_ops = True
@@ -270,7 +270,7 @@ class DistributedStrategy(object):
 
             strategy = fleet.DistributedStrategy()
             strategy.a_sync = True  # by default this is True
-            configs = {"k_step": 10000, "send_queue_size": 32}
+            configs = {"k_steps": 10000, "send_queue_size": 32}
             strategy.a_sync_configs = configs
 
             # code block for defining loss and local optimizer
