@@ -21,6 +21,7 @@ from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_t
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 import numpy as np
+import six
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
@@ -1109,7 +1110,11 @@ def tile(x, repeat_times, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in repeat_times must be 1-D Tensors or integers.')
             else:
-                assert isinstance(elem, (int, long, np.int32, np.int64)), (
+                if six.PY3:
+                    type_tuple = (int, np.int32, np.int64)
+                elif six.PY2:
+                    type_tuple = (int, long, np.int32, np.int64)
+                assert isinstance(elem, type_tuple), (
                     'Elements in repeat_times must be 1-D Tensors or integers.')
     if in_dygraph_mode():
         return core.ops.tile(x, 'repeat_times', repeat_times)
@@ -1247,7 +1252,11 @@ def expand(x, shape, name=None):
                 assert len(elem.shape) == 1, (
                     'Elements in shape must be 1-D Tensors or integers.')
             else:
-                assert isinstance(elem, (int, long, np.int32, np.int64)), (
+                if six.PY3:
+                    type_tuple = (int, np.int32, np.int64)
+                elif six.PY2:
+                    type_tuple = (int, long, np.int32, np.int64)
+                assert isinstance(elem, type_tuple), (
                     'Elements in shape must be 1-D Tensors or integers.')
     if in_dygraph_mode():
         return core.ops.expand_v2(x, 'shape', shape)
