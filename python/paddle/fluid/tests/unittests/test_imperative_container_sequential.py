@@ -66,6 +66,7 @@ class TestImperativeContainerSequentialCase1(unittest.TestCase):
                 fluid.Linear(1, 2), fluid.Linear(2, 2), fluid.Linear(2, 2))
             actual_model = model1[:3]
             res1 = actual_model(data)
+            res1 = model1[-1](res1)
             self.assertListEqual(res1.shape, [5, 2])
             loss1 = fluid.layers.reduce_mean(res1)
             loss1.backward()
