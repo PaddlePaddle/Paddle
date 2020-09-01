@@ -161,7 +161,6 @@ class Fleet(object):
                     format(type(role_maker)))
         self.strategy_compiler = StrategyCompiler()
         if paddle.fluid.framework.in_dygraph_mode():
-            #self.dy_strategy = paddle.fluid.dygraph.parallel.prepare_context()
             paddle.distributed.init_parallel_env()
         return None
 
@@ -587,7 +586,6 @@ class Fleet(object):
             .. code-block:: python
             import paddle
             import paddle.nn as nn
-            import paddle.optimizer as opt
             from paddle.distributed import fleet
 
             class LinearNet(nn.Layer):
@@ -595,32 +593,35 @@ class Fleet(object):
                     super(LinearNet, self).__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
-                    
+
                 def forward(self, x):
                     return self._linear2(self._linear1(x))
 
             def train():
                 # 1. enable dynamic mode
                 paddle.disable_static()
-                
-                # 2. create layer & optimizer
+
+                # 2. initialize fleet environment
+                fleet.init(is_collective=True)
+
+                # 3. create layer & optimizer
                 layer = LinearNet()
                 loss_fn = nn.MSELoss()
-                adam = opt.Adam(
+                adam = paddle.optimizer.Adam(
                     learning_rate=0.001, parameters=layer.parameters())
 
-                # 3. get data_parallel model using fleet
-                fleet.init(is_collective=True)
+                # 4. get data_parallel model using fleet
                 adam = fleet.distributed_optimizer(adam)
-                # call after distributed_optimizer so as to apply dist_strategy
-                dp_layer = fleet.build_distributed_model(layer)
-                
-                # 4. run layer
+                dp_layer = fleet.distributed_model(layer)
+
+                # 5. run layer
                 inputs = paddle.randn([10, 10], 'float32')
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
                 loss = loss_fn(outputs, labels)
-                
+
+                print("loss:", loss.numpy())
+
                 loss = dp_layer.scale_loss(loss)
                 loss.backward()
                 dp_layer.apply_collective_grads()
@@ -646,18 +647,19 @@ class Fleet(object):
 
         Examples:
             .. code-block:: python
-
+            import numpy as np
             import paddle
-            import paddle.distributed.fleet as fleet
+            from paddle.distributed import fleet
 
             paddle.disable_static()
-            value = np.arange(26).reshape(2, 13).astype("float32")
-            a = fluid.dygraph.to_variable(value)
-            layer = paddle.nn.Linear(13, 5, dtype="float32")
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.01, parameters=layer.parameters())
-
             fleet.init(is_collective=True)
+
+            value = np.arange(26).reshape(2, 13).astype("float32")
+            a = paddle.fluid.dygraph.to_variable(value)
+
+            layer = paddle.nn.Linear(13, 5)
+            adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
+
             adam = fleet.distributed_optimizer(adam)
             dp_layer = fleet.distributed_model(layer)
             state_dict = adam.state_dict()
@@ -678,18 +680,19 @@ class Fleet(object):
 
         Examples:
             .. code-block:: python
-
+            import numpy as np
             import paddle
-            import paddle.distributed.fleet as fleet
+            from paddle.distributed import fleet
 
             paddle.disable_static()
-            value = np.arange(26).reshape(2, 13).astype("float32")
-            a = fluid.dygraph.to_variable(value)
-            layer = paddle.nn.Linear(13, 5, dtype="float32")
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.01, parameters=layer.parameters())
-
             fleet.init(is_collective=True)
+
+            value = np.arange(26).reshape(2, 13).astype("float32")
+            a = paddle.fluid.dygraph.to_variable(value)
+
+            layer = paddle.nn.Linear(13, 5)
+            adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
+
             adam = fleet.distributed_optimizer(adam)
             dp_layer = fleet.distributed_model(layer)
             state_dict = adam.state_dict()
@@ -713,18 +716,19 @@ class Fleet(object):
 
         Examples:
             .. code-block:: python
-
+            import numpy as np
             import paddle
-            import paddle.distributed.fleet as fleet
+            from paddle.distributed import fleet
 
             paddle.disable_static()
-            value = np.arange(26).reshape(2, 13).astype("float32")
-            a = fluid.dygraph.to_variable(value)
-            layer = paddle.nn.Linear(13, 5, dtype="float32")
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.01, parameters=layer.parameters())
-
             fleet.init(is_collective=True)
+
+            value = np.arange(26).reshape(2, 13).astype("float32")
+            a = paddle.fluid.dygraph.to_variable(value)
+
+            layer = paddle.nn.Linear(13, 5)
+            adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
+
             adam = fleet.distributed_optimizer(adam)
             dp_layer = fleet.distributed_model(layer)
 
@@ -754,23 +758,24 @@ class Fleet(object):
 
         Examples:
             .. code-block:: python
-
+            import numpy as np
             import paddle
-            import paddle.distributed.fleet as fleet
+            from paddle.distributed import fleet
 
             paddle.disable_static()
-            value = np.arange(26).reshape(2, 13).astype("float32")
-            a = fluid.dygraph.to_variable(value)
-            layer = paddle.nn.Linear(13, 5, dtype="float32")
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.01, parameters=layer.parameters())
-
             fleet.init(is_collective=True)
+
+            value = np.arange(26).reshape(2, 13).astype("float32")
+            a = paddle.fluid.dygraph.to_variable(value)
+
+            layer = paddle.nn.Linear(13, 5)
+            adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
+
             adam = fleet.distributed_optimizer(adam)
             dp_layer = fleet.distributed_model(layer)
 
             lr = adam.get_lr()
-            print(lr) # 0.001
+            print(lr) # 0.01
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.get_lr()
@@ -787,25 +792,53 @@ class Fleet(object):
             .. code-block:: python
 
             import paddle
-            import paddle.distributed.fleet as fleet
+            import paddle.nn as nn
+            from paddle.distributed import fleet
 
-            paddle.disable_static()
-            value = np.arange(26).reshape(2, 13).astype("float32")
-            a = fluid.dygraph.to_variable(value)
-            layer = paddle.nn.Linear(13, 5, dtype="float32")
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.01, parameters=layer.parameters())
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear1 = nn.Linear(10, 10)
+                    self._linear2 = nn.Linear(10, 1)
 
-            fleet.init(is_collective=True)
-            adam = fleet.distributed_optimizer(adam)
-            dp_layer = fleet.distributed_model(layer)
-            out = dp_layer(a)
-            loss = dp_layer.scale_loss(out)
-            loss.backward()
-            dp_layer.apply_collective_grads()
+                def forward(self, x):
+                    return self._linear2(self._linear1(x))
 
-            adam.step()
-            adam.clear_grad()
+            def train():
+                # 1. enable dynamic mode
+                paddle.disable_static()
+
+                # 2. initialize fleet environment
+                fleet.init(is_collective=True)
+
+                # 3. create layer & optimizer
+                layer = LinearNet()
+                loss_fn = nn.MSELoss()
+                adam = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=layer.parameters())
+
+                # 4. get data_parallel model using fleet
+                adam = fleet.distributed_optimizer(adam)
+                dp_layer = fleet.distributed_model(layer)
+
+                # 5. run layer
+                inputs = paddle.randn([10, 10], 'float32')
+                outputs = dp_layer(inputs)
+                labels = paddle.randn([10, 1], 'float32')
+                loss = loss_fn(outputs, labels)
+
+                print("loss:", loss.numpy())
+
+                loss = dp_layer.scale_loss(loss)
+                loss.backward()
+                dp_layer.apply_collective_grads()
+
+                adam.step()
+                adam.clear_grad()
+
+            if __name__ == '__main__':
+                paddle.distributed.spawn(train)
+
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.step()
@@ -822,26 +855,52 @@ class Fleet(object):
             .. code-block:: python
 
             import paddle
-            import paddle.distributed.fleet as fleet
+            import paddle.nn as nn
+            from paddle.distributed import fleet
 
-            paddle.disable_static()
-            value = np.arange(26).reshape(2, 13).astype("float32")
-            a = fluid.dygraph.to_variable(value)
-            layer = paddle.nn.Linear(13, 5, dtype="float32")
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.01, parameters=layer.parameters())
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear1 = nn.Linear(10, 10)
+                    self._linear2 = nn.Linear(10, 1)
 
-            fleet.init(is_collective=True)
-            adam = fleet.distributed_optimizer(adam)
-            dp_layer = fleet.distributed_model(layer)
+                def forward(self, x):
+                    return self._linear2(self._linear1(x))
 
-            out = dp_layer(a)
-            loss = dp_layer.scale_loss(out)
-            loss.backward()
-            dp_layer.apply_collective_grads()
+            def train():
+                # 1. enable dynamic mode
+                paddle.disable_static()
 
-            adam.step()
-            adam.clear_grad()
+                # 2. initialize fleet environment
+                fleet.init(is_collective=True)
+
+                # 3. create layer & optimizer
+                layer = LinearNet()
+                loss_fn = nn.MSELoss()
+                adam = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=layer.parameters())
+
+                # 4. get data_parallel model using fleet
+                adam = fleet.distributed_optimizer(adam)
+                dp_layer = fleet.distributed_model(layer)
+
+                # 5. run layer
+                inputs = paddle.randn([10, 10], 'float32')
+                outputs = dp_layer(inputs)
+                labels = paddle.randn([10, 1], 'float32')
+                loss = loss_fn(outputs, labels)
+
+                print("loss:", loss.numpy())
+
+                loss = dp_layer.scale_loss(loss)
+                loss.backward()
+                dp_layer.apply_collective_grads()
+
+                adam.step()
+                adam.clear_grad()
+
+            if __name__ == '__main__':
+                paddle.distributed.spawn(train)
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.clear_grad()
