@@ -478,10 +478,10 @@ class TestModelFunction(unittest.TestCase):
 
     def test_summary(self):
         for dynamic in [True, False]:
-            device = hapi.set_device('cpu')
+            device = paddle.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             net = MyModel()
-            inputs = [Input([None, 20], 'float32', 'x')]
+            inputs = [InputSpec([None, 20], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
             params_info = model.summary()

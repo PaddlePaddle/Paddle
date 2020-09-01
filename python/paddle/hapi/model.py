@@ -1837,20 +1837,19 @@ class Model(object):
             .. code-block:: python
 
               import paddle
-              import paddle.fluid as fluid
-              import paddle.incubate.hapi as hapi
+              from paddle.static import InputSpec
 
               dynamic = True
-              device = hapi.set_device('cpu')
+              device = paddle.set_device('cpu')
               fluid.enable_dygraph(device) if dynamic else None
            
-              input = hapi.Input('image', [None, 1, 28, 28], 'float32')
-              label = hapi.Input('label', [None, 1], 'int64')
+              input = InputSpec([None, 1, 28, 28], 'float32', 'image')
+              label = InputSpec([None, 1], 'int64', 'label')
            
-              model = hapi.Model(hapi.vision.LeNet(classifier_activation=None),
+              model = paddle.hapi.Model(hapi.vision.LeNet(classifier_activation=None),
                   input, label)
-              optim = fluid.optimizer.Adam(
-                  learning_rate=0.001, parameter_list=model.parameters())
+              optim = paddle.optimizer.Adam(
+                  learning_rate=0.001, parameters=model.parameters())
               model.prepare(
                   optim,
                   paddle.nn.CrossEntropyLoss(),
@@ -1861,14 +1860,14 @@ class Model(object):
 
         """
 
-        assert input_size is not None or self._inputs is not None, \
-                'input size must be set when input of Model is None'
-        input_size = input_size if input_size is not None else [
-            tuple(x.shape[1:]) for x in self._inputs
-        ]
-        batch_size = -1 if batch_size is None else self._inputs[0].shape[0]
+        # assert input_size is not None or self._inputs is not None, \
+        #         'input size must be set when input of Model is None'
+        # input_size = input_size if input_size is not None else [
+        #     tuple(x.shape[1:]) for x in self._inputs
+        # ]
+        # batch_size = -1 if batch_size is None else self._inputs[0].shape[0]
 
-        return summary(self.network, input_size, batch_size, dtype)
+        return summary(self.network, self._inputs, batch_size, dtype)
 
     def _verify_spec(self, specs, is_input=False):
         out_specs = []
