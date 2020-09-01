@@ -47,10 +47,10 @@ from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.fluid.executor import scope_guard, Executor
 from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
-from paddle.utils import summary
 from paddle.static import InputSpec as Input
 
 from .callbacks import config_callbacks
+from .model_summary import summary
 
 __all__ = ['Model', ]
 
@@ -1826,7 +1826,11 @@ class Model(object):
         """Prints a string summary of the network.
 
         Args:
-            input_size (list|tuple, optional): size of input tensor, Default: None.
+            input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. 
+                    if not set, input_size will get from ``self._inputs`` if network only have 
+                    one input, input_size can be tuple or InputSpec. if model have multiple 
+                    input, input_size must be a list which contain every input's shape. 
+                    Default: None.
             batch_size (int, optional): batch size of input tensor, Default: None.
             dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
 
