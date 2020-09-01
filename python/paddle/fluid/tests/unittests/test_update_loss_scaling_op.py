@@ -65,7 +65,9 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
         self.init()
         found_inf = np.array([True], dtype=np.bool)
         x = np.random.random((1024, 1024)).astype(self.dtype)
-        x[128][128] = np.inf
+        i = np.random.randint(0, 1024, 1)
+        j = np.random.randint(0, 1024, 1)
+        x[i[0]][j[0]] = np.inf
 
         self.inputs = {
             'X': [('x0', x)],
