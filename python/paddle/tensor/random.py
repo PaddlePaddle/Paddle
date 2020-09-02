@@ -36,6 +36,19 @@ __all__ = [
 ]
 
 
+def set_global_dtype_for_random_apis(api_name):
+    """
+    This is a common function used in APIs that can use global default dtype.
+    Including: ``gaussian_random``, ``standard_normal``, ``randn``, ``uniform``, ``rand``.
+    """
+    dtype = paddle.framework.get_default_dtype()
+    if dtype not in ['float32', 'float64']:
+        raise TypeError(
+            "{} only supports [float32, float64], but the default dtype is {}".
+            format(api_name, dtype))
+    return dtype
+
+
 def bernoulli(x, name=None):
     """
 
@@ -390,11 +403,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
     """
     if dtype is None:
-        dtype = paddle.framework.get_default_dtype()
-        if dtype not in ['float32', 'float64']:
-            raise TypeError(
-                "uniform only supports [float32, float64], but the default dtype is %s"
-                % dtype)
+        dtype = set_global_dtype_for_random_apis('uniform')
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
