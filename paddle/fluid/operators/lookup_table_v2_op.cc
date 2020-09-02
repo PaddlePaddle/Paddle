@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/lookup_table_v2_op.h"
 
 #include <memory>
-
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
@@ -196,3 +196,14 @@ REGISTER_OP_CPU_KERNEL(lookup_table_v2, ops::LookupTableV2Kernel<float>,
 REGISTER_OP_CPU_KERNEL(lookup_table_v2_grad,
                        ops::LookupTableV2GradKernel<float>,
                        ops::LookupTableV2GradKernel<double>);
+
+/* ==========================  register checkpoint ===========================*/
+REGISTER_OP_VERSION(lookup_table_v2)
+    .AddCheckpoint(
+        R"ROC(fix lookup_table_v2, add input type `int32`)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .BugfixWithBehaviorChanged("lookup_table_v2 support input type "
+                                       "`int64`; after support input type "
+                                       "`int32/int64`"));
+
+/* ========================================================================== */

@@ -28,7 +28,10 @@ include(generic)            # simplify cmake module
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDA QUIET)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
-
+option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN"        OFF)
+if (WITH_GPU  AND WITH_XPU)
+    message(FATAL_ERROR "Error when compile GPU and XPU at the same time")
+endif()
 # cmake 3.12, 3.13, 3.14 will append gcc link options to nvcc, and nvcc doesn't recognize them.
 if(WITH_GPU AND (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.12) AND (${CMAKE_VERSION} VERSION_LESS 3.15))
     message(FATAL_ERROR "cmake ${CMAKE_VERSION} is not supported when WITH_GPU=ON because of bug https://cmake.org/pipermail/cmake/2018-September/068195.html. "

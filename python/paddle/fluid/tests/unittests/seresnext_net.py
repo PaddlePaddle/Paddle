@@ -36,7 +36,7 @@ remove_dropout = False
 # and Executor is different.
 remove_bn = False
 
-remove_cudnn_conv = False
+remove_cudnn_conv = True
 
 remove_dropout = True
 remove_bn = True
@@ -179,7 +179,7 @@ def batch_size(use_cuda):
 def iter(use_cuda):
     if use_cuda:
         return 10
-    return 2
+    return 1
 
 
 gpu_img, gpu_label = init_data(

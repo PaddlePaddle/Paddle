@@ -54,7 +54,7 @@ class TestCumsumOp(unittest.TestCase):
     def run_static(self, use_gpu=False):
         with fluid.program_guard(fluid.Program()):
             data_np = np.random.random((100, 100)).astype(np.float32)
-            x = paddle.nn.data('X', [100, 100])
+            x = paddle.static.data('X', [100, 100])
             y = paddle.cumsum(x)
             y2 = paddle.cumsum(x, axis=0)
             y3 = paddle.cumsum(x, axis=-1)
@@ -100,7 +100,7 @@ class TestCumsumOp(unittest.TestCase):
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
-            x = paddle.nn.data('x', [3, 4])
+            x = paddle.static.data('x', [3, 4])
             y = paddle.cumsum(x, name='out')
             self.assertTrue('out' in y.name)
 

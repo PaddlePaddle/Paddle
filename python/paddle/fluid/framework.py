@@ -48,6 +48,7 @@ __all__ = [
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
+    'is_compiled_with_xpu',
     'Variable',
     'ComplexVariable',
     'load_op_library',
@@ -308,6 +309,21 @@ def _cuda_ids():
     else:
         device_ids = six.moves.range(core.get_cuda_device_count())
     return device_ids
+
+
+def is_compiled_with_xpu():
+    """
+    Whether this whl package can be used to run the model on XPU.
+
+    Returns (bool): support xpu or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_xpu = fluid.is_compiled_with_xpu()
+    """
+    return core.is_compiled_with_xpu()
 
 
 def is_compiled_with_cuda():
@@ -1090,15 +1106,18 @@ class Variable(object):
         pass
 
     @fake_interface_only
-    def backward(self, backward_strategy=None):
+    def backward(self, retain_graph=False):
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
-        Run backward of current Graph which starts from current Variable
+        Run backward of current Graph which starts from current Tensor.
 
         Args:
-            backward_strategy( :ref:`api_fluid_dygraph_BackwardStrategy` ): The Backward Strategy to run backward
+            retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
+                like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
+                :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+                Defaults to False.
 
         Returns:
             NoneType: None
@@ -1106,23 +1125,21 @@ class Variable(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
                 import numpy as np
+                import paddle
+                paddle.disable_static()
 
                 x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    inputs2 = []
-                    for _ in range(10):
-                        tmp = fluid.dygraph.base.to_variable(x)
-                        # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
-                        # there is no one need gradient on it.
-                        tmp.stop_gradient=False
-                        inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                inputs = []
+                for _ in range(10):
+                    tmp = paddle.to_tensor(x)
+                    # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
+                    # there is no one need gradient on it.
+                    tmp.stop_gradient=False
+                    inputs.append(tmp)
+                ret = paddle.sums(inputs)
+                loss = paddle.reduce_sum(ret)
+                loss.backward()
 
         """
         pass
@@ -1154,9 +1171,7 @@ class Variable(object):
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
                     loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                    loss2.backward()
                     print(loss2.gradient())
 
                 # example2: return tuple of ndarray
@@ -1202,9 +1217,7 @@ class Variable(object):
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
                     loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
+                    loss2.backward()
                     print(loss2.gradient())
                     loss2.clear_gradient()
                     print("After clear {}".format(loss2.gradient()))
@@ -4434,6 +4447,8 @@ class Program(object):
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
             p._appending_grad_times = self._appending_grad_times
+            if hasattr(self, 'lr_sheduler'):
+                p.lr_sheduler = self.lr_sheduler
 
             #NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.

@@ -45,7 +45,7 @@ class TestNNSigmoidAPI(unittest.TestCase):
         main_program = paddle.static.Program()
         mysigmoid = nn.Sigmoid(name="api_sigmoid")
         with paddle.static.program_guard(main_program):
-            x = paddle.nn.data(name='x', shape=self.x_shape)
+            x = paddle.static.data(name='x', shape=self.x_shape)
             x.stop_gradient = False
             y = mysigmoid(x)
             fluid.backward.append_backward(paddle.mean(y))
@@ -86,7 +86,7 @@ class TestNNFunctionalSigmoidAPI(unittest.TestCase):
         paddle.enable_static()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
-            x = paddle.nn.data(name='x', shape=self.x_shape)
+            x = paddle.static.data(name='x', shape=self.x_shape)
             y = functional.sigmoid(x, name="api_sigmoid")
         exe = paddle.static.Executor(fluid.CPUPlace())
         out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])

@@ -14,20 +14,20 @@
 
 #pragma once
 
+#include <ThreadPool.h>
 #include <gflags/gflags.h>
 
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
 #include <string>
+#include <thread>  // NOLINT
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
-#include <thread>  // NOLINT
-
-#include <ThreadPool.h>
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/selected_rows.h"
@@ -88,21 +88,17 @@ class UniformInitializer : public Initializer {
     min_ = std::stof(attrs[2]);
     max_ = std::stof(attrs[3]);
 
-    if (seed_ == 0) {
-      seed_ = std::random_device()();
-    }
-
-    random_engine_.seed(seed_);
     dist_ = std::uniform_real_distribution<float>(min_, max_);
+    random_engine_ = framework::GetCPURandomEngine(seed_);
   }
 
-  float GetValue() override { return dist_(random_engine_); }
+  float GetValue() override { return dist_(*random_engine_); }
 
  private:
   float min_;
   float max_;
 
-  std::minstd_rand random_engine_;
+  std::shared_ptr<std::mt19937_64> random_engine_;
   std::uniform_real_distribution<float> dist_;
 };
 
@@ -133,21 +129,18 @@ class GaussianInitializer : public Initializer {
     mean_ = std::stof(attrs[2]);
     std_ = std::stof(attrs[3]);
 
-    if (seed_ == 0) {
-      seed_ = std::random_device()();
-    }
+    random_engine_ = framework::GetCPURandomEngine(seed_);
 
-    random_engine_.seed(seed_);
     dist_ = std::normal_distribution<float>(mean_, std_);
   }
 
-  float GetValue() override { return dist_(random_engine_); }
+  float GetValue() override { return dist_(*random_engine_); }
 
  private:
   float std_;
   float mean_;
 
-  std::minstd_rand random_engine_;
+  std::shared_ptr<std::mt19937_64> random_engine_;
   std::normal_distribution<float> dist_;
 };
 

@@ -41,6 +41,8 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"X", "InScale", "InAccum", "InState"}},
     {"nll_loss", {"X", "Label", "Weight"}},
+    {"bilinear_tensor_product", {"X", "Y", "Weight", "Bias"}},
+    {"gather", {"X", "Index", "Axis"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -57,6 +59,10 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
+    {"sync_batch_norm",
+     {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
+      "ReserveSpace"}},
+    {"unique", {"Out", "Index", "Indices", "Counts"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -76,9 +82,23 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"momentum", {"ParamOut", "VelocityOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
+    {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
     {"accuracy", {"Correct", "Total"}},
     {"fill_constant", {"Out"}},
     {"matmul", {"Out"}},
+    {"c_broadcast", {"Out"}},
+    {"c_allreduce_sum", {"Out"}},
+    {"c_allreduce_max", {"Out"}},
+    {"c_allreduce_min", {"Out"}},
+    {"c_allreduce_prod", {"Out"}},
+    {"c_reduce_sum", {"Out"}},
+    {"c_reduce_max", {"Out"}},
+    {"c_reduce_min", {"Out"}},
+    {"c_reduce_prod", {"Out"}},
+    {"c_reduce", {"Out"}},
+    {"c_allgather", {"Out"}},
+    {"c_scatter", {"Out"}},
+    {"barrier", {"Out"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"fake_quantize_dequantize_abs_max", {"Out", "OutScale"}},

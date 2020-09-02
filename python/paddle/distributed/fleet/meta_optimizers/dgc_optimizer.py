@@ -15,8 +15,6 @@ from paddle.fluid.optimizer import Momentum, DGCMomentumOptimizer
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
-__all__ = ["DGCOptimizer"]
-
 
 class DGCOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -25,6 +23,7 @@ class DGCOptimizer(MetaOptimizerBase):
         self.dgc_opt = None
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
+        self.meta_optimizers_black_list = []
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):

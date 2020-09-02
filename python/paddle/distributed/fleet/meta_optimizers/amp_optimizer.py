@@ -14,8 +14,6 @@
 import paddle.fluid.contrib.mixed_precision as mixed_precision
 from .meta_optimizer_base import MetaOptimizerBase
 
-__all__ = ["AMPOptimizer"]
-
 
 class AMPOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -23,7 +21,12 @@ class AMPOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.amp_opt = None
         # we do not allow meta optimizer to be inner optimizer currently
-        self.meta_optimizers_white_list = []
+        self.meta_optimizers_white_list = [
+            "LarsOptimizer", "LambOptimizer", "RecomputeOptimizer",
+            "LocalSGDOptimizer", "GradientMergeOptimizer",
+            "GraphExecutionOptimizer"
+        ]
+        self.meta_optimizers_black_list = ["DGCOptimizer"]
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):

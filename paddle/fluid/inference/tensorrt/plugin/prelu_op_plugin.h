@@ -102,12 +102,15 @@ class PReluPluginDynamic : public DynamicPluginTensorRT {
   }
   ~PReluPluginDynamic() { cudaFree(p_gpu_weight_); }
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new PReluPluginDynamic(weight_.data(), weight_.size(), mode_);
+    auto ptr = new PReluPluginDynamic(weight_.data(), weight_.size(), mode_);
+    ptr->p_gpu_weight_ = p_gpu_weight_;
+    return ptr;
   }
 
   const char* getPluginType() const override { return "prelu_plugin"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override;
+  void terminate() override;
 
   size_t getSerializationSize() const override;
   void serialize(void* buffer) const override;

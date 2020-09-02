@@ -30,7 +30,8 @@ if six.PY2:
 else:
     import queue
 
-from .. import core
+import paddle
+from .. import core, layers
 from ..framework import in_dygraph_mode
 from ..multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, _set_SIGCHLD_handler
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
@@ -79,7 +80,13 @@ def default_collate_fn(batch):
                 slots.append([item])
             else:
                 slots[i].append(item)
-    return [np.stack(slot, axis=0) for slot in slots]
+
+    if isinstance(slots[0][0], np.ndarray):
+        return [np.stack(slot, axis=0) for slot in slots]
+    elif isinstance(slots[0][0], paddle.Tensor):
+        return [layers.stack(slot, axis=0) for slot in slots]
+    else:
+        raise RuntimeError("Unknown data type {}".format(type(slots[0][0])))
 
 
 class _DatasetKind(object):
@@ -284,6 +291,12 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 for slot in batch:
                     if not isinstance(slot, core.LoDTensor):
                         self._check_input_array(slot)
+                        # FIXME(dkp): blocking_queue only support
+                        #             core.LoDTensorArray as input now, read
+                        #             numpy data into a LoDTensorArray here,
+                        #             should support paddle.Tensor list later
+                        if isinstance(slot, paddle.Tensor):
+                            slot = slot.numpy()
                         tmp = core.LoDTensor()
                         tmp.set(slot, core.CPUPlace())
                         slot = tmp
@@ -305,6 +318,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
     @classmethod
     def _check_input_array(cls, item):
+        if isinstance(item, paddle.Tensor):
+            return
         arr = np.array(item)
         if arr.dtype == np.object:
             raise TypeError((
@@ -530,6 +545,14 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         out_queue.put((idx, e))
                 else:
                     if self._use_shared_memory:
+                        # FIXME(dkp): _convert_to_tensor_list only support np.array
+                        #             list now, should support paddle.Tensor list
+                        if isinstance(batch[0][0], paddle.Tensor):
+                            np_batch = []
+                            for sample in batch:
+                                np_batch.append([s.numpy() for s in sample])
+                            batch = np_batch
+
                         tensor_list = core._convert_to_tensor_list(batch)
                         out_queue.put((idx, tensor_list))
                         core._remove_tensor_list_mmap_fds(tensor_list)
@@ -585,22 +608,24 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             # in _send_idx but will not increase _rcvd_idx, so we check 
             # whether the worker is still alive here to skip the discarded
             # batch indices and increase _rcvd_idx
-            while self._rcvd_idx < self._send_idx:
-                info = self._task_infos[self._rcvd_idx]
-                if len(info) == 2 or self._worker_status[info[0]]:
-                    break
-                del self._task_infos[self._rcvd_idx]
-                self._rcvd_idx += 1
-                self._batches_outstanding -= 1
-            else:
-                # NOTE: _rcvd_idx and _send_idx only record batches among
-                #       workers, if batches among workers drained, there
-                #       may also be data in blocking queue
-                if self._batches_outstanding < len(self._places):
-                    return None
-                continue
+            if self._dataset_kind == _DatasetKind.ITER:
+                while self._rcvd_idx < self._send_idx:
+                    info = self._task_infos[self._rcvd_idx]
+                    if len(info) == 2 or self._worker_status[info[0]]:
+                        break
+                    del self._task_infos[self._rcvd_idx]
+                    self._rcvd_idx += 1
+                    self._batches_outstanding -= 1
+                else:
+                    # NOTE: _rcvd_idx and _send_idx only record batches among
+                    #       workers, if batches among workers drained, there
+                    #       may also be data in blocking queue
+                    if self._batches_outstanding < len(self._places):
+                        return None
+                    continue
 
-            if len(self._task_infos[self._rcvd_idx]) == 2:
+            if self._rcvd_idx in self._task_infos and \
+                    len(self._task_infos[self._rcvd_idx]) == 2:
                 return self._task_infos.pop(self._rcvd_idx)[1]
 
             try:

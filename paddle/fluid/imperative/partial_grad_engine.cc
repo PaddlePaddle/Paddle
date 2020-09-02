@@ -33,6 +33,8 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
 
+DECLARE_bool(sort_sum_gradient);
+
 namespace paddle {
 namespace imperative {
 
@@ -529,8 +531,7 @@ class PartialGradTask {
                   const std::vector<std::shared_ptr<VarBase>> &output_targets,
                   const std::vector<std::shared_ptr<VarBase>> &output_grads,
                   const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-                  const platform::Place &place,
-                  const detail::BackwardStrategy &strategy, bool create_graph,
+                  const platform::Place &place, bool create_graph,
                   bool retain_graph, bool allow_unused, bool only_inputs);
 
   std::vector<std::shared_ptr<VarBase>> Run();
@@ -577,7 +578,6 @@ class PartialGradTask {
   bool retain_graph_;
   bool allow_unused_;
   bool only_inputs_;
-  detail::BackwardStrategy strategy_;
 };
 
 PartialGradTask::PartialGradTask(
@@ -585,15 +585,14 @@ PartialGradTask::PartialGradTask(
     const std::vector<std::shared_ptr<VarBase>> &output_targets,
     const std::vector<std::shared_ptr<VarBase>> &output_grads,
     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-    const platform::Place &place, const detail::BackwardStrategy &strategy,
-    bool create_graph, bool retain_graph, bool allow_unused, bool only_inputs) {
+    const platform::Place &place, bool create_graph, bool retain_graph,
+    bool allow_unused, bool only_inputs) {
   input_targets_ = input_targets;
   place_ = place;
   create_graph_ = create_graph;
   retain_graph_ = retain_graph;
   allow_unused_ = allow_unused;
   only_inputs_ = only_inputs;
-  strategy_ = strategy;
 
   PADDLE_ENFORCE_EQ(only_inputs_, true,
                     platform::errors::Unimplemented(
@@ -981,7 +980,7 @@ void PartialGradTask::PrepareInitialGradientAccumulators(const OpBase *op) {
 
       if (!accumulator) {
         accumulator.reset(new GradientAccumulationInfo(
-            var, strategy_.sorted_sum_gradient_, create_graph_));
+            var, FLAGS_sort_sum_gradient, create_graph_));
       }
 
       accumulator->IncreaseTotalRefCnt();
@@ -1033,11 +1032,11 @@ PartialGradEngine::PartialGradEngine(
     const std::vector<std::shared_ptr<VarBase>> &output_targets,
     const std::vector<std::shared_ptr<VarBase>> &output_grads,
     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-    const platform::Place &place, const detail::BackwardStrategy &strategy,
-    bool create_graph, bool retain_graph, bool allow_unused, bool only_inputs)
+    const platform::Place &place, bool create_graph, bool retain_graph,
+    bool allow_unused, bool only_inputs)
     : task_(new PartialGradTask(input_targets, output_targets, output_grads,
-                                no_grad_vars, place, strategy, create_graph,
-                                retain_graph, allow_unused, only_inputs)) {}
+                                no_grad_vars, place, create_graph, retain_graph,
+                                allow_unused, only_inputs)) {}
 
 PartialGradEngine::~PartialGradEngine() { Clear(); }
 

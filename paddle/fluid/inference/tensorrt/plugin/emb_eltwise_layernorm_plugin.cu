@@ -77,6 +77,16 @@ nvinfer1::DimsExprs EmbEltwiseLayernormPluginDynamic<T>::getOutputDimensions(
 }
 
 template <typename T>
+void EmbEltwiseLayernormPluginDynamic<T>::terminate() {
+  for (auto ptr : embs_gpu_) {
+    if (ptr) cudaFree(ptr);
+  }
+
+  if (bias_gpu_) cudaFree(bias_gpu_);
+  if (scale_gpu_) cudaFree(scale_gpu_);
+}
+
+template <typename T>
 bool EmbEltwiseLayernormPluginDynamic<T>::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
     int nb_outputs) {
@@ -153,7 +163,7 @@ int EmbEltwiseLayernormPluginDynamic<T>::enqueue(
   int64_t *emb_ptr_gpu_d =
       emb_ptr_tensor.mutable_data<int64_t>(platform::CUDAPlace(device_id));
 
-  std::vector<int64_t> in_ptr, emb_ptr;
+  std::vector<uintptr_t> in_ptr, emb_ptr;
   for (int i = 0; i < input_num; i++) {
     in_ptr.push_back(reinterpret_cast<uintptr_t>(inputs[i]));
     emb_ptr.push_back(reinterpret_cast<uintptr_t>(embs_gpu_[i]));

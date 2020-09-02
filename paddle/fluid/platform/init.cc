@@ -33,6 +33,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu_header.h"
+#include "paddle/fluid/platform/xpu_info.h"
+#endif
+
 DECLARE_int32(paddle_num_threads);
 DEFINE_int32(multiple_of_cupti_buffer_size, 1,
              "Multiple of the CUPTI device buffer size. If the timestamps have "
@@ -152,6 +157,14 @@ void InitDevices(bool init_p2p) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
 #endif
+#ifdef PADDLE_WITH_XPU
+  try {
+    // use user specified XPUs in single-node multi-process mode.
+    devices = platform::GetXPUSelectedDevices();
+  } catch (const std::exception &exp) {
+    LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
+  }
+#endif
   InitDevices(init_p2p, devices);
 }
 
@@ -165,7 +178,13 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
       LOG(WARNING) << "Invalid devices id.";
       continue;
     }
+
+#ifdef PADDLE_WITH_CUDA
     places.emplace_back(platform::CUDAPlace(devices[i]));
+#endif
+#ifdef PADDLE_WITH_XPU
+    places.emplace_back(platform::XPUPlace(devices[i]));
+#endif
   }
   if (init_p2p) {
     InitP2P(devices);

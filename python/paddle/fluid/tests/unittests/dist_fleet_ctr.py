@@ -162,24 +162,17 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         exe = fluid.Executor(fluid.CPUPlace())
         fleet.init_worker()
-        exe.run(fleet.startup_program)
-
+        exe.run(fluid.default_startup_program())
         batch_size = 4
         train_reader = paddle.batch(fake_ctr_reader(), batch_size=batch_size)
         self.reader.decorate_sample_list_generator(train_reader)
-
-        compiled_prog = fluid.compiler.CompiledProgram(
-            fleet.main_program).with_data_parallel(
-                loss_name=self.avg_cost.name,
-                build_strategy=self.strategy.get_build_strategy(),
-                exec_strategy=self.strategy.get_execute_strategy())
 
         for epoch_id in range(1):
             self.reader.start()
             try:
                 pass_start = time.time()
                 while True:
-                    loss_val = exe.run(program=compiled_prog,
+                    loss_val = exe.run(program=fluid.default_main_program(),
                                        fetch_list=[self.avg_cost.name])
                     loss_val = np.mean(loss_val)
                     # TODO(randomly fail)
@@ -203,19 +196,16 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         fleet.stop_worker()
 
     def do_dataset_training(self, fleet):
-        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
-        )
+        train_file_list = ctr_dataset_reader.prepare_fake_data()
 
         exe = fluid.Executor(fluid.CPUPlace())
 
         fleet.init_worker()
-        exe.run(fleet.startup_program)
+        exe.run(fluid.default_startup_program())
 
         thread_num = 2
         batch_size = 128
-        filelist = []
-        for _ in range(thread_num):
-            filelist.append(train_file_path)
+        filelist = train_file_list
 
         # config dataset
         dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
@@ -231,7 +221,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             pass_start = time.time()
             dataset.set_filelist(filelist)
             exe.train_from_dataset(
-                program=fleet.main_program,
+                program=fluid.default_main_program(),
                 dataset=dataset,
                 fetch_list=[self.avg_cost],
                 fetch_info=["cost"],

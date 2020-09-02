@@ -20,8 +20,6 @@ from paddle.fluid.optimizer import PipelineOptimizer as PO
 from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 
-__all__ = ["PipelineOptimizer"]
-
 
 class PipelineHelper(CollectiveHelper):
     def __init__(self, role_maker, nrings=1, wait_port='6174'):
@@ -95,6 +93,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
+        self.meta_optimizers_black_list = []
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):

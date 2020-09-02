@@ -18,16 +18,15 @@ from .base.distributed_strategy import DistributedStrategy
 from .base.fleet_base import Fleet
 from .base.util_factory import UtilBase
 from .dataset import *
+#from . import metrics
 
 __all__ = [
     "DistributedStrategy",
     "UtilBase",
     "DatasetFactory",
-    "DatasetBase",
-    "InMemoryDataset",
-    "QueueDataset",
     "UserDefinedRoleMaker",
     "PaddleCloudRoleMaker",
+    "Fleet",
 ]
 
 fleet = Fleet()
@@ -48,4 +47,6 @@ init_server = fleet.init_server
 run_server = fleet.run_server
 stop_worker = fleet.stop_worker
 distributed_optimizer = fleet.distributed_optimizer
+save_inference_model = fleet.save_inference_model
+save_persistables = fleet.save_persistables
 minimize = fleet.minimize
