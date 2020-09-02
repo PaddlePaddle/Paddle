@@ -29,6 +29,7 @@ from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, con
 from paddle.utils import deprecated
 import numpy
 import warnings
+from .utils import check_shape
 
 __all__ = [
     'create_tensor', 'create_parameter', 'create_global_var', 'cast',
@@ -657,12 +658,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     Returns:
         Tensor: Tensor which is created according to shape and dtype.
 
-    Raises:
-        TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
-            and the data type of ``out`` must be the same as the ``dtype``. 
-        TypeError: The shape must be one of list, tuple and Tensor, the data type of ``shape``
-            must be int32 or int64 when ``shape`` is a Tensor
-
     Examples:
         .. code-block:: python
 
@@ -693,13 +688,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         else:
             attrs['str_value'] = str(float(value))
 
-    for ele in shape:
-        if ele <= 0 or not isinstance(ele, int):
-            raise ValueError(
-                "The shape must be one of list, tuple and Tensor, the data type of ``shape`` must be int32 or int64 when ``shape`` is a Tensor. All elements in ``shape`` must be positive integers."
-            )
-    if isinstance(shape, Variable):
-        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
+    check_shape(shape)
+    check_dtype(dtype, 'dtype',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'fill_constant')
 
     if in_dygraph_mode():
         shape = utils._convert_shape_to_list(shape)
@@ -725,15 +717,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if convert_dtype(value.dtype) != dtype:
             value = cast(value, dtype)
         inputs['ValueTensor'] = value
-
-    if dtype not in ['bool', 'float16', 'float32', 'float64', 'int32', 'int64']:
-        raise TypeError(
-            'The dtype must be one of bool, float16, float32, float64, int32 and int64 and the data type of ``out`` must be the same as the ``dtype``.'
-        )
-    check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'fill_constant')
-    check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
 
     if out is not None:
         check_variable_and_dtype(out, 'out', [convert_dtype(dtype)],
@@ -1059,10 +1042,6 @@ def ones(shape, dtype, force_cpu=False):
 
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
-    Raises:
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
-            be int32 or int64 when it's a Tensor.
 
     Examples:
         .. code-block:: python
@@ -1095,10 +1074,6 @@ def zeros(shape, dtype, force_cpu=False, name=None):
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
-    Raises:
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
-            be int32 or int64 when it's a Tensor.
     Examples:
         .. code-block:: python
 
