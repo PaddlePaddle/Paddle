@@ -71,7 +71,7 @@ class TestGeneratorSeed(unittest.TestCase):
             print(">>>>>>> dropout dygraph >>>>>>>")
             self.assertTrue(np.allclose(y_np, y1_np))
 
-    def test_generator_gaussian_random_dygraph(self):
+    def _test_generator_gaussian_random_dygraph(self):
         """Test Generator seed."""
         fluid.enable_dygraph()
 
@@ -97,7 +97,7 @@ class TestGeneratorSeed(unittest.TestCase):
             self.assertTrue(np.allclose(x1_np, x2_np))
             self.assertTrue(np.allclose(x_np, x3_np))
 
-    def test_generator_randint_dygraph(self):
+    def _test_generator_randint_dygraph(self):
         """Test Generator seed."""
 
         fluid.enable_dygraph()
@@ -120,7 +120,7 @@ class TestGeneratorSeed(unittest.TestCase):
             self.assertTrue(np.allclose(x1_np, x2_np))
             self.assertTrue(np.allclose(x_np, x3_np))
 
-    def test_gen_TruncatedNormal_initializer(self):
+    def _test_gen_TruncatedNormal_initializer(self):
         fluid.disable_dygraph()
 
         gen = paddle.manual_seed(123123143)

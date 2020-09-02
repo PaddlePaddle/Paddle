@@ -50,22 +50,22 @@ class GPURandintKernel : public framework::OpKernel<T> {
 
     int64_t size = out->numel();
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    /*
+
     std::minstd_rand engine;
     if (seed == 0) {
       std::random_device rd;
       seed = rd();
     }
     engine.seed(seed);
-    */
+
     std::uniform_int_distribution<> dist(context.Attr<int>("low"),
                                          context.Attr<int>("high") - 1);
-    auto engine = framework::GetCPURandomEngine(seed);
+    // auto engine = framework::GetCPURandomEngine(seed);
 
-    for (int64_t i = 0; i < size; ++i) {
-      data[i] = dist(*engine);
-    }
-    // for (int64_t i = 0; i < size; ++i) data[i] = dist(engine);
+    // for (int64_t i = 0; i < size; ++i) {
+    //  data[i] = dist(*engine);
+    //}
+    for (int64_t i = 0; i < size; ++i) data[i] = dist(engine);
 
     if (platform::is_gpu_place(context.GetPlace())) {
       // Copy tensor to out

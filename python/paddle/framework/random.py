@@ -43,7 +43,7 @@ def manual_seed(seed):
     seed = int(seed)
 
     if core.is_compiled_with_cuda():
-        print("PYTHON>>>>>> gpu nums: {}".format(core.get_cuda_device_count()))
+        # print("PYTHON>>>>>> gpu nums: {}".format(core.get_cuda_device_count()))
         for i in range(core.get_cuda_device_count()):
             core.default_cuda_generator(i)._is_init_py = True
             core.default_cuda_generator(i).manual_seed(seed)

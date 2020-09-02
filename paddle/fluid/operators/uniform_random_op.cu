@@ -74,7 +74,7 @@ struct UniformGeneratorOffset {
     thrust::minstd_rand rng;
     rng.seed(seed_);
     thrust::uniform_real_distribution<T> dist(min_, max_);
-    rng.discard(n);
+    rng.discard(n + offset_);
     T out = dist(rng);
     unsigned int remainder = n % (diag_step_ + 1);
     if (remainder == 0 && diag_num_ > n / (diag_step_ + 1)) {
@@ -140,19 +140,20 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
     int64_t device_id = -1;
     auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
-    if (gen_cuda->GetIsInitPy() && seed_flag && false) {
+    if (gen_cuda->GetIsInitPy() && seed_flag) {
       // std::cout << ">>>>>>>>CUDA UNIFORM GENERATOR" << std::endl;
-      // auto seed_offset = gen_cuda->IncrementOffset(1);
-      auto seed_gen = static_cast<unsigned int>(gen_cuda->GetCurrentSeed());
-      int offset_step = 0;
+      auto seed_offset = gen_cuda->IncrementOffset(1);
+      // auto seed_gen = static_cast<unsigned int>(gen_cuda->GetCurrentSeed());
+      int offset_step = 100;
       // NOTE(xuefeng): Currently, we let offset step fixed to avoid
       // unexpected results which may cause ut fail.
       // we will fix this in future.
-      // int gen_offset = offset_step * seed_offset.second;
-      thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                        thrust::device_ptr<T>(data),
-                        UniformGeneratorOffset<T>(min, max, seed_gen, diag_num,
-                                                  diag_step, diag_val, 0));
+      int gen_offset = offset_step * seed_offset.second;
+      thrust::transform(
+          index_sequence_begin, index_sequence_begin + size,
+          thrust::device_ptr<T>(data),
+          UniformGeneratorOffset<T>(min, max, seed_offset.first, diag_num,
+                                    diag_step, diag_val, gen_offset));
     } else {
       thrust::transform(
           index_sequence_begin, index_sequence_begin + size,
