@@ -33,13 +33,22 @@ class SequenceReshapeKernel : public framework::OpKernel<T> {
     auto& in_lod = in->lod();
 
     PADDLE_ENFORCE_EQ(in_lod.empty(), false,
-                      "Input(X) Tensor of SequenceReshapeOp does not contain "
-                      "LoD information.");
+                      platform::errors::NotFound(
+                          "Input(X) Tensor of SequenceReshapeOp does not "
+                          "contain LoD information."));
     PADDLE_ENFORCE_EQ(in_lod.size(), 1UL,
-                      "Only support one level sequence now.");
+                      platform::errors::InvalidArgument(
+                          "Input(X) Tensor of SequenceReshapeOp Only support "
+                          "one level sequence now. But lod size "
+                          "of Input(X) is %d",
+                          in_lod.size()));
     PADDLE_ENFORCE_EQ(
         (uint64_t)in_dims[0], in_lod[0].back(),
-        "Inconsistent size between X.shape[0] and X.lod()[0].back().");
+        platform::errors::InvalidArgument(
+            "The size of SequenceReshapeOp X.shape[0] and X.lod()[0].back() "
+            "should "
+            "be same. But X.shape[0] = %d, X.lod()[0].back() = %d",
+            (uint64_t)in_dims[0], in_lod[0].back()));
 
     auto in_lod_l0 = in_lod[0];
     int seq_num = in_lod_l0.size() - 1;
@@ -55,11 +64,13 @@ class SequenceReshapeKernel : public framework::OpKernel<T> {
         size_t seq_len = in_lod_l0[i + 1] - in_lod_l0[i];
         size_t offset = 0;
         offset = (seq_len * in_width) / out_width;
-        PADDLE_ENFORCE_EQ(offset * out_width, seq_len * in_width,
-                          "Please make sure (sequence_length * dimension) can "
-                          "be divided by new_dim with no remainder for each "
-                          "sequence. The %dth sequence is invalid.",
-                          i + 1);
+        PADDLE_ENFORCE_EQ(
+            offset * out_width, seq_len * in_width,
+            platform::errors::InvalidArgument(
+                "Please make sure (sequence_length * dimension) "
+                "can be divided by context Attr(new_dim) with no remainder for "
+                "each sequence. But the %dth sequence is invalid.",
+                i + 1));
         out_lod[0][i + 1] = out_lod[0][i] + offset;
       }
     }

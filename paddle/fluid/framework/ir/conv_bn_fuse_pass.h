@@ -56,6 +56,16 @@ class ConvTransposeEltwiseAddBNFusePass : public ConvEltwiseAddBNFusePass {
   std::string conv_type() const { return "conv2d_transpose"; }
 };
 
+class DepthwiseConvBNFusePass : public ConvBNFusePass {
+ public:
+  std::string conv_type() const { return "depthwise_conv2d"; }
+};
+
+class DepthwiseConvEltwiseAddBNFusePass : public ConvEltwiseAddBNFusePass {
+ public:
+  std::string conv_type() const { return "depthwise_conv2d"; }
+};
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

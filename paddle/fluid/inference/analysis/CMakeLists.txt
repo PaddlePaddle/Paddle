@@ -19,8 +19,6 @@ cc_library(analysis SRCS analyzer.cc
   analysis_pass ${INFER_IR_PASSES}
   )
 
-cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
-
 function(inference_analysis_test_build TARGET)
   if(WITH_TESTING)
      set(options "")
@@ -60,7 +58,15 @@ function(inference_analysis_test TARGET)
   endif()
 endfunction(inference_analysis_test)
 
-inference_analysis_test(test_analyzer
-	SRCS analyzer_tester.cc
-	EXTRA_DEPS reset_tensor_array paddle_inference_api
-	ARGS --inference_model_dir=${WORD2VEC_MODEL_DIR})
+
+if (NOT APPLE AND NOT WIN32)
+  inference_analysis_test(test_analyzer
+    SRCS analyzer_tester.cc
+    EXTRA_DEPS reset_tensor_array paddle_fluid_shared
+    ARGS --inference_model_dir=${WORD2VEC_MODEL_DIR})
+elseif(WIN32)
+    inference_analysis_test(test_analyzer
+      SRCS analyzer_tester.cc
+      EXTRA_DEPS reset_tensor_array paddle_inference_api
+      ARGS --inference_model_dir=${WORD2VEC_MODEL_DIR})
+endif()

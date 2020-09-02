@@ -536,6 +536,10 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
 
     """
 
+    if sys.platform == 'win32':
+        raise NotImplementedError(
+            "The multiprocess_reader method is not supported on windows.")
+
     try:
         import ujson as json
     except Exception as e:

@@ -52,13 +52,7 @@ ExternalProject_Add(
     UPDATE_COMMAND        ""
     )
 
-if (${CMAKE_VERSION} VERSION_LESS "3.3.0" OR NOT WIN32)
-    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/boost_dummy.c)
-    file(WRITE ${dummyfile} "const char *dummy = \"${dummyfile}\";")
-    add_library(boost STATIC ${dummyfile})
-else()
-    add_library(boost INTERFACE)
-endif()
+add_library(boost INTERFACE)
 
 add_dependencies(boost ${BOOST_PROJECT})
 set(Boost_INCLUDE_DIR ${BOOST_INCLUDE_DIR})

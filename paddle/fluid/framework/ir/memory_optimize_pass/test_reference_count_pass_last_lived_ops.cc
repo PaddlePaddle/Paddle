@@ -98,7 +98,7 @@ class ReferenceCountPassTestHelper {
         ir::PassRegistry::Instance().Get("reference_count_pass");
     ref_cnt_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     ref_cnt_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars_);
-    ref_cnt_pass->Apply(&graph_);
+    ref_cnt_pass->Apply(&const_cast<ir::Graph &>(executor_->Graph()));
   }
 
   bool IsLastLivedOps(const std::string &name,
@@ -186,12 +186,12 @@ TEST(test_reference_count_pass, test_no_need_buffer_var_shrink) {
     ReferenceCountPassTestHelper helper(program, use_cuda);
     ASSERT_TRUE(helper.IsLastLivedOps(x0, {"scale"}));
     ASSERT_EQ(
-        boost::get<float>(helper.LastLivedOps(x0)[0]->Attrs().at("scale")),
+        BOOST_GET_CONST(float, helper.LastLivedOps(x0)[0]->Attrs().at("scale")),
         1.0f);
 
     ASSERT_TRUE(helper.IsLastLivedOps(x1, {"scale"}));
     ASSERT_EQ(
-        boost::get<float>(helper.LastLivedOps(x1)[0]->Attrs().at("scale")),
+        BOOST_GET_CONST(float, helper.LastLivedOps(x1)[0]->Attrs().at("scale")),
         3.0f);
 
     ASSERT_TRUE(helper.IsLastLivedOps(x2, {"elementwise_mul"}));

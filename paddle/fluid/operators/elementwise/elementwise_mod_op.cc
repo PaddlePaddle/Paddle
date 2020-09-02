@@ -25,14 +25,14 @@ class ElementwiseModOpMaker : public ElementwiseOpMaker {
 
   void AddInputX() override {
     AddInput("X",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64.");
+             "(Tensor), Tensor of any dimensions. Its dtype "
+             "should be int32, int64, float32 or float64.");
   }
 
   void AddInputY() override {
     AddInput("Y",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64.");
+             "(Tensor), Tensor of any dimensions. Its dtype "
+             "should be int32, int64, float32 or float64.");
   }
 
   std::string GetOpFuntionality() const override {

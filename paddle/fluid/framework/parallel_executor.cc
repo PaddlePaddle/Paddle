@@ -30,9 +30,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
+#include "paddle/fluid/framework/ir/multi_devices_graph_pass/set_reader_device_info_utils.h"
+#include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler.h"
-
-DECLARE_bool(use_ngraph);
 
 DECLARE_double(eager_delete_tensor_gb);
 
@@ -55,8 +55,9 @@ static bool gProfileStarted = false;
 
 class ParallelExecutorPrivate {
  public:
-  explicit ParallelExecutorPrivate(const std::vector<platform::Place> &places)
-      : places_(places) {
+  ParallelExecutorPrivate(const std::vector<platform::Place> &places,
+                          Scope *global_scope)
+      : places_(places), global_scope_(global_scope) {
     if (!FLAGS_pe_profile_fname.empty()) {
       std::call_once(gProfileOnce, [] {
 #ifdef WITH_GPERFTOOLS
@@ -81,6 +82,10 @@ class ParallelExecutorPrivate {
       }
     }
   }
+
+  void SetHasFeed(size_t dev_idx, bool has_feed = true);
+
+  bool AllowPartialFeed() const;
 
   ir::Graph *ApplyMemoryOptimizePass(ir::Graph *graph);
 
@@ -143,7 +148,9 @@ class ParallelExecutorPrivate {
         VLOG(10) << "find nccl_id_var:" << var_name << ", nccl_id:" << nccl_id;
       } else {
         nccl_id = new ncclUniqueId();
-        PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
+        PADDLE_ENFORCE_EQ(
+            platform::dynload::ncclGetUniqueId(nccl_id), ncclSuccess,
+            platform::errors::PreconditionNotMet("Get NCCL unique ID failed."));
         VLOG(10) << "can't find nccl_id_var:" << var_name
                  << ", nccl_id:" << nccl_id;
       }
@@ -166,7 +173,9 @@ class ParallelExecutorPrivate {
     for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
       std::string var_name = platform::GetFlatNCCLVarName(i);
       auto nccl_id_var = scope->FindVar(var_name);
-      PADDLE_ENFORCE(nccl_id_var, "can't find %s nccl_id_var", var_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          nccl_id_var,
+          platform::errors::NotFound("Can't find nccl_id_var '%s'.", var_name));
       auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
       flat_nccl_ids.push_back(nccl_id);
     }
@@ -179,7 +188,9 @@ class ParallelExecutorPrivate {
       for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
         std::string var_name = platform::GetHierarchicalInterNCCLVarName(i);
         auto nccl_id_var = scope->FindVar(var_name);
-        PADDLE_ENFORCE(nccl_id_var, "can't find %s nccl_id_var", var_name);
+        PADDLE_ENFORCE_NOT_NULL(nccl_id_var,
+                                platform::errors::NotFound(
+                                    "Can't find nccl_id_var '%s'.", var_name));
         auto inter_nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
         inter_nccl_ids.push_back(inter_nccl_id);
       }
@@ -188,7 +199,9 @@ class ParallelExecutorPrivate {
       for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
         std::string var_name = platform::GetHierarchicalExterNCCLVarName(i);
         auto nccl_id_var = scope->FindVar(var_name);
-        PADDLE_ENFORCE(nccl_id_var, "can't find %s nccl_id_var", var_name);
+        PADDLE_ENFORCE_NOT_NULL(nccl_id_var,
+                                platform::errors::NotFound(
+                                    "Can't find nccl_id_var '%s'.", var_name));
         auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
         exter_nccl_ids.push_back(nccl_id);
       }
@@ -204,8 +217,9 @@ class ParallelExecutorPrivate {
     const std::string var_name = "NCCLCommunicator";
     auto var = scope->FindVar(var_name);
     if (var != nullptr) {
-      PADDLE_ENFORCE(var->IsInitialized(),
-                     "if %s exists, it must be initialized", var_name);
+      PADDLE_ENFORCE_EQ(var->IsInitialized(), true,
+                        platform::errors::PreconditionNotMet(
+                            "if %s exists, it must be initialized", var_name));
       VLOG(1) << "find " << var_name
               << " in scope, so use it and does not recreate!";
       nccl_ctxs_ = var->GetMutable<platform::NCCLCommunicator>();
@@ -213,15 +227,21 @@ class ParallelExecutorPrivate {
     }
 
     if (bst->use_hierarchical_allreduce_) {
-      PADDLE_ENFORCE(bst->num_trainers_ > 1, "num_trainers:%llu < 1",
-                     bst->num_trainers_);
-      PADDLE_ENFORCE(bst->hierarchical_allreduce_inter_nranks_ > 1,
-                     "inter_nranks:%d < 1",
-                     bst->hierarchical_allreduce_inter_nranks_);
-      PADDLE_ENFORCE(
-          (bst->num_trainers_ % bst->hierarchical_allreduce_inter_nranks_ == 0),
-          "num_trainers:%llu mod inter_nranks:%d != 0", bst->num_trainers_,
-          bst->hierarchical_allreduce_inter_nranks_);
+      PADDLE_ENFORCE_GT(
+          bst->num_trainers_, 1,
+          platform::errors::PreconditionNotMet(
+              "The num_trainers should be greater than 1, but received %llu.",
+              bst->num_trainers_));
+      PADDLE_ENFORCE_GT(
+          bst->hierarchical_allreduce_inter_nranks_, 1,
+          platform::errors::PreconditionNotMet(
+              "The inter_nranks should be greater than 1, but received %d.",
+              bst->hierarchical_allreduce_inter_nranks_));
+      PADDLE_ENFORCE_EQ(
+          bst->num_trainers_ % bst->hierarchical_allreduce_inter_nranks_, 0,
+          platform::errors::PreconditionNotMet(
+              "num_trainers:%llu mod inter_nranks:%d != 0", bst->num_trainers_,
+              bst->hierarchical_allreduce_inter_nranks_));
 
       bst->hierarchical_allreduce_exter_nranks_ =
           bst->num_trainers_ / bst->hierarchical_allreduce_inter_nranks_;
@@ -257,16 +277,21 @@ class ParallelExecutorPrivate {
 
   ir::MemOptVarInfoMapList mem_opt_var_infos_;
   ir::GarbageCollectorMap gcs_;
+
+  details::ParallelSSAGraphExecutor *inference_executor_{nullptr};
 };
 
-ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
-  if (FLAGS_use_ngraph) {
-    LOG_FIRST_N(WARNING, 1)
-        << "FLAGS_use_ngraph=True, memory optimization strategy is "
-           "disabled in ParallelExecutor";
-    return graph;
+void ParallelExecutorPrivate::SetHasFeed(size_t dev_idx, bool has_feed) {
+  if (inference_executor_) {
+    inference_executor_->SetHasFeed(dev_idx, has_feed);
   }
+}
 
+bool ParallelExecutorPrivate::AllowPartialFeed() const {
+  return inference_executor_ && inference_executor_->SupportPartialFeed();
+}
+
+ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   /**
    * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
    * set BuildStrategy.memory_optimize according to whether gc is enabled.
@@ -304,8 +329,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
-    LOG_FIRST_N(INFO, 1) << "Inplace strategy is enabled, when "
-                            "build_strategy.enable_inplace = True";
+    VLOG(1) << "Inplace strategy is enabled, when "
+               "build_strategy.enable_inplace = True";
   }
 
   if (build_strategy_.memory_optimize_.get()) {
@@ -339,20 +364,21 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     if (platform::is_gpu_place(place)) {
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
-            boost::get<platform::CUDAPlace>(place), max_memory_size));
+            BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
       } else {
         gc.reset(new StreamGarbageCollector(
-            boost::get<platform::CUDAPlace>(place), max_memory_size));
+            BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
     } else {
 #endif
       if (platform::is_cpu_place(place)) {
-        gc.reset(new CPUGarbageCollector(boost::get<platform::CPUPlace>(place),
-                                         max_memory_size));
+        gc.reset(new CPUGarbageCollector(
+            BOOST_GET_CONST(platform::CPUPlace, place), max_memory_size));
         VLOG(10) << "Created GarbageCollector at " << place;
       } else {
-        PADDLE_THROW("Unsupported place for garbage collection");
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "Unsupported place for garbage collection"));
       }
 #ifdef PADDLE_WITH_CUDA
     }
@@ -372,12 +398,27 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     eager_deletion_pass->SetNotOwned(ir::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(graph);
     VLOG(10) << "EagerDeletionPass Applied";
-    LOG_FIRST_N(INFO, 1) << "Garbage collection strategy is enabled, when "
-                         << "FLAGS_eager_delete_tensor_gb = "
-                         << FLAGS_eager_delete_tensor_gb;
+    VLOG(1) << "Garbage collection strategy is enabled, when "
+            << "FLAGS_eager_delete_tensor_gb = "
+            << FLAGS_eager_delete_tensor_gb;
   }
   return graph;
 }
+
+class ResetHasFeedGuard {
+ public:
+  explicit ResetHasFeedGuard(ParallelExecutorPrivate *pe_member)
+      : pe_member_(pe_member) {}
+
+  ~ResetHasFeedGuard() {
+    for (size_t i = 0; i < pe_member_->places_.size(); ++i) {
+      pe_member_->SetHasFeed(i, false);
+    }
+  }
+
+ private:
+  ParallelExecutorPrivate *pe_member_;
+};
 
 size_t ParallelExecutor::DeviceCount() const { return member_->places_.size(); }
 
@@ -407,8 +448,12 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const ExecutionStrategy &exec_strategy,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
-    : member_(new ParallelExecutorPrivate(places)) {
-  member_->global_scope_ = scope;
+    : member_(new ParallelExecutorPrivate(places, scope)) {
+  PADDLE_ENFORCE(places.size() > 0 && !is_xpu_place(places[0]),
+                 platform::errors::Unavailable(
+                     "XPU is not supported in ParallelExecutor"));
+  ir::InitReaderQueueDeviceCount(graph, *(member_->global_scope_),
+                                 member_->places_.size());
   member_->use_cuda_ = exec_strategy.use_cuda_;
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
@@ -423,7 +468,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #if defined(PADDLE_WITH_CUDA) && defined(_WIN32)
   if (member_->use_cuda_) {
-    PADDLE_ENFORCE(places.size() == 1, "Windows can support Single GPU only.");
+    PADDLE_ENFORCE_EQ(
+        places.size(), 1,
+        platform::errors::Unavailable("Windows can support Single GPU only."));
   }
 #endif
 
@@ -437,7 +484,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
           "Please recompile and turn on the WITH_NCCL option."));
 #endif
 
-  LOG(INFO) << string::Sprintf(
+  VLOG(1) << string::Sprintf(
       "The Program will be executed on %s using ParallelExecutor, %lu "
       "cards are used, so %lu programs are executed in parallel.",
       (member_->use_cuda_ ? "CUDA" : "CPU"), places.size(), places.size());
@@ -452,7 +499,11 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   } else {
     member_->own_local_scope_ = false;
-    PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
+    PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size(),
+                      platform::errors::PreconditionNotMet(
+                          "member_->places_.size() = %d is not equal to "
+                          "local_scopes.size() = %d",
+                          member_->places_.size(), local_scopes.size()));
     for (size_t i = 0; i < member_->places_.size(); ++i) {
       member_->local_scopes_.emplace_back(&local_scopes[i]->NewScope());
     }
@@ -460,8 +511,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   std::vector<ir::Graph *> graphs;
   if (member_->build_strategy_.async_mode_) {
-    PADDLE_ENFORCE(!member_->use_cuda_,
-                   "gpu mode does not support async_mode_ now!");
+    PADDLE_ENFORCE_EQ(member_->use_cuda_, false,
+                      platform::errors::Unavailable(
+                          "gpu mode does not support async_mode_ now!"));
     graphs.push_back(graph);
     for (size_t i = 1; i < places.size(); ++i) {
       auto *tmp_graph = new ir::Graph(graph->OriginProgram());
@@ -590,8 +642,12 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     scope_map.emplace(scope, &local_exec_scope);
   }
 
-  PADDLE_ENFORCE_EQ(member_->local_scopes_.size(),
-                    member_->local_exec_scopes_.size());
+  PADDLE_ENFORCE_EQ(
+      member_->local_scopes_.size(), member_->local_exec_scopes_.size(),
+      platform::errors::PreconditionNotMet(
+          "member_->local_scopes_.size() = %d is not equal to "
+          "member_->local_exec_scopes_.size() = %d",
+          member_->local_scopes_.size(), member_->local_exec_scopes_.size()));
 
   std::vector<ir::Graph *> final_graphs;
 
@@ -606,28 +662,59 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 #ifdef PADDLE_WITH_CUDA
     // TODO(Yancey1989): Remove passing in the main_program when
     // allreduce_seq_pass doesn't need it as the attr.
+    bool is_inference = details::IsDataParallelInferenceGraph(*graph);
+    bool has_drop_last_read_op = details::HasDropLastReadOp(*graph);
+
     auto *pg_exe = new details::ParallelSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
         member_->places_, graph);
     final_graphs = pg_exe->Graphs();
     member_->executor_.reset(pg_exe);
+
+    if (is_inference && member_->places_.size() > 1) {
+      member_->inference_executor_ = pg_exe;
+      if (!has_drop_last_read_op) {
+        VLOG(5) << "Enable partial feed support in inference phase";
+        pg_exe->EnablePartialFeedSupport();
+      }
+    }
 #else
-    PADDLE_THROW(
-        "Paddle should be compiled with CUDA for ParallelGraph Execution.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Paddle should be compiled with CUDA for ParallelGraph Execution."));
 #endif
   } else {
-    if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
-      VLOG(3) << "use ThreadedSSAGraphExecutor";
-      member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+    bool has_drop_last_read_op = details::HasDropLastReadOp(*graph);
+    auto possible_inference_graphs =
+        details::TrySeparateToMultipleSingleDeviceGraphs(graph);
+    if (!possible_inference_graphs.empty()) {
+      VLOG(5) << "Use ParallelSSAGraphExecutor in inference phase";
+      auto *pg_exe = new details::ParallelSSAGraphExecutor(
           exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
-          member_->places_, graph));
+          member_->places_, std::move(possible_inference_graphs));
+      if (!has_drop_last_read_op) {
+        VLOG(5) << "Enable partial feed support in inference phase";
+        pg_exe->EnablePartialFeedSupport();
+      }
+      final_graphs = pg_exe->Graphs();
+      member_->executor_.reset(pg_exe);
+      member_->inference_executor_ = pg_exe;
     } else {
-      VLOG(3) << "use FastThreadedSSAGraphExecutor";
-      member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-          exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
-          member_->places_, graph));
+      LOG_IF(WARNING, details::HasKeepLastReadOp(*graph))
+          << "drop_last=False for DataLoader is not supported in training "
+             "network. It is automatically turned to drop_last=True.";
+      if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
+        VLOG(3) << "use ThreadedSSAGraphExecutor";
+        member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+            exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+            member_->places_, graph));
+      } else {
+        VLOG(3) << "use FastThreadedSSAGraphExecutor";
+        member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+            exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+            member_->places_, graph));
+      }
+      final_graphs.emplace_back(graph);
     }
-    final_graphs.emplace_back(graph);
   }
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
@@ -641,6 +728,14 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     auto ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*g);
     for (auto *op : ops) {
       op->SetLocalExecScopes(scope_map);
+    }
+  }
+
+  if (final_graphs.size() == 1) {
+    ir::SetReaderOpDeviceInfo(final_graphs[0], member_->places_.size());
+  } else {
+    for (size_t i = 0; i < final_graphs.size(); ++i) {
+      ir::SetReaderOpDeviceInfo(final_graphs[i], member_->places_.size(), i);
     }
   }
 }
@@ -683,7 +778,10 @@ void ParallelExecutor::BCastParamsToDevices(
       }
 
       PADDLE_ENFORCE_EQ(member_->places_.size(), buffers.size(),
-                        "variables' buffer size to bcast NOT equal to places");
+                        platform::errors::PreconditionNotMet(
+                            "variables' buffer size to bcast is %d, which is "
+                            "NOT equal to places size %d",
+                            buffers.size(), member_->places_.size()));
       {
         auto *nccl_ctxs = member_->nccl_ctxs_->DefaultFlatCtx();
         platform::NCCLGroupGuard guard;
@@ -726,7 +824,8 @@ void ParallelExecutor::BCastParamsToDevices(
 FetchResultType ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter ParallelExecutor Run";
-  platform::RecordEvent parallel_executor_event("ParallelExecutor::Run");
+  platform::RecordEvent parallel_executor_event(
+      "ParallelExecutor::Run", paddle::platform::EventRole::kSpecial);
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
     ProfilerFlush();
@@ -734,6 +833,8 @@ FetchResultType ParallelExecutor::Run(
 #endif
 
   platform::RecordBlock b(0);
+
+  ResetHasFeedGuard reset_has_feed_guard(member_);
 
   ir::SkipMemOptVarsGuard guard(&(member_->mem_opt_var_infos_), fetch_tensors,
                                 member_->HasGarbageCollectors());
@@ -745,10 +846,31 @@ FetchResultType ParallelExecutor::Run(
 
 void ParallelExecutor::FeedTensorsIntoLocalScopes(
     const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
-  PADDLE_ENFORCE_EQ(member_->local_scopes_.size(), tensors.size());
+  if (!member_->AllowPartialFeed()) {
+    PADDLE_ENFORCE_EQ(tensors.size(), member_->local_scopes_.size(),
+                      platform::errors::Unimplemented(
+                          "The feed data number %d does not match the device "
+                          "number %d. If you are using DataLoader to feed "
+                          "data, this may be because you set drop_last=False "
+                          "in training network. Currently, drop_last=False for "
+                          "DataLoader is not supported for training network. "
+                          "Please set drop_last=True when defining DataLoader.",
+                          tensors.size(), member_->local_scopes_.size()));
+  } else {
+    PADDLE_ENFORCE_GE(member_->local_scopes_.size(), tensors.size(),
+                      platform::errors::InvalidArgument(
+                          "The feed tensor number exceeds the device number"));
+  }
 
+  size_t feed_num = 0;
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &map = tensors[i];
+    if (map.empty()) {
+      continue;
+    }
+
+    member_->SetHasFeed(i);
+    ++feed_num;
     for (auto &pair : map) {
       bool is_persistable = member_->IsPersistable(pair.first);
       if (!is_persistable) {
@@ -763,11 +885,28 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
       trg->set_lod(pair.second.lod());
     }
   }
+
+  if (!member_->AllowPartialFeed()) {
+    PADDLE_ENFORCE_EQ(feed_num, member_->local_scopes_.size(),
+                      platform::errors::Unimplemented(
+                          "The feed data number %d does not match the device "
+                          "number %d. If you are using DataLoader to feed "
+                          "data, this may be because you set drop_last=False "
+                          "in training network. Currently, drop_last=False for "
+                          "DataLoader is not supported for training network. "
+                          "Please set drop_last=True when defining DataLoader.",
+                          feed_num, member_->local_scopes_.size()));
+  }
 }
 
 void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     const std::unordered_map<std::string, LoDTensor> &tensors) {
   size_t num_places = member_->places_.size();
+  bool allow_partial_feed = member_->AllowPartialFeed();
+
+  size_t persistable_feed_len = -1UL;
+  size_t non_persistable_feed_len = -1UL;
+
   for (auto &pair : tensors) {
     bool is_persistable = member_->IsPersistable(pair.first);
     VLOG(3) << "Split " << (is_persistable ? "persistable" : "no persistable")
@@ -775,7 +914,8 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
             << ", place: " << pair.second.place();
     auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
     bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
-    if (!is_persistable && num_places != lod_tensors.size()) {
+    if (!is_persistable && num_places != lod_tensors.size() &&
+        !allow_partial_feed) {
       auto error_info = string::Sprintf(
           "The number(%d) of samples[%s] of current batch is less than the "
           "count(%d) of devices(%s), currently, it is not allowed. ",
@@ -786,22 +926,24 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
             "You should set the environment variable CPU_NUM in the system "
             "to determine the number of devices you need.";
       }
-      PADDLE_THROW(error_info);
+      PADDLE_THROW(platform::errors::PreconditionNotMet(error_info));
     } else if (is_persistable) {
       if (lod_tensors.size() == 1) {
         lod_tensors.reserve(num_places);
         auto &tensor = lod_tensors.front();
-        PADDLE_ENFORCE_EQ(tensor.dims(), pair.second.dims(),
-                          "The dim doesn't match.");
-        PADDLE_ENFORCE_EQ(tensor.place(), member_->places_.at(0),
-                          "The place doesn't match.");
+        PADDLE_ENFORCE_EQ(
+            tensor.dims(), pair.second.dims(),
+            platform::errors::PreconditionNotMet("The dim doesn't match."));
+        PADDLE_ENFORCE_EQ(
+            tensor.place(), member_->places_.at(0),
+            platform::errors::PreconditionNotMet("The place doesn't match."));
         for (size_t i = 1; i < num_places; ++i) {
           lod_tensors.emplace_back();
           auto &tmp = lod_tensors.back();
           framework::TensorCopy(pair.second, member_->places_.at(i), &tmp);
         }
       }
-      if (lod_tensors.size() != num_places) {
+      if (lod_tensors.size() != num_places && !allow_partial_feed) {
         auto error_info = string::Sprintf(
             "The number(%d) of samples[%s] of the current batch does not match "
             "the count(%d) of devices(%s). Because that %s is a persistable "
@@ -811,11 +953,35 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
             "value, you should feed %d samples.",
             lod_tensors.size(), pair.first, num_places,
             (is_cpu_place ? "CPU" : "GPU"), pair.first, num_places, num_places);
-        PADDLE_THROW(error_info);
+        PADDLE_THROW(platform::errors::PreconditionNotMet(error_info));
       }
     }
 
-    for (size_t j = 0; j < num_places; ++j) {
+    if (allow_partial_feed) {
+      if (is_persistable) {
+        if (persistable_feed_len == -1UL) {
+          persistable_feed_len = lod_tensors.size();
+        } else {
+          PADDLE_ENFORCE_EQ(
+              persistable_feed_len, lod_tensors.size(),
+              platform::errors::InvalidArgument(
+                  "The feeded number of different persistable variables "
+                  "should be the same"));
+        }
+      } else {
+        if (non_persistable_feed_len == -1UL) {
+          non_persistable_feed_len = lod_tensors.size();
+        } else {
+          PADDLE_ENFORCE_EQ(
+              non_persistable_feed_len, lod_tensors.size(),
+              platform::errors::InvalidArgument(
+                  "The feeded number of different non-persistable variables "
+                  "should be the same"));
+        }
+      }
+    }
+
+    for (size_t j = 0; j < lod_tensors.size(); ++j) {
       auto *feed_scope = is_persistable ? member_->local_scopes_[j]
                                         : member_->local_exec_scopes_[j];
       auto *feed_var = feed_scope->Var(pair.first);
@@ -823,6 +989,22 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
       auto t = feed_var->GetMutable<LoDTensor>();
       t->ShareDataWith(lod_tensors[j]);
       t->set_lod(lod_tensors[j].lod());
+    }
+  }
+
+  if (allow_partial_feed && persistable_feed_len != -1UL &&
+      non_persistable_feed_len != -1UL) {
+    VLOG(10) << "Persistable len " << persistable_feed_len;
+    VLOG(10) << "Non persistable len " << non_persistable_feed_len;
+    PADDLE_ENFORCE_GE(persistable_feed_len, non_persistable_feed_len,
+                      platform::errors::InvalidArgument(
+                          "The feeded number of persistable variables should "
+                          "not be less than non-persistable variables"));
+  }
+
+  if (non_persistable_feed_len != -1UL) {
+    for (size_t i = 0; i < non_persistable_feed_len; ++i) {
+      member_->SetHasFeed(i);
     }
   }
 }
@@ -873,6 +1055,10 @@ bool ParallelExecutor::EnableParallelGraphExecution(
 #endif
 
   return enable_parallel_graph;
+}
+
+const ir::Graph &ParallelExecutor::Graph() const {
+  return member_->executor_->Graph();
 }
 
 }  // namespace framework

@@ -25,17 +25,24 @@ class PadOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of PadOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of PadOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Pad");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Pad");
 
     auto x_dim = ctx->GetInputDim("X");
     auto& paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    PADDLE_ENFORCE_EQ(x_dim.size() * 2, int64_t(paddings.size()),
-                      "Size of paddings should be equal to 2 * dimension size "
-                      "of input tensor.");
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(paddings.size()), x_dim.size() * 2,
+        platform::errors::InvalidArgument(
+            "Size of 'paddings' dimension should be equal to 2 * size of "
+            "Input(X)'s dimension, but received (size of 'paddings' dimension "
+            "is) %d vs (2 * size of Input(X)'s dimension is) %d.",
+            static_cast<int>(paddings.size()), x_dim.size() * 2));
     for (size_t i = 0; i < paddings.size(); ++i) {
-      PADDLE_ENFORCE_GE(paddings[i], 0, "paddings should >= 0.");
+      PADDLE_ENFORCE_GE(paddings[i], 0,
+                        platform::errors::InvalidArgument(
+                            "The element of 'paddings' should >= 0, but "
+                            "received %d for index %d.",
+                            paddings[i], static_cast<int>(i)));
     }
     std::vector<int64_t> out_dims(x_dim.size());
     for (int i = 0; i < x_dim.size(); ++i) {

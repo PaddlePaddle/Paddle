@@ -222,7 +222,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out = fluid.layers.concat(input=[out1, out2, c], axis=1)
             out.backward()
             self.assertTrue(linear.weight.gradient() is None)
-            self.assertTrue((out1.gradient() == 0).all())
+            self.assertTrue(out1.gradient() is None)
 
     def test_auto_prune7(self):
         with fluid.dygraph.guard():
@@ -238,10 +238,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out2 = linear2(b)
             out1.stop_gradient = True
             out = fluid.layers.concat(input=[out1, out2, c], axis=1)
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            out.backward(backward_strategy)
+            out.backward()
             self.assertTrue(linear.weight.gradient() is None)
-            self.assertTrue((out1.gradient() == 0).all())
+            self.assertTrue(out1.gradient() is None)
 
     def test_auto_prune8(self):
         with fluid.dygraph.guard():
@@ -311,11 +310,10 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out2 = linear2(b)
             out1.stop_gradient = True
             out = fluid.layers.concat(input=[out1, out2, c], axis=1)
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
-            out.backward(backward_strategy)
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            out.backward()
             self.assertTrue(linear.weight.gradient() is None)
-            self.assertTrue((out1.gradient() == 0).all())
+            self.assertTrue(out1.gradient() is None)
 
     def test_auto_prune_with_optimizer(self):
         vocab_size = 100
@@ -329,9 +327,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             model = MyLayer(size, vocab_size, size)
+            grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
             optimizer = fluid.optimizer.AdamOptimizer(
-                0.001, parameter_list=model.parameters())
-            grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.001)
+                0.001, parameter_list=model.parameters(), grad_clip=grad_clip)
 
             indices = fluid.dygraph.to_variable(indices)
             embed = fluid.dygraph.to_variable(embed)
@@ -339,7 +337,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
             loss = model.embed_linear0(indices)
             loss.backward()
-            _, params_grads = optimizer.minimize(loss, grad_clip=grad_clip)
+            _, params_grads = optimizer.minimize(loss)
             for items in params_grads:
                 assert items[0].name is not model.embed1.weight.name
                 assert items[0].name is not model.linear_1.weight.name
@@ -348,9 +346,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
         with fluid.dygraph.guard(place):
             model = MyLayer2(size, vocab_size, size)
+            grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
             optimizer = fluid.optimizer.AdamOptimizer(
-                0.001, parameter_list=model.parameters())
-            grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.001)
+                0.001, parameter_list=model.parameters(), grad_clip=grad_clip)
 
             indices = fluid.dygraph.to_variable(indices)
             emebd = fluid.dygraph.to_variable(embed)
@@ -358,7 +356,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
             loss = model.embed_linear0(indices)
             loss.backward()
-            optimizer.minimize(loss, grad_clip=grad_clip)
+            optimizer.minimize(loss)
             for items in params_grads:
                 assert items[0].name is not model.embed1.weight.name
                 assert items[0].name is not model.linear_1.weight.name

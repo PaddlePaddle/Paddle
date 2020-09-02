@@ -23,10 +23,9 @@ class SizeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input (Input) of Size op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output (Out) of Size op should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Size");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Size");
+
     ctx->SetOutputDim("Out", {1});
   }
 };
@@ -55,5 +54,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(size, ops::SizeKernel<int>, ops::SizeKernel<int32_t>,
+                       ops::SizeKernel<paddle::platform::float16>,
                        ops::SizeKernel<float>, ops::SizeKernel<double>,
                        ops::SizeKernel<bool>);

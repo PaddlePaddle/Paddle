@@ -42,19 +42,6 @@ void AdamOp::InferShape(framework::InferShapeContext *ctx) const {
                     platform::errors::NotFound(
                         "Input(Beta2Pow) of AdamOp should not be null."));
 
-  if (ctx->IsRuntime() && ctx->HasInput("Beta1Tensor")) {
-    auto beta1 = ctx->Inputs("Beta1Tensor");
-    PADDLE_ENFORCE_EQ(
-        beta1.size(), 1,
-        platform::errors::InvalidArgument("Input(Beta1Tensor) size must be 1"));
-  }
-  if (ctx->IsRuntime() && ctx->HasInput("Beta2Tensor")) {
-    auto beta2 = ctx->Inputs("Beta2Tensor");
-    PADDLE_ENFORCE_EQ(
-        beta2.size(), 1,
-        platform::errors::InvalidArgument("Input(Beta2Tensor) size must be 1"));
-  }
-
   PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
                     platform::errors::NotFound(
                         "Output(ParamOut) of AdamOp should not be null."));

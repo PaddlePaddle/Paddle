@@ -49,4 +49,8 @@ def get_logger(name, level, fmt=None):
         handler.setFormatter(formatter)
 
     logger.addHandler(handler)
+
+    # stop propagate for propagating may print
+    # log multiple times
+    logger.propagate = False
     return logger

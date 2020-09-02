@@ -314,7 +314,8 @@ class LocalSGD(Collective):
                     name=self.snapshot_name(param.name),
                     shape=param.shape,
                     persistable=True,
-                    stop_gradient=True)
+                    stop_gradient=True,
+                    dtype=param.dtype)
 
                 block._insert_op(
                     idx + 1,

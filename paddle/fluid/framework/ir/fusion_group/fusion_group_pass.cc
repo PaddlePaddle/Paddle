@@ -30,9 +30,19 @@ namespace ir {
 void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("fusion_group_pass", graph);
   if (Get<bool>("use_gpu")) {
+    // TODO(liuyiqun): open this check.
+    // if (!platform::CUDADeviceCode::IsAvailable()) {
+    //   LOG(WARNING)
+    //       << "Disable fusion_group because CUDA Driver or NVRTC is not
+    //       avaiable.";
+    //   return 0;
+    // }
+
     fusion_group::OperationMap::Init();
     int num_elementwise_groups = DetectFusionGroup(graph, 0);
     AddStatis(num_elementwise_groups);
+    LOG(INFO) << "Detect " << num_elementwise_groups
+              << " elementwise fusion groups.";
   }
 }
 
@@ -46,7 +56,7 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
 
   int num_subgraphs = 0;
   size_t min_subgraph_size = 2;
-  bool save_intermediate_out = true;
+  bool save_intermediate_out = false;
   for (auto& vec : subgraphs) {
     fusion_group::SubGraph subgraph(
         type, "", save_intermediate_out,
@@ -67,7 +77,7 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
 bool FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
   fusion_group::CodeGenerator code_generator;
   std::string code_str = code_generator.Generate(subgraph);
-  VLOG(3) << code_str;
+  VLOG(4) << code_str;
 
   // TODO(liuyiqun): supported different places
   platform::CUDAPlace place = platform::CUDAPlace(0);
@@ -87,7 +97,7 @@ static int ExtractOpRole(fusion_group::SubGraph* subgraph) {
   for (auto* n : subgraph->Nodes()) {
     if (n && n->IsOp() && n->Op()) {
       if (n->Op()->HasAttr(attr_name)) {
-        op_roles.insert(boost::get<int>(n->Op()->GetAttr(attr_name)));
+        op_roles.insert(BOOST_GET_CONST(int, n->Op()->GetAttr(attr_name)));
       }
     }
   }
@@ -100,46 +110,52 @@ static int ExtractOpRole(fusion_group::SubGraph* subgraph) {
 
 void FusionGroupPass::InsertFusionGroupOp(
     Graph* graph, fusion_group::SubGraph* subgraph) const {
-  const std::vector<Node*>& input_vars_of_subgraph =
-      subgraph->GetInputVarNodes();
-  const std::vector<Node*>& output_vars_of_subgraph =
-      subgraph->GetOutputVarNodes();
+  const std::vector<Node*>& input_vars = subgraph->GetInputVarNodes();
+  const std::vector<Node*>& output_vars =
+      subgraph->GetOutputVarNodes(subgraph->SaveIntermediateOut());
   std::unordered_set<Node*> external_nodes;
+
+  // Prepare inputs.
+  std::vector<std::string> input_names;
+  std::vector<int> input_dtypes;
+  std::unordered_set<Node*> output_vars_set(output_vars.begin(),
+                                            output_vars.end());
+  for (auto* n : input_vars) {
+    // It is not an output var node.
+    if (output_vars_set.find(n) == output_vars_set.end()) {
+      input_names.push_back(n->Name());
+      input_dtypes.push_back(n->Var()->GetDataType());
+      external_nodes.insert(n);
+    }
+  }
+
+  // Prepare outputs.
+  std::vector<std::string> output_names;
+  std::vector<int> output_dtypes;
+  for (auto* n : output_vars) {
+    output_names.push_back(n->Name());
+    output_dtypes.push_back(n->Var()->GetDataType());
+    external_nodes.insert(n);
+  }
 
   OpDesc op_desc;
   op_desc.SetType("fusion_group");
-
-  std::vector<std::string> input_names;
-  std::vector<std::string> inputs_data_types;
-  for (auto* n : input_vars_of_subgraph) {
-    input_names.push_back(n->Name());
-    inputs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
-    external_nodes.insert(n);
-  }
   op_desc.SetInput("Inputs", input_names);
-
-  std::vector<std::string> output_names;
-  std::vector<std::string> outs_data_types;
-  for (auto* n : output_vars_of_subgraph) {
-    output_names.push_back(n->Name());
-    outs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
-    external_nodes.insert(n);
-  }
-
   op_desc.SetOutput("Outs", output_names);
-  op_desc.SetAttr("inputs_data_type", inputs_data_types);
-  op_desc.SetAttr("outs_data_type", outs_data_types);
+  op_desc.SetAttr("inputs_dtype", input_dtypes);
+  op_desc.SetAttr("outs_dtype", output_dtypes);
   op_desc.SetAttr("type", subgraph->GetType());
   op_desc.SetAttr("func_name", subgraph->GetFuncName());
   op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                   ExtractOpRole(subgraph));
 
   Node* fusion_group_node = graph->CreateOpNode(&op_desc);
-  for (auto* in : input_vars_of_subgraph) {
-    IR_NODE_LINK_TO(in, fusion_group_node);
+  for (auto* in : input_vars) {
+    if (output_vars_set.find(in) == output_vars_set.end()) {
+      IR_NODE_LINK_TO(in, fusion_group_node);
+    }
   }
-
-  for (auto* out : output_vars_of_subgraph) {
+  for (auto* out : output_vars) {
     IR_NODE_LINK_TO(fusion_group_node, out);
   }
 

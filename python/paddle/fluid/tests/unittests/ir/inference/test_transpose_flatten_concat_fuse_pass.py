@@ -22,10 +22,8 @@ import paddle.fluid.core as core
 class TransposeFlattenConcatFusePassTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(
-                name="data1", shape=[8, 32, 128], dtype="float32")
-            data2 = fluid.data(
-                name="data2", shape=[8, 32, 128], dtype="float32")
+            data1 = fluid.data(name="data1", shape=[5, 5, 5], dtype="float32")
+            data2 = fluid.data(name="data2", shape=[5, 5, 5], dtype="float32")
             trans1 = fluid.layers.transpose(data1, perm=[2, 1, 0])
             trans2 = fluid.layers.transpose(data2, perm=[2, 1, 0])
             flatt1 = fluid.layers.flatten(trans1)
@@ -36,15 +34,16 @@ class TransposeFlattenConcatFusePassTest(InferencePassTest):
             out = fluid.layers.batch_norm(concat_out, is_test=True)
 
         self.feeds = {
-            "data1": np.random.random([8, 32, 128]).astype("float32"),
-            "data2": np.random.random([8, 32, 128]).astype("float32")
+            "data1": np.random.random([5, 5, 5]).astype("float32"),
+            "data2": np.random.random([5, 5, 5]).astype("float32")
         }
         self.fetch_list = [out]
 
     def test_check_output(self):
         # There is no cpu pass for transpose_flatten_concat_fuse
         if core.is_compiled_with_cuda():
-            self.check_output_with_option([True])
+            use_gpu = True
+            self.check_output_with_option(use_gpu)
 
 
 if __name__ == "__main__":

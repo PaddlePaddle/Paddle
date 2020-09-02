@@ -29,6 +29,7 @@ enum class EventRole {
   kOrdinary,  // only record op time with op type key
   kInnerOp,   // record op detail time with op type key
   kUniqueOp,  // record op detail time with op unique name key
+  kSpecial,   // record event such as PE which is outer of thread local
 };
 
 class Event {

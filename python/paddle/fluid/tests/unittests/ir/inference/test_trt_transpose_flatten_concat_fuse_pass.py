@@ -42,13 +42,14 @@ class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TransposeFlattenConcatFusePassTRTTest.TensorRTParam(
-            1 << 20, 1, 3, AnalysisConfig.Precision.Float32, False, False)
+            1 << 20, 8, 3, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
 
     def test_check_output(self):
         # There is no cpu pass for transpose_flatten_concat_fuse
         if core.is_compiled_with_cuda():
-            self.check_output_with_option([True])
+            use_gpu = True
+            self.check_output_with_option(use_gpu)
 
 
 if __name__ == "__main__":

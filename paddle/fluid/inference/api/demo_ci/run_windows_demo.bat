@@ -87,14 +87,7 @@ IF NOT EXIST "%source_path%\%demo_name%.cc" (
 if "%demo_name%"=="windows_mobilenet" set model_name=mobilenet
 if "%demo_name%"=="vis_demo" set model_name=mobilenet
 if "%demo_name%"=="simple_on_word2vec" set model_name=word2vec.inference.model
-if "%demo_name%"=="trt_mobilenet_demo" (
-  echo "The trt_mobilenet_demo need tensorRT inference library"
-  if NOT exist "%paddle_infernece_lib%\third_party\install\tensorrt" (
-    echo "------------It's not a tensorRT inference library------------" 
-    goto:eof
-  )
-  set model_name=mobilenet
-)
+if "%demo_name%"=="trt_mobilenet_demo" set model_name=mobilenet
 
 rem download model
 if NOT EXIST "%source_path%\%model_name%.tar.gz" (

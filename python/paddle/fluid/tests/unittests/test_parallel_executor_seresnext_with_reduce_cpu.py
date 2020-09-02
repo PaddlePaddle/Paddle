@@ -28,7 +28,7 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
             seresnext_net.model,
             feed_dict=seresnext_net.feed_dict(use_cuda),
             iter=seresnext_net.iter(use_cuda),
-            batch_size=seresnext_net.batch_size(),
+            batch_size=seresnext_net.batch_size(use_cuda),
             use_cuda=use_cuda,
             use_reduce=False,
             optimizer=seresnext_net.optimizer)
@@ -36,7 +36,7 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
             seresnext_net.model,
             feed_dict=seresnext_net.feed_dict(use_cuda),
             iter=seresnext_net.iter(use_cuda),
-            batch_size=seresnext_net.batch_size(),
+            batch_size=seresnext_net.batch_size(use_cuda),
             use_cuda=use_cuda,
             use_reduce=True,
             optimizer=seresnext_net.optimizer)
@@ -44,7 +44,7 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
         for loss in zip(all_reduce_first_loss, reduce_first_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
         for loss in zip(all_reduce_last_loss, reduce_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+            self.assertAlmostEquals(loss[0], loss[1], delta=loss[0] * delta2)
 
         if not use_cuda:
             return
@@ -53,7 +53,7 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
             seresnext_net.model,
             feed_dict=seresnext_net.feed_dict(use_cuda),
             iter=seresnext_net.iter(use_cuda),
-            batch_size=seresnext_net.batch_size(),
+            batch_size=seresnext_net.batch_size(use_cuda),
             use_cuda=use_cuda,
             use_reduce=False,
             optimizer=seresnext_net.optimizer,
@@ -63,7 +63,7 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
             seresnext_net.model,
             feed_dict=seresnext_net.feed_dict(use_cuda),
             iter=seresnext_net.iter(use_cuda),
-            batch_size=seresnext_net.batch_size(),
+            batch_size=seresnext_net.batch_size(use_cuda),
             use_cuda=use_cuda,
             use_reduce=True,
             optimizer=seresnext_net.optimizer,
@@ -72,17 +72,17 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
         for loss in zip(all_reduce_first_loss, all_reduce_first_loss_seq):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
         for loss in zip(all_reduce_last_loss, all_reduce_last_loss_seq):
-            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+            self.assertAlmostEquals(loss[0], loss[1], delta=loss[0] * delta2)
 
         for loss in zip(reduce_first_loss, reduce_first_loss_seq):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
         for loss in zip(reduce_last_loss, reduce_last_loss_seq):
-            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+            self.assertAlmostEquals(loss[0], loss[1], delta=loss[0] * delta2)
 
         for loss in zip(all_reduce_first_loss_seq, reduce_first_loss_seq):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
         for loss in zip(all_reduce_last_loss_seq, reduce_last_loss_seq):
-            self.assertAlmostEquals(loss[0], loss[1], delta=delta2)
+            self.assertAlmostEquals(loss[0], loss[1], delta=loss[0] * delta2)
 
 
 class TestResnetWithReduceCPU(TestResnetWithReduceBase):

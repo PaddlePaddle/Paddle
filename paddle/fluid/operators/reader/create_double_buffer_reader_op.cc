@@ -27,11 +27,21 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override {
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    if (out->Get() != nullptr) {
-      return;
-    }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
+
+    if (out->Get() != nullptr) {
+      auto* decorated_reader =
+          dynamic_cast<framework::DecoratedReader*>(out->Get().get());
+      PADDLE_ENFORCE_NOT_NULL(
+          decorated_reader,
+          platform::errors::NotFound("The inited reader should be a "
+                                     "DecoratedReader when running "
+                                     "create_double_buffer_reader op."));
+      if (decorated_reader->UnderlyingReader() == underlying_reader.Get()) {
+        return;
+      }
+    }
 
     auto place_str = Attr<std::string>("place");
     platform::Place place;
@@ -47,6 +57,9 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
       place = platform::CUDAPlace(static_cast<int>(num));
     }
 
+    VLOG(10) << "Create new double buffer reader on " << place;
+
+    out->Clear();
     out->Reset(framework::MakeDecoratedReader<BufferedReader>(underlying_reader,
                                                               place, 2));
   }

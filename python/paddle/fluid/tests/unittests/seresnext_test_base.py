@@ -32,7 +32,7 @@ class TestResnetBase(TestParallelExecutorBase):
             seresnext_net.model,
             feed_dict=seresnext_net.feed_dict(use_cuda),
             iter=seresnext_net.iter(use_cuda),
-            batch_size=seresnext_net.batch_size(),
+            batch_size=seresnext_net.batch_size(use_cuda),
             use_cuda=use_cuda,
             use_reduce=False,
             optimizer=seresnext_net.optimizer)
@@ -41,7 +41,7 @@ class TestResnetBase(TestParallelExecutorBase):
             seresnext_net.model,
             feed_dict=seresnext_net.feed_dict(use_cuda),
             iter=seresnext_net.iter(use_cuda),
-            batch_size=seresnext_net.batch_size(),
+            batch_size=seresnext_net.batch_size(use_cuda),
             use_cuda=use_cuda)
 
         if compare_seperately:

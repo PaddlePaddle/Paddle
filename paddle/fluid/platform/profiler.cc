@@ -63,13 +63,16 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-RecordEvent::RecordEvent(const std::string &name, const EventRole role)
-    : is_enabled_(false), start_ns_(PosixInNsec()), role_(role) {
+RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
-  // lock is not needed, the code below is thread-safe
+
+  // do some initialization
+  start_ns_ = PosixInNsec();
+  role_ = role;
   is_enabled_ = true;
-  Event *e = PushEvent(name, role);
+  // lock is not needed, the code below is thread-safe
   // Maybe need the same push/pop behavior.
+  Event *e = PushEvent(name, role);
   SetCurAnnotation(e);
   name_ = e->name();
 }
@@ -83,7 +86,7 @@ RecordEvent::~RecordEvent() {
                           BlockDepth(), g_thread_id);
   }
   ClearCurAnnotation();
-  PopEvent(name_);
+  PopEvent(name_, role_);
 }
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
@@ -91,10 +94,9 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
   if (g_state == ProfilerState::kDisabled) return;
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
-  PADDLE_ENFORCE_EQ(
-      events.count(ptr), 0,
-      platform::errors::InvalidArgument(
-          "The Place can't  exist in the stage of PushMemRecord"));
+  PADDLE_ENFORCE_EQ(events.count(ptr), 0,
+                    platform::errors::InvalidArgument(
+                        "The Place can't exist in the stage of PushMemRecord"));
   events.emplace(ptr, std::unique_ptr<RecordMemEvent>(
                           new MemEvenRecorder::RecordMemEvent(place, size)));
 }
@@ -184,8 +186,8 @@ Event *PushEvent(const std::string &name, const EventRole role) {
   return GetEventList().Record(EventType::kPushRange, name, g_thread_id, role);
 }
 
-void PopEvent(const std::string &name) {
-  GetEventList().Record(EventType::kPopRange, name, g_thread_id);
+void PopEvent(const std::string &name, const EventRole role) {
+  GetEventList().Record(EventType::kPopRange, name, g_thread_id, role);
 }
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE_NE(state, ProfilerState::kDisabled,
@@ -256,6 +258,7 @@ void DisableProfiler(EventSortingKey sorted_key,
 
   ResetProfiler();
   g_state = ProfilerState::kDisabled;
+  g_tracer_option = TracerOption::kDefault;
   should_send_profile_state = true;
 }
 
@@ -275,7 +278,8 @@ bool ShouldSendProfileState() { return should_send_profile_state; }
 
 std::string OpName(const framework::VariableNameMap &name_map,
                    const std::string &type_name) {
-  if (platform::GetTracerOption() != platform::TracerOption::kAllOpDetail)
+  if (platform::GetTracerOption() != platform::TracerOption::kAllOpDetail ||
+      !IsProfileEnabled())
     return "";
 
   std::string ret = type_name + "%";

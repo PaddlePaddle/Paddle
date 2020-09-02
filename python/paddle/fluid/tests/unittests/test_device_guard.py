@@ -59,6 +59,31 @@ class TestDeviceGuard(unittest.TestCase):
 
         execute(main_program, startup_program)
 
+    def test_device_guard_with_id(self):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            data1 = fluid.layers.fill_constant(
+                shape=[1, 3, 8, 8], value=0.5, dtype='float32')
+            data2 = fluid.layers.fill_constant(
+                shape=[1, 3, 5, 5], value=0.5, dtype='float32')
+            shape = fluid.layers.shape(data2)
+            with fluid.device_guard("cpu"):
+                shape = fluid.layers.slice(
+                    shape, axes=[0], starts=[0], ends=[4])
+                with fluid.device_guard("gpu:1"):
+                    out = fluid.layers.crop_tensor(data1, shape=shape)
+        # check if the device attr is set correctly
+        all_ops = main_program.global_block().ops
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        for op in all_ops:
+            if op.type == 'slice':
+                self.assertEqual(op.desc.attr(device_attr_name), "cpu")
+            if op.type == 'crop_tensor':
+                self.assertEqual(op.desc.attr(device_attr_name), "gpu:1")
+
+        execute(main_program, startup_program)
+
     def test_cpu_only_op(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
@@ -123,7 +148,13 @@ class TestDeviceGuard(unittest.TestCase):
                 out = fluid.layers.fill_constant(
                     shape=[1], value=0.2, dtype='float32')
 
+        def device_attr2():
+            with fluid.device_guard("cpu:1"):
+                out = fluid.layers.fill_constant(
+                    shape=[1], value=0.2, dtype='float32')
+
         self.assertRaises(ValueError, device_attr)
+        self.assertRaises(ValueError, device_attr2)
 
     def test_warning(self):
         main_program = fluid.Program()

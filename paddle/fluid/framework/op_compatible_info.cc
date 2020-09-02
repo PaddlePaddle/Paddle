@@ -24,9 +24,10 @@ namespace framework {
 
 inline std::vector<int> ConvertStr2Int(const std::string& str_text) {
   auto vec_text = string::split_string<std::string>(str_text, ".");
-  PADDLE_ENFORCE((vec_text.size() == 2 || vec_text.size() == 3),
-                 "Input[%s] is not a right version format [1.6 or 1.6.0]",
-                 str_text);
+  PADDLE_ENFORCE(
+      (vec_text.size() == 2 || vec_text.size() == 3),
+      platform::errors::InvalidArgument(
+          "Input[%s] is not a right version format [1.6 or 1.6.0].", str_text));
 
   std::vector<int> vec_res;
   vec_res.reserve(3);
@@ -49,10 +50,11 @@ inline bool CompareVersion(const std::string& str_first,
   auto vec_second_version = ConvertStr2Int(str_second);
 
   // first version id
-  PADDLE_ENFORCE_EQ(
-      vec_first_version.size(), vec_second_version.size(),
-      "version information size not equal, first is [%d] second is [%d]",
-      vec_first_version.size(), vec_second_version.size());
+  PADDLE_ENFORCE_EQ(vec_first_version.size(), vec_second_version.size(),
+                    platform::errors::InvalidArgument(
+                        "Version information size is not equal, the first is "
+                        "[%d], the second is [%d].",
+                        vec_first_version.size(), vec_second_version.size()));
 
   for (size_t i = 0; i < vec_first_version.size() - 1; ++i) {
     if (vec_first_version[i] != vec_second_version[i]) {

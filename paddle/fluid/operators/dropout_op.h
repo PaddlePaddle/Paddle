@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -54,24 +55,22 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         std::memset(mask_data, 0, size * sizeof(*mask_data));  // NOLINT
         return;
       }
-
+      // std::minstd_rand engine;
       // NOTE: fixed seed should only be used in unittest or for debug.
       // Guarantee to use random seed in training.
-      std::random_device rnd;
-      std::minstd_rand engine;
-      int seed_data;
+      int seed_data = 0;
       if (seed) {
         seed_data = *(seed->data<int>());
       } else {
         seed_data =
-            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : 0;
       }
-      engine.seed(seed_data);
+      auto engine = framework::GetCPURandomEngine(seed_data);
 
       std::uniform_real_distribution<float> dist(0, 1);
 
       for (size_t i = 0; i < size; ++i) {
-        if (dist(engine) < dropout_prob) {
+        if (dist(*engine) < dropout_prob) {
           mask_data[i] = 0;
           y_data[i] = 0;
         } else {
@@ -108,8 +107,9 @@ template <typename DeviceContext, typename T>
 class DropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(!context.Attr<bool>("is_test"),
-                   "GradOp is only callable when is_test is false");
+    PADDLE_ENFORCE_EQ(!context.Attr<bool>("is_test"), true,
+                      platform::errors::PreconditionNotMet(
+                          "GradOp is only callable when is_test is false"));
 
     auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));

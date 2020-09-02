@@ -30,8 +30,9 @@ template <typename T>
 class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::InvalidArgument(
+                          "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto* input = ctx.Input<Tensor>("X");
@@ -40,13 +41,14 @@ class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
 
     int n = input->dims()[0];
     int c = input->dims()[1];
-    int h = input->dims()[2];
-    int w = input->dims()[3];
-    const int size[4] = {n, c, h, w};
+    int out_h = grid->dims()[1];
+    int out_w = grid->dims()[2];
+    const int size[4] = {n, c, out_h, out_w};
 
     const T* input_data = input->data<T>();
     const T* grid_data = grid->data<T>();
-    T* output_data = output->mutable_data<T>({n, c, h, w}, ctx.GetPlace());
+    T* output_data =
+        output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
 
     ScopedSpatialTransformerDescriptor st_desc;
     cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
@@ -70,8 +72,9 @@ template <typename T>
 class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::InvalidArgument(
+                          "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto* input = ctx.Input<Tensor>("X");
@@ -95,7 +98,7 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
     const T* grid_data = grid->data<T>();
     const T* output_grad_data = output_grad->data<T>();
     T* input_grad_data =
-        input_grad->mutable_data<T>(output_grad_dims, ctx.GetPlace());
+        input_grad->mutable_data<T>(input->dims(), ctx.GetPlace());
     T* grid_grad_data =
         grid_grad->mutable_data<T>({n, h, w, 2}, ctx.GetPlace());
 

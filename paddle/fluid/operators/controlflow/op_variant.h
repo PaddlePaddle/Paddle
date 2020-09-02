@@ -43,8 +43,9 @@ class OpVariant {
   const AttrType &Attr(const std::string &name) const {
     auto &attrs = Attrs();
     auto it = attrs.find(name);
-    PADDLE_ENFORCE(it != attrs.end(), "Cannot find attribute %s", name);
-    return boost::get<AttrType>(it->second);
+    PADDLE_ENFORCE_NE(it, attrs.end(), platform::errors::NotFound(
+                                           "Cannot find attribute %s.", name));
+    return BOOST_GET_CONST(AttrType, it->second);
   }
 
   bool operator==(const OpVariant &other) const {

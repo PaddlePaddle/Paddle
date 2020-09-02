@@ -72,7 +72,8 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
       return val;
     }
     default:
-      PADDLE_THROW("Unsupport attr type %d", attr_desc.type());
+      PADDLE_THROW(platform::errors::Unavailable("Unsupport attribute type %d.",
+                                                 attr_desc.type()));
   }
   return boost::blank();
 }

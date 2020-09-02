@@ -18,7 +18,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/details/fetch_op_handle.h"
+#include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -63,7 +64,7 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
 
   FetchResultType fetches;
   if (return_merged) {
-    fetches = FeedFetchList(fetch_tensors.size());
+    fetches = FetchList(fetch_tensors.size());
   } else {
     fetches = FetchUnmergedList(fetch_tensors.size());
   }
@@ -120,6 +121,11 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
   }
   // Wait FetchOps.
   ClearFetchOp(graph_, &fetch_ops);
+
+  for (auto &place : places_) {
+    fetch_ctxs_.Get(place)->Wait();
+  }
+
   return fetches;
 }
 
@@ -150,15 +156,20 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
             "Possible reasons are:\n"
             "  1. The variable to be fetched is not defined in main program.\n"
             "  2. The variable to be fetched is not an input or output of any "
-            "operator.",
-            var_name));
+            "operator.\n"
+            "  3. Confirm that you have used the fetch `Variable` format "
+            "instead of the string literal('%s') in `fetch_list` parameter "
+            "when using `executor.run` method. In other words, the format of "
+            "`executor.run(fetch_list=[fetch_var])`(fetch_var is a Variable) "
+            "is recommended.",
+            var_name, var_name));
 
     auto &vars = fetched_var_it->second;
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_,
-                                 &local_exec_scopes_, return_merged);
+    auto *op = new FetchAsyncOpHandle(fetch_node, fetches, i, &local_scopes_,
+                                      &local_exec_scopes_, return_merged);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
@@ -167,6 +178,14 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 
     for (auto *var : vars) {
       op->AddInput(var);
+    }
+
+    for (auto *var : vars) {
+      auto *op = var->GeneratedOp();
+      auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
+      if (compute_op) {
+        compute_op->SetLockAndRecordEventFree(false);
+      }
     }
 
     int dep = static_cast<int>(op->NotReadyInputSize());
@@ -256,7 +275,7 @@ void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {
 const ir::Graph &FastThreadedSSAGraphExecutor::Graph() const { return *graph_; }
 
 void FastThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
-  if (strategy_.num_threads_ == 1 && !dynamic_cast<FetchOpHandle *>(op)) {
+  if (strategy_.num_threads_ == 1 && !dynamic_cast<FetchAsyncOpHandle *>(op)) {
     traced_ops_.emplace_back(op);
   }
 }
@@ -264,7 +283,14 @@ void FastThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
 void FastThreadedSSAGraphExecutor::ExecutionFinal(
     std::vector<OpHandleBase *> *fetch_ops) {
   VLOG(3) << "caught exception " << exception_.Type() << ", rethrow it";
-  ClearFetchOp(graph_, fetch_ops);
+  // NOTE: If a new exception occurs in this ClearFetchOp operation, it will
+  // cause the loss of exception triggered firstly not thrown.
+  // Instead, the cleanup operation should only be performed when an EOF
+  // exception is caught. If other exceptions are triggered, the ClearFetchOp
+  // should not be continued.
+  if (exception_.Type() == "EOF") {
+    ClearFetchOp(graph_, fetch_ops);
+  }
   exception_.ReThrow();
 }
 

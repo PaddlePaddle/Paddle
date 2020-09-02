@@ -14,6 +14,6 @@
 
 #include "paddle/fluid/operators/reduce_ops/reduce_all_op.h"
 
-REGISTER_OP_CUDA_KERNEL(reduce_all,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          bool, ops::AllFunctor>);
+REGISTER_OP_CUDA_KERNEL(
+    reduce_all, ops::BoolReduceKernel<paddle::platform::CUDADeviceContext, bool,
+                                      ops::AllFunctor>);

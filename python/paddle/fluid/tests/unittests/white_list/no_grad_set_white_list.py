@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # check no_grad_set is None
-NOT_CHECK_OP_LIST = ['deformable_conv', 'row_conv']
+NOT_CHECK_OP_LIST = ['deformable_conv', 'row_conv', 'kron']
 
 # TODO(Shixiaowei02): Check if the items do not need fix.
 # no_grad_set has value in NEED_TO_FIX_OP_LIST
@@ -34,6 +34,7 @@ NEED_TO_FIX_OP_LIST = [
     'deformable_conv_v1',
     'depthwise_conv2d',
     'depthwise_conv2d_transpose',
+    'dot',
     'elementwise_add',
     'elementwise_div',
     'elementwise_max',

@@ -184,27 +184,35 @@ class TestVariable(unittest.TestCase):
         with fluid.program_guard(default_main_program()):
             self._tostring()
 
-    # NOTE(zhiqiu): for coverage CI
-    # TODO(zhiqiu): code clean for dygraph
-    def test_dygraph_deprecated_api(self):
+    def test_fake_interface_only_api(self):
         b = default_main_program().current_block()
         var = b.create_var(dtype="float64", lod_level=0)
         with fluid.dygraph.guard():
-            self.assertIsNone(var.detach())
-            self.assertIsNone(var.numpy())
-            self.assertIsNone(var.set_value(None))
-            self.assertIsNone(var.backward())
-            self.assertIsNone(var.gradient())
-            self.assertIsNone(var.clear_gradient())
-            self.assertIsNone(var.to_string(True))
-            self.assertIsNone(var.persistable)
+            self.assertRaises(AssertionError, var.detach)
+            self.assertRaises(AssertionError, var.numpy)
+            self.assertRaises(AssertionError, var.set_value, None)
+            self.assertRaises(AssertionError, var.backward)
+            self.assertRaises(AssertionError, var.gradient)
+            self.assertRaises(AssertionError, var.clear_gradient)
+
+    def test_variable_in_dygraph_mode(self):
+        b = default_main_program().current_block()
+        var = b.create_var(dtype="float64", shape=[1, 1])
+        with fluid.dygraph.guard():
+            self.assertTrue(var.to_string(True).startswith('name:'))
+
+            self.assertFalse(var.persistable)
+            var.persistable = True
+            self.assertTrue(var.persistable)
+
+            self.assertFalse(var.stop_gradient)
             var.stop_gradient = True
-            self.assertIsNone(var.stop_gradient)
-            var.stop_gradient = 'tmp'
-            self.assertIsNone(var.name)
-            self.assertIsNone(var.shape)
-            self.assertIsNone(var.dtype)
-            self.assertIsNone(var.type)
+            self.assertTrue(var.stop_gradient)
+
+            self.assertTrue(var.name.startswith('_generated_var_'))
+            self.assertEqual(var.shape, (1, 1))
+            self.assertEqual(var.dtype, fluid.core.VarDesc.VarType.FP64)
+            self.assertEqual(var.type, fluid.core.VarDesc.VarType.LOD_TENSOR)
 
     def test_create_selected_rows(self):
         b = default_main_program().current_block()

@@ -64,17 +64,23 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 #undef SET_IN
 
     // Multiply embeddings with Weights
-    PADDLE_ENFORCE(scope);
+    PADDLE_ENFORCE_NOT_NULL(
+        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
     const std::string& embeddings = patterns::UniqueKey("Embeddings");
     auto* embeddings_var = scope->Var(embeddings);
-    PADDLE_ENFORCE(embeddings_var);
+    PADDLE_ENFORCE_NOT_NULL(
+        embeddings_var,
+        platform::errors::InvalidArgument(
+            "Embeddings variable's pointer cannot be nullptr."));
     auto* embeddings_tensor =
         embeddings_var->GetMutable<framework::LoDTensor>();
     // Get WeightX size: [single_embedding, fc_size]
     // and embedding size: [dict_size, single_embedding]
     // and create new size of embeddings eg. [dict_size , hidden_size]
     auto* embedding_var = scope->FindVar(W->Name());
-    PADDLE_ENFORCE(embedding_var);
+    PADDLE_ENFORCE_NOT_NULL(
+        embedding_var, platform::errors::InvalidArgument(
+                           "Embedding variable's pointer cannot be nullptr."));
     const auto& embedding_tensor = embedding_var->Get<framework::LoDTensor>();
 
     const auto& weightx_tensor =
@@ -90,7 +96,9 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 
     // Adding biases to GEMM result to be
     auto* lstm_bias_var = scope->FindVar(bias->Name());
-    PADDLE_ENFORCE(lstm_bias_var);
+    PADDLE_ENFORCE_NOT_NULL(lstm_bias_var,
+                            platform::errors::InvalidArgument(
+                                "Lstm bias var ptr cannot be nullptr."));
     const auto& lstm_bias_tensor = lstm_bias_var->Get<framework::LoDTensor>();
 
     auto alpha = 1.0f;
@@ -192,9 +200,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
 
     // TODO(jczaja): Add support for is_sparse / is_distributed
-    auto is_sparse = boost::get<bool>(lookup_table->Op()->GetAttr("is_sparse"));
+    auto is_sparse =
+        BOOST_GET_CONST(bool, lookup_table->Op()->GetAttr("is_sparse"));
     auto is_distributed =
-        boost::get<bool>(lookup_table->Op()->GetAttr("is_distributed"));
+        BOOST_GET_CONST(bool, lookup_table->Op()->GetAttr("is_distributed"));
 
     if (is_sparse == true || is_distributed == true) {
       return;

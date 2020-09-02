@@ -14,8 +14,10 @@
 
 #include "paddle/fluid/inference/lite/tensor_utils.h"
 #include <map>
+#include <memory>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/inference/lite/engine.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 
 namespace paddle {
 namespace inference {
@@ -46,8 +48,13 @@ platform::Place GetNativePlace(const TargetType& type, int id = 0) {
       return platform::CPUPlace();
     case TargetType::kCUDA:
       return platform::CUDAPlace(id);
+    case TargetType::kXPU:
+      LOG(ERROR) << "No corresponding device for XPU yet.";
+      return platform::Place();
     default:
-      LOG(FATAL) << "Error target type.";
+      PADDLE_THROW(
+          platform::errors::Unavailable("Unsupported target type. Now only "
+                                        "supports Host, x86, CUDA target."));
       return platform::Place();
   }
 }
@@ -70,7 +77,9 @@ PrecisionType GetLitePrecisionType(framework::proto::VarType::Type type) {
     case framework::proto::VarType_Type_INT64:
       return PrecisionType::kInt64;
     default:
-      LOG(FATAL) << "Error precision type.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported precision type. Now only supports FP32, INT8, INT32 and "
+          "INT64."));
       return PrecisionType::kUnk;
   }
 }
@@ -87,7 +96,9 @@ framework::proto::VarType::Type GetNativePrecisionType(
     case PrecisionType::kInt64:
       return framework::proto::VarType_Type_INT64;
     default:
-      LOG(FATAL) << "Error precision type.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported precision type. Now only supports FP32, INT8, INT32 and "
+          "INT64."));
       return static_cast<framework::proto::VarType::Type>(-1);
   }
 }
@@ -97,7 +108,8 @@ framework::DataLayout GetNativeLayoutType(const DataLayoutType& type) {
     case DataLayoutType::kNCHW:
       return framework::DataLayout::kNCHW;
     default:
-      LOG(FATAL) << "Error layout type.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported layout type. Now only supports NCHW."));
       return static_cast<framework::DataLayout>(-1);
   }
 }
@@ -112,19 +124,22 @@ void MemoryCopyAsync(const platform::Place& dst_place, void* dst_data,
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_cpu_place(dst_place) &&
         platform::is_gpu_place(src_place)) {
-      LOG(FATAL) << "lite::MemoryCopy GPU->CPU is not yet implemented.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Lite::MemoryCopy GPU->CPU is not yet implemented."));
     } else if (platform::is_gpu_place(dst_place) &&
                platform::is_cpu_place(src_place)) {
-      LOG(FATAL) << "lite::MemoryCopy CPU->GPU is not yet implemented.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Lite::MemoryCopy CPU->GPU is not yet implemented."));
     } else if (platform::is_gpu_place(dst_place) &&
                platform::is_gpu_place(src_place)) {
-      auto gpu_place = boost::get<platform::CUDAPlace>(src_place);
+      auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
       memory::Copy(
           gpu_place, dst_data, gpu_place, src_data, size,
           static_cast<const platform::CUDADeviceContext&>(ctx).stream());
     }
 #else
-    LOG(FATAL) << "You must define PADDLE_WITH_CUDA for using CUDAPlace.";
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "You must define PADDLE_WITH_CUDA for using CUDAPlace."));
 #endif
   }
 }
@@ -179,6 +194,31 @@ void TensorCopyAsync(framework::LoDTensor* dst, const paddle::lite::Tensor& src,
           << ", dst = " << dst << ", src_type = " << dst->type();
   MemoryCopyAsync(dst_place, dst_data, src_place, src_data, bytes, ctx);
   VLOG(3) << "[Lite memory size] Bytes = " << src.memory_size();
+}
+
+template <>
+void TensorDataShare(paddle::lite::Tensor* dst, framework::LoDTensor* src) {
+  const size_t bytes =
+      static_cast<size_t>(src->numel()) * framework::SizeOfType(src->type());
+  auto buf = std::make_shared<paddle::lite::Buffer>(paddle::lite::Buffer(
+      src->data<void>(), GetLiteTargetType(src->place()), src->memory_size()));
+  dst->Resize(framework::vectorize(src->dims()));
+  dst->set_precision(GetLitePrecisionType(src->type()));
+  SetLoD(dst->mutable_lod(), src->lod());
+  dst->ResetBuffer(buf, bytes);
+}
+
+template <>
+void TensorDataShare(framework::LoDTensor* dst, paddle::lite::Tensor* src) {
+  constexpr framework::proto::VarType::Type dtype =
+      framework::proto::VarType_Type_FP32;
+  void* src_raw_data = src->raw_data();
+  std::shared_ptr<memory::allocation::Allocation> holder(
+      new memory::allocation::Allocation(src_raw_data, src->memory_size(),
+                                         GetNativePlace(src->target())));
+  dst->Resize(paddle::framework::make_ddim(src->dims().Vectorize()));
+  SetLoD(dst->mutable_lod(), src->lod());
+  dst->ResetHolderWithType(holder, dtype);
 }
 
 }  // namespace utils

@@ -158,6 +158,11 @@ class Tensor {
   void ShareBufferWith(const Tensor& tensor) {
     holder_ = tensor.holder_;
     offset_ = tensor.offset_;
+    type_ = tensor.type_;
+  }
+
+  bool IsSharedBufferWith(const Tensor& src) const {
+    return holder_ && holder_ == src.Holder();
   }
 
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }

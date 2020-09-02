@@ -45,7 +45,7 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
       out_cols += t_cols;
       input_cols[i] = t_cols;
     }
-    auto cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
+    auto cpu_place = BOOST_GET_CONST(platform::CPUPlace, context.GetPlace());
 
     // computation
     auto output_data = output->data<T>();
@@ -90,7 +90,7 @@ class SplitFunctor<platform::CPUDeviceContext, T> {
       input_cols += t_cols;
       output_cols[i] = t_cols;
     }
-    auto cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
+    auto cpu_place = BOOST_GET_CONST(platform::CPUPlace, context.GetPlace());
 
     // computation
     for (int k = 0; k < input_rows; ++k) {

@@ -49,7 +49,12 @@ TEST(DisMultiTrainerTest, test1) {
   dataset->SetTrainerNum(1);
   dataset->SetDataFeedDesc(str);
   dataset->CreateReaders();
+  Scope root_scope;
+  tmp1->SetScope(&root_scope);
   tmp1->Initialize(t, dataset.get());
+  ProgramDesc p;
+  tmp1->InitOtherEnv(p);
+  tmp1->Finalize();
 #endif
 }
 }  // namespace framework

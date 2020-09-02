@@ -27,11 +27,14 @@ class GatherNdOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of GatherNdOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Input(X) of GatherNdOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
-                      "Input(Index) of GatherNdOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Input(Index) of GatherNdOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of GatherNdOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of GatherNdOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_dims_size = x_dims.size();
@@ -40,9 +43,11 @@ class GatherNdOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_LE(
         index_dims[index_dims_size - 1], x_dims_size,
-        "Input(Index).shape[-1] should be no greater than Input(X).rank");
-    PADDLE_ENFORCE_GE(index_dims_size, 2UL,
-                      "The rank of Input(Index) should be greater than 1");
+        platform::errors::InvalidArgument(
+            "Input(Index).shape[-1] should be no greater than Input(X).rank"));
+    PADDLE_ENFORCE_GE(index_dims_size, 1UL,
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(Index) should be greater than 1"));
 
     std::vector<int64_t> result_dims;
     // The result dims is
@@ -161,8 +166,7 @@ class GatherNdGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(GatherNdGradNoNeedBufferVarInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherNdGradNoNeedBufferVarInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -174,7 +178,7 @@ REGISTER_OPERATOR(gather_nd, ops::GatherNdOp, ops::GatherNdOpMaker,
                   ops::GatherNdGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(gather_nd_grad, ops::GatherNdGradOp,
-                  ops::GatherNdGradNoNeedBufferVarInference);
+                  ops::GatherNdGradNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(gather_nd, ops::GatherNdOpKernel<float>,
                        ops::GatherNdOpKernel<double>,

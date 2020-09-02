@@ -64,7 +64,7 @@ class StackGPUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<plat::CUDADeviceContext>();
     auto tmp_x_data = memory::Alloc(dev_ctx, x_datas.size() * sizeof(T*));
-    memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
                  tmp_x_data->ptr(), platform::CPUPlace(),
                  reinterpret_cast<void*>(x_datas.data()),
                  x_datas.size() * sizeof(T*), dev_ctx.stream());
@@ -162,7 +162,7 @@ class StackGradGPUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<plat::CUDADeviceContext>();
     auto tmp_out_data = memory::Alloc(dev_ctx, outputs.size() * sizeof(T*));
-    memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
                  tmp_out_data->ptr(), platform::CPUPlace(),
                  reinterpret_cast<void*>(outputs.data()),
                  outputs.size() * sizeof(T*), dev_ctx.stream());

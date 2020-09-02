@@ -119,9 +119,11 @@ class CoalesceGradTensorPass : public ir::Pass {
       p_g_dense_grad.insert(p_g_dense_grad.end(), group_p_g.begin(),
                             group_p_g.end());
     }
-    PADDLE_ENFORCE_EQ(
-        p_g_dense_grad.size(), num_of_p_g_dense_grad,
-        "The number of p_g_dense_grad is not consistent with before.");
+    PADDLE_ENFORCE_EQ(p_g_dense_grad.size(), num_of_p_g_dense_grad,
+                      platform::errors::InvalidArgument(
+                          "The number of dense grads is not consistent with "
+                          "previous. Previous(%d), now(%d).",
+                          p_g_dense_grad.size(), num_of_p_g_dense_grad));
 
     auto &pinned_var_set =
         graph->GetOrInit<details::PinnedVars>(details::kPinnedVars);
@@ -131,8 +133,11 @@ class CoalesceGradTensorPass : public ir::Pass {
     } else {
       for (auto &sub_param_grad : group_params_grads) {
         RecordGradients(p_g_dense_grad, vars_info, &pinned_var_set);
-        PADDLE_ENFORCE_EQ(IsUnifiedDtype(sub_param_grad, vars_info), true,
-                          "The data type of the same group is not consistent.");
+        PADDLE_ENFORCE_EQ(
+            IsUnifiedDtype(sub_param_grad, vars_info), true,
+            platform::errors::InvalidArgument("All gradient variable in "
+                                              "kGroupParamsAndDenseGrads, must "
+                                              "have same type."));
         CoalesceTensors(vars_info, sub_param_grad, &result);
       }
     }
@@ -145,15 +150,25 @@ class CoalesceGradTensorPass : public ir::Pass {
     // The Gradients should not be reused during memory optimization.
     for (auto &p_g : sub_param_grad) {
       auto iter = vars_info.find(p_g.second);
-      PADDLE_ENFORCE_EQ(iter != vars_info.end(), true, "%s is not found.",
-                        p_g.second);
-      PADDLE_ENFORCE_EQ(!iter->second.empty(), true);
+      PADDLE_ENFORCE_EQ(iter != vars_info.end(), true,
+                        platform::errors::NotFound(
+                            "Parameter@Grad %s is not found.", p_g.second));
+      PADDLE_ENFORCE_EQ(
+          !iter->second.empty(), true,
+          platform::errors::InvalidArgument(
+              "Parameter@Grad %s's var node is empty.", p_g.second));
       for (auto it : iter->second) {
-        PADDLE_ENFORCE_NOT_NULL(it->Var());
+        PADDLE_ENFORCE_NOT_NULL(
+            it->Var(),
+            platform::errors::InvalidArgument(
+                "A node of Parameter@Grad %s does not hold variable.",
+                p_g.second));
         pinned_var_set->insert(it->Var()->Name());
       }
       PADDLE_ENFORCE_EQ(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)),
-                        true);
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Parameter@Grad %s is not LoDTensor.", p_g.second));
     }
   }
 
@@ -192,8 +207,10 @@ class CoalesceGradTensorPass : public ir::Pass {
     auto fused_grad_var_name = std::string(details::kFusedVarNamePrefix) +
                                "@GRAD@" + params_grads.begin()->second;
     auto &fused_var_set = result->Get<details::FusedVars>(details::kFusedVars);
-    PADDLE_ENFORCE_EQ(fused_var_set.count(fused_grad_var_name), 0,
-                      "%s is duplicate in FusedVars.", fused_grad_var_name);
+    PADDLE_ENFORCE_EQ(
+        fused_var_set.count(fused_grad_var_name), 0,
+        platform::errors::AlreadyExists("Var(%s) is duplicate in FusedVars.",
+                                        fused_grad_var_name));
     fused_var_set.insert(fused_grad_var_name);
     result->Get<details::FusedGrads>(details::kFusedGrads)
         .emplace_back(fused_grad_var_name);
@@ -420,11 +437,16 @@ class CoalesceGradTensorPass : public ir::Pass {
       const std::unordered_map<std::string, std::vector<Node *>> &vars_info,
       const std::string &var_name) const {
     auto grad_iter = vars_info.find(var_name);
-    PADDLE_ENFORCE_EQ(grad_iter != vars_info.end(), true, "%s is not found.",
-                      var_name);
-    PADDLE_ENFORCE_EQ(!grad_iter->second.empty(), true, "%s is not found.",
-                      var_name);
-    PADDLE_ENFORCE_NOT_NULL(grad_iter->second.front()->Var());
+    PADDLE_ENFORCE_EQ(
+        grad_iter != vars_info.end(), true,
+        platform::errors::NotFound("Variable %s is not found.", var_name));
+    PADDLE_ENFORCE_EQ(!grad_iter->second.empty(), true,
+                      platform::errors::InvalidArgument(
+                          "Variable %s's node is empty.", var_name));
+    PADDLE_ENFORCE_NOT_NULL(
+        grad_iter->second.front()->Var(),
+        platform::errors::InvalidArgument(
+            "A node of %s does not hold variable.", var_name));
     return grad_iter->second.front()->Var();
   }
 
@@ -464,7 +486,12 @@ class CoalesceGradTensorPass : public ir::Pass {
       params_name.emplace_back(p_g.first);
       grads_name.emplace_back(p_g.second);
       auto next_dtype = GetDtypeOfVar(vars_info, p_g.second);
-      PADDLE_ENFORCE_EQ(next_dtype, dtype);
+      PADDLE_ENFORCE_EQ(
+          next_dtype, dtype,
+          platform::errors::InvalidArgument(
+              "All Parameter@Grad should have same dtype, but "
+              "there are two different type: %s, %s.",
+              DataTypeToString(next_dtype), DataTypeToString(dtype)));
     }
 
     result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();

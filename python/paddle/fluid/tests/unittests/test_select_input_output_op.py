@@ -60,34 +60,67 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
                 self.assertTrue(np.allclose(np.asarray(ret[0]), feed_x))
                 self.assertTrue(np.allclose(np.asarray(ret[1]), x_grad))
 
-    def test_forward_backward_single_tensor_output(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            x.stop_gradient = False  # For test gradient
+
+class TestSelectInputOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
             mask = layers.data(name='mask', shape=[1], dtype='int32')
+            in1 = layers.data(name='in1', shape=[1], dtype='int32')
 
-            out = program.current_block().create_var(
-                dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR)
+            # 1. The type of inputs in select_input must be list or tuple.
+            def test_inputs_type():
+                select_input(1, mask)
 
-            select_output(x, out, mask)
-            y = select_input(out, mask)
-            mean = layers.mean(y)
-            append_backward(mean)
+            self.assertRaises(TypeError, test_inputs_type)
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = Executor(place)
+            # 2. The type of mask in select_input must be Variable.
+            def test_mask_type():
+                select_input([in1], mask=1)
 
-        feed_x = np.asarray([1.3, -1.4]).astype(np.float32)
-        feed_mask = np.asarray([0]).astype(np.int32)
-        ret = exe.run(program,
-                      feed={'x': feed_x,
-                            'mask': feed_mask},
-                      fetch_list=[y.name, x.grad_name])
-        x_grad = np.asarray([0.5, 0.5]).astype(np.float32)
-        self.assertTrue(np.allclose(np.asarray(ret[0]), feed_x))
-        self.assertTrue(np.allclose(np.asarray(ret[1]), x_grad))
+            self.assertRaises(TypeError, test_mask_type)
+
+            # 3. The dtype of mask in select_input must be int32 or int64.
+            def test_mask_dtype():
+                mask = layers.data(name='mask2', shape=[1], dtype='float32')
+                select_input([in1], mask)
+
+            self.assertRaises(TypeError, test_mask_dtype)
+
+
+class TestSelectOutput_Error(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            in1 = layers.data(name='in1', shape=[1], dtype='int32')
+            mask_int32 = layers.data(
+                name='mask_int32', shape=[1], dtype='int32')
+            mask_float32 = layers.data(
+                name='mask_float32', shape=[1], dtype='float32')
+            out1 = layers.data(name='out1', shape=[1], dtype='int32')
+
+            # 1. The type of input in select_output must Variable.
+            def test_input_type():
+                select_output(1, [out1], mask_int32)
+
+            self.assertRaises(TypeError, test_input_type)
+
+            # 2. The type of mask in select_output must be Variable.
+            def test_mask_type():
+                select_output(in1, [out1], mask=1)
+
+            self.assertRaises(TypeError, test_mask_type)
+
+            # 3. The dtype of mask in select_output must be int32 or int64.
+            def test_mask_dtype():
+                select_output(in1, [out1], mask=mask_float32)
+
+            self.assertRaises(TypeError, test_mask_dtype)
+
+            # 4. The type of mask in select_output must be list or tuple.
+            def test_outputs_type():
+                select_output(in1, out1, mask=mask_int32)
+
+            self.assertRaises(TypeError, test_outputs_type)
 
 
 if __name__ == '__main__':

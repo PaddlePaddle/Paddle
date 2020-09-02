@@ -17,12 +17,12 @@ import threading
 import time
 import logging
 import numpy as np
+from paddle.fluid.log_helper import get_logger
 
-FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
-logging.basicConfig(level=logging.INFO, format=FORMAT)
-local_logger = logging.getLogger(__name__)
+local_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
-from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
+from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer
 from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
 from .framework import Variable
 from multiprocessing import Process, Manager
@@ -62,16 +62,29 @@ class TrainerFactory(object):
                     trainer._set_mpi_rank(opt_info["mpi_rank"])
                 if opt_info.get("mpi_size") is not None:
                     trainer._set_mpi_size(opt_info["mpi_size"])
-                if opt_info.get("dump_fields") is not None:
+                if opt_info.get("dump_fields") is not None and len(
+                        opt_info.get("dump_fields")) != 0:
                     trainer._set_dump_fields(opt_info["dump_fields"])
-                if opt_info.get("dump_fields_path") is not None:
+                if opt_info.get("dump_fields_path") is not None and len(
+                        opt_info.get("dump_fields_path")) != 0:
                     trainer._set_dump_fields_path(opt_info["dump_fields_path"])
                 if opt_info.get("dump_file_num") is not None:
                     trainer._set_dump_file_num(opt_info["dump_file_num"])
                 if opt_info.get("dump_converter") is not None:
                     trainer._set_dump_converter(opt_info["dump_converter"])
-                if opt_info.get("dump_param") is not None:
+                if opt_info.get("dump_param") is not None and len(
+                        opt_info.get("dump_param")) != 0:
                     trainer._set_dump_param(opt_info["dump_param"])
+                if opt_info.get("worker_places") is not None:
+                    trainer._set_worker_places(opt_info["worker_places"])
+                if opt_info.get("enable_random_dump") is not None:
+                    trainer._set_enable_random_dump(opt_info[
+                        "enable_random_dump"])
+                if opt_info.get("dump_interval") is not None:
+                    trainer._set_dump_interval(opt_info["dump_interval"])
+                if opt_info.get("random_with_lineid") is not None:
+                    trainer._set_random_with_lineid(opt_info[
+                        "random_with_lineid"])
 
             if "fleet_desc" in opt_info:
                 device_worker._set_fleet_desc(opt_info["fleet_desc"])

@@ -85,9 +85,12 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
   // 1. record op nodes of different roles
   for (auto node : nodes) {
     if (!node->IsOp()) continue;
-    PADDLE_ENFORCE(node->Op(), "must find opdesc");
-    int op_role = boost::get<int>(node->Op()->GetAttr(
-        framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
+    PADDLE_ENFORCE_NOT_NULL(
+        node->Op(), platform::errors::InvalidArgument(
+                        "Node(%s) must hold op description.", node->Name()));
+    int op_role = BOOST_GET_CONST(
+        int, node->Op()->GetAttr(
+                 framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
     if ((op_role == static_cast<int>(framework::OpRole::kForward)) ||
         (op_role & static_cast<int>(framework::OpRole::kBackward)) ||
         (op_role & static_cast<int>(framework::OpRole::kLoss))) {
@@ -98,7 +101,8 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
       optimize_ops.push_back(node);
       auto op_role_var = node->Op()->GetNullableAttr(
           OpProtoAndCheckerMaker::OpRoleVarAttrName());
-      auto op_role_vars = boost::get<std::vector<std::string>>(op_role_var);
+      auto op_role_vars =
+          BOOST_GET_CONST(std::vector<std::string>, op_role_var);
       for (size_t i = 0; i < op_role_vars.size(); i += 2) {
         grad_names.insert(op_role_vars[i + 1]);
         gradname2paramname[op_role_vars[i + 1]] = op_role_vars[i];
@@ -106,7 +110,9 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
     } else if (op_role & static_cast<int>(framework::OpRole::kLRSched)) {
       lr_ops.push_back(node);
     } else {  // NOLINT
-      PADDLE_THROW("Invalid op_role: %d", static_cast<int>(op_role));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid op role(%d), in node(%s).", static_cast<int>(op_role),
+          node->Name()));
     }
   }
 

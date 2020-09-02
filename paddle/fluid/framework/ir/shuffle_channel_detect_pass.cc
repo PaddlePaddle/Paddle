@@ -47,7 +47,9 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
                      Graph* g) {
     GET_NODES;
 
-    PADDLE_ENFORCE(subgraph.count(x));
+    PADDLE_ENFORCE_GT(
+        subgraph.count(x), 0,
+        platform::errors::NotFound("Detector did not find input X."));
     auto* input_node = subgraph.at(x);
     auto reshape1_desc = reshape1_op->Op();
     auto reshape2_desc = reshape2_op->Op();
@@ -55,9 +57,9 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
     std::string output_name = reshape2_out->Name();
 
     auto reshape1_shape =
-        boost::get<std::vector<int>>(reshape1_desc->GetAttr("shape"));
+        BOOST_GET_CONST(std::vector<int>, reshape1_desc->GetAttr("shape"));
     auto reshape2_shape =
-        boost::get<std::vector<int>>(reshape2_desc->GetAttr("shape"));
+        BOOST_GET_CONST(std::vector<int>, reshape2_desc->GetAttr("shape"));
 
     int i_c = reshape1_shape[2];
     int o_c = reshape2_shape[1];

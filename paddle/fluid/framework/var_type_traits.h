@@ -19,6 +19,7 @@
 #include <tuple>
 #include <typeindex>
 #include <vector>
+#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/platform/place.h"
@@ -56,6 +57,7 @@ class CudnnRNNCache;
 
 namespace reader {
 class LoDTensorBlockingQueueHolder;
+class OrderedMultiDeviceLoDTensorBlockingQueueHolder;
 }  // namespace reader
 }  // namespace operators
 
@@ -138,7 +140,8 @@ struct VarTypeRegistryImpl {
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
     LoDTensorArray, platform::PlaceList, ReaderHolder, std::string, Scope *,
-    operators::reader::LoDTensorBlockingQueueHolder,
+    operators::reader::LoDTensorBlockingQueueHolder, FetchList,
+    operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
 #ifdef PADDLE_WITH_CUDA
 #if defined(PADDLE_WITH_NCCL)
     ncclUniqueId, platform::Communicator, platform::NCCLCommunicator,
@@ -176,6 +179,7 @@ REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensorArray, proto::VarType::LOD_TENSOR_ARRAY);
 REG_PROTO_VAR_TYPE_TRAIT(platform::PlaceList, proto::VarType::PLACE_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(ReaderHolder, proto::VarType::READER);
+REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
 REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
 

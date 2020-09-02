@@ -21,17 +21,21 @@ class ShardIndexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ShardIndexOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ShardIndexOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ShardIndex");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ShardIndex");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "Rank of Input(X) should be at least 2.");
+                      platform::errors::InvalidArgument(
+                          "Rank of Input(X) should be at least 2, "
+                          "but the value given is %d.",
+                          x_dims.size()));
     if (ctx->IsRuntime() || x_dims[x_dims.size() - 1] > 0) {
       PADDLE_ENFORCE_GE(x_dims[x_dims.size() - 1], 1U,
-                        "Last dimension of Input(X) should be 1.");
+                        platform::errors::InvalidArgument(
+                            "The last dimension of Input(X) should be 1, "
+                            "but the value given is %d.",
+                            x_dims[x_dims.size() - 1]));
     }
 
     ctx->SetOutputDim("Out", x_dims);

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include <limits>
 #include <random>
+
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -161,18 +163,15 @@ class CPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
-    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    std::minstd_rand engine;
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    engine.seed(seed);
     std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
                                            1.0);
     TruncatedNormal<T> truncated_normal(mean, std);
     int64_t size = tensor->numel();
+
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    auto engine = framework::GetCPURandomEngine(seed);
     for (int64_t i = 0; i < size; ++i) {
-      data[i] = truncated_normal(dist(engine));
+      data[i] = truncated_normal(dist(*engine));
     }
   }
 };
@@ -182,17 +181,22 @@ class TruncatedGaussianRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Output(Out) of TruncatedGaussianRandomOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::NotFound(
+            "Output(Out) of TruncatedGaussianRandomOp should not be null."));
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     std::vector<int64_t> out_dim;
     out_dim.reserve(shape.size());
     for (auto dim : shape) {
       out_dim.push_back(static_cast<int64_t>(dim));
     }
-    PADDLE_ENFORCE(shape.size() > 0UL,
-                   "shape can be one int or array. shape must be set.");
+    PADDLE_ENFORCE_GT(
+        shape.size(), 0UL,
+        platform::errors::InvalidArgument(
+            "the input shape of TruncatedGaussianRandomOp must be set, "
+            "But the rank of shape we received is %d",
+            shape.size()));
     ctx->SetOutputDim("Out", framework::make_ddim(out_dim));
   }
 

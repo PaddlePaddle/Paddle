@@ -21,6 +21,7 @@
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/reader.h"
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_resource_pool.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
@@ -34,7 +35,8 @@ class BufferedReader : public framework::DecoratedReader {
 
  public:
   BufferedReader(const std::shared_ptr<framework::ReaderBase>& reader,
-                 const platform::Place& place, size_t buffer_size);
+                 const platform::Place& place, size_t buffer_size,
+                 bool pin_memory = false);
 
   ~BufferedReader() override;
 
@@ -52,6 +54,7 @@ class BufferedReader : public framework::DecoratedReader {
   ThreadPool thread_pool_;
   platform::Place place_;
   const size_t buffer_size_;
+  bool pin_memory_;
 
   std::queue<std::future<size_t>> position_;
 
@@ -60,13 +63,14 @@ class BufferedReader : public framework::DecoratedReader {
   // buffer, just read async and create futures as buffer size. However, to
   // malloc tensors every time is extremely slow. Here we store all data in
   // buffers and prevent alloc every time.
+  bool is_same_place_;
   std::vector<TensorVec> cpu_buffer_;
-  std::vector<TensorVec> gpu_buffer_;
+  std::vector<TensorVec> cuda_buffer_;
   size_t prev_pos_{-1UL};
 #ifdef PADDLE_WITH_CUDA
-  cudaStream_t stream_;
   cudaStream_t compute_stream_;
-  std::vector<cudaEvent_t> events_;
+  std::shared_ptr<platform::CudaStreamObject> stream_;
+  std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
 #endif
 };
 

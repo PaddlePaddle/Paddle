@@ -18,12 +18,13 @@
 
 #include <unistd.h>
 #include <cstdint>
+#include <set>
 
 namespace paddle {
 namespace imperative {
 
-extern void SetLoadProcessPID(int64_t key, pid_t pid);
-extern void EraseLoadProcessPID(int64_t key);
+extern void SetLoadProcessPIDs(int64_t key, std::set<pid_t> pids);
+extern void EraseLoadProcessPIDs(int64_t key);
 extern void SetLoadProcessSignalHandler();
 extern void ThrowErrorIfLoadProcessFailed();
 

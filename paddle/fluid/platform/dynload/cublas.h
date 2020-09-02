@@ -36,7 +36,6 @@ extern void *cublas_dso_handle;
  *
  * note: default dynamic linked libs
  */
-#ifdef PADDLE_USE_DSO
 #define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)                             \
   struct DynLoad__##__name {                                                 \
     using FUNC_TYPE = decltype(&::__name);                                   \
@@ -50,20 +49,14 @@ extern void *cublas_dso_handle;
     }                                                                        \
   };                                                                         \
   extern DynLoad__##__name __name
-#else
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)     \
-  struct DynLoad__##__name {                         \
-    template <typename... Args>                      \
-    inline cublasStatus_t operator()(Args... args) { \
-      return ::__name(args...);                      \
-    }                                                \
-  };                                                 \
-  extern DynLoad__##__name __name
-#endif
 
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
   __macro(cublasSaxpy_v2);                \
   __macro(cublasDaxpy_v2);                \
+  __macro(cublasSscal_v2);                \
+  __macro(cublasDscal_v2);                \
+  __macro(cublasScopy_v2);                \
+  __macro(cublasDcopy_v2);                \
   __macro(cublasSgemv_v2);                \
   __macro(cublasDgemv_v2);                \
   __macro(cublasSgemm_v2);                \
@@ -72,6 +65,8 @@ extern void *cublas_dso_handle;
   __macro(cublasSgemmEx);                 \
   __macro(cublasSgeam);                   \
   __macro(cublasDgeam);                   \
+  __macro(cublasStrsm_v2);                \
+  __macro(cublasDtrsm_v2);                \
   __macro(cublasCreate_v2);               \
   __macro(cublasDestroy_v2);              \
   __macro(cublasSetStream_v2);            \
@@ -84,7 +79,9 @@ extern void *cublas_dso_handle;
   __macro(cublasSgetrfBatched);           \
   __macro(cublasSgetriBatched);           \
   __macro(cublasDgetrfBatched);           \
-  __macro(cublasDgetriBatched);
+  __macro(cublasDgetriBatched);           \
+  __macro(cublasSmatinvBatched);          \
+  __macro(cublasDmatinvBatched);
 
 CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 

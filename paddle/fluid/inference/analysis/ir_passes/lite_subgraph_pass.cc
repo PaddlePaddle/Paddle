@@ -242,16 +242,33 @@ void LiteSubgraphPass::SetUpEngine(
 
   bool use_gpu = Get<bool>("use_gpu");
   bool enable_int8 = Get<bool>("enable_int8");
-  lite_api::TargetType target_type = use_gpu ? TARGET(kCUDA) : TARGET(kX86);
+  bool use_xpu = Get<bool>("use_xpu");
+  int xpu_l3_workspace_size = Get<int>("xpu_l3_workspace_size");
+
+  lite_api::TargetType target_type;
+  if (use_gpu) {
+    target_type = TARGET(kCUDA);
+  } else if (use_xpu) {
+    target_type = TARGET(kXPU);
+  } else {
+    target_type = TARGET(kX86);
+  }
+
   paddle::lite_api::PrecisionType precision_type =
-      enable_int8 ? PRECISION(kInt8) : PRECISION(kInt64);
+      enable_int8 ? PRECISION(kInt8) : PRECISION(kFloat);
+
   serialize_params(&config.param, scope, repetitive_params);
   config.model = program->Proto()->SerializeAsString();
   config.valid_places = {
+      // Notice: The ordering here determines the device where the
+      // input tensor of the Lite engine is located, and then affects
+      // whether tensor sharing is feasible.
       paddle::lite::Place({target_type, precision_type}),
+      paddle::lite::Place({target_type, PRECISION(kInt64)}),
       paddle::lite::Place({target_type, PRECISION(kFloat)}),
       paddle::lite::Place({TARGET(kHost), PRECISION(kFloat)}),
   };
+  config.xpu_l3_workspace_size = xpu_l3_workspace_size;
   if (dump_model) {
     lite::StrToBinaryFile("./model.bin", config.model);
     lite::StrToBinaryFile("./param.bin", config.param);
@@ -283,6 +300,7 @@ void LiteSubgraphPass::BuildOperator(
   op_desc->SetAttr("engine_key", unique_key);
   op_desc->SetAttr("enable_int8", Get<bool>("enable_int8"));
   op_desc->SetAttr("use_gpu", Get<bool>("use_gpu"));
+  op_desc->SetAttr("zero_copy", Get<bool>("zero_copy"));
 }
 
 void LiteSubgraphPass::ApplyImpl(framework::ir::Graph* graph) const {

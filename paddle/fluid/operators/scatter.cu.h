@@ -26,14 +26,11 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
 template <typename T, typename IndexT = int>
 __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
                                       size_t index_size, size_t slice_size,
                                       bool overwrite) {
-  CUDA_1D_KERNEL_LOOP(i, index_size * slice_size) {
+  CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
@@ -46,7 +43,7 @@ template <typename T, typename IndexT = int>
 __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
                                   T* output, size_t index_size,
                                   size_t slice_size, bool overwrite) {
-  CUDA_1D_KERNEL_LOOP(i, index_size * slice_size) {
+  CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
@@ -64,7 +61,7 @@ __global__ void ScatterNdCUDAKernel(const T* update, const IndexT* indices,
                                     T* output, const int* output_dims,
                                     size_t remain_size, size_t slice_size,
                                     size_t end_size) {
-  CUDA_1D_KERNEL_LOOP(i, remain_size * slice_size) {
+  CUDA_KERNEL_LOOP(i, remain_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT gather_i = 0;
@@ -95,11 +92,17 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
   const auto& ctx = context.device_context();
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(index.dims()[1], 1,
-                      "index.dims()[1] should be 1 when index.dims().size() == "
-                      "2 in scatter_op.");
+                      platform::errors::InvalidArgument(
+                          "index.dims()[1] should be 1 when "
+                          "index.dims().size() = 2 in scatter_op."
+                          "But received value is [%d]",
+                          index.dims()[1]));
   } else {
     PADDLE_ENFORCE_EQ(index.dims().size(), 1,
-                      "index.dims().size() should be 1 or 2 in scatter_op.");
+                      platform::errors::InvalidArgument(
+                          "index.dims().size() should be 1 or 2 in scatter_op."
+                          "But received value is [%d]",
+                          index.dims().size()));
   }
   int index_size = index.dims()[0];
 
@@ -163,7 +166,7 @@ void GPUScatterNdAdd(const framework::ExecutionContext& context,
   // put output_dims int CUDA
   // gplace and cplace
   const auto& ctx = context.template device_context<DeviceContext>();
-  const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+  const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   auto cplace = platform::CPUPlace();
 
   std::vector<int> v_output_dims(output_dims_size);

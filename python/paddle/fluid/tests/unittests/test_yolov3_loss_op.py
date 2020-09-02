@@ -77,6 +77,8 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     ignore_thresh = attrs['ignore_thresh']
     downsample_ratio = attrs['downsample_ratio']
     use_label_smooth = attrs['use_label_smooth']
+    scale_x_y = attrs['scale_x_y']
+    bias_x_y = -0.5 * (scale_x_y - 1.)
     input_size = downsample_ratio * h
     x = x.reshape((n, mask_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
     loss = np.zeros((n)).astype('float64')
@@ -88,8 +90,10 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     pred_box = x[:, :, :, :, :4].copy()
     grid_x = np.tile(np.arange(w).reshape((1, w)), (h, 1))
     grid_y = np.tile(np.arange(h).reshape((h, 1)), (1, w))
-    pred_box[:, :, :, :, 0] = (grid_x + sigmoid(pred_box[:, :, :, :, 0])) / w
-    pred_box[:, :, :, :, 1] = (grid_y + sigmoid(pred_box[:, :, :, :, 1])) / h
+    pred_box[:, :, :, :, 0] = (
+        grid_x + sigmoid(pred_box[:, :, :, :, 0]) * scale_x_y + bias_x_y) / w
+    pred_box[:, :, :, :, 1] = (
+        grid_y + sigmoid(pred_box[:, :, :, :, 1]) * scale_x_y + bias_x_y) / h
 
     mask_anchors = []
     for m in anchor_mask:
@@ -180,6 +184,7 @@ class TestYolov3LossOp(OpTest):
             "ignore_thresh": self.ignore_thresh,
             "downsample_ratio": self.downsample_ratio,
             "use_label_smooth": self.use_label_smooth,
+            "scale_x_y": self.scale_x_y,
         }
 
         self.inputs = {
@@ -222,6 +227,7 @@ class TestYolov3LossOp(OpTest):
         self.gtbox_shape = (3, 5, 4)
         self.gtscore = True
         self.use_label_smooth = True
+        self.scale_x_y = 1.
 
 
 class TestYolov3LossWithoutLabelSmooth(TestYolov3LossOp):
@@ -238,6 +244,7 @@ class TestYolov3LossWithoutLabelSmooth(TestYolov3LossOp):
         self.gtbox_shape = (3, 5, 4)
         self.gtscore = True
         self.use_label_smooth = False
+        self.scale_x_y = 1.
 
 
 class TestYolov3LossNoGTScore(TestYolov3LossOp):
@@ -254,6 +261,24 @@ class TestYolov3LossNoGTScore(TestYolov3LossOp):
         self.gtbox_shape = (3, 5, 4)
         self.gtscore = False
         self.use_label_smooth = True
+        self.scale_x_y = 1.
+
+
+class TestYolov3LossWithScaleXY(TestYolov3LossOp):
+    def initTestCase(self):
+        self.anchors = [
+            10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198,
+            373, 326
+        ]
+        self.anchor_mask = [0, 1, 2]
+        self.class_num = 5
+        self.ignore_thresh = 0.7
+        self.downsample_ratio = 32
+        self.x_shape = (3, len(self.anchor_mask) * (5 + self.class_num), 5, 5)
+        self.gtbox_shape = (3, 5, 4)
+        self.gtscore = True
+        self.use_label_smooth = True
+        self.scale_x_y = 1.2
 
 
 if __name__ == "__main__":

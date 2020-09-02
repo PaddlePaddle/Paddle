@@ -35,8 +35,7 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 template <typename T>
 static __global__ void repeat_param(const T *input, T *output,
                                     const int repeat_num, const int C) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < repeat_num * C;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, repeat_num * C) {
     int index = i % C;
     output[i] = input[index];
   }
@@ -70,18 +69,27 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must be CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet("It must be CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
 
     auto *x = ctx.Input<Tensor>("X");
     auto &x_dims = x->dims();
-    PADDLE_ENFORCE_GE(
-        x_dims.size(), 2,
-        "the dimension of input X must greater than or equal to 2");
-    PADDLE_ENFORCE_LE(
-        x_dims.size(), 5,
-        "the dimension of input X must smaller than or equal to 5");
+    PADDLE_ENFORCE_GE(x_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "The `shape` in InstanceNormOp is invalid: "
+                          "the size of X's dimensions must greater than "
+                          "or equal to 2. But received: "
+                          "the size of X's dimensions is [%d]",
+                          x_dims.size()));
+    PADDLE_ENFORCE_LE(x_dims.size(), 5,
+                      platform::errors::InvalidArgument(
+                          "The `shape` in InstanceNormOp is invalid: "
+                          "the size of X's dimensions must smaller than"
+                          "or equal to 5. But received: "
+                          "the size of X's dimensions is [%d]",
+                          x_dims.size()));
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
     int NxC = N * C;
@@ -137,10 +145,19 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     const int max_blocks = std::max(max_threads / block, 1);
     const int grid = std::min((NxC + block - 1) / block, max_blocks);
 
-    repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        scale->data<T>(), scale_tmp.data<T>(), N, C);
-    repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        bias->data<T>(), bias_tmp.data<T>(), N, C);
+    math::SetConstant<platform::CUDADeviceContext, T> set_constant;
+    if (scale) {
+      repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
+          scale->data<T>(), scale_tmp.data<T>(), N, C);
+    } else {
+      set_constant(dev_ctx, &scale_tmp, static_cast<T>(1));
+    }
+    if (bias) {
+      repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
+          bias->data<T>(), bias_tmp.data<T>(), N, C);
+    } else {
+      set_constant(dev_ctx, &bias_tmp, static_cast<T>(0));
+    }
 
     auto handle = dev_ctx.cudnn_handle();
 
@@ -231,8 +248,9 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *x = ctx.Input<Tensor>("X");
@@ -257,10 +275,27 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
       d_scale->mutable_data<T>(ctx.GetPlace());
       d_bias->mutable_data<T>(ctx.GetPlace());
     }
-    PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
-    PADDLE_ENFORCE_EQ(scale->dims()[0], C);
+    if (scale) {
+      PADDLE_ENFORCE_EQ(
+          scale->dims().size(), 1UL,
+          platform::errors::InvalidArgument(
+              "The `shape` in InstanceNormOp is invalid: "
+              "the size of scale's dimensions must be equal to 1. But "
+              "received: the size of scale's dimensions"
+              "is [%d]",
+              scale->dims().size()));
+      PADDLE_ENFORCE_EQ(scale->dims()[0], C,
+                        platform::errors::InvalidArgument(
+                            "The `shape` in InstanceNormOp is invalid: "
+                            "the first dimension of scale must be equal to "
+                            "Channels([%d]). But received: "
+                            "the first dimension of scale is [%d],"
+                            "the dimensions of scale is [%s], ",
+                            C, scale->dims()[0], scale->dims()));
+    }
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    math::SetConstant<platform::CUDADeviceContext, T> set_constant;
 
     const int n = x->numel();
     const int block = 512;
@@ -276,8 +311,12 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({NxC}, dev_ctx);
     Tensor d_bias_tmp =
         ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({NxC}, dev_ctx);
-    repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        scale->data<T>(), scale_tmp.data<T>(), N, C);
+    if (scale) {
+      repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
+          scale->data<T>(), scale_tmp.data<T>(), N, C);
+    } else {
+      set_constant(dev_ctx, &scale_tmp, static_cast<T>(1));
+    }
 
     std::vector<int> dims;
     std::vector<int> strides;
@@ -337,7 +376,7 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     } else {
       if (d_x) {
         GradComputeDX<T, block><<<NxC, block, 0, dev_ctx.stream()>>>(
-            d_y->data<T>(), scale->data<BatchNormParamType<T>>(),
+            d_y->data<T>(), scale_tmp.data<BatchNormParamType<T>>(),
             saved_mean_data, x->data<T>(), saved_var_data, C, H * W * D,
             d_x->data<T>());
       }
@@ -586,7 +625,6 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
     auto *ddY = ctx.Output<Tensor>("DDY");
 
     const T *x_data = X->data<T>();
-    const T *scale_data = Scale->data<T>();
     const T *dy_data = dY->data<T>();
     const T *ddx_data = (ddX == nullptr ? nullptr : ddX->data<T>());
 
@@ -596,6 +634,9 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
     const T *mean_data = Saved_mean->data<T>();
     const T *variance_data = Saved_variance->data<T>();
 
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+
     auto &x_dims = X->dims();
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
@@ -603,14 +644,18 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
     const int n = X->numel();
     int sample_size = n / N / C;
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    Tensor scale_tmp;
+    if (!Scale) {
+      scale_tmp.mutable_data<T>({C}, ctx.GetPlace());
+      set_zero(dev_ctx, &scale_tmp, static_cast<T>(1));
+    }
+    const T *scale_data = Scale ? Scale->data<T>() : scale_tmp.data<T>();
+
     const int block = 512;
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(max_threads / block, 1);
     const int grid = NxC;
     const int grid1 = (C + block - 1) / block;
-
-    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
 
     if (dX) {
       T *dx_data = dX->mutable_data<T>(ctx.GetPlace());

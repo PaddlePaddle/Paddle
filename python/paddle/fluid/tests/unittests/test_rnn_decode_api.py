@@ -248,7 +248,8 @@ class PolicyGradient(object):
             func=reward_func, x=[action, length], out=reward)
         neg_log_prob = layers.cross_entropy(act_prob, action)
         cost = neg_log_prob * reward
-        cost = (layers.reduce_sum(cost) / layers.reduce_sum(length)
+        cost = (layers.reduce_sum(cost) /
+                layers.cast(layers.reduce_sum(length), "float32")
                 ) if length is not None else layers.reduce_mean(cost)
         optimizer = fluid.optimizer.Adam(self.lr)
         optimizer.minimize(cost)
@@ -369,11 +370,11 @@ class SeqPGAgent(object):
             self.probs, self.samples, self.sample_length = self.model(
                 source, source_length, target, target_length)
             self.samples.stop_gradient = True
-            self.reward = fluid.layers.create_global_var(
+            self.reward = fluid.data(
                 name="reward",
-                shape=[-1, -1],  # batch_size, seq_len
-                value="1",
+                shape=[None, None],  # batch_size, seq_len
                 dtype=self.probs.dtype)
+            self.samples.stop_gradient = False
             self.cost = self.alg.learn(self.probs, self.samples, self.reward,
                                        self.sample_length)
 

@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
+
 #include <mutex>  // NOLINT
 #include <utility>
+
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 
 namespace paddle {
@@ -26,7 +28,10 @@ bool LockedAllocator::IsAllocThreadSafe() const { return true; }
 LockedAllocator::LockedAllocator(
     std::shared_ptr<Allocator> underlying_allocator)
     : underlying_allocator_(std::move(underlying_allocator)) {
-  PADDLE_ENFORCE_NOT_NULL(underlying_allocator_);
+  PADDLE_ENFORCE_NOT_NULL(
+      underlying_allocator_,
+      platform::errors::InvalidArgument(
+          "Underlying allocator of LockedAllocator is NULL"));
   if (!underlying_allocator_->IsAllocThreadSafe()) {
     mtx_.reset(new std::mutex());
   }

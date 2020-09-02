@@ -42,12 +42,6 @@ ExternalProject_Add(
   TEST_COMMAND      ""
 )
 
-if(${CMAKE_VERSION} VERSION_LESS "3.3.0")
-  set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/dlpack_dummy.c)
-  file(WRITE ${dummyfile} "const char *dummy = \"${dummyfile}\";")
-  add_library(dlpack STATIC ${dummyfile})
-else()
-  add_library(dlpack INTERFACE)
-endif()
+add_library(dlpack INTERFACE)
 
 add_dependencies(dlpack extern_dlpack)

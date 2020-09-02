@@ -41,12 +41,6 @@ ExternalProject_Add(
         TEST_COMMAND      ""
 )
 
-if(${CMAKE_VERSION} VERSION_LESS "3.3.0")
-    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/pybind_dummy.c)
-    file(WRITE ${dummyfile} "const char * dummy_pybind = \"${dummyfile}\";")
-    add_library(pybind STATIC ${dummyfile})
-else()
-    add_library(pybind INTERFACE)
-endif()
+add_library(pybind INTERFACE)
 
 add_dependencies(pybind extern_pybind)

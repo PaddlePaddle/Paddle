@@ -50,10 +50,10 @@ class LayerNormOpConverter : public OpConverter {
     auto* Scale_v = scope.FindVar(op_desc.Input("Scale").front());
     const int begin_norm_axis =
         op_desc.HasAttr("begin_norm_axis")
-            ? boost::get<int>(op_desc.GetAttr("begin_norm_axis"))
+            ? BOOST_GET_CONST(int, op_desc.GetAttr("begin_norm_axis"))
             : 1;
     const float eps = op_desc.HasAttr("epsilon")
-                          ? boost::get<float>(op_desc.GetAttr("epsilon"))
+                          ? BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"))
                           : 1e-5f;
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v, platform::errors::InvalidArgument(

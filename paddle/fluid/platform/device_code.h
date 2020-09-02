@@ -56,9 +56,13 @@ class CUDADeviceCode : public DeviceCode {
     workload_per_thread_ = workload_per_thread;
   }
 
+  static void CheckAvailableStatus();
+  static bool IsAvailable() { return available_; }
+
  private:
   bool CheckNVRTCResult(nvrtcResult result, std::string function);
-  bool CheckCUDADriverResult(CUresult result, std::string function);
+
+  static bool available_;
 
   bool is_compiled_{false};
   int max_threads_{0};

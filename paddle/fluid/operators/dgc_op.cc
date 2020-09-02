@@ -25,28 +25,21 @@ class DGCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("U"), "Input(U) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of DGCop should not be null.");
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Param"), true,
-        platform::errors::NotFound("Input(Param) of DGCop is not found."));
-    PADDLE_ENFORCE(ctx->HasInput("current_step"),
-                   "Input(current_step) of DGCop should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("nranks"), true,
-                      "Input(nranks) of DGCop should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("U"), "Input", "U", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasInput("current_step"), "Input", "current_step",
+                   "DGCOp");
+    OP_INOUT_CHECK(ctx->HasInput("nranks"), "Input", "nranks", "DGCOp");
 
-    PADDLE_ENFORCE(ctx->HasOutput("U_out"),
-                   "Output(U_out) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("V_out"),
-                   "Output(V_out) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("k"),
-                   "Output(k) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("EncodeGrad"),
-                   "Output(EncodeGrad) of DGCop should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("GatherBuff"), true,
-                      "Output(EncodeGrad) of DGCop should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("U_out"), "Output", "U_out", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasOutput("V_out"), "Output", "V_out", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasOutput("k"), "Output", "k", "DGCOp");
+    OP_INOUT_CHECK(ctx->HasOutput("EncodeGrad"), "Output", "EncodeGrad",
+                   "DGCOp");
+    OP_INOUT_CHECK(ctx->HasOutput("GatherBuff"), "Output", "GatherBuff",
+                   "DGCOp");
   }
 
  protected:

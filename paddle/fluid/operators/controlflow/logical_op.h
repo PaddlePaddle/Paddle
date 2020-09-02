@@ -16,6 +16,7 @@ limitations under the License. */
 #include <math.h>
 #include <type_traits>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
@@ -57,10 +58,8 @@ class BinaryLogicalOpKernel
     auto* y = context.Input<framework::Tensor>("Y");
     auto* out = context.Output<framework::Tensor>("Out");
     Functor binary_func;
-    platform::Transform<DeviceContext> trans;
-    trans(context.template device_context<DeviceContext>(), x->data<T>(),
-          x->data<T>() + x->numel(), y->data<T>(),
-          out->mutable_data<bool>(context.GetPlace()), binary_func);
+    ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context, x, y, -1,
+                                                          binary_func, out);
   }
 };
 

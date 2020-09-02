@@ -26,6 +26,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
+#include "paddle/fluid/operators/distributed/large_scale_kv.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
 
@@ -42,6 +43,7 @@ void RunServer(std::shared_ptr<distributed::RPCServer> service) {
   service->StartServer();
   VLOG(4) << "RunServer thread end";
 }
+
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();
@@ -74,7 +76,9 @@ static void ParallelExecuteBlocks(
                 << "pointer: " << prepared[run_block].get();
         executor->RunPreparedContext(prepared[run_block].get(), scope);
       } catch (const std::exception &e) {
-        LOG(FATAL) << "run sub program:" << idx << " error " << e.what();
+        PADDLE_THROW(platform::errors::Fatal(
+            "Run %d-th sub program failed. The exception is:\n%s.", idx,
+            e.what()));
       }
     }));
   }
@@ -105,6 +109,19 @@ static int64_t GetTimestamp() {
   struct timeval tp;
   gettimeofday(&tp, NULL);
   return tp.tv_sec * 1000 + tp.tv_usec / 1000;
+}
+
+// For sync, sparse variables need recover grad type from LodTensor to
+// SelectedRows
+void ResetSparseVarsType(framework::Scope *recv_scope) {
+  auto *ins = distributed::LargeScaleKV::GetInstance();
+  auto grads = ins->GetAllGrads();
+
+  for (auto &grad : grads) {
+    auto *v = recv_scope->FindVar(grad);
+    v->Clear();
+    v->GetMutable<framework::SelectedRows>();
+  }
 }
 
 void ListenAndServOp::RunSyncLoop(
@@ -177,6 +194,7 @@ void ListenAndServOp::RunSyncLoop(
 
     VLOG(3) << "ResetReceivedVars";
     ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
+    ResetSparseVarsType(recv_scope);
 
     VLOG(3) << "wait all clients to get parameters back";
     rpc_service_->SetCond(distributed::kRequestGet);
@@ -250,7 +268,6 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
-
   std::vector<int> block_list;
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
     block_list.push_back(blkid);
@@ -277,6 +294,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   request_send_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_get_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
+  request_send_and_recv_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
   while (true) {
     if (rpc_service_->IsExit()) {
@@ -315,8 +333,9 @@ void ListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
                                     const framework::Scope &scope) const {
   for (const auto &varname : varnames) {
     auto var = scope.FindVar(varname);
-    PADDLE_ENFORCE(var != nullptr,
-                   "Received var should be initialized in the received scope.");
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::PreconditionNotMet(
+                 "Received var is not initialized in the received scope."));
     if (var->IsType<framework::SelectedRows>()) {
       sparse_vars_.push_back(varname);
     } else if (var->IsType<framework::LoDTensor>() ||
@@ -344,7 +363,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   auto pserver_id = Attr<int>("pserver_id");
   auto inputs = Inputs("X");
 
-  PADDLE_ENFORCE(!rpc_service_);
+  PADDLE_ENFORCE_EQ(rpc_service_, nullptr,
+                    platform::errors::PreconditionNotMet(
+                        "RPC service has been created unexpectedly."));
   std::string endpoint = Attr<std::string>("endpoint");
   int checkpoint_block_id = Attr<int>(kCheckpointBlockId);
   int lr_decay_block_id = Attr<int>(kLRDecayBlockId);
@@ -367,12 +388,14 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       new distributed::RequestGetHandler(distributed_mode, dc_sgd));
   request_prefetch_handler_.reset(
       new distributed::RequestPrefetchHandler(distributed_mode));
-  request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
-      distributed_mode, checkpoint_block_id));
+  request_checkpoint_handler_.reset(
+      new distributed::RequestCheckpointHandler(distributed_mode));
   request_get_no_barrier_handler_.reset(
       new distributed::RequestGetNoBarrierHandler());
-  request_notify_handler_.reset(new distributed::RequestNotifyHandler(
-      distributed_mode, lr_decay_block_id));
+  request_notify_handler_.reset(
+      new distributed::RequestNotifyHandler(distributed_mode, fan_in));
+  request_send_and_recv_handler_.reset(
+      new distributed::RequestSendAndRecvHandler(distributed_mode));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(), rpc_send_thread_num);
@@ -387,12 +410,18 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                             request_get_no_barrier_handler_.get());
   rpc_service_->RegisterRPC(distributed::kRequestNotify,
                             request_notify_handler_.get(), rpc_send_thread_num);
+  rpc_service_->RegisterRPC(distributed::kRequestSendAndRecv,
+                            request_send_and_recv_handler_.get(),
+                            rpc_get_thread_num);
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
-  PADDLE_ENFORCE(optimize_blocks.size() >= 1,
-                 "optimize blocks should be 1 at least on the pserver side.");
+  PADDLE_ENFORCE_GE(optimize_blocks.size(), 1,
+                    platform::errors::PreconditionNotMet(
+                        "optimize blocks is less than 1. Optimize blocks "
+                        "should be 1 at least on the pserver side."));
   auto *program = optimize_blocks[0]->Program();
+
   framework::Executor executor(dev_place);
 
   std::shared_ptr<framework::ExecutorPrepareContext> ckpt_pre_context = nullptr;
@@ -465,6 +494,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   f(request_checkpoint_handler_.get());
   f(request_get_no_barrier_handler_.get());
   f(request_notify_handler_.get());
+  f(request_send_and_recv_handler_.get());
 
   // register SIGINT(from ctrl+C) and SIGTERM(from kill) signal handlers
   signal(SIGINT, SignalHandler::StopAndExit);

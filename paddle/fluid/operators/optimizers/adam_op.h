@@ -20,7 +20,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -377,14 +376,14 @@ class AdamOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
-                   "but the received is %s",
-                   ctx.InputNames("Param").front(),
-                   framework::ToTypeName(param_var->Type()));
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+                      platform::errors::InvalidArgument(
+                          "The Var(%s)'s type should be LoDTensor, "
+                          "but the received is %s",
+                          ctx.InputNames("Param").front(),
+                          framework::ToTypeName(param_var->Type())));
 
     using paddle::framework::LoDTensor;
-    using paddle::operators::detail::Ref;
 
     int64_t min_row_size_to_use_multithread =
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");
@@ -408,11 +407,19 @@ class AdamOpKernel : public framework::OpKernel<T> {
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     if (ctx.HasInput("Beta1Tensor")) {
       auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
+      PADDLE_ENFORCE_EQ(beta1_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(Beta1Tensor) size must be 1, but get %d",
+                            beta1_tensor->numel()));
       beta1 = static_cast<T>(GetAttrFromTensor(beta1_tensor));
     }
     T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
     if (ctx.HasInput("Beta2Tensor")) {
       auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
+      PADDLE_ENFORCE_EQ(beta2_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(Beta2Tensor) size must be 1, but get %d",
+                            beta2_tensor->numel()));
       beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
     }
     VLOG(3) << "beta1_pow.numel() : " << beta1_pow->numel()
@@ -566,7 +573,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
         functor(param->numel());
       }
     } else {
-      PADDLE_THROW("Variable type not supported by adam_op");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Variable type not supported by adam_op"));
     }
   }
 };

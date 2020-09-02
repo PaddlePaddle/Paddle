@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -82,12 +79,12 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
 
   for (int64_t i = 0; i < before; ++i) {
     if (platform::is_cpu_place(place)) {
-      auto& cpu_place = boost::get<platform::CPUPlace>(place);
+      auto& cpu_place = BOOST_GET_CONST(platform::CPUPlace, place);
       memory::Copy(cpu_place, dst + i * dst_after, cpu_place,
                    src + i * src_after, sizeof(T) * size);
     } else {
 #ifdef PADDLE_WITH_CUDA
-      auto& gpu_place = boost::get<platform::CUDAPlace>(place);
+      auto& gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place);
       auto& cuda_ctx =
           reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
       memory::Copy(gpu_place, dst + i * dst_after, gpu_place,

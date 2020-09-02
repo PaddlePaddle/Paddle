@@ -471,7 +471,9 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
         mAP += average_precisions;
         ++count;
       } else {
-        LOG(FATAL) << "Unkown ap version: " << ap_type;
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unkown ap version %s. Now only supports integral and l1point.",
+            ap_type));
       }
     }
     if (count != 0) mAP /= count;

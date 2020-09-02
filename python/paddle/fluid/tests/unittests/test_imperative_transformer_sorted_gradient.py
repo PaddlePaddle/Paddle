@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Embedding, LayerNorm, Linear, Layer
 from paddle.fluid.dygraph import to_variable, guard
@@ -364,7 +365,7 @@ class PrePostProcessLayer(Layer):
     def forward(self, prev_out, out, process_cmd, dropout_rate=0.):
         for cmd in process_cmd:
             if cmd == "a":  # add residual connection
-                out = out + prev_out if prev_out else out
+                out = out + prev_out if prev_out is not None else out
             elif cmd == "n":  # add layer normalization
                 out = self._layer_norm(out)
             elif cmd == "d":  # add dropout
@@ -443,7 +444,7 @@ class MultiHeadAttentionLayer(Layer):
             y=transpose_k,
             transpose_y=True,
             alpha=self._d_model**-0.5)
-        if attn_bias:
+        if attn_bias is not None:
             product += attn_bias
         weights = fluid.layers.softmax(product)
         if self._dropout_rate:
@@ -949,10 +950,9 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
         seed = 90
 
         with guard():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
+            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,
@@ -1010,8 +1010,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                     program = traced_layer.program
                     traced_layer.save_inference_model(
                         './infer_imperative_transformer',
-                        feed=range(len(ins_static)),
-                        fetch=range(len(outs_static)))
+                        feed=list(range(len(ins_static))),
+                        fetch=list(range(len(outs_static))))
                 else:
                     outs = transformer(enc_inputs, dec_inputs, label, weights)
 
@@ -1021,7 +1021,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                     for param in transformer.parameters():
                         dy_param_init[param.name] = param.numpy()
 
-                dy_avg_cost.backward(backward_strategy)
+                dy_avg_cost.backward()
                 optimizer.minimize(dy_avg_cost)
                 transformer.clear_gradients()
 
@@ -1035,8 +1035,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             dy_token_num_value = dy_token_num.numpy()
 
         with new_program_scope():
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+            paddle.manual_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,

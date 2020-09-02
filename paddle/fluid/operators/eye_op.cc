@@ -22,16 +22,20 @@ class EyeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of EyeOP should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of EyeOP should not be null."));
     auto num_rows = ctx->Attrs().Get<int64_t>("num_rows");
-    PADDLE_ENFORCE(num_rows >= 0,
-                   "The value of Input(num_rows) should be non-negative int.");
+    PADDLE_ENFORCE_EQ(
+        num_rows >= 0, true,
+        platform::errors::InvalidArgument(
+            "The value of Input(num_rows) should be non-negative int."));
     auto num_columns = ctx->Attrs().Get<int64_t>("num_columns");
     if (num_columns == -1) num_columns = num_rows;
-    PADDLE_ENFORCE(
-        num_columns >= 0,
-        "The value of Input(num_columns) should be non-negative int.");
+    PADDLE_ENFORCE_EQ(
+        num_columns >= 0, true,
+        platform::errors::InvalidArgument(
+            "The value of Input(num_columns) should be non-negative int."));
     ctx->SetOutputDim("Out", {num_rows, num_columns});
   }
 
@@ -48,9 +52,8 @@ class EyeOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
-        boost::get<int>(ctx->GetAttr("dtype")));
-    auto& out_var_name = ctx->Output("Out").front();
-    ctx->SetDataType(out_var_name, data_type);
+        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
+    ctx->SetOutputDataType("Out", data_type);
   }
 };
 
@@ -80,7 +83,6 @@ Return an identity tensor whose shape is [num_rows, num_columns].
 
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
-using float16 = paddle::platform::float16;
 
 REGISTER_OPERATOR(
     eye, ops::EyeOp, ops::EyeOpMaker, ops::EyeOpVarTypeInference,
@@ -90,4 +92,4 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(eye, ops::EyeKernel<CPU, float>,
                        ops::EyeKernel<CPU, double>,
                        ops::EyeKernel<CPU, int64_t>, ops::EyeKernel<CPU, int>,
-                       ops::EyeKernel<CPU, float16>);
+                       ops::EyeKernel<CPU, paddle::platform::float16>);

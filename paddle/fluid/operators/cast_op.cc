@@ -59,22 +59,25 @@ class CastOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("X"), true,
-        platform::errors::NotFound("The input(X) of cast op must be set"));
-    PADDLE_ENFORCE_EQ(
-        context->HasOutput("Out"), true,
-        platform::errors::NotFound("The output of cast op must be set"));
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "cast");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "cast");
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
   }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // CastOp kernel's device type is decided by input tensor place
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
-    return kt;
+    auto *tensor = ctx.Input<framework::LoDTensor>("X");
+    PADDLE_ENFORCE_EQ(tensor->IsInitialized(), true,
+                      platform::errors::PreconditionNotMet(
+                          "The tensor of Input(X) is not initialized."));
+    auto &tensor_place = tensor->place();
+    // NOTE: cuda pinned tensor need to copy its data to target place
+    if (platform::is_cuda_pinned_place(tensor_place)) {
+      return framework::OpKernelType(tensor->type(), ctx.device_context());
+    }
+    return framework::OpKernelType(tensor->type(), tensor_place);
   }
 };
 

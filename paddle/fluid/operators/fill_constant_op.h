@@ -20,48 +20,26 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 
-inline framework::DDim GetShape(const framework::ExecutionContext &ctx) {
+inline framework::DDim GetShape(const framework::ExecutionContext &ctx,
+                                std::string op_type) {
   // 1. shape is a Tensor
   if (ctx.HasInput("ShapeTensor")) {
     auto *shape_tensor = ctx.Input<framework::LoDTensor>("ShapeTensor");
-    auto *shape_data = shape_tensor->data<int>();
-    framework::Tensor cpu_shape_tensor;
-    if (platform::is_gpu_place(shape_tensor->place())) {
-      TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
-      shape_data = cpu_shape_tensor.data<int>();
-    }
-    auto vec_shape =
-        std::vector<int>(shape_data, shape_data + shape_tensor->numel());
+    auto vec_shape = GetDataFromTensor<int>(shape_tensor);
     return framework::make_ddim(vec_shape);
   }
 
   // 2. shape is a list/tuple containing Tensor
   auto shape_tensor_list = ctx.MultiInput<framework::Tensor>("ShapeTensorList");
   if (shape_tensor_list.size() > 0) {
-    std::vector<int> vec_shape;
-    for (size_t i = 0; i < shape_tensor_list.size(); ++i) {
-      auto tensor = shape_tensor_list[i];
-      PADDLE_ENFORCE_EQ(
-          tensor->dims(), framework::make_ddim({1}),
-          "ShapeError: If the element type of 'shape' in FillConstantOp is "
-          "Tensor, "
-          "the element's shape must be [1]. But received the element's shape "
-          "is [%s]",
-          tensor->dims());
-      if (platform::is_gpu_place(tensor->place())) {
-        framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vec_shape.push_back(*temp.data<int>());
-      } else {
-        vec_shape.push_back(*tensor->data<int>());
-      }
-    }
+    auto vec_shape = GetDataFromTensorList(shape_tensor_list);
     return framework::make_ddim(vec_shape);
   }
 
@@ -99,7 +77,24 @@ class FillConstantKernel : public framework::OpKernel<T> {
         value = static_cast<T>(tmp_value);
       }
     }
-    auto shape = GetShape(ctx);
+    if (ctx.HasInput("ValueTensor")) {
+      auto *value_tensor = ctx.Input<framework::Tensor>("ValueTensor");
+      PADDLE_ENFORCE_EQ(
+          value_tensor->numel(), 1,
+          platform::errors::InvalidArgument(
+              "When use Tensor as value to set Tensor value in fill_cosntant, "
+              "value input(ValueTensor) size must be 1, but get %d",
+              value_tensor->numel()));
+      const T *tensor_data = value_tensor->data<T>();
+      framework::Tensor cpu_tensor;
+      if (platform::is_gpu_place(value_tensor->place())) {
+        TensorCopySync(*value_tensor, platform::CPUPlace(), &cpu_tensor);
+        tensor_data = cpu_tensor.data<T>();
+      }
+      value = tensor_data[0];
+    }
+    const std::string op_type = "fill_constant";
+    auto shape = GetShape(ctx, op_type);
 
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
@@ -108,9 +103,9 @@ class FillConstantKernel : public framework::OpKernel<T> {
       tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
       tensor->Resize(shape);
     } else {
-      PADDLE_THROW(
-          "fill constant op's output only"
-          "supports SelectedRows and LoDTensor");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "In fill constant Op, the output only supports SelectedRows and "
+          "LoDTensor."));
     }
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

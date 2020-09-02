@@ -65,13 +65,18 @@ class WarpCTCFunctor {
     ctcStatus_t status = platform::dynload::get_workspace_size(
         cpu_label_lengths, cpu_input_lengths, static_cast<int>(sequence_width),
         static_cast<int>(num_sequences), options_, &workspace_bytes);
-    PADDLE_ENFORCE_EQ(CTC_STATUS_SUCCESS, status,
-                      "warp-ctc [version %d] Error in get_workspace_size: ",
-                      warpctc_version_,
-                      platform::dynload::ctcGetStatusString(status));
-    PADDLE_ENFORCE_GT(workspace_bytes, 0UL,
-                      "Bytes of workspace got by warp-ctc function, "
-                      "get_workspace_size(), should be larger than 0.");
+
+    PADDLE_ENFORCE_EQ(
+        CTC_STATUS_SUCCESS, status,
+        platform::errors::PreconditionNotMet(
+            "warp-ctc [version %d] Error in get_workspace_size: %s",
+            warpctc_version_, platform::dynload::ctcGetStatusString(status)));
+    PADDLE_ENFORCE_GT(
+        workspace_bytes, 0UL,
+        platform::errors::InvalidArgument(
+            "Bytes of workspace got by warp-ctc function, "
+            "get_workspace_size() should be larger than 0, but received %d",
+            workspace_bytes));
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     size_t workspace_elements = workspace_bytes / sizeof(float) + 1UL;
@@ -88,10 +93,12 @@ class WarpCTCFunctor {
         input, gradient, cpu_labels, cpu_label_lengths, cpu_input_lengths,
         static_cast<int>(sequence_width), static_cast<int>(num_sequences),
         cpu_loss, workspace_data, options_);
-    PADDLE_ENFORCE_EQ(CTC_STATUS_SUCCESS, status,
-                      "warp-ctc [version %d] Error in compute_ctc_loss: ",
-                      warpctc_version_,
-                      platform::dynload::ctcGetStatusString(status));
+
+    PADDLE_ENFORCE_EQ(
+        CTC_STATUS_SUCCESS, status,
+        platform::errors::PreconditionNotMet(
+            "warp-ctc [version %d] Error in get_workspace_size: %s",
+            warpctc_version_, platform::dynload::ctcGetStatusString(status)));
   }
 
  protected:
@@ -156,23 +163,40 @@ class WarpCTCKernel : public framework::OpKernel<T> {
                             labels_length_cpu.data<int64_t>()[i]);
       }
     } else {
+      PADDLE_ENFORCE_GT(logits->NumLevels(), 0UL,
+                        platform::errors::InvalidArgument(
+                            "Input(Logits) Tensor of WarpCTC "
+                            "does not contain LoD information."));
+      PADDLE_ENFORCE_GT(label->NumLevels(), 0UL,
+                        platform::errors::InvalidArgument(
+                            "Input(Label) Tensor of WarpCTC "
+                            "does not contain LoD information."));
+
       logits_lod = framework::ToAbsOffset(logits->lod())[0];
       auto logits_dims = logits->dims();
+
       PADDLE_ENFORCE_EQ(
           logits_dims[0], static_cast<int64_t>(logits_lod.back()),
-          "The first dimension of Input(Logits) should be equal to "
-          "the sum of all sequences' lengths.");
+          platform::errors::InvalidArgument(
+              "The first dimension of Input(Logits) should be equal to "
+              "the sum of all sequences' lengths = %d., but received %d. ",
+              static_cast<int64_t>(logits_lod.back()), logits_dims[0]));
 
       label_lod = framework::ToAbsOffset(label->lod())[0];
       auto label_dims = label->dims();
-      PADDLE_ENFORCE_EQ(
-          label_dims[0], label->numel(),
-          "The width of each timestep in Input(Label) should be 1.");
+      PADDLE_ENFORCE_EQ(label_dims[1], 1,
+                        platform::errors::InvalidArgument(
+                            "The last dimension of Input(Label) should be 1, "
+                            "but received %d",
+                            label_dims[1]));
 
       num_sequences = logits_lod.size() - 1;
-      PADDLE_ENFORCE_EQ(num_sequences, label_lod.size() - 1,
-                        "The number of sequences of Input(Logits) should be "
-                        "equal to that of Input(Label).");
+      PADDLE_ENFORCE_EQ(
+          num_sequences, label_lod.size() - 1,
+          platform::errors::InvalidArgument(
+              "The number of sequences of Input(Logits) should be "
+              "equal to that of Input(Label) = %d, but received %d",
+              label_lod.size() - 1, num_sequences));
 
       sequence_width = logits->numel() / logits_dims[0];
       max_sequence_length = math::MaximumSequenceLength(logits_lod);

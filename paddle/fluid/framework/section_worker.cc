@@ -10,6 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL)
+#include <float.h>
+#include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/program_desc.h"
+
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -25,82 +30,17 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-uint64_t SyncFunctor::sync_flag_ = 0;
-std::vector<Scope*> SyncFunctor::pipeline_scopes_;
-
-SyncFunctor::SyncFunctor(int rank_id, int rank_num, int sync_steps)
-    : rank_id_(rank_id), rank_num_(rank_num), sync_steps_(sync_steps) {
-  PADDLE_ENFORCE(rank_num > 1, "rank_num should larger than 1");
-  counter_ = 0;
-  sync_signal_ = 0;
-  uint8_t* ptr = reinterpret_cast<uint8_t*>(&sync_signal_);
-  for (int i = 0; i < rank_num_; ++i) {
-    ptr[i] = 0xFF;
-  }
-}
-
-int SyncFunctor::operator()(Scope* scope) {
-  ++counter_;
-  if (counter_ < sync_steps_) {
-    return 0;
-  }
-  if (counter_ == sync_steps_) {
-    reinterpret_cast<uint8_t*>(&sync_flag_)[rank_id_] = 0xFF;
-  }
-
-  if (sync_flag_ == sync_signal_) {
-    static std::mutex mutex;
-    if (mutex.try_lock()) {
-      if (sync_flag_ == sync_signal_) {
-        Synchronize();
-        sync_flag_ = 0;
-      }
-      mutex.unlock();
-    }
-  }
-
-  if (sync_flag_ == 0) {
-    counter_ = 0;
-  }
-  return 0;
-}
-
-void SyncFunctor::Synchronize() {
-  for (const std::string& name : *sync_param_) {
-    platform::NCCLGroupGuard guard;
-    for (int i = 0; i < rank_num_; ++i) {
-      const platform::NCCLContext& nccl_ctx = nccl_ctx_map_->at(i);
-      LoDTensor* tensor =
-          pipeline_scopes_[i]->Var(name)->GetMutable<LoDTensor>();
-      // TODO(hutuxian): do not depend on data type explicitly
-      float* data =
-          tensor->mutable_data<float>(nccl_ctx_map_->DevCtx(i)->GetPlace());
-      const int numel = tensor->numel();
-
-      paddle::framework::AttributeMap attrs;
-      attrs.insert({"scale", static_cast<float>(1. / rank_num_)});
-      auto scale_op = framework::OpRegistry::CreateOp("scale", {{"X", {name}}},
-                                                      {{"Out", {name}}}, attrs);
-      scale_op->Run(*(pipeline_scopes_[i]),
-                    nccl_ctx_map_->DevCtx(i)->GetPlace());
-      PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-          data, data, numel, ncclFloat, ncclSum, nccl_ctx.comm(),
-          dynamic_cast<platform::CUDADeviceContext*>(
-              platform::DeviceContextPool::Instance().Get(
-                  platform::CUDAPlace(i)))
-              ->stream()));
-    }
-  }
-  nccl_ctx_map_->WaitAll();
-}
-
 std::atomic<int> SectionWorker::cpu_id_(0);
-void SectionWorker::Initialize(const TrainerDesc& trainer_desc) {
+std::mutex SectionWorker::thread_mutex;
+std::condition_variable SectionWorker::thread_condition;
+bool SectionWorker::threads_completed = false;
+uint64_t SectionWorker::batch_id_(0);
+
+void SectionWorker::Initialize(const TrainerDesc& desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
-  std::shared_ptr<framework::ProgramDesc> program;
-  program.reset(new ProgramDesc(
-      trainer_desc.section_param().section_config(section_id_).program_desc()));
-  for (auto& op_desc : program->Block(0).AllOps()) {
+  program_.reset(new ProgramDesc(
+      desc.section_param().section_config(section_id_).program_desc()));
+  for (auto& op_desc : program_->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
 }
@@ -136,305 +76,494 @@ void SectionWorker::AutoSetCPUAffinity(bool reuse) {
       (0 == CPU_ISSET(proc, &mask))) {
     LOG(WARNING) << "Fail to set thread affinity to CPU " << proc;
   }
-  SEC_LOG << "Set " << thread_cpu_id << "th thread affinity to CPU " << proc;
+  VLOG(3) << "Set " << thread_cpu_id << "th thread affinity to CPU " << proc;
 }
 
 void SectionWorker::TrainFiles() {
-  SEC_LOG << "begin section_worker TrainFiles";
+  VLOG(3) << "begin section_worker TrainFiles";
   AutoSetCPUAffinity(true);
 
-  int64_t step_cnt = 0;
-  int64_t accum_num = 0;
-  int batch_size = 0;
-  Scope* scope = nullptr;
-  if (device_reader_ != nullptr) {
-    device_reader_->Start();
-  }
-  while (in_scope_queue_->Receive(&scope)) {
-    if (device_reader_ != nullptr) {
-      device_reader_->AssignFeedVar(*scope);
-      batch_size = device_reader_->Next();
-      if (batch_size <= 0) {
-        break;
-      }
-      SEC_LOG << "read batch size: " << batch_size;
+  int64_t max_memory_size = 0;
+  std::unique_ptr<GarbageCollector> gc;
+  auto unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
+#ifdef PADDLE_WITH_CUDA
+  if (platform::is_gpu_place(place_)) {
+    if (IsFastEagerDeletionModeEnabled()) {
+      gc.reset(new UnsafeFastGPUGarbageCollector(
+          BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
     } else {
-      // TODO(hutuxian): Keep batch_size in scope? Or is there a better way to
-      // fetch batch_size? Some variables may not have batch_size.
-      PADDLE_ENFORCE(
-          in_var_names_->size(),
-          "Section without a reader or in variable is not supported by now");
-      const LoDTensor& tensor =
-          scope->FindVar(in_var_names_->at(0))->Get<LoDTensor>();
-      batch_size =
-          tensor.lod().size() ? tensor.lod()[0].size() - 1 : tensor.dims()[0];
-      SEC_LOG << "input batch size: " << batch_size;
+      gc.reset(new DefaultStreamGarbageCollector(
+          BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
     }
-
-    Scope* exe_scope = scope;
-    if (section_id_ > 0 && platform::is_gpu_place(place_)) {
-      SEC_LOG << "CPU2GPU memory copy";
-
-      if (scope->kids().empty()) {
-        exe_scope = &scope->NewScope();
-      } else {
-        exe_scope = scope->kids().front();
-        PADDLE_ENFORCE(scope->kids().size() == 1, "scope->kids().size(): %zu",
-                       scope->kids().size());
-      }
-
-      for (const std::string& name : *in_var_names_) {
-        const LoDTensor& src_tensor = scope->FindVar(name)->Get<LoDTensor>();
-        if (platform::is_gpu_place(src_tensor.place())) {
-          continue;
-        }
-        LoDTensor* gpu_tensor = exe_scope->Var(name)->GetMutable<LoDTensor>();
-        gpu_tensor->set_lod(src_tensor.lod());
-        TensorCopy(*static_cast<const Tensor*>(&src_tensor), place_, *dev_ctx_,
-                   static_cast<Tensor*>(gpu_tensor));
-      }
-    }
-
-    SEC_LOG << "begin running ops";
-
-    for (auto& op : ops_) {
-      op->Run(*exe_scope, place_);
-    }
-    exe_scope->DropKids();
-    // Wait for GPU calc finising, as the cudaMemcpy and GPU calc may be in
-    // different streams
-    // No effect when it is a CPUDeviceContext
-    dev_ctx_->Wait();
-
-#ifdef PADDLE_WITH_BOX_PS
-    auto box_ptr = BoxWrapper::GetInstance();
-    auto& metric_list = box_ptr->GetMetricList();
-    for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
-      auto* metric_msg = iter->second;
-      if (metric_msg->IsJoin() != box_ptr->PassFlag()) {
-        continue;
-      }
-      metric_msg->add_data(exe_scope);
-    }
+  } else if (platform::is_cpu_place(place_)) {
 #endif
-    if (section_id_ != section_num_ - 1 && platform::is_gpu_place(place_)) {
-      // FIXME: Temporarily we assume two adjacent sections are in different
-      // places,
-      // and we do data transformation only in sections in GPU place, so the
-      // data is
-      // transform from GPU to CPU
-      // A better way to handle such a data transformation is to record each
-      // place of
-      // joint-out variables, and do transform as required
-
-      SEC_LOG << "GPU2CPU memory copy";
-
-      for (const std::string& name : *out_var_names_) {
-        const LoDTensor& src_tensor =
-            exe_scope->FindVar(name)->Get<LoDTensor>();
-        LoDTensor* dst_tensor = scope->Var(name)->GetMutable<LoDTensor>();
-        dst_tensor->set_lod(src_tensor.lod());
-        TensorCopy(*static_cast<const Tensor*>(&src_tensor),
-                   next_section_place_, *dev_ctx_,
-                   static_cast<Tensor*>(dst_tensor));
-      }
-    }
-
-    out_scope_queue_->Send(scope);
-
-    if (sync_func_) {
-      (*sync_func_)(scope);
-    }
-
-    ++step_cnt;
-    accum_num += batch_size;
+    gc.reset(new CPUGarbageCollector(
+        BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
+#ifdef PADDLE_WITH_CUDA
   }
+#endif
 
-  worker_count_mutex_->lock();
-  --(*worker_count_);
-  worker_count_mutex_->unlock();
-
-  if (*worker_count_ <= 0) {
-    while (section_id_ < section_num_ - 1 && out_scope_queue_->Size()) {
-      sleep(1);
+  if (thread_id_ == 0) {
+    while (true) {
+      // Start a minibatch.
+      for (int i = 0; i < num_microbatches_; ++i) {
+        try {
+          for (auto& op : ops_) {
+            int op_role = op->Attr<int>(std::string("op_role"));
+            // We run op with op_role = kLRSched only for the first microbatch
+            // to avoid increasing the @LR_DECAY_STEP@ multiple times.
+            bool run_first_mbatch =
+                op_role == static_cast<int>(OpRole::kForward) ||
+                op_role == (static_cast<int>(OpRole::kForward) |
+                            static_cast<int>(OpRole::kLoss)) ||
+                op_role == static_cast<int>(OpRole::kLRSched);
+            bool run_others = op_role == static_cast<int>(OpRole::kForward) ||
+                              op_role == (static_cast<int>(OpRole::kForward) |
+                                          static_cast<int>(OpRole::kLoss));
+            if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
+              VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                      << " for scope " << i;
+              op->Run(*microbatch_scopes_[i], place_);
+              if (gc) {
+                DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
+                                    unused_vars_, gc.get());
+              }
+            }
+          }
+        } catch (platform::EOFException&) {
+          std::unique_lock<std::mutex> lk(thread_mutex);
+          threads_completed = true;
+          VLOG(3) << "thread " << thread_id_ << " completed.";
+          VLOG(3) << "called notify all";
+          thread_condition.notify_all();
+          VLOG(0) << "EOF encountered";
+          return;
+        }
+        if (i == 0) {
+          VLOG(3) << "called notify all";
+          std::unique_lock<std::mutex> lk(thread_mutex);
+          batch_id_ += 1;
+          thread_condition.notify_all();
+        }
+      }
+      // backward pass
+      for (int i = 0; i < num_microbatches_; ++i) {
+        for (auto& op : ops_) {
+          int op_role = op->Attr<int>(std::string("op_role"));
+          if (op_role == static_cast<int>(OpRole::kBackward) ||
+              op_role == (static_cast<int>(OpRole::kBackward) |
+                          static_cast<int>(OpRole::kLoss))) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            op->Run(*microbatch_scopes_[i], place_);
+            if (gc) {
+              DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
+                                  unused_vars_, gc.get());
+            }
+          }
+        }
+      }
+      // update pass
+      for (auto& op : ops_) {
+        int op_role = op->Attr<int>(std::string("op_role"));
+        if (op_role == static_cast<int>(OpRole::kOptimize)) {
+          VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                  << " for minibatch scope";
+          op->Run(*microbatch_scopes_[0], place_);
+          if (gc) {
+            DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1],
+                                op.get(), unused_vars_, gc.get());
+          }
+        }
+      }
+      dev_ctx_->Wait();
     }
-    out_scope_queue_->Close();
+  } else {
+    while (true) {
+      {
+        PADDLE_ENFORCE_LE(
+            local_batch_id_, batch_id_,
+            platform::errors::InvalidArgument(
+                "local_batch_id_ (%d) must be less than or equal to "
+                "batch_id_ (%d)",
+                local_batch_id_, batch_id_));
+        std::unique_lock<std::mutex> lk(thread_mutex);
+        if (local_batch_id_ == batch_id_ && !threads_completed) {
+          thread_condition.wait(lk);
+        }
+        VLOG(3) << "thread " << thread_id_ << " local_batch_id_ "
+                << local_batch_id_ << " batch_id_ " << batch_id_;
+        if (threads_completed) {
+          VLOG(3) << "thread " << thread_id_ << " completed.";
+          lk.unlock();
+          threads_completed = false;
+          return;
+        }
+        lk.unlock();
+        local_batch_id_ += 1;
+      }
+      // forward pass:
+      for (int i = 0; i < num_microbatches_; ++i) {
+        for (auto& op : ops_) {
+          int op_role = op->Attr<int>(std::string("op_role"));
+          // We run op with op_role = kLRSched only for the first microbatch
+          // to avoid increasing the @LR_DECAY_STEP@ multiple times.
+          bool run_first_mbatch =
+              op_role == static_cast<int>(OpRole::kForward) ||
+              op_role == (static_cast<int>(OpRole::kForward) |
+                          static_cast<int>(OpRole::kLoss)) ||
+              op_role == static_cast<int>(OpRole::kLRSched);
+          bool run_others = op_role == static_cast<int>(OpRole::kForward) ||
+                            op_role == (static_cast<int>(OpRole::kForward) |
+                                        static_cast<int>(OpRole::kLoss));
+          if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            op->Run(*microbatch_scopes_[i], place_);
+            if (gc) {
+              DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
+                                  unused_vars_, gc.get());
+            }
+          }
+        }
+      }
+      // backward pass
+      for (int i = 0; i < num_microbatches_; ++i) {
+        for (auto& op : ops_) {
+          int op_role = op->Attr<int>(std::string("op_role"));
+          if (op_role == static_cast<int>(OpRole::kBackward) ||
+              op_role == (static_cast<int>(OpRole::kBackward) |
+                          static_cast<int>(OpRole::kLoss))) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            op->Run(*microbatch_scopes_[i], place_);
+            if (gc) {
+              DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
+                                  unused_vars_, gc.get());
+            }
+          }
+        }
+      }
+      // update pass
+      for (auto& op : ops_) {
+        int op_role = op->Attr<int>(std::string("op_role"));
+        if (op_role == static_cast<int>(OpRole::kOptimize)) {
+          VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                  << " for minibatch scope";
+          op->Run(*microbatch_scopes_[0], place_);
+          if (gc) {
+            DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1],
+                                op.get(), unused_vars_, gc.get());
+          }
+        }
+      }
+      dev_ctx_->Wait();
+    }
   }
 }
 
 void SectionWorker::TrainFilesWithProfiler() {
-  SEC_LOG << "begin section_worker TrainFiles with profiler";
+  VLOG(3) << "begin section_worker TrainFiles with profiler";
   AutoSetCPUAffinity(true);
 
-  int64_t step_cnt = 0;
-  int64_t accum_num = 0;
-  int batch_size = 0;
-  Scope* scope = nullptr;
-
-  platform::Timer reader_timer;
-  platform::Timer cal_timer;
-  platform::Timer trans_timer;
-  platform::Timer sync_timer;
-  platform::Timer main_timer;
-  platform::Timer outer_timer;
+  platform::Timer batch_timer;
+  platform::Timer timeline;
 
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
+  std::vector<double> op_max_time;
+  std::vector<double> op_min_time;
+  std::vector<uint64_t> op_count;
   for (auto& op : ops_) {
     op_name.push_back(op->Type());
   }
   op_total_time.resize(ops_.size());
-  for (size_t i = 0; i < op_total_time.size(); ++i) {
-    op_total_time[i] = 0.0;
+  op_max_time.resize(ops_.size());
+  op_min_time.resize(ops_.size());
+  for (size_t i = 0; i < op_min_time.size(); ++i) {
+    op_min_time[i] = DBL_MAX;
   }
-  platform::Timer timeline;
-  if (device_reader_ != nullptr) {
-    device_reader_->Start();
-  }
+  op_count.resize(ops_.size());
 
-  bool started = false;
-  while (in_scope_queue_->Receive(&scope)) {
-    if (UNLIKELY(!started)) {
-      outer_timer.Start();
-      started = true;
-    }
-    main_timer.Resume();
-
-    if (device_reader_ != nullptr) {
-      reader_timer.Resume();
-      device_reader_->AssignFeedVar(*scope);
-      batch_size = device_reader_->Next();
-      reader_timer.Pause();
-      if (batch_size <= 0) {
-        break;
-      }
-      SEC_LOG << "read batch size: " << batch_size;
+  int64_t max_memory_size = 0;
+  std::unique_ptr<GarbageCollector> gc;
+  // const std::vector<std::string> keep_vars;
+  auto unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
+#ifdef PADDLE_WITH_CUDA
+  if (platform::is_gpu_place(place_)) {
+    if (IsFastEagerDeletionModeEnabled()) {
+      gc.reset(new UnsafeFastGPUGarbageCollector(
+          BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
     } else {
-      PADDLE_ENFORCE(
-          in_var_names_->size(),
-          "Section without a reader or in variable is not supported by now");
-      const LoDTensor& tensor =
-          scope->FindVar(in_var_names_->at(0))->Get<LoDTensor>();
-      batch_size =
-          tensor.lod().size() ? tensor.lod()[0].size() - 1 : tensor.dims()[0];
-      SEC_LOG << "input batch size: " << batch_size;
+      gc.reset(new DefaultStreamGarbageCollector(
+          BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
     }
-
-    Scope* exe_scope = scope;
-    if (section_id_ > 0 && platform::is_gpu_place(place_)) {
-      SEC_LOG << "CPU2GPU memory copy";
-      trans_timer.Resume();
-      if (scope->kids().empty()) {
-        exe_scope = &scope->NewScope();
-      } else {
-        exe_scope = scope->kids().front();
-        PADDLE_ENFORCE(scope->kids().size() == 1, "scope->kids().size(): %zu",
-                       scope->kids().size());
-      }
-
-      for (const std::string& name : *in_var_names_) {
-        const LoDTensor& src_tensor = scope->FindVar(name)->Get<LoDTensor>();
-        if (platform::is_gpu_place(src_tensor.place())) {
-          continue;
-        }
-        LoDTensor* gpu_tensor = exe_scope->Var(name)->GetMutable<LoDTensor>();
-        gpu_tensor->set_lod(src_tensor.lod());
-        TensorCopy(*static_cast<const Tensor*>(&src_tensor), place_, *dev_ctx_,
-                   static_cast<Tensor*>(gpu_tensor));
-      }
-      trans_timer.Pause();
-    }
-
-    SEC_LOG << "begin running ops";
-    cal_timer.Resume();
-    int op_id = 0;
-    dev_ctx_->Wait();
-    for (auto& op : ops_) {
-      timeline.Start();
-      op->Run(*exe_scope, place_);
-      dev_ctx_->Wait();
-      timeline.Pause();
-      op_total_time[op_id++] += timeline.ElapsedUS();
-    }
-    exe_scope->DropKids();
-    // Wait for GPU calc finising, as the cudaMemcpy and GPU calc may be in
-    // different streams
-    // No effect when it is a CPUDeviceContext
-    dev_ctx_->Wait();
-    cal_timer.Pause();
-#ifdef PADDLE_WITH_BOX_PS
-    auto box_ptr = BoxWrapper::GetInstance();
-    auto& metric_list = box_ptr->GetMetricList();
-    for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
-      auto* metric_msg = iter->second;
-      if (metric_msg->IsJoin() != box_ptr->PassFlag()) {
-        continue;
-      }
-      metric_msg->add_data(exe_scope);
-    }
+  } else if (platform::is_cpu_place(place_)) {
+#endif
+    gc.reset(new CPUGarbageCollector(
+        BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
+#ifdef PADDLE_WITH_CUDA
+  }
 #endif
 
-    if (section_id_ != section_num_ - 1 && platform::is_gpu_place(place_)) {
-      // FIXME: Temporarily we assume two adjacent sections are in different
-      // places,
-      // and we do data transformation only in sections in GPU place, so the
-      // data is
-      // transform from GPU to CPU
-      // A better way to handle such a data transformation is to record each
-      // place of
-      // joint-out variables, and do transform as required
-
-      SEC_LOG << "GPU2CPU memory copy";
-      trans_timer.Resume();
-      for (const std::string& name : *out_var_names_) {
-        const LoDTensor& src_tensor =
-            exe_scope->FindVar(name)->Get<LoDTensor>();
-        LoDTensor* dst_tensor = scope->Var(name)->GetMutable<LoDTensor>();
-        dst_tensor->set_lod(src_tensor.lod());
-        TensorCopy(*static_cast<const Tensor*>(&src_tensor),
-                   next_section_place_, *dev_ctx_,
-                   static_cast<Tensor*>(dst_tensor));
+  if (thread_id_ == 0) {
+    while (true) {
+      // Start a minibatch.
+      // int batch_size = 0;
+      batch_timer.Start();
+      for (int i = 0; i < num_microbatches_; ++i) {
+        try {
+          int op_idx = 0;
+          for (auto& op : ops_) {
+            int op_role = op->Attr<int>(std::string("op_role"));
+            // We run op with op_role = kLRSched only for the first microbatch
+            // to avoid increasing the @LR_DECAY_STEP@ multiple times.
+            bool run_first_mbatch =
+                op_role == static_cast<int>(OpRole::kForward) ||
+                op_role == (static_cast<int>(OpRole::kForward) |
+                            static_cast<int>(OpRole::kLoss)) ||
+                op_role == static_cast<int>(OpRole::kLRSched);
+            bool run_others = op_role == static_cast<int>(OpRole::kForward) ||
+                              op_role == (static_cast<int>(OpRole::kForward) |
+                                          static_cast<int>(OpRole::kLoss));
+            if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
+              VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                      << " for scope " << i;
+              timeline.Start();
+              op->Run(*microbatch_scopes_[i], place_);
+              if (gc) {
+                DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
+                                    unused_vars_, gc.get());
+              }
+              timeline.Pause();
+              auto time = timeline.ElapsedUS();
+              op_total_time[op_idx] += time;
+              if (time > op_max_time[op_idx]) {
+                op_max_time[op_idx] = time;
+              }
+              if (time < op_min_time[op_idx]) {
+                op_min_time[op_idx] = time;
+              }
+              op_count[op_idx] += 1;
+              op_total_time[op_idx] += time;
+            }
+            op_idx++;
+          }
+        } catch (platform::EOFException&) {
+          std::unique_lock<std::mutex> lk(thread_mutex);
+          threads_completed = true;
+          VLOG(3) << "thread " << thread_id_ << " completed.";
+          VLOG(3) << "called notify all";
+          thread_condition.notify_all();
+          VLOG(0) << "EOF encountered";
+          VLOG(0) << "============timeline============";
+          for (size_t i = 0; i < ops_.size(); ++i) {
+            VLOG(0) << "op: " << op_name[i] << ", max_time: " << op_max_time[i]
+                    << ", min_time: " << op_min_time[i]
+                    << ", mean_time: " << op_total_time[i] / op_count[i];
+          }
+          VLOG(0) << "================================";
+          return;
+        }
+        if (i == 0) {
+          VLOG(3) << "called notify all";
+          std::unique_lock<std::mutex> lk(thread_mutex);
+          batch_id_ += 1;
+          thread_condition.notify_all();
+        }
       }
-      trans_timer.Pause();
+      // backward pass
+      for (int i = 0; i < num_microbatches_; ++i) {
+        int op_idx = 0;
+        for (auto& op : ops_) {
+          int op_role = op->Attr<int>(std::string("op_role"));
+          if (op_role == static_cast<int>(OpRole::kBackward) ||
+              op_role == (static_cast<int>(OpRole::kBackward) |
+                          static_cast<int>(OpRole::kLoss))) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            timeline.Start();
+            op->Run(*microbatch_scopes_[i], place_);
+            if (gc) {
+              DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
+                                  unused_vars_, gc.get());
+            }
+            timeline.Pause();
+            auto time = timeline.ElapsedUS();
+            op_total_time[op_idx] += time;
+            if (time > op_max_time[op_idx]) {
+              op_max_time[op_idx] = time;
+            }
+            if (time < op_min_time[op_idx]) {
+              op_min_time[op_idx] = time;
+            }
+            op_count[op_idx] += 1;
+            op_total_time[op_idx] += time;
+          }
+          op_idx++;
+        }
+      }
+      // update pass
+      int op_idx = 0;
+      for (auto& op : ops_) {
+        int op_role = op->Attr<int>(std::string("op_role"));
+        if (op_role == static_cast<int>(OpRole::kOptimize)) {
+          VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                  << " for minibatch scope";
+          timeline.Start();
+          op->Run(*microbatch_scopes_[0], place_);
+          if (gc) {
+            DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1],
+                                op.get(), unused_vars_, gc.get());
+          }
+          timeline.Pause();
+          auto time = timeline.ElapsedUS();
+          op_total_time[op_idx] += time;
+          if (time > op_max_time[op_idx]) {
+            op_max_time[op_idx] = time;
+          }
+          if (time < op_min_time[op_idx]) {
+            op_min_time[op_idx] = time;
+          }
+          op_count[op_idx] += 1;
+          op_total_time[op_idx] += time;
+        }
+        op_idx++;
+      }
+      dev_ctx_->Wait();
+      batch_timer.Pause();
+      VLOG(0) << "batch time: " << batch_timer.ElapsedUS();
     }
-
-    out_scope_queue_->Send(scope);
-
-    if (sync_func_) {
-      sync_timer.Resume();
-      (*sync_func_)(scope);
-      sync_timer.Pause();
+  } else {
+    while (true) {
+      {
+        PADDLE_ENFORCE_LE(
+            local_batch_id_, batch_id_,
+            platform::errors::InvalidArgument(
+                "local_batch_id_ (%d) must be less than or equal to "
+                "batch_id_ (%d)",
+                local_batch_id_, batch_id_));
+        std::unique_lock<std::mutex> lk(thread_mutex);
+        if (local_batch_id_ == batch_id_ && !threads_completed) {
+          thread_condition.wait(lk);
+        }
+        VLOG(3) << "thread " << thread_id_ << " local_batch_id_ "
+                << local_batch_id_ << " batch_id_ " << batch_id_;
+        if (threads_completed) {
+          VLOG(3) << "thread " << thread_id_ << " completed.";
+          lk.unlock();
+          VLOG(0) << "============timeline============";
+          for (size_t i = 0; i < ops_.size(); ++i) {
+            VLOG(0) << "op: " << op_name[i] << ", max_time: " << op_max_time[i]
+                    << ", min_time: " << op_min_time[i]
+                    << ", mean_time: " << op_total_time[i] / op_count[i];
+          }
+          VLOG(0) << "================================";
+          threads_completed = false;
+          return;
+        }
+        lk.unlock();
+        local_batch_id_ += 1;
+      }
+      // forward pass:
+      for (int i = 0; i < num_microbatches_; ++i) {
+        int op_idx = 0;
+        for (auto& op : ops_) {
+          int op_role = op->Attr<int>(std::string("op_role"));
+          // We run op with op_role = kLRSched only for the first microbatch
+          // to avoid increasing the @LR_DECAY_STEP@ multiple times.
+          bool run_first_mbatch =
+              op_role == static_cast<int>(OpRole::kForward) ||
+              op_role == (static_cast<int>(OpRole::kForward) |
+                          static_cast<int>(OpRole::kLoss)) ||
+              op_role == static_cast<int>(OpRole::kLRSched);
+          bool run_others = op_role == static_cast<int>(OpRole::kForward) ||
+                            op_role == (static_cast<int>(OpRole::kForward) |
+                                        static_cast<int>(OpRole::kLoss));
+          if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            timeline.Start();
+            op->Run(*microbatch_scopes_[i], place_);
+            if (gc) {
+              DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
+                                  unused_vars_, gc.get());
+            }
+            timeline.Pause();
+            auto time = timeline.ElapsedUS();
+            op_total_time[op_idx] += time;
+            if (time > op_max_time[op_idx]) {
+              op_max_time[op_idx] = time;
+            }
+            if (time < op_min_time[op_idx]) {
+              op_min_time[op_idx] = time;
+            }
+            op_count[op_idx] += 1;
+            op_total_time[op_idx] += time;
+          }
+          op_idx++;
+        }
+      }
+      // backward pass
+      for (int i = 0; i < num_microbatches_; ++i) {
+        int op_idx = 0;
+        for (auto& op : ops_) {
+          int op_role = op->Attr<int>(std::string("op_role"));
+          if (op_role == static_cast<int>(OpRole::kBackward) ||
+              op_role == (static_cast<int>(OpRole::kBackward) |
+                          static_cast<int>(OpRole::kLoss))) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            timeline.Start();
+            op->Run(*microbatch_scopes_[i], place_);
+            if (gc) {
+              DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
+                                  unused_vars_, gc.get());
+            }
+            timeline.Pause();
+            auto time = timeline.ElapsedUS();
+            op_total_time[op_idx] += time;
+            if (time > op_max_time[op_idx]) {
+              op_max_time[op_idx] = time;
+            }
+            if (time < op_min_time[op_idx]) {
+              op_min_time[op_idx] = time;
+            }
+            op_count[op_idx] += 1;
+            op_total_time[op_idx] += time;
+          }
+          op_idx++;
+        }
+      }
+      // update pass
+      int op_idx = 0;
+      for (auto& op : ops_) {
+        int op_role = op->Attr<int>(std::string("op_role"));
+        if (op_role == static_cast<int>(OpRole::kOptimize)) {
+          VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                  << " for minibatch scope";
+          timeline.Start();
+          op->Run(*microbatch_scopes_[0], place_);
+          if (gc) {
+            DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1],
+                                op.get(), unused_vars_, gc.get());
+          }
+          timeline.Pause();
+          auto time = timeline.ElapsedUS();
+          op_total_time[op_idx] += time;
+          if (time > op_max_time[op_idx]) {
+            op_max_time[op_idx] = time;
+          }
+          if (time < op_min_time[op_idx]) {
+            op_min_time[op_idx] = time;
+          }
+          op_count[op_idx] += 1;
+          op_total_time[op_idx] += time;
+        }
+        op_idx++;
+      }
+      dev_ctx_->Wait();
     }
-
-    ++step_cnt;
-    accum_num += batch_size;
-    main_timer.Pause();
-  }
-  outer_timer.Pause();
-
-  worker_count_mutex_->lock();
-  --(*worker_count_);
-  worker_count_mutex_->unlock();
-
-  if (*worker_count_ <= 0) {
-    while (section_id_ < section_num_ - 1 && out_scope_queue_->Size()) {
-      sleep(1);
-    }
-    out_scope_queue_->Close();
-  }
-  LOG(ERROR) << "log_for_profile"
-             << " card:" << pipeline_id_ << " thread:" << thread_id_
-             << " section:" << section_id_ << " step_count:" << step_cnt
-             << " batch_count:" << accum_num
-             << " read_time:" << reader_timer.ElapsedUS()
-             << " trans_time:" << trans_timer.ElapsedUS()
-             << " cal_time:" << cal_timer.ElapsedUS()
-             << " sync_time:" << sync_timer.ElapsedUS()
-             << " main_time:" << main_timer.ElapsedUS()
-             << " outer_time:" << outer_timer.ElapsedUS();
-  for (size_t i = 0; i < ops_.size(); ++i) {
-    LOG(ERROR) << "op: " << op_name[i]
-               << ", mean time: " << op_total_time[i] / accum_num;
   }
 }
 }  // namespace framework

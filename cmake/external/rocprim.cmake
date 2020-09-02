@@ -44,12 +44,6 @@ ExternalProject_Add(
 
 INCLUDE_DIRECTORIES(${ROCPRIM_INCLUDE_DIR})
 
-if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
-    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/rocprim_dummy.c)
-    file(WRITE ${dummyfile} "const char *dummy_rocprim = \"${dummyfile}\";")
-    add_library(rocprim STATIC ${dummyfile})
-else()
-    add_library(rocprim INTERFACE)
-endif()
+add_library(rocprim INTERFACE)
 
 add_dependencies(rocprim extern_rocprim)

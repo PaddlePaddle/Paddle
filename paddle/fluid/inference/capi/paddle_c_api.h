@@ -19,11 +19,11 @@
 #include <stdio.h>
 
 #if defined(_WIN32)
-#ifdef PADDLE_ON_INFERENCE
+#ifdef PADDLE_DLL_INFERENCE
 #define PADDLE_CAPI_EXPORT __declspec(dllexport)
 #else
 #define PADDLE_CAPI_EXPORT __declspec(dllimport)
-#endif  // PADDLE_ON_INFERENCE
+#endif  // PADDLE_DLL_INFERENCE
 #else
 #define PADDLE_CAPI_EXPORT __attribute__((visibility("default")))
 #endif  // _WIN32
@@ -214,11 +214,6 @@ typedef struct PD_MaxInputShape {
 
 PADDLE_CAPI_EXPORT extern void PD_SwitchIrDebug(PD_AnalysisConfig* config,
                                                 bool x);
-
-PADDLE_CAPI_EXPORT extern void PD_EnableNgraph(PD_AnalysisConfig* config);
-
-PADDLE_CAPI_EXPORT extern bool PD_NgraphEnabled(
-    const PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_EnableMKLDNN(PD_AnalysisConfig* config);
 

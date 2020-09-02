@@ -20,6 +20,9 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -41,21 +44,28 @@ static inline std::string VarName(int index) {
 
 class OperationExpression {
  public:
-  explicit OperationExpression(std::string op_type, std::vector<int> input_ids,
-                               std::vector<int> output_ids,
-                               std::string rhs_type, std::string lhs_type)
+  explicit OperationExpression(
+      std::string op_type, const std::vector<int>& input_ids,
+      const std::vector<int>& output_ids, std::string rhs_type,
+      std::string lhs_type,
+      const std::vector<int>& intermediate_output_ids = {})
       : op_type_(op_type),
         input_ids_(input_ids),
         output_ids_(output_ids),
         rhs_type_(rhs_type),
-        lhs_type_(lhs_type) {}
+        lhs_type_(lhs_type),
+        intermediate_output_ids_(intermediate_output_ids) {}
 
   std::string GetOpType() const { return op_type_; }
   std::vector<int> GetInputIds() const { return input_ids_; }
   std::vector<int> GetOutputIds() const { return output_ids_; }
+  std::vector<int> GetIntermediateOutputIds() const {
+    return intermediate_output_ids_;
+  }
   std::string GetRHSType() const { return rhs_type_; }
   std::string GetLHSType() const { return lhs_type_; }
-
+  void SetAttr(AttributeMap attr) { attr_ = attr; }
+  AttributeMap GetAttr() { return attr_; }
   // Check whether this operation type is supported in OperationMap.
   bool IsSupport() const;
 
@@ -64,7 +74,6 @@ class OperationExpression {
  private:
   // TODO(wangchao): make offset more flexible we add stride and basic offset
   std::string GetRHS(std::unordered_set<int>* used,
-                     std::string* half2fp32_statement,
                      size_t exprs_index = 0) const;
   std::string GetLHS(size_t i = 0) const;
 
@@ -72,8 +81,10 @@ class OperationExpression {
   std::string op_type_;
   std::vector<int> input_ids_;
   std::vector<int> output_ids_;
+  AttributeMap attr_;
   std::string rhs_type_;
   std::string lhs_type_;
+  std::vector<int> intermediate_output_ids_;
 };
 
 class TemplateVariable {

@@ -90,7 +90,7 @@ class PlacementPassTest {
       if (node->IsOp() && node->Op()) {
         auto* op = node->Op();
         if (op->HasAttr("use_cudnn") &&
-            boost::get<bool>(op->GetAttr("use_cudnn"))) {
+            BOOST_GET_CONST(bool, op->GetAttr("use_cudnn"))) {
           ++use_cudnn_true_count;
         }
       }

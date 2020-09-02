@@ -72,24 +72,5 @@ class TestDistMnistDcAsgd(TestDistBase):
             log_name=flag_name)
 
 
-# FIXME(typhoonzero): enable these tests once we have 4
-# 4 GPUs on CI machine, and the base class should be updated.
-#
-# class TestDistMnist2x2ReduceMode(TestDistBase):
-#     def _setup_config(self):
-#         self._sync_mode = True
-#         self._use_reduce = True
-
-#     def test_se_resnext(self):
-#         self.check_with_place("dist_mnist.py", delta=1e-7)
-
-# class TestDistMnistAsyncReduceMode(TestDistBase):
-#     def _setup_config(self):
-#         self._sync_mode = False
-#         self._use_reduce = True
-
-#     def test_se_resnext(self):
-#         self.check_with_place("dist_mnist.py", delta=200)
-
 if __name__ == "__main__":
     unittest.main()

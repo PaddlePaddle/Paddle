@@ -26,7 +26,7 @@ import sys
 from op_test import OpTest
 from paddle.fluid.trainer_desc import DistMultiTrainer
 from paddle.fluid.device_worker import DownpourSGD, DownpourSGDOPT
-from paddle.fluid.incubate.fleet.parameter_server.pslib.node import DownpourWorker
+from paddle.fluid.incubate.fleet.parameter_server.pslib.node import DownpourWorker, DownpourServer
 from google.protobuf import text_format
 import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
 from paddle.fluid.trainer_factory import TrainerFactory
@@ -91,6 +91,8 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["dump_slot"] = False
             opt_info["stat_var_names"] = []
             worker = DownpourWorker(None)
+            server = DownpourServer()
+            server.add_sparse_table(0, {})
             worker.get_desc().CopyFrom(ps_param.trainer_param[0])
             opt_info["program_id_to_worker"] = {program_id: worker}
 

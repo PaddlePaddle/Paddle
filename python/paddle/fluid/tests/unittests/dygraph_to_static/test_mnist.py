@@ -13,16 +13,24 @@
 # limitations under the License.
 
 from __future__ import print_function
-from time import time
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-
-from paddle.fluid.dygraph.jit import dygraph_to_static_graph
 
 import unittest
+from time import time
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.dygraph import to_variable
+from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
+from paddle.fluid.optimizer import AdamOptimizer
+from paddle.fluid.dygraph.io import VARIABLE_FILENAME
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+
+from predictor_utils import PredictorTools
+
+SEED = 2020
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -66,7 +74,6 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             global_pooling=global_pooling,
             use_cudnn=use_cudnn)
 
-    @dygraph_to_static_graph
     def forward(self, inputs):
         x = self._conv2d(inputs)
         x = self._pool2d(x)
@@ -94,18 +101,18 @@ class MNIST(fluid.dygraph.Layer):
                     loc=0.0, scale=scale)),
             act="softmax")
 
-    @dygraph_to_static_graph
+    @paddle.jit.to_static
     def forward(self, inputs, label=None):
         x = self.inference(inputs)
         if label is not None:
             acc = fluid.layers.accuracy(input=x, label=label)
             loss = fluid.layers.cross_entropy(x, label)
             avg_loss = fluid.layers.mean(loss)
+
             return x, acc, avg_loss
         else:
             return x
 
-    @dygraph_to_static_graph
     def inference(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
@@ -126,62 +133,136 @@ class TestMNIST(unittest.TestCase):
             drop_last=True)
 
 
-class TestMNISTWithStaticMode(TestMNIST):
+class TestMNISTWithToStatic(TestMNIST):
     """
-    Tests model when using `dygraph_to_static_graph` to convert dygraph into static
-    model. It allows user to add customized code to train static model, such as `with`
-    and `Executor` statement.
+    Tests model if doesn't change the layers while decorated
+    by `dygraph_to_static_output`. In this case, everything should
+    still works if model is trained in dygraph mode.
     """
 
-    def test_train(self):
+    def train_static(self):
+        return self.train(to_static=True)
 
-        main_prog = fluid.Program()
-        with fluid.program_guard(main_prog):
+    def train_dygraph(self):
+        return self.train(to_static=False)
+
+    def test_mnist_to_static(self):
+        dygraph_loss = self.train_dygraph()
+        static_loss = self.train_static()
+        self.assertTrue(
+            np.allclose(dygraph_loss, static_loss),
+            msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
+                                                            static_loss))
+
+    def test_mnist_declarative_cpu_vs_mkldnn(self):
+        dygraph_loss_cpu = self.train_dygraph()
+        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        try:
+            dygraph_loss_mkldnn = self.train_dygraph()
+        finally:
+            fluid.set_flags({'FLAGS_use_mkldnn': False})
+        self.assertTrue(
+            np.allclose(dygraph_loss_cpu, dygraph_loss_mkldnn),
+            msg='cpu dygraph is {}\n mkldnn dygraph is \n{}'.format(
+                dygraph_loss_cpu, dygraph_loss_mkldnn))
+
+    def train(self, to_static=False):
+        prog_trans = ProgramTranslator()
+        prog_trans.enable(to_static)
+
+        loss_data = []
+        with fluid.dygraph.guard(self.place):
+            fluid.default_main_program().random_seed = SEED
+            fluid.default_startup_program().random_seed = SEED
             mnist = MNIST()
             adam = AdamOptimizer(
                 learning_rate=0.001, parameter_list=mnist.parameters())
 
-            exe = fluid.Executor(self.place)
-            start = time()
+            for epoch in range(self.epoch_num):
+                start = time()
+                for batch_id, data in enumerate(self.train_reader()):
+                    dy_x_data = np.array(
+                        [x[0].reshape(1, 28, 28)
+                         for x in data]).astype('float32')
+                    y_data = np.array(
+                        [x[1] for x in data]).astype('int64').reshape(-1, 1)
 
-            img = fluid.data(
-                name='img', shape=[None, 1, 28, 28], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            label.stop_gradient = True
+                    img = to_variable(dy_x_data)
+                    label = to_variable(y_data)
 
-            prediction, acc, avg_loss = mnist(img, label)
-            adam.minimize(avg_loss)
-        exe.run(fluid.default_startup_program())
+                    label.stop_gradient = True
+                    prediction, acc, avg_loss = mnist(img, label=label)
+                    avg_loss.backward()
 
-        for epoch in range(self.epoch_num):
-            for batch_id, data in enumerate(self.train_reader()):
-                dy_x_data = np.array([x[0].reshape(1, 28, 28)
-                                      for x in data]).astype('float32')
-                y_data = np.array(
-                    [x[1] for x in data]).astype('int64').reshape(-1, 1)
-
-                out = exe.run(main_prog,
-                              fetch_list=[avg_loss, acc],
-                              feed={'img': dy_x_data,
-                                    'label': y_data})
-                if batch_id % 100 == 0:
-                    print(
-                        "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}"
-                        .format(epoch, batch_id,
-                                np.array(out[0]),
-                                np.array(out[1]), time() - start))
-                    if batch_id == 300:
-                        # The accuracy of mnist should converge over 0.9 after 300 batch.
-                        accuracy = np.array(out[1])
-                        self.assertGreater(
-                            accuracy,
-                            0.9,
-                            msg="The accuracy {} of mnist should converge over 0.9 after 300 batch."
-                            .format(accuracy))
+                    adam.minimize(avg_loss)
+                    loss_data.append(avg_loss.numpy()[0])
+                    # save checkpoint
+                    mnist.clear_gradients()
+                    if batch_id % 10 == 0:
+                        print(
+                            "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}"
+                            .format(epoch, batch_id,
+                                    avg_loss.numpy(),
+                                    acc.numpy(), time() - start))
+                        start = time()
+                    if batch_id == 50:
+                        mnist.eval()
+                        prediction, acc, avg_loss = mnist(img, label)
+                        loss_data.append(avg_loss.numpy()[0])
+                        # new save load check
+                        self.check_jit_save_load(mnist, [dy_x_data], [img],
+                                                 to_static, prediction)
                         break
+        return loss_data
 
+    def check_jit_save_load(self, model, inputs, input_spec, to_static, gt_out):
+        if to_static:
+            infer_model_path = "./test_mnist_inference_model_by_jit_save"
+            configs = fluid.dygraph.jit.SaveLoadConfig()
+            configs.output_spec = [gt_out]
+            fluid.dygraph.jit.save(
+                layer=model,
+                model_path=infer_model_path,
+                input_spec=input_spec,
+                configs=configs)
+            # load in static mode
+            static_infer_out = self.jit_load_and_run_inference_static(
+                infer_model_path, inputs)
+            self.assertTrue(np.allclose(gt_out.numpy(), static_infer_out))
+            # load in dygraph mode
+            dygraph_infer_out = self.jit_load_and_run_inference_dygraph(
+                infer_model_path, inputs)
+            self.assertTrue(np.allclose(gt_out.numpy(), dygraph_infer_out))
+            # load in Paddle-Inference
+            predictor_infer_out = self.predictor_load_and_run_inference_analysis(
+                infer_model_path, inputs)
+            self.assertTrue(np.allclose(gt_out.numpy(), predictor_infer_out))
 
-# TODO: TestCase with cached program is required when building program in `for` loop.
+    @switch_to_static_graph
+    def jit_load_and_run_inference_static(self, model_path, inputs):
+        exe = fluid.Executor(self.place)
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(
+             dirname=model_path,
+             executor=exe,
+             params_filename=VARIABLE_FILENAME)
+        assert len(inputs) == len(feed_target_names)
+        results = exe.run(inference_program,
+                          feed=dict(zip(feed_target_names, inputs)),
+                          fetch_list=fetch_targets)
+
+        return np.array(results[0])
+
+    def jit_load_and_run_inference_dygraph(self, model_path, inputs):
+        infer_net = fluid.dygraph.jit.load(model_path)
+        pred = infer_net(inputs[0])
+        return pred.numpy()
+
+    def predictor_load_and_run_inference_analysis(self, model_path, inputs):
+        output = PredictorTools(model_path, VARIABLE_FILENAME, inputs)
+        out = output()
+        return out
+
 
 if __name__ == "__main__":
     unittest.main()

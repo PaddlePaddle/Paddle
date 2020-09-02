@@ -38,38 +38,48 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
     auto filename = ctx.Attr<std::string>("file_path");
     auto overwrite = ctx.Attr<bool>("overwrite");
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
+    auto save_to_memory = ctx.Attr<bool>("save_to_memory");
+    auto output = ctx.Output<std::string>("Y");
 
     bool is_present = FileExists(filename);
     if (is_present && !overwrite) {
-      PADDLE_THROW("%s exists!, cannot save_combine to it when overwrite=false",
-                   filename, overwrite);
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "%s exists! Cannot save_combine to it when overwrite is set to "
+          "false.",
+          filename, overwrite));
     }
 
-    MkDirRecursively(DirName(filename).c_str());
-    std::ofstream fout(filename, std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
-                   filename);
-
+    std::ostringstream ss;
     auto inp_var_names = ctx.InputNames("X");
     auto &inp_vars = ctx.MultiInputVar("X");
-    PADDLE_ENFORCE_GT(static_cast<int>(inp_var_names.size()), 0,
-                      "The number of input variables should be greater than 0");
+    PADDLE_ENFORCE_GT(inp_var_names.size(), 0UL,
+                      platform::errors::InvalidArgument(
+                          "The number of variables to be saved is %d, expect "
+                          "it to be greater than 0.",
+                          inp_var_names.size()));
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
     for (size_t i = 0; i < inp_var_names.size(); i++) {
-      PADDLE_ENFORCE(inp_vars[i] != nullptr,
-                     "Cannot find variable %s for save_combine_op",
-                     inp_var_names[i]);
-      PADDLE_ENFORCE(inp_vars[i]->IsType<framework::LoDTensor>(),
-                     "SaveCombineOp only supports LoDTensor, %s has wrong type",
-                     inp_var_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(
+          inp_vars[i],
+          platform::errors::InvalidArgument("Cannot find variable %s to save.",
+                                            inp_var_names[i]));
+      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<framework::LoDTensor>(), true,
+                        platform::errors::InvalidArgument(
+                            "SaveCombine operator only supports saving "
+                            "LoDTensor variable, %s has wrong type.",
+                            inp_var_names[i]));
 
       auto &tensor = inp_vars[i]->Get<framework::LoDTensor>();
+      PADDLE_ENFORCE_EQ(
+          tensor.IsInitialized(), true,
+          platform::errors::InvalidArgument(
+              "The Tensor of Variable(%s) to be saved is not initialized.",
+              inp_var_names[i]));
       // Serialize tensors one by one
-
       // Check types to see if a fp16 transformation is required
       auto in_dtype = tensor.type();
       auto out_dtype =
@@ -82,12 +92,25 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
         // copy LoD info to the new tensor
         out.set_lod(tensor.lod());
         framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
-        framework::SerializeToStream(fout, out, dev_ctx);
+        framework::SerializeToStream(ss, out, dev_ctx);
       } else {
-        framework::SerializeToStream(fout, tensor, dev_ctx);
+        framework::SerializeToStream(ss, tensor, dev_ctx);
       }
     }
-    fout.close();
+    if (save_to_memory) {
+      PADDLE_ENFORCE_NE(output, nullptr,
+                        platform::errors::InvalidArgument(
+                            "Cannot find variable Y for save_combine_op"));
+      *output = ss.str();
+    } else {
+      MkDirRecursively(DirName(filename).c_str());
+      std::ofstream fout(filename, std::ios::binary);
+      PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
+                        platform::errors::Unavailable(
+                            "Cannot open %s to save variables.", filename));
+      fout << ss.str();
+      fout.close();
+    }
   }
 };
 

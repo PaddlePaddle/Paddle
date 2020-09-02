@@ -24,45 +24,48 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Inference"), true,
-                      "Input(Inference) of ChunkEvalOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true,
-                      "Input(Label) of ChunkEvalOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Precision"), true,
-                      "Output(Precision) of ChunkEvalOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Recall"), true,
-                      "Output(Recall) of ChunkEvalOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("F1-Score"), true,
-                      "Output(F1-Score) of ChunkEvalOp should not be null.");
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("NumInferChunks"), true,
-        "Output(NumInferChunks) of ChunkEvalOp should not be null.");
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("NumLabelChunks"), true,
-        "Output(NumLabelChunks) of ChunkEvalOp should not be null.");
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("NumCorrectChunks"), true,
-        "Output(NumCorrectChunks) of ChunkEvalOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Inference"), "Input", "Inference",
+                   "chunk_eval");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "chunk_eval");
+
+    OP_INOUT_CHECK(ctx->HasOutput("Precision"), "Output", "Precision",
+                   "chunk_eval");
+    OP_INOUT_CHECK(ctx->HasOutput("Recall"), "Output", "Recall", "chunk_eval");
+    OP_INOUT_CHECK(ctx->HasOutput("F1-Score"), "Output", "F1-Score",
+                   "chunk_eval");
+    OP_INOUT_CHECK(ctx->HasOutput("NumInferChunks"), "Output", "NumInferChunks",
+                   "chunk_eval");
+    OP_INOUT_CHECK(ctx->HasOutput("NumLabelChunks"), "Output", "NumLabelChunks",
+                   "chunk_eval");
+    OP_INOUT_CHECK(ctx->HasOutput("NumCorrectChunks"), "Output",
+                   "NumCorrectChunks", "chunk_eval");
 
     auto inference_dim = ctx->GetInputDim("Inference");
     auto label_dim = ctx->GetInputDim("Label");
 
     PADDLE_ENFORCE_EQ(
         inference_dim, label_dim,
-        "Input(Inference)'s shape must be the same as Input(Label)'s shape.");
+        platform::errors::InvalidArgument(
+            "Input(Inference)'s shape must be the same as Input(Label)'s "
+            "shape, but received [%s] (Inference) vs [%s] (Label).",
+            inference_dim, label_dim));
 
     bool use_padding = ctx->HasInput("SeqLength");
     if (use_padding) {
-      PADDLE_ENFORCE_EQ((inference_dim.size() == 3 && inference_dim[2] == 1) ||
-                            inference_dim.size() == 2,
-                        true,
-                        "when Input(SeqLength) is provided, Input(Inference) "
-                        "should be of dim 3 (batch_size, bucket, 1) or dim 2 "
-                        "(batch_size, bucket).");
+      PADDLE_ENFORCE_EQ(
+          (inference_dim.size() == 3 && inference_dim[2] == 1) ||
+              inference_dim.size() == 2,
+          true, platform::errors::InvalidArgument(
+                    "when Input(SeqLength) is provided, Input(Inference) "
+                    "should be of dim 3 (batch_size, bucket, 1) or dim 2 "
+                    "(batch_size, bucket), but received [%s].",
+                    inference_dim));
       auto seq_length_dim = ctx->GetInputDim("SeqLength");
-      PADDLE_ENFORCE_LE(
-          seq_length_dim.size(), 2,
-          "Input(SeqLength)'s rank should not be greater than 2.");
+      PADDLE_ENFORCE_LE(seq_length_dim.size(), 2,
+                        platform::errors::InvalidArgument(
+                            "Input(SeqLength)'s rank should not be greater "
+                            "than 2, but received %d.",
+                            seq_length_dim.size()));
     }
 
     ctx->SetOutputDim("Precision", {1});

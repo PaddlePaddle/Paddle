@@ -68,8 +68,9 @@ static framework::VariableNameMap CreateVarNameMap(
     if (it == varbase_map.end()) {
       PADDLE_ENFORCE_EQ(
           var.dispensable(), true,
-          "Var: %s not dispensable and there are no such var in inputs",
-          var.name());
+          platform::errors::NotFound("Variable %s is not dispensable and "
+                                     "there are no such var in inputs",
+                                     var.name()));
       result[var.name()] = {};
     } else {
       auto& var_vector = it->second;
@@ -175,7 +176,7 @@ TEST(test_prepare_op, test_prepare_data) {
 }
 #endif
 
-TEST(test_prepare_op, test_prepare_data_same_place) {
+void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
   std::shared_ptr<imperative::VarBase> vout(
@@ -197,7 +198,6 @@ TEST(test_prepare_op, test_prepare_data_same_place) {
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
   imperative::NameVarBaseMap ins = {x_pair};
   imperative::NameVarBaseMap outs = {out_pair};
-  framework::AttributeMap attr_map;
   const std::string op_type = "relu";
   const auto& info = framework::OpInfoMap::Instance().Get(op_type);
   if (info.Checker()) info.Checker()->Check(&attr_map);
@@ -221,8 +221,21 @@ TEST(test_prepare_op, test_prepare_data_same_place) {
     }
   }
 }
+
+TEST(test_prepare_op, test_prepare_data_same_place) {
+  TestPrepareDataSamePlace({});
+}
+
+#ifdef PADDLE_WITH_MKLDNN
+TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
+  TestPrepareDataSamePlace({{"use_mkldnn", true}});
+}
+#endif
 }  // namespace imperative
 }  // namespace paddle
 
 USE_OP(split);
 USE_OP(relu);
+#ifdef PADDLE_WITH_MKLDNN
+USE_OP_DEVICE_KERNEL(relu, MKLDNN);
+#endif

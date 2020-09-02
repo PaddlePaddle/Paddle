@@ -52,13 +52,17 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 #undef SET_IN
     if (with_fc_bias) {
       // Add FC-bias with LSTM-bias and create a new weight
-      PADDLE_ENFORCE(scope);
+      PADDLE_ENFORCE_NOT_NULL(
+          scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
       const std::string& new_bias_var = patterns::UniqueKey("NewBias");
       auto* bias_var = scope->Var(new_bias_var);
-      PADDLE_ENFORCE(bias_var);
+      PADDLE_ENFORCE_NOT_NULL(bias_var, platform::errors::InvalidArgument(
+                                            "Bias var ptr cannot be nullptr."));
       auto* bias_tensor = bias_var->GetMutable<framework::LoDTensor>();
       auto* lstm_bias_var = scope->FindVar(bias->Name());
-      PADDLE_ENFORCE(lstm_bias_var);
+      PADDLE_ENFORCE_NOT_NULL(lstm_bias_var,
+                              platform::errors::InvalidArgument(
+                                  "Lstm bias var ptr cannot be nullptr."));
       const auto& lstm_bias_tensor = lstm_bias_var->Get<framework::LoDTensor>();
       bias_tensor->Resize(lstm_bias_tensor.dims());
 

@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include <string>
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 
 namespace paddle {
 namespace framework {
@@ -22,8 +23,9 @@ namespace framework {
 const Attribute &InferNoNeedBufferVarsContext::GetAttr(
     const std::string &name) const {
   auto iter = attrs_.find(name);
-  PADDLE_ENFORCE_EQ(iter != attrs_.end(), true, "Cannot find attribute %s",
-                    name);
+  PADDLE_ENFORCE_NE(
+      iter, attrs_.end(),
+      platform::errors::NotFound("Cannot find attribute (%s).", name));
   return iter->second;
 }
 

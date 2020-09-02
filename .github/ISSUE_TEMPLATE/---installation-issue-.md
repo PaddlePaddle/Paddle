@@ -14,6 +14,7 @@ about: 您可以提问安装、编译出现报错等问题。 You could use this
     2）CPU：请提供CPU型号，MKL/OpenBlas/MKLDNN/等数学库的使用情况
     3）GPU：请提供GPU型号，CUDA和CUDNN版本号
     4）系统环境：请说明系统类型、版本（如Mac OS 10.14）、Python版本
+注：您可以通过执行[summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py)获取以上信息。
 - 安装方式信息：
 1）pip安装/docker安装
 2）本地编译：请提供cmake命令，编译命令
@@ -32,7 +33,9 @@ If there is no solution,please make sure that this is an installation issue incl
 -OS Platform (eg. Mac OS 10.14)
 -Python version
 - Install method: pip install/install with docker/build from source(without docker)/build within docker
-- Other special cases that you think may be related to this problem, eg. offline install, special internet condition   
+- Other special cases that you think may be related to this problem, eg. offline install, special internet condition 
+Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py).   
+
 **To Reproduce**
 Steps to reproduce the behavior
 **Describe your current behavior**

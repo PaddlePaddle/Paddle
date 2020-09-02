@@ -89,14 +89,16 @@ class BeamSearchOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     for (const std::string &arg :
          std::vector<std::string>({"pre_ids", "scores"})) {
-      PADDLE_ENFORCE(ctx->HasInput(arg), "BeamSearch need input argument '%s'",
-                     arg);
+      OP_INOUT_CHECK(ctx->HasInput(arg), "Input", arg, "BeamSeach");
     }
     for (const std::string &arg :
          std::vector<std::string>({"selected_ids", "selected_scores"})) {
-      PADDLE_ENFORCE(ctx->HasOutput(arg),
-                     "BeamSearch need output argument '%s'", arg);
+      OP_INOUT_CHECK(ctx->HasOutput(arg), "Output", arg, "BeamSeach");
     }
+    auto id_dims = ctx->GetInputDim("pre_ids");
+    ctx->SetOutputDim("selected_scores", ctx->GetInputDim("pre_scores"));
+    ctx->SetOutputDim("selected_ids", id_dims);
+    ctx->SetOutputDim("parent_idx", {id_dims[0]});
   }
 
  protected:
@@ -122,12 +124,10 @@ class BeamSearchOp : public framework::OperatorWithKernel {
 class BeamSearchInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    for (auto &o : ctx->Output("selected_ids")) {
-      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
-    }
-    for (auto &o : ctx->Output("selected_scores")) {
-      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
-    }
+    ctx->SetOutputType("selected_ids", framework::proto::VarType::LOD_TENSOR,
+                       framework::ALL_ELEMENTS);
+    ctx->SetOutputType("selected_scores", framework::proto::VarType::LOD_TENSOR,
+                       framework::ALL_ELEMENTS);
   }
 };
 

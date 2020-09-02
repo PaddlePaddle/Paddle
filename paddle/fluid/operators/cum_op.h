@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -29,33 +28,36 @@ class CumKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
   using T = typename Functor::ELEMENT_TYPE;
 
   void Compute(const framework::ExecutionContext& context) const override {
-    auto& X = detail::Ref(context.Input<framework::Tensor>("X"),
-                          "Cannot get input tensor X, variable name = %s",
-                          context.InputName("X"));
+    auto& X = GET_DATA_SAFELY(context.Input<framework::Tensor>("X"), "Input",
+                              "X", "Cum");
 
-    auto& Out = detail::Ref(context.Output<framework::Tensor>("Out"),
-                            "Cannot get output tensor Out, variable name = %s",
-                            context.OutputName("Out"));
+    auto& Out = GET_DATA_SAFELY(context.Output<framework::Tensor>("Out"),
+                                "Output", "Out", "Cum");
     int axis = context.Attr<int>("axis");
     bool exclusive = context.Attr<bool>("exclusive");
     bool reverse = context.Attr<bool>("reverse");
-    auto x_dims = X.dims();
-    if (axis == -1) {
-      axis = x_dims.size() - 1;
+    auto out_dims = Out.dims();
+
+    PADDLE_ENFORCE_EQ(
+        axis < out_dims.size() && axis >= (0 - out_dims.size()), true,
+        platform::errors::OutOfRange(
+            "Attr(axis) is out of range, It's expected "
+            "to be in range of [-%d, %d]. But received Attr(axis) = %d.",
+            out_dims.size(), out_dims.size() - 1, axis));
+    if (axis < 0) {
+      axis += out_dims.size();
     }
-    PADDLE_ENFORCE_LT(
-        axis, x_dims.size(),
-        "axis should be less than the dimensiotn of the input tensor");
-    Out.mutable_data<T>(context.GetPlace());
+
+    Out.template mutable_data<T>(context.GetPlace());
 
     int pre = 1;
     int post = 1;
-    int mid = x_dims[axis];
+    int mid = out_dims[axis];
     for (int i = 0; i < axis; ++i) {
-      pre *= x_dims[i];
+      pre *= out_dims[i];
     }
-    for (int i = axis + 1; i < x_dims.size(); ++i) {
-      post *= x_dims[i];
+    for (int i = axis + 1; i < out_dims.size(); ++i) {
+      post *= out_dims[i];
     }
 
     auto x = framework::EigenVector<T>::Flatten(X);

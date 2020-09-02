@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <vector>
@@ -152,6 +153,11 @@ struct CBlas<float> {
     platform::dynload::mkl_scsrmm(args...);
   }
 #endif
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    platform::dynload::cblas_strsm(args...);
+  }
 };
 
 template <>
@@ -273,6 +279,11 @@ struct CBlas<double> {
     platform::dynload::mkl_dcsrmm(args...);
   }
 #endif
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    platform::dynload::cblas_dtrsm(args...);
+  }
 };
 
 #else
@@ -298,6 +309,11 @@ struct CBlas<float> {
   static void GEMV(ARGS... args) {
     cblas_sgemv(args...);
   }
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    cblas_strsm(args...);
+  }
 };
 
 template <>
@@ -320,6 +336,11 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
     cblas_dgemv(args...);
+  }
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    cblas_dtrsm(args...);
   }
 };
 #endif
@@ -635,6 +656,26 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
 #endif
 }
 
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::BatchedGEMM(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    T alpha, const T **A, const T **B, T beta, T **C, int batchCount) const {
+#ifdef PADDLE_WITH_MKLML
+  const int lda = std::max((transA == CblasNoTrans) ? K : M, 1);
+  const int ldb = std::max((transB == CblasNoTrans) ? N : K, 1);
+  const int ldc = std::max(N, 1);
+  CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &M, &N, &K, &alpha, A,
+                       &lda, B, &ldb, &beta, C, &ldc, 1 /* group_count */,
+                       &batchCount);
+#else
+  for (int k = 0; k < batchCount; ++k) {
+    this->template GEMM<T>(transA, transB, M, N, K, alpha, A[k], B[k], beta,
+                           C[k]);
+  }
+#endif
+}
+
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
 template <>
 template <typename T>
@@ -898,6 +939,17 @@ void Blas<platform::CPUDeviceContext>::CSRMM(
                   ldb, beta, c, ldc);
 }
 #endif
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
+                                            CBLAS_TRANSPOSE transA,
+                                            CBLAS_DIAG diag, int M, int N,
+                                            T alpha, const T *A, int lda, T *B,
+                                            int ldb) const {
+  CBlas<T>::TRSM(CblasRowMajor, side, uplo, transA, diag, M, N, alpha, A, lda,
+                 B, ldb);
+}
 
 }  // namespace math
 }  // namespace operators

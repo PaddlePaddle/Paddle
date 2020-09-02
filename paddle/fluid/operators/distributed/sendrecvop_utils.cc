@@ -45,7 +45,7 @@ static TensorPayload GetCommunicationAllocationFromTensor(
     auto result = memory::AllocShared(cuda_pinned, copy_size);
 
     memory::Copy(cuda_pinned, result->ptr(),
-                 boost::get<platform::CUDAPlace>(tensor.place()),
+                 BOOST_GET_CONST(platform::CUDAPlace, tensor.place()),
                  tensor.data<void>(), copy_size, gpu_dev_ctx.stream());
     ctx.Wait();
     return TensorPayload(result);

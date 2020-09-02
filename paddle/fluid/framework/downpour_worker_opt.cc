@@ -156,19 +156,7 @@ void DownpourWorkerOpt::Initialize(const TrainerDesc& desc) {
   no_cvm_ = desc.no_cvm();
   scale_datanorm_ = desc.scale_datanorm();
   dump_slot_ = desc.dump_slot();
-  dump_fields_.resize(desc.dump_fields_size());
-  for (int i = 0; i < desc.dump_fields_size(); ++i) {
-    dump_fields_[i] = desc.dump_fields(i);
-  }
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
-  need_dump_param_ = false;
-  dump_param_.resize(desc.dump_param_size());
-  for (int i = 0; i < desc.dump_param_size(); ++i) {
-    dump_param_[i] = desc.dump_param(i);
-  }
-  if (desc.dump_param_size() != 0) {
-    need_dump_param_ = true;
-  }
   for (int i = 0; i < desc.loss_names_size(); ++i) {
     loss_names_.push_back(desc.loss_names(i));
   }
@@ -527,52 +515,17 @@ void DownpourWorkerOpt::TrainFiles() {
       }
     }
     if (need_dump_field_) {
-      size_t batch_size = device_reader_->GetCurBatchSize();
-      std::vector<std::string> ars(batch_size);
-      for (auto& ar : ars) {
-        ar.clear();
-      }
-      auto& ins_id_vec = device_reader_->GetInsIdVec();
-      auto& ins_content_vec = device_reader_->GetInsContentVec();
-      for (size_t i = 0; i < ins_id_vec.size(); i++) {
-        ars[i] += ins_id_vec[i];
-        ars[i] = ars[i] + "\t" + ins_content_vec[i];
-      }
-      for (auto& field : dump_fields_) {
-        Variable* var = thread_scope_->FindVar(field);
-        if (var == nullptr) {
-          continue;
-        }
-        LoDTensor* tensor = var->GetMutable<LoDTensor>();
-        if (!CheckValidOutput(tensor, batch_size)) {
-          continue;
-        }
-        for (size_t i = 0; i < batch_size; ++i) {
-          auto output_dim = tensor->dims()[1];
-          std::string output_dimstr =
-              boost::lexical_cast<std::string>(output_dim);
-          ars[i] = ars[i] + "\t" + field + ":" + output_dimstr;
-          auto bound = GetTensorBound(tensor, i);
-          ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
-        }
-      }
-      // #pragma omp parallel for
-      for (size_t i = 0; i < ars.size(); i++) {
-        if (ars[i].length() == 0) {
-          continue;
-        }
-        writer_ << ars[i];
-      }
-      if (need_dump_param_ && thread_id_ == 0) {
-        DumpParam(batch_cnt);
-      }
+      DumpField(*thread_scope_, dump_mode_, dump_interval_);
+    }
+    if (need_dump_param_ && thread_id_ == 0) {
+      DumpParam(*thread_scope_, batch_cnt);
     }
 
     PrintFetchVars();
     thread_scope_->DropKids();
     ++batch_cnt;
   }
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     writer_.Flush();
   }
   if (copy_table_config_.need_copy()) {

@@ -18,10 +18,10 @@ import numpy as np
 
 def simple_fc_net_with_inputs(img, label, class_num=10):
     hidden = img
-    for _ in range(4):
+    for _ in range(2):
         hidden = fluid.layers.fc(
             hidden,
-            size=200,
+            size=100,
             act='relu',
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)))

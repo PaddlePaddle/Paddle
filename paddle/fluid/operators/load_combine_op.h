@@ -35,21 +35,27 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
     auto model_from_memory = ctx.Attr<bool>("model_from_memory");
     auto out_var_names = ctx.OutputNames("Out");
 
-    PADDLE_ENFORCE_GT(
-        static_cast<int>(out_var_names.size()), 0,
-        "The number of output variables should be greater than 0.");
+    PADDLE_ENFORCE_GT(out_var_names.size(), 0UL,
+                      platform::errors::InvalidArgument(
+                          "The number of variables to be loaded is %d, expect "
+                          "it to be greater than 0.",
+                          out_var_names.size()));
     if (!model_from_memory) {
       std::ifstream fin(filename, std::ios::binary);
-      PADDLE_ENFORCE(static_cast<bool>(fin),
-                     "OP(LoadCombine) fail to open file %s, please check "
-                     "whether the model file is complete or damaged.",
-                     filename);
+      PADDLE_ENFORCE_EQ(
+          static_cast<bool>(fin), true,
+          platform::errors::Unavailable(
+              "LoadCombine operator fails to open file %s, please check "
+              "whether the model file is complete or damaged.",
+              filename));
       LoadParamsFromBuffer(ctx, place, &fin, load_as_fp16, out_var_names);
     } else {
-      PADDLE_ENFORCE(!filename.empty(),
-                     "OP(LoadCombine) fail to open file %s, please check "
-                     "whether the model file is complete or damaged.",
-                     filename);
+      PADDLE_ENFORCE_NE(
+          filename.empty(), true,
+          platform::errors::Unavailable(
+              "LoadCombine operator fails to open file %s, please check "
+              "whether the model file is complete or damaged.",
+              filename));
       std::stringstream fin(filename, std::ios::in | std::ios::binary);
       LoadParamsFromBuffer(ctx, place, &fin, load_as_fp16, out_var_names);
     }
@@ -64,16 +70,20 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
     auto out_vars = context.MultiOutputVar("Out");
 
     for (size_t i = 0; i < out_var_names.size(); i++) {
-      PADDLE_ENFORCE(out_vars[i] != nullptr,
-                     "Output variable %s cannot be found", out_var_names[i]);
+      VLOG(4) << "loading tensor: " << out_var_names[i];
+      PADDLE_ENFORCE_NOT_NULL(
+          out_vars[i], platform::errors::InvalidArgument(
+                           "The variable %s to be loaded cannot be found.",
+                           out_var_names[i]));
 
       auto *tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
 
       // Error checking
-      PADDLE_ENFORCE(
-          static_cast<bool>(*buffer),
-          "There is a problem with loading model parameters. "
-          "Please check whether the model file is complete or damaged.");
+      PADDLE_ENFORCE_EQ(
+          static_cast<bool>(*buffer), true,
+          platform::errors::Unavailable(
+              "An error occurred while loading model parameters. "
+              "Please check whether the model file is complete or damaged."));
 
       // Get data from fin to tensor
       DeserializeFromStream(*buffer, tensor, dev_ctx);
@@ -100,9 +110,10 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       }
     }
     buffer->peek();
-    PADDLE_ENFORCE(buffer->eof(),
-                   "You are not allowed to load partial data via "
-                   "load_combine_op, use load_op instead.");
+    PADDLE_ENFORCE_EQ(buffer->eof(), true,
+                      platform::errors::Unavailable(
+                          "Not allowed to load partial data via "
+                          "load_combine_op, please use load_op instead."));
   }
 };
 

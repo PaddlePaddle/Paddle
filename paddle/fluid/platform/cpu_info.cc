@@ -23,7 +23,9 @@ limitations under the License. */
 #include <sys/sysctl.h>
 #include <sys/types.h>
 #elif defined(_WIN32)
+#ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>
 #else
 #include <unistd.h>
@@ -139,6 +141,7 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
   if (cpu_isa == isa_any) {
     return true;
   } else {
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM)
     int reg[4];
     cpuid(reg, 0);
     int nIds = reg[0];
@@ -164,6 +167,7 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
         return (reg[1] & avx512f_mask) != 0;
       }
     }
+#endif
     return false;
   }
 }

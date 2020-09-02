@@ -32,8 +32,9 @@ class PadOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
     const std::vector<int> paddings =
-        boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
-    const float pad_value = boost::get<float>(op_desc.GetAttr("pad_value"));
+        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+    const float pad_value =
+        BOOST_GET_CONST(float, op_desc.GetAttr("pad_value"));
 
     nvinfer1::Dims input_shape = input->getDimensions();
     int nbDims = input_shape.nbDims;

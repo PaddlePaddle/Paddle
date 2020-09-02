@@ -25,7 +25,7 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
     PREFIX ${LEVELDB_SOURCES_DIR}
-    GIT_REPOSITORY "https://github.com/google/leveldb"
+    GIT_REPOSITORY "https://github.com/google/leveldb.git"
     GIT_TAG v1.18
     CONFIGURE_COMMAND ""
     BUILD_COMMAND CXXFLAGS=-fPIC make -j ${NUM_OF_PROCESSOR} libleveldb.a

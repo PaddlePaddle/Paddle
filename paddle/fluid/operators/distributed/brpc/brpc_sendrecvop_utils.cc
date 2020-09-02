@@ -36,7 +36,9 @@ class IOBufWriter {
   static void Append(const std::string& varname, butil::IOBuf* iobuf, int k,
                      const char* v, int64_t vlen) {
     if (vlen >= std::numeric_limits<int>::max() || vlen < 0) {
-      LOG(FATAL) << "AppendZeroCopy varname:" << varname << ", vlen:" << vlen;
+      PADDDLE_THROW(platform::errors::Unavailable(
+          "Variable lenght is invalid. Variable name is %s, length is %d.",
+          varname, vlen));
     }
 
     iobuf->append(reinterpret_cast<char*>(&k), 4);
@@ -95,7 +97,9 @@ class IOBufWriter {
                              bool in_cuda_pinned, void (*destroy)(void*),
                              void* user_data) {
     if (vlen >= std::numeric_limits<int>::max() || vlen < 0) {
-      LOG(FATAL) << "AppendZeroCopy varname:" << varname << ", vlen:" << vlen;
+      PADDDLE_THROW(platform::errors::Unavailable(
+          "Variable lenght is invalid. Variable name is %s, length is %d.",
+          varname, vlen));
     }
 
 #ifdef PADDLE_WITH_BRPC_RDMA

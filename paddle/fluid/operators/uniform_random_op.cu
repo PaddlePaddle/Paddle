@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <thrust/random.h>
 #include <thrust/transform.h>
+
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
@@ -87,10 +89,12 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     }
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+
     if (seed == 0) {
       std::random_device rd;
       seed = rd();
     }
+
     T min = static_cast<T>(context.Attr<float>("min"));
     T max = static_cast<T>(context.Attr<float>("max"));
     unsigned int diag_num =

@@ -19,6 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+from paddle.nn.functional import interpolate
 
 
 def trilinear_interp_np(input,
@@ -586,6 +587,12 @@ class TestTrilinearInterpAPI(unittest.TestCase):
         out4 = fluid.layers.resize_trilinear(
             x, out_shape=[4, 4, 8], actual_shape=actual_size)
         out5 = fluid.layers.resize_trilinear(x, scale=scale_tensor)
+        out6 = interpolate(
+            x, scale_factor=scale_tensor, mode='trilinear', data_format="NCDHW")
+        out7 = interpolate(
+            x, size=[4, 4, 8], mode='trilinear', data_format="NCDHW")
+        out8 = interpolate(
+            x, size=shape_tensor, mode='trilinear', data_format="NCDHW")
 
         x_data = np.random.random((2, 3, 6, 9, 4)).astype("float32")
         dim_data = np.array([18]).astype("int32")

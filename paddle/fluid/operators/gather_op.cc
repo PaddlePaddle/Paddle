@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/ddim.h"
-
+#include "paddle/fluid/framework/op_version_registry.h"
 namespace paddle {
 namespace operators {
 
@@ -26,12 +26,15 @@ class GatherOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of GatherOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Index"),
-                   "Input(Index) of GatherOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of GatherOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of GatherOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Index) of GatherOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of GatherOp should not be null."));
 
     auto index_dims = ctx->GetInputDim("Index");
     PADDLE_ENFORCE(index_dims.size() == 1 ||
@@ -40,6 +43,7 @@ class GatherOp : public framework::OperatorWithKernel {
     framework::DDim output_dims(ctx->GetInputDim("X"));
     output_dims[0] = batch_size;
     ctx->SetOutputDim("Out", output_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
@@ -74,6 +78,9 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");
+    AddInput("Axis",
+             "The Tensor which contains the axis that we do gather operation.")
+        .AsDispensable();
     AddOutput("Out", "The output of gather op");
     AddAttr<bool>(
         "overwrite",
@@ -116,6 +123,8 @@ class GatherGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("gather_grad");
     op->SetInput("Index", this->Input("Index"));
+    op->SetInput("Axis", this->Input("Axis"));
+
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
@@ -123,7 +132,7 @@ class GatherGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(GatherGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherGradNoNeedBufferVarInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -133,7 +142,7 @@ REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
                   ops::GatherGradOpMaker<paddle::framework::OpDesc>,
                   ops::GatherGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(gather_grad, ops::GatherGradOp,
-                  ops::GatherGradNoNeedBufferVarInference);
+                  ops::GatherGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>,
                        ops::GatherOpKernel<double>, ops::GatherOpKernel<int>,
                        ops::GatherOpKernel<uint8_t>,
@@ -143,3 +152,7 @@ REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
                        ops::GatherGradientOpKernel<int>,
                        ops::GatherGradientOpKernel<uint8_t>,
                        ops::GatherGradientOpKernel<int64_t>);
+REGISTER_OP_VERSION(gather)
+    .AddCheckpoint(R"ROC(upgrad gather, add attribut [axis])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewAttr(
+                       "axis", "Specify the axis of gather operation.", {}));

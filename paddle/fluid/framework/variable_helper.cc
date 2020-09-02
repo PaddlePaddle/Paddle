@@ -34,9 +34,9 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
     var->GetMutable<SelectedRows>();
   } else if (var_type == proto::VarType::FEED_MINIBATCH) {
-    var->GetMutable<FeedFetchList>();
+    var->GetMutable<FeedList>();
   } else if (var_type == proto::VarType::FETCH_LIST) {
-    var->GetMutable<FeedFetchList>();
+    var->GetMutable<FetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
     var->GetMutable<std::vector<framework::Scope *>>();
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
@@ -79,5 +79,6 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
     PADDLE_THROW("unknown var type to copy");
   }
 }
+
 }  // namespace framework
 }  // namespace paddle

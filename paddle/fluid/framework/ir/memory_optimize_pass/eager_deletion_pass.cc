@@ -58,8 +58,12 @@ static int64_t GetMemorySize(
         &vars,
     const std::string &var_name) {
   auto *var_desc = TryGetLatestVarDesc(vars.at(var_name));
-  PADDLE_ENFORCE_NOT_NULL(var_desc);
-  PADDLE_ENFORCE(IsLoDTensor(var_desc));
+  PADDLE_ENFORCE_NOT_NULL(
+      var_desc,
+      platform::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
+  PADDLE_ENFORCE_EQ(IsLoDTensor(var_desc), true,
+                    platform::errors::InvalidArgument(
+                        "Var(%s) must be LoDTensor.", var_name));
   auto dims = var_desc->GetShape();
   return SizeOfType(var_desc->GetDataType()) *
          std::accumulate(dims.begin(), dims.end(), static_cast<int64_t>(1),
@@ -228,7 +232,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
     }
 
     auto *eager_deletion_op = new details::EagerDeletionOpHandle(
-        eager_deletion_node, op->GetScope(), op->GetPlace(),
+        eager_deletion_node, op->GetScope(), op->GetScopeIdx(), op->GetPlace(),
         std::move(var_info), gcs.at(places[op->GetScopeIdx()]).get());
 
     auto it = std::find_if(

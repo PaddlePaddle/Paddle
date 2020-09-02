@@ -30,4 +30,7 @@ message DataFeedDesc {
   optional MultiSlotDesc multi_slot_desc = 3;
   optional string pipe_command = 4;
   optional int32 thread_num = 5;
+  optional string rank_offset = 6;
+  optional int32 pv_batch_size = 7 [ default = 32 ];
+  optional int32 input_type = 8 [ default = 0 ];
 }

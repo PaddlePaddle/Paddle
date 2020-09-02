@@ -25,7 +25,7 @@ namespace fusion_group {
 
 class GroupDetector {
  protected:
-  bool IsFusionGroupOp(const Node* n);
+  bool CheckPrecondition(const Node* n);
 };
 
 class ElementwiseGroupDetector : GroupDetector {

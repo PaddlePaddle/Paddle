@@ -18,6 +18,8 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestPadOp(OpTest):
@@ -94,6 +96,21 @@ create_test_fp16(TestPadOp)
 create_test_fp16(TestCase1)
 create_test_fp16(TestCase2)
 create_test_fp16(TestCase3)
+
+
+class TestPadOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = np.random.random((2, 2)).astype("float32")
+
+            def test_Variable():
+                fluid.layers.pad(x=input_data, paddings=[1, 1, 1, 1])
+
+            self.assertRaises(TypeError, test_Variable)
+
+            data = fluid.data(name='data', shape=[4], dtype='float16')
+            fluid.layers.pad(x=data, paddings=[0, 1])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -33,7 +33,9 @@ static inline void TransCompute(const int rank, const Tensor& in, Tensor* out,
                                 const std::vector<int>& perm,
                                 const DeviceContext& dev_ctx) {
   if (rank <= 1 || rank > 5) {
-    PADDLE_THROW("Invalid weight rank.");
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Weight rank of SpectralNorm should be in range [2, 5], but got %d.",
+        rank));
   }
 
   switch (rank) {

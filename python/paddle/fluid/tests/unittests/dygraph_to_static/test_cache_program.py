@@ -20,8 +20,9 @@ from collections import Counter
 
 import paddle.fluid as fluid
 
-from paddle.fluid.dygraph.dygraph_to_static import AutoTracer
-from paddle.fluid.dygraph.jit import dygraph_to_static_output
+from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
 
 from test_fetch_feed import Pool2D, Linear
 
@@ -35,8 +36,7 @@ class TestCacheProgram(unittest.TestCase):
     def test_cache(self):
         prev_ops, cur_ops = Counter(), Counter()
         prev_out, cur_out = None, None
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
+        with fluid.dygraph.guard(fluid.CPUPlace()):
             static_net = self.dygraph_class()
             for batch_id in range(self.batch_num):
                 out = static_net(self.data)
@@ -49,10 +49,14 @@ class TestCacheProgram(unittest.TestCase):
                     op.type for op in fluid.default_main_program().block(0).ops
                 ])
                 if batch_id > 0:
+                    prev_out_numpy = prev_out[0].numpy() if isinstance(
+                        prev_out, (tuple, list)) else prev_out.numpy()
+                    cur_out_numpy = cur_out[0].numpy() if isinstance(
+                        cur_out, (tuple, list)) else cur_out.numpy()
                     self.assertTrue(
-                        np.allclose(prev_out[0], cur_out[0]),
+                        np.allclose(prev_out_numpy, cur_out_numpy),
                         msg='Output in previous batch is {}\n Output in current batch is \n{}'
-                        .format(prev_out, cur_out))
+                        .format(prev_out_numpy, cur_out_numpy))
                     self.assertEqual(prev_ops, cur_ops)
 
 
@@ -70,30 +74,23 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
         self.batch_num = 5
 
     def train_static(self):
-        main_program = fluid.Program()
-        loss_data = []
-        with fluid.program_guard(main_program):
-            static_net = self.dygraph_class()
-            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
-            # set optimizer
-            # TODO: Need a better interfaces to set optimizer.
-            auto_tracer = AutoTracer()
-            auto_tracer.set_optimizer(adam, 'avg_loss')
-
-            for batch_id in range(self.batch_num):
-                pred, avg_loss = static_net(self.data)
-                loss_data.append(np.array(avg_loss))
-
-        return loss_data
+        return self.train(to_static=True)
 
     def train_dygraph(self):
+        return self.train(to_static=False)
+
+    def train(self, to_static=False):
+        prog_trans = ProgramTranslator()
+        prog_trans.enable(to_static)
+
         with fluid.dygraph.guard(fluid.CPUPlace()):
             dygraph_net = self.dygraph_class()
             adam = fluid.optimizer.AdamOptimizer(
                 learning_rate=0.001, parameter_list=dygraph_net.parameters())
             loss_data = []
             for batch_id in range(self.batch_num):
-                pred, avg_loss = dygraph_net(self.data)
+                input = fluid.dygraph.to_variable(self.data)
+                pred, avg_loss = dygraph_net(input)
 
                 loss_data.append(avg_loss.numpy())
                 avg_loss.backward()
@@ -109,6 +106,52 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
             np.allclose(dygraph_loss, static_loss),
             msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
                                                             static_loss))
+
+
+def simple_func(x):
+    inputs = fluid.dygraph.to_variable(x)
+    mean = fluid.layers.mean(inputs)
+    return mean
+
+
+class TestConvertWithCache(unittest.TestCase):
+    def test_cache(self):
+        static_func = convert_to_static(simple_func)
+        # Get transformed function from cache.
+        cached_func = convert_to_static(simple_func)
+        self.assertTrue(id(static_func), id(cached_func))
+
+
+@declarative
+def sum_even_until_limit(max_len, limit):
+    ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
+    for i in range(max_len):
+        if i % 2 > 0:
+            continue
+        elif i > limit:
+            break
+
+        ret_sum += i
+    return ret_sum
+
+
+def sum_under_while(limit):
+    i = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
+    ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
+    while i <= limit:
+        ret_sum += i
+        i += 1
+    return ret_sum
+
+
+class TestToOutputWithCache(unittest.TestCase):
+    def test_output(self):
+        with fluid.dygraph.guard():
+            ret = sum_even_until_limit(80, 10)
+            self.assertEqual(ret.numpy(), 30)
+
+            ret = declarative(sum_under_while)(100)
+            self.assertEqual(ret.numpy(), 5050)
 
 
 if __name__ == '__main__':

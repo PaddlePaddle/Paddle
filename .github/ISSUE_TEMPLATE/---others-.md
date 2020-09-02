@@ -14,6 +14,7 @@ about: 如上述分类未包含您的问题，可在此提出。 You could use t
     3）系统环境：请您描述系统类型、版本，例如Mac OS 10.14
     4）Python版本号
     5）显存信息
+ 注：您可以通过执行[summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py)获取以上信息。
 - 复现信息：如为报错，请给出复现环境、复现步骤
 - 问题描述：请详细描述您的问题，同步贴出报错信息、日志/代码关键片段
 
@@ -26,6 +27,7 @@ If there is no solution,please provide us with the following details :
 -GPU: including CUDA/cuDNN version
 -OS Platform and Distribution(eg.Mac OS 10.14)
 -Python version 
+Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py). 
 **To Reproduce**
 Steps to reproduce the behavior
 **Describe your current behavior**

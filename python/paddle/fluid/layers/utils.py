@@ -18,6 +18,8 @@ import copy
 import six
 import numpy as np
 from ..framework import Variable
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..layer_helper import LayerHelper
 
 
 def convert_to_list(value, n, name, dtype=np.int):
@@ -110,6 +112,10 @@ def _yield_flat_nest(nest):
 
 def flatten(nest):
     """
+	:alias_main: paddle.flatten
+	:alias: paddle.flatten,paddle.tensor.flatten,paddle.tensor.manipulation.flatten
+	:old_api: paddle.fluid.layers.flatten
+
     Traverse all entries in the nested structure and put them into an list.
     """
     if is_sequence(nest):
@@ -274,3 +280,81 @@ def _contain_var(list_or_tuple):
         if isinstance(item, Variable):
             return True
     return False
+
+
+def _get_shape_tensor_inputs(inputs, attrs, shape, op_type):
+    from .tensor import fill_constant, cast
+
+    def _get_attr_shape(list_shape):
+        attr_shape = []
+        for idx, dim in enumerate(list_shape):
+            if isinstance(dim, Variable):
+                attr_shape.append(-1)
+            else:
+                attr_shape.append(dim)
+        return attr_shape
+
+    def _get_shape_tensor(list_shape):
+        shape_tensor_list = []
+        for idx, dim in enumerate(list_shape):
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                check_dtype(
+                    dim.dtype, 'shape[' + str(idx) + ']', ['int32', 'int64'],
+                    op_type,
+                    '(When type of shape in' + op_type + 'is list or tuple.)')
+                if convert_dtype(dim.dtype) == 'int64':
+                    dim = cast(x=dim, dtype='int32')
+                shape_tensor_list.append(dim)
+            else:
+                temp_out = fill_constant([1], 'int32', dim, force_cpu=True)
+                shape_tensor_list.append(temp_out)
+        return shape_tensor_list
+
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant',
+                    '(When type of shape in' + op_type + ' is Variable.)')
+        if (convert_dtype(shape.dtype) == 'int64'):
+            shape = cast(shape, 'int32')
+        inputs["ShapeTensor"] = shape
+    elif isinstance(shape, (list, tuple)):
+        assert len(shape) > 0, (
+            "The size of 'shape' in" + op_type + " can't be zero, "
+            "but received %s." % len(shape))
+        attrs["shape"] = _get_attr_shape(shape)
+        if _contain_var(shape):
+            inputs['ShapeTensorList'] = _get_shape_tensor(shape)
+    else:
+        raise TypeError("Shape only supports Variable, or list, or tuple.")
+
+
+def _convert_to_tensor_list(old_list, dtype="int32"):
+    """
+    Converts all elements of a list to Variable.
+    """
+    from .tensor import fill_constant
+    new_list_tensor = []
+    for ele in old_list:
+
+        if isinstance(ele, Variable):
+            ele.stop_gradient = True
+            new_list_tensor.append(ele)
+        else:
+            assert isinstance(ele, six.integer_types)
+            temp_out = fill_constant([1], dtype, ele, force_cpu=True)
+            new_list_tensor.append(temp_out)
+    return new_list_tensor
+
+
+def _convert_shape_to_list(shape):
+    """
+    Convert shape(list, tuple, variable) to list in imperative mode
+    """
+    if isinstance(shape, (list, tuple)):
+        shape = list(
+            map(lambda x: x.numpy()[0] if isinstance(x, Variable) else x,
+                shape))
+    else:
+        shape = list(shape.numpy().astype(int))
+    return shape

@@ -123,7 +123,7 @@ REGISTER_OPERATOR(
     ops::ElementwiseDivDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad,
-                  ops::ElementwiseDoubleGradOpInplace);
+                  ops::ElementwiseDoubleGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,

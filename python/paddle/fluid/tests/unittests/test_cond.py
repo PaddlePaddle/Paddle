@@ -466,6 +466,12 @@ class TestCondBackward(unittest.TestCase):
                                lambda: batchnorm_fc_with_inputs(img, label, class_num=10))
 
         for use_parallel_exe in [False, True]:
+            if use_parallel_exe and os.name == "nt":
+                print(
+                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
+                )
+                continue
+
             self.backward_value_helper(cond_func,
                                        core.is_compiled_with_cuda(),
                                        use_parallel_exe)
@@ -487,6 +493,12 @@ class TestCondBackward(unittest.TestCase):
                                lambda: branch(i, img, label))
 
         for use_parallel_exe in [False, True]:
+            if use_parallel_exe and os.name == "nt":
+                print(
+                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
+                )
+                continue
+
             self.backward_value_helper(cond_func_simple_net_at_true,
                                        core.is_compiled_with_cuda(),
                                        use_parallel_exe)
@@ -502,7 +514,6 @@ class TestCondBackward(unittest.TestCase):
 
     def test_nested_cond_backward(self):
         def branch(i, img, label, mod_two):
-
             if mod_two:
                 predicate = ((i % 2) == 0)
             else:
@@ -515,12 +526,40 @@ class TestCondBackward(unittest.TestCase):
                                lambda: branch(i, img, label, False))
 
         for use_parallel_exe in [False, True]:
+            if use_parallel_exe and os.name == "nt":
+                print(
+                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
+                )
+                continue
             self.backward_value_helper(cond_func,
                                        core.is_compiled_with_cuda(),
                                        use_parallel_exe)
             self.add_optimizer_helper(cond_func,
                                       core.is_compiled_with_cuda(),
                                       use_parallel_exe)
+
+
+class TestCondWithError(unittest.TestCase):
+    def test_input_type_error(self):
+        main_program = framework.Program()
+        startup_program = framework.Program()
+        with framework.program_guard(main_program, startup_program):
+            pred = fluid.data(name='y', shape=[1], dtype='bool')
+
+            def func():
+                return pred
+
+            with self.assertRaises(TypeError):
+                layers.cond(None, func, func)
+
+            with self.assertRaises(TypeError):
+                layers.cond(pred, func, set())
+
+            with self.assertRaises(TypeError):
+                layers.cond(pred, set(), func)
+
+            with self.assertRaises(TypeError):
+                layers.cond(pred, func, func, set())
 
 
 if __name__ == '__main__':

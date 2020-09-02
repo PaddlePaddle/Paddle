@@ -145,6 +145,23 @@ class TestProgram(unittest.TestCase):
         self.assertEqual(param_list[0].name, "fc_0.w_0")
         self.assertEqual(param_list[1].name, "fc_0.b_0")
 
+    def test_prune_with_input_type_error(self):
+        program = fluid.default_main_program()
+        feed_var_names = [2, 3, 4]
+        self.assertRaises(ValueError, program._prune_with_input, feed_var_names,
+                          [])
+
+    def test_random_seed_error(self):
+        program = fluid.default_main_program()
+        with self.assertRaises(ValueError):
+            program.random_seed = "seed"
+
+    def test_copy_info_from_error(self):
+        program = fluid.default_main_program()
+        self.assertRaises(TypeError, program._copy_param_info_from, "program")
+        self.assertRaises(TypeError, program._copy_dist_param_info_from,
+                          "program")
+
 
 if __name__ == '__main__':
     unittest.main()

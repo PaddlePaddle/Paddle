@@ -18,5 +18,5 @@
 // compare and logical ops
 REGISTER_REDUCE_OP_WITHOUT_GRAD(reduce_all, UseInputPlace);
 REGISTER_OP_CPU_KERNEL(reduce_all,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         bool, ops::AllFunctor>);
+                       ops::BoolReduceKernel<paddle::platform::CPUDeviceContext,
+                                             bool, ops::AllFunctor>);

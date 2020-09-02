@@ -45,10 +45,7 @@ class CSyncCommStreamOp : public framework::OperatorBase {
     int ring_id = Attr<int>("ring_id");
     auto stream =
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
-    cudaError_t e_sync = cudaStreamSynchronize(stream);
-    if (e_sync != 0) {
-      LOG(FATAL) << "Fail to sync nccl stream: " << cudaGetErrorString(e_sync);
-    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif

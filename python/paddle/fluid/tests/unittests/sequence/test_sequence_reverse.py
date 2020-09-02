@@ -79,5 +79,22 @@ class TestSequenceReverse3(TestSequenceReverseBase):
         self.lod = [0, 2, 10, 0]
 
 
+class TestSequenceReverseOpError(unittest.TestCase):
+    def test_error(self):
+        def test_variable():
+            # the input type must be Variable
+            x_data = np.random.random((2, 4)).astype("float32")
+            fluid.layers.sequence_reverse(x=x_data)
+
+        self.assertRaises(TypeError, test_variable)
+
+        def test_dtype():
+            # dtype must be 'float32', 'float64', 'int8', 'int32', 'int64'
+            x2_data = fluid.layers.data(name='x2', shape=[4], dtype='float16')
+            fluid.layers.sequence_reverse(x=x2_data)
+
+        self.assertRaises(TypeError, test_dtype)
+
+
 if __name__ == '__main__':
     unittest.main()

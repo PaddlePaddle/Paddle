@@ -19,6 +19,7 @@ import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
+import paddle.fluid.layers as layers
 
 
 # Situation 1: starts(list, no tensor), ends(list, no tensor)
@@ -167,7 +168,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
             starts_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+                (1)).astype('int64') * ele))
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
         self.outputs = {'Out': self.out}
@@ -296,7 +297,7 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         self.inputs = {
             'Input': self.input,
             "StartsTensor": np.array(
-                self.starts, dtype="int32"),
+                self.starts, dtype="int64"),
             "EndsTensor": np.array(
                 self.ends, dtype="int32")
         }
@@ -485,7 +486,7 @@ class TestSliceAPI(unittest.TestCase):
     def test_1(self):
         input = np.random.random([3, 4, 5, 6]).astype("float64")
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
-        minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+        minus_3 = fluid.layers.fill_constant([1], "int64", -3)
         starts = fluid.layers.data(
             name='starts', shape=[1, 3], append_batch_size=False)
         ends = fluid.layers.data(
@@ -497,8 +498,11 @@ class TestSliceAPI(unittest.TestCase):
             append_batch_size=False,
             dtype="float64")
 
+        # value_int64 is greater than 2147483647 which is the max of int32
+        value_int64 = fluid.layers.fill_constant([1], "int64", 2147483648)
+
         out_1 = fluid.layers.slice(
-            x, axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 100, -1])
+            x, axes=[0, 1, 2], starts=[-3, 0, 2], ends=[value_int64, 100, -1])
         out_2 = fluid.layers.slice(
             x, axes=[0, 1, 3], starts=[minus_3, 0, 2], ends=[3, 100, -1])
         out_3 = fluid.layers.slice(
@@ -526,6 +530,153 @@ class TestSliceAPI(unittest.TestCase):
         assert np.array_equal(res_5, input[-3:3, 0:100, 2:-1, :])
         assert np.array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
         assert np.array_equal(res_7, input[-1, 0:100, :, 2:-1])
+
+
+class TestSliceApiWithLoDTensorArray(unittest.TestCase):
+    def setUp(self):
+        self.shape = (3, 4)
+        self.data = np.random.random(size=self.shape).astype('float32')
+        self.idx = 0
+        self.start = 0
+        self.end = 2
+        self.axis = 1
+
+        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        self.exe = fluid.Executor(self.place)
+
+    def set_program_and_run(self, main_program, case_num):
+        with fluid.program_guard(main_program):
+            x = [
+                fluid.data(
+                    name='x0', shape=self.shape, dtype="float32"), fluid.data(
+                        name='x1', shape=self.shape, dtype="float32"),
+                fluid.data(
+                    name='x2', shape=self.shape, dtype="float32")
+            ]
+
+            for each_x in x:
+                each_x.stop_gradient = False
+
+            arr = layers.create_array(dtype="float32")
+            for i in range(3):
+                idx = layers.array_length(arr)
+                arr = layers.array_write(x=x[i], i=idx, array=arr)
+
+            if case_num == 1:
+                self.sliced_arr = output = arr[0]
+
+            elif case_num == 2:
+                end = fluid.layers.array_length(
+                    arr) - 1  # dtype of end is int64
+                self.sliced_arr = slice_arr = arr[self.start:end]
+                output, _ = fluid.layers.tensor_array_to_tensor(
+                    slice_arr, axis=self.axis, use_stack=True)
+            elif case_num == 3:
+                value_int64 = fluid.layers.fill_constant([1], "int64",
+                                                         2147483648)
+                self.sliced_arr = slice_arr = arr[self.start:value_int64]
+                output, _ = fluid.layers.tensor_array_to_tensor(
+                    slice_arr, axis=self.axis, use_stack=True)
+
+            loss = fluid.layers.reduce_sum(output)
+            fluid.backward.append_backward(loss)
+            g_vars = list(
+                map(main_program.global_block().var,
+                    [each_x.name + "@GRAD" for each_x in x]))
+            self.out, self.g_x0, self.g_x1, self.g_x2 = \
+                self.exe.run(main_program,
+                             feed = {'x0': self.data,
+                                     'x1': self.data,
+                                     'x2': self.data},
+                             fetch_list=[output] + g_vars)
+
+    def test_case_1(self):
+        main_program = fluid.Program()
+        self.set_program_and_run(main_program, 1)
+
+        self.assertTrue(self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR)
+        self.assertEqual(self.sliced_arr.shape, self.shape)
+        self.assertTrue(np.array_equal(self.out, self.data))
+        self.assertTrue(np.array_equal(self.g_x0, np.ones_like(self.data)))
+        self.assertTrue(np.array_equal(self.g_x1, np.zeros_like(self.data)))
+        self.assertTrue(np.array_equal(self.g_x2, np.zeros_like(self.data)))
+
+    def test_case_2(self):
+        main_program = fluid.Program()
+        self.set_program_and_run(main_program, 2)
+
+        self.assertTrue(
+            self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+        self.assertEqual(self.sliced_arr.shape, self.shape)
+        self.assertTrue(
+            np.array_equal(
+                self.out, np.stack(
+                    [self.data, self.data], axis=self.axis)))
+        self.assertTrue(np.array_equal(self.g_x0, np.ones_like(self.data)))
+        self.assertTrue(np.array_equal(self.g_x1, np.ones_like(self.data)))
+        self.assertTrue(np.array_equal(self.g_x2, np.zeros_like(self.data)))
+
+    def test_case_3(self):
+        main_program = fluid.Program()
+        self.set_program_and_run(main_program, 3)
+
+        self.assertTrue(
+            self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+        self.assertEqual(self.sliced_arr.shape, self.shape)
+        self.assertTrue(
+            np.array_equal(
+                self.out,
+                np.stack(
+                    [self.data, self.data, self.data], axis=self.axis)))
+        self.assertTrue(np.array_equal(self.g_x0, np.ones_like(self.data)))
+        self.assertTrue(np.array_equal(self.g_x1, np.ones_like(self.data)))
+        self.assertTrue(np.array_equal(self.g_x2, np.ones_like(self.data)))
+
+
+class TestImperativeVarBaseGetItem(unittest.TestCase):
+    def test_getitem_with_long(self):
+        with fluid.dygraph.guard():
+            data = np.random.random((2, 80, 16128)).astype('float32')
+            var = fluid.dygraph.to_variable(data)
+            sliced = var[:, 10:, :var.shape[1]]  # var.shape[1] is 80L here
+            self.assertEqual(sliced.shape, [2, 70, 80])
+
+            sliced = var[:, var.shape[0]:, var.shape[0]:var.shape[1]]
+            self.assertEqual(sliced.shape, [2, 78, 78])
+
+    def test_getitem_with_float(self):
+        def test_float_in_slice_item():
+            with fluid.dygraph.guard():
+                data = np.random.random((2, 80, 16128)).astype('float32')
+                var = fluid.dygraph.to_variable(data)
+                sliced = var[:, 1.1:, :var.shape[1]]
+
+        self.assertRaises(Exception, test_float_in_slice_item)
+
+        def test_float_in_index():
+            with fluid.dygraph.guard():
+                data = np.random.random((2, 80, 16128)).astype('float32')
+                var = fluid.dygraph.to_variable(data)
+                sliced = var[1.1]
+
+        self.assertRaises(Exception, test_float_in_index)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestImperativeCUDAPinnedInput(unittest.TestCase):
+    def test_input_cuda_pinned_var(self):
+        with fluid.dygraph.guard():
+            data = np.random.random((2, 80, 16128)).astype('float32')
+            var = core.VarBase(
+                value=data,
+                name='',
+                persistable=False,
+                place=fluid.CUDAPinnedPlace(),
+                zero_copy=False)
+            sliced = var[:, 10:, :var.shape[1]]
+            self.assertEqual(sliced.shape, [2, 70, 80])
 
 
 if __name__ == '__main__':

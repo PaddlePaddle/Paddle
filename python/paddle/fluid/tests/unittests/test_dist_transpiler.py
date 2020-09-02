@@ -476,15 +476,18 @@ class TestL2Decay(TranspilerTest):
             size=1000,
             act=None,
             param_attr=fluid.ParamAttr(
-                name='fc_w',
-                regularizer=fluid.regularizer.L2Decay(),
-                gradient_clip=fluid.clip.GradientClipByValue(0.1)),
+                name='fc_w', regularizer=fluid.regularizer.L2Decay()),
             bias_attr=fluid.ParamAttr(name='fc_b'))
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = fluid.layers.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-        sgd_optimizer.minimize(avg_cost)
+
+        def filter(param):
+            return param.name == "fc_w"
+
+        clip = fluid.clip.GradientClipByValue(0.1, need_clip=filter)
+        sgd_optimizer.minimize(avg_cost, grad_clip=clip)
 
     def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
@@ -657,15 +660,15 @@ class TestDistLookupTable(TestDistLookupTableBase):
         # 1 optimize for fc_w or fc_b adam
         self.assertEqual([op.type for op in pserver1.blocks[1].ops],
                          ["sum", "scale", "adam", "scale", "scale"])
-        # 4 prefetch -> lookup_sparse_table for data0
+        # 4 prefetch -> lookup_sparse_table_read for data0
         self.assertEqual([op.type for op in pserver1.blocks[2].ops],
                          ["sum", "scale", "adam", "scale", "scale"])
         # 2 optimize for table sgd
         self.assertEqual([op.type for op in pserver1.blocks[3].ops],
                          ["sum", "sgd"])
-        # 3 prefetch -> lookup_sparse_table for data0
+        # 3 prefetch -> lookup_sparse_table_read for data0
         self.assertEqual([op.type for op in pserver1.blocks[4].ops],
-                         ["lookup_sparse_table"])
+                         ["lookup_sparse_table_read"])
         # 5 save table
         self.assertEqual([op.type for op in pserver1.blocks[5].ops], ["save"])
 
@@ -751,9 +754,9 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
                          ["adam", "scale", "scale"])
         # 3 optimize for table sgd
         self.assertEqual([op.type for op in pserver1.blocks[3].ops], ["sgd"])
-        # 4 prefetch -> lookup_sparse_table for data0
+        # 4 prefetch -> lookup_sparse_table_read for data0
         self.assertEqual([op.type for op in pserver1.blocks[4].ops],
-                         ["lookup_sparse_table"])
+                         ["lookup_sparse_table_read"])
         # 5 save table
         self.assertEqual([op.type for op in pserver1.blocks[5].ops], ["save"])
 

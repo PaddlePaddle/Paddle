@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -88,6 +87,12 @@ void AnalysisConfig::DisableFCPadding() {
   Update();
 }
 
+void AnalysisConfig::EnableXpu(int l3_workspace_size) {
+  use_xpu_ = true;
+  xpu_l3_workspace_size_ = l3_workspace_size;
+  Update();
+}
+
 AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #define CP_MEMBER(member__) member__ = other.member__;
 
@@ -97,8 +102,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
                                   // params_file_ fields.
 
   CP_MEMBER(opt_cache_dir_);
-  prog_file_ = std::move(other.prog_file_);
-  params_file_ = std::move(other.params_file_);
+  CP_MEMBER(prog_file_);
+  CP_MEMBER(params_file_);
 
   CP_MEMBER(use_fc_padding_);
   // GPU related.
@@ -116,8 +121,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
-  // NGRAPH related.
-  CP_MEMBER(use_ngraph_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -128,11 +131,16 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(min_input_shape_);
   CP_MEMBER(max_input_shape_);
   CP_MEMBER(optim_input_shape_);
+  CP_MEMBER(disable_trt_plugin_fp16_);
 
   CP_MEMBER(use_lite_);
   CP_MEMBER(lite_precision_mode_);
   CP_MEMBER(lite_passes_filter_);
   CP_MEMBER(lite_ops_filter_);
+  CP_MEMBER(lite_zero_copy_);
+
+  CP_MEMBER(use_xpu_);
+  CP_MEMBER(xpu_l3_workspace_size_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -149,6 +157,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(cpu_math_library_num_threads_);
 
   CP_MEMBER(serialized_info_cache_);
+
+  CP_MEMBER(thread_local_stream_);
 
   if (use_gpu_) {
     pass_builder_.reset(new GpuPassStrategy(
@@ -207,16 +217,6 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
   Update();
 }
 
-void AnalysisConfig::EnableNgraph() {
-#ifdef PADDLE_WITH_NGRAPH
-  pass_builder()->EnableNgraph();
-  use_ngraph_ = true;
-#else
-  LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
-  use_ngraph_ = false;
-#endif
-}
-
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           "MkldnnQuantizer was not enabled yet.");
@@ -226,10 +226,7 @@ MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
 void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,
     AnalysisConfig::Precision precision_mode, bool use_static,
-    bool use_calib_mode,
-    std::map<std::string, std::vector<int>> min_input_shape,
-    std::map<std::string, std::vector<int>> max_input_shape,
-    std::map<std::string, std::vector<int>> optim_input_shape) {
+    bool use_calib_mode) {
 #ifdef PADDLE_WITH_CUDA
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
@@ -243,15 +240,23 @@ void AnalysisConfig::EnableTensorRtEngine(
   tensorrt_precision_mode_ = precision_mode;
   trt_use_static_engine_ = use_static;
   trt_use_calib_mode_ = use_calib_mode;
-  min_input_shape_ = min_input_shape;
-  max_input_shape_ = max_input_shape;
-  optim_input_shape_ = optim_input_shape;
 
   Update();
 #else
   LOG(ERROR)
       << "To use TensorRT engine, please compile inference lib with GPU first.";
 #endif
+}
+
+void AnalysisConfig::SetTRTDynamicShapeInfo(
+    std::map<std::string, std::vector<int>> min_input_shape,
+    std::map<std::string, std::vector<int>> max_input_shape,
+    std::map<std::string, std::vector<int>> optim_input_shape,
+    bool disable_trt_plugin_fp16) {
+  min_input_shape_ = min_input_shape;
+  max_input_shape_ = max_input_shape;
+  optim_input_shape_ = optim_input_shape;
+  disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
 
 // TODO(Superjomn) refactor this, buggy.
@@ -286,6 +291,10 @@ void AnalysisConfig::Update() {
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kTRTSubgraphPasses) {
+      if (tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
+          (pass == "conv_bn_fuse_pass" || pass == "fc_fuse_pass")) {
+        continue;
+      }
       pass_builder()->AppendPass(pass);
     }
   }
@@ -296,20 +305,6 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder()->EnableCUDNN();
     }
-#endif
-  }
-
-  if (use_ngraph_) {
-    if (!enable_ir_optim_) {
-      LOG(ERROR)
-          << "EnableNgraph() only works when IR optimization is enabled.";
-    }
-#ifdef PADDLE_WITH_NGRAPH
-    pass_builder()->EnableNgraph();
-    use_ngraph_ = true;
-#else
-    LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
-    use_ngraph_ = false;
 #endif
   }
 
@@ -358,6 +353,22 @@ void AnalysisConfig::Update() {
     }
   }
 
+  if (use_xpu_) {
+#ifndef PADDLE_WITH_XPU
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use an XPU device, but Paddle was not compiled "
+        "with XPU-runtime."));
+#endif
+    if (!use_lite_) {
+      LOG(WARNING) << "Because XPU currently only works in Paddle-Lite "
+                      "subgraph mode, please make sure you have enabled it.";
+    }
+    PADDLE_ENFORCE_EQ(use_gpu_, false,
+                      platform::errors::Unavailable(
+                          "Currently, XPU and GPU cannot be enabled in the "
+                          "same analysis configuration."));
+  }
+
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
   }
@@ -381,8 +392,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << enable_memory_optim_;
 
-  ss << use_ngraph_;
-
   ss << use_mkldnn_;
   ss << mkldnn_cache_capacity_;
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
@@ -403,6 +412,10 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << cpu_math_library_num_threads_;
 
   ss << use_lite_;
+  ss << use_xpu_;
+  ss << xpu_l3_workspace_size_;
+
+  ss << thread_local_stream_;
 
   return ss.str();
 }
@@ -478,13 +491,14 @@ void AnalysisConfig::DisableGlogInfo() {
 }
 
 void AnalysisConfig::EnableLiteEngine(
-    AnalysisConfig::Precision precision_mode,
+    AnalysisConfig::Precision precision_mode, bool zero_copy,
     const std::vector<std::string> &passes_filter,
     const std::vector<std::string> &ops_filter) {
   use_lite_ = true;
   lite_precision_mode_ = precision_mode;
   lite_passes_filter_ = passes_filter;
   lite_ops_filter_ = ops_filter;
+  lite_zero_copy_ = zero_copy;
   Update();
 }
 
@@ -494,5 +508,7 @@ void AnalysisConfig::PartiallyRelease() {
   params_file_.clear();
   params_file_.shrink_to_fit();
 }
+
+void AnalysisConfig::EnableGpuMultiStream() { thread_local_stream_ = true; }
 
 }  // namespace paddle

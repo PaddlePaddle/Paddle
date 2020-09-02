@@ -32,12 +32,11 @@ def convolutional_neural_network(use_py_reader):
 
         py_reader = None
         if use_py_reader:
-            py_reader = fluid.layers.create_py_reader_by_data(
+            py_reader = fluid.io.DataLoader.from_generator(
                 capacity=64,
                 feed_list=[img, label],
-                name='py_reader',
+                iterable=False,
                 use_double_buffer=False)
-            img, label = fluid.layers.read_file(py_reader)
 
         conv_pool_1 = fluid.nets.simple_img_conv_pool(
             input=img,
@@ -59,8 +58,11 @@ def convolutional_neural_network(use_py_reader):
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_loss = fluid.layers.mean(loss)
         acc = fluid.layers.accuracy(input=prediction, label=label)
-
-        return img, label, prediction, avg_loss, acc, py_reader
+        i = fluid.layers.zeros(shape=[1], dtype='int64')
+        array = fluid.layers.array_write(x=prediction, i=i)
+        fluid.layers.increment(i)
+        fluid.layers.array_write(x=acc, i=i, array=array)
+        return array, img, label, prediction, avg_loss, acc, py_reader
 
 
 def test():
@@ -70,7 +72,7 @@ def test():
     test_reader = paddle.batch(
         paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
 
-    img, label, prediction, avg_loss, acc, py_reader = convolutional_neural_network(
+    array, img, label, prediction, avg_loss, acc, py_reader = convolutional_neural_network(
         use_py_reader=False)
     feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
 
@@ -103,7 +105,7 @@ def train(use_cuda, thread_num, cpu_num):
         print("paddle is not compiled with cuda, exit!")
         return
 
-    img, label, prediction, avg_loss, acc, py_reader = convolutional_neural_network(
+    array, img, label, prediction, avg_loss, acc, py_reader = convolutional_neural_network(
         use_py_reader=True)
     print("build convolutional neural network done.")
 
@@ -144,14 +146,19 @@ def train(use_cuda, thread_num, cpu_num):
         exec_strategy=exec_strategy)
     print("declare parallel executor done.")
 
-    py_reader.decorate_paddle_reader(train_reader)
+    py_reader.set_sample_list_generator(train_reader)
 
     for pass_id in range(2):
         step = 0
         py_reader.start()
         try:
             while True:
-                loss_val = pe.run(fetch_list=[avg_loss.name])
+                array_v, acc_v, prediction_v, loss_val = pe.run(
+                    fetch_list=[array, acc, prediction, avg_loss.name])
+
+                assert numpy.allclose(array_v[0], prediction_v) == True
+                assert numpy.allclose(array_v[1], acc_v) == True
+
                 loss_val = numpy.mean(loss_val)
                 if step % 10 == 0:
                     print("Pass %d, Batch %d, Cost %f, queue size %d" %

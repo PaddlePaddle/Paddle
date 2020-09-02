@@ -58,31 +58,58 @@ struct CUDAPinnedPlace {
   inline bool operator<(const CUDAPinnedPlace &) const { return false; }
 };
 
+// Place for Baidu Kunlun Accelerator
+struct XPUPlace {
+  XPUPlace() : XPUPlace(0) {}
+  explicit XPUPlace(int d) : device(d) {}
+
+  inline int GetDeviceId() const { return device; }
+  // needed for variant equality comparison
+  inline bool operator==(const XPUPlace &o) const { return device == o.device; }
+  inline bool operator!=(const XPUPlace &o) const { return !(*this == o); }
+  inline bool operator<(const XPUPlace &o) const { return device < o.device; }
+
+  int device;
+};
+
 struct IsCUDAPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
+  bool operator()(const XPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &gpu) const { return true; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
 
 struct IsCPUPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &cpu) const { return true; }
+  bool operator()(const XPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
 
 struct IsCUDAPinnedPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
+  bool operator()(const XPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &) const { return false; }
   bool operator()(const CUDAPinnedPlace &cuda_pinned) const { return true; }
 };
 
-class Place : public boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> {
+struct IsXPUPlace : public boost::static_visitor<bool> {
+  bool operator()(const CPUPlace &) const { return false; }
+  bool operator()(const XPUPlace &xpu) const { return true; }
+  bool operator()(const CUDAPlace &) const { return false; }
+  bool operator()(const CUDAPinnedPlace &) const { return false; }
+};
+
+class Place
+    : public boost::variant<CUDAPlace, XPUPlace, CPUPlace, CUDAPinnedPlace> {
  private:
-  using PlaceBase = boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace>;
+  using PlaceBase =
+      boost::variant<CUDAPlace, XPUPlace, CPUPlace, CUDAPinnedPlace>;
 
  public:
   Place() = default;
   Place(const CPUPlace &cpu_place) : PlaceBase(cpu_place) {}     // NOLINT
+  Place(const XPUPlace &xpu_place) : PlaceBase(xpu_place) {}     // NOLINT
   Place(const CUDAPlace &cuda_place) : PlaceBase(cuda_place) {}  // NOLINT
   Place(const CUDAPinnedPlace &cuda_pinned_place)                // NOLINT
       : PlaceBase(cuda_pinned_place) {}
@@ -98,6 +125,7 @@ class Place : public boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> {
 using PlaceList = std::vector<Place>;
 
 bool is_gpu_place(const Place &);
+bool is_xpu_place(const Place &);
 bool is_cpu_place(const Place &);
 bool is_cuda_pinned_place(const Place &);
 bool places_are_same_class(const Place &, const Place &);
@@ -115,11 +143,22 @@ struct PlaceVisitorWrapper
     return visitor_(cpu);
   }
 
+  typename Visitor::result_type operator()(const XPUPlace &xpu) const {
+#ifdef PADDLE_WITH_XPU
+    return visitor_(xpu);
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Paddle is not compiled with XPU. Cannot visit xpu device"));
+    return typename Visitor::result_type();
+#endif
+  }
+
   typename Visitor::result_type operator()(const CUDAPlace &cuda) const {
 #ifdef PADDLE_WITH_CUDA
     return visitor_(cuda);
 #else
-    PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda device");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Paddle is not compiled with CUDA. Cannot visit cuda device"));
     return typename Visitor::result_type();
 #endif
   }
@@ -129,7 +168,8 @@ struct PlaceVisitorWrapper
 #ifdef PADDLE_WITH_CUDA
     return visitor_(cuda_pinned);
 #else
-    PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda_pinned");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Paddle is not compiled with CUDA. Cannot visit cuda_pinned"));
     return typename Visitor::result_type();
 #endif
   }

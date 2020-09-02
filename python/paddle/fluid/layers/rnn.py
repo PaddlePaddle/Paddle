@@ -23,11 +23,13 @@ from . import control_flow
 from . import utils
 from . import sequence_lod
 from .utils import *
+from .. import core
 from ..framework import default_main_program
 from ..data_feeder import convert_dtype
 from ..layer_helper import LayerHelper
 from ..framework import in_dygraph_mode
 from ..param_attr import ParamAttr
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
     'RNNCell',
@@ -36,6 +38,7 @@ __all__ = [
     'Decoder',
     'BeamSearchDecoder',
     'rnn',
+    'birnn',
     'dynamic_decode',
     'DecodeHelper',
     'TrainingHelper',
@@ -55,6 +58,8 @@ __all__ = [
 
 class RNNCell(object):
     """
+	:api_attr: Static Graph
+
     RNNCell is the base class for abstraction representing the calculations
     mapping the input and state to the output and new state. It is suitable to
     and mostly used in RNN.
@@ -88,7 +93,7 @@ class RNNCell(object):
     def get_initial_states(self,
                            batch_ref,
                            shape=None,
-                           dtype=None,
+                           dtype='float32',
                            init_value=0,
                            batch_dim_idx=0):
         """
@@ -105,9 +110,9 @@ class RNNCell(object):
                 property `state_shape` will be used. The default value is None.
             dtype: A (possibly nested structure of) data type[s]. The structure
                 must be same as that of `shape`, except when all tensors' in states
-                has the same data type, a single data type can be used. If None and
+                has the same data type, a single data type can be used. If
                 property `cell.state_shape` is not available, float32 will be used
-                as the data type. The default value is None.
+                as the data type. The default value is float32.
             init_value: A float value used to initialize states.
             batch_dim_idx: An integer indicating which dimension of the tensor in
                 inputs represents batch size.  The default value is 0.
@@ -116,6 +121,27 @@ class RNNCell(object):
             Variable: tensor variable[s] packed in the same structure provided \
                 by shape, representing the initialized states.
         """
+        if sys.version_info < (3, ):
+            integer_types = (
+                int,
+                long, )
+        else:
+            integer_types = (int, )
+        check_variable_and_dtype(batch_ref, 'batch_ref',
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'RNNCell')
+        check_type(shape, 'shape', (list, tuple, type(None), integer_types),
+                   'RNNCell')
+        if isinstance(shape, (list, tuple)):
+            shapes = map_structure(lambda x: x, shape)
+            if isinstance(shape, list):
+                for i, _shape in enumerate(shapes):
+                    check_type(_shape, 'shapes[' + str(i) + ']', integer_types,
+                               'RNNCell')
+            else:
+                check_type(shapes, 'shapes', integer_types, 'RNNCell')
+        check_dtype(dtype, 'dtype', ['float32', 'float64'], 'RNNCell')
+
         # TODO: use inputs and batch_size
         batch_ref = flatten(batch_ref)[0]
 
@@ -199,6 +225,8 @@ class RNNCell(object):
 
 class GRUCell(RNNCell):
     """
+	:api_attr: Static Graph
+
     Gated Recurrent Unit cell. It is a wrapper for 
     `fluid.contrib.layers.rnn_impl.BasicGRUUnit` to make it adapt to RNNCell.
 
@@ -249,6 +277,8 @@ class GRUCell(RNNCell):
             dtype(string, optional): The data type used in this cell. Default float32.
             name(string, optional) : The name scope used to identify parameters and biases.
         """
+        check_type(hidden_size, 'hidden_size', (int), 'GRUCell')
+        check_dtype(dtype, 'dtype', ['float32', 'float64'], 'GRUCell')
         self.hidden_size = hidden_size
         from .. import contrib  # TODO: resolve recurrent import
         self.gru_unit = contrib.layers.rnn_impl.BasicGRUUnit(
@@ -262,10 +292,10 @@ class GRUCell(RNNCell):
         Parameters:
             inputs(Variable): A tensor with shape `[batch_size, input_size]`,
                 corresponding to :math:`x_t` in the formula. The data type
-                should be float32.
+                should be float32 or float64.
             states(Variable): A tensor with shape `[batch_size, hidden_size]`.
                 corresponding to :math:`h_{t-1}` in the formula. The data type
-                should be float32.
+                should be float32 or float64.
 
         Returns:
             tuple: A tuple( :code:`(outputs, new_states)` ), where `outputs` and \
@@ -273,6 +303,11 @@ class GRUCell(RNNCell):
                 corresponding to :math:`h_t` in the formula. The data type of the \
                 tensor is same as that of `states`.        
         """
+
+        check_variable_and_dtype(inputs, 'inputs', ['float32', 'float64'],
+                                 'GRUCell')
+        check_variable_and_dtype(states, 'states', ['float32', 'float64'],
+                                 'GRUCell')
         new_hidden = self.gru_unit(inputs, states)
         return new_hidden, new_hidden
 
@@ -288,6 +323,8 @@ class GRUCell(RNNCell):
 
 class LSTMCell(RNNCell):
     """
+	:api_attr: Static Graph
+
     Long-Short Term Memory cell. It is a wrapper for 
     `fluid.contrib.layers.rnn_impl.BasicLSTMUnit` to make it adapt to RNNCell.
 
@@ -342,6 +379,9 @@ class LSTMCell(RNNCell):
             dtype(string, optional): The data type used in this cell. Default float32.
             name(string, optional) : The name scope used to identify parameters and biases.
         """
+
+        check_type(hidden_size, 'hidden_size', (int), 'LSTMCell')
+        check_dtype(dtype, 'dtype', ['float32', 'float64'], 'LSTMCell')
         self.hidden_size = hidden_size
         from .. import contrib  # TODO: resolve recurrent import
         self.lstm_unit = contrib.layers.rnn_impl.BasicLSTMUnit(
@@ -355,10 +395,10 @@ class LSTMCell(RNNCell):
         Parameters:
             inputs(Variable): A tensor with shape `[batch_size, input_size]`,
                 corresponding to :math:`x_t` in the formula. The data type
-                should be float32.
+                should be float32 or float64.
             states(Variable): A list of containing two tensors, each shaped
                 `[batch_size, hidden_size]`, corresponding to :math:`h_{t-1}, c_{t-1}`
-                in the formula. The data type should be float32.
+                in the formula. The data type should be float32 or float64.
 
         Returns:
             tuple: A tuple( :code:`(outputs, new_states)` ), where `outputs` is \
@@ -368,6 +408,15 @@ class LSTMCell(RNNCell):
                 to :math:`h_{t}, c_{t}` in the formula. The data type of these \
                 tensors all is same as that of `states`.
         """
+
+        check_variable_and_dtype(inputs, 'inputs', ['float32', 'float64'],
+                                 'LSTMCell')
+        check_type(states, 'states', list, 'LSTMCell')
+        if isinstance(states, list):
+            for i, state in enumerate(states):
+                check_variable_and_dtype(state, 'state[' + str(i) + ']',
+                                         ['float32', 'float64'], 'LSTMCell')
+
         pre_hidden, pre_cell = states
         new_hidden, new_cell = self.lstm_unit(inputs, pre_hidden, pre_cell)
         return new_hidden, [new_hidden, new_cell]
@@ -391,68 +440,155 @@ def rnn(cell,
         **kwargs):
     """
     rnn creates a recurrent neural network specified by RNNCell `cell`,
-    which performs :code:`cell.call()` repeatedly until reaches to the maximum
-    length of `inputs`.
+    which performs :code:`cell.call()` (for dygraph mode :code:`cell.forward`) 
+    repeatedly until reaches to the maximum length of `inputs`.
 
-    Parameters:
-        cell(RNNCell): An instance of `RNNCell`.
-        inputs(Variable): A (possibly nested structure of) tensor variable[s]. 
-            The shape of tensor should be `[batch_size, sequence_length, ...]`
-            for `time_major == False` or `[sequence_length, batch_size, ...]`
-            for `time_major == True`. It represents the inputs to be unrolled
-            in RNN.
-        initial_states(Variable, optional): A (possibly nested structure of)
-            tensor variable[s], representing the initial state for RNN. 
-            If not provided, `cell.get_initial_states` would be used to produce
-            the initial state. Default None.
-        sequence_length(Variable, optional): A tensor with shape `[batch_size]`.
-            It stores real length of each instance, thus enables users to extract
-            the last valid state when past a batch element's sequence length for
-            correctness. If not provided, the paddings would be treated same as
-            non-padding inputs. Default None.
-        time_major(bool, optional): Indicate the data layout of Tensor included
-            in `input` and `output` tensors. If `False`, the data layout would
-            be batch major with shape `[batch_size, sequence_length, ...]`.  If
-            `True`, the data layout would be time major with shape
-            `[sequence_length, batch_size, ...]`. Default: `False`.
-        is_reverse(bool, optional): Indicate whether to calculate in the reverse
-            order of input sequences. Default: `False`.
-        **kwargs: Additional keyword arguments. Arguments passed to `cell.call`. 
+    Arguments:
+        cell(RNNCellBase): An instance of `RNNCellBase`.
+        inputs(Tensor): the input sequences. 
+            If time_major is True, the shape is 
+            `[time_steps, batch_size, input_size]`
+            else the shape is `[batch_size, time_steps, input_size]`.
+        initial_states(Tensor|tuple|list, optional): the initial state of the 
+            rnn cell. Tensor or a possibly nested structure of tensors. If not 
+            provided, `cell.get_initial_states` would be called to produce
+            the initial state. Defaults to None.
+        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
+            or int32. The valid lengths of input sequences. Defaults to None.
+            If `sequence_length` is not None, the inputs are treated as 
+            padded sequences. In each input sequence, elements whose time step 
+            index are not less than the valid length are treated as paddings.
+        time_major (bool): Whether the first dimension of the input means the
+            time steps. Defaults to False.
+        is_reverse (bool, optional): Indicate whether to calculate in the reverse
+            order of input sequences. Defaults to False.
+        **kwargs: Additional keyword arguments to pass to `forward` of the cell. 
 
     Returns:
-        tuple: A tuple( :code:`(final_outputs, final_states)` ) including the final \
-            outputs and states, both are Tensor or nested structure of Tensor. \
-            `final_outputs` has the same structure and data types as \
-            the returned `outputs` of :code:`cell.call` , and each Tenser in `final_outputs` \
-            stacks all time steps' counterpart in `outputs` thus has shape `[batch_size, sequence_length, ...]` \
-            for `time_major == False` or `[sequence_length, batch_size, ...]` for `time_major == True`. \
-            `final_states` is the counterpart at last time step of initial states, \
-            thus has the same structure with it and has tensors with same shapes \
-            and data types.
+        (outputs, final_states)
+        outputs (Tensor|list|tuple): the output sequence. Tensor or nested 
+            structure of Tensors.
+            If `time_major` is True, the shape of each tensor in outpus is 
+            `[time_steps, batch_size, hidden_size]`, else 
+            `[batch_size, time_steps, hidden_size]`.
+        final_states (Tensor|list|tuple): final states. A (possibly nested structure of)
+            tensor[s], representing the final state for RNN. It has the same 
+            structure of intial state. Each tensor in final states has the same
+            shape and dtype as the corresponding tensor in initial states.
             
 
     Examples:
 
         .. code-block:: python
-            
-            import paddle.fluid as fluid
 
-            inputs = fluid.data(name="inputs",
-                                shape=[-1, 32, 128],
-                                dtype="float32")
-            cell = fluid.layers.GRUCell(hidden_size=128)
-            outputs = fluid.layers.rnn(cell=cell, inputs=inputs)
+            import paddle
+            paddle.disable_static()
+
+            cell = paddle.nn.SimpleRNNCell(16, 32)
+
+            inputs = paddle.rand((4, 23, 16))
+            prev_h = paddle.randn((4, 32))
+            outputs, final_states = paddle.nn.functional.rnn(cell, inputs, prev_h) 
+
     """
+    if in_dygraph_mode():
+        return _rnn_dynamic_graph(cell, inputs, initial_states, sequence_length,
+                                  time_major, is_reverse, **kwargs)
+    else:
+        return _rnn_static_graph(cell, inputs, initial_states, sequence_length,
+                                 time_major, is_reverse, **kwargs)
 
-    def _maybe_copy(state, new_state, step_mask):
-        # TODO: use where_op
-        new_state = nn.elementwise_mul(
-            new_state, step_mask, axis=0) - nn.elementwise_mul(
-                state, (step_mask - 1), axis=0)
-        return new_state
 
-    def _transpose_batch_time(x):
-        return nn.transpose(x, [1, 0] + list(range(2, len(x.shape))))
+class ArrayWrapper(object):
+    def __init__(self, x):
+        self.array = [x]
+
+    def append(self, x):
+        self.array.append(x)
+        return self
+
+
+def _maybe_copy(state, new_state, step_mask):
+    """update rnn state or just pass the old state through"""
+    new_state = nn.elementwise_mul(new_state, step_mask, axis=0) \
+              + nn.elementwise_mul(state, (1 - step_mask), axis=0)
+    return new_state
+
+
+def _transpose_batch_time(x):
+    perm = [1, 0] + list(range(2, len(x.shape)))
+    return nn.transpose(x, perm)
+
+
+def _rnn_dynamic_graph(cell,
+                       inputs,
+                       initial_states=None,
+                       sequence_length=None,
+                       time_major=False,
+                       is_reverse=False,
+                       **kwargs):
+    time_step_index = 0 if time_major else 1
+    flat_inputs = flatten(inputs)
+    time_steps = flat_inputs[0].shape[time_step_index]
+
+    if not time_major:
+        inputs = map_structure(_transpose_batch_time, inputs)
+
+    if sequence_length is not None:
+        mask = sequence_lod.sequence_mask(
+            sequence_length, maxlen=time_steps, dtype=inputs.dtype)
+        mask = nn.transpose(mask, [1, 0])
+
+    if is_reverse:
+        inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
+        mask = tensor.reverse(mask, axis=[0]) \
+            if sequence_length is not None else None
+
+    states = initial_states
+    outputs = []
+    for i in range(time_steps):
+        step_inputs = map_structure(lambda x: x[i], inputs)
+        step_outputs, new_states = cell(step_inputs, states, **kwargs)
+        if sequence_length is not None:
+            new_states = map_structure(
+                partial(
+                    _maybe_copy, step_mask=mask[i]), states, new_states)
+        states = new_states
+        outputs = map_structure(lambda x: ArrayWrapper(x),
+                                step_outputs) if i == 0 else map_structure(
+                                    lambda x, x_array: x_array.append(x),
+                                    step_outputs, outputs)
+
+    final_outputs = map_structure(
+        lambda x: nn.stack(x.array, axis=time_step_index),
+        outputs)
+
+    if is_reverse:
+        final_outputs = map_structure(
+            lambda x: tensor.reverse(x, axis=time_step_index),
+            final_outputs)
+
+    final_states = new_states
+    return final_outputs, final_states
+
+
+def _rnn_static_graph(cell,
+                      inputs,
+                      initial_states=None,
+                      sequence_length=None,
+                      time_major=False,
+                      is_reverse=False,
+                      **kwargs):
+    check_type(inputs, 'inputs', (Variable, list, tuple), 'rnn')
+    if isinstance(inputs, (list, tuple)):
+        for i, input_x in enumerate(inputs):
+            check_variable_and_dtype(input_x, 'inputs[' + str(i) + ']',
+                                     ['float32', 'float64'], 'rnn')
+    check_type(initial_states, 'initial_states',
+               (Variable, list, tuple, type(None)), 'rnn')
+
+    check_type(sequence_length, 'sequence_length', (Variable, type(None)),
+               'rnn')
 
     def _switch_grad(x, stop=False):
         x.stop_gradient = stop
@@ -512,8 +648,102 @@ def rnn(cell,
     return (final_outputs, final_states)
 
 
+def birnn(cell_fw,
+          cell_bw,
+          inputs,
+          initial_states=None,
+          sequence_length=None,
+          time_major=False,
+          **kwargs):
+    """
+    birnn creates a bidirectional recurrent neural network specified by 
+    RNNCell `cell_fw` and `cell_bw`, which performs :code:`cell.call()` 
+    (for dygraph mode :code:`cell.forward`) repeatedly until reaches to 
+    the maximum length of `inputs` and then concat the ouputs for both RNNs
+    along the last axis.
+
+    Arguments:
+        cell_fw(RNNCellBase): An instance of `RNNCellBase`.
+        cell_bw(RNNCellBase): An instance of `RNNCellBase`.
+        inputs(Tensor): the input sequences. 
+            If time_major is True, the shape is 
+            `[time_steps, batch_size, input_size]`
+            else the shape is `[batch_size, time_steps, input_size]`.
+        initial_states(tuple, optional): A tuple of initial states of 
+            `cell_fw` and `cell_bw`.
+            If not provided, `cell.get_initial_states` would be called to 
+            produce initial state for each cell. Defaults to None.
+        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
+            or int32. The valid lengths of input sequences. Defaults to None.
+            If `sequence_length` is not None, the inputs are treated as 
+            padded sequences. In each input sequence, elements whose time step 
+            index are not less than the valid length are treated as paddings.
+        time_major (bool): Whether the first dimension of the input means the
+            time steps. Defaults to False.
+        **kwargs: Additional keyword arguments to pass to `forward` of each cell. 
+
+    Returns:
+        (outputs, final_states)
+        outputs (Tensor): the outputs of the bidirectional RNN. It is the 
+            concatenation of the outputs from the forward RNN and backward 
+            RNN along the last axis. 
+            If time major is True, the shape is `[time_steps, batch_size, size]`,
+            else the shape is `[batch_size, time_steps, size]`, where size is
+            `cell_fw.hidden_size + cell_bw.hidden_size`.
+        final_states (tuple): A tuple of the final states of the forward 
+            cell and backward cell.        
+
+    Examples:
+
+        .. code-block:: python
+            
+            import paddle
+            paddle.disable_static()
+
+            cell_fw = paddle.nn.LSTMCell(16, 32)
+            cell_bw = paddle.nn.LSTMCell(16, 32)
+
+            inputs = paddle.rand((4, 23, 16))
+            hf, cf = paddle.rand((4, 32)), paddle.rand((4, 32))
+            hb, cb = paddle.rand((4, 32)), paddle.rand((4, 32))
+            initial_states = ((hf, cf), (hb, cb))
+            outputs, final_states = paddle.nn.functional.birnn(
+                cell_fw, cell_bw, inputs, initial_states)
+        
+    """
+    if initial_states is None:
+        states_fw = cell_fw.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
+        states_bw = cell_fw.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
+    else:
+        states_fw, states_bw = initial_states
+    outputs_fw, states_fw = rnn(cell_fw,
+                                inputs,
+                                states_fw,
+                                sequence_length,
+                                time_major=time_major,
+                                **kwargs)
+
+    outputs_bw, states_bw = rnn(cell_bw,
+                                inputs,
+                                states_bw,
+                                sequence_length,
+                                time_major=time_major,
+                                is_reverse=True,
+                                **kwargs)
+
+    outputs = map_structure(lambda x, y: tensor.concat([x, y], -1), outputs_fw,
+                            outputs_bw)
+
+    final_states = (states_fw, states_bw)
+    return outputs, final_states
+
+
 class Decoder(object):
     """
+	:api_attr: Static Graph
+
     Decoder is the base class for any decoder instance used in `dynamic_decode`.
     It provides interface for output generation for one time step, which can be
     used to generate sequences. 
@@ -600,9 +830,33 @@ class Decoder(object):
         """
         raise NotImplementedError
 
+    @property
+    def tracks_own_finished(self):
+        """
+        Describes whether the Decoder keeps track of finished states by itself.
+
+        `decoder.step()` would emit a bool `finished` value at each decoding
+        step. The emited `finished` can be used to determine whether every
+        batch entries is finished directly, or it can be combined with the
+        finished tracker keeped in `dynamic_decode` by performing a logical OR
+        to take the already finished into account.
+
+        If `False`, the latter would be took when performing `dynamic_decode`,
+        which is the default. Otherwise, the former would be took, which uses
+        the finished value emited by the decoder as all batch entry finished
+        status directly, and it is the case when batch entries might be
+        reordered such as beams in BeamSearchDecoder.
+
+        Returns:
+            bool: A python bool `False`.
+        """
+        return False
+
 
 class BeamSearchDecoder(Decoder):
     """
+	:api_attr: Static Graph
+
     Decoder with beam search decoding strategy. It wraps a cell to get probabilities,
     and follows a beam search step to calculate scores and select candidate
     token ids for each decoding step.
@@ -695,6 +949,8 @@ class BeamSearchDecoder(Decoder):
             Variable: A tensor with shape `[batch_size * beam_size, ...]`, whose \
                 data type is same as `x`.
         """
+        check_type(x, 'x', (Variable),
+                   'BeamSearchDecoder.tile_beam_merge_with_batch')
         x = nn.unsqueeze(x, [1])  # [batch_size, 1, ...]
         expand_times = [1] * len(x.shape)
         expand_times[1] = beam_size
@@ -723,8 +979,9 @@ class BeamSearchDecoder(Decoder):
             Variable: A tensor with shape `[batch_size, beam_size, ...]`, whose \
                 data type is same as `x`.     
         """
+        check_type(x, 'x', (Variable), 'BeamSearchDecoder._split_batch_beams')
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
-        return nn.reshape(x, shape=(-1, self.beam_size) + x.shape[1:])
+        return nn.reshape(x, shape=[-1, self.beam_size] + list(x.shape[1:]))
 
     def _merge_batch_beams(self, x):
         """
@@ -739,8 +996,9 @@ class BeamSearchDecoder(Decoder):
             Variable: A tensor with shape `[batch_size * beam_size, ...]`, whose \
                 data type is same as `x`.     
         """
+        check_type(x, 'x', (Variable), 'BeamSearchDecoder._merge_batch_beams')
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
-        return nn.reshape(x, shape=(-1, ) + x.shape[2:])
+        return nn.reshape(x, shape=[-1] + list(x.shape[2:]))
 
     def _expand_to_beam_size(self, x):
         """
@@ -751,16 +1009,14 @@ class BeamSearchDecoder(Decoder):
         `beam_size` times.
 
         Parameters:
-            probs(Variable): A tensor with shape `[batch_size, ...]`, representing
-                the log probabilities. Its data type should be float32.
-            finished(Variable): A tensor with shape `[batch_size, beam_size]`,
-                representing the finished status for all beams. Its data type
-                should be bool.
+            x(Variable): A tensor with shape `[batch_size, ...]`, The data type
+                should be float32, float64, int32, int64 or bool.
 
         Returns:
             Variable: A tensor with shape `[batch_size, beam_size, ...]`, whose \
                 data type is same as `x`.
         """
+        check_type(x, 'x', (Variable), 'BeamSearchDecoder._expand_to_beam_size')
         x = nn.unsqueeze(x, [1])
         expand_times = [1] * len(x.shape)
         expand_times[1] = self.beam_size
@@ -774,7 +1030,7 @@ class BeamSearchDecoder(Decoder):
 
         Parameters:
             probs(Variable): A tensor with shape `[batch_size, beam_size, vocab_size]`,
-                representing the log probabilities. Its data type should be float32.
+                representing the log probabilities. Its data type should be float32 or float64.
             finished(Variable): A tensor with shape `[batch_size, beam_size]`,
                 representing the finished status for all beams. Its data type
                 should be bool.
@@ -784,6 +1040,9 @@ class BeamSearchDecoder(Decoder):
                 where unfinished beams stay unchanged and finished beams are \
                 replaced with a tensor with all probability on the EOS token.
         """
+        check_type(probs, 'probs', (Variable), 'BeamSearchDecoder._mask_probs')
+        check_type(finished, 'finished', (Variable),
+                   'BeamSearchDecoder._mask_probs')
         # TODO: use where_op
         finished = tensor.cast(finished, dtype=probs.dtype)
         probs = nn.elementwise_mul(
@@ -808,6 +1067,10 @@ class BeamSearchDecoder(Decoder):
             Variable: A tensor with the same shape and data type as `x`, \
                 representing the gathered tensor.
         """
+        check_type(x, 'x', (Variable), 'BeamSearchDecoder._gather')
+        check_type(indices, 'indices', (Variable), 'BeamSearchDecoder._gather')
+        check_type(batch_size, 'batch_size', (Variable),
+                   'BeamSearchDecoder._gather')
         # TODO: compatibility of int32 and int64
         batch_size = tensor.cast(
             batch_size,
@@ -1047,6 +1310,19 @@ class BeamSearchDecoder(Decoder):
         # TODO: use FinalBeamSearchDecoderOutput as output
         return predicted_ids, final_states
 
+    @property
+    def tracks_own_finished(self):
+        """
+        BeamSearchDecoder reorders its beams and their finished state. Thus it
+        conflicts with `dynamic_decode` function's tracking of finished states.
+        Setting this property to true to avoid early stopping of decoding due
+        to mismanagement of the finished state.
+
+        Returns:
+            bool: A python bool `True`.
+        """
+        return True
+
 
 def dynamic_decode(decoder,
                    inits=None,
@@ -1057,6 +1333,8 @@ def dynamic_decode(decoder,
                    return_length=False,
                    **kwargs):
     """
+	:api_attr: Static Graph
+
     Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
     Tensor indicating finished status contains all True values or the number of
     decoding step reaches to :attr:`max_step_num`.
@@ -1204,7 +1482,13 @@ def dynamic_decode(decoder,
                 states_arrays)
         (outputs, next_states, next_inputs,
          next_finished) = decoder.step(step_idx, inputs, states, **kwargs)
-        next_finished = control_flow.logical_or(next_finished, global_finished)
+        if not decoder.tracks_own_finished:
+            # BeamSearchDecoder would track it own finished, since beams would
+            # be reordered and the finished status of each entry might change.
+            # Otherwise, perform logical OR which would not change the already
+            # finished.
+            next_finished = control_flow.logical_or(next_finished,
+                                                    global_finished)
         next_sequence_lengths = nn.elementwise_add(
             sequence_lengths,
             tensor.cast(
@@ -1225,6 +1509,10 @@ def dynamic_decode(decoder,
             lambda x, x_array: control_flow.array_write(
                 x, i=step_idx, array=x_array), outputs, outputs_arrays)
         control_flow.increment(x=step_idx, value=1.0, in_place=True)
+        # update the global_finished first, since it might be also in states of
+        # decoder, which otherwise would write a stale finished status to array
+        tensor.assign(next_finished, global_finished)
+        tensor.assign(next_sequence_lengths, sequence_lengths)
         if is_test:
             map_structure(tensor.assign, next_inputs, global_inputs)
             map_structure(tensor.assign, next_states, global_states)
@@ -1235,8 +1523,6 @@ def dynamic_decode(decoder,
             map_structure(
                 lambda x, x_array: control_flow.array_write(
                     x, i=step_idx, array=x_array), next_states, states_arrays)
-        tensor.assign(next_finished, global_finished)
-        tensor.assign(next_sequence_lengths, sequence_lengths)
         if max_step_num is not None:
             control_flow.logical_and(
                 control_flow.logical_not(nn.reduce_all(global_finished)),
@@ -1871,6 +2157,8 @@ def dynamic_lstm(input,
                  dtype='float32',
                  name=None):
     """
+	:api_attr: Static Graph
+
     **Note**:
         1. This OP only supports LoDTensor as inputs. If you need to deal with Tensor, please use :ref:`api_fluid_layers_lstm` .
         2. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
@@ -1969,7 +2257,21 @@ def dynamic_lstm(input,
     """
     assert in_dygraph_mode(
     ) is not True, "please use lstm instead of dynamic_lstm in dygraph mode!"
-    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
+    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstm."
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'dynamic_lstm')
+
+    check_type(h_0, 'h_0', (Variable, type(None)), 'dynamic_lstm')
+    if isinstance(h_0, Variable):
+        check_variable_and_dtype(h_0, 'h_0', ['float32', 'float64'],
+                                 'dynamic_lstm')
+
+    check_type(c_0, 'c_0', (Variable, type(None)), 'dynamic_lstm')
+    if isinstance(c_0, Variable):
+        check_variable_and_dtype(c_0, 'c_0', ['float32', 'float64'],
+                                 'dynamic_lstm')
+
     helper = LayerHelper('lstm', **locals())
     size = size // 4
     weight = helper.create_parameter(
@@ -2027,6 +2329,8 @@ def lstm(input,
          default_initializer=None,
          seed=-1):
     """
+	:api_attr: Static Graph
+
     **Note**:
         This OP only supports running on GPU devices.
 
@@ -2067,9 +2371,9 @@ def lstm(input,
         input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, 3-D Tensor of shape :math:`[batch\_size, seq\_len, input\_dim]` . Data type is float32 or float64
         init_h( :ref:`api_guide_Variable_en` ): The initial hidden state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
                        If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
+        max_len (int): This parameter has no effect and will be discarded.
         init_c( :ref:`api_guide_Variable_en` ): The initial cell state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
                        If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
-        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len.
         hidden_size (int): hidden size of the LSTM.
         num_layers (int): total layers number of the LSTM.
         dropout_prob(float, optional): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
@@ -2110,7 +2414,6 @@ def lstm(input,
             data = fluid.data(name='x', shape=[None, 100], dtype='int64')
             emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
             batch_size = 20
-            max_len = 100
             dropout_prob = 0.2
             input_size = 100
             hidden_size = 150
@@ -2126,7 +2429,12 @@ def lstm(input,
     """
 
     helper = LayerHelper('cudnn_lstm', **locals())
-
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'lstm')
+    check_variable_and_dtype(init_h, 'init_h', ['float32', 'float64'], 'lstm')
+    check_variable_and_dtype(init_c, 'init_c', ['float32', 'float64'], 'lstm')
+    check_type(max_len, 'max_len', (int), 'lstm')
+    check_type(hidden_size, 'hidden_size', (int), 'lstm')
+    check_type(num_layers, 'num_layers', (int), 'lstm')
     dtype = input.dtype
     input_shape = list(input.shape)
     input_size = input_shape[-1]
@@ -2158,9 +2466,11 @@ def lstm(input,
     out = helper.create_variable_for_type_inference(dtype)
     last_h = helper.create_variable_for_type_inference(dtype)
     last_c = helper.create_variable_for_type_inference(dtype)
-
-    cache = helper.create_variable(
-        persistable=True, type=core.VarDesc.VarType.RAW, stop_gradient=True)
+    reserve = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+    state_out = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+    state_out.persistable = True
 
     helper.append_op(
         type='cudnn_lstm',
@@ -2169,15 +2479,15 @@ def lstm(input,
             'InitH': init_h,
             'InitC': init_c,
             'W': weight,
-            'Cache': cache,
         },
         outputs={
             'Out': out,
-            'last_h': last_h,
-            'last_c': last_c,
+            'LastH': last_h,
+            'LastC': last_c,
+            'Reserve': reserve,
+            'StateOut': state_out,
         },
         attrs={
-            'max_len': max_len,
             'is_bidirec': is_bidirec,
             'input_size': input_size,
             'hidden_size': hidden_size,
@@ -2207,6 +2517,8 @@ def dynamic_lstmp(input,
                   cell_clip=None,
                   proj_clip=None):
     """
+	:api_attr: Static Graph
+
     **Note**:
         1. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
 
@@ -2330,6 +2642,20 @@ def dynamic_lstmp(input,
     ) is not True, "please use lstm instead of dynamic_lstmp in dygraph mode!"
 
     assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'dynamic_lstmp')
+
+    check_type(h_0, 'h_0', (Variable, type(None)), 'dynamic_lstmp')
+    if isinstance(h_0, Variable):
+        check_variable_and_dtype(h_0, 'h_0', ['float32', 'float64'],
+                                 'dynamic_lstmp')
+
+    check_type(c_0, 'c_0', (Variable, type(None)), 'dynamic_lstmp')
+    if isinstance(c_0, Variable):
+        check_variable_and_dtype(c_0, 'c_0', ['float32', 'float64'],
+                                 'dynamic_lstmp')
+
     helper = LayerHelper('lstmp', **locals())
     size = size // 4
     weight = helper.create_parameter(
@@ -2402,6 +2728,8 @@ def dynamic_gru(input,
                 h_0=None,
                 origin_mode=False):
     """
+	:api_attr: Static Graph
+
     **Note: The input type of this must be LoDTensor. If the input type to be
     processed is Tensor, use** :ref:`api_fluid_layers_StaticRNN` .
 
@@ -2507,6 +2835,14 @@ def dynamic_gru(input,
     assert in_dygraph_mode(
     ) is not True, "please use gru instead of dynamic_gru in dygraph mode!"
 
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'dynamic_gru')
+
+    check_type(h_0, 'h_0', (Variable, type(None)), 'dynamic_gru')
+    if isinstance(h_0, Variable):
+        check_variable_and_dtype(h_0, 'h_0', ['float32', 'float64'],
+                                 'dynamic_gru')
+
     helper = LayerHelper('gru', **locals())
     dtype = helper.input_dtype()
 
@@ -2554,6 +2890,8 @@ def gru_unit(input,
              gate_activation='sigmoid',
              origin_mode=False):
     """
+	:api_attr: Static Graph
+
     Gated Recurrent Unit (GRU) RNN cell. This operator performs GRU calculations for
     one time step and it supports these two modes:
 
@@ -2651,6 +2989,10 @@ def gru_unit(input,
                 input=x, hidden=pre_hidden, size=hidden_dim * 3)
 
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'gru_unit')
+    check_variable_and_dtype(hidden, 'hidden', ['float32', 'float64'],
+                             'gru_unit')
+    check_type(size, 'size', (int), 'gru_unit')
     activation_dict = dict(
         identity=0,
         sigmoid=1,
@@ -2706,6 +3048,10 @@ def beam_search(pre_ids,
                 name=None,
                 return_parent_idx=False):
     """
+	:alias_main: paddle.nn.beam_search
+	:alias: paddle.nn.beam_search,paddle.nn.decode.beam_search
+	:old_api: paddle.fluid.layers.beam_search
+
     Beam search is a classical algorithm for selecting candidate words in a
     machine translation task.
 
@@ -2740,7 +3086,7 @@ def beam_search(pre_ids,
         pre_scores(Variable): A LodTensor variable has the same shape and lod
             with ``pre_ids`` , representing the accumulated scores corresponding
             to the selected ids of previous step. It is the output of
-            beam_search at previous step. The data type should be float32.
+            beam_search at previous step. The data type should be float32 or float64.
         ids(Variable|None): A LodTensor variable containing the candidates ids.
             It has the same lod with ``pre_ids`` and its shape should be
             `[batch_size * beam_size, K]`, where `K` supposed to be greater than
@@ -2750,7 +3096,7 @@ def beam_search(pre_ids,
             ids.
         scores(Variable): A LodTensor variable containing the accumulated
             scores corresponding to ``ids`` . Both its shape and lod are same as
-            those of ``ids`` . The data type should be float32.
+            those of ``ids`` . The data type should be float32 or float64.
         beam_size(int): The beam width used in beam search.
         end_id(int): The id of end token.
         level(int): **It can be ignored and mustn't change currently.**
@@ -2807,6 +3153,12 @@ def beam_search(pre_ids,
                 beam_size=beam_size,
                 end_id=end_id)
     """
+    check_variable_and_dtype(pre_ids, 'pre_ids', ['int64'], 'beam_search')
+    check_variable_and_dtype(pre_scores, 'pre_scores', ['float32', 'float64'],
+                             'beam_search')
+    check_type(ids, 'ids', (Variable, type(None)), 'beam_search')
+    check_variable_and_dtype(scores, 'scores', ['float32', 'float64'],
+                             'beam_search')
     helper = LayerHelper('beam_search', **locals())
     score_type = pre_scores.dtype
     id_type = pre_ids.dtype
@@ -2847,6 +3199,10 @@ def beam_search(pre_ids,
 
 def beam_search_decode(ids, scores, beam_size, end_id, name=None):
     """
+	:alias_main: paddle.nn.beam_search_decode
+	:alias: paddle.nn.beam_search_decode,paddle.nn.decode.beam_search_decode
+	:old_api: paddle.fluid.layers.beam_search_decode
+
     This operator is used after beam search has completed. It constructs the
     full predicted sequences for each sample by walking back along the search
     paths stored in lod of ``ids`` . The result sequences are stored in a
@@ -2900,9 +3256,13 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
             finished_ids, finished_scores = fluid.layers.beam_search_decode(
                 ids, scores, beam_size=5, end_id=0)
     """
+    check_variable_and_dtype(ids, 'ids', ['int64'], 'beam_search_encode')
+    check_variable_and_dtype(scores, 'scores', ['float32'],
+                             'beam_search_encode')
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_variable_for_type_inference(dtype=ids.dtype)
-    sentence_scores = helper.create_variable_for_type_inference(dtype=ids.dtype)
+    sentence_scores = helper.create_variable_for_type_inference(
+        dtype=scores.dtype)
 
     helper.append_op(
         type="beam_search_decode",
@@ -2926,6 +3286,8 @@ def lstm_unit(x_t,
               bias_attr=None,
               name=None):
     """
+	:api_attr: Static Graph
+
     Long-Short Term Memory (LSTM) RNN cell. This operator performs LSTM calculations for
     one time step, whose implementation is based on calculations described in `RECURRENT
     NEURAL NETWORK REGULARIZATION <http://arxiv.org/abs/1409.2329>`_  .
@@ -3006,7 +3368,11 @@ def lstm_unit(x_t,
                 cell_t_prev=pre_cell)
     """
     helper = LayerHelper('lstm_unit', **locals())
-
+    check_variable_and_dtype(x_t, 'x_t', ['float32', 'float64'], 'lstm_unit')
+    check_variable_and_dtype(hidden_t_prev, 'hidden_t_prev',
+                             ['float32', 'float64'], 'lstm_unit')
+    check_variable_and_dtype(cell_t_prev, 'cell_t_prev',
+                             ['float32', 'float64'], 'lstm_unit')
     if len(x_t.shape) != 2:
         raise ValueError("Rank of x_t must be 2.")
 

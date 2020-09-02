@@ -29,7 +29,7 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
     auto out_e = framework::EigenVector<T>::Flatten(*out);
 
     auto& dev = *dev_ctx.eigen_device();
-    out_e.device(dev) = scale_factor[0] * in_e / max_range;
+    out_e.device(dev) = in_e * scale_factor[0] / max_range;
   }
 };
 
@@ -37,20 +37,49 @@ template <typename T>
 struct ChannelDequantizeFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& dev_ctx,
                   const framework::Tensor* in, const framework::Tensor** scales,
-                  const int scale_num, T max_range, framework::Tensor* out) {
+                  const int scale_num, T max_range, const int quant_axis,
+                  framework::Tensor* out) {
     if (scale_num == 1) {
-      const int channel = in->dims()[0];
+      // Dequant op is before quantized op
+      // Dequantize the weight of quantized op
+      auto in_dims = in->dims();
+      const int64_t channel = in_dims[quant_axis];
       const T* scale_factor = scales[0]->data<T>();
-      for (int i = 0; i < channel; i++) {
-        T s = scale_factor[i];
-        framework::Tensor one_channel_in = in->Slice(i, i + 1);
-        framework::Tensor one_channel_out = out->Slice(i, i + 1);
-        auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
-        auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-        auto& dev = *dev_ctx.eigen_device();
-        out_e.device(dev) = s * in_e / max_range;
+      if (quant_axis == 0) {
+        for (int64_t i = 0; i < channel; i++) {
+          T s = scale_factor[i];
+          framework::Tensor one_channel_in = in->Slice(i, i + 1);
+          framework::Tensor one_channel_out = out->Slice(i, i + 1);
+          auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
+          auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+          auto& dev = *dev_ctx.eigen_device();
+          out_e.device(dev) = in_e * s / max_range;
+        }
+      } else if (quant_axis == 1) {
+        int64_t out_iter = 1;
+        for (int i = 0; i < quant_axis; i++) {
+          out_iter *= in_dims[i];
+        }
+        int64_t step_i = in->numel() / out_iter;
+        int64_t step_j = in->numel() / (out_iter * channel);
+        auto* in_data = in->data<T>();
+        auto* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+        for (int64_t i = 0; i < out_iter; i++) {
+          for (int64_t j = 0; j < channel; j++) {
+            auto* cur_in = in_data + i * step_i + j * step_j;
+            auto* cur_out = out_data + i * step_i + j * step_j;
+            T s = scale_factor[j];
+            for (int64_t k = 0; k < step_j; k++) {
+              *cur_out = (*cur_in) * s / max_range;
+              ++cur_in;
+              ++cur_out;
+            }
+          }
+        }
       }
     } else if (scale_num == 2) {
+      // Dequant op is after quantized op
+      // Dequantize the output tensor of quantized op
       int batch_size = in->dims()[0];
       int channel = in->dims()[1];
       const T* scale_one = scales[0]->data<T>();
@@ -67,7 +96,7 @@ struct ChannelDequantizeFunctor<platform::CPUDeviceContext, T> {
           auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
           auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
           auto& dev = *dev_ctx.eigen_device();
-          out_e.device(dev) = (s * scale_two[0]) * in_e / max_range;
+          out_e.device(dev) = in_e * s * scale_two[0] / max_range;
         }
       }
     }
@@ -88,10 +117,9 @@ class FakeDequantizeMaxAbsOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FakeDequantizeMaxAbsOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FakeDequantizeMaxAbsOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FakeDequantizeMaxAbs");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "FakeDequantizeMaxAbs");
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -125,15 +153,12 @@ class FakeChannelWiseDequantizeMaxAbsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasInput("X"),
-        "Input(X) of FakeChannelWiseDequantizeMaxAbsOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInputs("Scales"),
-                   "Input(Scales) of FakeChannelWiseDequantizeMaxAbsOp "
-                   "should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Output(Out) of FakeChannelWiseDequantizeMaxAbsOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "FakeChannelWiseDequantizeMaxAbs");
+    OP_INOUT_CHECK(ctx->HasInputs("Scales"), "Input", "Scales",
+                   "FakeChannelWiseDequantizeMaxAbs");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "FakeChannelWiseDequantizeMaxAbs");
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -161,6 +186,18 @@ class FakeChannelWiseDequantizeMaxAbsOpMaker
         "Quantization bit numbers in quantization stage. "
         "The size of `quant_bits` should be equal to the size of `Scales`.")
         .SetDefault({8});
+    AddAttr<int>("quant_axis",
+                 "(int, default 0) The axis for quantization. "
+                 "For conv2d, depthwise_conv2d, conv2d_transpose "
+                 "and mul, the quant_axis is equal to the cout axis.")
+        .SetDefault(0)
+        .AddCustomChecker([](const int& quant_axis) {
+          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1, true,
+                            platform::errors::InvalidArgument(
+                                "'quant_axis' should be 0 or 1, but "
+                                "the received is %d",
+                                quant_axis));
+        });
 
     AddComment(R"DOC(
 FakeChannelWiseDequantizeMaxAbsOp operator.

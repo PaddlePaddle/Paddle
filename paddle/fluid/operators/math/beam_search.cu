@@ -394,7 +394,8 @@ class BeamSearchFunctor<platform::CUDADeviceContext, T> {
                 end_id, is_accumulated, num_used_threads));
       }
     } else {
-      LOG(FATAL) << "Not implemented.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Not implemented other number of sequences yet."));
     }
 
     context.Wait();

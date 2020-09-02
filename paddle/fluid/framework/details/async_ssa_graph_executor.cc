@@ -42,44 +42,30 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
   }
 }
 
-// get RpcContext and remote send and recv op
+// get CommContext and remote send and recv op
 void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  using RpcCtxMap = operators::distributed::RpcCtxMap;
-  VLOG(3) << "ProcessGraph";
-  RpcCtxMap send_varname_to_ctx;
+
+  bool need_communicator = false;
 
   for (auto &node : graphs[0]->Nodes()) {
     VLOG(3) << "node name " << node->Name();
     if (node && node->IsOp()) {
       if (node->Name() == "send") {
-        auto send_var_name = node->Op()->Input("X")[0];
-        auto send_varnames = boost::get<std::vector<std::string>>(
-            node->Op()->GetNullableAttr("send_varnames"));
-        auto epmap = boost::get<std::vector<std::string>>(
-            node->Op()->GetNullableAttr("epmap"));
-        auto height_section = boost::get<std::vector<int64_t>>(
-            node->Op()->GetNullableAttr("sections"));
-        auto trainer_id =
-            boost::get<int>(node->Op()->GetNullableAttr("trainer_id"));
-        auto merge_add =
-            boost::get<bool>(node->Op()->GetNullableAttr("merge_add"));
-        if (!merge_add) {
-          merge_add = FLAGS_communicator_is_sgd_optimizer;
+        auto send_varnames =
+            BOOST_GET_CONST(std::vector<std::string>,
+                            node->Op()->GetNullableAttr("send_varnames"));
+
+        if (send_varnames.size() > 0) {
+          need_communicator = true;
+          break;
         }
-        auto use_send_handler =
-            boost::get<bool>(node->Op()->GetNullableAttr("use_send_handler"));
-        send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
-            send_var_name, send_varnames, epmap, height_section, trainer_id,
-            merge_add, use_send_handler);
-        VLOG(3) << "find and init an send op: "
-                << send_varname_to_ctx[send_var_name];
       }
     }
   }
 
-  // init communicator here
-  if (send_varname_to_ctx.size() > 0) {
+  if (need_communicator) {
+    // init communicator here
     auto *instance = operators::distributed::Communicator::GetInstance();
     auto initialized = instance ? true : false;
     PADDLE_ENFORCE_EQ(initialized, true,
@@ -88,6 +74,7 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
                           "FleetAPI(https://github.com/PaddlePaddle/Fleet/tree/"
                           "develop/markdown_doc/transpiler)"));
   }
+
 #endif
 }
 
@@ -126,8 +113,9 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
     }
   }
 
-  for (size_t i = 0; i < local_scopes_.size(); ++i) {
-    InitVarsInScope(var_infos_, local_scopes_[i], local_exec_scopes_[i]);
+  for (size_t i = local_scopes_.size(); i >= 1; --i) {
+    InitVarsInScope(var_infos_, local_scopes_[i - 1],
+                    local_exec_scopes_[i - 1]);
   }
   ProcessGraph(graphs_, local_scopes_[0]);
 }
@@ -196,13 +184,27 @@ FetchResultType AsyncSSAGraphExecutor::Run(
 
   HandleException();
 
-  FeedFetchList ret;
-  auto &val = boost::get<FeedFetchList>(fetch_data);
+  FetchList ret;
+  auto &val = BOOST_GET(FetchList, fetch_data);
   for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
-    std::vector<const LoDTensor *> lodtensor_ptrs;
-    lodtensor_ptrs.push_back(&val.at(fetch_idx));
-    ret.emplace_back();
-    ret.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+    if (data_is_lod_tensor(val.at(fetch_idx))) {
+      std::vector<const LoDTensor *> lodtensor_ptrs;
+      lodtensor_ptrs.push_back(&(BOOST_GET(LoDTensor, val.at(fetch_idx))));
+      LoDTensor var;
+      var.MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+      ret.emplace_back(var);
+    } else {
+      auto array = BOOST_GET(LoDTensorArray, val.at(fetch_idx));
+      LoDTensorArray item_array;
+      item_array.reserve(array.size());
+      for (size_t i = 0; i < array.size(); ++i) {
+        std::vector<const LoDTensor *> lodtensor_ptrs;
+        lodtensor_ptrs.push_back(&array[i]);
+        item_array.emplace_back();
+        item_array.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+      }
+      ret.emplace_back(item_array);
+    }
   }
   return ret;
 }

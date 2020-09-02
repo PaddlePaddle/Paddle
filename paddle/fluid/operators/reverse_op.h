@@ -47,10 +47,30 @@ template <typename DeviceContext, typename T>
 class ReverseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    auto* x_var = context.InputVar("X");
+    const auto& axis = context.Attr<std::vector<int>>("axis");
+    if (x_var->IsType<framework::LoDTensorArray>()) {
+      auto& x_array = x_var->Get<framework::LoDTensorArray>();
+      auto* out_array = context.Output<framework::LoDTensorArray>("Out");
+
+      out_array->resize(x_array.size());
+      for (size_t offset = 0; offset < x_array.size(); offset++) {
+        auto& x_tensor = x_array.at(offset);
+        PADDLE_ENFORCE_GT(
+            x_tensor.memory_size(), 0,
+            platform::errors::PreconditionNotMet(
+                "The input LoDTensorArray X[%d] holds no memory.", offset));
+        auto out_offset = x_array.size() - offset - 1;
+        auto* out_tensor = &out_array->at(out_offset);
+
+        out_tensor->set_lod(x_tensor.lod());
+        TensorCopy(x_tensor, context.GetPlace(), out_tensor);
+      }
+      return;
+    }
     auto* x = context.Input<framework::LoDTensor>("X");
     auto* out = context.Output<framework::LoDTensor>("Out");
     out->mutable_data<T>(context.GetPlace());
-    const auto& axis = context.Attr<std::vector<int>>("axis");
     int rank = x->dims().size();
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
@@ -80,9 +100,9 @@ class ReverseKernel : public framework::OpKernel<T> {
         functor6(dev_ctx, *x, out, axis);
         break;
       default:
-        PADDLE_THROW(
-            "Reserve operator doesn't supports tensors whose ranks are greater "
-            "than 6.");
+        PADDLE_THROW(paddle::platform::errors::OutOfRange(
+            "The reserve operator does not support input tensors"
+            "whose ranks are greater than 6."));
     }
   }
 };

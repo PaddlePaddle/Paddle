@@ -24,46 +24,36 @@ class FTRLOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(Param) of FTRL should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("SquaredAccumulator"),
-                   "Input(SquaredAccumulator) of FTRL should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("LinearAccumulator"),
-                   "Input(LinearAccumulator) of FTRL should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of FTRL should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                   "Input(LearningRate) of FTRL should not be null.");
-    PADDLE_ENFORCE(
-        ctx->GetInputsVarType("Param").front() ==
-            framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
-    PADDLE_ENFORCE(
-        ctx->GetInputsVarType("Grad").front() ==
-            framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Grad").front(), ctx->GetInputsVarType("Grad").front());
+    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "FTRL");
+    OP_INOUT_CHECK(ctx->HasInput("SquaredAccumulator"), "Input",
+                   "SquaredAccumulator", "FTRL");
+    OP_INOUT_CHECK(ctx->HasInput("LinearAccumulator"), "Input",
+                   "LinearAccumulator", "FTRL");
+    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "FTRL");
+    OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
+                   "FTRL");
 
-    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                   "Output(ParamOut) of FTRL should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("SquaredAccumOut"),
-                   "Output(SquaredAccumOut) of FTRL should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("LinearAccumOut"),
-                   "Output(LinearAccumOut) of FTRL should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "ParamOut", "FTRL");
+    OP_INOUT_CHECK(ctx->HasOutput("SquaredAccumOut"), "Output",
+                   "SquaredAccumOut", "FTRL");
+    OP_INOUT_CHECK(ctx->HasOutput("LinearAccumOut"), "Output", "LinearAccumOut",
+                   "FTRL");
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
-                      "Two input of FTRL Op's dimension must be same.");
+                      platform::errors::InvalidArgument(
+                          "Two input of FTRL Op's dimension must be same."));
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_NE(framework::product(lr_dim), 0,
-                      "Maybe the Input variable LearningRate has not "
-                      "been initialized. You may need to confirm "
-                      "if you put exe.run(startup_program) "
-                      "after optimizer.minimize function.");
-    PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
-                      "Learning Rate should be a scalar.");
+                      platform::errors::InvalidArgument(
+                          "Maybe the Input variable LearningRate has not "
+                          "been initialized. You may need to confirm "
+                          "if you put exe.run(startup_program) "
+                          "after optimizer.minimize function."));
+    PADDLE_ENFORCE_EQ(
+        framework::product(lr_dim), 1,
+        platform::errors::InvalidArgument("Learning Rate should be a scalar."));
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("SquaredAccumOut", param_dim);

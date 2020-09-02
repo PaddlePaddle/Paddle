@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
@@ -70,13 +69,6 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
             "but it's %d-D tensor now.",
             dim_bias_qk.size()));
 
-    int head_number = context->Attrs().Get<int>("head_number");
-    PADDLE_ENFORCE_GT(
-        head_number, 1,
-        platform::errors::InvalidArgument(
-            "Multihead input head number should be at least 1, but it %d now.",
-            head_number));
-    // modify this
     auto dim_input = context->GetInputDim("Input");
     context->SetOutputDim("Out", dim_input);
     context->ShareLoD("Input", /*->*/ "Out");

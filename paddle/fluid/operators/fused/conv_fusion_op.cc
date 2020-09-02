@@ -65,108 +65,62 @@ class Conv2DFusionOp : public operators::ConvOp {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "Input(Input) of ConvOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), true,
-                      "Input(Filter) of ConvOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Conv2DFusion");
+    OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "Conv2DFusion");
+
     auto in_dims = ctx->GetInputDim("Input");
-    auto filter_dims = ctx->GetInputDim("Filter");
-
-    std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
-    std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    std::vector<int> dilations =
-        ctx->Attrs().Get<std::vector<int>>("dilations");
-    std::string padding_algorithm =
-        ctx->Attrs().Get<std::string>("padding_algorithm");
-    int groups = ctx->Attrs().Get<int>("groups");
-
-    framework::DDim in_data_dims;
-    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-
     PADDLE_ENFORCE_EQ(
-        in_dims.size() == 4 || in_dims.size() == 5, true,
-        "ShapeError: Conv_fusion input should be 4-D or 5-D tensor. But "
-        "received: %u-D Tensor,"
-        "the shape of Conv_fusion input is [%s]",
-        in_dims.size(), in_dims);
+        in_dims.size(), 4U,
+        platform::errors::InvalidArgument(
+            "The input's dimension of Operator(Conv2DFusion) is expected "
+            "to be 4. But received: input's dimension = %u, shape = [%s].",
+            in_dims.size(), in_dims));
 
-    PADDLE_ENFORCE_EQ(in_dims.size(), filter_dims.size(),
-                      "ShapeError: Conv_fusion input dimension and filter "
-                      "dimension should be the "
-                      "equal."
-                      "But received: the shape of Conv_fusion input is [%s], "
-                      "input dimension of Conv_fusion "
-                      "input is [%d],"
-                      "the shape of filter is [%s],  the filter dimension of "
-                      "Conv_fusion is [%d]",
-                      in_dims, in_dims.size(), filter_dims, filter_dims.size());
+    // In some case, attribute data_format is "AnyLayout".
+    std::string data_format = ctx->Attrs().Get<std::string>("data_format");
+    PADDLE_ENFORCE_NE(
+        data_format, "NHWC",
+        platform::errors::PermissionDenied(
+            "Operator(Conv2DFusion) only supports data format of "
+            "channel first (NCHW) now. But recieved: data_format = '%s'.",
+            data_format));
 
-    int in_sub_stride_size = in_dims.size() - strides.size();
-    PADDLE_ENFORCE_EQ(
-        in_dims.size() - strides.size() == 2U, true,
-        "ShapeError: the dimension of input minus the dimension of "
-        "stride must be euqal to 2."
-        "But received: the dimension of input minus the dimension "
-        "of stride is [%d], the"
-        "input dimension of Conv_fusion is [%d], the shape of Conv_fusion "
-        "input "
-        "is [%s], the stride"
-        "dimension of Conv_fusion is [%d]",
-        in_sub_stride_size, in_dims.size(), in_dims, strides.size());
-
-    const auto input_channels = in_dims[1];
-
-    PADDLE_ENFORCE_EQ(
-        input_channels, filter_dims[1] * groups,
-        "ShapeError: The number of input channels should be equal to filter "
-        "channels * groups. But received: the input channels is [%d], the shape"
-        "of input is [%s], the filter channel is [%d], the shape of filter is "
-        "[%s],"
-        "the groups is [%d]",
-        in_dims[1], in_dims, filter_dims[1], filter_dims, groups);
-    PADDLE_ENFORCE_EQ(
-        filter_dims[0] % groups, 0,
-        "ShapeError: The number of output channels should be divided by groups."
-        "But received: the output channels is [%d], the shape of filter is [%s]"
-        "(the first dimension of filter is output channel), the groups is [%d]",
-        filter_dims[0], filter_dims, groups);
-
-    framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
-
-    std::vector<int64_t> output_shape({in_dims[0]});
-    output_shape.push_back(filter_dims[0]);
-
-    for (int i = 0; i < in_data_dims.size(); ++i) {
-      if ((!ctx->IsRuntime()) &&
-          (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
-        output_shape.push_back(-1);
-      } else {
-        output_shape.push_back(
-            ConvOutputSize(in_data_dims[i], filter_dims[i + 2], dilations[i],
-                           paddings[2 * i], paddings[2 * i + 1], strides[i]));
-      }
-    }
-
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
-                      "Output(Output) of ConvOp should not be null.");
+    std::vector<int64_t> output_shape = ComputeOutputShape(ctx);
     ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+    ctx->ShareLoD("Input", "Output");
 
-    std::vector<int> channels =
+    std::vector<int> split_channels =
         ctx->Attrs().Get<std::vector<int>>("split_channels");
-    if (channels.size()) {
-      PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"), true,
-                        "Output(Outputs) of ConvOp should not be null.");
-      std::vector<framework::DDim> oshapes;
-      oshapes.reserve(channels.size());
-      for (size_t i = 0; i < channels.size(); ++i) {
-        oshapes.push_back(
-            {output_shape[0], channels[i], output_shape[2], output_shape[3]});
+    if (split_channels.size()) {
+      OP_INOUT_CHECK(ctx->HasOutputs("Outputs"), "Output", "Outputs",
+                     "Conv2DFusion");
+      PADDLE_ENFORCE_EQ(
+          ctx->Outputs("Outputs").size(), split_channels.size(),
+          platform::errors::InvalidArgument(
+              "The number of Output(Outputs) of operator 'Conv2DFusion' is "
+              "expected to be equal to the length of Attr(split_channels). But "
+              "reiceved: the number of Output(Outputs) = %u; the length of "
+              "Attr(split_channels) = %u, the content = [%s].",
+              ctx->Outputs("Outputs").size(), split_channels.size(),
+              framework::make_ddim(split_channels)));
+
+      int split_channels_sum = 0;
+      std::vector<framework::DDim> output_shapes(split_channels.size());
+      for (size_t i = 0; i < split_channels.size(); ++i) {
+        split_channels_sum += split_channels[i];
+        output_shapes[i] =
+            framework::make_ddim({output_shape[0], split_channels[i],
+                                  output_shape[2], output_shape[3]});
       }
-      ctx->SetOutputsDim("Outputs", oshapes);
+      PADDLE_ENFORCE_EQ(
+          split_channels_sum, output_shape[1],
+          platform::errors::InvalidArgument(
+              "The sum of Attr(split_channels) is expected to be equal to the "
+              "total output channels. But recieved: the sum of "
+              "Attr(split_channels) = %d, the total output channels = %d.",
+              split_channels_sum, output_shape[1]));
+
+      ctx->SetOutputsDim("Outputs", output_shapes);
     }
   }
 };

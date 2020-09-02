@@ -34,8 +34,10 @@ paddle::framework::DataFeedDesc load_datafeed_param_from_file(
     const char* filename) {
   paddle::framework::DataFeedDesc data_feed_desc;
   int file_descriptor = open(filename, O_RDONLY);
-  PADDLE_ENFORCE_NE(file_descriptor, -1, platform::errors::Unavaliable(
-                                             "Cannot open file %s.", filename));
+  PADDLE_ENFORCE_NE(
+      file_descriptor, -1,
+      platform::errors::Unavailable(
+          "Cannot open file %s c load datafeed param from file.", filename));
   google::protobuf::io::FileInputStream fileInput(file_descriptor);
   google::protobuf::TextFormat::Parse(&fileInput, &data_feed_desc);
   close(file_descriptor);
@@ -45,8 +47,10 @@ paddle::framework::DataFeedDesc load_datafeed_param_from_file(
 const std::vector<std::string> load_filelist_from_file(const char* filename) {
   std::vector<std::string> filelist;
   std::ifstream fin(filename);
-  PADDLE_ENFORCE_EQ(fin.good(), true, platform::errors::Unavaliable(
-                                          "Cannot open file %s.", filename));
+  PADDLE_ENFORCE_EQ(
+      fin.good(), true,
+      platform::errors::Unavailable(
+          "Cannot open file %s when load filelist from file.", filename));
   std::string line;
   while (getline(fin, line)) {
     filelist.push_back(line);
@@ -196,7 +200,8 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
                 }
               }
             } else {
-              PADDLE_THROW("Error type in proto file.");
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "Error type in proto file."));
             }
           } else {  // sparse branch
             if (slot.type() == "uint64") {
@@ -218,7 +223,8 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
                 }
               }
             } else {
-              PADDLE_THROW("Error type in proto file.");
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "Error type in proto file."));
             }
           }  // end sparse branch
           ++index;
@@ -272,7 +278,10 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>* file_elem_set,
   file_elem_set->resize(used_slot_num);
   for (const auto& file : filelist) {
     std::ifstream fin(file.c_str());
-    PADDLE_ENFORCE(fin.good(), "Can not open %s.", file.c_str());
+    PADDLE_ENFORCE_EQ(
+        fin.good(), true,
+        platform::errors::Unavailable(
+            "Can not open %s when get element set from file.", file.c_str()));
     while (1) {
       bool end_flag = false;
       int index = 0;
@@ -298,7 +307,8 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>* file_elem_set,
               }
             }
           } else {
-            PADDLE_THROW("Error type in proto file.");
+            PADDLE_THROW(
+                platform::errors::InvalidArgument("Error type in proto file."));
           }
           if (slot.is_used()) {
             ++index;

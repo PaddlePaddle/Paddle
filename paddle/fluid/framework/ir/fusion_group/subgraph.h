@@ -19,6 +19,8 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 
@@ -68,6 +70,8 @@ class SubGraph {
   void SetFuncName(std::string func_name) { func_name_ = func_name; }
   std::string GetFuncName() const { return func_name_; }
 
+  bool SaveIntermediateOut() const { return save_intermediate_out_; }
+
   const std::unordered_set<Node*>& Nodes() const { return nodes_set_; }
   const std::vector<Node*>& SortedNodes() {
     if (!is_sorted_) {
@@ -115,51 +119,88 @@ class SubGraph {
     return input_vars;
   }
 
-  std::vector<Node*> GetOutputVarNodes() {
+  std::vector<Node*> GetOutputVarNodes(bool with_intermediate_out) {
     // The order of output nodes should be consistant anywhere..
-    std::vector<Node*> output_vars_all;
+    std::vector<Node*> output_vars;
     for (auto* n : SortedNodes()) {
-      if (n && n->IsVar() && n->Var()) {
+      if (IsOutputOfInternalOp(n)) {
         // If the var_node is the output of some op_node in the subgraph, it
         // is considered the output var node of the subgraph.
-        bool is_found = false;
-        for (auto* in : n->inputs) {
-          if (Has(in)) {
-            is_found = true;
+        if (with_intermediate_out) {
+          output_vars.push_back(n);
+        } else {
+          if (n->outputs.empty() || IsInputOfExternalOp(n)) {
+            output_vars.push_back(n);
           }
         }
-        if (is_found) {
-          output_vars_all.push_back(n);
-        }
       }
     }
+    return output_vars;
+  }
 
-    if (save_intermediate_out_) {
-      return output_vars_all;
+  std::vector<Node*> GetIntermediateOutVarNodes() {
+    // Intermediate output var nodes: the output of some op_node in the
+    // subgraph, but not referenced outside the subgraph.
+    std::vector<Node*> intermediate_out_vars;
+    for (auto* n : SortedNodes()) {
+      if (IsOutputOfInternalOp(n) && IsInputOfInternalOp(n) &&
+          !IsInputOfExternalOp(n)) {
+        // When the outputs size is 0, it is also considered a intermidiate
+        // output. It maybe an unused output or the fetching vars, so that we
+        // cannot eleiminate it directly here.
+        intermediate_out_vars.push_back(n);
+      }
     }
+    return intermediate_out_vars;
+  }
 
-    std::vector<Node*> output_vars_outside;
-    for (auto* n : output_vars_all) {
-      // If one of the var_node's outputs is the input of some operator
-      // outside the subgraph, it is considered the output var node of the
-      // subgraph.
-      bool is_found = true;
-      if (n->outputs.size() == 0U) {
-        is_found = false;
-      }
-      for (auto* out : n->outputs) {
-        if (!Has(out)) {
-          is_found = false;
-        }
-      }
-      if (!is_found) {
-        output_vars_outside.push_back(n);
-      }
-    }
-    return output_vars_outside;
+  std::unordered_set<Node*> GetIntermediateOutVarNodesSet() {
+    std::vector<Node*> intermediate_out_vars = GetIntermediateOutVarNodes();
+    return std::unordered_set<Node*>(intermediate_out_vars.begin(),
+                                     intermediate_out_vars.end());
   }
 
  private:
+  bool IsInputOfInternalOp(Node* n) {
+    bool is_input_of_internal_op = false;
+    if (Has(n) && n && n->IsVar() && n->Var()) {
+      for (auto* out : n->outputs) {
+        if (Has(out)) {
+          is_input_of_internal_op = true;
+          break;
+        }
+      }
+    }
+    return is_input_of_internal_op;
+  }
+
+  bool IsInputOfExternalOp(Node* n) {
+    // If n is the input any one node outside the subgraph.
+    bool is_input_of_external_op = false;
+    if (Has(n) && n && n->IsVar() && n->Var()) {
+      for (auto* out : n->outputs) {
+        if (!Has(out)) {
+          is_input_of_external_op = true;
+          break;
+        }
+      }
+    }
+    return is_input_of_external_op;
+  }
+
+  bool IsOutputOfInternalOp(Node* n) {
+    bool is_output_of_internal_op = false;
+    if (Has(n) && n && n->IsVar() && n->Var()) {
+      for (auto* in : n->inputs) {
+        if (Has(in)) {
+          is_output_of_internal_op = true;
+          break;
+        }
+      }
+    }
+    return is_output_of_internal_op;
+  }
+
   void TopologicalSort() {
     if (!is_sorted_) {
       std::unordered_map<Node*, std::vector<Node*>> inputs_map;
@@ -170,7 +211,7 @@ class SubGraph {
       }
 
       for (auto* n : nodes_set_) {
-        if (n && n->IsVar() && n->Var()) {
+        if (n && ((n->IsVar() && n->Var()) || n->IsCtrlVar())) {
           // Set the input of subgraph's input var node to null.
           std::vector<Node*> inputs;
           for (auto* in : n->inputs) {

@@ -62,7 +62,8 @@ class TestReaderReset(unittest.TestCase):
             paddle.batch(
                 self.prepare_data(), batch_size=self.batch_size))
 
-        train_cp = compiler.CompiledProgram(main_prog).with_data_parallel()
+        train_cp = compiler.CompiledProgram(main_prog).with_data_parallel(
+            places=[place])
 
         batch_id = 0
         pass_count = 0

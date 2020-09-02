@@ -79,9 +79,17 @@ TEST(FCFusePass, basic) {
   int num_fc_nodes_after = GetNumOpNodes(graph, "fc");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 6);
-  PADDLE_ENFORCE_EQ(num_fc_nodes_after, 2);
-  PADDLE_ENFORCE_EQ(num_mul_nodes_before, num_fc_nodes_after);
+  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 6,
+                    platform::errors::InvalidArgument(
+                        "num_nodes_before=%d, num_nodes_after=%d.",
+                        num_nodes_before, num_nodes_after));
+  PADDLE_ENFORCE_EQ(num_fc_nodes_after, 2,
+                    platform::errors::InvalidArgument("num_fc_nodes_after=%d.",
+                                                      num_fc_nodes_after));
+  PADDLE_ENFORCE_EQ(num_mul_nodes_before, num_fc_nodes_after,
+                    platform::errors::InvalidArgument(
+                        "num_mul_nodes_before=%d, num_fc_nodes_after=%d.",
+                        num_mul_nodes_before, num_fc_nodes_after));
 }
 
 }  // namespace ir

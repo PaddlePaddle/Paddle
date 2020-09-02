@@ -83,7 +83,12 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
     } else if (shape.size() == 3UL) {
       return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
     }
-    return nvinfer1::Dims4(shape[0], shape[1], 1, 1);
+    nvinfer1::Dims dims;
+    dims.nbDims = shape.size();
+    for (size_t i = 0; i < shape.size(); i++) {
+      dims.d[i] = shape[i];
+    }
+    return dims;
   }
 }
 }  // NOLINT
@@ -124,6 +129,7 @@ class TensorRTEngine {
       const ShapeMapType min_input_shape = {},
       const ShapeMapType max_input_shape = {},
       const ShapeMapType optim_input_shape = {},
+      bool disable_trt_plugin_fp16 = false,
       nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
@@ -133,6 +139,7 @@ class TensorRTEngine {
         min_input_shape_(min_input_shape),
         max_input_shape_(max_input_shape),
         optim_input_shape_(optim_input_shape),
+        disable_trt_plugin_fp16_(disable_trt_plugin_fp16),
         logger_(logger) {
     if (min_input_shape_.size() != 0 && max_input_shape_.size() != 0 &&
         optim_input_shape_.size() != 0) {
@@ -198,15 +205,36 @@ class TensorRTEngine {
   void Deserialize(const std::string& engine_serialized_data) {
     freshDeviceId();
     infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
-    infer_engine_.reset(runtime->deserializeCudaEngine(
-        engine_serialized_data.c_str(), engine_serialized_data.size(),
-        &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+    if (with_dynamic_shape_) {
+#if IS_TRT_VERSION_GE(6000)
+      infer_engine_.reset(runtime->deserializeCudaEngine(
+          engine_serialized_data.c_str(), engine_serialized_data.size(),
+          nullptr));
+#else
+
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "To enable dynamic shape support, the TensorRT version should be "
+          "greater than 6.0.0"));
+
+#endif
+    } else {
+      infer_engine_.reset(runtime->deserializeCudaEngine(
+          engine_serialized_data.c_str(), engine_serialized_data.size(),
+          &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+    }
     PADDLE_ENFORCE(infer_engine_ != nullptr,
                    "build cuda engine failed when deserialize engine info.!");
   }
 
   void SetRuntimeBatch(size_t batch_size);
   int GetRuntimeBatch();
+
+  bool WithFp16() {
+    bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
+    bool support_fp16 = infer_builder_->platformHasFastFp16();
+    return enable_fp16 && support_fp16;
+  }
+
   int GetDeviceId() { return device_id_; }
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                     int num_inputs, plugin::PluginTensorRT*);
@@ -264,8 +292,17 @@ class TensorRTEngine {
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
-
+  bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
+
+#if IS_TRT_VERSION_GE(6000)
+  nvinfer1::IPluginV2Layer* AddPluginV2(nvinfer1::ITensor* const* inputs,
+                                        int num_inputs,
+                                        plugin::DynamicPluginTensorRT* plugin) {
+    owned_pluginv2_.emplace_back(plugin);
+    return network()->addPluginV2(inputs, num_inputs, *plugin);
+  }
+#endif
 
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
@@ -289,6 +326,7 @@ class TensorRTEngine {
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
+  bool disable_trt_plugin_fp16_{false};
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
@@ -321,7 +359,8 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::INetworkDefinition> infer_networkv2_;
 #if IS_TRT_VERSION_GE(6000)
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
-  std::unique_ptr<nvinfer1::IOptimizationProfile> optim_profile_;
+  nvinfer1::IOptimizationProfile* optim_profile_;
+  std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
 #endif
   std::mutex mutex_;
 };  // class TensorRTEngine
@@ -358,10 +397,12 @@ class TRTEngineManager {
       const std::map<std::string, std::vector<int>> min_input_shape = {},
       const std::map<std::string, std::vector<int>> max_input_shape = {},
       const std::map<std::string, std::vector<int>> optim_input_shape = {},
+      bool disable_trt_plugin_fp16 = false,
       nvinfer1::ILogger& logger = NaiveLogger::Global()) {
-    auto* p = new TensorRTEngine(max_batch, max_workspace, precision,
-                                 calibrator, device_id, min_input_shape,
-                                 max_input_shape, optim_input_shape, logger);
+    auto* p =
+        new TensorRTEngine(max_batch, max_workspace, precision, calibrator,
+                           device_id, min_input_shape, max_input_shape,
+                           optim_input_shape, disable_trt_plugin_fp16, logger);
     engines_[name].reset(p);
     return p;
   }

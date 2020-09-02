@@ -26,8 +26,7 @@ class VarInfo(object):
 class TestGlobalVarGetterSetter(unittest.TestCase):
     def test_main(self):
         var_infos = [
-            VarInfo("FLAGS_use_mkldnn", bool, False),
-            VarInfo("FLAGS_use_ngraph", bool, False),
+            VarInfo("FLAGS_free_idle_chunk", bool, False),
             VarInfo("FLAGS_eager_delete_tensor_gb", float, True),
         ]
 

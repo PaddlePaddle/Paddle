@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -135,6 +136,72 @@ class TestTransposeOpError(unittest.TestCase):
                 fluid.layers.transpose(x, perm=[3, 5, 7])
 
             self.assertRaises(ValueError, test_each_elem_value_check)
+
+
+class TestTAPI(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(shape=[10], dtype="float64", name="data")
+            data_t = paddle.t(data)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            data_np = np.random.random([10]).astype("float64")
+            result, = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+            expected_result = np.transpose(data_np)
+        self.assertEqual((result == expected_result).all(), True)
+
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(shape=[10, 5], dtype="float64", name="data")
+            data_t = paddle.t(data)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            data_np = np.random.random([10, 5]).astype("float64")
+            result, = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+            expected_result = np.transpose(data_np)
+        self.assertEqual((result == expected_result).all(), True)
+
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(shape=[1, 5], dtype="float64", name="data")
+            data_t = paddle.t(data)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            data_np = np.random.random([1, 5]).astype("float64")
+            result, = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+            expected_result = np.transpose(data_np)
+        self.assertEqual((result == expected_result).all(), True)
+
+        with fluid.dygraph.guard():
+            np_x = np.random.random([10]).astype("float64")
+            data = fluid.dygraph.to_variable(np_x)
+            z = paddle.t(data)
+            np_z = z.numpy()
+            z_expected = np.array(np.transpose(np_x))
+        self.assertEqual((np_z == z_expected).all(), True)
+
+        with fluid.dygraph.guard():
+            np_x = np.random.random([10, 5]).astype("float64")
+            data = fluid.dygraph.to_variable(np_x)
+            z = paddle.t(data)
+            np_z = z.numpy()
+            z_expected = np.array(np.transpose(np_x))
+        self.assertEqual((np_z == z_expected).all(), True)
+
+        with fluid.dygraph.guard():
+            np_x = np.random.random([1, 5]).astype("float64")
+            data = fluid.dygraph.to_variable(np_x)
+            z = paddle.t(data)
+            np_z = z.numpy()
+            z_expected = np.array(np.transpose(np_x))
+        self.assertEqual((np_z == z_expected).all(), True)
+
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name='x', shape=[10, 5, 3], dtype='float64')
+
+            def test_x_dimension_check():
+                paddle.t(x)
+
+            self.assertRaises(ValueError, test_x_dimension_check)
 
 
 if __name__ == '__main__':

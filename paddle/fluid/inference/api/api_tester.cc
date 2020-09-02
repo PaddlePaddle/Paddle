@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <exception>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 namespace paddle {
@@ -67,4 +68,12 @@ TEST(paddle_inference_api, get_version) {
   ASSERT_FALSE(version.empty());
 }
 
+TEST(paddle_inference_api, UpdateDllFlag) {
+  UpdateDllFlag("paddle_num_threads", "10");
+  try {
+    UpdateDllFlag("paddle_num_threads2", "10");
+  } catch (std::exception &e) {
+    LOG(INFO) << e.what();
+  }
+}
 }  // namespace paddle

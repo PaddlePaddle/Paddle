@@ -8,7 +8,6 @@ Follow PaddlePaddle [installation instruction](https://github.com/PaddlePaddle/m
 
 ```bash
 cmake ..  -DWITH_TESTING=ON -WITH_FLUID_ONLY=ON -DWITH_GPU=OFF -DWITH_MKL=ON -DWITH_MKLDNN=ON -DWITH_INFERENCE_API_TEST=ON -DON_INFER=ON
-
 ```
 
 Note: MKL-DNN and MKL are required.
@@ -19,7 +18,7 @@ For reference, please examine the code of unit test enclosed in [analyzer_int8_i
 
 * ### Create Analysis config
 
-INT8 quantization is one of the optimizations in analysis config. More information about analysis config can be found [here](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/deploy/inference/native_infer_en.md#upgrade-performance-based-on-contribanalysisconfig-prerelease)
+INT8 quantization is one of the optimizations in analysis config. More information about analysis config can be found [here](https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_guide/inference_deployment/inference/native_infer_en.html#a-name-use-analysisconfig-to-manage-inference-configurations-use-analysisconfig-to-manage-inference-configurations-a)
 
 * ### Create quantize config by analysis config
 
@@ -64,14 +63,32 @@ We provide the results of accuracy and performance measured on Intel(R) Xeon(R) 
 
 * ## Prepare dataset
 
-Run the following commands to download and preprocess the ILSVRC2012 Validation dataset.
+* Download and preprocess the full ILSVRC2012 Validation dataset.
 
 ```bash
-cd /PATH/TO/PADDLE/build
-python ../paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
+cd /PATH/TO/PADDLE
+python paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
 ```
 
-Then the ILSVRC2012 Validation dataset will be preprocessed and saved by default in `$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin`
+Then the ILSVRC2012 Validation dataset binary file is saved by default in `$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin`
+
+* Prepare user local dataset.
+
+```bash
+cd /PATH/TO/PADDLE/
+python paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py --local --data_dir=/PATH/TO/USER/DATASET --output_file=/PATH/TO/OUTPUT/BINARY
+```
+
+Available options in the above command and their descriptions are as follows:
+- **No parameters set:** The script will download the ILSVRC2012_img_val data from server and convert it into a binary file.
+- **local:** Once set, the script will process user local data.
+- **data_dir:** Path to user local dataset. Default value: None.
+- **label_list:** Path to image_label list file. Default value: `val_list.txt`.
+- **output_file:** Path to the generated binary file. Default value: `imagenet_small.bin`.
+- **data_dim:** The length and width of the preprocessed image. The default value: 224.
+
+The user dataset preprocessed binary file by default is saved in `imagenet_small.bin`.
+
 
 * ## Commands to reproduce image classification benchmark
 
@@ -108,30 +125,30 @@ MODEL_NAME=googlenet, mobilenetv1, mobilenetv2, resnet101, resnet50, vgg16, vgg1
 
 * ## Prepare dataset
 
-* Run the following commands to download and preprocess the Pascal VOC2007 test set.
+* Download and preprocess the full Pascal VOC2007 test set.
   
 ```bash
-cd /PATH/TO/PADDLE/build
-python ../paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --choice=VOC_test_2007 
+cd /PATH/TO/PADDLE
+python paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py
 ```
 
-Then the Pascal VOC2007 test set will be preprocessed and saved by default in `$HOME/.cache/paddle/dataset/pascalvoc/pascalvoc_full.bin`
+The Pascal VOC2007 test set binary file is saved by default in `$HOME/.cache/paddle/dataset/pascalvoc/pascalvoc_full.bin`
 
-* Run the following commands to prepare your own dataset.
+* Prepare user local dataset.
 
 ```bash
-cd /PATH/TO/PADDLE/build
-python ../paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --choice=local \\
-                                         --data_dir=./third_party/inference_demo/int8v2/pascalvoc_small \\
-                                         --img_annotation_list=test_100.txt \\
-                                         --label_file=label_list \\
-                                         --output_file=pascalvoc_small.bin \\
-                                         --resize_h=300 \\
-                                         --resize_w=300 \\
-                                         --mean_value=[127.5, 127.5, 127.5] \\
-                                         --ap_version=11point \\
+cd /PATH/TO/PADDLE
+python paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --local --data_dir=/PATH/TO/USER/DATASET --img_annotation_list=/PATH/TO/ANNOTATION/LIST --label_file=/PATH/TO/LABEL/FILE --output_file=/PATH/TO/OUTPUT/FILE
 ```
-Then the user dataset will be preprocessed and saved by default in `/PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/pascalvoc_small/pascalvoc_small.bin`
+Available options in the above command and their descriptions are as follows:
+- **No parameters set:** The script will download the full pascalvoc test dataset and preprocess and convert it into a binary file.
+- **local:** Once set, the script will process user local data.
+- **data_dir:** Path to user local dataset. Default value: None.
+- **img_annotation_list:** Path to img_annotation list file. Default value: `test_100.txt`.
+- **label_file:** Path to labels list. Default value: `label_list`.
+- **output_file:** Path to generated binary file. Default value: `pascalvoc_small.bin`.
+
+The user dataset preprocessed binary file by default is saved in `pascalvoc_small.bin`.
 
 * ## Commands to reproduce object detection benchmark
 

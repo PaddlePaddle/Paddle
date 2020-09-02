@@ -178,17 +178,15 @@ class MergeLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 class MergeLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"),
-                   "MergeLoDTensorOp must have input X.");
-    PADDLE_ENFORCE(context->HasInput("Mask"),
-                   "MergeLoDTensorOp must have input Mask.");
-    PADDLE_ENFORCE(context->HasInput("InTrue"),
-                   "MergeLoDTensorOp must have input InTrue.");
-    PADDLE_ENFORCE(context->HasInput("InFalse"),
-                   "MergeLoDTensorOp must have input InFalse.");
-    PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "MergeLoDTensorOp must have output Out");
-
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "merge_lod_tensor");
+    OP_INOUT_CHECK(context->HasInput("Mask"), "Input", "Mask",
+                   "merge_lod_tensor");
+    OP_INOUT_CHECK(context->HasInput("InTrue"), "Input", "InTrue",
+                   "merge_lod_tensor");
+    OP_INOUT_CHECK(context->HasInput("InFalse"), "Input", "InFalse",
+                   "merge_lod_tensor");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out",
+                   "merge_lod_tensor");
     auto mask_dim = context->GetInputDim("Mask");
     PADDLE_ENFORCE_EQ(mask_dim.size(), 2,
                       "If you are using IfElse OP:"

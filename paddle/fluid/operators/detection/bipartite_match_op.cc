@@ -26,17 +26,23 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("DistMat"),
-                   "Input(DistMat) of BipartiteMatch should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("ColToRowMatchIndices"),
-        "Output(ColToRowMatchIndices) of BipartiteMatch should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("ColToRowMatchDist"),
-        "Output(ColToRowMatchDist) of BipartiteMatch should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("DistMat"), true,
+        platform::errors::InvalidArgument(
+            "Input(DistMat) of BipartiteMatch should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("ColToRowMatchIndices"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(ColToRowMatchIndices) of BipartiteMatch "
+                          "should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("ColToRowMatchDist"), true,
+        platform::errors::InvalidArgument(
+            "Output(ColToRowMatchDist) of BipartiteMatch should not be null."));
 
     auto dims = ctx->GetInputDim("DistMat");
-    PADDLE_ENFORCE_EQ(dims.size(), 2, "The rank of Input(DistMat) must be 2.");
+    PADDLE_ENFORCE_EQ(dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(DistMat) must be 2."));
 
     ctx->SetOutputDim("ColToRowMatchIndices", dims);
     ctx->SetOutputDim("ColToRowMatchDist", dims);
@@ -64,7 +70,9 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
   // The match_dist must be initialized to 0 at first.
   void BipartiteMatch(const Tensor& dist, int* match_indices,
                       T* match_dist) const {
-    PADDLE_ENFORCE_EQ(dist.dims().size(), 2, "The rank of dist must be 2.");
+    PADDLE_ENFORCE_EQ(
+        dist.dims().size(), 2,
+        platform::errors::InvalidArgument("The rank of dist must be 2."));
     int64_t row = dist.dims()[0];
     int64_t col = dist.dims()[1];
     auto* dist_data = dist.data<T>();
@@ -127,7 +135,11 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
           // Cannot find good match.
           break;
         } else {
-          PADDLE_ENFORCE_EQ(match_indices[max_idx], -1);
+          PADDLE_ENFORCE_EQ(
+              match_indices[max_idx], -1,
+              platform::errors::InvalidArgument(
+                  "The match_indices must be initialized to -1 at [%d].",
+                  max_idx));
           match_indices[max_idx] = max_row_idx;
           match_dist[max_idx] = max_dist;
           // Erase the row index.
@@ -163,7 +175,10 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
         }
       }
       if (max_row_idx != -1) {
-        PADDLE_ENFORCE_EQ(match_indices[j], -1);
+        PADDLE_ENFORCE_EQ(
+            match_indices[j], -1,
+            platform::errors::InvalidArgument(
+                "The match_indices must be initialized to -1 at [%d].", j));
         match_indices[j] = max_row_idx;
         match_dist[j] = max_dist;
       }
@@ -183,8 +198,9 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
                     ? 1
                     : static_cast<int64_t>(dist_mat->lod().back().size() - 1);
     if (dist_mat->lod().size()) {
-      PADDLE_ENFORCE_EQ(dist_mat->lod().size(), 1UL,
-                        "Only support 1 level of LoD.");
+      PADDLE_ENFORCE_EQ(
+          dist_mat->lod().size(), 1UL,
+          platform::errors::InvalidArgument("Only support 1 level of LoD."));
     }
     match_indices->mutable_data<int>({n, col}, context.GetPlace());
     match_dist->mutable_data<T>({n, col}, context.GetPlace());
@@ -206,10 +222,12 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     } else {
       auto lod = dist_mat->lod().back();
       for (size_t i = 0; i < lod.size() - 1; ++i) {
-        Tensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
-        BipartiteMatch(one_ins, indices + i * col, dist + i * col);
-        if (type == "per_prediction") {
-          ArgMaxMatch(one_ins, indices + i * col, dist + i * col, threshold);
+        if (lod[i + 1] > lod[i]) {
+          Tensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
+          BipartiteMatch(one_ins, indices + i * col, dist + i * col);
+          if (type == "per_prediction") {
+            ArgMaxMatch(one_ins, indices + i * col, dist + i * col, threshold);
+          }
         }
       }
     }

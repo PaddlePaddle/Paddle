@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import numpy as np
@@ -318,6 +319,85 @@ class TestArgsortOpDescendingAxisNeg2CPU(TestArgsortOpAxisNeg2CPU):
 class TestArgsortOpDescendingAxisNeg2GPU(TestArgsortOpAxisNeg2GPU):
     def init_direction(self):
         self.descending = True
+
+
+class TestArgsortErrorOnCPU(unittest.TestCase):
+    def setUp(self):
+        self.place = core.CPUPlace()
+
+    def test_error(self):
+        def test_fluid_var_type():
+            with fluid.program_guard(fluid.Program()):
+                x = [1]
+                output = fluid.layers.argsort(input=x)
+            self.assertRaises(TypeError, test_fluid_var_type)
+
+        def test_paddle_var_type():
+            with fluid.program_guard(fluid.Program()):
+                x = [1]
+                output = paddle.argsort(input=x)
+            self.assertRaises(TypeError, test_paddle_var_type)
+
+
+class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+
+class TestArgsort(unittest.TestCase):
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+        self.data = np.random.rand(2, 3, 4).astype("float32")
+
+    def test_api_0(self):
+        with fluid.program_guard(fluid.Program()):
+            input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
+            output = paddle.argsort(x=input)
+            exe = fluid.Executor(self.place)
+            result, = exe.run(feed={'input': self.data}, fetch_list=[output])
+            np_result = np.argsort(self.data)
+            self.assertEqual((result == np_result).all(), True)
+
+    def test_api_1(self):
+        with fluid.program_guard(fluid.Program()):
+            input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
+            output = paddle.argsort(x=input, axis=1)
+            exe = fluid.Executor(self.place)
+            result, = exe.run(feed={'input': self.data}, fetch_list=[output])
+            np_result = np.argsort(self.data, axis=1)
+            self.assertEqual((result == np_result).all(), True)
+
+
+class TestArgsortDygraph(unittest.TestCase):
+    def setUp(self):
+        self.input_data = np.random.rand(10, 10)
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+    def test_api_0(self):
+        paddle.disable_static(self.place)
+        var_x = paddle.to_variable(self.input_data)
+        out = paddle.argsort(var_x)
+        self.assertEqual((np.argsort(self.input_data) == out.numpy()).all(),
+                         True)
+        paddle.enable_static()
+
+    def test_api_1(self):
+        paddle.disable_static(self.place)
+        var_x = paddle.to_variable(self.input_data)
+        out = paddle.argsort(var_x, axis=-1)
+        self.assertEqual(
+            (np.argsort(
+                self.input_data, axis=-1) == out.numpy()).all(), True)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":
