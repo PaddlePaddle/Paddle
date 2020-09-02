@@ -75,7 +75,7 @@ def summary(net, input_size, batch_size=None, dtypes=None):
 
             lenet = LeNet()
 
-            params_info = paddle.hapi.summary(lenet, (1, 28, 28))
+            params_info = paddle.summary(lenet, (1, 28, 28))
             print(params_info)
 
     """
