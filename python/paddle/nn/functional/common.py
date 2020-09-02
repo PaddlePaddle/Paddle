@@ -915,7 +915,7 @@ def dropout(x,
                                  .format(len(input_shape), max(drop_axes)))
             if len(drop_axes) > len(input_shape):
                 raise ValueError(
-                    "length of axis should not greater than dimensions of x:{}, but get length of axis: {}".
+                    "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".
                     format(len(input_shape), len(drop_axes)))
             mask_shape = [1] * len(input_shape)
             for i in drop_axes:
