@@ -11,6 +11,7 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -24,23 +25,33 @@ class PixelShuffleOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto* out = ctx.Output<framework::Tensor>("Out");
+
     out->mutable_data<T>(ctx.GetPlace());
 
     int factor = ctx.Attr<int>("upscale_factor");
+
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    bool channel_last = (data_format == "NHWC");
 
     auto in_dims = in->dims();
     auto o_dims = out->dims();
 
     framework::Tensor t;
     t.ShareDataWith(*in);
-    t.Resize({in_dims[0], o_dims[1], factor, factor, in_dims[2], in_dims[3]});
-
+    if (!channel_last) {
+      t.Resize({in_dims[0], o_dims[1], factor, factor, in_dims[2], in_dims[3]});
+    } else {
+      t.Resize({in_dims[0], in_dims[1], in_dims[2], o_dims[3], factor, factor});
+    }
     std::vector<int> axis = {0, 1, 4, 2, 5, 3};
 
     framework::Tensor o;
     o.ShareDataWith(*out);
-    o.Resize({in_dims[0], o_dims[1], in_dims[2], factor, in_dims[3], factor});
-
+    if (!channel_last) {
+      o.Resize({in_dims[0], o_dims[1], in_dims[2], factor, in_dims[3], factor});
+    } else {
+      o.Resize({in_dims[0], in_dims[1], factor, in_dims[2], factor, o_dims[3]});
+    }
     math::Transpose<DeviceContext, T, 6> trans;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     trans(dev_ctx, t, &o, axis);
@@ -58,19 +69,32 @@ class PixelShuffleGradOpKernel : public framework::OpKernel<T> {
 
     int factor = ctx.Attr<int>("upscale_factor");
 
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    bool channel_last = (data_format == "NHWC");
+
     auto do_dims = dout->dims();
     auto dx_dims = dx->dims();
 
     framework::Tensor t;
     t.ShareDataWith(*dout);
-    t.Resize({do_dims[0], do_dims[1], dx_dims[2], factor, dx_dims[3], factor});
-
+    if (!channel_last) {
+      t.Resize(
+          {do_dims[0], do_dims[1], dx_dims[2], factor, dx_dims[3], factor});
+    } else {
+      t.Resize(
+          {do_dims[0], dx_dims[1], factor, dx_dims[2], factor, do_dims[3]});
+    }
     std::vector<int> axis = {0, 1, 3, 5, 2, 4};
 
     framework::Tensor o;
     o.ShareDataWith(*dx);
-    o.Resize({do_dims[0], do_dims[1], factor, factor, dx_dims[2], dx_dims[3]});
-
+    if (!channel_last) {
+      o.Resize(
+          {do_dims[0], do_dims[1], factor, factor, dx_dims[2], dx_dims[3]});
+    } else {
+      o.Resize(
+          {do_dims[0], dx_dims[1], dx_dims[2], do_dims[3], factor, factor});
+    }
     math::Transpose<DeviceContext, T, 6> trans;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     trans(dev_ctx, t, &o, axis);

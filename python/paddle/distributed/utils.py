@@ -327,6 +327,17 @@ def find_free_ports(num):
     return None
 
 
+def _prepare_trainer_env(cluster, trainer):
+    proc_env = {
+        "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in trainer.gpus]),
+        "PADDLE_TRAINER_ID": "%d" % trainer.rank,
+        "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+        "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+        "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+    }
+    return proc_env
+
+
 class TrainerProc(object):
     def __init__(self):
         self.proc = None
@@ -352,14 +363,7 @@ def start_local_trainers(cluster,
 
     procs = []
     for idx, t in enumerate(pod.trainers):
-        proc_env = {
-            "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpus]),
-            "PADDLE_TRAINER_ID": "%d" % t.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
-        }
-
+        proc_env = _prepare_trainer_env(cluster, t)
         current_env.update(proc_env)
 
         logger.debug("trainer proc env:{}".format(current_env))

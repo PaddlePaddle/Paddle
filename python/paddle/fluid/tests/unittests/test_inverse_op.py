@@ -89,8 +89,7 @@ class TestInverseAPI(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[4, 4], dtype="float64")
-            result = paddle.inverse(input=input)
-
+            result = paddle.inverse(x=input)
             input_np = np.random.random([4, 4]).astype("float64")
             result_np = np.linalg.inv(input_np)
 
@@ -145,7 +144,7 @@ class TestInverseSingularAPI(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[4, 4], dtype="float64")
-            result = paddle.inverse(input=input)
+            result = paddle.inverse(x=input)
 
             input_np = np.zeros([4, 4]).astype("float64")
 

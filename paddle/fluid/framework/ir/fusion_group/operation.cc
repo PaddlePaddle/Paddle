@@ -105,12 +105,6 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   insert_handler("tanh", "%{2.0} / (%{1.0} + Exp(-%{2.0} * ${0})) - %{1.0}",
                  {"${2} * (%{1.0} - ${1} * ${1})"});
 
-  // cast:
-  // out = static_cast<T>(x)
-  // TODO(wangchaochaohu): This is not the compelete definition of
-  // cast Op, We need refine it later.
-  insert_handler("cast", "${0}", {});
-
   // sqrt:
   //  out = x^(1/2)
   //  dx = dout * 0.5 / out
@@ -121,11 +115,21 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   //  dx = dout * 2.0 * x
   insert_handler("square", "${0} * ${0}", {"${2} * %{2.0} * ${0}"});
 
+  // assign:
+  //  out = x
+  insert_handler("assign", "${0}", {});
+
+  // cast:
+  //  out = static_cast<T>(x)
+  // TODO(wangchaochaohu): This is not the compelete definition of
+  //  cast Op, We need refine it later.
+  insert_handler("cast", "${0}", {});
+
   // scale
-  // out = (bias_after_scale) ? scale * X +  bias : scale(X + bias)
-  // here we use '=' operator to seperate th default value
+  //  out = (bias_after_scale) ? scale * X +  bias : scale(X + bias)
+  //  here we use '=' operator to seperate th default value
   // TODO(wangchaochaohu): Later we need to support Tensor input for scale and
-  // bias.
+  //  bias.
   insert_handler(
       "scale",
       "${bias_after_scale=true} ? (${scale=%{1.0}} * ${0} + "

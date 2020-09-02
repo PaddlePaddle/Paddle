@@ -18,15 +18,22 @@ import ast
 import astor
 import atexit
 import copy
+import collections
 import gast
-import imp
 import inspect
 import os
 import six
 import tempfile
 import textwrap
+import numpy as np
 
 from paddle.fluid import unique_name
+
+# imp is deprecated in python3
+if six.PY2:
+    import imp
+else:
+    from importlib.machinery import SourceFileLoader
 
 dygraph_class_to_static_api = {
     "CosineDecay": "cosine_decay",
@@ -40,6 +47,77 @@ dygraph_class_to_static_api = {
 
 FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
 FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
+
+# FullArgSpec is valid from Python3. Defined a Namedtuple to
+# to make it available in Python2.
+FullArgSpec = collections.namedtuple('FullArgSpec', [
+    'args', 'varargs', 'varkw', 'defaults', 'kwonlyargs', 'kwonlydefaults',
+    'annotations'
+])
+
+
+def getfullargspec(target):
+    if hasattr(inspect, "getfullargspec"):
+        return inspect.getfullargspec(target)
+    else:
+        argspec = inspect.getargspec(target)
+        return FullArgSpec(
+            args=argspec.args,
+            varargs=argspec.varargs,
+            varkw=argspec.keywords,
+            defaults=argspec.defaults,
+            kwonlyargs=[],
+            kwonlydefaults=None,
+            annotations={})
+
+
+def parse_arg_and_kwargs(function):
+    """
+    Returns full argument names as list. e.g ['x', 'y', 'z']
+    """
+    fullargspec = getfullargspec(function)
+    arg_names = fullargspec.args
+    if arg_names and 'self' == arg_names[0]:
+        arg_names = fullargspec.args[1:]
+
+    # parse default kwargs
+    default_kwargs = {}
+    default_values = fullargspec.defaults
+    if default_values:
+        assert len(default_values) <= len(arg_names)
+        default_kwarg_names = arg_names[-len(default_values):]
+        default_kwargs = dict(zip(default_kwarg_names, default_values))
+
+    return arg_names, default_kwargs
+
+
+def type_name(v):
+    return type(v).__name__
+
+
+def make_hashable(x, error_msg=None):
+    """
+    Makes input `x` hashable.
+
+    For some unhashable objects, such as `dict/list/np.ndarray`,applying hash function by using their values.
+    """
+    if isinstance(x, (tuple, list)):
+        return tuple(map(make_hashable, x))
+
+    try:
+        hash(x)
+    except TypeError:
+        if isinstance(x, np.ndarray):
+            # Note: `tostring()` will return the binary data from np.ndarray that
+            # means different value will lead to different hash code.
+            return hash(x.tostring())
+        elif isinstance(x, dict):
+            return tuple(map(make_hashable, x.values()))
+
+        error_msg = error_msg or "Requires a hashable object."
+        raise ValueError(error_msg + " But received type: %s" % type_name(x))
+
+    return x
 
 
 def _is_api_in_module_helper(obj, module_prefix):
@@ -368,9 +446,15 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     TODO: If only decorate one of inner function instead of decorating the main
     function, the other inner functions are invisible for the decorated function.
     """
+
+    def remove_if_exit(filepath):
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
     source = ast_to_source_code(ast_root)
     import_fluid = "import paddle.fluid as fluid\n"
     source = import_fluid + source
+
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
@@ -382,8 +466,13 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         f.write(source)
 
     if delete_on_exit:
-        atexit.register(lambda: os.remove(f.name))
-    module = imp.load_source(module_name, f.name)
+        atexit.register(lambda: remove_if_exit(f.name))
+        atexit.register(lambda: remove_if_exit(f.name[:-3] + ".pyc"))
+
+    if six.PY2:
+        module = imp.load_source(module_name, f.name)
+    else:
+        module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
     if not hasattr(module, func_name):
         raise ValueError(
@@ -404,7 +493,7 @@ def recover_globals_attribute(src_obj, dst_obj):
     src_globals = getattr(src_obj, attr_name, {})
     dst_globals = getattr(dst_obj, attr_name, {})
 
-    for k, v in src_globals.items():
+    for k, v in six.iteritems(src_globals):
         # ignore builtin attribute.
         if not (k.startswith('__') and k.endswith('__')):
             dst_globals[k] = v
@@ -1045,3 +1134,19 @@ class SplitAssignTransformer(gast.NodeTransformer):
             value_node = target
 
         return new_nodes
+
+
+# NOTE: inspect.unwrap() exits in PY3 but not in PY2.
+def unwrap(func):
+    """
+    Returns the object wrapped by decorators.
+    """
+
+    def _is_wrapped(f):
+        return hasattr(f, '__wrapped__')
+
+    unwrapped_f = func
+    while (_is_wrapped(unwrapped_f)):
+        unwrapped_f = unwrapped_f.__wrapped__
+
+    return unwrapped_f

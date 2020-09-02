@@ -175,5 +175,57 @@ class TestFP16MulOp2(TestMulOp2):
                 no_grad_set=set('Y'))
 
 
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXPUMulOp1(TestMulOp):
+    def init_dtype_type(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        place = core.XPUPlace(0)
+        self.check_output_with_place(place, atol=1e-1)
+
+    def test_check_grad_normal(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', max_relative_error=0.5)
+
+    def test_check_grad_ingore_x(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
+
+
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXPUMulOp2(TestMulOp2):
+    def init_dtype_type(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        place = core.XPUPlace(0)
+        self.check_output_with_place(place, atol=2e-1)
+
+    def test_check_grad_normal(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['X', 'Y'], 'Out', max_relative_error=0.9)
+
+    def test_check_grad_ingore_x(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', max_relative_error=0.9, no_grad_set=set('Y'))
+
+
 if __name__ == "__main__":
     unittest.main()

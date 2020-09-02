@@ -27,35 +27,35 @@ import numpy as np
 
 class ApiOnesTest(unittest.TestCase):
     def test_paddle_ones(self):
-        with paddle.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             ones = paddle.ones(shape=[10])
             place = paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             result, = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="float32")
         self.assertEqual((result == expected_result).all(), True)
 
-        with paddle.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             ones = paddle.ones(shape=[10], dtype="float64")
             place = paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             result, = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="float64")
         self.assertEqual((result == expected_result).all(), True)
 
-        with paddle.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             ones = paddle.ones(shape=[10], dtype="int64")
             place = paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             result, = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
     def test_fluid_ones(self):
-        with paddle.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             ones = fluid.layers.ones(shape=[10], dtype="int64")
             place = paddle.CPUPlace()
-            exe = paddle.Executor(place)
+            exe = paddle.static.Executor(place)
             result, = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
@@ -64,25 +64,25 @@ class ApiOnesTest(unittest.TestCase):
 class ApiOnesZerosError(unittest.TestCase):
     def test_errors(self):
         def test_error1():
-            with paddle.program_guard(paddle.Program()):
+            with paddle.static.program_guard(paddle.static.Program()):
                 ones = paddle.ones(shape=10, dtype="int64")
 
         self.assertRaises(TypeError, test_error1)
 
         def test_error2():
-            with paddle.program_guard(paddle.Program()):
+            with paddle.static.program_guard(paddle.static.Program()):
                 ones = paddle.ones(shape=10)
 
         self.assertRaises(TypeError, test_error2)
 
         def test_error3():
-            with paddle.program_guard(paddle.Program()):
+            with paddle.static.program_guard(paddle.static.Program()):
                 ones = fluid.layers.ones(shape=10, dtype="int64")
 
         self.assertRaises(TypeError, test_error3)
 
         def test_error4():
-            with paddle.program_guard(paddle.Program()):
+            with paddle.static.program_guard(paddle.static.Program()):
                 ones = fluid.layers.ones(shape=[10], dtype="int8")
 
         self.assertRaises(TypeError, test_error4)

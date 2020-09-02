@@ -44,7 +44,7 @@ class RecvSaveOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
-        ctx.GetPlace());
+        platform::CPUPlace());
   }
 };
 

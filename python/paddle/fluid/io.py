@@ -1669,9 +1669,6 @@ def _load_persistable_nodes(executor, dirname, graph):
 def save(program, model_path):
     """
     :api_attr: Static Graph
-	:alias_main: paddle.save
-	:alias: paddle.save,paddle.tensor.save,paddle.tensor.io.save
-	:old_api: paddle.fluid.save
 
     This function save parameters, optimizer information and network description to  model_path.
 
@@ -1733,9 +1730,6 @@ def save(program, model_path):
 def load(program, model_path, executor=None, var_list=None):
     """
     :api_attr: Static Graph
-	:alias_main: paddle.load
-	:alias: paddle.load,paddle.tensor.load,paddle.tensor.io.load
-	:old_api: paddle.fluid.io.load
 
     This function get parameters and optimizer information from program, and then get corresponding value from file.
     An exception will throw if shape or dtype of the parameters is not match.

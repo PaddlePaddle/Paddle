@@ -63,11 +63,6 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
         std::unordered_set<Node*>(vec.begin(), vec.end()));
     VLOG(3) << "subgraph: {\n" << DebugString(subgraph.SortedNodes()) << "}\n";
 
-    // In elementwise fused kernel, memory is the bound of execution,
-    // here we remove the output id to use less memory and less time.
-    if (subgraph.RemoveIntermediateOut()) {
-      subgraph.DetectIntermediateOutWithGraph(graph);
-    }
     if (subgraph.IsValid(min_subgraph_size)) {
       subgraph.SetFuncName("fused_elementwise_" + std::to_string(index++));
       if (GenerateCode(&subgraph)) {
@@ -115,57 +110,52 @@ static int ExtractOpRole(fusion_group::SubGraph* subgraph) {
 
 void FusionGroupPass::InsertFusionGroupOp(
     Graph* graph, fusion_group::SubGraph* subgraph) const {
-  const std::vector<Node*>& input_vars_of_subgraph =
-      subgraph->GetInputVarNodes();
-  const std::vector<Node*>& output_vars_of_subgraph =
-      subgraph->GetOutputVarNodes();
-  const std::vector<Node*> intermediate_vars_of_subgraph =
-      subgraph->GetIntermediateOutVarNodes();
+  const std::vector<Node*>& input_vars = subgraph->GetInputVarNodes();
+  const std::vector<Node*>& output_vars =
+      subgraph->GetOutputVarNodes(subgraph->SaveIntermediateOut());
   std::unordered_set<Node*> external_nodes;
+
+  // Prepare inputs.
+  std::vector<std::string> input_names;
+  std::vector<int> input_dtypes;
+  std::unordered_set<Node*> output_vars_set(output_vars.begin(),
+                                            output_vars.end());
+  for (auto* n : input_vars) {
+    // It is not an output var node.
+    if (output_vars_set.find(n) == output_vars_set.end()) {
+      input_names.push_back(n->Name());
+      input_dtypes.push_back(n->Var()->GetDataType());
+      external_nodes.insert(n);
+    }
+  }
+
+  // Prepare outputs.
+  std::vector<std::string> output_names;
+  std::vector<int> output_dtypes;
+  for (auto* n : output_vars) {
+    output_names.push_back(n->Name());
+    output_dtypes.push_back(n->Var()->GetDataType());
+    external_nodes.insert(n);
+  }
 
   OpDesc op_desc;
   op_desc.SetType("fusion_group");
-
-  std::vector<std::string> input_names;
-  std::vector<std::string> inputs_data_types;
-  for (auto* n : input_vars_of_subgraph) {
-    input_names.push_back(n->Name());
-    inputs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
-    external_nodes.insert(n);
-  }
   op_desc.SetInput("Inputs", input_names);
-
-  std::vector<std::string> output_names;
-  std::vector<std::string> outs_data_types;
-  std::vector<Node*> output_var_without_intermediate;
-  for (auto* n : output_vars_of_subgraph) {
-    auto it_input =
-        find(input_vars_of_subgraph.begin(), input_vars_of_subgraph.end(), n);
-    auto it_intermediate = find(intermediate_vars_of_subgraph.begin(),
-                                intermediate_vars_of_subgraph.end(), n);
-    if (it_intermediate == intermediate_vars_of_subgraph.end() &&
-        it_input == input_vars_of_subgraph.end()) {
-      output_names.push_back(n->Name());
-      outs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
-      output_var_without_intermediate.push_back(n);
-    }
-    external_nodes.insert(n);
-  }
-
   op_desc.SetOutput("Outs", output_names);
-  op_desc.SetAttr("inputs_data_type", inputs_data_types);
-  op_desc.SetAttr("outs_data_type", outs_data_types);
+  op_desc.SetAttr("inputs_dtype", input_dtypes);
+  op_desc.SetAttr("outs_dtype", output_dtypes);
   op_desc.SetAttr("type", subgraph->GetType());
   op_desc.SetAttr("func_name", subgraph->GetFuncName());
   op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                   ExtractOpRole(subgraph));
 
   Node* fusion_group_node = graph->CreateOpNode(&op_desc);
-  for (auto* in : input_vars_of_subgraph) {
-    IR_NODE_LINK_TO(in, fusion_group_node);
+  for (auto* in : input_vars) {
+    if (output_vars_set.find(in) == output_vars_set.end()) {
+      IR_NODE_LINK_TO(in, fusion_group_node);
+    }
   }
-
-  for (auto* out : output_var_without_intermediate) {
+  for (auto* out : output_vars) {
     IR_NODE_LINK_TO(fusion_group_node, out);
   }
 

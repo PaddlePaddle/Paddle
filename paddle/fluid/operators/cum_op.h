@@ -36,25 +36,28 @@ class CumKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
     int axis = context.Attr<int>("axis");
     bool exclusive = context.Attr<bool>("exclusive");
     bool reverse = context.Attr<bool>("reverse");
-    auto x_dims = X.dims();
-    if (axis == -1) {
-      axis = x_dims.size() - 1;
+    auto out_dims = Out.dims();
+
+    PADDLE_ENFORCE_EQ(
+        axis < out_dims.size() && axis >= (0 - out_dims.size()), true,
+        platform::errors::OutOfRange(
+            "Attr(axis) is out of range, It's expected "
+            "to be in range of [-%d, %d]. But received Attr(axis) = %d.",
+            out_dims.size(), out_dims.size() - 1, axis));
+    if (axis < 0) {
+      axis += out_dims.size();
     }
-    PADDLE_ENFORCE_LT(
-        axis, x_dims.size(),
-        platform::errors::InvalidArgument("axis(%d) should be less than the "
-                                          "dimension(%d) of the input tensor.",
-                                          axis, x_dims.size()));
+
     Out.template mutable_data<T>(context.GetPlace());
 
     int pre = 1;
     int post = 1;
-    int mid = x_dims[axis];
+    int mid = out_dims[axis];
     for (int i = 0; i < axis; ++i) {
-      pre *= x_dims[i];
+      pre *= out_dims[i];
     }
-    for (int i = axis + 1; i < x_dims.size(); ++i) {
-      post *= x_dims[i];
+    for (int i = axis + 1; i < out_dims.size(); ++i) {
+      post *= out_dims[i];
     }
 
     auto x = framework::EigenVector<T>::Flatten(X);

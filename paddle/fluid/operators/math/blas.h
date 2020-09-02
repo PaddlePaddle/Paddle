@@ -198,6 +198,11 @@ class Blas {
                    int K, T alpha, const T* A, const T* B, T beta, T* C,
                    int batchCount, int64_t strideA, int64_t strideB) const;
 
+  template <typename T>
+  void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
+                   int K, T alpha, const T** A, const T** B, T beta, T** C,
+                   int batchCount) const;
+
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
   template <typename T>
   void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB,
