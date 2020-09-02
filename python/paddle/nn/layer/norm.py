@@ -845,7 +845,7 @@ class BatchNorm2d(_BatchNormBase):
 
     def _check_data_format(self, input):
         if input == 'NCHW' or input == 'NCWH':
-            pass
+            self._data_format = input
         else:
             raise ValueError('expected NCHW or NCWH for data_format input')
 

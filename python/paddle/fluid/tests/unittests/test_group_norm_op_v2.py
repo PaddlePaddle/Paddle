@@ -45,10 +45,19 @@ class TestDygraphGroupNormv2(unittest.TestCase):
                     y = gn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
+            def test_weight_bias_false():
+                with fluid.dygraph.guard(p):
+                    gn = paddle.nn.GroupNorm(
+                        num_channels=6,
+                        num_groups=2,
+                        weight_attr=False,
+                        bias_attr=False)
+
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x)
             y2 = compute_v2(x)
             self.assertTrue(np.allclose(y1, y2))
+            test_weight_bias_false()
 
     def test_static(self):
         places = [fluid.CPUPlace()]
