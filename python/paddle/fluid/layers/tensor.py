@@ -724,7 +724,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if convert_dtype(value.dtype) != dtype:
             value = cast(value, dtype)
         inputs['ValueTensor'] = value
-        
+
     if dtype not in ['bool', 'float16', 'float32', 'float64', 'int32', 'int64']:
         raise TypeError(
             'The dtype must be one of bool, float16, float32, float64, int32 and int64 and the data type of ``out`` must be the same as the ``dtype``.'
