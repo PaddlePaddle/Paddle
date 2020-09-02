@@ -658,11 +658,12 @@ class DistributedStrategy(object):
         setting that can be configured through a dict.
 
         **Notes**:
-            **k_steps(int)**: The local steps for training before parameter synchronization. Default 1.
-                If strategy.auto is set True, the local steps will be calculated automatically during training.
-                The algorithm is referenced in this paper: 
-                `Adaptive Communication Strategies to Achieve the Best Error-Runtime Trade-off in Local-Update SGD <https://arxiv.org/pdf/1810.08313.pdf>`_.
-                In this case, k_steps indicates the first local steps which is suggested setting to 1.
+            k_steps(int) The local steps for training before parameter synchronization. Default 1.
+
+            If strategy.auto is set True, the local steps will be calculated automatically during training.
+            The algorithm is referenced in this paper: 
+            `Adaptive Communication Strategies to Achieve the Best Error-Runtime Trade-off in Local-Update SGD <https://arxiv.org/pdf/1810.08313.pdf>`_.
+            In this case, k_steps indicates the first local steps which is suggested setting to 1.
 
         Examples:
           .. code-block:: python
