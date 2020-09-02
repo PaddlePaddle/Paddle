@@ -350,7 +350,8 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_init_allocated_mem, FLAGS_initial_cpu_memory_in_mb,
       FLAGS_memory_fraction_of_eager_deletion, FLAGS_use_pinned_memory,
       FLAGS_benchmark, FLAGS_inner_op_parallelism, FLAGS_tracer_profile_fname,
-      FLAGS_paddle_num_threads, FLAGS_use_mkldnn);
+      FLAGS_paddle_num_threads, FLAGS_use_mkldnn, FLAGS_tensor_dump_ops,
+      FLAGS_dump_limit);
 
 #ifdef PADDLE_WITH_CUDA
   REGISTER_PUBLIC_GLOBAL_VAR(
