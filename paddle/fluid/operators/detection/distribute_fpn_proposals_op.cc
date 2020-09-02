@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -123,3 +124,14 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(distribute_fpn_proposals,
                        ops::DistributeFpnProposalsOpKernel<float>,
                        ops::DistributeFpnProposalsOpKernel<double>);
+REGISTER_OP_VERSION(distribute_fpn_proposals)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade distribute_fpn_proposals add a new input
+              [RoisNum] and add a new output [MultiLevelRoIsNum].)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput("RoIsNum", "The number of RoIs in each image.")
+            .NewOutput("MultiLevelRoisNum",
+                       "The RoIs' number of each image on multiple "
+                       "levels. The number on each level has the shape of (B),"
+                       "B is the number of images."));

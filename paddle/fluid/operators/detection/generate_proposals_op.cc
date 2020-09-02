@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -61,6 +62,10 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("RpnRois", {-1, 4});
     ctx->SetOutputDim("RpnRoiProbs", {-1, 1});
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("RpnRois", std::max(ctx->GetLoDLevel("Scores"), 1));
+      ctx->SetLoDLevel("RpnRoiProbs", std::max(ctx->GetLoDLevel("Scores"), 1));
+    }
   }
 
  protected:
@@ -526,3 +531,11 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(generate_proposals, ops::GenerateProposalsKernel<float>,
                        ops::GenerateProposalsKernel<double>);
+REGISTER_OP_VERSION(generate_proposals)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade generate_proposals add a new output [RpnRoisNum])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewOutput(
+            "RpnRoisNum",
+            "The number of Rpn RoIs in each image. RpnRoisNum is "
+            "dispensable."));

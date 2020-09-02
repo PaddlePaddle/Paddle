@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/roi_align_op.h"
 #include <memory>
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -231,3 +232,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, int>);
+REGISTER_OP_VERSION(roi_align)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade roi_align add a new input [RoisNum])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "RoisNum",
+            "The number of RoIs in each image. RoisNum is dispensable."));

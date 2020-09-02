@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License.*/
 
 #include "paddle/fluid/operators/detection/collect_fpn_proposals_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -135,3 +136,14 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(collect_fpn_proposals,
                        ops::CollectFpnProposalsOpKernel<float>,
                        ops::CollectFpnProposalsOpKernel<double>);
+REGISTER_OP_VERSION(collect_fpn_proposals)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade collect_fpn_proposals add a new input 
+              [MultiLevelRoIsNum] and add a new output [RoisNum].)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput("MultiLevelRoIsNum",
+                      "The RoIs' number of each image on multiple levels."
+                      "The number on each level has the shape of (N), "
+                      "N is the number of images.")
+            .NewOutput("RoisNum", "The number of RoIs in each image."));
