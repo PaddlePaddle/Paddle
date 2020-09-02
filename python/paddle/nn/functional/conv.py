@@ -232,7 +232,7 @@ def conv1d(x,
         raise ValueError("Attr(data_format) should be 'NCL' or 'NLC'. "
                          "Received Attr(data_format): {}.".format(data_format))
 
-    channel_last = (data_format == "NHWC")
+    channel_last = (data_format == "NLC")
     channel_dim = -1 if channel_last else 1
     conv2d_data_format = "NHWC" if channel_last else "NCHW"
     num_channels = x.shape[channel_dim]
