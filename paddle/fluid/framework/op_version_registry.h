@@ -133,7 +133,9 @@ class OpVersion {
     checkpoints_.push_back(Checkpoint({note, op_version_desc}));
     return *this;
   }
-  uint32_t GetVersionID() { return static_cast<uint32_t>(checkpoints_.size()); }
+  uint32_t GetVersionID() const {
+    return static_cast<uint32_t>(checkpoints_.size());
+  }
 
  private:
   struct Checkpoint {
@@ -157,7 +159,7 @@ class OpVersionRegistrar {
     op_version_map_.insert({op_type, OpVersion()});
     return op_version_map_[op_type];
   }
-  uint32_t GetVersionID(const std::string& op_type) {
+  uint32_t GetVersionID(const std::string& op_type) const {
     auto it = op_version_map_.find(op_type);
     if (it == op_version_map_.end()) {
       return 0;
@@ -176,7 +178,7 @@ class OpVersionRegistrar {
 class OpVersionComparator {
  public:
   virtual bool operator()() = 0;
-  virtual ~OpVersionComparator() {}
+  virtual ~OpVersionComparator() = default;
 };
 
 #define ADD_OP_VERSION_COMPARATOR(cmp_name, cmp_math)                   \
@@ -230,9 +232,9 @@ class OpVersionComparatorCombination {
     return *this;
   }
 
-  bool IsMatched() {
-    for (auto& cmp : op_version_comparators_) {
-      if (!(*cmp.get())()) {
+  bool IsMatched() const {
+    for (const auto& cmp : op_version_comparators_) {
+      if (!(*cmp)()) {
         return false;
       }
     }
@@ -250,11 +252,11 @@ class PassVersionCheckers {
     pass_version_checkers_.push_back(combinations);
     return *this;
   }
-  bool IsPassCompatible() {
+  bool IsPassCompatible() const {
     if (pass_version_checkers_.empty()) {
       return true;
     }
-    for (auto& checker : pass_version_checkers_) {
+    for (const auto& checker : pass_version_checkers_) {
       if (checker.IsMatched()) {
         return true;
       }
@@ -275,8 +277,12 @@ class PassVersionCheckerRegistrar {
   PassVersionCheckers& Register(const std::string& pass_name) {
     return pass_version_checkers_map_[pass_name];
   }
-  bool IsPassCompatible(const std::string& fuse_pass_name) {
-    return pass_version_checkers_map_[fuse_pass_name].IsPassCompatible();
+  bool IsPassCompatible(const std::string& fuse_pass_name) const {
+    auto iter = pass_version_checkers_map_.find(fuse_pass_name);
+    if (iter == pass_version_checkers_map_.end()) {
+      return true;
+    }
+    return iter->second.IsPassCompatible();
   }
 
  private:
