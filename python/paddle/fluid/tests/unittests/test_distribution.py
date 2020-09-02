@@ -100,29 +100,47 @@ class NormalNumpy(DistributionNumpy):
         return 0.5 * (var_ratio + t1 - 1 - np.log(var_ratio))
 
 
-class UniformDygraphTest(unittest.TestCase):
-    def setUp(self):
-        paddle.disable_static()
-        self.init_data()
+class UniformTest(unittest.TestCase):
+    def setUp(self, use_gpu=False, batch_size=5, dims=6):
+        self.use_gpu = use_gpu
+        if not use_gpu:
+            self.place = fluid.CPUPlace()
+            self.gpu_id = -1
+        else:
+            self.place = fluid.CUDAPlace(0)
+            self.gpu_id = 0
 
-    def init_data(self, batch_size=5, dims=6):
+        self.init_numpy_data(batch_size, dims)
+
+        paddle.disable_static(self.place)
+        self.init_dynamic_data(batch_size, dims)
+
+        paddle.enable_static()
+        self.test_program = fluid.Program()
+        self.executor = fluid.Executor(self.place)
+        self.init_static_data(batch_size, dims)
+
+    def init_numpy_data(self, batch_size, dims):
         # low ans high are 'float'
         self.low_np = np.random.uniform(-2, 1)
         self.high_np = np.random.uniform(1, 3)
         self.values_np = np.array([1.0]).astype('float32')
-        self.low = self.low_np
-        self.high = self.high_np
-        self.values = paddle.to_tensor(self.values_np)
 
-    def compare_with_numpy(self,
-                           sample,
-                           entropy,
-                           log_prob,
-                           probs,
-                           batch_size=5,
-                           dims=6,
-                           sample_shape=7,
-                           tolerance=1e-6):
+    def init_dynamic_data(self, batch_size, dims):
+        self.dynamic_low = self.low_np
+        self.dynamic_high = self.high_np
+        self.dynamic_values = paddle.to_tensor(self.values_np)
+
+    def init_static_data(self, batch_size, dims):
+        self.static_low = self.low_np
+        self.static_high = self.high_np
+        with fluid.program_guard(self.test_program):
+            self.static_values = layers.data(
+                name='values', shape=[], dtype='float32')
+
+    def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-6):
+        sample, entropy, log_prob, probs = fetch_list
+
         np_uniform = UniformNumpy(self.low_np, self.high_np)
         np_sample = np_uniform.sample([sample_shape])
         np_entropy = np_uniform.entropy()
@@ -136,128 +154,208 @@ class UniformDygraphTest(unittest.TestCase):
             log_prob, np_lp, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
 
-    def test_uniform_distribution_dygraph(self,
-                                          batch_size=5,
-                                          dims=6,
-                                          sample_shape=7,
-                                          tolerance=1e-6):
-        uniform = Uniform(self.low, self.high)
+    def test_uniform_distribution_dygraph(self, sample_shape=7, tolerance=1e-6):
+        paddle.disable_static(self.place)
+        uniform = Uniform(self.dynamic_low, self.dynamic_high)
         sample = uniform.sample([sample_shape]).numpy()
         entropy = uniform.entropy().numpy()
-        log_prob = uniform.log_prob(self.values).numpy()
-        probs = uniform.probs(self.values).numpy()
+        log_prob = uniform.log_prob(self.dynamic_values).numpy()
+        probs = uniform.probs(self.dynamic_values).numpy()
+        fetch_list = [sample, entropy, log_prob, probs]
 
-        self.compare_with_numpy(sample, entropy, log_prob, probs)
+        self.compare_with_numpy(fetch_list)
 
+    def test_uniform_distribution_static(self, sample_shape=7, tolerance=1e-6):
         paddle.enable_static()
+        with fluid.program_guard(self.test_program):
+            uniform = Uniform(self.static_low, self.static_high)
+            sample = uniform.sample([sample_shape])
+            entropy = uniform.entropy()
+            log_prob = uniform.log_prob(self.static_values)
+            probs = uniform.probs(self.static_values)
+            fetch_list = [sample, entropy, log_prob, probs]
+
+        feed_vars = {
+            'low': self.low_np,
+            'high': self.high_np,
+            'values': self.values_np
+        }
+
+        self.executor.run(fluid.default_startup_program())
+        fetch_list = self.executor.run(program=self.test_program,
+                                       feed=feed_vars,
+                                       fetch_list=fetch_list)
+
+        self.compare_with_numpy(fetch_list)
 
 
-class UniformDygraphTest2(UniformDygraphTest):
-    def init_data(self, batch_size=5, dims=6):
+class UniformTest2(UniformTest):
+    def init_numpy_data(self, batch_size, dims):
         # low ans high are 'int'
         self.low_np = int(np.random.uniform(-2, 1))
         self.high_np = int(np.random.uniform(1, 3))
         self.values_np = np.array([1.0]).astype('float32')
-        self.low = self.low_np
-        self.high = self.high_np
-        self.values = paddle.to_tensor(self.values_np)
 
 
-class UniformDygraphTest3(UniformDygraphTest):
-    def init_data(self, batch_size=5, dims=6):
+class UniformTest3(UniformTest):
+    def init_numpy_data(self, batch_size, dims):
         # test broadcast: low is float, high is numpy.ndarray with dtype 'float32'.
         self.low_np = np.random.uniform(-2, 1)
         self.high_np = np.random.uniform(-5.0, 5.0,
                                          (batch_size, dims)).astype('float32')
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        self.low = self.low_np
-        self.high = self.high_np
-        self.values = paddle.to_tensor(self.values_np)
+
+    def init_static_data(self, batch_size, dims):
+        self.static_low = self.low_np
+        self.static_high = self.high_np
+        with fluid.program_guard(self.test_program):
+            self.static_values = layers.data(
+                name='values', shape=[dims], dtype='float32')
 
 
-class UniformDygraphTest4(UniformDygraphTest):
-    def init_data(self, batch_size=5, dims=6):
+class UniformTest4(UniformTest):
+    def init_numpy_data(self, batch_size, dims):
         # low and high are numpy.ndarray with dtype 'float32'.
         self.low_np = np.random.randn(batch_size, dims).astype('float32')
         self.high_np = np.random.uniform(-5.0, 5.0,
                                          (batch_size, dims)).astype('float32')
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        self.low = self.low_np
-        self.high = self.high_np
-        self.values = paddle.to_tensor(self.values_np)
+
+    def init_static_data(self, batch_size, dims):
+        self.static_low = self.low_np
+        self.static_high = self.high_np
+        with fluid.program_guard(self.test_program):
+            self.static_values = layers.data(
+                name='values', shape=[dims], dtype='float32')
 
 
-class UniformDygraphTest5(UniformDygraphTest):
-    def init_data(self, batch_size=5, dims=6):
+class UniformTest5(UniformTest):
+    def init_numpy_data(self, batch_size, dims):
         # low and high are numpy.ndarray with dtype 'float64'.
         self.low_np = np.random.randn(batch_size, dims).astype('float64')
         self.high_np = np.random.uniform(-5.0, 5.0,
                                          (batch_size, dims)).astype('float64')
         self.values_np = np.random.randn(batch_size, dims).astype('float64')
-        self.low = self.low_np
-        self.high = self.high_np
-        self.values = paddle.to_tensor(self.values_np, dtype='float64')
+
+    def init_dynamic_data(self, batch_size, dims):
+        self.dynamic_low = self.low_np
+        self.dynamic_high = self.high_np
+        self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float64')
+
+    def init_static_data(self, batch_size, dims):
+        self.static_low = self.low_np
+        self.static_high = self.high_np
+        with fluid.program_guard(self.test_program):
+            self.static_values = layers.data(
+                name='values', shape=[dims], dtype='float64')
 
 
-class UniformDygraphTest6(UniformDygraphTest):
-    def init_data(self, batch_size=5, dims=6):
+class UniformTest6(UniformTest):
+    def init_numpy_data(self, batch_size, dims):
         # low and high are Tensor with dtype 'VarType.FP32'.
         self.low_np = np.random.randn(batch_size, dims).astype('float32')
         self.high_np = np.random.uniform(-5.0, 5.0,
                                          (batch_size, dims)).astype('float32')
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        self.low = paddle.to_tensor(self.low_np)
-        self.high = paddle.to_tensor(self.high_np)
-        self.values = paddle.to_tensor(self.values_np)
+
+    def init_dynamic_data(self, batch_size, dims):
+        self.dynamic_low = paddle.to_tensor(self.low_np)
+        self.dynamic_high = paddle.to_tensor(self.high_np)
+        self.dynamic_values = paddle.to_tensor(self.values_np)
+
+    def init_static_data(self, batch_size, dims):
+        with fluid.program_guard(self.test_program):
+            self.static_low = layers.data(
+                name='low', shape=[dims], dtype='float32')
+            self.static_high = layers.data(
+                name='high', shape=[dims], dtype='float32')
+            self.static_values = layers.data(
+                name='values', shape=[dims], dtype='float32')
 
 
-class UniformDygraphTest7(UniformDygraphTest):
-    def init_data(self, batch_size=5, dims=6):
+class UniformTest7(UniformTest):
+    def init_numpy_data(self, batch_size, dims):
         # low and high are Tensor with dtype 'VarType.FP64'.
         self.low_np = np.random.randn(batch_size, dims).astype('float64')
         self.high_np = np.random.uniform(-5.0, 5.0,
                                          (batch_size, dims)).astype('float64')
         self.values_np = np.random.randn(batch_size, dims).astype('float64')
-        self.low = paddle.to_tensor(self.low_np, dtype='float64')
-        self.high = paddle.to_tensor(self.high_np, dtype='float64')
-        self.values = paddle.to_tensor(self.values_np, dtype='float64')
+
+    def init_dynamic_data(self, batch_size, dims):
+        self.dynamic_low = paddle.to_tensor(self.low_np, dtype='float64')
+        self.dynamic_high = paddle.to_tensor(self.high_np, dtype='float64')
+        self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float64')
+
+    def init_static_data(self, batch_size, dims):
+        with fluid.program_guard(self.test_program):
+            self.static_low = layers.data(
+                name='low', shape=[dims], dtype='float64')
+            self.static_high = layers.data(
+                name='high', shape=[dims], dtype='float64')
+            self.static_values = layers.data(
+                name='values', shape=[dims], dtype='float64')
 
 
-class UniformDygraphTest8(UniformDygraphTest):
-    def init_data(self, batch_size=5, dims=6):
+class UniformTest8(UniformTest):
+    def init_numpy_data(self, batch_size, dims):
         # low and high are Tensor with dtype 'VarType.FP64'. value's dtype is 'VarType.FP32'.
         self.low_np = np.random.randn(batch_size, dims).astype('float64')
         self.high_np = np.random.uniform(-5.0, 5.0,
                                          (batch_size, dims)).astype('float64')
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        self.low = paddle.to_tensor(self.low_np, dtype='float64')
-        self.high = paddle.to_tensor(self.high_np, dtype='float64')
-        self.values = paddle.to_tensor(self.values_np, dtype='float32')
+
+    def init_dynamic_data(self, batch_size, dims):
+        self.dynamic_low = paddle.to_tensor(self.low_np, dtype='float64')
+        self.dynamic_high = paddle.to_tensor(self.high_np, dtype='float64')
+        self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float32')
+
+    def init_static_data(self, batch_size, dims):
+        with fluid.program_guard(self.test_program):
+            self.static_low = layers.data(
+                name='low', shape=[dims], dtype='float64')
+            self.static_high = layers.data(
+                name='high', shape=[dims], dtype='float64')
+            self.static_values = layers.data(
+                name='values', shape=[dims], dtype='float32')
 
 
-class UniformStaticTest(unittest.TestCase):
-    def setUp(self, use_gpu=False):
-        paddle.enable_static()
-        self.init_data()
+class UniformTest(unittest.TestCase):
+    def setUp(self, use_gpu=False, batch_size=5, dims=6):
         self.use_gpu = use_gpu
         if not use_gpu:
-            place = fluid.CPUPlace()
+            self.place = fluid.CPUPlace()
             self.gpu_id = -1
         else:
-            place = fluid.CUDAPlace(0)
+            self.place = fluid.CUDAPlace(0)
             self.gpu_id = 0
-        self.executor = fluid.Executor(place)
 
-    def init_data(self, batch_size=5, dims=6):
-        # low ans high are 'float'
+        self.init_numpy_data(batch_size, dims)
+
+        paddle.disable_static(self.place)
+        self.init_dynamic_data(batch_size, dims)
+
+        paddle.enable_static()
         self.test_program = fluid.Program()
+        self.executor = fluid.Executor(self.place)
+        self.init_static_data(batch_size, dims)
+
+    def init_numpy_data(self, batch_size, dims):
+        # low ans high are 'float'
         self.low_np = np.random.uniform(-2, 1)
         self.high_np = np.random.uniform(1, 3)
         self.values_np = np.array([1.0]).astype('float32')
-        self.low = self.low_np
-        self.high = self.high_np
+
+    def init_dynamic_data(self, batch_size, dims):
+        self.dynamic_low = self.low_np
+        self.dynamic_high = self.high_np
+        self.dynamic_values = paddle.to_tensor(self.values_np)
+
+    def init_static_data(self, batch_size, dims):
+        self.static_low = self.low_np
+        self.static_high = self.high_np
         with fluid.program_guard(self.test_program):
-            self.values = layers.data(name='values', shape=[], dtype='float32')
+            self.static_values = layers.data(
+                name='values', shape=[], dtype='float32')
 
     def compare_with_numpy(self,
                            fetch_list,
@@ -280,18 +378,33 @@ class UniformStaticTest(unittest.TestCase):
             log_prob, np_lp, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
 
+    def test_uniform_distribution_dygraph(self,
+                                          batch_size=5,
+                                          dims=6,
+                                          sample_shape=7,
+                                          tolerance=1e-6):
+        paddle.disable_static(self.place)
+        uniform = Uniform(self.dynamic_low, self.dynamic_high)
+        sample = uniform.sample([sample_shape]).numpy()
+        entropy = uniform.entropy().numpy()
+        log_prob = uniform.log_prob(self.dynamic_values).numpy()
+        probs = uniform.probs(self.dynamic_values).numpy()
+        fetch_list = [sample, entropy, log_prob, probs]
+
+        self.compare_with_numpy(fetch_list)
+
     def test_uniform_distribution_static(self,
                                          batch_size=5,
                                          dims=6,
                                          sample_shape=7,
                                          tolerance=1e-6):
-
+        paddle.enable_static()
         with fluid.program_guard(self.test_program):
-            uniform = Uniform(self.low, self.high)
+            uniform = Uniform(self.static_low, self.static_high)
             sample = uniform.sample([sample_shape])
             entropy = uniform.entropy()
-            log_prob = uniform.log_prob(self.values)
-            probs = uniform.probs(self.values)
+            log_prob = uniform.log_prob(self.static_values)
+            probs = uniform.probs(self.static_values)
             fetch_list = [sample, entropy, log_prob, probs]
 
         feed_vars = {
@@ -308,371 +421,56 @@ class UniformStaticTest(unittest.TestCase):
         self.compare_with_numpy(fetch_list)
 
 
-class UniformStaticTest2(UniformStaticTest):
-    def init_data(self, batch_size=5, dims=6):
-        # low ans high are 'int'
-        self.test_program = fluid.Program()
-        self.low_np = int(np.random.uniform(-2, 1))
-        self.high_np = int(np.random.uniform(1, 3))
-        self.values_np = np.array([1.0]).astype('float32')
-        self.low = self.low_np
-        self.high = self.high_np
-        with fluid.program_guard(self.test_program):
-            self.values = layers.data(name='values', shape=[], dtype='float32')
-
-
-class UniformStaticTest3(UniformStaticTest):
-    def init_data(self, batch_size=5, dims=6):
-        # test broadcast: low is float, high is numpy.ndarray with dtype 'float32'.
-        self.test_program = fluid.Program()
-        self.low_np = np.random.uniform(-2, 1)
-        self.high_np = np.random.uniform(-5.0, 5.0,
-                                         (batch_size, dims)).astype('float32')
-        self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        self.low = self.low_np
-        self.high = self.high_np
-        with fluid.program_guard(self.test_program):
-            self.values = layers.data(
-                name='values', shape=[dims], dtype='float32')
-
-
-class UniformStaticTest4(UniformStaticTest):
-    def init_data(self, batch_size=5, dims=6):
-        # low and high are numpy.ndarray with dtype 'float32'.
-        self.test_program = fluid.Program()
-        self.low_np = np.random.randn(batch_size, dims).astype('float32')
-        self.high_np = np.random.uniform(-5.0, 5.0,
-                                         (batch_size, dims)).astype('float32')
-        self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        self.low = self.low_np
-        self.high = self.high_np
-        with fluid.program_guard(self.test_program):
-            self.values = layers.data(
-                name='values', shape=[dims], dtype='float32')
-
-
-class UniformStaticTest5(UniformStaticTest):
-    def init_data(self, batch_size=5, dims=6):
-        # low and high are numpy.ndarray with dtype 'float64'.
-        self.test_program = fluid.Program()
-        self.low_np = np.random.randn(batch_size, dims).astype('float64')
-        self.high_np = np.random.uniform(-5.0, 5.0,
-                                         (batch_size, dims)).astype('float64')
-        self.values_np = np.random.randn(batch_size, dims).astype('float64')
-        self.low = self.low_np
-        self.high = self.high_np
-        with fluid.program_guard(self.test_program):
-            self.values = layers.data(
-                name='values', shape=[dims], dtype='float64')
-
-
-class UniformStaticTest6(UniformStaticTest):
-    def init_data(self, batch_size=5, dims=6):
-        # low and high are Variable with dtype 'VarType.FP32'.
-        self.test_program = fluid.Program()
-        self.low_np = np.random.randn(batch_size, dims).astype('float32')
-        self.high_np = np.random.uniform(-5.0, 5.0,
-                                         (batch_size, dims)).astype('float32')
-        self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        with fluid.program_guard(self.test_program):
-            self.low = layers.data(name='low', shape=[dims], dtype='float32')
-            self.high = layers.data(name='high', shape=[dims], dtype='float32')
-            self.values = layers.data(
-                name='values', shape=[dims], dtype='float32')
-
-
-class UniformStaticTest7(UniformStaticTest):
-    def init_data(self, batch_size=5, dims=6):
-        # low and high are Variable with dtype 'VarType.FP64'.
-        self.test_program = fluid.Program()
-        self.low_np = np.random.randn(batch_size, dims).astype('float64')
-        self.high_np = np.random.uniform(-5.0, 5.0,
-                                         (batch_size, dims)).astype('float64')
-        self.values_np = np.random.randn(batch_size, dims).astype('float64')
-        with fluid.program_guard(self.test_program):
-            self.low = layers.data(name='low', shape=[dims], dtype='float64')
-            self.high = layers.data(name='high', shape=[dims], dtype='float64')
-            self.values = layers.data(
-                name='values', shape=[dims], dtype='float64')
-
-
-class UniformStaticTest8(UniformStaticTest):
-    def init_data(self, batch_size=5, dims=6):
-        # low and high are Variable with dtype 'VarType.FP64'. value's dtype is 'VarType.FP32'.
-        self.test_program = fluid.Program()
-        self.low_np = np.random.randn(batch_size, dims).astype('float64')
-        self.high_np = np.random.uniform(-5.0, 5.0,
-                                         (batch_size, dims)).astype('float64')
-        self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        with fluid.program_guard(self.test_program):
-            self.low = layers.data(name='low', shape=[dims], dtype='float64')
-            self.high = layers.data(name='high', shape=[dims], dtype='float64')
-            self.values = layers.data(
-                name='values', shape=[dims], dtype='float32')
-
-
-class NormalDygraphTest(unittest.TestCase):
-    def setUp(self):
-        paddle.disable_static()
-        self.init_data()
-
-    def init_data(self, batch_size=2, dims=3):
-        # loc ans scale are 'float'
-        self.loc_np = (np.random.ranf() - 0.5) * 4
-        self.scale_np = (np.random.ranf() - 0.5) * 4
-        while self.scale_np < 0:
-            self.scale_np = (np.random.ranf() - 0.5) * 4
-        self.values_np = np.random.ranf(1).astype('float32')
-        self.loc = self.loc_np
-        self.scale = self.scale_np
-        self.values = paddle.to_tensor(self.values_np)
-        # used to construct another Normal object to calculate kl_divergence
-        self.other_loc_np = (np.random.ranf() - 0.5) * 4
-        self.other_scale_np = (np.random.ranf() - 0.5) * 4
-        while self.other_scale_np < 0:
-            self.other_scale_np = (np.random.ranf() - 0.5) * 4
-        self.other_loc = self.other_loc_np
-        self.other_scale = self.other_scale_np
-
-    def compare_with_numpy(self,
-                           sample,
-                           entropy,
-                           log_prob,
-                           probs,
-                           kl,
-                           batch_size=2,
-                           dims=3,
-                           sample_shape=7,
-                           tolerance=1e-6):
-        np_normal = NormalNumpy(self.loc_np, self.scale_np)
-        np_sample = np_normal.sample([sample_shape])
-        np_entropy = np_normal.entropy()
-        np_lp = np_normal.log_prob(self.values_np)
-        np_p = np_normal.probs(self.values_np)
-        np_other_normal = NormalNumpy(self.other_loc_np, self.other_scale_np)
-        np_kl = np_normal.kl_divergence(np_other_normal)
-
-        np.testing.assert_equal(sample.shape, np_sample.shape)
-        np.testing.assert_allclose(
-            entropy, np_entropy, rtol=tolerance, atol=tolerance)
-        np.testing.assert_allclose(
-            log_prob, np_lp, rtol=tolerance, atol=tolerance)
-        np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
-        np.testing.assert_allclose(kl, np_kl, rtol=tolerance, atol=tolerance)
-
-    def test_normal_distribution_dygraph(self,
-                                         batch_size=2,
-                                         dims=3,
-                                         sample_shape=7,
-                                         tolerance=1e-6):
-
-        normal = Normal(self.loc, self.scale)
-        sample = normal.sample([sample_shape]).numpy()
-        entropy = normal.entropy().numpy()
-        log_prob = normal.log_prob(self.values).numpy()
-        probs = normal.probs(self.values).numpy()
-        other_normal = Normal(self.other_loc, self.other_scale)
-        kl = normal.kl_divergence(other_normal).numpy()
-
-        self.compare_with_numpy(sample, entropy, log_prob, probs, kl)
-
-        paddle.enable_static()
-
-
-class NormalDygraphTest2(NormalDygraphTest):
-    def init_data(self, batch_size=2, dims=3):
-        # loc ans scale are 'int'
-        self.loc_np = int((np.random.ranf() - 0.5) * 8)
-        self.scale_np = int((np.random.ranf() - 0.5) * 8)
-        while self.scale_np < 0:
-            self.scale_np = int((np.random.ranf() - 0.5) * 8)
-        self.values_np = np.random.ranf(1).astype('float32')
-        self.loc = self.loc_np
-        self.scale = self.scale_np
-        self.values = paddle.to_tensor(self.values_np)
-        # used to construct another Normal object to calculate kl_divergence
-        self.other_loc_np = int((np.random.ranf() - 0.5) * 8)
-        self.other_scale_np = int((np.random.ranf() - 0.5) * 8)
-        while self.other_scale_np < 0:
-            self.other_scale_np = int((np.random.ranf() - 0.5) * 8)
-        self.other_loc = self.other_loc_np
-        self.other_scale = self.other_scale_np
-
-
-class NormalDygraphTest3(NormalDygraphTest):
-    def init_data(self, batch_size=2, dims=3):
-        # test broadcast: loc is float, scale is numpy.ndarray with dtype 'float32'.
-        self.loc_np = (np.random.ranf() - 0.5) * 4
-        self.scale_np = np.random.randn(batch_size, dims).astype('float32')
-        while not np.all(self.scale_np > 0):
-            self.scale_np = np.random.randn(batch_size, dims).astype('float32')
-        self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        self.loc = self.loc_np
-        self.scale = self.scale_np
-        self.values = paddle.to_tensor(self.values_np)
-        # used to construct another Normal object to calculate kl_divergence
-        self.other_loc_np = (np.random.ranf() - 0.5) * 4
-        self.other_scale_np = np.random.randn(batch_size,
-                                              dims).astype('float32')
-        while not np.all(self.scale_np > 0):
-            self.other_scale_np = np.random.randn(batch_size,
-                                                  dims).astype('float32')
-        self.other_loc = self.other_loc_np
-        self.other_scale = self.other_scale_np
-
-
-class NormalDygraphTest4(NormalDygraphTest):
-    def init_data(self, batch_size=2, dims=3):
-        # loc and scale are numpy.ndarray with dtype 'float32'.
-        self.loc_np = np.random.randn(batch_size, dims).astype('float32')
-        self.scale_np = np.random.randn(batch_size, dims).astype('float32')
-        while not np.all(self.scale_np > 0):
-            self.scale_np = np.random.randn(batch_size, dims).astype('float32')
-        self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        self.loc = self.loc_np
-        self.scale = self.scale_np
-        self.values = paddle.to_tensor(self.values_np)
-        # used to construct another Normal object to calculate kl_divergence
-        self.other_loc_np = np.random.randn(batch_size, dims).astype('float32')
-        self.other_scale_np = np.random.randn(batch_size,
-                                              dims).astype('float32')
-        while not np.all(self.scale_np > 0):
-            self.other_scale_np = np.random.randn(batch_size,
-                                                  dims).astype('float32')
-        self.other_loc = self.other_loc_np
-        self.other_scale = self.other_scale_np
-
-
-class NormalDygraphTest5(NormalDygraphTest):
-    def init_data(self, batch_size=2, dims=3):
-        # loc and scale are numpy.ndarray with dtype 'float64'.
-        self.loc_np = np.random.randn(batch_size, dims).astype('float64')
-        self.scale_np = np.random.randn(batch_size, dims).astype('float64')
-        while not np.all(self.scale_np > 0):
-            self.scale_np = np.random.randn(batch_size, dims).astype('float64')
-        self.values_np = np.random.randn(batch_size, dims).astype('float64')
-        self.loc = self.loc_np
-        self.scale = self.scale_np
-        self.values = paddle.to_tensor(self.values_np, dtype='float64')
-        # used to construct another Normal object to calculate kl_divergence
-        self.other_loc_np = np.random.randn(batch_size, dims).astype('float64')
-        self.other_scale_np = np.random.randn(batch_size,
-                                              dims).astype('float64')
-        while not np.all(self.scale_np > 0):
-            self.other_scale_np = np.random.randn(batch_size,
-                                                  dims).astype('float64')
-        self.other_loc = self.other_loc_np
-        self.other_scale = self.other_scale_np
-
-
-class NormalDygraphTest6(NormalDygraphTest):
-    def init_data(self, batch_size=2, dims=3):
-        # loc and scale are Tensor with dtype 'VarType.FP32'.
-        self.loc_np = np.random.randn(batch_size, dims).astype('float32')
-        self.scale_np = np.random.randn(batch_size, dims).astype('float32')
-        while not np.all(self.scale_np > 0):
-            self.scale_np = np.random.randn(batch_size, dims).astype('float32')
-        self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        self.loc = paddle.to_tensor(self.loc_np)
-        self.scale = paddle.to_tensor(self.scale_np)
-        self.values = paddle.to_tensor(self.values_np)
-        # used to construct another Normal object to calculate kl_divergence
-        self.other_loc_np = np.random.randn(batch_size, dims).astype('float32')
-        self.other_scale_np = np.random.randn(batch_size,
-                                              dims).astype('float32')
-        while not np.all(self.scale_np > 0):
-            self.other_scale_np = np.random.randn(batch_size,
-                                                  dims).astype('float32')
-        self.other_loc = paddle.to_tensor(self.other_loc_np)
-        self.other_scale = paddle.to_tensor(self.other_scale_np)
-
-
-class NormalDygraphTest7(NormalDygraphTest):
-    def init_data(self, batch_size=2, dims=3):
-        # loc and scale are Tensor with dtype 'VarType.FP64'.
-        self.loc_np = np.random.randn(batch_size, dims).astype('float64')
-        self.scale_np = np.random.randn(batch_size, dims).astype('float64')
-        while not np.all(self.scale_np > 0):
-            self.scale_np = np.random.randn(batch_size, dims).astype('float64')
-        self.values_np = np.random.randn(batch_size, dims).astype('float64')
-        self.loc = paddle.to_tensor(self.loc_np, dtype='float64')
-        self.scale = paddle.to_tensor(self.scale_np, dtype='float64')
-        self.values = paddle.to_tensor(self.values_np, dtype='float64')
-        # used to construct another Normal object to calculate kl_divergence
-        self.other_loc_np = np.random.randn(batch_size, dims).astype('float64')
-        self.other_scale_np = np.random.randn(batch_size,
-                                              dims).astype('float64')
-        while not np.all(self.scale_np > 0):
-            self.other_scale_np = np.random.randn(batch_size,
-                                                  dims).astype('float64')
-        self.other_loc = paddle.to_tensor(self.other_loc_np, dtype='float64')
-        self.other_scale = paddle.to_tensor(
-            self.other_scale_np, dtype='float64')
-
-
-class NormalDygraphTest8(NormalDygraphTest):
-    def init_data(self, batch_size=2, dims=3):
-        # loc and scale are Tensor with dtype 'VarType.FP64'. value's dtype is 'VarType.FP32'.
-        self.loc_np = np.random.randn(batch_size, dims).astype('float64')
-        self.scale_np = np.random.randn(batch_size, dims).astype('float64')
-        while not np.all(self.scale_np > 0):
-            self.scale_np = np.random.randn(batch_size, dims).astype('float64')
-        self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        self.loc = paddle.to_tensor(self.loc_np, dtype='float64')
-        self.scale = paddle.to_tensor(self.scale_np, dtype='float64')
-        self.values = paddle.to_tensor(self.values_np)
-        # used to construct another Normal object to calculate kl_divergence
-        self.other_loc_np = np.random.randn(batch_size, dims).astype('float64')
-        self.other_scale_np = np.random.randn(batch_size,
-                                              dims).astype('float64')
-        while not np.all(self.scale_np > 0):
-            self.other_scale_np = np.random.randn(batch_size,
-                                                  dims).astype('float64')
-        self.other_loc = paddle.to_tensor(self.other_loc_np, dtype='float64')
-        self.other_scale = paddle.to_tensor(
-            self.other_scale_np, dtype='float64')
-
-
-class NormalStaticTest(unittest.TestCase):
-    def setUp(self, use_gpu=False):
-        paddle.enable_static()
-        self.init_data()
+class NormalTest(unittest.TestCase):
+    def setUp(self, use_gpu=False, batch_size=2, dims=3):
         self.use_gpu = use_gpu
         if not use_gpu:
-            place = fluid.CPUPlace()
+            self.place = fluid.CPUPlace()
             self.gpu_id = -1
         else:
-            place = fluid.CUDAPlace(0)
+            self.place = fluid.CUDAPlace(0)
             self.gpu_id = 0
-        self.executor = fluid.Executor(place)
 
-    def init_data(self, batch_size=2, dims=3):
+        self.init_numpy_data(batch_size, dims)
+
+        paddle.disable_static(self.place)
+        self.init_dynamic_data(batch_size, dims)
+
+        paddle.enable_static()
         self.test_program = fluid.Program()
+        self.executor = fluid.Executor(self.place)
+        self.init_static_data(batch_size, dims)
+
+    def init_numpy_data(self, batch_size, dims):
         # loc ans scale are 'float'
         self.loc_np = (np.random.ranf() - 0.5) * 4
         self.scale_np = (np.random.ranf() - 0.5) * 4
         while self.scale_np < 0:
             self.scale_np = (np.random.ranf() - 0.5) * 4
-        self.values_np = np.random.ranf(1).astype('float32')
-        self.loc = self.loc_np
-        self.scale = self.scale_np
         # used to construct another Normal object to calculate kl_divergence
         self.other_loc_np = (np.random.ranf() - 0.5) * 4
         self.other_scale_np = (np.random.ranf() - 0.5) * 4
         while self.other_scale_np < 0:
             self.other_scale_np = (np.random.ranf() - 0.5) * 4
-        self.other_loc = self.other_loc_np
-        self.other_scale = self.other_scale_np
+        self.values_np = np.random.ranf(1).astype('float32')
 
+    def init_dynamic_data(self, batch_size, dims):
+        self.dynamic_loc = self.loc_np
+        self.dynamic_scale = self.scale_np
+        self.dynamic_other_loc = self.other_loc_np
+        self.dynamic_other_scale = self.other_scale_np
+        self.dynamic_values = paddle.to_tensor(self.values_np)
+
+    def init_static_data(self, batch_size, dims):
+        self.static_loc = self.loc_np
+        self.static_scale = self.scale_np
+        self.static_other_loc = self.other_loc_np
+        self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
-            self.values = layers.data(name='values', shape=[], dtype='float32')
+            self.static_values = layers.data(
+                name='values', shape=[], dtype='float32')
 
-    def compare_with_numpy(self,
-                           fetch_list,
-                           batch_size=5,
-                           dims=6,
-                           sample_shape=7,
-                           tolerance=1e-6):
+    def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-6):
         sample, entropy, log_prob, probs, kl = fetch_list
 
         np_normal = NormalNumpy(self.loc_np, self.scale_np)
@@ -691,19 +489,31 @@ class NormalStaticTest(unittest.TestCase):
         np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(kl, np_kl, rtol=tolerance, atol=tolerance)
 
-    def test_normal_distribution_static(self,
-                                        batch_size=5,
-                                        dims=6,
-                                        sample_shape=7,
-                                        tolerance=1e-6):
+    def test_normal_distribution_dygraph(self, sample_shape=7, tolerance=1e-6):
+        paddle.disable_static(self.place)
+        normal = Normal(self.dynamic_loc, self.dynamic_scale)
 
+        sample = normal.sample([sample_shape]).numpy()
+        entropy = normal.entropy().numpy()
+        log_prob = normal.log_prob(self.dynamic_values).numpy()
+        probs = normal.probs(self.dynamic_values).numpy()
+        other_normal = Normal(self.dynamic_other_loc, self.dynamic_other_scale)
+        kl = normal.kl_divergence(other_normal).numpy()
+
+        fetch_list = [sample, entropy, log_prob, probs, kl]
+        self.compare_with_numpy(fetch_list)
+
+    def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-6):
+        paddle.enable_static()
         with fluid.program_guard(self.test_program):
-            normal = Normal(self.loc, self.scale)
+            normal = Normal(self.static_loc, self.static_scale)
+
             sample = normal.sample([sample_shape])
             entropy = normal.entropy()
-            log_prob = normal.log_prob(self.values)
-            probs = normal.probs(self.values)
-            other_normal = Normal(self.other_loc, self.other_scale)
+            log_prob = normal.log_prob(self.static_values)
+            probs = normal.probs(self.static_values)
+            other_normal = Normal(self.static_other_loc,
+                                  self.static_other_scale)
             kl = normal.kl_divergence(other_normal)
 
             fetch_list = [sample, entropy, log_prob, probs, kl]
@@ -724,40 +534,38 @@ class NormalStaticTest(unittest.TestCase):
         self.compare_with_numpy(fetch_list)
 
 
-class NormalStaticTest2(NormalStaticTest):
-    def init_data(self, batch_size=2, dims=3):
-        self.test_program = fluid.Program()
+class NormalTest2(NormalTest):
+    def init_numpy_data(self, batch_size, dims):
         # loc ans scale are 'int'
         self.loc_np = int((np.random.ranf() - 0.5) * 8)
         self.scale_np = int((np.random.ranf() - 0.5) * 8)
         while self.scale_np < 0:
             self.scale_np = int((np.random.ranf() - 0.5) * 8)
-        self.values_np = np.random.ranf(1).astype('float32')
-        self.loc = self.loc_np
-        self.scale = self.scale_np
         # used to construct another Normal object to calculate kl_divergence
         self.other_loc_np = int((np.random.ranf() - 0.5) * 8)
         self.other_scale_np = int((np.random.ranf() - 0.5) * 8)
         while self.other_scale_np < 0:
             self.other_scale_np = int((np.random.ranf() - 0.5) * 8)
-        self.other_loc = self.other_loc_np
-        self.other_scale = self.other_scale_np
+        self.values_np = np.random.ranf(1).astype('float32')
 
+    def init_static_data(self, batch_size, dims):
+        self.static_loc = self.loc_np
+        self.static_scale = self.scale_np
+        self.static_other_loc = self.other_loc_np
+        self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
-            self.values = layers.data(name='values', shape=[], dtype='float32')
+            self.static_values = layers.data(
+                name='values', shape=[], dtype='float32')
 
 
-class NormalStaticTest3(NormalStaticTest):
-    def init_data(self, batch_size=2, dims=3):
-        self.test_program = fluid.Program()
+class NormalTest3(NormalTest):
+    def init_numpy_data(self, batch_size, dims):
         # test broadcast: loc is float, scale is numpy.ndarray with dtype 'float32'.
         self.loc_np = (np.random.ranf() - 0.5) * 4
         self.scale_np = np.random.randn(batch_size, dims).astype('float32')
         while not np.all(self.scale_np > 0):
             self.scale_np = np.random.randn(batch_size, dims).astype('float32')
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        self.loc = self.loc_np
-        self.scale = self.scale_np
         # used to construct another Normal object to calculate kl_divergence
         self.other_loc_np = (np.random.ranf() - 0.5) * 4
         self.other_scale_np = np.random.randn(batch_size,
@@ -765,25 +573,25 @@ class NormalStaticTest3(NormalStaticTest):
         while not np.all(self.scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size,
                                                   dims).astype('float32')
-        self.other_loc = self.other_loc_np
-        self.other_scale = self.other_scale_np
 
+    def init_static_data(self, batch_size, dims):
+        self.static_loc = self.loc_np
+        self.static_scale = self.scale_np
+        self.static_other_loc = self.other_loc_np
+        self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
-            self.values = layers.data(
+            self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32')
 
 
-class NormalStaticTest4(NormalStaticTest):
-    def init_data(self, batch_size=2, dims=3):
-        self.test_program = fluid.Program()
+class NormalTest4(NormalTest):
+    def init_numpy_data(self, batch_size, dims):
         # loc and scale are numpy.ndarray with dtype 'float32'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float32')
         self.scale_np = np.random.randn(batch_size, dims).astype('float32')
         while not np.all(self.scale_np > 0):
             self.scale_np = np.random.randn(batch_size, dims).astype('float32')
         self.values_np = np.random.randn(batch_size, dims).astype('float32')
-        self.loc = self.loc_np
-        self.scale = self.scale_np
         # used to construct another Normal object to calculate kl_divergence
         self.other_loc_np = np.random.randn(batch_size, dims).astype('float32')
         self.other_scale_np = np.random.randn(batch_size,
@@ -791,25 +599,25 @@ class NormalStaticTest4(NormalStaticTest):
         while not np.all(self.scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size,
                                                   dims).astype('float32')
-        self.other_loc = self.other_loc_np
-        self.other_scale = self.other_scale_np
 
+    def init_static_data(self, batch_size, dims):
+        self.static_loc = self.loc_np
+        self.static_scale = self.scale_np
+        self.static_other_loc = self.other_loc_np
+        self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
-            self.values = layers.data(
+            self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32')
 
 
-class NormalStaticTest5(NormalStaticTest):
-    def init_data(self, batch_size=2, dims=3):
-        self.test_program = fluid.Program()
+class NormalTest5(NormalTest):
+    def init_numpy_data(self, batch_size, dims):
         # loc and scale are numpy.ndarray with dtype 'float64'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float64')
         self.scale_np = np.random.randn(batch_size, dims).astype('float64')
         while not np.all(self.scale_np > 0):
             self.scale_np = np.random.randn(batch_size, dims).astype('float64')
         self.values_np = np.random.randn(batch_size, dims).astype('float64')
-        self.loc = self.loc_np
-        self.scale = self.scale_np
         # used to construct another Normal object to calculate kl_divergence
         self.other_loc_np = np.random.randn(batch_size, dims).astype('float64')
         self.other_scale_np = np.random.randn(batch_size,
@@ -817,18 +625,47 @@ class NormalStaticTest5(NormalStaticTest):
         while not np.all(self.scale_np > 0):
             self.other_scale_np = np.random.randn(batch_size,
                                                   dims).astype('float64')
-        self.other_loc = self.other_loc_np
-        self.other_scale = self.other_scale_np
 
+    def init_dynamic_data(self, batch_size, dims):
+        self.dynamic_loc = self.loc_np
+        self.dynamic_scale = self.scale_np
+        self.dynamic_other_loc = self.other_loc_np
+        self.dynamic_other_scale = self.other_scale_np
+        self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float64')
+
+    def init_static_data(self, batch_size, dims):
+        self.static_loc = self.loc_np
+        self.static_scale = self.scale_np
+        self.static_other_loc = self.other_loc_np
+        self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
-            self.values = layers.data(
+            self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float64')
 
 
-class NormalStaticTest6(NormalStaticTest):
+class NormalTest6(NormalTest):
     def init_data(self, batch_size=2, dims=3):
-        self.test_program = fluid.Program()
-        # loc and scale are Variable with dtype 'VarType.FP32'.
+        # loc and scale are Tensor with dtype 'VarType.FP32'.
+        self.loc_np = np.random.randn(batch_size, dims).astype('float32')
+        self.scale_np = np.random.randn(batch_size, dims).astype('float32')
+        while not np.all(self.scale_np > 0):
+            self.scale_np = np.random.randn(batch_size, dims).astype('float32')
+        self.values_np = np.random.randn(batch_size, dims).astype('float32')
+        self.loc = paddle.to_tensor(self.loc_np)
+        self.scale = paddle.to_tensor(self.scale_np)
+        self.values = paddle.to_tensor(self.values_np)
+        # used to construct another Normal object to calculate kl_divergence
+        self.other_loc_np = np.random.randn(batch_size, dims).astype('float32')
+        self.other_scale_np = np.random.randn(batch_size,
+                                              dims).astype('float32')
+        while not np.all(self.scale_np > 0):
+            self.other_scale_np = np.random.randn(batch_size,
+                                                  dims).astype('float32')
+        self.other_loc = paddle.to_tensor(self.other_loc_np)
+        self.other_scale = paddle.to_tensor(self.other_scale_np)
+
+    def init_numpy_data(self, batch_size, dims):
+        # loc and scale are Tensor with dtype 'VarType.FP32'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float32')
         self.scale_np = np.random.randn(batch_size, dims).astype('float32')
         while not np.all(self.scale_np > 0):
@@ -842,22 +679,30 @@ class NormalStaticTest6(NormalStaticTest):
             self.other_scale_np = np.random.randn(batch_size,
                                                   dims).astype('float32')
 
+    def init_dynamic_data(self, batch_size, dims):
+        self.dynamic_loc = paddle.to_tensor(self.loc_np)
+        self.dynamic_scale = paddle.to_tensor(self.scale_np)
+        self.dynamic_values = paddle.to_tensor(self.values_np)
+        self.dynamic_other_loc = paddle.to_tensor(self.other_loc_np)
+        self.dynamic_other_scale = paddle.to_tensor(self.other_scale_np)
+
+    def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.loc = layers.data(name='loc', shape=[dims], dtype='float32')
-            self.scale = layers.data(
+            self.static_loc = layers.data(
+                name='loc', shape=[dims], dtype='float32')
+            self.static_scale = layers.data(
                 name='scale', shape=[dims], dtype='float32')
-            self.values = layers.data(
+            self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32')
-            self.other_loc = layers.data(
+            self.static_other_loc = layers.data(
                 name='other_loc', shape=[dims], dtype='float32')
-            self.other_scale = layers.data(
+            self.static_other_scale = layers.data(
                 name='other_scale', shape=[dims], dtype='float32')
 
 
-class NormalStaticTest7(NormalStaticTest):
-    def init_data(self, batch_size=2, dims=3):
-        self.test_program = fluid.Program()
-        # loc and scale are Variable with dtype 'VarType.FP64'.
+class NormalTest7(NormalTest):
+    def init_numpy_data(self, batch_size, dims):
+        # loc and scale are Tensor with dtype 'VarType.FP64'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float64')
         self.scale_np = np.random.randn(batch_size, dims).astype('float64')
         while not np.all(self.scale_np > 0):
@@ -871,22 +716,32 @@ class NormalStaticTest7(NormalStaticTest):
             self.other_scale_np = np.random.randn(batch_size,
                                                   dims).astype('float64')
 
+    def init_dynamic_data(self, batch_size, dims):
+        self.dynamic_loc = paddle.to_tensor(self.loc_np, dtype='float64')
+        self.dynamic_scale = paddle.to_tensor(self.scale_np, dtype='float64')
+        self.dynamic_values = paddle.to_tensor(self.values_np, dtype='float64')
+        self.dynamic_other_loc = paddle.to_tensor(
+            self.other_loc_np, dtype='float64')
+        self.dynamic_other_scale = paddle.to_tensor(
+            self.other_scale_np, dtype='float64')
+
+    def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.loc = layers.data(name='loc', shape=[dims], dtype='float64')
-            self.scale = layers.data(
+            self.static_loc = layers.data(
+                name='loc', shape=[dims], dtype='float64')
+            self.static_scale = layers.data(
                 name='scale', shape=[dims], dtype='float64')
-            self.values = layers.data(
+            self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float64')
-            self.other_loc = layers.data(
+            self.static_other_loc = layers.data(
                 name='other_loc', shape=[dims], dtype='float64')
-            self.other_scale = layers.data(
+            self.static_other_scale = layers.data(
                 name='other_scale', shape=[dims], dtype='float64')
 
 
-class NormalStaticTest8(NormalStaticTest):
-    def init_data(self, batch_size=2, dims=3):
-        self.test_program = fluid.Program()
-        # loc and scale are Variable with dtype 'VarType.FP64'. value's dtype is 'VarType.FP32'.
+class NormalTest8(NormalTest):
+    def init_numpy_data(self, batch_size, dims):
+        # loc and scale are Tensor with dtype 'VarType.FP64'. value's dtype is 'VarType.FP32'.
         self.loc_np = np.random.randn(batch_size, dims).astype('float64')
         self.scale_np = np.random.randn(batch_size, dims).astype('float64')
         while not np.all(self.scale_np > 0):
@@ -900,15 +755,26 @@ class NormalStaticTest8(NormalStaticTest):
             self.other_scale_np = np.random.randn(batch_size,
                                                   dims).astype('float64')
 
+    def init_dynamic_data(self, batch_size, dims):
+        self.dynamic_loc = paddle.to_tensor(self.loc_np, dtype='float64')
+        self.dynamic_scale = paddle.to_tensor(self.scale_np, dtype='float64')
+        self.dynamic_values = paddle.to_tensor(self.values_np)
+        self.dynamic_other_loc = paddle.to_tensor(
+            self.other_loc_np, dtype='float64')
+        self.dynamic_other_scale = paddle.to_tensor(
+            self.other_scale_np, dtype='float64')
+
+    def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.loc = layers.data(name='loc', shape=[dims], dtype='float64')
-            self.scale = layers.data(
+            self.static_loc = layers.data(
+                name='loc', shape=[dims], dtype='float64')
+            self.static_scale = layers.data(
                 name='scale', shape=[dims], dtype='float64')
-            self.values = layers.data(
+            self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32')
-            self.other_loc = layers.data(
+            self.static_other_loc = layers.data(
                 name='other_loc', shape=[dims], dtype='float64')
-            self.other_scale = layers.data(
+            self.static_other_scale = layers.data(
                 name='other_scale', shape=[dims], dtype='float64')
 
 
