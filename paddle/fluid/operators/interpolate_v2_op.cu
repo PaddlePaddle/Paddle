@@ -1142,7 +1142,7 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
     new_scale_d = (scale_d > 0) ? static_cast<float>(1. / scale_d)
                                 : static_cast<float>(in_d) / out_d;
     ratio_d = (align_corners) ? static_cast<float>(in_d - 1) / (out_d - 1)
-                              : static_cast<float>(new_scale_w);
+                              : static_cast<float>(new_scale_d);
   }
   if (out_h > 1) {
     float new_scale_h = 0.f;
