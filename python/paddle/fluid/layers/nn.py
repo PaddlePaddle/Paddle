@@ -10056,10 +10056,19 @@ def stack(x, axis=0, name=None):
         return core.ops.stack(x, 'axis', axis)
 
     if not isinstance(x, list) and not isinstance(x, tuple):
-        raise TypeError("The type of '%s' in %s must be %s, but received %s" % (
-            'x', 'stack', 'list[Tensor] or tuple[Tensor]', type(x)))
+        # NOTE:(zhiqiu) Only support Variable as input if the Variable is a LOD_TENSOR_ARRAY create by create_array, array_write, array_read, etc.
+        # In that case, Variable is array of tensors indeed.
+        if isinstance(x, Variable) and x.desc.type(
+        ) == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            x = [x]
+        else:
+            raise TypeError("The type of '%s' in %s must be %s, but received %s"
+                            % ('x', 'stack',
+                               'list[Tensor], tuple[Tensor] or TensorArray',
+                               type(x)))
 
     helper = LayerHelper('stack', **locals())
+
     out = helper.create_variable_for_type_inference(x[0].dtype)
     if x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
