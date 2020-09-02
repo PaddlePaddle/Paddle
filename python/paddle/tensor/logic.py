@@ -71,13 +71,12 @@ def equal_all(x, y, name=None):
     Examples:
         .. code-block:: python
 
-          import numpy as np
           import paddle
 
           paddle.disable_static()
-          x = paddle.to_variable(np.array([1, 2, 3]))
-          y = paddle.to_variable(np.array([1, 2, 3]))
-          z = paddle.to_variable(np.array([1, 4, 3]))
+          x = paddle.to_tensor([1, 2, 3])
+          y = paddle.to_tensor([1, 2, 3])
+          z = paddle.to_tensor([1, 4, 3])
           result1 = paddle.equal_all(x, y)
           print(result1.numpy()) # result1 = [True ]
           result2 = paddle.equal_all(x, z)
@@ -120,14 +119,11 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
           paddle.disable_static()
 
-          np_x = np.array([10000., 1e-07]).astype("float32")
-          np_y = np.array([10000.1, 1e-08]).astype("float32")
-          x = paddle.to_tensor(np_x)
-          y = paddle.to_tensor(np_y)
+          x = paddle.to_tensor([10000., 1e-07])
+          y = paddle.to_tensor([10000.1, 1e-08])
           result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
           np_result1 = result1.numpy()
@@ -137,10 +133,8 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           np_result2 = result2.numpy()
           # [False]
 
-          np_x = np.array([1.0, float('nan')]).astype("float32")
-          np_y = np.array([1.0, float('nan')]).astype("float32")
-          x = paddle.to_tensor(np_x)
-          y = paddle.to_tensor(np_y)
+          x = paddle.to_tensor([1.0, float('nan')])
+          y = paddle.to_tensor([1.0, float('nan')])
           result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
           np_result1 = result1.numpy()
@@ -195,12 +189,11 @@ def equal(x, y, name=None):
     Examples:
         .. code-block:: python
 
-          import numpy as np
           import paddle
 
           paddle.disable_static()
-          x = paddle.to_variable(np.array([1, 2, 3]))
-          y = paddle.to_variable(np.array([1, 3, 2]))
+          x = paddle.to_tensor([1, 2, 3])
+          y = paddle.to_tensor([1, 3, 2])
           result1 = paddle.equal(x, y)
           print(result1.numpy())  # result1 = [True False False]
     """
@@ -227,12 +220,11 @@ def greater_equal(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            x = paddle.to_variable(np.array([1, 2, 3]))
-            y = paddle.to_variable(np.array([1, 3, 2]))
+            x = paddle.to_tensor([1, 2, 3])
+            y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.greater_equal(x, y)
             print(result1.numpy())  # result1 = [True False True]
     """
@@ -259,12 +251,11 @@ def greater_than(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            x = paddle.to_variable(np.array([1, 2, 3]))
-            y = paddle.to_variable(np.array([1, 3, 2]))
+            x = paddle.to_tensor([1, 2, 3])
+            y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.greater_than(x, y)
             print(result1.numpy())  # result1 = [False False True]
     """
@@ -292,12 +283,11 @@ def less_equal(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            x = paddle.to_variable(np.array([1, 2, 3]))
-            y = paddle.to_variable(np.array([1, 3, 2]))
+            x = paddle.to_tensor([1, 2, 3])
+            y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.less_equal(x, y)
             print(result1.numpy())  # result1 = [True True False]
     """
@@ -325,12 +315,11 @@ def less_than(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            x = paddle.to_variable(np.array([1, 2, 3]))
-            y = paddle.to_variable(np.array([1, 3, 2]))
+            x = paddle.to_tensor([1, 2, 3])
+            y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.less_than(x, y)
             print(result1.numpy())  # result1 = [False True False]
     """
@@ -358,12 +347,12 @@ def not_equal(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
+
             import paddle
 
             paddle.disable_static()
-            x = paddle.to_variable(np.array([1, 2, 3]))
-            y = paddle.to_variable(np.array([1, 3, 2]))
+            x = paddle.to_tensor([1, 2, 3])
+            y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.not_equal(x, y)
             print(result1.numpy())  # result1 = [False True True]
     """
