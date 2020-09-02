@@ -878,9 +878,10 @@ def adaptive_avg_pool1d(x, output_size, name=None):
               # pool_out shape: [1, 3, 16])
     """
     pool_type = 'avg'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'adaptive_pool2d')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                             'adaptive_avg_pool1d')
     _check_input(x, 3)
-    check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
+    check_type(output_size, 'pool_size', (int), 'adaptive_avg_pool1d')
 
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
 
@@ -973,9 +974,8 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     else:
         in_h, in_w = x.shape[1:3]
 
-    if isinstance(output_size, int):
-        output_size = utils.convert_to_list(output_size, 2, 'output_size')
-    else:
+    output_size = utils.convert_to_list(output_size, 2, 'output_size')
+    if not isinstance(output_size, int):
         if output_size[0] == None:
             output_size[0] = in_h
         if output_size[1] == None:
@@ -1076,9 +1076,8 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     else:
         in_l, in_h, in_w = x.shape[1:4]
 
-    if isinstance(output_size, int):
-        output_size = utils.convert_to_list(output_size, 3, 'output_size')
-    else:
+    output_size = utils.convert_to_list(output_size, 3, 'output_size')
+    if not isinstance(output_size, int):
         if output_size[0] == None:
             output_size[0] = in_l
         if output_size[1] == None:
@@ -1123,8 +1122,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
                               with shape [N, C, L].  The format of input tensor is NCL,
                               where N is batch size, C is the number of channels, L is the
                               length of the feature. The data type is float32 or float64.
-        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-                it must contain one int.
+        output_size (int|list|tuple): The pool kernel size. It must be an integer.
         return_indices (bool): If true, the index of max pooling point will be returned along
                 with outputs. It cannot be set in average pooling type. Default False.
         name(str, optional): For detailed information, please refer
@@ -1134,7 +1132,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
             Tensor: The output tensor of adaptive pooling result. The data type is same
                       as input tensor.
     Raises:
-            ValueError: 'output_size' should be a integer or list or tuple with length as 1.
+            ValueError: 'output_size' should be an integer.
     Examples:
         .. code-block:: python
               # max adaptive pool1d
@@ -1162,7 +1160,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
     check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                              'adaptive_max_pool1d')
     _check_input(x, 3)
-    check_type(output_size, 'pool_size', (int), 'adaptive_max_pool1d')
+    check_type(output_size, 'pool_size', int, 'adaptive_max_pool1d')
     check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool1d')
 
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
@@ -1244,9 +1242,8 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
     check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool2d')
 
     in_h, in_w = x.shape[2:4]
-    if isinstance(output_size, int):
-        output_size = utils.convert_to_list(output_size, 2, 'output_size')
-    else:
+    output_size = utils.convert_to_list(output_size, 2, 'output_size')
+    if not isinstance(output_size, int):
         if output_size[0] == None:
             output_size[0] = in_h
         if output_size[1] == None:
@@ -1330,9 +1327,8 @@ def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
     check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool3d')
 
     in_l, in_h, in_w = x.shape[2:5]
-    if isinstance(output_size, int):
-        output_size = utils.convert_to_list(output_size, 3, 'output_size')
-    else:
+    output_size = utils.convert_to_list(output_size, 3, 'output_size')
+    if not isinstance(output_size, int):
         if output_size[0] == None:
             output_size[0] = in_l
         if output_size[1] == None:
