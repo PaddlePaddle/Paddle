@@ -260,15 +260,15 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
         op = Operator(
             "uniform_random",
             Out="X",
-            shape=[1000, 784],
+            shape=[500, 784],
             min=-5.0,
             max=10.0,
             seed=10,
-            diag_num=1000,
+            diag_num=500,
             diag_step=784,
             diag_val=1.0)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [1000, 784])
+        self.assertEqual(out.get_tensor().shape(), [500, 784])
         hist, prob = output_hist_diag(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
