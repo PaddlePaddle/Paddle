@@ -14,9 +14,26 @@
 
 #define EIGEN_USE_GPU
 
+#include <cuda_runtime.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/allclose_op.h"
+
+namespace paddle {
+namespace operators {
+
+template <typename T>
+struct GetTensorValue<platform::CUDADeviceContext, T> {
+  T operator()(const framework::Tensor& tensor) const {
+    const T* data = tensor.data<T>();
+    T value;
+    cudaMemcpy(&value, data, sizeof(T), cudaMemcpyDeviceToHost);
+    return value;
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 using CUDA = paddle::platform::CUDADeviceContext;

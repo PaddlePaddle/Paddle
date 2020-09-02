@@ -22,19 +22,20 @@ class TestAllcloseOp(OpTest):
     def set_args(self):
         self.input = np.array([10000., 1e-07]).astype("float32")
         self.other = np.array([10000.1, 1e-08]).astype("float32")
-        self.rtol = 1e-05
-        self.atol = 1e-08
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = False
 
     def setUp(self):
         self.set_args()
         self.op_type = "allclose"
-        self.inputs = {'Input': self.input, 'Other': self.other}
-        self.attrs = {
-            'rtol': self.rtol,
-            'atol': self.atol,
-            'equal_nan': self.equal_nan
+        self.inputs = {
+            'Input': self.input,
+            'Other': self.other,
+            "Rtol": self.rtol,
+            "Atol": self.atol
         }
+        self.attrs = {'equal_nan': self.equal_nan}
         self.outputs = {
             'Out': np.array([
                 np.allclose(
@@ -54,8 +55,8 @@ class TestAllcloseOpSmallNum(TestAllcloseOp):
     def set_args(self):
         self.input = np.array([10000., 1e-08]).astype("float32")
         self.other = np.array([10000.1, 1e-09]).astype("float32")
-        self.rtol = 1e-05
-        self.atol = 1e-08
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = False
 
 
@@ -63,8 +64,8 @@ class TestAllcloseOpNanFalse(TestAllcloseOp):
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
         self.other = np.array([1.0, float('nan')]).astype("float32")
-        self.rtol = 1e-05
-        self.atol = 1e-08
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = False
 
 
@@ -72,8 +73,8 @@ class TestAllcloseOpNanTrue(TestAllcloseOp):
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
         self.other = np.array([1.0, float('nan')]).astype("float32")
-        self.rtol = 1e-05
-        self.atol = 1e-08
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = True
 
 

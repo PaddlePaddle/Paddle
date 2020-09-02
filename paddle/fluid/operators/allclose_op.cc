@@ -15,9 +15,17 @@
 #include "paddle/fluid/operators/allclose_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+struct GetTensorValue<platform::CPUDeviceContext, T> {
+  T operator()(const framework::Tensor &tensor) const {
+    return *(tensor.data<T>());
+  }
+};
 
 class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -26,12 +34,9 @@ class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor, it's data type should be float32, float64.");
     AddInput("Other",
              "The input tensor, it's data type should be float32, float64.");
+    AddInput("Rtol", "The relative tolerance.");
+    AddInput("Atol", "The absolute tolerance.");
     AddOutput("Out", "The output tensor, it's data type is bool.");
-
-    AddAttr<float>("rtol", "The relative tolerance. Default: :math:`1e-5` .")
-        .SetDefault(1e-5);
-    AddAttr<float>("atol", "The absolute tolerance. Default: :math:`1e-8` .")
-        .SetDefault(1e-8);
     AddAttr<bool>("equal_nan",
                   "If :math:`True` , then two :math:`NaNs` will be "
                   "compared as equal. Default: :math:`False` .")
@@ -55,15 +60,11 @@ class AllcloseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      platform::errors::NotFound(
-                          "Input(Input) of allclose op should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Other"), true,
-                      platform::errors::NotFound(
-                          "Input(Other) of allclose op should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "The output(Out) of allclose op must not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Allclose");
+    OP_INOUT_CHECK(ctx->HasInput("Other"), "Input", "Other", "Allclose");
+    OP_INOUT_CHECK(ctx->HasInput("Rtol"), "Input", "Rtol", "Allclose");
+    OP_INOUT_CHECK(ctx->HasInput("Atol"), "Input", "Atol", "Allclose");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Allclose");
 
     auto input_dim = ctx->GetInputDim("Input");
     auto other_dim = ctx->GetInputDim("Other");
