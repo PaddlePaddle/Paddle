@@ -88,6 +88,7 @@ def interpolate(x,
         'trilinear' : Trilinear interpolation
         'nearest' : Nearest neighbor interpolation
         'bicubic' : Bicubic interpolation
+        ‘area’: Area interpolation
 
     Linear interpolation is the method of using a line connecting two known quantities 
     to determine the value of an unknown quantity between the two known quantities. 
@@ -113,6 +114,8 @@ def interpolate(x,
     data points on a two-dimensional regular grid. The interpolated surface is
     smoother than corresponding surfaces obtained by bilinear interpolation or
     nearest-neighbor interpolation.
+
+    Area interpolation is same as adaptive avg pooling.
 
     Example:
 
@@ -211,7 +214,7 @@ def interpolate(x,
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is a list.
              Default: None.
-        mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
+        mode (str): The resample method. It supports 'linear', 'area', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
@@ -235,7 +238,7 @@ def interpolate(x,
     Raises:
         TypeError: size should be a list or tuple or Tensor.
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
-                    'trilinear', 'bicubic', or 'nearest' currently.
+                    'trilinear', 'bicubic', 'area' or 'nearest' currently.
         ValueError: 'linear' only support 3-D tensor.
         ValueError: 'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.
         ValueError: 'trilinear' only support 5-D tensor.
@@ -283,10 +286,11 @@ def interpolate(x,
         'TRILINEAR',
         'NEAREST',
         'BICUBIC',
+        'AREA',
     ]
     if resample not in resample_methods:
         raise ValueError(
-            "The 'resample' of image_resize can only be 'linaer', 'bilinear', 'trilinear', "
+            "The 'resample' of image_resize can only be 'area', 'linaer', 'bilinear', 'trilinear', "
             " 'bicubic' or 'nearest' currently.")
 
     if resample in ['LINEAR'] and len(x.shape) != 3:
@@ -310,6 +314,15 @@ def interpolate(x,
         raise ValueError(
             "align_corners option can only be set with the interpolating modes: linear | bilinear | bicubic | trilinear"
         )
+
+    if resample == 'AREA' and len(x.shape) == 3:
+        return paddle.nn.functional.adaptive_avg_pool1d(x, size)
+
+    if resample == 'AREA' and len(x.shape) == 4:
+        return paddle.nn.functional.adaptive_avg_pool2d(x, size)
+    if resample == 'AREA' and len(x.shape) == 5:
+        return paddle.nn.functional.adaptive_avg_pool3d(x, size)
+
     helper = LayerHelper('{}_interp_v2'.format(resample_type), **locals())
     dtype = helper.input_dtype()
     if len(x.shape) == 3 and data_format not in ['NCW', 'NWC']:
