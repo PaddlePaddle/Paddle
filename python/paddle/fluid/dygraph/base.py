@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
-import inspect
 import decorator
 import contextlib
+import functools
+import inspect
 import sys
 import numpy as np
 from paddle.fluid import core
@@ -26,8 +27,8 @@ import objgraph
 from ..data_feeder import convert_dtype
 
 __all__ = [
-    'no_grad', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph', 'enabled',
-    'to_variable'
+    'no_grad', 'no_grad_', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph',
+    'enabled', 'to_variable'
 ]
 
 
@@ -167,7 +168,80 @@ def disable_dygraph():
         _functional_dygraph_context_manager = None
 
 
-class no_grad:
+@signature_safe_contextmanager
+def _switch_tracer_mode_guard_(is_train=True):
+    tracer = framework._dygraph_tracer()
+    if tracer:
+        mode = tracer._train_mode
+        tracer._train_mode = is_train
+        try:
+            yield
+        finally:
+            tracer._train_mode = mode
+    else:
+        yield
+
+
+def no_grad(func=None):
+    """
+    :api_attr: imperative
+
+    Create a context which disables dygraph gradient calculation.
+    In this mode, the result of every computation will have `stop_gradient=True`.
+
+    Also functions as a decorator. (Make sure to instantiate without parenthesis.)
+
+    Examples:
+
+     .. code-block:: python
+
+        import numpy as np
+        import paddle.fluid as fluid
+
+        # use as generator
+
+        data = np.array([[2, 3], [4, 5]]).astype('float32')
+        with fluid.dygraph.guard():
+            l0 = fluid.Linear(2, 2)  # l0.weight.gradient() is None
+            l1 = fluid.Linear(2, 2)
+            with fluid.dygraph.no_grad():
+                # l1.weight.stop_gradient is False
+                tmp = l1.weight * 2  # tmp.stop_gradient is True
+            x = fluid.dygraph.to_variable(data)
+            y = l0(x) + tmp
+            o = l1(y)
+            o.backward()
+            print(tmp.gradient() is None)  # True
+            print(l0.weight.gradient() is None)  # False
+
+        # use as decorator
+
+        @fluid.dygraph.no_grad
+        def test_layer():
+            with fluid.dygraph.guard():
+                inp = np.ones([3, 1024], dtype='float32')
+                t = fluid.dygraph.base.to_variable(inp)
+                linear1 = fluid.Linear(1024, 4, bias_attr=False)
+                linear2 = fluid.Linear(4, 4)
+                ret = linear1(t)
+                dy_ret = linear2(ret)
+
+        test_layer()
+
+    """
+    if func is None:
+        return _switch_tracer_mode_guard_(is_train=False)
+    else:
+
+        @decorator.decorator
+        def __impl__(func, *args, **kwargs):
+            with _switch_tracer_mode_guard_(is_train=False):
+                return func(*args, **kwargs)
+
+        return __impl__(func)
+
+
+class no_grad_:
     """
     :api_attr: imperative
 
