@@ -83,19 +83,24 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const Tensor* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     Tensor* in_x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    PADDLE_ENFORCE_EQ(in_x->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Input tensor");
-    PADDLE_ENFORCE_NE(in_x->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Input tensor");
+    PADDLE_ENFORCE_EQ(
+        in_x->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument("Wrong layout set for Input tensor"));
+    PADDLE_ENFORCE_NE(
+        in_x->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for Input tensor"));
 
     PADDLE_ENFORCE_EQ(out_grad->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Input output_grad tensor");
+                      platform::errors::InvalidArgument(
+                          "Wrong layout set for Input output_grad tensor"));
     PADDLE_ENFORCE_NE(out_grad->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Input output_grad tensor");
+                      platform::errors::InvalidArgument(
+                          "Wrong format set for Input output_grad tensor"));
 
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"), false,
-        "is_test attribute should be set to False in training phase.");
+        platform::errors::InvalidArgument(
+            "is_test attribute should be set to False in training phase."));
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
 
