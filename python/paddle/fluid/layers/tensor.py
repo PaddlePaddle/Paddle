@@ -692,6 +692,14 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         else:
             attrs['str_value'] = str(float(value))
 
+    for ele in shape:
+        if ele <= 0 or not isinstance(ele, int):
+            raise ValueError(
+                "The shape must be one of list, tuple and Tensor, the data type of ``shape`` must be int32 or int64 when ``shape`` is a Tensor. All elements in ``shape`` must be positive integers."
+            )
+    if isinstance(shape, Variable):
+        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
+
     if in_dygraph_mode():
         shape = utils._convert_shape_to_list(shape)
         if out is None:
@@ -716,14 +724,15 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if convert_dtype(value.dtype) != dtype:
             value = cast(value, dtype)
         inputs['ValueTensor'] = value
-
+        
+    if dtype not in ['bool', 'float16', 'float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            'The dtype must be one of bool, float16, float32, float64, int32 and int64 and the data type of ``out`` must be the same as the ``dtype``.'
+        )
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
-
-    if isinstance(shape, Variable):
-        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
 
     if out is not None:
         check_variable_and_dtype(out, 'out', [convert_dtype(dtype)],
