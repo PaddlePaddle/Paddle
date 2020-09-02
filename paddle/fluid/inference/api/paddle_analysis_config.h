@@ -397,6 +397,14 @@ struct AnalysisConfig {
   void EnableMkldnnQuantizer();
 
   ///
+  /// \brief A boolean state telling whether the thread local CUDA stream is
+  /// enabled.
+  ///
+  /// \return bool Whether the thread local CUDA stream is enabled.
+  ///
+  bool thread_local_stream_enabled() const { return thread_local_stream_; }
+
+  ///
   /// \brief A boolean state telling whether the MKLDNN quantization is enabled.
   ///
   /// \return bool Whether the MKLDNN quantization is enabled.
