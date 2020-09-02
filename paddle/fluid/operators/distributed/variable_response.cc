@@ -80,7 +80,7 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
       }
 
       memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place), reinterpret_cast<void*>(p),
-                 BOOST_GET_CONST(platform::CPUPlace, cpu), data, size_to_write);
+                 cpu, data, size_to_write);
       p += size_to_write;
       total_written += size_to_write;
       input->Skip(size_to_write);
