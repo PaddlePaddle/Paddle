@@ -60,11 +60,6 @@ const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
         std::make_shared<Generator>(GetRandomSeed(), device_id);
     VLOG(4) << "initial seed: "
             << default_cuda_generators[device_id]->GetCurrentSeed();
-    std::cout << "initial seed: "
-              << default_cuda_generators[device_id]->GetCurrentSeed()
-              << "device id : " << device_id << " ||| "
-              << default_cuda_generators[device_id]->get_device_id()
-              << std::endl;
   });
   // std::call_once(cuda_device_flags[device_id], initGlobalCUDAGeneratorState,
   //               device_id);
@@ -109,8 +104,6 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator() {
       std::make_shared<Generator>(GetRandomSeed());
   VLOG(4) << "initial seed: " << default_cpu_generator->GetCurrentSeed()
           << ", cpu engine: " << default_cpu_generator->GetCPUEngine().get();
-  std::cout << "initial seed: " << default_cpu_generator->GetCurrentSeed()
-            << std::endl;
   return default_cpu_generator;
 }
 
