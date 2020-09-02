@@ -482,7 +482,7 @@ class TestTrilinearInterpZero(TestTrilinearInterpOp):
         self.out_d = 60
         self.out_h = 40
         self.out_w = 25
-        self.scale = 0.2
+        self.scale = 0.0
         self.align_corners = False
         self.align_mode = 0
 
