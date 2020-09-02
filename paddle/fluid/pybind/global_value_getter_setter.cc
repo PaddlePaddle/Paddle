@@ -337,7 +337,7 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
 
 static void RegisterGlobalVarGetterSetter() {
   REGISTER_PRIVATE_GLOBAL_VAR(
-      /*is_writable=*/false, FLAGS_use_mkldnn, FLAGS_free_idle_chunk,
+      /*is_writable=*/false, FLAGS_free_idle_chunk,
       FLAGS_free_when_no_cache_hit);
 
   REGISTER_PUBLIC_GLOBAL_VAR(

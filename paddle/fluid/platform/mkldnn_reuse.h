@@ -44,8 +44,6 @@ namespace colors {
 
 constexpr const char* RESET() { return "\033[0m"; }
 
-constexpr const char* RED() { return "\033[0;31m"; }
-
 constexpr const char* GREEN() { return "\033[1;32m"; }
 
 constexpr const char* CYAN() { return "\033[0;36m"; }
@@ -112,7 +110,8 @@ class TensorDumpConfig {
       dirname_ = foler_name;
     }
     MkDir(dirname_.c_str());
-    msg_green("output folder " << dirname_);
+    // msg_green("output folder " << dirname_);
+    LOG(INFO) << "output folder " << dirname_;
   }
   TensorDumpConfig(const TensorDumpConfig&);
   void operator=(const TensorDumpConfig&);
@@ -158,6 +157,7 @@ class DumpComposit {
                            DataLayoutToString(target_layout);
 
     if (target_layout != OperatorDetails::getDefaultLayout()) {
+#ifdef PADDLE_WITH_MKLDNN
       framework::Tensor* tensor_out;
       framework::innerTransDataLayoutFromMKLDNN(
           _tensor.layout(), target_layout, _tensor, tensor_out, ctx.GetPlace());
@@ -165,6 +165,10 @@ class DumpComposit {
           TensorDumpConfig::getMutex());
       auto ofs = std::ofstream(filename, std::ios_base::app);
       ofs << SeqInFile::Access(filename) << std::endl << _tensor << std::endl;
+#else
+      LOG(INFO) << "Now we only support transform from MKLDNN layout to "
+                   "PaddleLayout (NHWC, NCHW)";
+#endif
     } else {
       /* in case of parallel executor , io must be synchronized */
       std::lock_guard<decltype(TensorDumpConfig::getMutex())> l(

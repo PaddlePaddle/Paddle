@@ -522,7 +522,10 @@ DEFINE_bool(sort_sum_gradient, false,
             "Sum gradients by the reverse order of "
             "the forward execution sequence.");
 
-DEFINE_string(tensor_dump_ops,
-              "fc_mkldnn_fwd,quantize_mkldnn_fwd,dequantize_mkldnn_fwd", "Sum");
+DEFINE_string(tensor_dump_ops, "",
+              "If tensor_dump_ops is set to a list of op names, these ops "
+              "output tensor will be dumped to files");
 
-DEFINE_int64(dump_limit, 64, "Sum");
+DEFINE_int64(
+    dump_limit, 64,
+    "If dump_limit is changed, the dumped tensors data size will be changed");

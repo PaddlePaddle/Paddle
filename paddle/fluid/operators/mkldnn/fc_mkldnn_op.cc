@@ -53,7 +53,6 @@ class FCPrimitiveFactory {
     if (fc_) {
       UpdateDataPointers(ctx, output, input);
       this->Execute();
-      platform::DumpComposit::execute("fc_mkldnn_fwd", ctx, *output);
       return;
     }  // Otherwise, create a new one.
 
@@ -129,7 +128,6 @@ class FCPrimitiveFactory {
     // Return MKL-DNN primitive ready to be fed into pipeline and executed
     fc_ = inner_product_forward(*fc_prim_desc);
     this->Execute();
-    platform::DumpComposit::execute("fc_mkldnn_fwd", ctx, *output);
   }
 
   void Execute() {
@@ -563,6 +561,7 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
                          force_fp32_output);
 
     output->set_layout(DataLayout::kMKLDNN);
+    platform::DumpComposit::execute("fc_mkldnn_fwd", ctx, *output);
   }
 };
 }  // namespace operators
