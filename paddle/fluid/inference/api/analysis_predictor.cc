@@ -461,6 +461,8 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
   if (config_.lite_engine_enabled()) {
+    argument_.SetCpuMathLibraryNumThreads(
+        config_.cpu_math_library_num_threads());
     argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
     argument_.SetLitePassesFilter(config_.lite_passes_filter_);
     argument_.SetLiteOpsFilter(config_.lite_ops_filter_);

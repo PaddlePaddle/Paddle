@@ -83,10 +83,11 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
   lod_tensor.set_lod(lod);
   // Create lite::Tensor and copy.
   paddle::lite::Tensor lite_tensor;
-  TensorCopyAsync(&lite_tensor, lod_tensor, ctx);
+  paddle::lite_api::Tensor lite_api_tensor(&lite_tensor);
+  TensorCopyAsync(&lite_api_tensor, lod_tensor, ctx);
   // Copy to LoDTensor.
   framework::LoDTensor lod_tensor_n;
-  TensorCopyAsync(&lod_tensor_n, lite_tensor, ctx);
+  TensorCopyAsync(&lod_tensor_n, lite_api_tensor, ctx);
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(ctx.GetPlace())) {
     platform::GpuStreamSync(
@@ -108,10 +109,11 @@ void test_tensor_share(const platform::DeviceContext& ctx) {
   lod_tensor.set_lod(lod);
   // Create lite::Tensor and share.
   paddle::lite::Tensor lite_tensor;
-  TensorDataShare(&lite_tensor, &lod_tensor);
+  paddle::lite_api::Tensor lite_api_tensor(&lite_tensor);
+  TensorDataShare(&lite_api_tensor, &lod_tensor);
   // Copy to LoDTensor.
   framework::LoDTensor lod_tensor_n;
-  TensorCopyAsync(&lod_tensor_n, lite_tensor, ctx);
+  TensorCopyAsync(&lod_tensor_n, lite_api_tensor, ctx);
   std::vector<float> result;
   TensorToVector(lod_tensor_n, ctx, &result);
   ASSERT_EQ(result, vector);
