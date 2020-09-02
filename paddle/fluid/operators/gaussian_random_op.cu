@@ -26,15 +26,20 @@ template <typename T>
 struct GaussianGenerator {
   T mean_, std_;
   unsigned int seed_;
+  unsigned int offset_ = 0;
 
   __host__ __device__ GaussianGenerator(T mean, T std, int seed)
       : mean_(mean), std_(std), seed_(seed) {}
+
+  __host__ __device__ GaussianGenerator(T mean, T std, int seed, int offset)
+      : mean_(mean), std_(std), seed_(seed), offset_(offset) {}
 
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
     thrust::normal_distribution<T> dist(mean_, std_);
-    rng.discard(n);
+    unsigned int new_n = n + offset_;
+    rng.discard(new_n);
     return dist(rng);
   }
 };
@@ -81,10 +86,10 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
     auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
 
-    if (gen_cuda->GetIsInitPy() && seed_flag && false) {
+    if (gen_cuda->GetIsInitPy() && seed_flag) {
       std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
-      // auto seed_offset = gen_cuda->IncrementOffset(1);
-      auto seed_gen = static_cast<unsigned int>(gen_cuda->GetCurrentSeed());
+      auto seed_offset = gen_cuda->IncrementOffset(1);
+      // auto seed_gen = static_cast<unsigned int>(gen_cuda->GetCurrentSeed());
       // int offset_step = 0;
       // NOTE(xuefeng): Currently, we let offset step fixed to avoid
       // unexpected results which may cause ut fail.
@@ -93,7 +98,7 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
       // std::cout << ">>>>>offset: " << gen_offset << std::endl;
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
                         thrust::device_ptr<T>(data),
-                        GaussianGeneratorOffset<T>(mean, std, seed_gen, 0));
+                        GaussianGenerator<T>(mean, std, seed_offset.first, 0));
     } else {
       std::cout << "COUNT ORIGIN" << std::endl;
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
@@ -122,7 +127,7 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
     auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
 
-    if (gen_cuda->GetIsInitPy() && seed_flag && false) {
+    if (gen_cuda->GetIsInitPy() && seed_flag) {
       std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
       // auto seed_offset = gen_cuda->IncrementOffset(1);
       auto seed_gen = static_cast<unsigned int>(gen_cuda->GetCurrentSeed());
@@ -134,7 +139,7 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
       // std::cout << ">>>>>offset: " << gen_offset << std::endl;
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
                         thrust::device_ptr<T>(data),
-                        GaussianGeneratorOffset<T>(mean, std, seed_gen, 0));
+                        GaussianGenerator<T>(mean, std, seed_gen, 0));
     } else {
       std::cout << "COUNT ORIGIN" << std::endl;
       thrust::transform(index_sequence_begin, index_sequence_begin + size,

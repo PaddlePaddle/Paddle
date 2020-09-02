@@ -77,7 +77,7 @@ struct Generator {
     this->engine_ = engine;
     VLOG(4) << "initial seed: " << this->state_.current_seed
             << ", cpu engine: " << &this->state_.cpu_engine;
-    this->is_init_py_ = true;  // TODO(zhiqiu): remove it in future
+    this->is_init_py_ = false;  // TODO(zhiqiu): remove it in future
   }
 
   Generator(const Generator& other) = delete;

@@ -74,12 +74,43 @@ const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
       "getDefaultCUDAGenerator only support in CUDA place"));
 #endif
 }
+/*
+const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
+#ifdef PADDLE_WITH_CUDA
+  static int64_t num_cuda_devices = paddle::platform::GetCUDADeviceCount();
+  // static std::vector<std::shared_ptr<Generator>> default_cuda_generators =
+new
+  static auto default_cuda_generators =
+std::make_shared<std::vector<std::shared_ptr<Generator>>>;
+  default_cuda_generators->resize(num_cuda_devices);
+
+  platform::Place place;
+  if (device_id == -1)
+    device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+  (*default_cuda_generators)[device_id] =
+        std::make_shared<Generator>(GetRandomSeed(), device_id);
+  VLOG(4) << "initial seed: "
+            << default_cuda_generators[device_id]->GetCurrentSeed();
+  std::cout << "initial seed: "
+              << default_cuda_generators[device_id]->GetCurrentSeed()
+              << "device id : " << device_id << " ||| "
+              << default_cuda_generators[device_id]->get_device_id()
+              << std::endl;
+  return default_cuda_generators[device_id];
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "getDefaultCUDAGenerator only support in CUDA place"));
+#endif
+}
+*/
 
 const std::shared_ptr<Generator>& DefaultCPUGenerator() {
   static auto default_cpu_generator =
       std::make_shared<Generator>(GetRandomSeed());
   VLOG(4) << "initial seed: " << default_cpu_generator->GetCurrentSeed()
           << ", cpu engine: " << default_cpu_generator->GetCPUEngine().get();
+  std::cout << "initial seed: " << default_cpu_generator->GetCurrentSeed()
+            << std::endl;
   return default_cpu_generator;
 }
 
