@@ -10049,8 +10049,7 @@ def stack(x, axis=0, name=None):
             data = layers.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
 
     """
-    if axis is None:
-        axis = 0
+    axis = 0 if axis is None else axis
 
     if in_dygraph_mode():
         return core.ops.stack(x, 'axis', axis)
