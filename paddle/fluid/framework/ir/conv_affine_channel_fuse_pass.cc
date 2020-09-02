@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_affine_channel_fuse_pass.h"
+#include <cmath>
 #include <functional>
 #include <string>
 #include <vector>
@@ -74,12 +75,17 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   auto* weights = scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
   auto weights_shape = weights->dims();
   auto weights_shape_2d = flatten_to_2d(weights_shape, 1);
+  auto* weights_data = weights->mutable_data<float>(platform::CPUPlace());
 
-  EigenMatrixArrayMap weights_array_2d(
-      weights->mutable_data<float>(platform::CPUPlace()), weights_shape_2d[0],
-      weights_shape_2d[1]);
+  EigenMatrixArrayMap weights_array_2d(weights_data, weights_shape_2d[0],
+                                       weights_shape_2d[1]);
 
   weights_array_2d.colwise() *= scale_array;
+
+  // Check for subnormal values that slows down convolution execution
+  for (int i = 0; i < weights->numel(); ++i) {
+    if (std::fpclassify(weights_data[i]) == FP_SUBNORMAL) weights_data[i] = 0;
+  }
 }
 
 void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
@@ -107,13 +113,6 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     VLOG(4) << "handle ConvAffineChannel fuse";
 
     GET_CONV_BN_NODES(conv_ac_pattern);
-
-    // check if fuse can be done and if MKL-DNN should be used
-    FuseOptions fuse_option = FindFuseOption(*conv, *affine_channel);
-    if (fuse_option == DO_NOT_FUSE) {
-      VLOG(3) << "do not perform conv+affinechannel fuse";
-      return;
-    }
 
     // Create eltwise_y (conv bias) variable
     VarDesc eltwise_y_in_desc(
@@ -143,6 +142,7 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     desc.SetOutput("Out", std::vector<std::string>({ac_out->Name()}));
     desc.SetType("elementwise_add");
     desc.SetAttr("axis", 1);
+    desc.SetAttr("use_mkldnn", conv->Op()->GetAttrIfExists<bool>("use_mkldnn"));
     auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
 
     GraphSafeRemoveNodes(graph, {ac_scale, ac_bias, affine_channel});

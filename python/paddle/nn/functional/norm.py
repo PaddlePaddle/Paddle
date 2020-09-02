@@ -54,8 +54,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     Args:
         x (Tensor): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
         p (float|int, optional): The exponent value in the norm formulation. Default: 2
-        axis (int, optional): The axis on which to apply normalization. If ``x`` is 1-D tensor, ``axis`` is fixed to 0. If `axis < 0`, \
-            the dimension to normalization is `x.ndim + axis`. -1 is the last dimension.
+        axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension. 
         epsilon (float, optional): Small float added to denominator to avoid dividing by zero. Default is 1e-12.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -72,7 +71,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
             paddle.disable_static()
             x = np.arange(6, dtype=np.float32).reshape(2,3)
-            x = paddle.to_variable(x)
+            x = paddle.to_tensor(x)
             y = F.normalize(x)
             print(y.numpy())
             # [[0.         0.4472136  0.8944272 ]
@@ -88,8 +87,6 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
             # [[0.         0.24253564 0.37139067]
             # [1.         0.97014254 0.9284767 ]]
     """
-    if len(x.shape) == 1:
-        axis = 0
     if in_dygraph_mode():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
         out = core.ops.p_norm(x, 'axis', axis, 'porder',
@@ -99,6 +96,10 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     check_type(p, 'p', (float, int), 'normalize')
     check_type(axis, 'axis', (int), 'normalize')
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'normalize')
+    if len(x.shape) == 1 and axis != 0 and axis != -1:
+        raise ValueError(
+            "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}".
+            format(axis))
 
     attrs = {
         'axis': axis,
@@ -164,7 +165,7 @@ def batch_norm(x,
           w = paddle.to_tensor(weight_data)
           b = paddle.to_tensor(bias_data)
           batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv, w, b)
-          print batch_norm_out
+          print(batch_norm_out.numpy())
     """
 
     assert len(x.shape) >= 2, "input dim must be larger than 1"
@@ -174,6 +175,15 @@ def batch_norm(x,
     # input ad out must share the memory
     mean_out = running_mean
     variance_out = running_var
+
+    true_data_format = ['NC', 'NCL', 'NCHW', 'NCWH', 'NCDHW']
+    if data_format not in true_data_format:
+        raise ValueError(
+            "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCWH', 'NCDHW', but receive {}".
+            format(data_format))
+
+    if data_format != 'NCWH':
+        data_format = 'NCHW'
 
     if in_dygraph_mode():
         # for dygraph need tuple
@@ -269,7 +279,7 @@ def layer_norm(x,
           layer_norm = paddle.nn.functional.layer_norm(x, x.shape[1:])
           layer_norm_out = layer_norm(x)
 
-          print(layer_norm_out.numpy)
+          print(layer_norm_out.numpy())
     """
     input_shape = list(x.shape)
     input_ndim = len(input_shape)
@@ -301,10 +311,10 @@ def layer_norm(x,
     # create output
     helper = LayerHelper('layer_norm', **locals())
     mean_out = helper.create_variable_for_type_inference(
-        dtype=x.type, stop_gradient=True)
+        dtype=x.dtype, stop_gradient=True)
     variance_out = helper.create_variable_for_type_inference(
-        dtype=x.type, stop_gradient=True)
-    layer_norm_out = helper.create_variable_for_type_inference(x.type)
+        dtype=x.dtype, stop_gradient=True)
+    layer_norm_out = helper.create_variable_for_type_inference(x.dtype)
 
     helper.append_op(
         type="layer_norm",
@@ -361,7 +371,7 @@ def instance_norm(x,
           x = paddle.to_tensor(x_data) 
           instance_norm_out = paddle.nn.functional.instancenorm(x)
 
-          print(instance_norm_out.numpy)
+          print(instance_norm_out.numpy())
 
     """
 

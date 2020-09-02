@@ -880,6 +880,7 @@ set +x
         multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
+        is_nightly=''             # indicate whether the case will only run at night
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -889,11 +890,18 @@ set +x
                     # Any test case with LABELS property would be parse here
                     # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
                     # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
+                    # RUN_TYPE=NIGHTLY or RUN_TYPE=DIST:NIGHTLY or RUN_TYPE=EXCLUSIVE:NIGHTLY means the case will ONLY run at night
                     read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
                     read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                    read is_nightly <<< $(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY")
                     continue
                 fi
                 read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+
+                if [[ "$is_nightly" != "" ]] && [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
+                    echo $testcase" will only run at night."
+                    continue
+                fi
 
                 if [[ "$is_multicard" == "" ]]; then
                   # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
@@ -930,6 +938,7 @@ set +x
                 fi
                 is_exclusive=''
                 is_multicard=''
+                is_nightly=''
                 matchstr=''
                 testcase=''
         done <<< "$test_cases";
@@ -950,7 +959,7 @@ set +x
                     
                     retry_unittests_record="$retry_unittests_record$failed_test_lists"
                     failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                     echo "========================================="
                     echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                     echo "========================================="
@@ -1386,21 +1395,47 @@ function example() {
     fi
 }
 
+function summary_check_problems() {
+    set +x
+    local check_style_code=$1
+    local example_code=$2
+    if [ $check_style_code -ne 0 -o $example_code -ne 0 ];then
+      echo "========================================"
+      echo "summary problems:"
+      echo "========================================"
+      if [ $check_style_code -ne 0 ];then
+        echo "- Check code style failed! Please check the log and fix problems."
+      fi
+      if [ $example_code -ne 0 ];then
+        echo "- Check example code failed! Please check the log and fix problems."
+      fi
+      [ $check_style_code -ne 0 ] && exit $check_style_code
+      [ $example_code -ne 0 ] && exit $example_code
+    fi
+    set -x
+}
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
     init
+    if [ "$CMD" != "assert_file_approvals" ];then
+      python ${PADDLE_ROOT}/tools/summary_env.py
+    fi
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_and_check)
-        check_style
+        $(check_style >&2)
+        check_style_code=$?
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
-        example
+        $(example >&2)
+        example_code=$?
+        summary_check_problems $check_style_code $example_code
         assert_api_spec_approvals
         ;;
       build)

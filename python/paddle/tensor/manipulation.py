@@ -23,7 +23,6 @@ from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor  
 from ..fluid.layers import cast  #DEFINE_ALIAS
-from ..fluid.layers import expand_as  #DEFINE_ALIAS
 from ..fluid.layers import slice  #DEFINE_ALIAS
 from ..fluid.layers import strided_slice  #DEFINE_ALIAS
 from ..fluid.layers import transpose  #DEFINE_ALIAS
@@ -434,8 +433,8 @@ def stack(x, axis=0, name=None):
                           [5.0, 6.0] ] ]
 
     Args:
-        x (Tensor|list[Tensor]): Input ``x`` can be a single tensor, or a ``list`` of tensors.
-                                     If ``x`` is a ``list``, the Tensors in ``x``
+        x (Tensor|list[Tensor]|tuple[Tensor]): Input ``x`` can be a single tensor, or a ``list`` or ``tuple`` of tensors.
+                                     If ``x`` is a ``list`` or ``tuple`` , the Tensors in ``x``
                                      must be of the same shape and dtype. Supported data types: float32, float64, int32, int64.
         axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
                               where ``R`` is the number of dimensions of the first input tensor ``x[0]``. 
@@ -612,6 +611,7 @@ def unique(x,
            return_inverse=False,
            return_counts=False,
            axis=None,
+           dtype="int64",
            name=None):
     """
     Returns the unique elements of `x` in ascending order.
@@ -625,6 +625,8 @@ def unique(x,
         return_counts(bool, optional): If True, also return the counts for each unique element.
         axis(int, optional): The axis to apply unique. If None, the input will be flattened.
             Default: None.
+        dtype(np.dtype|str, optional): The date type of `indices` or `inverse` tensor: int32 or int64.
+            Default: int64.
         name(str, optional): Name for the operation. For more information, please refer to
             :ref:`api_guide_Name`. Default: None.
 
@@ -650,6 +652,7 @@ def unique(x,
             np_counts = counts.numpy() # [1 1 3 1]
 
             x_data = np.array([[2, 1, 3], [3, 0, 1], [2, 1, 3]])
+            x = paddle.to_tensor(x_data)
             unique = paddle.unique(x)
             np_unique = unique.numpy() # [0 1 2 3]
 
@@ -662,11 +665,10 @@ def unique(x,
         axis = []
     else:
         axis = [axis]
-
+    attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dygraph_mode():
         out, inverse, indices, counts = core.ops.unique(
-            x, 'dtype',
-            convert_np_dtype_to_dtype_('int32'), 'return_index', return_index,
+            x, 'dtype', attr_dtype, 'return_index', return_index,
             'return_inverse', return_inverse, 'return_counts', return_counts,
             'axis', axis, "is_sorted", True)
         outs = [out]
@@ -687,12 +689,13 @@ def unique(x,
     check_type(return_index, 'return_index', bool, 'unique')
     check_type(return_inverse, 'return_inverse', bool, 'unique')
     check_type(return_counts, 'return_counts', bool, 'unique')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'unique')
     if len(axis) != 0:
         check_type(axis[0], 'axis', int, 'unique')
 
     helper = LayerHelper('unique', **locals())
     attrs = {
-        'dtype': int(core.VarDesc.VarType.INT32),
+        'dtype': attr_dtype,
         "return_index": return_index,
         "return_inverse": return_inverse,
         "return_counts": return_counts,
@@ -702,19 +705,19 @@ def unique(x,
     out = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
     inverse = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
+        dtype=attr_dtype, stop_gradient=True)
     outputs = {"Out": out, "Index": inverse}
     outs = [out]
     if return_index:
         indices = helper.create_variable_for_type_inference(
-            dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
+            dtype=attr_dtype, stop_gradient=True)
         outputs["Indices"] = indices
         outs.append(indices)
     if return_inverse:
         outs.append(inverse)
     if return_counts:
         counts = helper.create_variable_for_type_inference(
-            dtype=core.VarDesc.VarType.INT64, stop_gradient=True)
+            dtype=attr_dtype, stop_gradient=True)
         outputs["Counts"] = counts
         outs.append(counts)
 
@@ -1096,6 +1099,9 @@ def tile(x, repeat_times, name=None):
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
+    if in_dygraph_mode():
+        return core.ops.tile(x, 'repeat_times', repeat_times)
+
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile')
     check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
@@ -1104,9 +1110,6 @@ def tile(x, repeat_times, name=None):
             "When the date type is bool for the input 'x' of tile op, you "
             "must set its stop_gradient to be True by "
             "some_var.stop_gradient == True supporting some_var is the input.")
-
-    if in_dygraph_mode():
-        return core.ops.tile(x, 'repeat_times', repeat_times)
 
     helper = LayerHelper('tile', **locals())
 
@@ -1172,6 +1175,9 @@ def expand_as(x, y, name=None):
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
+    if in_dygraph_mode():
+        return core.ops.expand_as_v2(x, y)
+
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand_as')
     check_type(y, 'y', Variable, 'expand_as')
@@ -1183,9 +1189,6 @@ def expand_as(x, y, name=None):
             "some_var.stop_gradient = True, supporting "
             "some_var as the input 'x'.")
     inputs = {"X": [x], "target_tensor": [y]}
-
-    if in_dygraph_mode():
-        return core.ops.expand_as_v2(x, y)
 
     helper = LayerHelper('expand_as', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -1225,6 +1228,9 @@ def expand(x, shape, name=None):
             out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
+    if in_dygraph_mode():
+        return core.ops.expand_v2(x, 'shape', shape)
+
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
     check_type(shape, 'shape', (list, tuple, Variable), 'expand')
@@ -1236,9 +1242,6 @@ def expand(x, shape, name=None):
                          "you must set its stop_gradient to be False by "
                          "some_var.stop_gradient = True, supporting "
                          "some_var as the input.")
-
-    if in_dygraph_mode():
-        return core.ops.expand_v2(x, 'shape', shape)
 
     helper = LayerHelper('expand', **locals())
 
