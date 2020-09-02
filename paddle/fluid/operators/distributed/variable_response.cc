@@ -64,6 +64,32 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
     PADDLE_THROW("Unexpected branch");
 #endif
     return true;
+  } else if(platform::is_xpu_place(place)){
+#ifdef PADDLE_WITH_XPU
+    auto& xpu_dev_ctx =
+          static_cast<const platform::XPUDeviceContext&>(dev_ctx);
+    platform::CPUPlace cpu;
+    char* p = reinterpret_cast<char*>(dest);
+    while(total_written < length) {
+      if (!input->GetDirectBufferPointer(&data, &size_to_write)) {
+        return false;
+      }
+
+      if (total_written + size_to_write > length) {
+        size_to_write = length - total_written;
+      }
+
+      memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place), reinterpret_cast<void*>(p),
+                 BOOST_GET_CONST(platform::CPUPlace, cpu), data, size_to_write);
+      p += size_to_write;
+      total_written += size_to_write;
+      input->Skip(size_to_write);
+    }
+    xpu_dev_ctx.Wait();
+#else
+    PADDLE_THROW("Unexpected branch");
+#endif
+    return true;
   }
 
   char* p = reinterpret_cast<char*>(dest);
