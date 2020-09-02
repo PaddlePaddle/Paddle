@@ -248,6 +248,9 @@ goto:eof
 
 :unit_test_error
 call paddle_winci\Scripts\deactivate.bat 2>NUL
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
+set end=%end:~4,10%
+call :timestamp "%start%" "%end%" "TestCases Total"
 echo Running unit tests failed, will exit!
 exit /b 8
 
