@@ -155,7 +155,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
                         const shape_t& z_shape) {
     LOG(INFO) << "create fc op";
     auto* fc = block_desc.AppendOp();
-    fc->SetType("mul");
+    fc->SetType("fc");
     fc->SetInput("X", std::vector<std::string>({x_name}));
     fc->SetInput("Y", std::vector<std::string>({y_name}));
     fc->SetOutput("Out", std::vector<std::string>({z_name}));
