@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import warnings
 import paddle
 from paddle.fluid.framework import dygraph_only
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
@@ -22,6 +23,7 @@ from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
 from .util_factory import UtilFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.fluid.dygraph import parallel_helper
 
 
 def _inited_runtime_handler_(func):
@@ -161,7 +163,11 @@ class Fleet(object):
                     format(type(role_maker)))
         self.strategy_compiler = StrategyCompiler()
         if paddle.fluid.framework.in_dygraph_mode():
-            paddle.distributed.init_parallel_env()
+            if parallel_helper._is_parallel_ctx_initialized():
+                warnings.warn(
+                    "The dygraph parallel environment has been initialized.")
+            else:
+                paddle.distributed.init_parallel_env()
         return None
 
     def is_first_worker(self):
