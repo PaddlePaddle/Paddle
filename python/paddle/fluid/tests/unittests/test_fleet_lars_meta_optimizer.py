@@ -22,11 +22,9 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 
 class TestFleetLarsMetaOptimizer(unittest.TestCase):
     def setUp(self):
-        os.environ["POD_IP"] = "127.0.0.1"
-        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
-        os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-                       "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ["PADDLE_TRAINER_ID"] = "1"
+        os.environ[
+            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002"
 
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
@@ -64,7 +62,8 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+        optimizer = paddle.fluid.optimizer.Momentum(
+            learning_rate=0.01, momentum=0.9)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -77,7 +76,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -90,7 +89,8 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+        optimizer = paddle.fluid.optimizer.Momentum(
+            learning_rate=0.01, momentum=0.9)
 
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
@@ -101,7 +101,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
                 'op_role_var')[0] or ".b" in op.attr('op_role_var')[0])
         ]
         for op in ops_without_wd:
-            self.assertEqual(op.attr('weight_decay'), 0)
+            self.assertEqual(op.attr('lars_weight_decay'), 0)
 
 
 if __name__ == "__main__":

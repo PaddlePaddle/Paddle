@@ -22,11 +22,9 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 
 class TestFleetLambMetaOptimizer(unittest.TestCase):
     def setUp(self):
-        os.environ["POD_IP"] = "127.0.0.1"
-        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
-        os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-                       "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ["PADDLE_TRAINER_ID"] = "1"
+        os.environ[
+            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002"
 
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
@@ -62,7 +60,7 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -75,7 +73,8 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.optimizer.Momentum(learning_rate=0.1, momentum=0.9)
+        optimizer = paddle.fluid.optimizer.Momentum(
+            learning_rate=0.1, momentum=0.9)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -88,7 +87,7 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
         strategy.lamb_configs = {
             'lamb_weight_decay': 0.01,
             'exclude_from_weight_decay': ['.b_0'],
