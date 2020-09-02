@@ -130,6 +130,13 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
     def setUp(self):
         os.environ.pop("PADDLE_TRAINER_ENDPOINTS")
 
+    def gen_data(self):
+        return {
+            "x": np.random.random(size=(128, 32)).astype('float32'),
+            "y": np.random.randint(
+                2, size=(128, 1)).astype('int64')
+        }
+
     def test_single_run_collective_minimize(self):
         input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
@@ -143,6 +150,16 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
         optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(avg_cost)
+
+        place = fluid.CUDAPlace(0) if paddle.fluid.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+
+        exe = fluid.Executor(place)
+        exe.run(paddle.static.default_startup_program())
+
+        for i in range(10):
+            cost_val = exe.run(feed=self.gen_data(), fetch_list=[avg_cost.name])
+            print("cost of step[{}] = {}".format(i, cost_val))
 
 
 class TestFleetBaseSingleRunPS(unittest.TestCase):

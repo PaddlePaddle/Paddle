@@ -41,13 +41,11 @@ def _is_non_distributed_check_(func):
     def __impl__(*args, **kwargs):
         cls = args[0]
 
-        print("into ", func.__name__,
-              "  cls._role_maker._is_non_distributed(): ",
-              cls._role_maker._is_non_distributed())
-        if cls._role_maker._is_non_distributed() is True:
-            warnings.warn("{}() function doesn't work when not use fleetrun or"
-                          "paddle.distributed.launch/launch_ps.".format(
-                              func.__name__))
+        if cls._role_maker is not None and cls._role_maker._is_non_distributed(
+        ) is True:
+            warnings.warn(
+                "%s() function doesn't work when use non_distributed fleet." %
+                (func.__name__))
             return
 
         return func(*args, **kwargs)
