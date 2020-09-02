@@ -369,7 +369,11 @@ def check_shape(shape):
     else:
         for ele in shape:
             if not isinstance(ele, Variable):
-                if ele <= 0 or not isinstance(ele, int):
+                if ele <= 0:
                     raise ValueError(
-                        "All elements in ``shape``must be positive integers when it's a list or tuple"
+                        "All elements in ``shape`` must be positive when it's a list or tuple"
+                    )
+                if not isinstance(ele, int):
+                    raise TypeError(
+                        "All elements in ``shape`` must be integers when it's a list or tuple"
                     )
