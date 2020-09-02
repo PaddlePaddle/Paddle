@@ -23,10 +23,10 @@ class SliceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-// This OP is implemented by trt dynamic shpae plugin.
-// Dynamic shape plugin requires TRT version greater than 6.0.
-#if IS_TRT_VERSION_GE(6000)
+    // This OP is implemented by trt dynamic shpae plugin.
+    // Dynamic shape plugin requires TRT version greater than 6.0.
     VLOG(4) << "convert slice op to tensorrt layer";
+#if IS_TRT_VERSION_GE(6000)
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
@@ -40,9 +40,8 @@ class SliceOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      bool ban_fp16 = engine_->disable_trt_plugin_fp16();
       plugin::SlicePluginDynamic* plugin =
-          new plugin::SlicePluginDynamic(starts, ends, ends, ban_fp16);
+          new plugin::SlicePluginDynamic(starts, ends, axes);
       layer = engine_->AddPluginV2(&input, 1, plugin);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
@@ -53,7 +52,7 @@ class SliceOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "skip_layernorm", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "slice", {output_name}, test_mode);
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "You are running the TRT Dynamic Shape mode, need to confirm that "

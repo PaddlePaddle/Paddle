@@ -30,11 +30,11 @@ namespace plugin {
 class SlicePluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit SlicePluginDynamic(std::vector<int> starts, std::vector<int> ends,
-                              std::vector<int> axes, bool ban_fp16)
-      : starts_(starts), ends_(ends), axes_(axes), ban_fp16_(ban_fp16) {}
-  SlicePluginDynamic(void const* serialData, size_t serialLength) {}
+                              std::vector<int> axes)
+      : starts_(starts), ends_(ends), axes_(axes) {}
+  SlicePluginDynamic(void const* serialData, size_t serialLength);
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new SlicePluginDynamic(starts_, ends_, axes_, ban_fp16_);
+    return new SlicePluginDynamic(starts_, ends_, axes_);
   }
 
   const char* getPluginType() const override { return "slice_plugin"; }
@@ -78,9 +78,28 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
   std::vector<int> starts_;
   std::vector<int> ends_;
   std::vector<int> axes_;
-
-  bool ban_fp16_{false};
 };
+
+class SlicePluginDynamicCreator : public nvinfer1::IPluginCreator {
+ public:
+  SlicePluginDynamicCreator();
+  const char* getPluginName() const override;
+  const char* getPluginVersion() const override;
+  const nvinfer1::PluginFieldCollection* getFieldNames() override;
+  nvinfer1::IPluginV2* createPlugin(
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override;
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override;
+  void setPluginNamespace(const char* lib_namespace) override;
+  const char* getPluginNamespace() const override;
+
+ private:
+  std::string plugin_namespace_;
+  nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
+  std::vector<nvinfer1::PluginField> plugin_attributes_;
+};
+REGISTER_TRT_PLUGIN_V2(SlicePluginDynamicCreator);
 #endif
 
 }  // namespace plugin

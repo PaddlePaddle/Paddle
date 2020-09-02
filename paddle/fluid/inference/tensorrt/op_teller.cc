@@ -89,6 +89,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "layer_norm",
       "scale",
       "stack",
+      "slice",
   };
 };
 
