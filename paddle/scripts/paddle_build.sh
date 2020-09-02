@@ -1421,6 +1421,7 @@ function main() {
     init
     if [ "$CMD" != "assert_file_approvals" ];then
       python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
     case $CMD in
       build_only)
