@@ -794,7 +794,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         it's data type is the same as `x`.
 
     Raises:
-        ValueError: The :attr:`dtype` must be float64 or int64.
+        ValueError: If the data type of `x` is float32, :attr:`dtype` can not be float64.
+        ValueError: If the data type of `x` is int32, :attr:`dtype` can not be int64.
         TypeError: The type of :attr:`axis` must be int, list or tuple.
 
     Examples:
@@ -850,10 +851,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                     'out_dtype': convert_np_dtype_to_dtype_(dtype)
                 })
                 dtype_flag = True
-        else:
-            raise ValueError(
-                "The value of 'dtype' in sum op must be float64, int64, but received of {}".
-                format(dtype))
 
     if in_dygraph_mode():
         axis = axis if axis != None and axis != [] else [0]
@@ -867,6 +864,21 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                                        'reduce_all', reduce_all_flag)
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sum')
+
+    if dtype is not None:
+        check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'], 'sum')
+        x_dtype = convert_dtype(x.dtype)
+
+        if x_dtype == "float64" and dtype == "float32":
+            raise ValueError("The input(x)'s dtype is {} but the attr(dtype) of sum is {}, "
+                             "which may cause data type overflows. Please reset attr(dtype)."
+                             .format(x_dtype, dtype))
+
+        elif x_dtype == "int64" and dtype == "int32":
+            raise ValueError("The input(x)'s dtype is {} but the attr(dtype) of sum is {}, "
+                             "which may cause data type overflows. Please reset attr(dtype)."
+                             .format(x_dtype, dtype))
+
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'sum')
 
     helper = LayerHelper('sum', **locals())

@@ -475,31 +475,24 @@ class API_TestSumOpError(unittest.TestCase):
     def test_errors(self):
         def test_dtype1():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.sum(data, dtype="int32")
+                data = fluid.data(name="data", shape=[10], dtype="float64")
+                paddle.sum(data, dtype="float32")
 
         self.assertRaises(ValueError, test_dtype1)
 
         def test_dtype2():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.sum(data, dtype="float32")
+                data = fluid.data(name="data", shape=[10], dtype="int64")
+                paddle.sum(data, dtype="int32")
 
         self.assertRaises(ValueError, test_dtype2)
 
-        def test_dtype3():
+        def test_type():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data(name="data", shape=[10], dtype="int32")
                 paddle.sum(data, dtype="bool")
 
-        self.assertRaises(ValueError, test_dtype3)
-
-        def test_dtype4():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="int32")
-                paddle.sum(data, dtype="int32")
-
-        self.assertRaises(ValueError, test_dtype3)
+        self.assertRaises(TypeError, test_type)
 
 
 class API_TestSumOp(unittest.TestCase):
@@ -556,6 +549,26 @@ class API_TestSumOp(unittest.TestCase):
         self.assertEqual((res1 == np.sum(input_data, axis=(0, 1))).all(), True)
         self.assertEqual(
             (res2 == np.sum(input_data, axis=(0, 1, 2))).all(), True)
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.data("data", shape=[10, 10], dtype="float64")
+            result_sum = paddle.sum(x=data, axis=1, dtype="float64")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input_data = np.random.rand(10, 10).astype(np.float64)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
+
+        self.assertTrue(np.allclose(res, np.sum(input_data, axis=1)))
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.data("data", shape=[10, 10], dtype="int64")
+            result_sum = paddle.sum(x=data, axis=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input_data = np.random.rand(10, 10).astype(np.int64)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
+
+        self.assertTrue(np.allclose(res, np.sum(input_data, axis=1)))
 
     def test_dygraph(self):
         np_x = np.random.random([2, 3, 4]).astype('int32')
