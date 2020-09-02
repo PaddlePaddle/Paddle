@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import numpy as np
+import unittest
+
 import paddle
-from paddle.static import InputSpec
 import paddle.fluid as fluid
+from paddle.static import InputSpec
 from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator, Layer, jit
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram
 
-import unittest
+from test_basic_api_transformation import dyfunc_to_variable
 
 program_trans = ProgramTranslator()
 
@@ -181,6 +183,9 @@ def foo_func(a, b, c=1, d=2):
 
 
 class TestDifferentInputSpecCacheProgram(unittest.TestCase):
+    def setUp(self):
+        program_trans.enable(True)
+
     def test_with_different_input(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             x_data = np.ones([16, 10]).astype('float32')
@@ -270,6 +275,24 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             foo_3 = paddle.jit.to_static(foo_func)
             with self.assertRaises(ValueError):
                 foo_3.concrete_program
+
+
+class TestDeclarativeAPI(unittest.TestCase):
+    def test_error(self):
+        func = declarative(dyfunc_to_variable)
+
+        paddle.enable_static()
+
+        # Failed to run the callable object decorated by '@paddle.jit.to_static'
+        # if it does NOT in dynamic mode.
+        with self.assertRaises(RuntimeError):
+            func(np.ones(5).astype("int32"))
+
+        program_trans.enable(False)
+        with self.assertRaises(AssertionError):
+            # AssertionError: We Only support to_variable in imperative mode,
+            #  please use fluid.dygraph.guard() as context to run it in imperative Mode
+            func(np.ones(5).astype("int32"))
 
 
 if __name__ == '__main__':
