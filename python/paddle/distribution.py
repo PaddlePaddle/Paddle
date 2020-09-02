@@ -157,8 +157,8 @@ class Uniform(Distribution):
     [broadcasting](https://www.paddlepaddle.org.cn/documentation/docs/en/develop/beginners_guide/basic_concept/broadcasting_en.html) (e.g., `high - low` is a valid operation).
 
     Args:
-        low(int|float|list|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is int, float32, list, numpy.ndarray or Tensor
-        high(int|float|list|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is int, float32, list, numpy.ndarray or Tensor
+        low(int|float|list|numpy.ndarray|Tensor): The lower boundary of uniform distribution.The data type is int, float, list, numpy.ndarray or Tensor
+        high(int|float|list|numpy.ndarray|Tensor): The higher boundary of uniform distribution.The data type is int, float, list, numpy.ndarray or Tensor
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -305,6 +305,7 @@ class Uniform(Distribution):
                 value = core.ops.cast(value, 'in_dtype', value.dtype,
                                       'out_dtype', dtype)
 
+            # ensure value in [low, high]
             lb_bool = self.low < value
             ub_bool = value < self.high
 
@@ -376,6 +377,12 @@ class Uniform(Distribution):
     def entropy(self):
         """Shannon entropy in nats.
 
+        The entropy is
+
+        .. math::
+
+            entropy(low, high) = \\log{high - low}
+
         Returns:
           Tensor: Shannon entropy of uniform distribution.The data type is float32.
 
@@ -406,8 +413,8 @@ class Normal(Distribution):
     * :math:`Z`: is the normalization constant.
 
     Args:
-        loc(int|float|list|numpy.ndarray|Tensor): The mean of normal distribution.The data type is int, float32, list, numpy.ndarray or Tensor.
-        scale(int|float|list|numpy.ndarray|Tensor): The std of normal distribution.The data type is int, float32, list, numpy.ndarray or Tensor.
+        loc(int|float|list|numpy.ndarray|Tensor): The mean of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
+        scale(int|float|list|numpy.ndarray|Tensor): The std of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -534,6 +541,16 @@ class Normal(Distribution):
     def entropy(self):
         """Shannon entropy in nats.
 
+        The entropy is
+
+        .. math::
+
+            entropy(\sigma) = 0.5 \\log (2 \pi e \sigma^2)
+
+        In the above equation:
+
+        * :math:`scale = \sigma`: is the std.
+
         Returns:
           Tensor: Shannon entropy of normal distribution.The data type is float32.
 
@@ -612,6 +629,29 @@ class Normal(Distribution):
 
     def kl_divergence(self, other):
         """The KL-divergence between two normal distributions.
+
+        The probability density function (pdf) is
+
+        .. math::
+
+            KL\_divergence(\mu_0, \sigma_0, \mu_1, \sigma_1) = 0.5 {ratio^2 + (\\frac{diff}{simga_1})^2 - 1 + 2 \\log {\\frac{1}{ratio}}}
+
+        .. math::
+
+            ratio = \\frac{\sigma_0}{\sigma_1}
+        
+        .. math::
+
+            diff = \mu_1 - \mu_0
+
+        In the above equation:
+
+        * :math:`loc = \mu_0`: is the mean of current Normal distribution.
+        * :math:`scale = \sigma_0`: is the std of current Normal distribution.
+        * :math:`loc = \mu_1`: is the mean of other Normal distribution.
+        * :math:`scale = \sigma_1`: is the std of other Normal distribution.
+        * :math:`ratio`: is the ratio of scales.
+        * :math:`diff`: is the difference between means.
 
         Args:
             other (Normal): instance of Normal.
