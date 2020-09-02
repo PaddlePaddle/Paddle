@@ -24,7 +24,7 @@ void DeviceWorker::SetDataFeed(DataFeed* data_feed) {
 }
 
 template <typename T>
-std::string PrintLodTensorType(LoDTensor* tensor, int64_t start, int64_t end) {
+std::string PrintLodTensorType(Tensor* tensor, int64_t start, int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -37,8 +37,7 @@ std::string PrintLodTensorType(LoDTensor* tensor, int64_t start, int64_t end) {
   return os.str();
 }
 
-std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
-                                  int64_t end) {
+std::string PrintLodTensorIntType(Tensor* tensor, int64_t start, int64_t end) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -51,7 +50,7 @@ std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
   return os.str();
 }
 
-std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end) {
+std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end) {
   std::string out_val;
   if (tensor->type() == proto::VarType::FP32) {
     out_val = PrintLodTensorType<float>(tensor, start, end);
