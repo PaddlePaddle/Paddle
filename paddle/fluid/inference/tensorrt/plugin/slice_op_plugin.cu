@@ -56,6 +56,11 @@ __global__ void SliceKernel(int num, int dims, const T *input,
   }
 }
 
+SlicePluginDynamic::SlicePluginDynamic(std::vector<int> starts,
+                                       std::vector<int> ends,
+                                       std::vector<int> axes)
+    : starts_(starts), ends_(ends), axes_(axes) {}
+
 SlicePluginDynamic::SlicePluginDynamic(void const *serial_data,
                                        size_t serial_length) {
   DeserializeValue(&serial_data, &serial_length, &starts_);
@@ -63,7 +68,26 @@ SlicePluginDynamic::SlicePluginDynamic(void const *serial_data,
   DeserializeValue(&serial_data, &serial_length, &axes_);
 }
 
+nvinfer1::IPluginV2DynamicExt *SlicePluginDynamic::clone() const {
+  return new SlicePluginDynamic(starts_, ends_, axes_);
+}
+
+int SlicePluginDynamic::getNbOutputs() const { return 1; }
 int SlicePluginDynamic::initialize() { return 0; }
+void SlicePluginDynamic::terminate() {}
+
+void SlicePluginDynamic::configurePlugin(
+    const nvinfer1::DynamicPluginTensorDesc *in, int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc *out, int nbOutputs) {}
+
+size_t SlicePluginDynamic::getWorkspaceSize(
+    const nvinfer1::PluginTensorDesc *inputs, int nbInputs,
+    const nvinfer1::PluginTensorDesc *outputs, int nbOutputs) const {
+  return 0;
+}
+void SlicePluginDynamic::destroy() { delete this; }
+
+const char *SlicePluginDynamic::getPluginType() const { return "slice_plugin"; }
 
 size_t SlicePluginDynamic::getSerializationSize() const {
   size_t serialize_size = 0;
