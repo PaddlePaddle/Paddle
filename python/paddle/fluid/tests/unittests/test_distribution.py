@@ -124,17 +124,17 @@ class UniformDygraphTest(unittest.TestCase):
                            sample_shape=7,
                            tolerance=1e-6):
         np_uniform = UniformNumpy(self.low_np, self.high_np)
-        gt_sample = np_uniform.sample([sample_shape])
-        gt_entropy = np_uniform.entropy()
-        gt_lp = np_uniform.log_prob(self.values_np)
-        gt_p = np_uniform.probs(self.values_np)
+        np_sample = np_uniform.sample([sample_shape])
+        np_entropy = np_uniform.entropy()
+        np_lp = np_uniform.log_prob(self.values_np)
+        np_p = np_uniform.probs(self.values_np)
 
-        np.testing.assert_equal(sample.shape, gt_sample.shape)
+        np.testing.assert_equal(sample.shape, np_sample.shape)
         np.testing.assert_allclose(
-            entropy, gt_entropy, rtol=tolerance, atol=tolerance)
+            entropy, np_entropy, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
-            log_prob, gt_lp, rtol=tolerance, atol=tolerance)
-        np.testing.assert_allclose(probs, gt_p, rtol=tolerance, atol=tolerance)
+            log_prob, np_lp, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
 
     def test_uniform_distribution_dygraph(self,
                                           batch_size=5,
@@ -268,17 +268,17 @@ class UniformStaticTest(unittest.TestCase):
         sample, entropy, log_prob, probs = fetch_list
 
         np_uniform = UniformNumpy(self.low_np, self.high_np)
-        gt_sample = np_uniform.sample([sample_shape])
-        gt_entropy = np_uniform.entropy()
-        gt_lp = np_uniform.log_prob(self.values_np)
-        gt_p = np_uniform.probs(self.values_np)
+        np_sample = np_uniform.sample([sample_shape])
+        np_entropy = np_uniform.entropy()
+        np_lp = np_uniform.log_prob(self.values_np)
+        np_p = np_uniform.probs(self.values_np)
 
-        np.testing.assert_equal(sample.shape, gt_sample.shape)
+        np.testing.assert_equal(sample.shape, np_sample.shape)
         np.testing.assert_allclose(
-            entropy, gt_entropy, rtol=tolerance, atol=tolerance)
+            entropy, np_entropy, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
-            log_prob, gt_lp, rtol=tolerance, atol=tolerance)
-        np.testing.assert_allclose(probs, gt_p, rtol=tolerance, atol=tolerance)
+            log_prob, np_lp, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
 
     def test_uniform_distribution_static(self,
                                          batch_size=5,
@@ -445,20 +445,20 @@ class NormalDygraphTest(unittest.TestCase):
                            sample_shape=7,
                            tolerance=1e-6):
         np_normal = NormalNumpy(self.loc_np, self.scale_np)
-        gt_sample = np_normal.sample([sample_shape])
-        gt_entropy = np_normal.entropy()
-        gt_lp = np_normal.log_prob(self.values_np)
-        gt_p = np_normal.probs(self.values_np)
+        np_sample = np_normal.sample([sample_shape])
+        np_entropy = np_normal.entropy()
+        np_lp = np_normal.log_prob(self.values_np)
+        np_p = np_normal.probs(self.values_np)
         np_other_normal = NormalNumpy(self.other_loc_np, self.other_scale_np)
-        gt_kl = np_normal.kl_divergence(np_other_normal)
+        np_kl = np_normal.kl_divergence(np_other_normal)
 
-        np.testing.assert_equal(sample.shape, gt_sample.shape)
+        np.testing.assert_equal(sample.shape, np_sample.shape)
         np.testing.assert_allclose(
-            entropy, gt_entropy, rtol=tolerance, atol=tolerance)
+            entropy, np_entropy, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
-            log_prob, gt_lp, rtol=tolerance, atol=tolerance)
-        np.testing.assert_allclose(probs, gt_p, rtol=tolerance, atol=tolerance)
-        np.testing.assert_allclose(kl, gt_kl, rtol=tolerance, atol=tolerance)
+            log_prob, np_lp, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(kl, np_kl, rtol=tolerance, atol=tolerance)
 
     def test_normal_distribution_dygraph(self,
                                          batch_size=2,
@@ -676,20 +676,20 @@ class NormalStaticTest(unittest.TestCase):
         sample, entropy, log_prob, probs, kl = fetch_list
 
         np_normal = NormalNumpy(self.loc_np, self.scale_np)
-        gt_sample = np_normal.sample([sample_shape])
-        gt_entropy = np_normal.entropy()
-        gt_lp = np_normal.log_prob(self.values_np)
-        gt_p = np_normal.probs(self.values_np)
+        np_sample = np_normal.sample([sample_shape])
+        np_entropy = np_normal.entropy()
+        np_lp = np_normal.log_prob(self.values_np)
+        np_p = np_normal.probs(self.values_np)
         np_other_normal = NormalNumpy(self.other_loc_np, self.other_scale_np)
-        gt_kl = np_normal.kl_divergence(np_other_normal)
+        np_kl = np_normal.kl_divergence(np_other_normal)
 
-        np.testing.assert_equal(sample.shape, gt_sample.shape)
+        np.testing.assert_equal(sample.shape, np_sample.shape)
         np.testing.assert_allclose(
-            entropy, gt_entropy, rtol=tolerance, atol=tolerance)
+            entropy, np_entropy, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
-            log_prob, gt_lp, rtol=tolerance, atol=tolerance)
-        np.testing.assert_allclose(probs, gt_p, rtol=tolerance, atol=tolerance)
-        np.testing.assert_allclose(kl, gt_kl, rtol=tolerance, atol=tolerance)
+            log_prob, np_lp, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(kl, np_kl, rtol=tolerance, atol=tolerance)
 
     def test_normal_distribution_static(self,
                                         batch_size=5,
