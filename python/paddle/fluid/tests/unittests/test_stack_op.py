@@ -199,10 +199,15 @@ class API_DygraphTest(unittest.TestCase):
 
         with fluid.dygraph.guard():
             y1 = fluid.dygraph.to_variable(data1)
-            result = paddle.stack(y1, axis=0)
+            result = paddle.stack([y1], axis=0)
             result_np_2 = result.numpy()
-        expected_result_2 = np.stack(data1, axis=0)
+        expected_result_2 = np.stack([data1], axis=0)
         self.assertTrue(np.allclose(expected_result_2, result_np_2))
+
+    def test_single_tensor_error(self):
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor([1, 2, 3])
+            self.assertRaises(Exception, paddle.stack, x)
 
 
 if __name__ == '__main__':
