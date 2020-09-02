@@ -259,7 +259,7 @@ from .device import get_device
 from .fluid.dygraph.base import enable_dygraph as disable_static  #DEFINE_ALIAS
 from .fluid.dygraph.base import disable_dygraph as enable_static  #DEFINE_ALIAS
 from .fluid.framework import in_dygraph_mode as in_dynamic_mode  #DEFINE_ALIAS
-from .fluid.dygraph.base import no_grad  #DEFINE_ALIAS
+from .fluid.dygraph.base import no_grad_ as no_grad  #DEFINE_ALIAS
 
 from . import jit
 from . import static
