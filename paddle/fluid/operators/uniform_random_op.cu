@@ -141,9 +141,7 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     int64_t device_id = -1;
     auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
     if (gen_cuda->GetIsInitPy() && seed_flag) {
-      // std::cout << ">>>>>>>>CUDA UNIFORM GENERATOR" << std::endl;
       auto seed_offset = gen_cuda->IncrementOffset(1);
-      // auto seed_gen = static_cast<unsigned int>(gen_cuda->GetCurrentSeed());
       int offset_step = 100;
       // NOTE(xuefeng): Currently, we let offset step fixed to avoid
       // unexpected results which may cause ut fail.

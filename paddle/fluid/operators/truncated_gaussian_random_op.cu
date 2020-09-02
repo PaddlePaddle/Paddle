@@ -98,20 +98,18 @@ class GPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
 
     auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
-    if (gen_cuda->GetIsInitPy() && seed_flag && false) {
-      // std::cout << ">>>>>>>>CUDA TRUNCATED NORMAL GENERATOR" << std::endl;
-      // auto seed_offset = gen_cuda->IncrementOffset(1);
-      auto seed_gen = static_cast<int>(gen_cuda->GetCurrentSeed());
-      // int offset_step = 0;
+    if (gen_cuda->GetIsInitPy() && seed_flag) {
+      auto seed_offset = gen_cuda->IncrementOffset(1);
+      int offset_step = 100;
       // NOTE(xuefeng): Currently, we let offset step fixed to avoid
       // unexpected results which may cause ut fail.
       // we will fix this in future.
-      // int gen_offset = offset_step * seed_offset.second;
+      int gen_offset = offset_step * seed_offset.second;
       thrust::transform(
           index_sequence_begin, index_sequence_begin + size,
           thrust::device_ptr<T>(data),
           TruncatedNormalOffset<T>(mean, std, std::numeric_limits<T>::min(),
-                                   seed_gen, 0));
+                                   seed_offset.first, seed_offset.second));
     }
 
     thrust::transform(

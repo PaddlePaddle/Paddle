@@ -52,8 +52,6 @@ const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
     VLOG(4) << "initial seed: "
             << default_cuda_generators[device_id]->GetCurrentSeed();
   });
-  // std::call_once(cuda_device_flags[device_id], initGlobalCUDAGeneratorState,
-  //               device_id);
   return default_cuda_generators[device_id];
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -132,6 +130,7 @@ uint64_t Generator::Seed() {
   this->state_.current_seed = seed;
   std::seed_seq seq({seed});
   this->engine_->seed(seq);
+
   return this->state_.current_seed;
 }
 

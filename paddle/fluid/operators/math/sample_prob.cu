@@ -135,7 +135,6 @@ void GPUSampleWithProb<T>::operator()(
   Tensor s;
   int64_t* s_data = s.mutable_data<int64_t>(s_dim, platform::CPUPlace());
 
-  // std::cout << "####sample_prob" << std::endl;
   math::LogUniformSampler sampler(dict_size, seed);
 
   int range = dict_size;

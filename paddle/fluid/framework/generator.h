@@ -67,7 +67,7 @@ struct Generator {
             << ", cpu engine: " << &this->state_.cpu_engine;
     this->is_init_py_ = true;  // TODO(zhiqiu): remove it in future
   }
-  explicit Generator(uint64_t seed, uint64_t device_id) {
+  Generator(uint64_t seed, uint64_t device_id) {
     std::seed_seq seq({seed});
     auto engine = std::make_shared<std::mt19937_64>(seq);
     this->state_.cpu_engine = *engine;

@@ -53,6 +53,24 @@ def manual_seed(seed):
 
 
 def get_cuda_state():
+    """
+
+    Get random state of cuda generators.
+
+    Args:
+        None
+
+    Returns:
+        GeneratorState:  object.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            gen = paddle.manual_seed(102)
+            sts = paddle.get_cuda_state()
+
+    """
     state_list = []
     if core.is_compiled_with_cuda():
         for i in range(core.get_cuda_device_count()):
@@ -62,6 +80,25 @@ def get_cuda_state():
 
 
 def set_cuda_state(state_list):
+    """
+
+    Sets generator state for all cuda generators
+
+    Args:
+        state_list(list): The cuda states to set back to cuda generators. state_list is obtained from get_cuda_state().
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            gen = paddle.manual_seed(102)
+            sts = paddle.get_cuda_state()
+            paddle.set_cuda_state(sts)
+
+    """
     if core.is_compiled_with_cuda():
         if not len(state_list) == core.get_cuda_device_count():
             raise ValueError(

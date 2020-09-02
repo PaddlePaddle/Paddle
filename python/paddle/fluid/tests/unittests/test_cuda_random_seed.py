@@ -87,17 +87,17 @@ class TestGeneratorSeed(unittest.TestCase):
         x1_np = x1.numpy()
         x2_np = x2.numpy()
         x3_np = x3.numpy()
-        print("x: {}".format(x_np))
-        print("x1: {}".format(x1_np))
-        print("x2: {}".format(x2_np))
-        print("x3: {}".format(x3_np))
+        #print("x: {}".format(x_np))
+        #print("x1: {}".format(x1_np))
+        #print("x2: {}".format(x2_np))
+        #print("x3: {}".format(x3_np))
 
         if core.is_compiled_with_cuda():
             print(">>>>>>> gaussian random dygraph >>>>>>>")
             self.assertTrue(np.allclose(x1_np, x2_np))
             self.assertTrue(np.allclose(x_np, x3_np))
 
-    def _test_generator_randint_dygraph(self):
+    def test_generator_randint_dygraph(self):
         """Test Generator seed."""
 
         fluid.enable_dygraph()
@@ -120,7 +120,7 @@ class TestGeneratorSeed(unittest.TestCase):
             self.assertTrue(np.allclose(x1_np, x2_np))
             self.assertTrue(np.allclose(x_np, x3_np))
 
-    def _test_gen_TruncatedNormal_initializer(self):
+    def test_gen_TruncatedNormal_initializer(self):
         fluid.disable_dygraph()
 
         gen = paddle.manual_seed(123123143)
