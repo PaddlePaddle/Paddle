@@ -103,9 +103,6 @@ def summary(net, input_size, batch_size=None, dtypes=None):
     if batch_size is None:
         batch_size = -1
 
-    if batch_size is None:
-        batch_size = -1
-
     result, params_info = summary_string(net, _input_size, batch_size, dtypes)
     print(result)
 
