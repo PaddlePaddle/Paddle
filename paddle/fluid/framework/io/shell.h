@@ -17,6 +17,9 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
 #include <windows.h>
 #else
 #include <sys/syscall.h>
