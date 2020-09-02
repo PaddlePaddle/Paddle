@@ -28,7 +28,7 @@ class TestFlagsUseMkldnn(unittest.TestCase):
 
         self.env = os.environ.copy()
         self.env[str("DNNL_VERBOSE")] = str("1")
-        self.env[str("FLAGS_use_mkldnn")] = str("True")
+        self.env[str("FLAGS_use_mkldnn")] = str("1")
 
     def test_flags_use_mkl_dnn(self):
         cmd = self._python_interp

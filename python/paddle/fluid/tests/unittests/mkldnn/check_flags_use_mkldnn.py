@@ -17,6 +17,7 @@ from __future__ import print_function
 
 import numpy as np
 import paddle.fluid as fluid
+import os
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -34,6 +35,9 @@ def check():
 if __name__ == '__main__':
     try:
         check()
+        for k, v in sorted(os.environ.items()):
+            print(k + ':', v)
+        print('\n')
     except Exception as e:
         print(e)
         print(type(e))
