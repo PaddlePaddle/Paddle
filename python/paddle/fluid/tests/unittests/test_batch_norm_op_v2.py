@@ -43,6 +43,21 @@ class TestBatchNorm(unittest.TestCase):
             x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
             x_data_3 = np.random.random(size=(2, 1, 3)).astype('float32')
 
+            def error1d_dataformat():
+                x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
+                batch_norm1d = paddle.nn.BatchNorm1d(1, data_format='NCDHW')
+                batch_norm1d(fluid.dygraph.to_variable(x_data_4))
+
+            def error2d_dataformat():
+                x_data_3 = np.random.random(size=(2, 1, 3)).astype('float32')
+                batch_norm2d = paddle.nn.BatchNorm2d(1, data_format='NCDHW')
+                batch_norm2d(fluid.dygraph.to_variable(x_data_3))
+
+            def error3d_dataformat():
+                x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
+                batch_norm3d = paddle.nn.BatchNorm3d(1, data_format='NCL')
+                batch_norm3d(fluid.dygraph.to_variable(x_data_4))
+
             def error1d():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
                 batch_norm1d = paddle.nn.BatchNorm1d(1)
@@ -62,6 +77,9 @@ class TestBatchNorm(unittest.TestCase):
                 self.assertRaises(ValueError, error1d)
                 self.assertRaises(ValueError, error2d)
                 self.assertRaises(ValueError, error3d)
+                self.assertRaises(ValueError, error1d_dataformat)
+                self.assertRaises(ValueError, error2d_dataformat)
+                self.assertRaises(ValueError, error3d_dataformat)
 
     def test_dygraph(self):
         places = [fluid.CPUPlace()]

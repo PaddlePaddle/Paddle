@@ -336,9 +336,8 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
   } while (0)
 
 static void RegisterGlobalVarGetterSetter() {
-  REGISTER_PRIVATE_GLOBAL_VAR(
-      /*is_writable=*/false, FLAGS_free_idle_chunk,
-      FLAGS_free_when_no_cache_hit);
+  REGISTER_PRIVATE_GLOBAL_VAR(/*is_writable=*/false, FLAGS_free_idle_chunk,
+                              FLAGS_free_when_no_cache_hit);
 
   REGISTER_PUBLIC_GLOBAL_VAR(
       FLAGS_eager_delete_tensor_gb, FLAGS_enable_parallel_graph,
@@ -351,7 +350,7 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_init_allocated_mem, FLAGS_initial_cpu_memory_in_mb,
       FLAGS_memory_fraction_of_eager_deletion, FLAGS_use_pinned_memory,
       FLAGS_benchmark, FLAGS_inner_op_parallelism, FLAGS_tracer_profile_fname,
-      FLAGS_paddle_num_threads, FLAGS_tensor_dump_ops, FLAGS_dump_limit);
+      FLAGS_paddle_num_threads, FLAGS_use_mkldnn);
 
 #ifdef PADDLE_WITH_CUDA
   REGISTER_PUBLIC_GLOBAL_VAR(

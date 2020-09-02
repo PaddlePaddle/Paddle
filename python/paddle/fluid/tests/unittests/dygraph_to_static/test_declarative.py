@@ -13,11 +13,15 @@
 # limitations under the License.
 
 import numpy as np
-from paddle.static import InputSpec
-import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator, Layer, jit
-
 import unittest
+
+import paddle
+import paddle.fluid as fluid
+from paddle.static import InputSpec
+from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator, Layer, jit
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram
+
+from test_basic_api_transformation import dyfunc_to_variable
 
 program_trans = ProgramTranslator()
 
@@ -179,6 +183,9 @@ def foo_func(a, b, c=1, d=2):
 
 
 class TestDifferentInputSpecCacheProgram(unittest.TestCase):
+    def setUp(self):
+        program_trans.enable(True)
+
     def test_with_different_input(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             x_data = np.ones([16, 10]).astype('float32')
@@ -245,6 +252,47 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
         # 6. specific unknown kwargs `e`=4
         concrete_program_5 = foo.get_concrete_program(
             InputSpec([10]), InputSpec([10]), e=4)
+
+    def test_concrete_program(self):
+        with fluid.dygraph.guard(fluid.CPUPlace()):
+
+            # usage 1
+            foo_1 = paddle.jit.to_static(
+                foo_func,
+                input_spec=[
+                    InputSpec(
+                        [10], name='x'), InputSpec(
+                            [10], name='y')
+                ])
+            self.assertTrue(isinstance(foo_1.concrete_program, ConcreteProgram))
+
+            # usage 2
+            foo_2 = paddle.jit.to_static(foo_func)
+            out = foo_2(paddle.rand([10]), paddle.rand([10]))
+            self.assertTrue(isinstance(foo_2.concrete_program, ConcreteProgram))
+
+            # raise error
+            foo_3 = paddle.jit.to_static(foo_func)
+            with self.assertRaises(ValueError):
+                foo_3.concrete_program
+
+
+class TestDeclarativeAPI(unittest.TestCase):
+    def test_error(self):
+        func = declarative(dyfunc_to_variable)
+
+        paddle.enable_static()
+
+        # Failed to run the callable object decorated by '@paddle.jit.to_static'
+        # if it does NOT in dynamic mode.
+        with self.assertRaises(RuntimeError):
+            func(np.ones(5).astype("int32"))
+
+        program_trans.enable(False)
+        with self.assertRaises(AssertionError):
+            # AssertionError: We Only support to_variable in imperative mode,
+            #  please use fluid.dygraph.guard() as context to run it in imperative Mode
+            func(np.ones(5).astype("int32"))
 
 
 if __name__ == '__main__':

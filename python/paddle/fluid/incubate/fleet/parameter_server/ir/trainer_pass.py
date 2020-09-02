@@ -40,6 +40,8 @@ LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
+SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
+
 DEVICE_LIST = ["cpu", "gpu", "xpu"]
 COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
 DEFAULT_DEVICE = 'cpu'
@@ -81,11 +83,10 @@ def distributed_ops_pass(program, config):
 
     def _get_pull_sparse_ops(_program):
         pull_sparse_ops = {}
-        op_types = {"lookup_table": "W"}
         for op in _program.global_block().ops:
-            if op.type in op_types.keys() \
+            if op.type in SPARSE_OP_TYPE_DICT.keys() \
                     and op.attr('remote_prefetch') is True:
-                param_name = op.input(op_types[op.type])[0]
+                param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
                 ops = pull_sparse_ops.get(param_name, [])
                 ops.append(op)
                 pull_sparse_ops[param_name] = ops
@@ -101,6 +102,7 @@ def distributed_ops_pass(program, config):
             w = program.global_block().vars[ops[0].input("W")[0]]
             padding_idx = ops[0].attr("padding_idx")
             is_distributed = ops[0].attr("is_distributed")
+            op_type = ops[0].type
 
             outputs = [
                 program.global_block().vars[op.output("Out")[0]] for op in ops
@@ -149,7 +151,8 @@ def distributed_ops_pass(program, config):
                         "is_distributed": is_distributed,
                         "pserver_num": len(pserver_endpoints),
                         "padding_idx": padding_idx,
-                        "trainer_id": trainer_id
+                        "trainer_id": trainer_id,
+                        "lookup_table_version": op_type
                     })
             else:
                 raise ValueError(
