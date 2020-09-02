@@ -197,7 +197,7 @@ def standard_normal(shape, dtype=None, name=None):
 
             # example 2: attr shape is a list which contains Tensor.
             dim1 = paddle.full([1], 2, "int64")
-            dim1 = paddle.full([1], 3, "int32")
+            dim2 = paddle.full([1], 3, "int32")
             out2 = paddle.standard_normal(shape=[dim1, dim2, 2])
             # [[[-2.8852394 , -0.25898588],  # random
             #   [-0.47420555,  0.17683524],  # random
