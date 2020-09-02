@@ -634,7 +634,7 @@ class Normal(Distribution):
 
         .. math::
 
-            KL\_divergence(\mu_0, \sigma_0, \mu_1, \sigma_1) = 0.5 (ratio^2 + (\\frac{diff}{\sigma_1})^2 - 1 - 2 \\log {ratio})
+            KL\_divergence(\mu_0, \sigma_0; \mu_1, \sigma_1) = 0.5 (ratio^2 + (\\frac{diff}{\sigma_1})^2 - 1 - 2 \\ln {ratio})
 
         .. math::
 
