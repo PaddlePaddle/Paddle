@@ -528,13 +528,13 @@ EOF
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
-        tmp_dir=`mktemp -d`
         tmpfile_rand=`date +%s%N`
         tmpfile=$tmp_dir/$tmpfile_rand
         ut_startTime_s=`date +%s`
         ctest --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
         collect_failed_tests
+        echo "$failed_test_lists"
         #rm -f $tmp_dir/*
         mactest_error=0
         retry_unittests_record=''
@@ -553,10 +553,13 @@ EOF
                     echo "========================================="
                     echo "The following unittest will be re-run:"
                     echo "${failed_test_lists_ult}"
+                    echo "========================================="
+                    echo "${retry_unittests}"
 
+                    retry_unittests_regular=''
                     for line in ${retry_unittests[@]} ;
                         do
-                            if [[ "$retry_unittests_regular" = "" ]];then
+                            if [[ "$retry_unittests_regular" == "" ]];then
                                 retry_unittests_regular="^$line$"
                             else
                                 retry_unittests_regular="$retry_unittests_regular|^$line$"
@@ -566,7 +569,7 @@ EOF
                     failed_test_lists=''
                     ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
                     collect_failed_tests
-                    retry_unittests_regular=''
+                    exec_times=$[$exec_times+1]
                 done
         fi
         #mactest_error=$?
