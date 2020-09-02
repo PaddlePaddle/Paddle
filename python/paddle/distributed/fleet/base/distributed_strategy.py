@@ -254,14 +254,19 @@ class DistributedStrategy(object):
         a dict.
 
         **Notes**:
-            **Detailed arguments for a_sync_configs**
-            **k_step**: number of local optimization updates before communication
-            **max_merge_var_num**: maximum number of merged gradients before communication
-            **send_queue_size**: a buffer size of worker communication
-            **independent_recv_thread**: if we are using independent recv thread for communication
-            **thread_pool_size**: number of thread pool
-            **send_wait_times**: waiting time for sending gradients
-            **runtime_split_send_recv**: if we are using Tensor split for send and recv during runtime
+            k_step(int): number of local optimization updates before communication
+
+            max_merge_var_num(int): maximum number of merged gradients before communication
+
+            send_queue_size(int): a buffer size of worker communication
+
+            independent_recv_thread(bool): if we are using independent recv thread for communication
+
+            thread_pool_size(int): number of thread pool
+
+            send_wait_times(int): waiting time for sending gradients
+
+            runtime_split_send_recv(bool): if we are using Tensor split for send and recv during runtime
 
         Examples:
           .. code-block:: python
@@ -272,11 +277,12 @@ class DistributedStrategy(object):
 
             strategy = fleet.DistributedStrategy()
             strategy.a_sync = True  # by default this is True
-            configs = {"k_steps": 10000, "send_queue_size": 32}
+            configs = {"k_steps": 1024, "send_queue_size": 32}
             strategy.a_sync_configs = configs
 
             # code block for defining loss and local optimizer
             # sgd = fleet.distributed_optimizer(optimizer, strategy)
+
         """
         return get_msg_dict(self.strategy.a_sync_configs)
 
