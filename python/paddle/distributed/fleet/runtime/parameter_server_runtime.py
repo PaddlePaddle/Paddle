@@ -154,15 +154,16 @@ class ParameterServerRuntime(RuntimeBase):
             kwargs["sparse_attrs"] = get_sparse_attrs()
             return kwargs
 
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops, _has_global_step
 
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import \
             SyncStrategy, GeoStrategy
 
         trainer_config = self.async_strategy.get_trainer_runtime_config()
-        lrs = _get_lr_ops(self.origin_main_program)
 
-        if len(lrs) > 0:
+        lrs = _has_global_step(_get_lr_ops(self.origin_main_program))
+
+        if lrs:
             kwargs = {"need_global_step": "1"}
         else:
             kwargs = {"need_global_step": "0"}

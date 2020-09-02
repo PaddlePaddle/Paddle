@@ -42,6 +42,9 @@ op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 
+SPARSE_OP_LIST = ["lookup_table", "lookup_table_v2"]
+SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
+
 
 def _get_lr_ops(program):
     lr_ops = []
@@ -66,7 +69,7 @@ def _has_global_step(lr_ops):
 
 
 def is_sparse_op(op):
-    if op.type == "lookup_table" and op.attr('is_sparse') is True and op.attr(
+    if op.type in SPARSE_OP_LIST and op.attr('is_sparse') is True and op.attr(
             'is_distributed') is False:
         return True
 
@@ -78,7 +81,7 @@ def is_sparse_op(op):
 
 
 def is_distributed_sparse_op(op):
-    if op.type == "lookup_table" and op.attr('is_distributed') is True:
+    if op.type in SPARSE_OP_LIST and op.attr('is_distributed') is True:
         return True
 
     if op.type == "distributed_lookup_table" and op.attr(
@@ -802,11 +805,10 @@ class CompileTimeStrategy(object):
 
         def _get_sparse_varnames():
             varnames = []
-            op_types = {"lookup_table": "W"}
             for op in origin_program.global_block().ops:
-                if op.type in op_types.keys() \
+                if op.type in SPARSE_OP_TYPE_DICT.keys() \
                         and op.attr('remote_prefetch') is True:
-                    param_name = op.input(op_types[op.type])[0]
+                    param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
                     varnames.append(param_name)
 
             return list(set(varnames))

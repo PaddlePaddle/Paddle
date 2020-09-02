@@ -296,7 +296,7 @@ def convert_to_input_spec(inputs, input_spec):
     elif isinstance(input_spec, dict):
         input_with_spec = {}
         check_type_and_len(inputs, input_spec, True)
-        for name, input in inputs.items():
+        for name, input in six.iteritems(inputs):
             if name in input_spec:
                 input_with_spec[name] = convert_to_input_spec(input,
                                                               input_spec[name])
