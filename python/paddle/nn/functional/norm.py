@@ -165,7 +165,7 @@ def batch_norm(x,
           w = paddle.to_tensor(weight_data)
           b = paddle.to_tensor(bias_data)
           batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv, w, b)
-          print batch_norm_out
+          print(batch_norm_out.numpy())
     """
 
     assert len(x.shape) >= 2, "input dim must be larger than 1"
@@ -175,6 +175,15 @@ def batch_norm(x,
     # input ad out must share the memory
     mean_out = running_mean
     variance_out = running_var
+
+    true_data_format = ['NC', 'NCL', 'NCHW', 'NCWH', 'NCDHW']
+    if data_format not in true_data_format:
+        raise ValueError(
+            "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCWH', 'NCDHW', but receive {}".
+            format(data_format))
+
+    if data_format != 'NCWH':
+        data_format = 'NCHW'
 
     if in_dygraph_mode():
         # for dygraph need tuple
@@ -270,7 +279,7 @@ def layer_norm(x,
           layer_norm = paddle.nn.functional.layer_norm(x, x.shape[1:])
           layer_norm_out = layer_norm(x)
 
-          print(layer_norm_out.numpy)
+          print(layer_norm_out.numpy())
     """
     input_shape = list(x.shape)
     input_ndim = len(input_shape)
@@ -302,10 +311,10 @@ def layer_norm(x,
     # create output
     helper = LayerHelper('layer_norm', **locals())
     mean_out = helper.create_variable_for_type_inference(
-        dtype=x.type, stop_gradient=True)
+        dtype=x.dtype, stop_gradient=True)
     variance_out = helper.create_variable_for_type_inference(
-        dtype=x.type, stop_gradient=True)
-    layer_norm_out = helper.create_variable_for_type_inference(x.type)
+        dtype=x.dtype, stop_gradient=True)
+    layer_norm_out = helper.create_variable_for_type_inference(x.dtype)
 
     helper.append_op(
         type="layer_norm",
@@ -362,7 +371,7 @@ def instance_norm(x,
           x = paddle.to_tensor(x_data) 
           instance_norm_out = paddle.nn.functional.instancenorm(x)
 
-          print(instance_norm_out.numpy)
+          print(instance_norm_out.numpy())
 
     """
 
