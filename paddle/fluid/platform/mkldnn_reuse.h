@@ -110,9 +110,9 @@ class TensorDumpConfig {
       dirname_ = foler_name;
     }
     MkDir(dirname_.c_str());
-    // msg_green("output folder " << dirname_);
-    LOG(INFO) << "output folder " << dirname_;
+    msg_green("output folder: " << dirname_);
   }
+
   TensorDumpConfig(const TensorDumpConfig&);
   void operator=(const TensorDumpConfig&);
 
@@ -145,6 +145,7 @@ class DumpComposit {
  public:
   static void execute(const std::string& label,
                       const framework::ExecutionContext& ctx,
+                      const std::string& output_name,
                       const framework::Tensor& _tensor) {
     auto it = TensorDumpConfig::get().fetchOperator(label);
     if (it == TensorDumpConfig::get().fetchOperatorEnd()) {
@@ -152,7 +153,7 @@ class DumpComposit {
     }
     auto target_layout = TensorDumpConfig::get().getOperatorLayout(label);
     std::string filename = TensorDumpConfig::get().getFoldername() + label +
-                           "_" + ctx.OutputName("Out") + "_" +
+                           "_" + output_name + "_" +
                            framework::DataTypeToString(_tensor.type()) + "_" +
                            DataLayoutToString(target_layout);
 

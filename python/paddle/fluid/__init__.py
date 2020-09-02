@@ -206,6 +206,8 @@ def __bootstrap__():
 
     if core.is_compiled_with_mkldnn():
         read_env_flags.append('use_mkldnn')
+        read_env_flags.append('tensor_dump_ops')
+        read_env_flags.append('dump_limit')
 
     if core.is_compiled_with_dist():
         #env for rpc

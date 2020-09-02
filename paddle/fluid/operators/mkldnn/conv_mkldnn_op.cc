@@ -451,7 +451,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory_p));
-    platform::DumpComposit::execute("conv_mkldnn_fwd", ctx, *output);
+    platform::DumpComposit::execute("conv_mkldnn_fwd", ctx,
+                                    ctx.OutputName("Output"), *output);
   }
 
   template <typename T_out>
@@ -846,8 +847,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory_p));
-    // platform::DumpComposit<T_out>::execute("conv_mkldnn_fwd",
-    //                                        ctx.OutputName("Out"), *output);
+    platform::DumpComposit::execute("conv_mkldnn_fwd", ctx,
+                                    ctx.OutputName("Output"), *output);
   }
 };
 

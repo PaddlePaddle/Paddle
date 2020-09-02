@@ -561,7 +561,8 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
                          force_fp32_output);
 
     output->set_layout(DataLayout::kMKLDNN);
-    platform::DumpComposit::execute("fc_mkldnn_fwd", ctx, *output);
+    platform::DumpComposit::execute("fc_mkldnn_fwd", ctx, ctx.OutputName("Out"),
+                                    *output);
   }
 };
 }  // namespace operators

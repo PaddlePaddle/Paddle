@@ -527,5 +527,5 @@ DEFINE_string(tensor_dump_ops, "",
               "output tensor will be dumped to files");
 
 DEFINE_int64(
-    dump_limit, 64,
+    dump_limit, 0,
     "If dump_limit is changed, the dumped tensors data size will be changed");

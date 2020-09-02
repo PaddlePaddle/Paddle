@@ -109,7 +109,8 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   y->set_layout(DataLayout::kMKLDNN);
   y->set_format(GetMKLDNNFormat(*dst_memory_p));
 
-  platform::DumpComposit::execute("eltwise_fwd", ctx, *y);
+  platform::DumpComposit::execute("eltwise_fwd", ctx, ctx.OutputName("Out"),
+                                  *y);
 }
 
 template <typename T>
