@@ -34,7 +34,8 @@ RUN wget -q https://paddle-docker-tar.bj.bcebos.com/home/users/tianshuo/bce-pyth
   make -j8 && make install
 
 ENV PATH=/usr/local/gcc-8.2/bin:$PATH
-RUN rm -rf /temp_gcc82 && rm -rf /gcc-8.2.0.tar.xz && rm -rf /gcc-8.2.0 
+ENV LD_LIBRARY_PATH=/usr/local/gcc-8.2/lib64:$LD_LIBRARY_PATH
+RUN rm -rf /temp_gcc82 && rm -rf /gcc-8.2.0.tar.xz && rm -rf /gcc-8.2.0
 
 # git 2.17.1
 RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
