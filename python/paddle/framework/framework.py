@@ -22,7 +22,13 @@ __all__ = ['set_default_dtype', 'get_default_dtype']
 
 def set_default_dtype(d):
     """
-    Set default dtype. The default dtype is initially float32
+    Set the default floating point dtype. This dtype is used for python floats or complex 
+    number in ``paddle.to_tensor`` . 
+
+    For python complex number, dtype is ``complex128`` if default floating point dtype
+    is ``float64`` , otherwise it's ``complex64`` .
+    
+    The initial value of default floating point dtype is set to ``float32`` .
 
     Args:
         d(string|np.dtype): the dtype to make the default. It only
