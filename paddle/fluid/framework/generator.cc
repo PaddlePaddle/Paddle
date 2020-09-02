@@ -30,28 +30,19 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-#ifdef PADDLE_WITH_CUDA
-static int64_t num_cuda_devices = -1;
-static std::once_flag num_devices_init_flag;
-static std::deque<std::once_flag> cuda_device_flags;
-
-static std::vector<std::shared_ptr<Generator>> default_cuda_generators;
-#endif
-
-static void InitCUDAGenerators() {
-#ifdef PADDLE_WITH_CUDA
-  num_cuda_devices = paddle::platform::GetCUDADeviceCount();
-  cuda_device_flags.resize(num_cuda_devices);
-  default_cuda_generators.resize(num_cuda_devices);
-#else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "InitCUDAGenerators only support in CUDA place"));
-#endif
-}
-
 const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
 #ifdef PADDLE_WITH_CUDA
-  std::call_once(num_devices_init_flag, InitCUDAGenerators);
+
+  static int64_t num_cuda_devices = -1;
+  static std::once_flag num_devices_init_flag;
+  static std::deque<std::once_flag> cuda_device_flags;
+  static std::vector<std::shared_ptr<Generator>> default_cuda_generators;
+
+  std::call_once(num_devices_init_flag, []() {
+    num_cuda_devices = paddle::platform::GetCUDADeviceCount();
+    cuda_device_flags.resize(num_cuda_devices);
+    default_cuda_generators.resize(num_cuda_devices);
+  });
   platform::Place place;
   if (device_id == -1)
     device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
@@ -69,35 +60,6 @@ const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
       "getDefaultCUDAGenerator only support in CUDA place"));
 #endif
 }
-/*
-const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
-#ifdef PADDLE_WITH_CUDA
-  static int64_t num_cuda_devices = paddle::platform::GetCUDADeviceCount();
-  // static std::vector<std::shared_ptr<Generator>> default_cuda_generators =
-new
-  static auto default_cuda_generators =
-std::make_shared<std::vector<std::shared_ptr<Generator>>>;
-  default_cuda_generators->resize(num_cuda_devices);
-
-  platform::Place place;
-  if (device_id == -1)
-    device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
-  (*default_cuda_generators)[device_id] =
-        std::make_shared<Generator>(GetRandomSeed(), device_id);
-  VLOG(4) << "initial seed: "
-            << default_cuda_generators[device_id]->GetCurrentSeed();
-  std::cout << "initial seed: "
-              << default_cuda_generators[device_id]->GetCurrentSeed()
-              << "device id : " << device_id << " ||| "
-              << default_cuda_generators[device_id]->get_device_id()
-              << std::endl;
-  return default_cuda_generators[device_id];
-#else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "getDefaultCUDAGenerator only support in CUDA place"));
-#endif
-}
-*/
 
 const std::shared_ptr<Generator>& DefaultCPUGenerator() {
   static auto default_cpu_generator =
@@ -121,7 +83,6 @@ std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine() {
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
   if (DefaultCPUGenerator()->GetIsInitPy() && seed == 0) {
     VLOG(4) << "Use random engine from generator";
-    // std::cout << "Use random engine from generator" << std::endl;
     return DefaultCPUGenerator()->GetCPUEngine();
   } else {
     // NOTE(zhiqiu): creating an engine instance everytime instead of using
@@ -171,7 +132,6 @@ uint64_t Generator::Seed() {
   this->state_.current_seed = seed;
   std::seed_seq seq({seed});
   this->engine_->seed(seq);
-
   return this->state_.current_seed;
 }
 

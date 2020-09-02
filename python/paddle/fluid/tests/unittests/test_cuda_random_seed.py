@@ -71,18 +71,18 @@ class TestGeneratorSeed(unittest.TestCase):
             print(">>>>>>> dropout dygraph >>>>>>>")
             self.assertTrue(np.allclose(y_np, y1_np))
 
-    def _test_generator_gaussian_random_dygraph(self):
+    def test_generator_gaussian_random_dygraph(self):
         """Test Generator seed."""
         fluid.enable_dygraph()
 
         paddle.manual_seed(12312321111)
-        x = fluid.layers.gaussian_random([10], dtype="float32")
+        x = fluid.layers.gaussian_random([120], dtype="float32")
         st1 = paddle.get_cuda_state()
-        x1 = fluid.layers.gaussian_random([10], dtype="float32")
+        x1 = fluid.layers.gaussian_random([120], dtype="float32")
         paddle.set_cuda_state(st1)
-        x2 = fluid.layers.gaussian_random([10], dtype="float32")
+        x2 = fluid.layers.gaussian_random([120], dtype="float32")
         paddle.manual_seed(12312321111)
-        x3 = fluid.layers.gaussian_random([10], dtype="float32")
+        x3 = fluid.layers.gaussian_random([120], dtype="float32")
         x_np = x.numpy()
         x1_np = x1.numpy()
         x2_np = x2.numpy()
