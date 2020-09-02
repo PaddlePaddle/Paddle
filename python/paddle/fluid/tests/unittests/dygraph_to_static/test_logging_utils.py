@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -86,11 +86,11 @@ class TestLoggingUtils(unittest.TestCase):
             with mock.patch.object(sys, 'stdout', stream):
                 logging_utils.warn(warn_msg)
                 logging_utils.error(error_msg)
-                self.translator_logger.verbosity_level = 2
+                self.translator_logger.verbosity_level = 1
                 logging_utils.log(1, log_msg_1)
                 logging_utils.log(2, log_msg_2)
 
-            result_msg = '\n'.join([warn_msg, error_msg, log_msg_2, ""])
+            result_msg = '\n'.join([warn_msg, error_msg, log_msg_1, ""])
             self.assertEqual(result_msg, stream.getvalue())
 
     def test_log_transformed_code(self):

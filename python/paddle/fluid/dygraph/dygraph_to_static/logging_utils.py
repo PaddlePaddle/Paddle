@@ -98,8 +98,15 @@ class TranslatorLogger(object):
         return level == self.transformed_code_level
 
     def has_verbosity(self, level):
+        """
+        Checks whether the verbosity level set by the user is greater than or equal to the log level.
+        Args:
+            level(int): The level of log.
+        Returns:
+            True if the verbosity level set by the user is greater than or equal to the log level, otherwise False.
+        """
         level = self.check_level(level)
-        return level >= self.verbosity_level
+        return self.verbosity_level >= level
 
     def error(self, msg, *args, **kwargs):
         self.logger.error(msg, *args, **kwargs)

@@ -28,6 +28,7 @@ DECLARE_int32(rpc_retry_bind_port);
 namespace paddle {
 namespace operators {
 namespace distributed {
+
 enum CallStatus { PROCESS = 0, FINISH };
 
 // reference:
@@ -433,6 +434,51 @@ class RequestNotify final : public RequestBase {
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
 };
 
+class RequestSendAndRecv final : public RequestBase {
+ public:
+  explicit RequestSendAndRecv(GrpcService::AsyncService* service,
+                              ::grpc::ServerCompletionQueue* cq,
+                              RequestHandler* request_handler, int req_id)
+      : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    request_.reset(new GRPCVariableResponse(
+        request_handler->scope(), request_handler->dev_ctx(),
+        request_handler->distributed_mode()));
+
+    int method_id =
+        static_cast<int>(distributed::GrpcMethod::kRequestSendAndRecv);
+
+    service_->RequestAsyncUnary(
+        method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
+        reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
+  }
+
+  virtual ~RequestSendAndRecv() {}
+  std::string GetReqName() override { return request_->Varname(); }
+
+  void Process() override {
+    std::string in_var_name = request_->Varname();
+    std::string out_var_name = request_->OutVarname();
+    std::string table_name = request_->TableName();
+    int trainer_id = request_->GetTrainerId();
+
+    VLOG(4) << "RequestSendAndRecv, in_var_name: " << in_var_name
+            << " out_var_name: " << out_var_name << " trainer: " << trainer_id;
+    auto scope = request_->GetMutableLocalScope();
+    auto invar = scope->FindVar(in_var_name);
+    framework::Variable* outvar = nullptr;
+    request_handler_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
+                             out_var_name, table_name);
+    SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
+                          &reply_);
+    Finish(reply_, &responder_);
+  }
+
+ protected:
+  std::shared_ptr<GRPCVariableResponse> request_;
+  ::grpc::ByteBuffer reply_;
+  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+};
+
 void AsyncGRPCServer::WaitServerReady() {
   VLOG(4) << "AsyncGRPCServer is waiting server ready";
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
@@ -586,6 +632,8 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
     b = new RequestCheckpointNotify(service_.get(), cq.get(), handler, req_id);
   } else if (rpc_name == kRequestNotify) {
     b = new RequestNotify(service_.get(), cq.get(), handler, req_id);
+  } else if (rpc_name == kRequestSendAndRecv) {
+    b = new RequestSendAndRecv(service_.get(), cq.get(), handler, req_id);
   } else {
     PADDLE_ENFORCE(false, "not supported rpc");
   }
