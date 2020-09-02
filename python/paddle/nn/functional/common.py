@@ -88,7 +88,7 @@ def interpolate(x,
         'trilinear' : Trilinear interpolation
         'nearest' : Nearest neighbor interpolation
         'bicubic' : Bicubic interpolation
-        ‘area’: Area interpolation
+        'area': Area interpolation
 
     Linear interpolation is the method of using a line connecting two known quantities 
     to determine the value of an unknown quantity between the two known quantities. 
