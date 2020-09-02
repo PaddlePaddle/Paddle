@@ -539,7 +539,7 @@ class MovingAverageAbsMaxScaleOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor) Input is float data type.");
+    ls AddInput("X", "(Tensor) Input is float data type.");
     AddInput("InAccum", "Last accum.").AsDispensable();
     AddInput("InState", "Last state.").AsDispensable();
     AddOutput("OutScale", " Current scale");

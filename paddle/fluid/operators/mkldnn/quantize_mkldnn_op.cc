@@ -109,6 +109,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory));
+    platform::DumpComposit::execute("dequantize_mkldnn_fwd", ctx, *output);
   }
 };
 }  // namespace operators

@@ -142,86 +142,30 @@ class TensorDumpConfig {
     return mx;
   }
 };
-template <typename T>
 class DumpComposit {
- private:
-  static std::ostream& print_memory(std::ostream& os,
-                                    const std::vector<T>& vout,
-                                    const size_t& data_limit) {
-    for (size_t i = 0; i < data_limit; i++) {
-      os << vout[i] << " ";
-    }
-    os << "...]" << std::endl;
-    return os;
-  }
-  static void reorder_via_mkldnn(void* out, const Tensor* tensor_src,
-                                 DataLayout target_layout) {
-    dnnl::engine::kind engine_kind = dnnl::engine::kind::cpu;
-    dnnl::engine engine(engine_kind, 0);
-    // Create dnnl::stream.
-    dnnl::stream engine_stream(engine);
-    dnnl::memory::dims src_dims;
-    auto& paddle_dims = tensor_src->dims();
-    for (decltype(paddle_dims.size()) i = 0; i < paddle_dims.size(); ++i)
-      src_dims.push_back(paddle_dims.at(i));
-    auto current_layout = tensor_src->layout();
-    auto src_md = dnnl::memory::desc(
-        src_dims, framework::ToMKLDNNDataType(tensor_src->type()),
-        framework::ToMKLDNNFormat(current_layout));
-    auto dst_md = dnnl::memory::desc(
-        src_dims, framework::ToMKLDNNDataType(tensor_src->type()),
-        framework::ToMKLDNNFormat(target_layout));
-    auto src_mem = dnnl::memory(
-        src_md, engine,
-        reinterpret_cast<void*>(const_cast<T*>(tensor_src->data<T>())));
-    auto dst_mem = dnnl::memory(dst_md, engine, out);
-    // Create primitive descriptor.
-    auto reorder_pd =
-        dnnl::reorder::primitive_desc(engine, src_md, engine, dst_md);
-    // Create the primitive.
-    auto reorder_prim = dnnl::reorder(reorder_pd);
-    // Primitive arguments.
-    std::unordered_map<int, dnnl::memory> reorder_args;
-    reorder_args.insert({DNNL_ARG_SRC, src_mem});
-    reorder_args.insert({DNNL_ARG_DST, dst_mem});
-    // Primitive execution: reorder with scaled sum.
-    reorder_prim.execute(engine_stream, reorder_args);
-    // Wait for the computation to finalize.
-    engine_stream.wait();
-  }
-
  public:
-  static void execute(const std::string& label, const std::string& name,
+  static void execute(const std::string& label,
+                      const framework::ExecutionContext& ctx,
                       const framework::Tensor& _tensor) {
-    // TensorDumpConfig();
     auto it = TensorDumpConfig::get().fetchOperator(label);
     if (it == TensorDumpConfig::get().fetchOperatorEnd()) {
       return;
     }
     auto target_layout = TensorDumpConfig::get().getOperatorLayout(label);
     std::string filename = TensorDumpConfig::get().getFoldername() + label +
-                           "_" + name + "_" +
-                           framework::DataTypeToString(_tensor.type());
+                           "_" + ctx.OutputName("Out") + "_" +
+                           framework::DataTypeToString(_tensor.type()) + "_" +
+                           DataLayoutToString(target_layout);
 
     if (target_layout != OperatorDetails::getDefaultLayout()) {
-      filename = filename + "_" + DataLayoutToString(target_layout);
-
-      std::vector<T> vout(_tensor.numel());
-      reorder_via_mkldnn(vout.data(), &_tensor, target_layout);
-
-      // auto flag_limit = std::getenv("FLAGS_dump_limit"))
-      //   // data_limit = atoi(const_cast<char*>(value));
-      // auto data_limit = (flag_limit > 0 && flag_limit < _tensor.numel()) ?
-      // flag_limit : _tensor.numel();
-      auto data_limit = _tensor.numel();
+      framework::Tensor* tensor_out;
+      framework::innerTransDataLayoutFromMKLDNN(
+          _tensor.layout(), target_layout, _tensor, tensor_out, ctx.GetPlace());
       std::lock_guard<decltype(TensorDumpConfig::getMutex())> l(
           TensorDumpConfig::getMutex());
       auto ofs = std::ofstream(filename, std::ios_base::app);
-      ofs << SeqInFile::Access(filename) << std::endl;
-      print_memory(ofs, vout, data_limit);
+      ofs << SeqInFile::Access(filename) << std::endl << _tensor << std::endl;
     } else {
-      filename = filename + "_" + DataLayoutToString(target_layout);
-
       /* in case of parallel executor , io must be synchronized */
       std::lock_guard<decltype(TensorDumpConfig::getMutex())> l(
           TensorDumpConfig::getMutex());

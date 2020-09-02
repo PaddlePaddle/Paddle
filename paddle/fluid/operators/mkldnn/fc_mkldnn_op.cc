@@ -53,8 +53,7 @@ class FCPrimitiveFactory {
     if (fc_) {
       UpdateDataPointers(ctx, output, input);
       this->Execute();
-      platform::DumpComposit<T_out>::execute("fc_mkldnn_fwd",
-                                             ctx.OutputName("Out"), *output);
+      platform::DumpComposit::execute("fc_mkldnn_fwd", ctx, *output);
       return;
     }  // Otherwise, create a new one.
 
@@ -130,8 +129,7 @@ class FCPrimitiveFactory {
     // Return MKL-DNN primitive ready to be fed into pipeline and executed
     fc_ = inner_product_forward(*fc_prim_desc);
     this->Execute();
-    platform::DumpComposit<T_out>::execute("fc_mkldnn_fwd",
-                                           ctx.OutputName("Out"), *output);
+    platform::DumpComposit::execute("fc_mkldnn_fwd", ctx, *output);
   }
 
   void Execute() {

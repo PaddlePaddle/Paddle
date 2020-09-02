@@ -19,9 +19,6 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.tests.unittests.op_test import OpTest
 
-fluid.core.globals()['FLAGS_tensor_dump_ops'] = 'fc_mkldnn_fwd'
-fluid.core.globals()['FLAGS_dump_limit'] = 64
-
 
 def fully_connected_naive(input, weights, bias_data):
     result = np.dot(input, weights) + bias_data
@@ -74,9 +71,32 @@ class TestFCMKLDNNOp1(TestFCMKLDNNOp):
         self.bias = np.random.random(48).astype("float32")
 
 
+def load_tensor_from_file(filename, num):
+    with open(filename, "r") as f:
+        lines = [line.strip() for line in f]
+        assert len(lines) >= num * 6
+        num_count = 0
+        while (num_count < num):
+            print(lines[num_count * 6 + 0][-1])
+            print(lines[num_count * 6 + 1][-1])
+            print(lines[num_count * 6 + 1][-1])
+            print(lines[num_count * 6 + 1][-1])
+            print(lines[num_count * 6 + 1][-1])
+            print(lines[num_count * 6 + 1][-1])
+            num_count = num_count + 1
+
+
 class TestTensorDump():
     def TestCoverage(self):
-        # fluid.set_flags({'FLAGS_tensor_dump_ops': "fc_mkldnn_fwd=NHWC,transpose_mkldnn_fwd=NHWC"})
+        # Default saving place is ./python/paddle/fluid/tests/unittests/mkldnn/out/fc_mkldnn_fwd_Out_float_ANY_LAYOUT
+
+        fluid.set_flags({
+            'FLAGS_tensor_dump_ops':
+            'fc_mkldnn_fwd=NHWC,transpose_mkldnn_fwd=NHWC'
+        })
+        fluid.set_flags({'FLAGS_dump_limit': 64})
+        # fluid.core.globals()['FLAGS_tensor_dump_ops'] = 'fc_mkldnn_fwd'
+        # fluid.core.globals()['FLAGS_dump_limit'] = 64
         # fluid.set_flags({'FLAGS_dump_limit': 64})
         # print("SUCCESS! set flags successfully!")
         # os.environ['TENSOR_DUMP_OPERATORS'] = "fc_mkldnn_fwd"
@@ -128,50 +148,51 @@ class TestTensorDump():
                 # },
                 # fetch_list=test_case.fetch_list
             )
-            # for id, name in enumerate(test_case.fetch_list):
-            #     __assert_close(test_case, var_dict[name], out[id], name)
+        load_tensor_from_file("out/fc_mkldnn_fwd_Out_float_ANY_LAYOUT", 2)
+        # for id, name in enumerate(test_case.fetch_list):
+        #     __assert_close(test_case, var_dict[name], out[id], name)
 
-        # def test_global_dump(self):
-        #     os.environ['TENSOR_DUMP_OPERATORS'] = 'fc_mkldnn_fwd=NHWC,transpose_mkldnn_fwd=NHWC'
-        #     os.environ['TENSOR_DUMP_FOLDER'] = 'out'
-        #     os.environ['DUMP_LIMIT'] = '64'
+    # def test_global_dump(self):
+    #     os.environ['TENSOR_DUMP_OPERATORS'] = 'fc_mkldnn_fwd=NHWC,transpose_mkldnn_fwd=NHWC'
+    #     os.environ['TENSOR_DUMP_FOLDER'] = 'out'
+    #     os.environ['DUMP_LIMIT'] = '64'
 
-        #     self.input = np.random.random((1, 10 * 3 * 3)).astype("float32")
-        #     self.weights = np.random.random((10 * 3 * 3, 15)).astype("float32")
-        #     self.bias = np.random.random(15).astype("float32")
-        #     self.op_type = "fc"
-        #     self._cpu_only = True
-        #     self.use_mkldnn = True
-        #     self.inputs = {
-        #         'Input': self.input,
-        #         'W': self.weights,
-        #         'Bias': self.bias
-        #     }
-        #     self.attrs = {'use_mkldnn': self.use_mkldnn}
+    #     self.input = np.random.random((1, 10 * 3 * 3)).astype("float32")
+    #     self.weights = np.random.random((10 * 3 * 3, 15)).astype("float32")
+    #     self.bias = np.random.random(15).astype("float32")
+    #     self.op_type = "fc"
+    #     self._cpu_only = True
+    #     self.use_mkldnn = True
+    #     self.inputs = {
+    #         'Input': self.input,
+    #         'W': self.weights,
+    #         'Bias': self.bias
+    #     }
+    #     self.attrs = {'use_mkldnn': self.use_mkldnn}
 
-        #     self.outputs = {
-        #         'Out': fully_connected_naive(self.input, self.weights,
-        #                                      self.bias)
-        #     }
-        #     self.check_output(check_dygraph=False)
-        #     print("Tested")
+    #     self.outputs = {
+    #         'Out': fully_connected_naive(self.input, self.weights,
+    #                                      self.bias)
+    #     }
+    #     self.check_output(check_dygraph=False)
+    #     print("Tested")
 
-        # x = np.random.random(1, 3, 2, 2).astype(np.float32)
-        # weights = np.random.random(1, 15, 2, 2).astype(np.float32)
-        # bias = np.random.random(1, 15).astype(np.float32)
-        # target = x * weights + bias
-        # weights = np.random.random()
-        # ground_truth = {}
-        # program = fluid.Program()
-        # with fluid.program_guard(program):
-        #     block = program.global_block()
-        #     for name in ground_truth:
+    # x = np.random.random(1, 3, 2, 2).astype(np.float32)
+    # weights = np.random.random(1, 15, 2, 2).astype(np.float32)
+    # bias = np.random.random(1, 15).astype(np.float32)
+    # target = x * weights + bias
+    # weights = np.random.random()
+    # ground_truth = {}
+    # program = fluid.Program()
+    # with fluid.program_guard(program):
+    #     block = program.global_block()
+    #     for name in ground_truth:
 
-        #     op = block.append_op(
-        #         type = "fc",
-        #         inputs = {'X': block.var('x'), 'Filter'}
+    #     op = block.append_op(
+    #         type = "fc",
+    #         inputs = {'X': block.var('x'), 'Filter'}
 
-        #     )
+    #     )
 
 
 if __name__ == "__main__":

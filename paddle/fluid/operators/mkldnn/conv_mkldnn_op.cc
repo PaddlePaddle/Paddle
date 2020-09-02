@@ -451,8 +451,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory_p));
-    platform::DumpComposit<T>::execute("conv_mkldnn_fwd", ctx.OutputName("Out"),
-                                       *output);
+    platform::DumpComposit::execute("conv_mkldnn_fwd", ctx, *output);
   }
 
   template <typename T_out>
