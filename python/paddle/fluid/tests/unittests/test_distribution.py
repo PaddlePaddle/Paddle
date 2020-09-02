@@ -446,15 +446,6 @@ class NormalTest2(NormalTest):
             self.other_scale_np = int((np.random.ranf() - 0.5) * 8)
         self.values_np = np.random.ranf(1).astype('float32')
 
-    def init_static_data(self, batch_size, dims):
-        self.static_loc = self.loc_np
-        self.static_scale = self.scale_np
-        self.static_other_loc = self.other_loc_np
-        self.static_other_scale = self.other_scale_np
-        with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[], dtype='float32')
-
 
 class NormalTest3(NormalTest):
     def init_numpy_data(self, batch_size, dims):
