@@ -12031,6 +12031,8 @@ for func in [
         elementwise_floordiv,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
+
+    # insert the c++ doc string on top of python doc string
     func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=[
@@ -12047,6 +12049,16 @@ for func in [
             "x_data_format", "y_data_format", "axis", "use_quantizer",
             "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
         }) + """\n""" + str(func.__doc__)
+
+    doc_list = func.__doc__.splitlines()
+
+    for idx, val in enumerate(doc_list):
+        if val.startswith("Warning: ") and val.endswith(
+                " instead."
+        ) and "and will be removed in future versions." in val:
+            doc_list.insert(0, doc_list.pop(idx))
+            func.__doc__ = "\n" + "\n".join(i for i in doc_list)
+            break
 
 for func in []:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
