@@ -1845,19 +1845,18 @@ class Model(object):
 
               dynamic = True
               device = paddle.set_device('cpu')
-              fluid.enable_dygraph(device) if dynamic else None
+              paddle.disable_static(device) if dynamic else None
            
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
            
-              model = paddle.hapi.Model(hapi.vision.LeNet(classifier_activation=None),
+              model = paddle.Model(paddle.vision.LeNet(classifier_activation=None),
                   input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())
               model.prepare(
                   optim,
-                  paddle.nn.CrossEntropyLoss(),
-                  hapi.metrics.Accuracy(topk=(1, 2)))
+                  paddle.nn.CrossEntropyLoss())
 
               params_info = model.summary()
               print(params_info)
