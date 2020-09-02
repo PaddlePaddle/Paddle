@@ -369,8 +369,6 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
             shape = np.array([2, 3])
             shape_tensor = paddle.to_tensor(shape)
             out3 = paddle.tensor.random.uniform(shape_tensor)
-            # if shape_tensor's value is [2, 3]
-            # out3 is:
             # [[-0.8517412,  -0.4006908,   0.2551912 ],  # random
             #  [ 0.3364414,   0.36278176, -0.16085452]]  # random
 
