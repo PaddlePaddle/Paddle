@@ -15,12 +15,9 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
-import os
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
-
-np.random.seed(0)
 
 
 def check():
@@ -30,8 +27,8 @@ def check():
     with fluid.dygraph.guard():
         a = fluid.dygraph.to_variable(a_np)
         res1 = func(a)
-        res2 = fluid.layers.relu(a)
-    assert (np.array_equal(res1.numpy(), res2.numpy()))
+        res2 = np.maximum(a_np, 0)
+    assert (np.array_equal(res1.numpy(), res2))
 
 
 if __name__ == '__main__':
