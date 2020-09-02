@@ -103,17 +103,17 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
       {"read_file_0.tmp_0", min_shape},
       {"read_file_0.tmp_1", min_shape},
       {"read_file_0.tmp_2", min_shape},
-      {"read_file_0.tmp_3", min_shape}};
+      {"read_file_0.tmp_4", min_shape}};
   std::map<std::string, std::vector<int>> max_input_shape = {
       {"read_file_0.tmp_0", max_shape},
       {"read_file_0.tmp_1", max_shape},
       {"read_file_0.tmp_2", max_shape},
-      {"read_file_0.tmp_3", max_shape}};
+      {"read_file_0.tmp_4", max_shape}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
       {"read_file_0.tmp_0", opt_shape},
       {"read_file_0.tmp_1", opt_shape},
       {"read_file_0.tmp_2", opt_shape},
-      {"read_file_0.tmp_3", opt_shape}};
+      {"read_file_0.tmp_4", opt_shape}};
 
   auto precision = AnalysisConfig::Precision::kFloat32;
   if (with_fp16) {
