@@ -30,11 +30,11 @@ from paddle.fluid import unique_name
 import numpy as np
 from paddle.io import Dataset, BatchSampler, DataLoader
 
-BATCH_NUM = 20
-BATCH_SIZE = 16
+BATCH_NUM = 4
+BATCH_SIZE = 1
 
 #IMAGE_SIZE = 128
-CLASS_NUM = 10
+CLASS_NUM = 2
 
 USE_GPU = False  # whether use GPU to run model
 places = fluid.cuda_places() if USE_GPU else fluid.cpu_places()
@@ -59,7 +59,7 @@ def sample_list_generator_creator():
         for _ in range(BATCH_NUM):
             sample_list = []
             for _ in range(BATCH_SIZE):
-                image, label = get_random_images_and_labels([16, 16], [1])
+                image, label = get_random_images_and_labels([4, 4], [1])
                 sample_list.append([image, label])
 
             yield sample_list
@@ -75,8 +75,7 @@ class AutoCheckpointBase(unittest.TestCase):
                   minimize=True,
                   iterable=True):
         def simple_net():
-            image = fluid.data(
-                name='image', shape=[-1, 16, 16], dtype='float32')
+            image = fluid.data(name='image', shape=[-1, 4, 4], dtype='float32')
             label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
 
             fc_tmp = fluid.layers.fc(image, size=CLASS_NUM)

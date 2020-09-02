@@ -25,7 +25,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
     def test_pipeline_optimizer(self):
         import paddle.distributed.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+        import paddle.distributed.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         with paddle.fluid.device_guard("cpu"):
@@ -53,7 +53,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         strategy.pipeline = True
         strategy.pipeline_configs = {'micro_batch': 2}
 
-        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

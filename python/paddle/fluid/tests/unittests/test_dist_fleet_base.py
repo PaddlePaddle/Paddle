@@ -31,10 +31,11 @@ import time
 import tempfile
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.fleet.base.util_factory import fleet_util
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.distributed.fleet import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
@@ -56,7 +57,7 @@ class FleetDistRunnerBase(object):
         if args.role.upper() == "PSERVER":
             role = role_maker.UserDefinedRoleMaker(
                 is_collective=False,
-                init_gloo=True,
+                init_gloo=False,
                 path=args.gloo_path,
                 current_id=args.current_id,
                 role=role_maker.Role.SERVER,
@@ -65,7 +66,7 @@ class FleetDistRunnerBase(object):
         else:
             role = role_maker.UserDefinedRoleMaker(
                 is_collective=False,
-                init_gloo=True,
+                init_gloo=False,
                 path=args.gloo_path,
                 current_id=args.current_id,
                 role=role_maker.Role.WORKER,
@@ -75,21 +76,23 @@ class FleetDistRunnerBase(object):
         return role
 
     def build_strategy(self, args):
-        self.strategy = None
+        self.strategy = paddle.distributed.fleet.DistributedStrategy()
+        self.strategy.a_sync = False
         if args.mode == "async":
-            self.strategy = StrategyFactory.create_async_strategy()
-        elif args.mode == "sync":
-            self.strategy = StrategyFactory.create_sync_strategy()
-        elif args.mode == "half_async":
-            self.strategy = StrategyFactory.create_half_async_strategy()
+            self.strategy = paddle.distributed.fleet.DistributedStrategy()
+            self.strategy.a_sync = True
         elif args.mode == "geo":
-            self.strategy = StrategyFactory.create_geo_strategy(
-                args.geo_sgd_need_push_nums)
+            self.strategy = paddle.distributed.fleet.DistributedStrategy()
+            self.strategy.a_sync = True
+            self.strategy.a_sync_configs = {
+                "k_steps": args.geo_sgd_need_push_nums
+            }
         self.dump_param = os.getenv("dump_param", "").split(",")
         self.dump_fields = os.getenv("dump_fields", "").split(",")
         self.dump_fields_path = os.getenv("dump_fields_path", "")
         debug = int(os.getenv("Debug", "0"))
-        if debug:
+        # TODO(update strategy to support dump params)
+        if False:  #debug:
             self.strategy.set_debug_opt({
                 "dump_param": self.dump_param,
                 "dump_fields": self.dump_fields,
@@ -122,7 +125,7 @@ class FleetDistRunnerBase(object):
                     staircase=True))
         else:
             optimizer = fluid.optimizer.SGD(LEARNING_RATE)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
     def run_pserver(self, args):
@@ -157,7 +160,13 @@ class TestFleetBase(unittest.TestCase):
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
 
+    def tearDown(self):
+        t = time.time() - self.startTime
+        print('%s: %.3f' % (self.__class__.__name__, t))
+
     def setUp(self):
+        self.startTime = time.time()
+
         self._mode = "sync"
         self._reader = "pyreader"
         self._trainers = 2
@@ -278,6 +287,23 @@ class TestFleetBase(unittest.TestCase):
 
         tr0_ret = tr0.returncode
         tr1_ret = tr0.returncode
+        if tr0_ret != 0:
+            print(
+                "========================Error tr0_err begin==========================="
+            )
+            os.system("cat {}".format(tempfile.gettempdir() + "/tr0_err.log"))
+            print(
+                "========================Error tr0_err end==========================="
+            )
+
+        if tr1_ret != 0:
+            print(
+                "========================Error tr1_err begin==========================="
+            )
+            os.system("cat {}".format(tempfile.gettempdir() + "/tr1_err.log"))
+            print(
+                "========================Error tr1_err end==========================="
+            )
 
         self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")
         self.assertEqual(tr1_ret, 0, "something wrong in tr1, please check")

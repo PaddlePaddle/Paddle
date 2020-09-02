@@ -18,23 +18,134 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 import six
-import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from op_test import OpTest, skip_check_grad_ci
+import paddle
+import paddle.nn.functional as F
 
 
-class TestPReluOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program()):
+def ref_prelu(x, weight):
+    x_t = x.copy()
+    weight = weight.reshape(1, -1, 1, 1)
+    neg_indices = x <= 0
+    assert x.shape == neg_indices.shape
+    x_t[neg_indices] = (x_t * weight)[neg_indices]
+    return (x_t, )
+
+
+def ref_prelu_nn(x, num_parameters, init):
+    weight_np = np.full((num_parameters), init)
+    return ref_prelu(x, weight_np)
+
+
+class TestFunctionalPReluAPI(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
+        self.x_np = np.random.uniform(-1., 1., [1, 2, 3, 4]).astype('float32')
+        self.weight_np_0 = np.random.randn(1).astype('float32')
+        self.weight_np_1 = np.random.randn(self.x_np.shape[1]).astype('float32')
+
+    def static_check(self, weight_np):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', self.x_np.shape, 'float32')
+            weight = paddle.data('Alpha', weight_np.shape, 'float32')
+            out = F.prelu(x, weight)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np,
+                                'Alpha': weight_np},
+                          fetch_list=[out])
+        out_ref = ref_prelu(self.x_np, weight_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
+    def dygraph_check(self, weight_np):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        weight = paddle.to_tensor(weight_np)
+        out = F.prelu(x, weight)
+        out_ref = ref_prelu(self.x_np, weight_np)
+        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        paddle.enable_static()
+
+    def test_static_api(self):
+        self.static_check(self.weight_np_0)
+        self.static_check(self.weight_np_1)
+
+    def test_dygraph_api(self):
+        self.dygraph_check(self.weight_np_0)
+        self.dygraph_check(self.weight_np_1)
+
+    def test_error(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            weight_fp32 = paddle.data(
+                name='weight_fp32', shape=[1], dtype='float32')
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.prelu, 0.1, 'all')
+            self.assertRaises(TypeError, F.prelu, x=1, weight=weight_fp32)
             # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.prelu, x_int32, 'all')
-            # support the input dtype is float32
-            x_fp16 = fluid.layers.data(
-                name='x_fp16', shape=[12, 10], dtype='float32')
-            fluid.layers.prelu(x_fp16, 'all')
+            x_int32 = paddle.data(name='x_int32', shape=[2, 3], dtype='int32')
+            self.assertRaises(TypeError, F.prelu, x=x_int32, weight=weight_fp32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[2, 3], dtype='float16')
+            F.prelu(x=x_fp16, weight=weight_fp32)
+
+
+class TestNNPReluAPI(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else paddle.CPUPlace()
+        self.x_np = np.ones([1, 2, 3, 4]).astype('float32')
+
+    def test_static_api(self):
+        startup_program = paddle.static.Program()
+        train_program = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup_program):
+            x = paddle.data(name='X', shape=self.x_np.shape, dtype='float32')
+            m = paddle.nn.PReLU()
+            out = m(x)
+            exe = paddle.static.Executor(self.place)
+            exe.run(startup_program)
+            res = exe.run(train_program,
+                          feed={'X': self.x_np},
+                          fetch_list=[out])
+        out_ref = ref_prelu_nn(self.x_np, 1, 0.25)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+
+        x = paddle.to_tensor(self.x_np)
+        m = paddle.nn.PReLU()
+        out = m(x)
+        out_ref = ref_prelu_nn(self.x_np, 1, 0.25)
+        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+
+        x = paddle.to_tensor(self.x_np)
+        m = paddle.nn.PReLU(num_parameters=self.x_np.shape[1])
+        out = m(x)
+        out_ref = ref_prelu_nn(self.x_np, self.x_np.shape[1], 0.25)
+        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+
+        x = paddle.to_tensor(self.x_np)
+        m = paddle.nn.PReLU(init=0.5)
+        out = m(x)
+        out_ref = ref_prelu_nn(self.x_np, 1, 0.5)
+        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+
+        x = paddle.to_tensor(self.x_np)
+        m = paddle.nn.PReLU(weight_attr=fluid.ParamAttr(name="weight"))
+        out = m(x)
+        out_ref = ref_prelu_nn(self.x_np, 1, 0.25)
+        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+
+        x = paddle.to_tensor(self.x_np)
+        m = paddle.nn.PReLU(weight_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(0.5)))
+        out = m(x)
+        out_ref = ref_prelu_nn(self.x_np, 1, 0.5)
+        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+
+        paddle.enable_static()
 
 
 class PReluTest(OpTest):

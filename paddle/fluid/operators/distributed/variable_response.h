@@ -96,6 +96,13 @@ class VariableResponse {
     return scope_->FindVar(meta_.varname());
   }
 
+  framework::Variable* GetRecvVar() {
+    if (create_scope_) {
+      return local_scope_->Var(meta_.out_varname());
+    }
+    return scope_->FindVar(meta_.out_varname());
+  }
+
   int GetTrainerId() { return static_cast<int>(meta_.trainer_id()); }
 
  protected:

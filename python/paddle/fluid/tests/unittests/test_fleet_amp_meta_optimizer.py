@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
 import unittest
 import paddle
 import os
@@ -23,8 +25,6 @@ class TestFleetAMPOptimizer(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
 
     def test_amp_optimizer(self):
-        import paddle.distributed.fleet as fleet
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         input_x = paddle.fluid.layers.data(
@@ -51,7 +51,7 @@ class TestFleetAMPOptimizer(unittest.TestCase):
             "custom_black_list": ['tanh'],
         }
 
-        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

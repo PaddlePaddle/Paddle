@@ -53,13 +53,6 @@ class SoftmaxOp : public framework::OperatorWithKernel {
                           "Attr(axis) value should be in range [-R, R-1], "
                           "R is the rank of Input(X)."));
 
-    auto use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
-    if (axis != rank_x - 1 && axis != -1) {
-      PADDLE_ENFORCE_EQ(use_cudnn, false,
-                        platform::errors::InvalidArgument(
-                            "CUDNN kernel only support axis as -1."));
-    }
-
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }

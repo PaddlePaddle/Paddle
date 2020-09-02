@@ -460,6 +460,17 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 
 template <>
 template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedGEMM(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    T alpha, const T **A, const T **B, T beta, T **C, int batchCount) const {
+  for (int k = 0; k < batchCount; ++k) {
+    this->template GEMM<T>(transA, transB, M, N, K, alpha, A[k], B[k], beta,
+                           C[k]);
+  }
+}
+
+template <>
+template <typename T>
 void Blas<platform::CUDADeviceContext>::TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
                                              CBLAS_TRANSPOSE transA,
                                              CBLAS_DIAG diag, int M, int N,
