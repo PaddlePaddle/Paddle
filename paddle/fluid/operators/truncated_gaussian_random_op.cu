@@ -99,7 +99,7 @@ class GPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
 
     auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
     if (gen_cuda->GetIsInitPy() && seed_flag && false) {
-      std::cout << ">>>>>>>>CUDA TRUNCATED NORMAL GENERATOR" << std::endl;
+      // std::cout << ">>>>>>>>CUDA TRUNCATED NORMAL GENERATOR" << std::endl;
       // auto seed_offset = gen_cuda->IncrementOffset(1);
       auto seed_gen = static_cast<int>(gen_cuda->GetCurrentSeed());
       // int offset_step = 0;

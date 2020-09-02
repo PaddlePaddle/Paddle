@@ -121,7 +121,7 @@ std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine() {
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
   if (DefaultCPUGenerator()->GetIsInitPy() && seed == 0) {
     VLOG(4) << "Use random engine from generator";
-    std::cout << "Use random engine from generator" << std::endl;
+    // std::cout << "Use random engine from generator" << std::endl;
     return DefaultCPUGenerator()->GetCPUEngine();
   } else {
     // NOTE(zhiqiu): creating an engine instance everytime instead of using

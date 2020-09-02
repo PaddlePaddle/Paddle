@@ -61,7 +61,7 @@ class BernoulliOpKernel<platform::CUDADeviceContext, T>
     int64_t device_id = -1;
     auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
     if (gen_cuda->GetIsInitPy() && seed_flag) {
-      std::cout << ">>>>>>>>CUDA bernoulli GENERATOR" << std::endl;
+      // std::cout << ">>>>>>>>CUDA bernoulli GENERATOR" << std::endl;
       // auto seed_offset = gen_cuda->IncrementOffset(1);
       auto seed_gen = static_cast<int>(gen_cuda->GetCurrentSeed());
       // int offset_step = 0;

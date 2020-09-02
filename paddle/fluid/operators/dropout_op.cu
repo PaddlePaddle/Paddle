@@ -190,7 +190,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
       if (gen_cuda->GetIsInitPy() && (!context.Attr<bool>("fix_seed")) &&
           false) {
-        std::cout << ">>>>>>>>CUDA DROPOUT GENERATOR" << std::endl;
+        // std::cout << ">>>>>>>>CUDA DROPOUT GENERATOR" << std::endl;
         // auto seed_offset = gen_cuda->IncrementOffset(1);
         auto seed_gen = static_cast<int>(gen_cuda->GetCurrentSeed());
         RandomGeneratorWithGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(

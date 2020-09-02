@@ -87,7 +87,7 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
 
     if (gen_cuda->GetIsInitPy() && seed_flag) {
-      std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
+      // std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
       auto seed_offset = gen_cuda->IncrementOffset(1);
       // auto seed_gen = static_cast<unsigned int>(gen_cuda->GetCurrentSeed());
       // int offset_step = 0;
@@ -100,7 +100,7 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
                         thrust::device_ptr<T>(data),
                         GaussianGenerator<T>(mean, std, seed_offset.first, 0));
     } else {
-      std::cout << "COUNT ORIGIN" << std::endl;
+      // std::cout << "COUNT ORIGIN" << std::endl;
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
                         thrust::device_ptr<T>(data),
                         GaussianGenerator<T>(mean, std, seed));
@@ -128,7 +128,7 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
     auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
 
     if (gen_cuda->GetIsInitPy() && seed_flag) {
-      std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
+      // std::cout << ">>>>>>>>CUDA GAUSSIAN GENERATOR" << std::endl;
       // auto seed_offset = gen_cuda->IncrementOffset(1);
       auto seed_gen = static_cast<unsigned int>(gen_cuda->GetCurrentSeed());
       // int offset_step = 0;
@@ -141,7 +141,7 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
                         thrust::device_ptr<T>(data),
                         GaussianGenerator<T>(mean, std, seed_gen, 0));
     } else {
-      std::cout << "COUNT ORIGIN" << std::endl;
+      // std::cout << "COUNT ORIGIN" << std::endl;
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
                         thrust::device_ptr<T>(data),
                         GaussianGenerator<T>(mean, std, seed));
