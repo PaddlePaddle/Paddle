@@ -317,12 +317,19 @@ class DistributedStrategy(object):
 
         **Notes**:
             init_loss_scaling(float): The initial loss scaling factor. Default 32768.
+
             use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. Default True.
+
             incr_every_n_steps(int): Increases loss scaling every n consecutive steps with finite gradients. Default 1000.
+
             decr_every_n_nan_or_inf(int): Decreases loss scaling every n accumulated steps with nan or inf gradients. Default 2.
+
             incr_ratio(float): The multiplier to use when increasing the loss scaling. Default 2.0.
+
             decr_ratio(float): The less-than-one-multiplier to use when decreasing the loss scaling. Default 0.5.
+
             custom_white_list(list[str]): Users' custom white list which always execution fp16.
+
             custom_black_list(list[str]): Users' custom black list which forbidden execution fp16.
 
         Examples:
@@ -715,10 +722,12 @@ class DistributedStrategy(object):
 
         **Notes**:
             rampup_begin_step(int): The beginning step from which gradient compression is implemented. Default 0.
+
             rampup_step(int): Time steps used in sparsity warm-up periods. Default is 1. \
                     For example, if the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 100, \
                     it will use 0.75 at 0~19 steps, and 0.9375 at 20~39 steps, and so on. And when reach sparsity array \
                     ends, it will use 0.999 then and after.
+
             sparsity(list[float]): Get top important element from gradient tensor, the ratio is (1 - sparsity). \
                     Default is [0.999]. For example, if the sparsity is [0.99, 0.999], the top [1%, 0.1%] important \
                     element will be transmitted.
