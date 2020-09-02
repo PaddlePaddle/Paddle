@@ -42,7 +42,8 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         out, err = proc.communicate()
         returncode = proc.returncode
 
-        # print(out)
+        print(out)
+        print(err)
 
         assert returncode == 0
         # in python3, type(out) is 'bytes', need use encode
