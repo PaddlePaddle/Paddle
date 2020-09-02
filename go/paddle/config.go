@@ -154,17 +154,10 @@ func (config *AnalysisConfig) EnableMkldnnQuantizer() {
 	C.PD_EnableMkldnnQuantizer(config.c)
 }
 
-func (config *AnalysisConfig) EnableMkldnnBfloat16() {
-	C.PD_EnableMkldnnBfloat16(config.c)
-}
-
 func (config *AnalysisConfig) MkldnnQuantizerEnabled() bool {
 	return ConvertCBooleanToGo(C.PD_MkldnnQuantizerEnabled(config.c))
 }
 
-func (config *AnalysisConfig) MkldnnBfloat16Enabled() bool {
-	return ConvertCBooleanToGo(C.PD_MkldnnBfloat16Enabled(config.c))
-}
 // SetModelBuffer
 // ModelFromMemory
 
