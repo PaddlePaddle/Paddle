@@ -19,6 +19,8 @@ import argparse
 import time
 import math
 import random
+import shutil
+import tempfile
 
 import paddle
 import paddle.fluid as fluid
@@ -29,7 +31,8 @@ from multiprocessing import Process
 import os
 import signal
 from functools import reduce
-from test_dist_base import TestDistRunnerBase, runtime_main
+from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
+from paddle.distributed.fleet.base.util_factory import fleet_util
 
 DTYPE = "int64"
 DATA_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/simnet.train.1000'
@@ -47,6 +50,18 @@ sample_rate = 1
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
+
+
+def fake_simnet_reader():
+    def reader():
+        for _ in range(1000):
+            q = np.random.random_integers(0, 1500 - 1, size=1).tolist()
+            label = np.random.random_integers(0, 1, size=1).tolist()
+            pt = np.random.random_integers(0, 1500 - 1, size=1).tolist()
+            nt = np.random.random_integers(0, 1500 - 1, size=1).tolist()
+            yield [q, label, pt, nt]
+
+    return reader
 
 
 def get_acc(cos_q_nt, cos_q_pt, batch_size):
@@ -75,34 +90,40 @@ def get_loss(cos_q_pt, cos_q_nt):
     return avg_cost
 
 
-def get_optimizer(op="sgd"):
-    if op.upper() == "sgd".upper():
-        optimizer = fluid.optimizer.SGD(learning_rate=base_lr)
-    elif op.upper() == "adam".upper():
-        optimizer = fluid.optimizer.Adam(learning_rate=base_lr)
-    else:
-        optimizer = fluid.optimizer.SGD(learning_rate=base_lr)
-    return optimizer
-
-
 def train_network(batch_size,
                   is_distributed=False,
                   is_sparse=False,
-                  is_self_contained_lr=False):
+                  is_self_contained_lr=False,
+                  is_pyreader=False):
     # query
     q = fluid.layers.data(
         name="query_ids", shape=[1], dtype="int64", lod_level=1)
+    # label data
+    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+    # pt
+    pt = fluid.layers.data(
+        name="pos_title_ids", shape=[1], dtype="int64", lod_level=1)
+    # nt
+    nt = fluid.layers.data(
+        name="neg_title_ids", shape=[1], dtype="int64", lod_level=1)
+
+    datas = [q, label, pt, nt]
+
+    reader = None
+    if is_pyreader:
+        reader = fluid.io.PyReader(
+            feed_list=datas,
+            capacity=64,
+            iterable=False,
+            use_double_buffer=False)
+
     # embedding
     q_emb = fluid.embedding(
         input=q,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01),
-            name="__emb__",
-            learning_rate=emb_lr) if is_self_contained_lr else fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
-                name="__emb__"),
+            initializer=fluid.initializer.Constant(value=0.01), name="__emb__"),
         is_sparse=is_sparse)
     q_emb = fluid.layers.reshape(q_emb, [-1, emb_dim])
     # vsum
@@ -115,12 +136,8 @@ def train_network(batch_size,
         param_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01),
             name="__q_fc__",
-            learning_rate=base_lr))
-    # label data
-    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-    # pt
-    pt = fluid.layers.data(
-        name="pos_title_ids", shape=[1], dtype="int64", lod_level=1)
+            learning_rate=base_lr), )
+
     # embedding
     pt_emb = fluid.embedding(
         input=pt,
@@ -129,9 +146,7 @@ def train_network(batch_size,
         param_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01),
             name="__emb__",
-            learning_rate=emb_lr) if is_self_contained_lr else fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
-                name="__emb__"),
+            learning_rate=emb_lr),
         is_sparse=is_sparse)
     pt_emb = fluid.layers.reshape(pt_emb, [-1, emb_dim])
     # vsum
@@ -142,24 +157,16 @@ def train_network(batch_size,
         input=pt_ss,
         size=hid_dim,
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01),
-            name="__fc__",
-            learning_rate=base_lr),
+            initializer=fluid.initializer.Constant(value=0.01), name="__fc__"),
         bias_attr=fluid.ParamAttr(name="__fc_b__"))
-    # nt
-    nt = fluid.layers.data(
-        name="neg_title_ids", shape=[1], dtype="int64", lod_level=1)
+
     # embedding
     nt_emb = fluid.embedding(
         input=nt,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01),
-            name="__emb__",
-            learning_rate=emb_lr) if is_self_contained_lr else fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01),
-                name="__emb__"),
+            initializer=fluid.initializer.Constant(value=0.01), name="__emb__"),
         is_sparse=is_sparse)
     nt_emb = fluid.layers.reshape(nt_emb, [-1, emb_dim])
     # vsum
@@ -170,9 +177,7 @@ def train_network(batch_size,
         input=nt_ss,
         size=hid_dim,
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01),
-            name="__fc__",
-            learning_rate=base_lr),
+            initializer=fluid.initializer.Constant(value=0.01), name="__fc__"),
         bias_attr=fluid.ParamAttr(name="__fc_b__"))
     cos_q_pt = fluid.layers.cos_sim(q_fc, pt_fc)
     cos_q_nt = fluid.layers.cos_sim(q_fc, nt_fc)
@@ -180,79 +185,67 @@ def train_network(batch_size,
     avg_cost = get_loss(cos_q_pt, cos_q_nt)
     # acc
     acc = get_acc(cos_q_nt, cos_q_pt, batch_size)
-    return [avg_cost, acc, cos_q_pt]
+    return avg_cost, acc, cos_q_pt, reader
 
 
-def combination(x, y):
-    res = [[[xi, yi] for yi in y] for xi in x]
-    return res[0]
+class TestDistSimnetBow2x2(FleetDistRunnerBase):
+    """
+    For test SimnetBow model, use Fleet api
+    """
 
+    def net(self, args, batch_size=4, lr=0.01):
+        avg_cost, _, predict, self.reader = \
+            train_network(batch_size=batch_size, is_distributed=False,
+                               is_sparse=True, is_self_contained_lr=False, is_pyreader=(args.reader == "pyreader"))
+        self.avg_cost = avg_cost
+        self.predict = predict
 
-def get_one_data(file_list):
-    for file in file_list:
-        contents = []
-        with open(file, "r") as fin:
-            for i in fin:
-                contents.append(i.strip())
-            for index, q in enumerate(contents):
-                try:
-                    one_data = [[int(j) for j in i.split(" ")]
-                                for i in q.split(";")[:-1]]
-                    if one_data[1][0] + one_data[1][1] != len(one_data) - 3:
-                        q = fin.readline()
-                        continue
-                    tmp = combination(one_data[3:3 + one_data[1][0]],
-                                      one_data[3 + one_data[1][0]:])
-                except Exception as e:
-                    continue
+        return avg_cost
 
-                for each in tmp:
-                    yield [one_data[2], 0, each[0], each[1]]
+    def check_model_right(self, dirname):
+        model_filename = os.path.join(dirname, "__model__")
 
+        with open(model_filename, "rb") as f:
+            program_desc_str = f.read()
 
-def get_batch_reader(file_list, batch_size):
-    def batch_reader():
-        res = []
-        for i in get_one_data(file_list):
-            if random.random() <= sample_rate:
-                res.append(i)
-            if len(res) >= batch_size:
-                yield res
-                res = []
+        program = fluid.Program.parse_from_string(program_desc_str)
+        with open(os.path.join(dirname, "__model__.proto"), "w") as wn:
+            wn.write(str(program))
 
-    return batch_reader
+    def do_pyreader_training(self, fleet):
+        """
+        do training using dataset, using fetch handler to catch variable
+        Args:
+            fleet(Fleet api): the fleet object of Parameter Server, define distribute training role
+        """
 
+        exe = fluid.Executor(fluid.CPUPlace())
+        fleet.init_worker()
+        exe.run(fluid.default_startup_program())
+        batch_size = 4
+        # reader
+        train_reader = paddle.batch(fake_simnet_reader(), batch_size=batch_size)
+        self.reader.decorate_sample_list_generator(train_reader)
+        for epoch_id in range(1):
+            self.reader.start()
+            try:
+                pass_start = time.time()
+                while True:
+                    loss_val = exe.run(program=fluid.default_main_program(),
+                                       fetch_list=[self.avg_cost.name])
+                    loss_val = np.mean(loss_val)
+                    message = "TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
+                                                                      loss_val)
+                    fleet_util.print_on_rank(message, 0)
 
-def get_train_reader(batch_size):
-    # The training data set.
-    train_file = os.path.join(paddle.dataset.common.DATA_HOME, "simnet",
-                              "train")
-    train_reader = get_batch_reader([train_file], batch_size)
-    train_feed = ["query_ids", "pos_title_ids", "neg_title_ids", "label"]
-    return train_reader, train_feed
+                pass_time = time.time() - pass_start
+            except fluid.core.EOFException:
+                self.reader.reset()
+        fleet.stop_worker()
 
-
-class TestDistSimnetBow2x2(TestDistRunnerBase):
-    def get_model(self, batch_size=2):
-        # Train program
-        avg_cost, acc, predict = \
-            train_network(batch_size,
-                          bool(int(os.environ["IS_DISTRIBUTED"])),
-                          bool(int(os.environ["IS_SPARSE"])),
-                          bool(int(os.environ["IS_SELF_CONTAINED_LR"])))
-
-        inference_program = fluid.default_main_program().clone()
-
-        # Optimization
-        opt = os.getenv('OPTIMIZER', 'sgd')
-        opt = get_optimizer(opt)
-        opt.minimize(avg_cost)
-
-        # Reader
-        train_reader, _ = get_train_reader(batch_size)
-        return inference_program, avg_cost, train_reader, train_reader, acc, predict
+    def do_dataset_training(self, fleet):
+        pass
 
 
 if __name__ == "__main__":
-    paddle.dataset.common.download(DATA_URL, 'simnet', DATA_MD5, "train")
     runtime_main(TestDistSimnetBow2x2)
