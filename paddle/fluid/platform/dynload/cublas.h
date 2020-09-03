@@ -39,14 +39,14 @@ extern void *cublas_dso_handle;
 #define DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)                             \
   struct DynLoad__##__name {                                                 \
     template <typename... Args>                                              \
-    inline auto operator()(Args... args) -> DECLARE_TYPE(__name, args...){                         \
+    inline auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {  \
       using cublas_func =                                                    \
-	    decltype(::__name(std::declval<Args>()...)) (*)(Args...);          \
+          decltype(::__name(std::declval<Args>()...)) (*)(Args...);          \
       std::call_once(cublas_dso_flag, []() {                                 \
         cublas_dso_handle = paddle::platform::dynload::GetCublasDsoHandle(); \
       });                                                                    \
       static void *p_##__name = dlsym(cublas_dso_handle, #__name);           \
-      return reinterpret_cast<cublas_func>(p_##__name)(args...);               \
+      return reinterpret_cast<cublas_func>(p_##__name)(args...);             \
     }                                                                        \
   };                                                                         \
   extern DynLoad__##__name __name
