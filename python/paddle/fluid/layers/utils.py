@@ -282,7 +282,7 @@ def _contain_var(list_or_tuple):
     return False
 
 
-def _get_shape_tensor_inputs(inputs, attrs, shape, op_type):
+def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
     from .tensor import fill_constant, cast
 
     def _get_attr_shape(list_shape):
@@ -347,7 +347,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
     return new_list_tensor
 
 
-def _convert_shape_to_list(shape):
+def convert_shape_to_list(shape):
     """
     Convert shape(list, tuple, variable) to list in imperative mode
     """
