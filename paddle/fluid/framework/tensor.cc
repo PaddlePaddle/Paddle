@@ -20,12 +20,17 @@ namespace framework {
 extern size_t SizeOfType(proto::VarType::Type type);
 void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
-      holder_, "Tensor holds no memory. Call Tensor::mutable_data first.");
+      holder_,
+      platform::errors::PreconditionNotMet(
+          "The `holder_` of Tensor is nullptr. Tensor holds no memory. "
+          "Call Tensor::mutable_data first."));
   PADDLE_ENFORCE_LE(
       numel() * SizeOfType(type()), memory_size(),
-      "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
-      "first to re-allocate memory.\n"
-      "or maybe the required data-type mismatches the data already stored.");
+      platform::errors::PreconditionNotMet(
+          "Tensor's dims_ is out of bound."
+          "Tensor's dims_ must be equal or lesser than the size of memory."
+          "But received  Tensor's dims_ = d%, memory's size = %d.",
+          numel() * SizeOfType(type()), memory_size()));
 }
 
 Tensor::Tensor(const proto::VarType::Type& dtype) : type_(dtype), offset_(0) {}
@@ -38,17 +43,20 @@ void* Tensor::mutable_data(const platform::Place& place,
                            proto::VarType::Type type, size_t requested_size) {
   type_ = type;
   PADDLE_ENFORCE_GE(numel(), 0,
-                    "When calling this method, the Tensor's numel must be "
-                    "equal or larger than zero. "
-                    "Please check Tensor::dims, or Tensor::Resize has been "
-                    "called first. The Tensor's shape is [",
-                    dims(), "] now");
+                    platform::errors::PreconditionNotMet(
+                        "The Tensor's numel must be "
+                        "equal or larger than zero. "
+                        "Please check Tensor::dims, or Tensor::Resize has been "
+                        "called first. The Tensor's shape is [",
+                        dims(), "] now"));
   size_t size = numel() * SizeOfType(type);
   if (requested_size) {
     PADDLE_ENFORCE_GE(requested_size, size,
                       platform::errors::InvalidArgument(
-                          "The requested memory size is less than the tensor "
-                          "expected memory size."));
+                          "The requested memory size is less than the tensor."
+                          "But received  the requested memory size is d%, "
+                          "memory size of Tensor is %d.",
+                          requested_size, size));
     size = requested_size;
   }
   /* some versions of boost::variant don't have operator!= */
@@ -65,8 +73,9 @@ void* Tensor::mutable_data(const platform::Place& place,
 
 void* Tensor::mutable_data(const platform::Place& place,
                            size_t requested_size) {
-  PADDLE_ENFORCE_NOT_NULL(
-      this->holder_, "Cannot invoke mutable data if current hold nothing.");
+  PADDLE_ENFORCE_NOT_NULL(this->holder_,
+                          platform::errors::PreconditionNotMet(
+                              "The `holder_` of Tensor is nullptr."));
   return mutable_data(place, type_, requested_size);
 }
 
@@ -78,12 +87,20 @@ Tensor& Tensor::ShareDataWith(const Tensor& src) {
 
 Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   check_memory_size();
-  PADDLE_ENFORCE_GE(begin_idx, 0,
-                    "The start row index must be greater than 0.");
-  PADDLE_ENFORCE_LE(end_idx, dims_[0], "The end row index is out of bound.");
+  PADDLE_ENFORCE_GE(
+      begin_idx, 0,
+      platform::errors::OutOfRange("The start row index must be greater than 0."
+                                   "But received  the start index is d%.",
+                                   begin_idx));
+  PADDLE_ENFORCE_LE(
+      end_idx, dims_[0],
+      platform::errors::OutOfRange("The end row index is out of bound."));
   PADDLE_ENFORCE_LT(
       begin_idx, end_idx,
-      "The start row index must be lesser than the end row index.");
+      platform::errors::InvalidArgument(
+          "The start row index must be lesser than the end row index."
+          "But received the start index = %d, the end index = %d.",
+          begin_idx, end_idx));
 
   if (dims_[0] == 1) {
     return *this;
