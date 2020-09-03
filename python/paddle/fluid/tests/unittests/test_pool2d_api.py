@@ -149,6 +149,29 @@ class TestPool2d_API(unittest.TestCase):
             result = max_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
+    def check_max_dygraph_nhwc_results(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(
+                np.transpose(input_np, [0, 2, 3, 1]))
+            result, mask = max_pool2d(
+                input,
+                kernel_size=2,
+                stride=2,
+                padding=0,
+                return_indices=False,
+                data_format="NHWC")
+
+            result_np = pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                strides=[2, 2],
+                paddings=[0, 0],
+                pool_type='max')
+            self.assertTrue(
+                np.allclose(
+                    np.transpose(result.numpy(), [0, 3, 1, 2]), result_np))
+
     def check_max_dygraph_padding_results(self, place):
         with fluid.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
@@ -449,6 +472,23 @@ class TestPool2dError_API(unittest.TestCase):
                     padding=padding,
                     ceil_mode=False,
                     data_format='NNNN')
+
+        self.assertRaises(ValueError, run8)
+
+        def run9():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(-1, 1,
+                                             [2, 3, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                padding = "VALID"
+                res_pd = max_pool2d(
+                    input_pd,
+                    kernel_size=2,
+                    stride=2,
+                    padding=padding,
+                    ceil_mode=False,
+                    data_format='NHWC',
+                    return_indices=True)
 
         self.assertRaises(ValueError, run8)
 
