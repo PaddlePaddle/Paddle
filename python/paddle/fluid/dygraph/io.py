@@ -488,6 +488,15 @@ def _load_persistable_vars(model_path,
     return load_var_dict
 
 
+# NOTE(chenweihang): to adapt paddle.load to get state_dict
+def _remove_varname_suffix(var_dict, program_holder):
+    no_suffix_var_dict = dict()
+    for var_name in var_dict:
+        no_suffix_name = program_holder._suffix_varname_dict[var_name]
+        no_suffix_var_dict[no_suffix_name] = var_dict[var_name]
+    return no_suffix_var_dict
+
+
 def _construct_program_holders(model_path, model_filename=None):
     # make sure the path has been checked
     program_holder_dict = dict()
@@ -517,7 +526,8 @@ def _construct_program_holders(model_path, model_filename=None):
 def _construct_params_and_buffers(model_path,
                                   programs,
                                   separate_params=False,
-                                  params_filename=None):
+                                  params_filename=None,
+                                  append_suffix=True):
     var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
     if os.path.exists(var_info_path):
         var_dict = _load_persistable_vars(model_path, var_info_path,
@@ -526,6 +536,10 @@ def _construct_params_and_buffers(model_path,
     else:
         var_dict = _load_persistable_vars_by_program(
             model_path, programs['forward'], params_filename)
+
+    if not append_suffix:
+        var_dict = _remove_varname_suffix(var_dict, programs['forward'])
+
     return var_dict
 
 
@@ -685,7 +699,7 @@ class TranslatedLayer(layers.Layer):
         # 1. load program desc & construct _ProgramHolder
         programs = _construct_program_holders(model_path, model_filename)
 
-        # 2. load layer parameters & parameter attributes
+        # 2. load layer parameters & buffers
         persistable_vars = _construct_params_and_buffers(
             model_path, programs, separate_params, params_filename)
 
