@@ -19,7 +19,7 @@ import paddle.nn.functional as F
 import paddle.fluid.layers as layers
 from paddle.nn import TransformerEncoder, Linear, Layer, Embedding, LayerNorm, Tanh
 
-from ..utils import PreTrainedModel
+from ..utils import PreTrainedModel, register_base_model
 
 __all__ = [
     'BertModel',
@@ -72,7 +72,7 @@ class BertPooler(Layer):
     """
 
     def __init__(self, hidden_size):
-        super(BertPooler).__init__()
+        super(BertPooler, self).__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
         self.activation = nn.Tanh()
 
@@ -116,6 +116,7 @@ class BertPreTrainedModel(PreTrainedModel):
     # TODO(guosheng): add bert same initialization
 
 
+@register_base_model
 class BertModel(BertPreTrainedModel):
     """
 
@@ -134,6 +135,7 @@ class BertModel(BertPreTrainedModel):
                  type_vocab_size=16,
                  initializer_range=0.02,
                  pad_token_id=0):
+        super(BertModel, self).__init__()
         self.embeddings = BertEmbeddings(
             vocab_size, hidden_size, hidden_dropout_prob,
             max_position_embeddings, type_vocab_size)
@@ -171,9 +173,7 @@ class BertForSequenceClassification(BertPreTrainedModel):
     Model for sentence (pair) classification task with BERT.
 
     Args:
-        bert (Layers|str|dict): An instance of BertModel. Or a string representing
-            a name of or a file path to a pretrained bert model. Or a dict for key
-            word arguments of BertModel.
+        bert (BertModel): An instance of BertModel.
         num_classes (int, optional): The number of classes. Default 2
         dropout (float, optional): The dropout probability for output of BERT.
             If None, use the same value as `hidden_dropout_prob` of `BertModel`
@@ -183,9 +183,7 @@ class BertForSequenceClassification(BertPreTrainedModel):
     def __init__(self, bert, num_classes=2, dropout=None):
         super(BertForSequenceClassification, self).__init__()
         self.num_classes = num_classes
-        self.bert = bert if isinstance(bert, BertModel) else (
-            BertModel(**bert)
-            if isinstance(bert, dict) else BertModel.from_pretrained(bert))
+        self.bert = bert
         self.dropout = nn.Dropout(dropout if dropout is not None else
                                   self.bert.config["hidden_dropout_prob"])
         self.classifier = nn.Linear(self.bert.config["hidden_size"],

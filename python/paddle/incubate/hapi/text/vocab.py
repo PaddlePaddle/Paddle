@@ -280,7 +280,13 @@ class Vocab(object):
         return vocab
 
     @classmethod
-    def from_dict(cls, token_to_idx, unk_token=None, **kwargs):
+    def from_dict(cls,
+                  token_to_idx,
+                  unk_token=None,
+                  pad_token=None,
+                  bos_token=None,
+                  eos_token=None,
+                  **kwargs):
         """
         Generate vocab from a dict.
 
@@ -288,6 +294,12 @@ class Vocab(object):
             token_to_idx (dict): A dict describes the mapping relationship between
                 tokens to indices.
             unk_token (str): special token for unknow token. If no need, it also
+                could be None. Default: None.
+            pad_token (str): special token for padding token. If no need, it also
+                could be None. Default: None.
+            bos_token (str): special token for bos token. If no need, it also
+                could be None. Default: None.
+            eos_token (str): special token for eos token. If no need, it also
                 could be None. Default: None.
             **kwargs (dict): Keyword arguments ending with `_token`. It can be used
                 to specify further special tokens that will be exposed as attribute
@@ -299,6 +311,9 @@ class Vocab(object):
         vocab = cls(counter=None,
                     token_to_idx=token_to_idx,
                     unk_token=unk_token,
+                    pad_token=pad_token,
+                    bos_token=bos_token,
+                    eos_token=eos_token,
                     **kwargs)
         return vocab
 

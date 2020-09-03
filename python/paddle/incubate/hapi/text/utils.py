@@ -19,7 +19,12 @@ import io
 import json
 import os
 import six
-import warnings
+import logging
+
+import collections
+import math
+import numpy as np
+from paddle.fluid.dygraph.parallel import ParallelEnv
 
 import paddle
 from paddle.fluid.dygraph import Layer
@@ -27,17 +32,19 @@ from paddle.dataset.common import DATA_HOME
 from paddle.incubate.hapi.download import get_path_from_url
 
 from .vocab import Vocab
-from ..model import Model
 
 __all__ = [
     'PreTrainedTokenizer',
     'PreTrainedModel',
 ]
 
+logger = logging.getLogger(__name__)
+
 
 def _get_init_dict(init_func, *args, **kwargs):
     """
-    function and . 
+    Inspect function `init_func` and its arguments for running, and extract a
+    dict mapping between argument names and keys. 
     """
     if hasattr(inspect, 'getfullargspec'):
         (spec_args, spec_varargs, spec_varkw, spec_defaults, _, _,
@@ -55,20 +62,20 @@ def _get_init_dict(init_func, *args, **kwargs):
     return init_dict
 
 
-def _remove_arg_from_dict(init_func, *args, **kwargs):
+def register_base_model(cls):
     """
-    function and . 
+    Add a `base_model_class` attribute for the base class of decorated class,
+    representing the base model class in derived classes of the same architecture.
+
+    Args:
+        cls (class): the name of the model
     """
-    if hasattr(inspect, 'getfullargspec'):
-        (spec_args, spec_varargs, spec_varkw, spec_defaults, _, _,
-         _) = inspect.getfullargspec(init_func)
-    else:
-        (spec_args, spec_varargs, spec_varkw,
-         spec_defaults) = inspect.getargspec(init_func)
-    # remove positional args from keyword args to avoid duplicate args
-    for arg_name in spec_args:
-        kwargs.pop(arg_name, None)
-    return args, kwargs
+    base_cls = cls.__bases__[0]
+    assert issubclass(
+        base_cls, PreTrainedModel
+    ), "`register_base_model` should be used on subclasses of PreTrainedModel."
+    base_cls.base_model_class = cls
+    return cls
 
 
 class InitTrackerMeta(type(Layer)):
@@ -120,6 +127,7 @@ class InitTrackerMeta(type(Layer)):
             self.init_config = kwargs
             if args:
                 kwargs['init_args'] = args
+            kwargs['init_class'] = self.__class__.__name__
 
         return __impl__
 
@@ -252,12 +260,11 @@ class PreTrainedTokenizer(object):
                 init_kwargs = json.load(f)
         else:
             init_kwargs = init_configuration
-
         # position args are stored in kwargs, maybe better not include
-        saved_init_args = init_kwargs.pop("init_args", ())
-        init_args = saved_init_args if not args else args
+        init_args = init_kwargs.pop("init_args", ())
 
-        # Update with newly provided kwargs
+        # Update with newly provided args and kwargs
+        init_args = init_args if not args else args
         init_kwargs.update(kwargs)
 
         # Merge resolved_vocab_files arguments in init_kwargs if not including.
@@ -265,6 +272,7 @@ class PreTrainedTokenizer(object):
         for args_name, file_path in resolved_vocab_files.items():
             if args_name not in init_kwargs:
                 init_kwargs[args_name] = file_path
+        # TODO(guosheng): avoid reduplication of position args and key word args
         tokenizer = cls(*init_args, **init_kwargs)
         return tokenizer
 
@@ -302,7 +310,12 @@ class PreTrainedTokenizer(object):
         self.save_vocabulary(file_name, self.vocab)
 
     @staticmethod
-    def load_vocabulary(filepath, unk_token=None, **kwargs):
+    def load_vocabulary(filepath,
+                        unk_token=None,
+                        pad_token=None,
+                        bos_token=None,
+                        eos_token=None,
+                        **kwargs):
         """
         Instantiate an instance of `Vocab` from a file reserving all tokens
         by using `Vocab.from_dict`. The file contains a token per line, and the
@@ -310,8 +323,14 @@ class PreTrainedTokenizer(object):
 
         Args:
             filepath (str): path of file to construct vocabulary.
-            unk_token (str, optional): the unknown token for this vocabulary.
-                Default: None.
+            unk_token (str): special token for unknow token. If no need, it also
+                could be None. Default: None.
+            pad_token (str): special token for padding token. If no need, it also
+                could be None. Default: None.
+            bos_token (str): special token for bos token. If no need, it also
+                could be None. Default: None.
+            eos_token (str): special token for eos token. If no need, it also
+                could be None. Default: None.
             **kwargs (dict): keyword arguments for `Vocab.from_dict`.
 
         Returns:
@@ -322,7 +341,13 @@ class PreTrainedTokenizer(object):
             for index, line in enumerate(f):
                 token = line.rstrip('\n')
                 token_to_idx[token] = int(index)
-        vocab = Vocab.from_dict(token_to_idx, unk_token=unk_token, **kwargs)
+        vocab = Vocab.from_dict(
+            token_to_idx,
+            unk_token=unk_token,
+            pad_token=pad_token,
+            bos_token=bos_token,
+            eos_token=eos_token,
+            **kwargs)
         return vocab
 
     @staticmethod
@@ -368,7 +393,7 @@ class PreTrainedModel(Layer):
       for model initialization.
     
     - `base_model_prefix` (str): represents the the attribute associated to the
-      base model in derived classes of the same architecture adding modules on
+      base model in derived classes of the same architecture adding layers on
       top of the base model.
     """
     model_config_file = "model_config.json"
@@ -388,6 +413,14 @@ class PreTrainedModel(Layer):
         # expose tokens as attributes
         init_dict = _get_init_dict(original_init, *args, **kwargs)
         self.config = init_dict
+
+    @property
+    def base_model(self):
+        return getattr(self, self.base_model_prefix, self)
+
+    @property
+    def model_name_list(self):
+        return list(self.pretrained_init_configuration.keys())
 
     @classmethod
     def from_pretrained(cls, pretrained_model_name_or_path, *args, **kwargs):
@@ -447,17 +480,56 @@ class PreTrainedModel(Layer):
                 init_kwargs = json.load(f)
         else:
             init_kwargs = init_configuration
-
         # position args are stored in kwargs, maybe better not include
-        saved_init_args = init_kwargs.pop("init_args", ())
-        init_args = saved_init_args if not args else args
+        init_args = init_kwargs.pop("init_args", ())
+        # class name corresponds to this configuration
+        init_class = init_kwargs.pop("init_class",
+                                     cls.base_model_class.__name__)
 
-        # Update with newly provided kwargs
-        init_kwargs.update(kwargs)
+        # Check if the loaded config matches the current model class's __init__
+        # arguments. If not match, the loaded config is for the base model class.
+        if init_class == cls.base_model_class.__name__:
+            base_args = init_args
+            base_kwargs = init_kwargs
+            derived_args = ()
+            derived_kwargs = {}
+            base_arg_index = None
+        else:  # extract config for base model
+            derived_args = list(init_args)
+            derived_kwargs = init_kwargs
+            for i, arg in enumerate(init_args):
+                if isinstance(arg, dict) and "init_class" in arg:
+                    assert arg.pop(
+                        "init_class") == cls.base_model_class.__name__, (
+                            "pretrained base model should be {}"
+                        ).format(cls.base_model_class.__name__)
+                    base_arg_index = i
+            for arg_name, arg in init_kwargs.items():
+                if isinstance(arg, dict) and "init_class" in arg:
+                    assert arg.pop(
+                        "init_class") == cls.base_model_class.__name__, (
+                            "pretrained base model should be {}"
+                        ).format(cls.base_model_class.__name__)
+                    base_arg_index = arg_name
+            base_args = arg.pop("init_args", ())
+            base_kwargs = arg
+        if cls == cls.base_model_class:
+            # Update with newly provided args and kwargs for base model
+            base_args = base_args if not args else args
+            base_kwargs.update(kwargs)
+            model = cls(*base_args, **base_kwargs)
+        else:
+            # Update with newly provided args and kwargs for derived model
+            base_model = cls.base_model_class(*base_args, **base_kwargs)
+            if base_arg_index is not None:
+                derived_args[base_arg_index] = base_model
+            else:
+                derived_args = (base_model, )  # assume at the first position
+            derived_args = derived_args if not args else args
+            derived_kwargs.update(kwargs)
+            model = cls(*derived_args, **derived_kwargs)
 
-        # Instantiate model.
         # Maybe need more ways to load resources.
-        model = cls(*init_args, **init_kwargs)
         weight_path = list(resolved_resource_files.values())[0]
         assert weight_path.endswith(
             ".pdparams"), "suffix of weight must be .pdparams"
@@ -488,12 +560,12 @@ class PreTrainedModel(Layer):
                 if not k.startswith(cls.base_model_prefix):
                     missing_keys.append(k)
         if len(missing_keys) > 0:
-            warnings.warn(
+            logger.info(
                 "Weights of {} not initialized from pretrained model: {}".
                 format(model.__class__.__name__, missing_keys))
         if len(unexpected_keys) > 0:
-            warnings.warn("Weights from pretrained model not used in {}: {}".
-                          format(model.__class__.__name__, unexpected_keys))
+            logger.info("Weights from pretrained model not used in {}: {}".
+                        format(model.__class__.__name__, unexpected_keys))
         model_to_load.load_dict(state_to_load)
         return model
 
@@ -513,7 +585,14 @@ class PreTrainedModel(Layer):
         model_config = self.init_config
         # If init_config contains a Layer, use the layer's init_config to save
         for key, value in model_config.items():
-            if isinstance(value, PreTrainedModel):
+            if key == "input_args":
+                args = []
+                for arg in value:
+                    args.append(
+                        arg.init_config
+                        if isinstance(arg, PreTrainedModel) else arg)
+                model_config[key] = tuple(args)
+            elif isinstance(value, PreTrainedModel):
                 model_config[key] = value.init_config
         with io.open(model_config_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(model_config, ensure_ascii=False))
