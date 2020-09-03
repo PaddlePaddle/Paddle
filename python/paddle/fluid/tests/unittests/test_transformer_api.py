@@ -58,7 +58,8 @@ def generate_query_key_value_cache(self_attention,
                                    cache=None):
     query = np.random.rand(batch_size, query_length,
                            embed_dim).astype("float32")
-    attn_mask = np.zeros((batch_size, num_heads, query_length, key_length))
+    attn_mask = np.zeros(
+        (batch_size, num_heads, query_length, key_length)).astype("float32")
     attn_mask[0][0][0][0] = -1e9
 
     head_dim = embed_dim // num_heads
