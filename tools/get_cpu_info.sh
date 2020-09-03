@@ -5,7 +5,7 @@ if [ "`uname -s`" != "Linux" ]; then
   exit 0
 fi
 
-echo "========================= Hardware Information ========================="
+echo "********** Hardware Information **********"
 sockets=`grep 'physical id' /proc/cpuinfo | sort -u | wc -l`
 cores_per_socket=`grep 'core id' /proc/cpuinfo | sort -u | wc -l`
 ht=`lscpu |grep "per core" |awk -F':' '{print $2}'|xargs`
@@ -35,7 +35,7 @@ if [ $numa_nodes -lt $sockets ]; then
  at least $sockets"
 fi
 
-echo "========================= Software Information ========================="
+echo "********** Software Information **********"
 echo "OS Version             : `cat /proc/version`"
 echo "Kernel Release Version : `uname -r`"
 echo "Kernel Patch Version   : `uname -v`"
