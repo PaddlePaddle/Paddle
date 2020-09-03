@@ -136,7 +136,7 @@ class FunctionSpec(object):
             input_with_spec = pack_sequence_as(args, input_with_spec)
 
         # If without specificing name in input_spec, add default name
-        # according by argument name from decorated function.
+        # according to argument name from decorated function.
         input_with_spec = replace_spec_empty_name(self._arg_names,
                                                   input_with_spec)
 
@@ -319,7 +319,7 @@ def convert_to_input_spec(inputs, input_spec):
 def replace_spec_empty_name(args_name, input_with_spec):
     """
     Adds default name according to argument name from decorated function
-    if without specificing inputSpec.name
+    if without specificing InputSpec.name
 
     The naming rule are as followed:
         1. If InputSpec.name is not None, do nothing.
