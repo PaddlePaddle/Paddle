@@ -104,21 +104,22 @@ class Distribution(object):
         for arg in args:
             if isinstance(arg, float):
                 arg = [arg]
-            elif not isinstance(arg, list) and not isinstance(arg, np.ndarray):
+            if not isinstance(arg, (list, np.ndarray, tensor.Variable)):
                 raise TypeError(
                     "Type of input args must be float, list, numpy.ndarray or Tensor, but received type {}".
                     format(type(arg)))
 
             arg_np = np.array(arg)
             arg_dtype = arg_np.dtype
-            if str(arg_dtype) not in ['float32']:
-                # "assign" op doesn't support float64. if dtype is float64, float32 variable will be generated and transformed to float64 later using "cast".
-                if str(arg_dtype) not in ['float64']:
+            if str(arg_dtype) != 'float32':
+                if str(arg_dtype) != 'float64':
+                    # "assign" op doesn't support float64. if dtype is float64, float32 variable will be generated
+                    #  and converted to float64 later using "cast".
                     warnings.warn(
                         "data type of argument only support float32 and float64, your argument will be convert to float32."
                     )
                 arg_np = arg_np.astype('float32')
-            # tmp is used to support broadcast, it summarizes shape of all the args and get the mixed shape.
+            # tmp is used to support broadcast, it summarizes shapes of all the args and get the mixed shape.
             tmp = tmp + arg_np
             numpy_args.append(arg_np)
 
@@ -130,6 +131,36 @@ class Distribution(object):
             variable_args.append(arg_variable)
 
         return tuple(variable_args)
+
+    def _check_values_dtype_in_probs(self, param, value):
+        """
+        Log_prob and probs methods have input ``value``, if value's dtype is different from param,
+        convert value's dtype to be consistent with param's dtype.
+
+        Args:
+            param (int|float|list|numpy.ndarray|Tensor): low and high in Uniform class, loc and scale in Normal class.
+            value (Tensor): The input tensor.
+
+        Returns:
+            value (Tensor): Change value's dtype if value's dtype is different from param.
+        """
+        if in_dygraph_mode():
+            if value.dtype != param.dtype and convert_dtype(
+                    value.dtype) in ['float32', 'float64']:
+                warnings.warn(
+                    "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
+                )
+                return core.ops.cast(value, 'in_dtype', value.dtype,
+                                     'out_dtype', param.dtype)
+
+        check_variable_and_dtype(value, 'value', ['float32', 'float64'],
+                                 'log_prob')
+        if value.dtype != param.dtype:
+            warnings.warn(
+                "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
+            )
+            return tensor.cast(value, dtype=param.dtype)
+        return value
 
 
 class Uniform(Distribution):
@@ -256,11 +287,11 @@ class Uniform(Distribution):
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
-                self.low + self.high, batch_shape + shape, self.low.dtype, 0.)
+                self.low + self.high, batch_shape + shape, self.dtype, 0.)
             uniform_random_tmp = nn.uniform_random_batch_size_like(
                 zero_tmp,
                 zero_tmp.shape,
-                dtype=convert_dtype(zero_tmp.dtype),
+                dtype=self.dtype,
                 min=0.,
                 max=1.,
                 seed=seed)
@@ -274,10 +305,8 @@ class Uniform(Distribution):
         else:
             output_shape = shape + batch_shape
             output = nn.uniform_random(
-                output_shape, seed=seed,
-                dtype=convert_dtype(self.low.dtype)) * (tensor.zeros(
-                    output_shape, dtype=self.low.dtype) +
-                                                        (self.high - self.low))
+                output_shape, seed=seed, dtype=self.dtype) * (tensor.zeros(
+                    output_shape, dtype=self.dtype) + (self.high - self.low))
             output = elementwise_add(output, self.low, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)
@@ -295,16 +324,8 @@ class Uniform(Distribution):
 
         """
         name = self.name + '_log_prob'
+        value = self._check_values_dtype_in_probs(self.low, value)
         if in_dygraph_mode():
-            dtype = self.low.dtype
-            if value.dtype != dtype and convert_dtype(
-                    value.dtype) in ['float32', 'float64']:
-                warnings.warn(
-                    "dtype of input 'value' needs to be the same as 'low' and 'high'. dtype of 'value' will be converted."
-                )
-                value = core.ops.cast(value, 'in_dtype', value.dtype,
-                                      'out_dtype', dtype)
-
             # ensure value in [low, high]
             lb_bool = self.low < value
             ub_bool = value < self.high
@@ -314,14 +335,6 @@ class Uniform(Distribution):
             ub = core.ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
                                value.dtype)
             return nn.log(lb * ub) - nn.log(self.high - self.low)
-
-        check_variable_and_dtype(value, 'value', ['float32', 'float64'],
-                                 'log_prob')
-        if value.dtype != self.low.dtype:
-            warnings.warn(
-                "dtype of input 'value' needs to be the same as 'low' and 'high'. dtype of 'value' will be converted."
-            )
-            value = tensor.cast(value, dtype=self.low.dtype)
 
         lb_bool = self.low < value
         ub_bool = value < self.high
@@ -341,16 +354,8 @@ class Uniform(Distribution):
 
         """
         name = self.name + '_probs'
+        value = self._check_values_dtype_in_probs(self.low, value)
         if in_dygraph_mode():
-            dtype = self.low.dtype
-            if value.dtype != dtype and convert_dtype(
-                    value.dtype) in ['float32', 'float64']:
-                warnings.warn(
-                    "dtype of input 'value' needs to be the same as 'low' and 'high'. dtype of 'value' will be converted."
-                )
-                value = core.ops.cast(value, 'in_dtype', value.dtype,
-                                      'out_dtype', dtype)
-
             lb_bool = self.low < value
             ub_bool = value < self.high
 
@@ -359,14 +364,6 @@ class Uniform(Distribution):
             ub = core.ops.cast(ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype',
                                value.dtype)
             return (lb * ub) / (self.high - self.low)
-
-        check_variable_and_dtype(value, 'value', ['float32', 'float64'],
-                                 'probs')
-        if value.dtype != self.low.dtype:
-            warnings.warn(
-                "dtype of input 'value' needs to be the same as 'low' and 'high'. dtype of 'value' will be converted."
-            )
-            value = tensor.cast(value, dtype=self.low.dtype)
 
         lb_bool = self.low < value
         ub_bool = value < self.high
@@ -516,22 +513,18 @@ class Normal(Distribution):
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
-                self.loc + self.scale, batch_shape + shape, self.loc.dtype, 0.)
+                self.loc + self.scale, batch_shape + shape, self.dtype, 0.)
             zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
             zero_tmp_shape = nn.shape(zero_tmp_reshape)
             normal_random_tmp = nn.gaussian_random(
-                zero_tmp_shape,
-                mean=0.,
-                std=1.,
-                seed=seed,
-                dtype=convert_dtype(self.loc.dtype))
+                zero_tmp_shape, mean=0., std=1., seed=seed, dtype=self.dtype)
             output = normal_random_tmp * (zero_tmp_reshape + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             return output
         else:
             output_shape = shape + batch_shape
-            output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed, dtype=convert_dtype(self.loc.dtype)) * \
-                     (tensor.zeros(output_shape, dtype=self.loc.dtype) + self.scale)
+            output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed, dtype=self.dtype) * \
+                     (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)
@@ -558,7 +551,7 @@ class Normal(Distribution):
         name = self.name + '_entropy'
         batch_shape = list((self.loc + self.scale).shape)
         zero_tmp = tensor.fill_constant_batch_size_like(
-            self.loc + self.scale, batch_shape, self.loc.dtype, 0.)
+            self.loc + self.scale, batch_shape, self.dtype, 0.)
         return elementwise_add(
             0.5 + zero_tmp,
             0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp)),
@@ -575,19 +568,7 @@ class Normal(Distribution):
 
         """
         name = self.name + '_log_prob'
-        if in_dygraph_mode():
-            if value.dtype != self.loc.dtype and convert_dtype(
-                    value.dtype) in ['float32', 'float64']:
-                warnings.warn(
-                    "dtype of input 'value' needs to be the same as 'loc' and 'scale'. dtype of 'value' will be converted."
-                )
-                value = core.ops.cast(value, 'in_dtype', value.dtype,
-                                      'out_dtype', self.loc.dtype)
-        else:
-            check_variable_and_dtype(value, 'value', ['float32', 'float64'],
-                                     'log_prob')
-            if value.dtype != self.loc.dtype:
-                value = tensor.cast(value, dtype=self.loc.dtype)
+        value = self._check_values_dtype_in_probs(self.loc, value)
 
         var = self.scale * self.scale
         log_scale = nn.log(self.scale)
@@ -607,19 +588,7 @@ class Normal(Distribution):
 
         """
         name = self.name + '_probs'
-        if in_dygraph_mode():
-            if value.dtype != self.loc.dtype and convert_dtype(
-                    value.dtype) in ['float32', 'float64']:
-                warnings.warn(
-                    "dtype of input 'value' needs to be the same as 'loc' and 'scale'. dtype of 'value' will be converted."
-                )
-                value = core.ops.cast(value, 'in_dtype', value.dtype,
-                                      'out_dtype', self.loc.dtype)
-        else:
-            check_variable_and_dtype(value, 'value', ['float32', 'float64'],
-                                     'probs')
-            if value.dtype != self.loc.dtype:
-                value = tensor.cast(value, dtype=self.loc.dtype)
+        value = self._check_values_dtype_in_probs(self.loc, value)
 
         var = self.scale * self.scale
         return elementwise_div(
