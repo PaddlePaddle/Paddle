@@ -656,13 +656,13 @@ def _get_output_vars(outputs, output_spec):
         result_list = output_vars_dict.values()
     elif output_spec is not None and len(output_spec) == len(output_vars_dict):
         result_list = output_vars_dict.values()
-        for spec in output_spec:
-            if spec.name not in output_vars_dict:
-                warnings.warn(name_no_exists_error % spec.name)
+        for var in output_spec:
+            if var.name not in output_vars_dict:
+                warnings.warn(name_no_exists_error % var.name)
     else:
         for var in output_spec:
             if var.name not in output_vars_dict:
-                raise ValueError(name_no_exists_error % spec.name)
+                raise ValueError(name_no_exists_error % var.name)
             else:
                 result_list.append(output_vars_dict[var.name])
     return result_list

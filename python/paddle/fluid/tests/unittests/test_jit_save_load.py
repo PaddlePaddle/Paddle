@@ -195,6 +195,7 @@ def train_with_label(layer, input_size=784, label_size=1):
         avg_loss.backward()
         sgd.minimize(avg_loss)
         layer.clear_gradients()
+    return out
 
 
 # class TestJitSaveLoad(unittest.TestCase):
@@ -596,34 +597,46 @@ class TestJitSaveMultiCases(unittest.TestCase):
     def test_prune_to_static_after_train(self):
         layer = LinerNetWithLabel(784, 1)
 
-        train_with_label(layer)
+        out = train_with_label(layer)
 
         model_path = "test_prune_to_static_after_train"
         configs = paddle.jit.SaveLoadConfig()
+        configs.output_spec = [out]
         paddle.jit.save(
             layer,
             model_path,
             input_spec=[
                 InputSpec(
                     shape=[None, 784], dtype='float32', name="image")
-            ])
+            ],
+            configs=configs)
 
         self.verify_inference_correctness(layer, model_path, True)
 
     def test_prune_to_static_no_train(self):
-        pass
+        layer = LinerNetWithLabel(784, 1)
 
-    def test_prune_no_to_static(self):
-        pass
+        model_path = "test_prune_to_static_no_train"
+        configs = paddle.jit.SaveLoadConfig()
+        # TODO: no train, cannot get output_spec var here
+        # now only can use index
+        configs.output_spec = layer.forward.outputs[:1]
+        paddle.jit.save(
+            layer,
+            model_path,
+            input_spec=[
+                InputSpec(
+                    shape=[None, 784], dtype='float32', name="image")
+            ],
+            configs=configs)
+
+        self.verify_inference_correctness(layer, model_path, True)
 
     def test_no_prune_input_spec_name_warning(self):
-        # 1. define layer without to_static
         layer = LinearNetWithInputSpec(784, 1)
 
-        # 2. train layer
         train(layer)
 
-        # 3. save layer
         model_path = "test_no_prune_input_spec_name_warning"
         paddle.jit.save(
             layer,
@@ -638,17 +651,58 @@ class TestJitSaveMultiCases(unittest.TestCase):
                     shape=[None, 784], dtype='float32', name='feed_input')
             ])
 
-        # 4. verify correctness
         self.verify_inference_correctness(layer, model_path)
 
     def test_not_prune_output_spec_name_warning(self):
-        pass
+        layer = LinearNet(784, 1)
+
+        train(layer)
+
+        model_path = "test_not_prune_output_spec_name_warning"
+        configs = paddle.jit.SaveLoadConfig()
+        out = paddle.to_variable(np.random.random((1, 1)).astype('float'))
+        configs.output_spec = [out]
+        paddle.jit.save(layer, model_path, configs=configs)
+
+        self.verify_inference_correctness(layer, model_path)
 
     def test_prune_input_spec_name_error(self):
-        pass
+        layer = LinerNetWithLabel(784, 1)
+
+        model_path = "test_prune_input_spec_name_error"
+        with self.assertRaises(ValueError):
+            paddle.jit.save(
+                layer,
+                model_path,
+                input_spec=[InputSpec(
+                    shape=[None, 784], dtype='float32')])
+        with self.assertRaises(ValueError):
+            paddle.jit.save(
+                layer,
+                model_path,
+                input_spec=[
+                    InputSpec(
+                        shape=[None, 784], dtype='float32', name='feed_input')
+                ])
 
     def test_prune_output_spec_name_error(self):
-        pass
+        layer = LinerNetWithLabel(784, 1)
+
+        train_with_label(layer)
+
+        model_path = "test_prune_to_static_after_train"
+        configs = paddle.jit.SaveLoadConfig()
+        out = paddle.to_variable(np.random.random((1, 1)).astype('float'))
+        configs.output_spec = [out]
+        with self.assertRaises(ValueError):
+            paddle.jit.save(
+                layer,
+                model_path,
+                input_spec=[
+                    InputSpec(
+                        shape=[None, 784], dtype='float32', name="image")
+                ],
+                configs=configs)
 
 
 if __name__ == '__main__':
