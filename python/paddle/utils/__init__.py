@@ -16,6 +16,7 @@ from .profiler import ProfilerOptions
 from .profiler import Profiler
 from .profiler import get_profiler
 from .deprecated import deprecated
+
 from . import download
 
 __all__ = ['dump_config', 'deprecated', 'download']
