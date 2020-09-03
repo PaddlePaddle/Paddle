@@ -388,6 +388,14 @@ class MovingAverageAbsMaxScale(layers.Layer):
         self._moving_rate = moving_rate
         self._dtype = dtype
 
+        scale_prefix = '{}.scale'.format(name) if name else 'outscale.scale'
+        name = unique_name.generate(scale_prefix)
+        scale_attr = ParamAttr(
+            name=name, initializer=Constant(1), trainable=False)
+        self._scale = self.create_parameter(
+            shape=[1], attr=scale_attr, dtype=self._dtype)
+        self._scale.stop_gradient = True
+
         state_prefix = "{}.state".format(name) if name else 'outscale.state'
         state_attr = ParamAttr(
             name=unique_name.generate(state_prefix),
@@ -405,22 +413,15 @@ class MovingAverageAbsMaxScale(layers.Layer):
         self._accum = self.create_parameter(
             shape=[1], attr=accum_attr, dtype=self._dtype)
         self._accum.stop_gradient = True
+        MovingAverageAbsMaxScale._has_create = True
 
     def forward(self, input):
-        scale_prefix = '{}.scale'.format(input.name)
-        scale_attr = ParamAttr(
-            name=unique_name.generate(scale_prefix),
-            initializer=Constant(1),
-            trainable=False)
-        scale_out = self.create_parameter(
-            shape=[1], attr=scale_attr, dtype=self._dtype)
-        scale_out.stop_gradient = True
-
         if in_dygraph_mode():
             attrs = ('moving_rate', self._moving_rate, 'is_test',
                      not self.training)
             state = self._state if self.training else None
             accum = self._accum if self.training else None
+            scale_out = self._scale
 
             out_scale, _, _ = core.ops.moving_average_abs_max_scale(
                 input, accum, state, scale_out, state, accum, *attrs)

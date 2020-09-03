@@ -16,8 +16,8 @@ import logging
 import numpy as np
 import sys
 from paddle.fluid import dygraph, core
-from paddle.fluid.dygraph.nn import Conv2D, Linear, BatchNorm, Pool2D, PRelu
-from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid
+from paddle.fluid.dygraph.nn import Conv2D, Linear, BatchNorm, Pool2D, Conv2DTranspose, PRelu
+from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, ReLU6, Tanh, Softmax, PReLU
 from paddle.fluid.log_helper import get_logger
 from . import quant_nn
 
@@ -240,7 +240,8 @@ class ImperativeOutScale(object):
                  moving_rate=0.9,
                  out_scale_layer_type=[
                      'Conv2D', 'Pool2D', 'ReLU', 'BatchNorm', 'PRelu',
-                     'Sigmoid', 'LeakyReLU'
+                     'Sigmoid', 'LeakyReLU', 'ReLU6', 'Tanh', 'Softmax',
+                     'Conv2DTranspose'
                  ]):
         """
         Add the logic of calculating and setting output quantization scales of some layers.
@@ -249,7 +250,7 @@ class ImperativeOutScale(object):
         Args:
             moving_rate(float): the parameter for 'moving_average_abs_max_scale' quantization.
             quantizable_op_type(list[str]): List the type of layers that will be got out_scale. 
-                Default is ['Conv2D', 'Linear', 'ReLU', 'PRelu', 'LeakyReLU', 'Sigmoid', 'BatchNorm']
+                Default is ['Conv2D', 'ReLU', 'PReLU', 'LeakyReLU', 'Sigmoid', 'BatchNorm', 'ReLU6', 'Tanh', 'Softmax', 'Conv2DTranspose']
         """
         super(ImperativeOutScale, self).__init__()
         self._moving_rate = moving_rate
@@ -260,7 +261,11 @@ class ImperativeOutScale(object):
             'LeakyReLU': LeakyReLU,
             'Sigmoid': Sigmoid,
             'PRelu': PRelu,
-            'BatchNorm': BatchNorm
+            'BatchNorm': BatchNorm,
+            'ReLU6': ReLU6,
+            'Tanh': Tanh,
+            'Softmax': Softmax,
+            'Conv2DTranspose': Conv2DTranspose
         }
         self._out_scale_layer_type = tuple(
             self._out_scale_layers_map[layer]
@@ -308,13 +313,11 @@ class ImperativeOutScale(object):
                 continue
             scale_out_list = self._out_scale_dict[layer.full_name()]
             for scale_var in scale_out_list:
-                attr_name = 'out_threshold'
-                layer.__setattr__(attr_name, scale_var)
+                layer.__setattr__('out_threshold', scale_var)
         for handle in self._register_hook_handle_list:
             handle.remove()
 
     def _forward_post_hook(self, layer, input, output):
-        dtype = getattr(layer, '_dtype')
         if not isinstance(output, list):
             output = [output]
         scale_out_list = []
@@ -323,8 +326,9 @@ class ImperativeOutScale(object):
                     core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP64
             ]:
                 continue
-            self._out_scale = quant_nn.MovingAverageAbsMaxScale(
-                var.name, self._moving_rate, dtype)
-            scale_out = self._out_scale(var)
+            if not hasattr(layer, "_out_scale"):
+                layer._out_scale = quant_nn.MovingAverageAbsMaxScale(
+                    var.name, self._moving_rate, var.dtype)
+            scale_out = layer._out_scale(var)
             scale_out_list.append(float(scale_out.numpy()))
         self._out_scale_dict[layer.full_name()] = scale_out_list

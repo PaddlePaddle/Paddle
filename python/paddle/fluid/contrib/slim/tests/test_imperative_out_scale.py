@@ -28,8 +28,8 @@ from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import ImperativeOutScale, ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass, OutScaleForInferencePass
 from paddle.fluid.dygraph.container import Sequential
-from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid
-from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, PRelu, Pool2D
+from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, PReLU
+from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D, PRelu
 from paddle.fluid.log_helper import get_logger
 
 os.environ["CPU_NUM"] = "1"
@@ -162,107 +162,8 @@ class ImperativeLenet(fluid.dygraph.Layer):
         return x
 
 
-class TestImperativeQat(unittest.TestCase):
-    def gtest_qat_save(self):
-        imperative_out_scale = ImperativeOutScale()
-
-        with fluid.dygraph.guard():
-            lenet = ImperativeLenet()
-            imperative_out_scale.get_out_scale(lenet)
-            adam = AdamOptimizer(
-                learning_rate=0.001, parameter_list=lenet.parameters())
-            train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=32, drop_last=True)
-            test_reader = paddle.batch(
-                paddle.dataset.mnist.test(), batch_size=32)
-
-            epoch_num = 1
-            for epoch in range(epoch_num):
-                lenet.train()
-                for batch_id, data in enumerate(train_reader()):
-                    x_data = np.array([x[0].reshape(1, 28, 28)
-                                       for x in data]).astype('float32')
-                    y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape(-1, 1)
-
-                    img = fluid.dygraph.to_variable(x_data)
-                    label = fluid.dygraph.to_variable(y_data)
-
-                    out = lenet(img)
-                    acc = fluid.layers.accuracy(out, label)
-                    loss = fluid.layers.cross_entropy(out, label)
-                    avg_loss = fluid.layers.mean(loss)
-                    avg_loss.backward()
-                    adam.minimize(avg_loss)
-                    lenet.clear_gradients()
-                    if batch_id % 100 == 0:
-                        _logger.info(
-                            "Train | At epoch {} step {}: loss = {:}, acc= {:}".
-                            format(epoch, batch_id,
-                                   avg_loss.numpy(), acc.numpy()))
-
-                lenet.eval()
-                imperative_out_scale.set_out_scale(lenet)
-                for batch_id, data in enumerate(test_reader()):
-                    x_data = np.array([x[0].reshape(1, 28, 28)
-                                       for x in data]).astype('float32')
-                    y_data = np.array(
-                        [x[1] for x in data]).astype('int64').reshape(-1, 1)
-
-                    img = fluid.dygraph.to_variable(x_data)
-                    label = fluid.dygraph.to_variable(y_data)
-
-                    out = lenet(img)
-                    acc_top1 = fluid.layers.accuracy(
-                        input=out, label=label, k=1)
-                    acc_top5 = fluid.layers.accuracy(
-                        input=out, label=label, k=5)
-
-                    if batch_id % 100 == 0:
-                        _logger.info(
-                            "Test | At epoch {} step {}: acc1 = {:}, acc5 = {:}".
-                            format(epoch, batch_id,
-                                   acc_top1.numpy(), acc_top5.numpy()))
-
-            # save weights
-            model_dict = lenet.state_dict()
-            fluid.save_dygraph(model_dict, "save_temp")
-
-            # test the correctness of `save_quantized_model`
-            data = next(test_reader())
-            test_data = np.array([x[0].reshape(1, 28, 28)
-                                  for x in data]).astype('float32')
-            test_img = fluid.dygraph.to_variable(test_data)
-            lenet.eval()
-            before_save = lenet(test_img)
-
-        imperative_qat = ImperativeQuantAware()
-        # save inference quantized model
-        path = "./mnist_infer_model"
-        imperative_qat.save_quantized_model(
-            dirname=path,
-            model=lenet,
-            input_shape=[(1, 28, 28)],
-            input_dtype=['float32'],
-            feed=[0],
-            fetch=[0])
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        [inference_program, feed_target_names, fetch_targets] = (
-            fluid.io.load_inference_model(
-                dirname=path, executor=exe))
-        after_save, = exe.run(inference_program,
-                              feed={feed_target_names[0]: test_data},
-                              fetch_list=fetch_targets)
-
-        self.assertTrue(
-            np.allclose(after_save, before_save.numpy()),
-            msg='Failed to save the inference quantized model.')
-
-    def test_qat_acc(self):
+class TestImperativeOutSclae(unittest.TestCase):
+    def test_out_scale_acc(self):
         def _build_static_lenet(main, startup, is_test=False, seed=1000):
             with fluid.unique_name.guard():
                 with fluid.program_guard(main, startup):
@@ -286,6 +187,8 @@ class TestImperativeQat(unittest.TestCase):
         param_init_map = {}
         seed = 1000
         lr = 0.1
+        dynamic_out_scale_list = []
+        static_out_scale_list = []
 
         # imperative train
         _logger.info(
@@ -343,19 +246,8 @@ class TestImperativeQat(unittest.TestCase):
             out_scale_num = 0
             for name, layer in lenet.named_sublayers():
                 if hasattr(layer, 'out_threshold'):
-                    print("----dynamic----")
-                    print(layer.full_name())
-                    print(layer.__getattr__('out_threshold'))
-                    out_scale_num += 1
-                    self.assertTrue(isinstance(layer, op_object_list))
-            self.assertTrue(out_scale_num > 0)
-        #imperative_qat.save_quantized_model(
-        #    dirname="./dynamic_mnist",
-        #    model=lenet,
-        #    input_shape=[(1, 28, 28)],
-        #    input_dtype=['float32'],
-        #    feed=[0],
-        #    fetch=[0])
+                    dynamic_out_scale_list.append(
+                        layer.__getattr__('out_threshold'))
 
         # static graph train
         _logger.info(
@@ -386,12 +278,10 @@ class TestImperativeQat(unittest.TestCase):
         for param in main.all_parameters():
             param_tensor = scope.var(param.name).get_tensor()
             param_tensor.set(param_init_map[param.name], place)
-        #print(main)
         main_graph = IrGraph(core.Graph(main.desc), for_test=False)
         infer_graph = IrGraph(core.Graph(infer.desc), for_test=True)
         transform_pass = OutScaleForTrainingPass(scope=scope, place=place)
         transform_pass.apply(main_graph)
-        transform_pass.apply(infer_graph)
         build_strategy = fluid.BuildStrategy()
         build_strategy.fuse_all_reduce_ops = False
         binary = fluid.CompiledProgram(main_graph.graph).with_data_parallel(
@@ -413,15 +303,15 @@ class TestImperativeQat(unittest.TestCase):
 
         out_scale_op_list = [
             "batch_norm", "conv2d", "leaky_relu", "pool2d", "prelu", "relu",
-            "sigmoid"
+            "sigmoid", "tanh", "relu6", "softmax", "conv2d_transpose"
         ]
         op_nodes = infer_graph.all_op_nodes()
         for op_node in op_nodes:
             if op_node.name() in out_scale_op_list:
-                tmp = op_node.op().attr("out_threshold")
-                print("----static-----")
-                print(op_node.name())
-                print(tmp)
+                static_out_scale_list.append(op_node.op().attr("out_threshold"))
+
+        self.assertTrue(
+            dynamic_out_scale_list.sort() == static_out_scale_list.sort())
 
         save_program = infer_graph.to_program()
         with fluid.scope_guard(scope):
