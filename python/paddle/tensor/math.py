@@ -794,8 +794,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         it's data type is the same as `x`.
 
     Raises:
-        ValueError: If the data type of `x` is float32, :attr:`dtype` can not be float64.
-        ValueError: If the data type of `x` is int32, :attr:`dtype` can not be int64.
+        ValueError: If the data type of `x` is float64, :attr:`dtype` can not be float32 or int32.
+        ValueError: If the data type of `x` is int64, :attr:`dtype` can not be int32.
         TypeError: The type of :attr:`axis` must be int, list or tuple.
 
     Examples:
