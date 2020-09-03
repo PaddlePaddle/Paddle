@@ -62,7 +62,9 @@ class PullDenseWorker {
   virtual void Initialize(const TrainerDesc& param);
 #ifdef PADDLE_WITH_CUDA
   void AddStream(const cudaStream_t stream) { copy_streams_.push_back(stream); }
+#endif
 
+#if (defined PADDLE_WITH_CUDA) || (defined PADDLE_WITH_XPU)
   void AddPlace(const paddle::platform::Place place) {
     places_.push_back(place);
   }
@@ -123,9 +125,9 @@ class PullDenseWorker {
 
 #ifdef PADDLE_WITH_CUDA
   std::vector<cudaStream_t> copy_streams_;
+#endif
   std::vector<paddle::platform::Place> places_;
   std::vector<Scope*> thread_scopes_;
-#endif
 };
 
 // should incorporate different type of device
@@ -149,6 +151,7 @@ class DeviceWorker {
   virtual void SetDataFeed(DataFeed* data_feed);
   virtual void SetWorkerNum(int num) {}
   virtual void CacheProgram(const ProgramDesc& main_program) {}
+  virtual void GetXpuOpIndex() {}
   virtual void SetNeedDumpField(bool need_dump_field) {
     need_dump_field_ = need_dump_field;
   }

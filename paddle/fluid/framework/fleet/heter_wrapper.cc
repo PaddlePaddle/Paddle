@@ -131,6 +131,14 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope,
                  tensor->numel() * SizeOfType(tensor->type()), nullptr);
   }
 #endif
+#ifdef PADDLE_WITH_XPU
+  else {
+    memory::Copy(platform::CPUPlace(), data_ptr,
+        BOOST_GET_CONST(platform::XPUPlace, tensor->place()),
+        tensor->data<void>(),
+        tensor->numel() * SizeOfType(tensor->type()));
+  }
+#endif
 }
 
 // void HeterWrapper::DeSerializeToTensor(Scope* scope,
@@ -168,10 +176,14 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   void* tensor_data =
       tensor->mutable_data(place, ToVarType(req_var.data_type()));
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
   memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place), tensor_data,
                platform::CPUPlace(), req_var.data().data(),
                tensor->numel() * SizeOfType(tensor->type()), stream);
+#elif defined(PADDLE_WITH_XPU)
+  memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place), tensor_data,
+               platform::CPUPlace(), req_var.data().data(),
+               tensor->numel() * SizeOfType(tensor->type()));
 #else
   memcpy(tensor_data, req_var.data().data(),
          tensor->numel() * SizeOfType(tensor->type()));
@@ -192,7 +204,7 @@ framework::proto::VarType::Type HeterWrapper::ToVarType(
     case VariableMessage::BOOL:
       return framework::proto::VarType::BOOL;  // NOLINT
     default:
-      VLOG(0) << "Not support type " << type;
+      PADDLE_THROW("ToVarType:Unsupported type %d", type);
   }
 }
 
