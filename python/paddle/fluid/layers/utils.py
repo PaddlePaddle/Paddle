@@ -374,15 +374,7 @@ def check_shape(shape):
                     raise ValueError(
                         "All elements in ``shape`` must be positive when it's a list or tuple"
                     )
-                if version_info.major == 2:
-                    if not isinstance(ele, int) and not isinstance(ele, long):
-                        raise TypeError(
-                            "All elements in ``shape`` must be integers when it's a list or tuple"
-                        )
-                elif version_info.major == 3:
-                    if not isinstance(ele, int):
-                        raise TypeError(
-                            "All elements in ``shape`` must be integers when it's a list or tuple"
-                        )
-                else:
-                    raise Exception('Please use python2 or python3')
+                if not isinstance(ele, six.integer_types):
+                    raise TypeError(
+                        "All elements in ``shape`` must be integers when it's a list or tuple"
+                    )
