@@ -14,10 +14,12 @@
 
 from . import logger
 from . import callbacks
+from . import model_summary
 
 from . import model
 from .model import *
+from .model_summary import summary
 
 logger.setup_logger()
 
-__all__ = ['callbacks'] + model.__all__
+__all__ = ['callbacks'] + model.__all__ + ['summary']

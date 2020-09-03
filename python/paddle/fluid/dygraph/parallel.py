@@ -349,38 +349,53 @@ class DataParallel(layers.Layer):
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.nn as nn
+                import paddle.optimizer as opt
+                import paddle.distributed as dist
 
-                place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-                with fluid.dygraph.guard(place):
+                class LinearNet(nn.Layer):
+                    def __init__(self):
+                        super(LinearNet, self).__init__()
+                        self._linear1 = nn.Linear(10, 10)
+                        self._linear2 = nn.Linear(10, 1)
+                        
+                    def forward(self, x):
+                        return self._linear2(self._linear1(x))
 
-                    # prepare the data parallel context
-                    strategy = fluid.dygraph.prepare_context()
+                def train():
+                    # 1. enable dynamic mode
+                    paddle.disable_static()
+                    
+                    # 2. initialize parallel environment
+                    dist.init_parallel_env()
 
-                    linear = fluid.dygraph.Linear(1, 10, act="softmax")
-                    adam = fluid.optimizer.AdamOptimizer(
-                        learning_rate=0.001, parameter_list=linear.parameters())
+                    # 3. create data parallel layer & optimizer
+                    layer = LinearNet()
+                    dp_layer = paddle.DataParallel(layer)
 
-                    # make the module become the data parallelism module
-                    linear = fluid.dygraph.DataParallel(linear, strategy)
+                    loss_fn = nn.MSELoss()
+                    adam = opt.Adam(
+                        learning_rate=0.001, parameters=dp_layer.parameters())
 
-                    x_data = np.random.random(size=[10, 1]).astype(np.float32)
-                    data = fluid.dygraph.to_variable(x_data)
+                    # 4. run layer
+                    inputs = paddle.randn([10, 10], 'float32')
+                    outputs = dp_layer(inputs)
+                    labels = paddle.randn([10, 1], 'float32')
+                    loss = loss_fn(outputs, labels)
+                    
+                    loss = dp_layer.scale_loss(loss)
+                    loss.backward()
+                    dp_layer.apply_collective_grads()
 
-                    hidden = linear(data)
-                    avg_loss = fluid.layers.mean(hidden)
+                    adam.step()
+                    adam.clear_grad()
 
-                    # scale the loss according to the number of trainers.
-                    avg_loss = linear.scale_loss(avg_loss)
-
-                    avg_loss.backward()
-
-                    # collect the gradients of trainers.
-                    linear.apply_collective_grads()
-
-                    adam.minimize(avg_loss)
-                    linear.clear_gradients()
+                if __name__ == '__main__':
+                    # 1. start by ``paddle.distributed.spawn`` (default)
+                    dist.spawn(train, nprocs=2)
+                    # 2. start by ``paddle.distributed.launch``
+                    # train()
         """
         if not self._is_data_parallel_mode():
             return loss
@@ -430,7 +445,7 @@ class DataParallel(layers.Layer):
                 self._reshape_inplace(x=g_var, shape=g_shape)
                 assert g_var.shape == g_shape
 
-    @no_grad()
+    @no_grad
     def apply_collective_grads(self):
         """
         AllReduce the Parameters' gradient.
@@ -438,38 +453,53 @@ class DataParallel(layers.Layer):
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.nn as nn
+                import paddle.optimizer as opt
+                import paddle.distributed as dist
 
-                place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-                with fluid.dygraph.guard(place):
+                class LinearNet(nn.Layer):
+                    def __init__(self):
+                        super(LinearNet, self).__init__()
+                        self._linear1 = nn.Linear(10, 10)
+                        self._linear2 = nn.Linear(10, 1)
+                        
+                    def forward(self, x):
+                        return self._linear2(self._linear1(x))
 
-                    # prepare the data parallel context
-                    strategy = fluid.dygraph.prepare_context()
+                def train():
+                    # 1. enable dynamic mode
+                    paddle.disable_static()
+                    
+                    # 2. initialize parallel environment
+                    dist.init_parallel_env()
 
-                    linear = fluid.dygraph.Linear(1, 10, act="softmax")
-                    adam = fluid.optimizer.AdamOptimizer(
-                        learning_rate=0.001, parameter_list=linear.parameters())
+                    # 3. create data parallel layer & optimizer
+                    layer = LinearNet()
+                    dp_layer = paddle.DataParallel(layer)
 
-                    # make the module become the data parallelism module
-                    linear = fluid.dygraph.DataParallel(linear, strategy)
+                    loss_fn = nn.MSELoss()
+                    adam = opt.Adam(
+                        learning_rate=0.001, parameters=dp_layer.parameters())
 
-                    x_data = np.random.random(size=[10, 1]).astype(np.float32)
-                    data = fluid.dygraph.to_variable(x_data)
+                    # 4. run layer
+                    inputs = paddle.randn([10, 10], 'float32')
+                    outputs = dp_layer(inputs)
+                    labels = paddle.randn([10, 1], 'float32')
+                    loss = loss_fn(outputs, labels)
+                    
+                    loss = dp_layer.scale_loss(loss)
+                    loss.backward()
+                    dp_layer.apply_collective_grads()
 
-                    hidden = linear(data)
-                    avg_loss = fluid.layers.mean(hidden)
+                    adam.step()
+                    adam.clear_grad()
 
-                    # scale the loss according to the number of trainers.
-                    avg_loss = linear.scale_loss(avg_loss)
-
-                    avg_loss.backward()
-
-                    # collect the gradients of trainers.
-                    linear.apply_collective_grads()
-
-                    adam.minimize(avg_loss)
-                    linear.clear_gradients()
+                if __name__ == '__main__':
+                    # 1. start by ``paddle.distributed.spawn`` (default)
+                    dist.spawn(train, nprocs=2)
+                    # 2. start by ``paddle.distributed.launch``
+                    # train()
         """
         if not self._is_data_parallel_mode():
             return

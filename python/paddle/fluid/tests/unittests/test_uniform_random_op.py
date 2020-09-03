@@ -239,12 +239,12 @@ class TestUniformRandomOpSelectedRows(unittest.TestCase):
         op = Operator(
             "uniform_random",
             Out="X",
-            shape=[100, 784],
+            shape=[1000, 784],
             min=-5.0,
             max=10.0,
             seed=10)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [100, 784])
+        self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
@@ -260,15 +260,15 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
         op = Operator(
             "uniform_random",
             Out="X",
-            shape=[100, 784],
+            shape=[500, 784],
             min=-5.0,
             max=10.0,
             seed=10,
-            diag_num=100,
+            diag_num=500,
             diag_step=784,
             diag_val=1.0)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [100, 784])
+        self.assertEqual(out.get_tensor().shape(), [500, 784])
         hist, prob = output_hist_diag(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
@@ -391,7 +391,7 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         shape_tensor = scope.var("Shape").get_tensor()
-        shape_tensor.set(np.array([100, 784]).astype("int64"), place)
+        shape_tensor.set(np.array([1000, 784]).astype("int64"), place)
         paddle.manual_seed(10)
         op = Operator(
             "uniform_random",
@@ -401,7 +401,7 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
             max=10.0,
             seed=10)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [100, 784])
+        self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
@@ -423,7 +423,7 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         shape_1 = scope.var("shape1").get_tensor()
-        shape_1.set(np.array([100]).astype("int64"), place)
+        shape_1.set(np.array([1000]).astype("int64"), place)
         shape_2 = scope.var("shape2").get_tensor()
         shape_2.set(np.array([784]).astype("int64"), place)
         paddle.manual_seed(10)
@@ -435,7 +435,7 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
             max=10.0,
             seed=10)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [100, 784])
+        self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
