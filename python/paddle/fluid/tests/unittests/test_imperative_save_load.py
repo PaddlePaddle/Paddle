@@ -912,6 +912,22 @@ class TestDygraphPtbRnn(unittest.TestCase):
             para_state_dict, opti_state_dict = paddle.load(
                 os.path.join('saved_dy', 'emb_dy.pdopt'))
 
+    def test_load_compatible_with_keep_name_table(self):
+        with fluid.dygraph.guard():
+            emb = fluid.dygraph.Embedding([10, 10])
+            state_dict = emb.state_dict()
+            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy'))
+
+            para_state_dict, opti_state_dict = paddle.load(
+                os.path.join('saved_dy', 'emb_dy'), True)
+            self.assertTrue(para_state_dict != None)
+            self.assertTrue(opti_state_dict == None)
+
+            para_state_dict, opti_state_dict = paddle.load(
+                os.path.join('saved_dy', 'emb_dy'), keep_name_table=True)
+            self.assertTrue(para_state_dict != None)
+            self.assertTrue(opti_state_dict == None)
+
 
 if __name__ == '__main__':
     unittest.main()
