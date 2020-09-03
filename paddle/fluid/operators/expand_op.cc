@@ -228,6 +228,20 @@ class ExpandGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+template <typename T>
+class ExpandDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetInput("X", this->OutputGrad(framework::GradVarName("Input")));
+    op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    op->SetAttrMap(this->Attrs());
+    op->SetType("expand");
+  }
+};
+
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(ExpandGradNoNeedBufVarsInferer, "X");
 
 }  // namespace operators
@@ -238,7 +252,10 @@ REGISTER_OPERATOR(expand, ops::ExpandOp, ops::ExpandOpMaker,
                   ops::ExpandGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(expand_grad, ops::ExpandGradOp,
+                  ops::ExpandDoubleOpGradMaker<paddle::framework::OpDesc>,
+                  ops::ExpandDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::ExpandGradNoNeedBufVarsInferer);
+
 REGISTER_OP_CPU_KERNEL(
     expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ExpandKernel<paddle::platform::CPUDeviceContext, double>,
