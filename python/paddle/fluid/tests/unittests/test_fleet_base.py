@@ -126,6 +126,32 @@ class TestFleetBase(unittest.TestCase):
         self.assertRaises(Exception, fleet.init_worker)
 
 
+class TestFleetDygraph(unittest.TestCase):
+    def setUp(self):
+        os.environ[
+            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213,127.0.0.1:36214"
+        os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
+        os.environ["PADDLE_TRAINERS_NUM"] = "2"
+        os.environ["PADDLE_TRAINER_ID"] = "0"
+
+    def test_dygraph_method(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = fluid.dygraph.to_variable(value)
+        layer = paddle.nn.Linear(13, 5)
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=layer.parameters())
+        # remove init cause this UT cannot launch distributed task
+        adam = fleet.distributed_optimizer(adam)
+        dp_layer = fleet.distributed_model(layer)
+        lr = 0.001
+        adam.set_lr(lr)
+        cur_lr = adam.get_lr()
+        assert (lr == cur_lr)
+        state_dict = adam.state_dict()
+        adam.set_state_dict(state_dict)
+
+
 class TestFleetBaseSingleRunCollective(unittest.TestCase):
     def setUp(self):
         os.environ.pop("PADDLE_TRAINER_ENDPOINTS")
