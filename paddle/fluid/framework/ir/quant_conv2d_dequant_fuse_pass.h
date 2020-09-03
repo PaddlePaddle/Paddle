@@ -22,6 +22,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+///
+/// Fuse quant + conv2d/depthwise_conv2d/mul/fc + dequant
+///
 class QuantDequantFusePass : public FusePassBase {
  public:
   virtual ~QuantDequantFusePass() {}

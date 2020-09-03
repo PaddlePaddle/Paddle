@@ -17,7 +17,6 @@ from __future__ import print_function
 __all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 
 import logging
-
 from paddle.fluid import core
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
@@ -156,13 +155,11 @@ def _declarative_(dygraph_func):
 
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
-        if in_dygraph_mode() or not program_translator.enable_declarative:
+        if not program_translator.enable_declarative:
             logger.info(
-                "The decorator 'declarative' doesn't work in dygraph "
-                "mode or set ProgramTranslator.enable to False. We will "
-                "just return dygraph output.")
+                "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
+                "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
-        program_translator = ProgramTranslator()
         return program_translator.get_output(dygraph_func, *args, **kwargs)
 
     return __impl__
@@ -228,6 +225,7 @@ class TracedLayer(object):
         self._program = program
         self._feed_names = feed_names
         self._fetch_names = fetch_names
+        self._params = parameters
 
         self._place = _current_expected_place()
 

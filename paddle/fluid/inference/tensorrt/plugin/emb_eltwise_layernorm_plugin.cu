@@ -33,52 +33,28 @@ namespace plugin {
 
 template <typename T>
 int EmbEltwiseLayernormPluginDynamic<T>::initialize() {
-  int nb_emb = embs_.size();
-  std::vector<void *> ptr_vector(nb_emb);
-  std::vector<std::vector<half>> emb_fp16(nb_emb);
-
-  if (sizeof(T) == sizeof(float)) {
-    // FP32
-    for (int i = 0; i < nb_emb; ++i) {
-      ptr_vector[i] = embs_[i];
-    }
-  } else {
-    // FP16
-    for (int i = 0; i < nb_emb; ++i) {
-      auto emb_size = emb_sizes_[i];
-      auto &tmp = emb_fp16[i];
-      tmp.resize(emb_size);
-
-      for (int j = 0; j < emb_size; ++j) {
-        tmp[j] = static_cast<half>(embs_[i][j]);
-      }
-      ptr_vector[i] = tmp.data();
-    }
-  }
   embs_gpu_.resize(embs_.size());
   for (int i = 0; i < embs_.size(); i++) {
-    cudaMalloc(&embs_gpu_[i], sizeof(T) * emb_sizes_[i]);
-    cudaMemcpy(embs_gpu_[i], ptr_vector[i], emb_sizes_[i] * sizeof(T),
+    if (embs_[i]) {
+      cudaMalloc(&embs_gpu_[i], sizeof(float) * emb_sizes_[i]);
+      cudaMemcpy(embs_gpu_[i], embs_[i], emb_sizes_[i] * sizeof(float),
+                 cudaMemcpyHostToDevice);
+    }
+  }
+
+  if (bias_) {
+    cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
+    cudaMemcpy(bias_gpu_, bias_, bias_size_ * sizeof(float),
+               cudaMemcpyHostToDevice);
+  }
+  if (scale_) {
+    cudaMalloc(&scale_gpu_, sizeof(float) * scale_size_);
+    cudaMemcpy(scale_gpu_, scale_, scale_size_ * sizeof(float),
                cudaMemcpyHostToDevice);
   }
 
-  cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
-  cudaMemcpy(bias_gpu_, bias_, bias_size_ * sizeof(float),
-             cudaMemcpyHostToDevice);
-  cudaMalloc(&scale_gpu_, sizeof(float) * scale_size_);
-  cudaMemcpy(scale_gpu_, scale_, scale_size_ * sizeof(float),
-             cudaMemcpyHostToDevice);
-
   return 0;
 }
-
-template <typename T>
-size_t EmbEltwiseLayernormPluginDynamic<T>::getSerializationSize() const {
-  return 0;
-}
-
-template <typename T>
-void EmbEltwiseLayernormPluginDynamic<T>::serialize(void *buffer) const {}
 
 template <typename T>
 nvinfer1::DimsExprs EmbEltwiseLayernormPluginDynamic<T>::getOutputDimensions(
@@ -90,12 +66,6 @@ nvinfer1::DimsExprs EmbEltwiseLayernormPluginDynamic<T>::getOutputDimensions(
                         "so the index should be zero,"
                         "but it's (%d)",
                         output_index));
-  PADDLE_ENFORCE_EQ(
-      nb_inputs, 3,
-      platform::errors::InvalidArgument(
-          "The Input of the EmbEltwiseLayernorm should be 3, but we found "
-          "it has (%d) inputs",
-          nb_inputs));
   nvinfer1::DimsExprs ret;
   ret.nbDims = 5;
   ret.d[0] = inputs[0].d[0];
@@ -113,13 +83,18 @@ bool EmbEltwiseLayernormPluginDynamic<T>::supportsFormatCombination(
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of swish plugin shoule not be nullptr."));
-
+  PADDLE_ENFORCE_EQ(nb_outputs, 1,
+                    platform::errors::InvalidArgument(
+                        "The EmbEltwiseLayerNorm's output should be one"
+                        "but it's (%d) outputs.",
+                        nb_outputs));
   PADDLE_ENFORCE_LT(
       pos, nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
                                         pos, nb_inputs + nb_outputs));
-  (in_out && pos < (nb_inputs + nb_outputs));
+
+  int all_nums = nb_inputs + nb_outputs;
 
   const nvinfer1::PluginTensorDesc &desc = in_out[pos];
   if (desc.format != nvinfer1::TensorFormat::kLINEAR) {
@@ -131,18 +106,19 @@ bool EmbEltwiseLayernormPluginDynamic<T>::supportsFormatCombination(
   }
 
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
-  if (pos == 1 || pos == 2) {
+  if (pos < all_nums - 1) {
     return desc.type == nvinfer1::DataType::kINT32 &&
            desc.dims.d[0] == prev.dims.d[0] && desc.dims.d[1] == prev.dims.d[1];
   }
 
-  if (pos == 3) {
+  if (pos == all_nums - 1) {
     if (sizeof(T) == sizeof(float)) {
       return desc.type == nvinfer1::DataType::kFLOAT;
     } else {
       return desc.type == nvinfer1::DataType::kHALF;
     }
   }
+  return false;
 }
 
 template <typename T>

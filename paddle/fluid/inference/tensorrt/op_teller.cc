@@ -29,7 +29,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("fused_embedding_eltwise_layernorm");
     teller_set.insert("multihead_matmul");
     teller_set.insert("skip_layernorm");
-    teller_set.insert("slice");
 #endif
   }
 
@@ -44,11 +43,21 @@ struct SimpleOpTypeSetTeller : public Teller {
 
  private:
   // use this set for no calib int8.
-  std::unordered_set<std::string> int8_teller_set{
-      "mul",        "conv2d",           "pool2d",
-      "relu",       "depthwise_conv2d", "softmax",
-      "batch_norm", "elementwise_add",  "leaky_relu",
-      "fc"};
+  std::unordered_set<std::string> int8_teller_set{"mul",
+                                                  "conv2d",
+                                                  "pool2d",
+                                                  "relu",
+                                                  "depthwise_conv2d",
+                                                  "softmax",
+                                                  "batch_norm",
+                                                  "elementwise_add",
+                                                  "leaky_relu",
+                                                  "fc",
+                                                  "relu6",
+                                                  "concat",
+                                                  "scale",
+                                                  "elementwise_mul",
+                                                  "conv2d_transpose"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "conv2d",

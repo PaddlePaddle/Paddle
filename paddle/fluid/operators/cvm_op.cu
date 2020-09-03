@@ -25,10 +25,6 @@ using platform::PADDLE_CUDA_NUM_THREADS;
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-#define CUDA_KERNEL_LOOP(i, n)                                 \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
 __global__ void CvmComputeKernel(const bool use_cvm, const int64_t item_width,
                                  const T* X, T* Y, int64_t numel) {

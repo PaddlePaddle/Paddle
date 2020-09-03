@@ -26,7 +26,7 @@ void SetConfig(AnalysisConfig *cfg, std::string model_path) {
   cfg->DisableGpu();
   cfg->SwitchIrOptim(false);
   cfg->SwitchSpecifyInputNames();
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
   cfg->EnableMKLDNN();
 }
 

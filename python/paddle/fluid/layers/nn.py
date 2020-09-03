@@ -202,6 +202,7 @@ __all__ = [
     'filter_by_instag',
     'shard_index',
     'hard_swish',
+    'mish',
     'gather_tree',
     'uniform_random',
     'randint',
@@ -212,6 +213,7 @@ __all__ = [
     'flip',
     'roll',
     'log_softmax',
+    'index_sample',
 ]
 
 
@@ -2151,6 +2153,9 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             print(transition)
 
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'linear_chain_crf')
+    check_variable_and_dtype(label, 'label', ['int64'], 'linear_chain_crf')
     helper = LayerHelper('linear_chain_crf', **locals())
     size = input.shape[2] if length else input.shape[1]
     transition = helper.create_parameter(
@@ -2233,10 +2238,12 @@ def crf_decoding(input, param_attr, label=None, length=None):
            crf_decode = fluid.layers.crf_decoding(input=emission, length=length,
                      param_attr=fluid.ParamAttr(name="crfw_pad"))
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'crf_decoding')
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
     viterbi_path = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype())
+        dtype=core.VarDesc.VarType.INT64)
     inputs = {"Emission": [input], "Transition": transition, "Label": label}
     if length:
         inputs['Length'] = length
@@ -2482,12 +2489,12 @@ def chunk_eval(input,
             dict_size = 10000
             label_dict_len = 7
             sequence = fluid.data(
-                name='id', shape=[-1, 1], lod_level=1, dtype='int64')
+                name='id', shape=[None, 1], lod_level=1, dtype='int64')
             embedding = fluid.embedding(
                 input=sequence, size=[dict_size, 512])
             hidden = fluid.layers.fc(input=embedding, size=512)
-            label = fluid.layers.data(
-                name='label', shape=[1], lod_level=1, dtype='int32')
+            label = fluid.data(
+                name='label', shape=[None, 1], lod_level=1, dtype='int64')
             crf = fluid.layers.linear_chain_crf(
                 input=hidden, label=label, param_attr=fluid.ParamAttr(name="crfw"))
             crf_decode = fluid.layers.crf_decoding(
@@ -2496,9 +2503,12 @@ def chunk_eval(input,
                 input=crf_decode,
                 label=label,
                 chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) / 2)
+                num_chunk_types=int((label_dict_len - 1) / 2))
     """
     helper = LayerHelper("chunk_eval", **locals())
+
+    check_variable_and_dtype(input, 'input', ['int64'], 'chunk_eval')
+    check_variable_and_dtype(label, 'label', ['int64'], 'chunk_eval')
 
     # prepare output
     precision = helper.create_variable_for_type_inference(dtype="float32")
@@ -4530,7 +4540,8 @@ def data_norm(input,
               do_model_average_for_mean_and_var=True,
               slot_dim=-1,
               sync_stats=False,
-              summary_decay_rate=0.9999999):
+              summary_decay_rate=0.9999999,
+              enable_scale_and_shift=False):
     """
     **Data Normalization Layer**
 
@@ -4579,6 +4590,7 @@ def data_norm(input,
         sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
             summary messages.
         summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
+        enable_scale_and_shift(bool, Default False): do scale&shift after normalization.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
@@ -4609,12 +4621,35 @@ def data_norm(input,
     batch_size_default = 1e4
     batch_sum_default = 0.0
     batch_square_sum_default = 1e4
+    scale_w_default = 1.0
+    bias_default = 0.0
 
     if param_attr and isinstance(param_attr, dict):
         batch_size_default = param_attr.get("batch_size", 1e4)
         batch_sum_default = param_attr.get("batch_sum", 0.0)
         batch_square_sum_default = param_attr.get("batch_square", 1e4)
+    if enable_scale_and_shift:
+        scale_w_default = param_attr.get("scale_w", 1.0)
+        bias_default = param_attr.get("bias", 0.0)
 
+    # create scale and shift(bias) when enable_scale_and_shift is True
+    if name == None:
+        name = "dn"
+    if enable_scale_and_shift:
+        scale_w = helper.create_parameter(
+            attr=ParamAttr(
+                name=name + '.scale_w',
+                initializer=Constant(value=float(scale_w_default)),
+                trainable=True),
+            shape=param_shape,
+            dtype=input.dtype)
+        bias = helper.create_parameter(
+            attr=ParamAttr(
+                name=name + '.bias',
+                initializer=Constant(value=float(bias_default)),
+                trainable=True),
+            shape=param_shape,
+            dtype=input.dtype)
     # create parameter
     batch_size = helper.create_parameter(
         attr=ParamAttr(
@@ -4645,14 +4680,27 @@ def data_norm(input,
 
     data_norm_out = input if in_place else helper.create_variable(dtype=dtype)
 
+    inputs = {
+        "X": input,
+        "BatchSize": batch_size,
+        "BatchSum": batch_sum,
+        "BatchSquareSum": batch_square_sum
+    }
+    attrs = {
+        "epsilon": epsilon,
+        "sync_stats": sync_stats,
+        "summary_decay_rate": summary_decay_rate,
+    }
+    if slot_dim > 0:
+        attrs["slot_dim"] = slot_dim
+    if enable_scale_and_shift:
+        attrs["enable_scale_and_shift"] = enable_scale_and_shift
+    if enable_scale_and_shift:
+        inputs["scale_w"] = scale_w
+        inputs["bias"] = bias
     helper.append_op(
         type="data_norm",
-        inputs={
-            "X": input,
-            "BatchSize": batch_size,
-            "BatchSum": batch_sum,
-            "BatchSquareSum": batch_square_sum
-        },
+        inputs=inputs,
         outputs={
             "Y": data_norm_out,
             "Means": means,
@@ -4661,12 +4709,7 @@ def data_norm(input,
             "BatchSum": batch_sum,
             "BatchSquareSum": batch_square_sum
         },
-        attrs={
-            "epsilon": epsilon,
-            "slot_dim": slot_dim,
-            "sync_stats": sync_stats,
-            "summary_decay_rate": summary_decay_rate
-        })
+        attrs=attrs)
 
     return helper.append_activation(data_norm_out)
 
@@ -6870,6 +6913,8 @@ def im2sequence(input,
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
 
+    check_variable_and_dtype(input, 'input', ['float32'], 'im2sequence')
+
     if isinstance(filter_size, int):
         filter_size = [filter_size, filter_size]
     if isinstance(stride, int):
@@ -6995,9 +7040,15 @@ def multiplex(inputs, index):
     """
     helper = LayerHelper('multiplex', **locals())
 
-    if not isinstance(inputs, list) and len(inputs) < 2:
-        raise ValueError("inputs should be a list object and contains at least "
-                         "2 elements.")
+    check_type(inputs, 'inputs', (list), 'multiplex')
+    if len(inputs) < 2:
+        raise ValueError(
+            "inputs should be a list object with at least 2 elements.")
+    for id, x in enumerate(inputs):
+        check_variable_and_dtype(x, 'input[' + str(id) + ']',
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'multiplex')
+    check_variable_and_dtype(index, "index", ['int32', 'int64'], 'multiplex')
 
     out = helper.create_variable_for_type_inference(inputs[0].dtype)
     helper.append_op(
@@ -7465,7 +7516,7 @@ def squeeze(input, axes, name=None):
             Out.shape = [1,3,5]
 
     Args:
-        input (Variable): The input Tensor. Support data type: float32, float64, int8, int32, int64.
+        input (Variable): The input Tensor. Support data type: float16, float32, float64, int8, int32, int64.
                           axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
                           Axes range is :math:`[-rank(input), rank(input))`.
                           If axes is negative, :math:`axes=axes+rank(input)`.
@@ -7485,9 +7536,9 @@ def squeeze(input, axes, name=None):
 
     """
     helper = LayerHelper("squeeze", **locals())
-    check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64', 'int8', 'int32', 'int64'],
-                             'squeeze')
+    check_variable_and_dtype(
+        input, 'input',
+        ['float16', 'float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
     check_type(axes, 'axes', list, 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -8018,7 +8069,7 @@ def label_smooth(label,
         label(Variable): The input variable containing the label data. The
                         label data should use one-hot representation. It's
                         a multidimensional tensor with a shape of
-                        :math:`[N_1, ..., Depth]`, where Depth is class number.
+                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float32" and "float64".
         prior_dist(Variable, optional): The prior distribution to be used to smooth
                         labels. If not provided, an uniform distribution
                         is used. It's a multidimensional tensor with a shape of
@@ -8041,7 +8092,7 @@ def label_smooth(label,
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
-            label = layers.data(name="label", shape=[1], dtype="float32")
+            label = layers.data(name="label", shape=[1], dtype="int32")
             one_hot_label = layers.one_hot(input=label, depth=10)
             smooth_label = layers.label_smooth(
                 label=one_hot_label, epsilon=0.1, dtype="float32")
@@ -8052,6 +8103,9 @@ def label_smooth(label,
     if in_dygraph_mode():
         return core.ops.label_smooth(label, prior_dist, 'epsilon',
                                      float(epsilon))
+
+    check_variable_and_dtype(label, 'label', ['float32', 'float64'],
+                             'label_smooth')
 
     helper = LayerHelper("label_smooth", **locals())
     label.stop_gradient = True
@@ -10168,6 +10222,9 @@ def affine_grid(theta, out_shape, name=None):
     """
     helper = LayerHelper('affine_grid')
 
+    check_variable_and_dtype(theta, 'theta', ['float32', 'float64'],
+                             'affine_grid')
+
     if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
             isinstance(out_shape, Variable)):
         raise ValueError("The out_shape should be a list, tuple or Variable.")
@@ -10180,6 +10237,8 @@ def affine_grid(theta, out_shape, name=None):
     attrs = {}
     if isinstance(out_shape, Variable):
         ipts['OutputShape'] = out_shape
+        check_variable_and_dtype(out_shape, 'out_shape', ['int32'],
+                                 'affine_grid')
     else:
         attrs['output_shape'] = out_shape
 
@@ -10637,10 +10696,21 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
     alpha_shape = [1]
+    # NOTE(): The input of this API should be ``N,C,...`` format, 
+    # which means x.shape[0] is batch_size and x.shape[0] is channel.
     if mode == 'channel':
+        assert len(
+            x.shape
+        ) >= 2, "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
+        #NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
+        # To be consistent with Prelu, it is simplified.
+        #NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
         alpha_shape = [1, x.shape[1], 1, 1]
     elif mode == 'element':
-        alpha_shape = [1, x.shape[1], x.shape[2], x.shape[3]]
+        assert len(
+            x.shape
+        ) >= 1, "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
+        alpha_shape = [1] + list(x.shape)[1:]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
@@ -10965,6 +11035,11 @@ def stack(x, axis=0):
         assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
                             "number of the elements must be 1, but received %s." % len(x)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
+
+        for i in x:
+            check_variable_and_dtype(i, 'x', \
+                ['float16', 'float32', 'float64', 'int32', 'int64'], 'stack')
+
         helper.append_op(
             type='tensor_array_to_tensor',
             inputs={'X': x[0]},
@@ -11067,12 +11142,12 @@ def unstack(x, axis=0, num=None):
     raised.
 
     Args:
-        x (Variable): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
+        x (Tensor): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
         axis (int): The axis along which the input is unstacked.
         num (int|None): The number of output variables.
 
     Returns:
-        list(Variable): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
+        list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
 
     Raises:
         ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
@@ -11081,7 +11156,7 @@ def unstack(x, axis=0, num=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
+            x = fluid.data(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
             y = fluid.layers.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
     """
@@ -11286,7 +11361,11 @@ def expand_as(x, target_tensor, name=None):
         #(3,20)
 
     """
-
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int32', 'int64', 'bool'], 'expand_as')
+    check_variable_and_dtype(target_tensor, 'target_tensor',
+                             ['float32', 'float64', 'int32', 'int64', 'bool'],
+                             'expand_as')
     helper = LayerHelper('expand_as', input=x, **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -11399,33 +11478,55 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     Generate a random tensor whose data is drawn from a Gaussian distribution.
 
     Args:
-        shape (Tuple[int] | List[int]): Shape of the generated random tensor.
-
+        shape (tuple[int] | list[int] | Variable | list[Variable]): Shape of the generated random tensor.
+        
         mean (float): Mean of the random tensor, defaults to 0.0.
-
+            
         std (float): Standard deviation of the random tensor, defaults to 1.0.
-
+        
         seed (int): ${seed_comment}
-
+        
         dtype(np.dtype | core.VarDesc.VarType | str): Output data type, float32 or float64.
 
     Returns:
         Variable: Random tensor whose data is drawn from a Gaussian distribution, dtype: flaot32 or float64 as specified.
 
     Examples:
+
        .. code-block:: python
 
-           # declarative mode
+            import paddle.fluid as fluid
+
+            # example 1:
+            # attr shape is a list which doesn't contain tensor Variable.
+            result_1 = fluid.layers.gaussian_random(shape=[3, 4])
+
+            # example 2:
+            # attr shape is a list which contains tensor Variable.
+            dim_1 = fluid.layers.fill_constant([1],"int64",3)
+            dim_2 = fluid.layers.fill_constant([1],"int32",5)
+            result_2 = fluid.layers.gaussian_random(shape=[dim_1, dim_2])
+
+            # example 3:
+            # attr shape is a Variable, the data type must be int64 or int32.
+            var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
+            result_3 = fluid.layers.gaussian_random(var_shape)
+            var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
+            result_4 = fluid.layers.gaussian_random(var_shape_int32)
+       
+       .. code-block:: python
+       
+           # declarative mode 
            import numpy as np
            from paddle import fluid
-
+   
            x = fluid.layers.gaussian_random((2, 3), std=2., seed=10)
-
+   
            place = fluid.CPUPlace()
            exe = fluid.Executor(place)
            start = fluid.default_startup_program()
            main = fluid.default_main_program()
-
+   
            exe.run(start)
            x_np, = exe.run(main, feed={}, fetch_list=[x])
 
@@ -11439,33 +11540,44 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
            import numpy as np
            from paddle import fluid
            import paddle.fluid.dygraph as dg
-
+    
            place = fluid.CPUPlace()
            with dg.guard(place) as g:
                x = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
-               x_np = x.numpy()
+               x_np = x.numpy()       
            x_np
            # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
     """
 
     helper = LayerHelper('gaussian_random', **locals())
-    check_type(shape, 'shape', (list, tuple), 'fluid.layers.gaussian_random')
-    check_dtype(dtype, 'dtype', ['float32', 'float64'],
-                'fluid.layers.gaussian_random')
     out = helper.create_variable_for_type_inference(dtype)
+    if not isinstance(shape, (list, tuple, Variable)):
+        raise TypeError(
+            "The type of 'shape' in fill_constant must be Variable, list or tuple, but "
+            "received %s." % (type(shape)))
     c_dtype = convert_np_dtype_to_dtype_(dtype)
+    attrs = {
+        'mean': mean,
+        'std': std,
+        'seed': seed,
+        'dtype': c_dtype,
+        'use_mkldnn': False
+    }
+
+    inputs = {}
+    utils._get_shape_tensor_inputs(
+        inputs=inputs,
+        helper=helper,
+        attrs=attrs,
+        shape=shape,
+        op_type='gaussian_random')
+
     helper.append_op(
         type='gaussian_random',
+        inputs=inputs,
         outputs={'Out': out},
-        attrs={
-            'shape': shape,
-            'mean': mean,
-            'std': std,
-            'seed': seed,
-            'dtype': c_dtype,
-            'use_mkldnn': False
-        })
+        attrs=attrs)
 
     return out
 
@@ -13445,6 +13557,9 @@ def space_to_depth(x, blocksize, name=None):
     if not (isinstance(blocksize, int)):
         raise ValueError("blocksize must be a python Int")
 
+    check_variable_and_dtype(x, 'x', \
+        ['float16', 'float32', 'float64', 'int32', 'int64'], 'space_to_depth')
+
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
@@ -14650,6 +14765,7 @@ def pixel_shuffle(x, upscale_factor):
 
     """
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_shuffle')
     helper = LayerHelper("pixel_shuffle", **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -15248,6 +15364,8 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     """
 
     helper = LayerHelper("unfold", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
 
     assert len(x.shape) == 4, \
             "input should be the format of [N, C, H, W]"
@@ -16270,6 +16388,81 @@ def elementwise_equal(x, y, name=None):
     return out
 
 
+@templatedoc()
+def mish(x, threshold=20, name=None):
+    """
+    This operator implements the mish activation function.
+    Refer to `Mish: A Self Regularized Non-Monotonic Neural
+    Activation Function <https://arxiv.org/abs/1908.08681>`_
+
+
+    The formula is as follows if :attr:`threshold` is :code:`None` or negative:
+
+    .. math::
+
+        out = x * \\tanh(\\ln(1 + e^{x}))
+
+    The formula is as follows if :attr:`threshold` is set as positive value:
+
+    .. math::
+
+	out = \\begin{cases}
+		x \\ast \\tanh(x), \\text{if } x > \\text{threshold} \\\\
+		x \\ast \\tanh(e^{x}), \\text{if } x < -\\text{threshold} \\\\
+		x \\ast \\tanh(\\ln(1 + e^{x})),  \\text{otherwise}
+	      \\end{cases}
+
+    Args:
+        x (Variable): Input feature, multi-dimensional Tensor. The data type
+                      should be float16, float32 or float64.
+        threshold (float|None): threshold for softplus in Mish operator.
+                Approximate value of softplus will be used if absolute value
+                of input is greater than :attr:threshold and :attr:threshold
+                is set as positive value. For none or negative threshold,
+                approximate value is not used. Default 20.
+        name (str, optional): The default value is None. Normally there is no
+                need for user to set this property. For more information, please
+                refer to :ref:`api_guide_Name`
+
+    Returns:
+        Variable: The output tensor with the same shape and data type as input.
+
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        DATATYPE='float32'
+
+        x_data = np.array([i for i in range(1,5)]).reshape([1,1,4]).astype(DATATYPE)
+
+        x = fluid.data(name="x", shape=[None,1,4], dtype=DATATYPE)
+        y = fluid.layers.mish(x)
+
+        place = fluid.CPUPlace()
+        # place = fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
+        print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
+    """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
+    check_type(threshold, 'threshold', (float, int), 'mish')
+    assert threshold > 0, "threshold of mish should be greater than 0, " \
+                          "but got {}".format(threshold)
+
+    helper = LayerHelper('mish', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='mish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold or -1})
+    return out
+
+
 def flip(input, dims, name=None):
     """
 
@@ -16473,3 +16666,84 @@ def log_softmax(input, axis=None, dtype=None, name=None):
         type='log', inputs={'X': outs_softmax}, outputs={'Out': outs_log})
 
     return outs_log
+
+
+def index_sample(x, index):
+    """
+    **IndexSample Layer**
+    IndexSample OP returns the element of the specified location of X, 
+    and the location is specified by Index. 
+
+    .. code-block:: text
+
+    Args:
+        x (Variable): The source input tensor with 2-D shape. Supported data type is 
+            int32, int64, float32, float64.
+        index (Variable): The index input tensor with 2-D shape, first dimension should be same with X. 
+            Data type is int32 or int64.
+
+    Returns:
+        Variable: A tensor with the same shape as `index` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data = np.array([[1.0, 2.0, 3.0, 4.0],
+                                [5.0, 6.0, 7.0, 8.0],
+                                [9.0, 10.0, 11.0, 12.0]]).astype('float32')
+
+            data_index = np.array([[0, 1, 2],
+                                    [1, 2, 3],
+                                    [0, 0, 0]]).astype('int32')
+
+            target_data = np.array([[100, 200, 300, 400],
+                                    [500, 600, 700, 800],
+                                    [900, 1000, 1100, 1200]]).astype('int32')
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data)
+                index = fluid.dygraph.to_variable(data_index)
+                target = fluid.dygraph.to_variable(target_data)
+
+                out_z1 = fluid.layers.index_sample(x, index)
+                print(out_z1.numpy())
+                #[[1. 2. 3.]
+                # [6. 7. 8.]
+                # [9. 9. 9.]]
+
+                # Use the index of the maximum value by topk op
+                # get the value of the element of the corresponding index in other tensors
+                top_value, top_index = fluid.layers.topk(x, k=2)
+                out_z2 = fluid.layers.index_sample(target, top_index)
+                print(top_value.numpy())
+                #[[ 4.  3.]
+                # [ 8.  7.]
+                # [12. 11.]]
+
+                print(top_index.numpy())
+                #[[3 2]
+                # [3 2]
+                # [3 2]]
+
+                print(out_z2.numpy())
+                #[[ 400  300]
+                # [ 800  700]
+                # [1200 1100]]
+    """
+    helper = LayerHelper("index_sample", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'fluid.layers.index_sample')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
+                             'fluid.layers.index_sample')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='index_sample',
+        inputs={'X': x,
+                'Index': index},
+        outputs={'Out': out})
+    return out

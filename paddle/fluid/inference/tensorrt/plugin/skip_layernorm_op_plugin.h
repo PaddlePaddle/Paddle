@@ -29,61 +29,84 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit SkipLayerNormPluginDynamic(float* bias, float* scale, int bias_size,
-                                      int scale_size, const float eps,
-                                      bool ban_fp16)
-      : bias_(bias),
-        scale_(scale),
-        bias_size_(bias_size),
+  explicit SkipLayerNormPluginDynamic(const float* bias, const float* scale,
+                                      int bias_size, int scale_size,
+                                      const float eps, bool ban_fp16)
+      : bias_size_(bias_size),
         scale_size_(scale_size),
         eps_(eps),
-        ban_fp16_(ban_fp16) {}
-  SkipLayerNormPluginDynamic(void const* serialData, size_t serialLength) {}
+        ban_fp16_(ban_fp16) {
+    bias_.resize(bias_size);
+    scale_.resize(scale_size);
+    std::copy(bias, bias + bias_size, bias_.data());
+    std::copy(scale, scale + scale_size, scale_.data());
+  }
+  SkipLayerNormPluginDynamic(void const* serial_data, size_t serial_length) {
+    DeserializeValue(&serial_data, &serial_length, &bias_);
+    DeserializeValue(&serial_data, &serial_length, &scale_);
+    DeserializeValue(&serial_data, &serial_length, &bias_size_);
+    DeserializeValue(&serial_data, &serial_length, &scale_size_);
+    DeserializeValue(&serial_data, &serial_length, &eps_);
+    DeserializeValue(&serial_data, &serial_length, &ban_fp16_);
+  }
+
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new SkipLayerNormPluginDynamic(bias_, scale_, bias_size_,
-                                          scale_size_, eps_, ban_fp16_);
+    return new SkipLayerNormPluginDynamic(
+        bias_.data(), scale_.data(), bias_size_, scale_size_, eps_, ban_fp16_);
   }
 
   const char* getPluginType() const override { return "skip_layernorm_plugin"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override;
 
-  size_t getSerializationSize() const override;
-  void serialize(void* buffer) const override;
+  size_t getSerializationSize() const override {
+    size_t ser_size = SerializedSize(bias_) + SerializedSize(scale_) +
+                      SerializedSize(bias_size_) + SerializedSize(scale_size_) +
+                      SerializedSize(eps_) + SerializedSize(eps_);
+    return ser_size;
+  }
+  void serialize(void* buffer) const override {
+    SerializeValue(&buffer, bias_);
+    SerializeValue(&buffer, scale_);
+    SerializeValue(&buffer, bias_size_);
+    SerializeValue(&buffer, scale_size_);
+    SerializeValue(&buffer, eps_);
+    SerializeValue(&buffer, ban_fp16_);
+  }
 
   nvinfer1::DimsExprs getOutputDimensions(
       int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
       nvinfer1::IExprBuilder& expr_builder) override;
 
   bool supportsFormatCombination(int pos,
-                                 const nvinfer1::PluginTensorDesc* inOut,
-                                 int nbInputs, int nbOutputs) override;
+                                 const nvinfer1::PluginTensorDesc* in_out,
+                                 int nb_inputs, int nb_outputs) override;
 
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
-                       int nbInputs,
+                       int nb_inputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nbOutputs) override {}
+                       int nb_outputs) override {}
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
-                          int nbInputs,
+                          int nb_inputs,
                           const nvinfer1::PluginTensorDesc* outputs,
-                          int nbOutputs) const override {
+                          int nb_outputs) const override {
     return 0;
   }
 
-  int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
-              const nvinfer1::PluginTensorDesc* outputDesc,
+  int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
+              const nvinfer1::PluginTensorDesc* output_desc,
               const void* const* inputs, void* const* outputs, void* workspace,
               cudaStream_t stream) override;
   nvinfer1::DataType getOutputDataType(int index,
-                                       const nvinfer1::DataType* inputTypes,
-                                       int nbInputs) const override;
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) const override;
 
   void destroy() override { delete this; }
 
  private:
-  float* bias_;
-  float* scale_;
+  std::vector<float> bias_;
+  std::vector<float> scale_;
 
   float* bias_gpu_;
   float* scale_gpu_;
@@ -94,6 +117,45 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
   float eps_;
   bool ban_fp16_;
 };
+
+class SkipLayerNormPluginV2Creator : public nvinfer1::IPluginCreator {
+ public:
+  SkipLayerNormPluginV2Creator() {}
+  const char* getPluginName() const override { return "skip_layernorm_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() override {
+    return &field_collection_;
+  }
+
+  nvinfer1::IPluginV2* createPlugin(
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
+    return nullptr;
+  }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length) override {
+    auto plugin = new SkipLayerNormPluginDynamic(serial_data, serial_length);
+    return plugin;
+  }
+
+  void setPluginNamespace(const char* lib_namespace) override {
+    plugin_namespace_ = lib_namespace;
+  }
+
+  const char* getPluginNamespace() const override {
+    return plugin_namespace_.c_str();
+  }
+
+ private:
+  std::string plugin_namespace_;
+  std::string plugin_name_;
+  nvinfer1::PluginFieldCollection field_collection_;
+  std::vector<nvinfer1::PluginField> plugin_attributes_;
+};
+REGISTER_TRT_PLUGIN_V2(SkipLayerNormPluginV2Creator);
 #endif
 
 }  // namespace plugin

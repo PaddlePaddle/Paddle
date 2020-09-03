@@ -69,6 +69,11 @@ def test_slice_in_while_loop(x, iter_num):
 def test_slice_in_for_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     a = []
+    # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
+    iter_num = fluid.layers.fill_constant(
+        shape=[1], value=iter_num, dtype="int32"
+    )  # TODO(liym27): Delete it if the type of parameter iter_num can be resolved
+
     for i in range(iter_num):
         a.append(x)
 

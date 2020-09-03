@@ -15,6 +15,7 @@ limitations under the License. */
 #include <thrust/transform.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/fill_constant_op.h"
 
 namespace paddle {
 namespace operators {
@@ -41,6 +42,31 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    if (seed == 0) {
+      std::random_device rd;
+      seed = rd();
+    }
+    T mean = static_cast<T>(context.Attr<float>("mean"));
+    T std = static_cast<T>(context.Attr<float>("std"));
+    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+    const std::string op_type = "gaussian_random";
+    auto shape = GetShape(context, op_type);
+    tensor->Resize(shape);
+    T* data = tensor->mutable_data<T>(context.GetPlace());
+
+    int64_t size = tensor->numel();
+    thrust::transform(index_sequence_begin, index_sequence_begin + size,
+                      thrust::device_ptr<T>(data),
+                      GaussianGenerator<T>(mean, std, seed));
+  }
+};
+
+template <typename T>
+class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     if (seed == 0) {
@@ -56,13 +82,13 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
                       GaussianGenerator<T>(mean, std, seed));
   }
 };
-
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_OP_CUDA_KERNEL(gaussian_random,
                         paddle::operators::GPUGaussianRandomKernel<float>,
                         paddle::operators::GPUGaussianRandomKernel<double>);
-REGISTER_OP_CUDA_KERNEL(gaussian_random_batch_size_like,
-                        paddle::operators::GPUGaussianRandomKernel<float>,
-                        paddle::operators::GPUGaussianRandomKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    gaussian_random_batch_size_like,
+    paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<float>,
+    paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<double>);

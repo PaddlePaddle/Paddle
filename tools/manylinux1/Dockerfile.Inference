@@ -23,7 +23,7 @@ COPY ./paddle/scripts/docker/root/ /root/
 RUN apt-get update && \
     apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
     libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-    xz-utils tk-dev libffi-dev liblzma-dev
+    xz-utils tk-dev libffi-dev liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev
 
 # Downgrade gcc&&g++
 RUN apt-get update
@@ -102,10 +102,12 @@ WORKDIR /home/setuptools-40.6.2
 RUN python setup.py build
 RUN python setup.py install
 WORKDIR /home
+
 RUN wget https://files.pythonhosted.org/packages/69/81/52b68d0a4de760a2f1979b0931ba7889202f302072cc7a0d614211bc7579/pip-18.0.tar.gz
 RUN tar -zxvf pip-18.0.tar.gz
 WORKDIR pip-18.0
-RUN python setup.py install
+RUN python setup.py install && \
+    python3 setup.py install
 
 WORKDIR /home
 RUN rm Python-$version.tgz setuptools-40.6.2.zip pip-18.0.tar.gz && \
@@ -159,18 +161,18 @@ RUN pip3 --no-cache-dir install -U wheel py-cpuinfo==5.0.0 && \
     pip --no-cache-dir install -U docopt PyYAML sphinx==1.5.6 && \
     pip --no-cache-dir install sphinx-rtd-theme==0.1.9 recommonmark
 
-RUN pip3 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip3 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3 --no-cache-dir install opencv-python && \
-    pip3.6 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip3.6 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.6 --no-cache-dir install opencv-python && \
-    pip3.7 --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip3.7 --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3.7 --no-cache-dir install opencv-python && \
-    pip --no-cache-dir install 'pre-commit==1.10.4' 'ipython==5.3.0' && \
-    pip --no-cache-dir install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip --no-cache-dir install opencv-python
+RUN pip3 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
+    pip3 --no-cache-dir install ipykernel==4.6.0 jupyter==1.0.0 && \
+    pip3 --no-cache-dir install opencv-python==3.1.0.0 && \
+    pip3.6 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
+    pip3.6 --no-cache-dir install ipykernel==4.6.0 jupyter==1.0.0 && \
+    pip3.6 --no-cache-dir install opencv-python==4.2.0.32 && \
+    pip3.7 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
+    pip3.7 --no-cache-dir install ipykernel==4.6.0 jupyter==1.0.0 && \
+    pip3.7 --no-cache-dir install opencv-python==4.2.0.32 && \
+    pip --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
+    pip --no-cache-dir install ipykernel==4.6.0 jupyter==1.0.0 && \
+    pip --no-cache-dir install opencv-python==3.1.0.0
 
 #For docstring checker
 RUN pip3 --no-cache-dir install pylint pytest astroid isort
@@ -205,6 +207,10 @@ RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
            -DCMAKE_BUILD_TYPE=Release . \
      make)
 
+# Install hadoop
+RUN wget --no-check-certificate  -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
+     tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/
+
 # ar mishandles 4GB files
 # https://sourceware.org/bugzilla/show_bug.cgi?id=14625
 # remove them when apt-get support 2.27 and higher version
@@ -213,11 +219,6 @@ RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/
     cd binutils-2.27 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
 
-RUN wget --no-check-certificate https://pslib.bj.bcebos.com/openmpi-1.4.5.tar.gz && tar -xzf openmpi-1.4.5.tar.gz && \
-    cd openmpi-1.4.5 && ./configure --prefix=/usr/local && make all -j8 && make install -j8 && \
-    export LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH && export PATH=/usr/local/bin:$PATH && cd .. && \
-    rm -rf openmpi-1.4.5.tar.gz && pip --no-cache-dir install mpi4py && ln -fs /bin/bash /bin/sh && \
-    apt-get install libprotobuf-dev -y
 RUN pip --no-cache-dir install -U netifaces==0.10.9
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service

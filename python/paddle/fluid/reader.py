@@ -18,12 +18,12 @@ import six
 import numpy as np
 import threading
 import paddle
-from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places
+from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places, _current_expected_place
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
 from .dataloader import BatchSampler, Dataset
-from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess
+from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess, default_collate_fn
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 import logging
@@ -43,7 +43,7 @@ else:
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
 QUEUE_GET_TIMEOUT = 60
 
-__all__ = ['PyReader', 'DataLoader']
+__all__ = ['PyReader', 'DataLoader', 'default_collate_fn']
 
 data_loader_unique_name_generator = UniqueNameGenerator()
 
@@ -95,6 +95,18 @@ class DataLoaderBase(object):
 
     def __next__(self):
         raise NotImplementedError()
+
+    @classmethod
+    def _check_input_array(cls, item):
+        arr = np.asarray(item)
+        if arr.dtype == np.object:
+            raise TypeError(
+                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                "this means the input data contains nested lists with different lengths. "
+                "\n\t* Check the reader function passed to 'decorate_batch_generator'"
+                " to locate the data causes this issue.\n\t* Please consider using "
+                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor.")
+        return arr
 
 
 class DataLoader(object):
@@ -671,12 +683,12 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
         if not iterable:
             logging.warning(
-                "Please NOTE: dygraph can support iterable mode only. Change to iterable mode."
+                "Please NOTE: imperative mode can support iterable mode only. Change to iterable mode."
             )
         self._iterable = True
         if not return_list:
             logging.warning(
-                "Please NOTE: dygraph can support return as list only. Change to return as list."
+                "Please NOTE: imperative mode can support return as list only. Change to return as list."
             )
         self._return_list = True
 
@@ -806,17 +818,6 @@ class DygraphGeneratorLoader(DataLoaderBase):
             self._reset()
             six.reraise(*sys.exc_info())
 
-    @classmethod
-    def _check_input_array(cls, item):
-        arr = np.array(item)
-        if arr.dtype == np.object:
-            raise TypeError(
-                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
-                "this means the input data contains nested lists with different lengths. "
-                "\n\t* Check the reader function passed to 'decorate_batch_generator'"
-                " to locate the data causes this issue.\n\t* Please consider using "
-                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor.")
-
     def _exit_thread_expectedly(self):
         self._thread_done_event.set()
         self._blocking_queue.close()
@@ -893,7 +894,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 array = core.LoDTensorArray()
                 for item in sample:
                     if not isinstance(item, core.LoDTensor):
-                        self._check_input_array(item)
+                        item = self._check_input_array(item)
                         tmp = core.LoDTensor()
                         tmp.set(item, core.CPUPlace())
                         item = tmp
@@ -941,10 +942,11 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
     def set_batch_generator(self, reader, places=None):
         self._batch_reader = reader
-        assert places is not None, "Places cannot be None when DataLoader is iterable"
+        if places is None:
+            places = _current_expected_place()
         self._places = _convert_places(places)
         assert len(self._places) == 1, \
-            "Number of places must be 1 in dygraph mode"
+            "Number of places must be 1 in imperative mode"
         return self
 
 
@@ -1112,19 +1114,6 @@ class GeneratorLoader(DataLoaderBase):
     def reset(self):
         assert not self._iterable, "reset() cannot be called when DataLoader is iterable"
         self._reset()
-
-    @classmethod
-    def _check_input_array(cls, item):
-        arr = np.array(item)
-        if arr.dtype == np.object:
-            raise TypeError((
-                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
-                "this means the input data contains nested lists with different lengths. "
-                "\n\t* Check the reader function passed to 'decorate_batch_generator'"
-                " to locate the data causes this issue.\n\t* Please consider using "
-                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."))
-
-        return arr
 
     def _start(self):
         def __thread_main__():

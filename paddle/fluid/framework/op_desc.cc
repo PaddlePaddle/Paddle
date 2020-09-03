@@ -365,6 +365,10 @@ const std::vector<std::string> &OpDesc::Output(const std::string &name) const {
   return it->second;
 }
 
+bool OpDesc::HasOutput(const std::string &name) const {
+  return outputs_.find(name) != outputs_.end();
+}
+
 std::vector<std::string> OpDesc::OutputArgumentNames() const {
   std::vector<std::string> retv;
   for (auto &ipt : this->outputs_) {

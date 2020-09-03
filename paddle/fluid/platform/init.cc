@@ -39,6 +39,16 @@ DEFINE_int32(multiple_of_cupti_buffer_size, 1,
              "been dropped when you are profiling, try increasing this value.");
 
 namespace paddle {
+namespace platform {
+
+void ParseCommandLineFlags(int argc, char **argv, bool remove) {
+  google::ParseCommandLineFlags(&argc, &argv, remove);
+}
+
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 
 #ifdef _WIN32

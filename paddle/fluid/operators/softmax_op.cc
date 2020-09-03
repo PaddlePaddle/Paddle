@@ -34,21 +34,30 @@ class SoftmaxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SoftmaxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SoftmaxOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) of SoftmaxOp is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::NotFound("Output(Out) of SoftmaxOp is not found."));
 
     auto dim_x = ctx->GetInputDim("X");
     auto rank_x = dim_x.size();
     auto axis = ctx->Attrs().Get<int>("axis");
-    PADDLE_ENFORCE(axis >= -rank_x && axis < rank_x,
-                   "Attr(axis) value should be in range [-R, R-1], "
-                   "R is the rank of Input(X).");
+    PADDLE_ENFORCE_GE(axis, -rank_x,
+                      platform::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X)."));
+    PADDLE_ENFORCE_LT(axis, rank_x,
+                      platform::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X)."));
 
     auto use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
     if (axis != rank_x - 1 && axis != -1) {
-      PADDLE_ENFORCE(!use_cudnn, "CUDNN kernel only support axis as -1.");
+      PADDLE_ENFORCE_EQ(use_cudnn, false,
+                        platform::errors::InvalidArgument(
+                            "CUDNN kernel only support axis as -1."));
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -78,8 +87,9 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                     "float16 can only be used on GPU place");
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                        platform::errors::InvalidArgument(
+                            "float16 can only be used on GPU place"));
     }
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
@@ -157,12 +167,17 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Out"), "Input(Out) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should be not null.");
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Out"),
-                      ctx->GetInputDim(framework::GradVarName("Out")),
-                      "Input(Out) and its gradients should have a same shape.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Out"), true,
+        platform::errors::InvalidArgument("Input(Out) is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::InvalidArgument("Input(Out@GRAD) is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputDim("Out"),
+        ctx->GetInputDim(framework::GradVarName("Out")),
+        platform::errors::InvalidArgument("Input(Out) and its gradients "
+                                          "should have a same shape."));
 
     ctx->SetOutputDim(framework::GradVarName("X"),
                       ctx->GetInputDim(framework::GradVarName("Out")));
@@ -191,8 +206,9 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                     "float16 can only be used on GPU place");
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                        platform::errors::InvalidArgument(
+                            "float16 can only be used on GPU place"));
     }
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,

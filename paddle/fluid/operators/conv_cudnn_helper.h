@@ -148,7 +148,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     }
 #endif
 
-    if (!exhaustive) {
+    if (!exhaustive && !deterministic) {
 #if CUDNN_VERSION >= 7001
       int perf_count;
       int best_algo_idx = 0;
@@ -185,6 +185,8 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
               workspace_size_limit, &algo));
 #endif
       VLOG(3) << "choose algo " << algo;
+    } else if (deterministic) {
+      algo = static_cast<cudnnConvolutionFwdAlgo_t>(1);
     } else {
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();

@@ -528,8 +528,8 @@ class LayerNormKernel<platform::CUDADeviceContext, T>
               x_data, scale_data, bias_data, y_data, mean_data, var_data,
               epsilon, feature_size));
       default:
-        PADDLE_THROW(
-            "Product from begin_norm_axis to end must be larger than 1");
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Product from begin_norm_axis to end must be larger than 1"));
         break;
     }
   }

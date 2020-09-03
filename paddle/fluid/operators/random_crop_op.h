@@ -106,8 +106,21 @@ struct RandomCropFunctor {
         num_batchsize_dims_(num_batchsize_dims),
         rank_(x_dims.size()),
         seed_(seed) {
-    PADDLE_ENFORCE_EQ(x_dims.size(), out_dims.size());
-    PADDLE_ENFORCE_GT(rank_, num_batchsize_dims_);
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), out_dims.size(),
+        platform::errors::InvalidArgument(
+            "The dimensions of Input(X) must equal to be the dimensions"
+            "of Output(Out), but received dimensions of Input(X) is [%d],"
+            "received dimensions of Output(Out) is [%d].",
+            x_dims.size(), out_dims.size()));
+    PADDLE_ENFORCE_GT(
+        rank_, num_batchsize_dims_,
+        platform::errors::InvalidArgument(
+            "The dimensions of Input(X) must be greater than the diff"
+            "value of Input(X)'s dimensions minus Atrr(shape)'s dimensions,"
+            "But received Input(X)'s dimensions is [%d], received value of"
+            "Input(X)'s dimensions minus Attr(shape)'s dimensions is [%d].",
+            rank_, num_batchsize_dims_));
     prod_batchsize_dims_ = 1;
     prod_x_ins_dims_ = 1;
     prod_out_ins_dims_ = 1;
@@ -117,7 +130,13 @@ struct RandomCropFunctor {
       x_dims_[i] = x_dim_i;
       out_dims_[i] = out_dim_i;
       if (i < static_cast<size_t>(num_batchsize_dims_)) {
-        PADDLE_ENFORCE_EQ(x_dim_i, out_dim_i);
+        PADDLE_ENFORCE_EQ(
+            x_dim_i, out_dim_i,
+            platform::errors::InvalidArgument(
+                "The first [%d] dimension value of Input(X) and Output(Out)"
+                "must be equal, but received the [%d] dimension value of"
+                "Input(X) and Output(Out) respectively are [%d] and [%d].",
+                num_batchsize_dims_, i, x_dim_i, out_dim_i));
         prod_batchsize_dims_ *= x_dim_i;
       } else {
         prod_x_ins_dims_ *= x_dim_i;

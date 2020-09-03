@@ -24,14 +24,10 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
 __global__ void GPUBCELossForward(const T* x_data, const T* label_data,
                                   T* out_data, const int in_numel) {
-  CUDA_1D_KERNEL_LOOP(i, in_numel) {
+  CUDA_KERNEL_LOOP(i, in_numel) {
     T x = x_data[i];
     T label = label_data[i];
     T one = static_cast<T>(1.);
@@ -48,7 +44,7 @@ template <typename T>
 __global__ void GPUBCELossBackward(const T* x_data, const T* label_data,
                                    const T* dout_data, T* dx_data,
                                    const int in_numel) {
-  CUDA_1D_KERNEL_LOOP(i, in_numel) {
+  CUDA_KERNEL_LOOP(i, in_numel) {
     T x = x_data[i];
     T label = label_data[i];
     T dout = dout_data[i];

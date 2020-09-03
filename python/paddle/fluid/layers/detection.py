@@ -57,6 +57,7 @@ __all__ = [
     'box_clip',
     'multiclass_nms',
     'locality_aware_nms',
+    'matrix_nms',
     'retinanet_detection_output',
     'distribute_fpn_proposals',
     'box_decoder_and_assign',
@@ -406,6 +407,22 @@ def rpn_target_assign(bbox_pred,
     """
 
     helper = LayerHelper('rpn_target_assign', **locals())
+
+    check_variable_and_dtype(bbox_pred, 'bbox_pred', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(cls_logits, 'cls_logits', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(anchor_box, 'anchor_box', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(anchor_var, 'anchor_var', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(gt_boxes, 'gt_boxes', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(is_crowd, 'is_crowd', ['int32'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'rpn_target_assign')
+
     # Assign target label to anchors
     loc_index = helper.create_variable_for_type_inference(dtype='int32')
     score_index = helper.create_variable_for_type_inference(dtype='int32')
@@ -915,7 +932,8 @@ def yolov3_loss(x,
                 downsample_ratio,
                 gt_score=None,
                 use_label_smooth=True,
-                name=None):
+                name=None,
+                scale_x_y=1.):
     """
     ${comment}
 
@@ -941,6 +959,7 @@ def yolov3_loss(x,
         gt_score (Variable): mixup score of ground truth boxes, should be in shape
                             of [N, B]. Default None.
         use_label_smooth (bool): ${use_label_smooth_comment}
+        scale_x_y (float): ${scale_x_y_comment}
 
     Returns:
         Variable: A 1-D tensor with shape [N], the value of yolov3 loss
@@ -1013,6 +1032,7 @@ def yolov3_loss(x,
         "ignore_thresh": ignore_thresh,
         "downsample_ratio": downsample_ratio,
         "use_label_smooth": use_label_smooth,
+        "scale_x_y": scale_x_y,
     }
 
     helper.append_op(
@@ -1035,7 +1055,8 @@ def yolo_box(x,
              conf_thresh,
              downsample_ratio,
              clip_bbox=True,
-             name=None):
+             name=None,
+             scale_x_y=1.):
     """
     ${comment}
 
@@ -1047,6 +1068,7 @@ def yolo_box(x,
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
         clip_bbox (bool): ${clip_bbox_comment}
+        scale_x_y (float): ${scale_x_y_comment}
         name (string): The default value is None.  Normally there is no need 
                        for user to set this property.  For more information, 
                        please refer to :ref:`api_guide_Name`
@@ -1095,6 +1117,7 @@ def yolo_box(x,
         "conf_thresh": conf_thresh,
         "downsample_ratio": downsample_ratio,
         "clip_bbox": clip_bbox,
+        "scale_x_y": scale_x_y,
     }
 
     helper.append_op(
@@ -2541,6 +2564,13 @@ def generate_proposal_labels(rpn_rois,
 
     helper = LayerHelper('generate_proposal_labels', **locals())
 
+    check_variable_and_dtype(rpn_rois, 'rpn_rois', ['float32', 'float64'],
+                             'generate_proposal_labels')
+    check_variable_and_dtype(gt_classes, 'gt_classes', ['int32'],
+                             'generate_proposal_labels')
+    check_variable_and_dtype(is_crowd, 'is_crowd', ['int32'],
+                             'generate_proposal_labels')
+
     rois = helper.create_variable_for_type_inference(dtype=rpn_rois.dtype)
     labels_int32 = helper.create_variable_for_type_inference(
         dtype=gt_classes.dtype)
@@ -2775,7 +2805,7 @@ def generate_proposals(scores,
         im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin
             image information for N batch. Height and width are the input sizes 
             and scale is the ratio of network input size and original size. 
-            The data type must be int32.
+            The data type can be float32 or float64.
         anchors(Variable):   A 4-D Tensor represents the anchors with a layout
             of [H, W, A, 4]. H and W are height and width of the feature map,
             num_anchors is the box count of each position. Each anchor is
@@ -2817,6 +2847,17 @@ def generate_proposals(scores,
 
     """
     helper = LayerHelper('generate_proposals', **locals())
+
+    check_variable_and_dtype(scores, 'scores', ['float32'],
+                             'generate_proposals')
+    check_variable_and_dtype(bbox_deltas, 'bbox_deltas', ['float32'],
+                             'generate_proposals')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'generate_proposals')
+    check_variable_and_dtype(anchors, 'anchors', ['float32'],
+                             'generate_proposals')
+    check_variable_and_dtype(variances, 'variances', ['float32'],
+                             'generate_proposals')
 
     rpn_rois = helper.create_variable_for_type_inference(
         dtype=bbox_deltas.dtype)
@@ -3351,6 +3392,133 @@ def locality_aware_nms(bboxes,
     output.stop_gradient = True
 
     return output
+
+
+def matrix_nms(bboxes,
+               scores,
+               score_threshold,
+               post_threshold,
+               nms_top_k,
+               keep_top_k,
+               use_gaussian=False,
+               gaussian_sigma=2.,
+               background_label=0,
+               normalized=True,
+               return_index=False,
+               name=None):
+    """
+    **Matrix NMS**
+
+    This operator does matrix non maximum suppression (NMS).
+
+    First selects a subset of candidate bounding boxes that have higher scores
+    than score_threshold (if provided), then the top k candidate is selected if
+    nms_top_k is larger than -1. Score of the remaining candidate are then
+    decayed according to the Matrix NMS scheme.
+    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    per image if keep_top_k is larger than -1.
+
+    Args:
+        bboxes (Variable): A 3-D Tensor with shape [N, M, 4] represents the
+                           predicted locations of M bounding bboxes,
+                           N is the batch size. Each bounding box has four
+                           coordinate values and the layout is
+                           [xmin, ymin, xmax, ymax], when box size equals to 4.
+                           The data type is float32 or float64.
+        scores (Variable): A 3-D Tensor with shape [N, C, M]
+                           represents the predicted confidence predictions.
+                           N is the batch size, C is the class number, M is
+                           number of bounding boxes. For each category there
+                           are total M scores which corresponding M bounding
+                           boxes. Please note, M is equal to the 2nd dimension
+                           of BBoxes. The data type is float32 or float64.
+        score_threshold (float): Threshold to filter out bounding boxes with
+                                 low confidence score.
+        post_threshold (float): Threshold to filter out bounding boxes with
+                                low confidence score AFTER decaying.
+        nms_top_k (int): Maximum number of detections to be kept according to
+                         the confidences after the filtering detections based
+                         on score_threshold.
+        keep_top_k (int): Number of total bboxes to be kept per image after NMS
+                          step. -1 means keeping all bboxes after NMS step.
+        use_gaussian (bool): Use Gaussian as the decay function. Default: False
+        gaussian_sigma (float): Sigma for Gaussian decay function. Default: 2.0
+        background_label (int): The index of background label, the background
+                                label will be ignored. If set to -1, then all
+                                categories will be considered. Default: 0
+        normalized (bool): Whether detections are normalized. Default: True
+        return_index(bool): Whether return selected index. Default: False
+        name(str): Name of the matrix nms op. Default: None.
+
+    Returns:
+        A tuple with two Variables: (Out, Index) if return_index is True,
+        otherwise, one Variable(Out) is returned.
+
+        Out (Variable): A 2-D LoDTensor with shape [No, 6] containing the
+             detection results.
+             Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
+             (After version 1.3, when no boxes detected, the lod is changed
+             from {0} to {1})
+
+        Index (Variable): A 2-D LoDTensor with shape [No, 1] containing the
+            selected indices, which are absolute values cross batches.
+
+    Examples:
+        .. code-block:: python
+
+
+            import paddle.fluid as fluid
+            boxes = fluid.data(name='bboxes', shape=[None,81, 4],
+                                      dtype='float32', lod_level=1)
+            scores = fluid.data(name='scores', shape=[None,81],
+                                      dtype='float32', lod_level=1)
+            out = fluid.layers.matrix_nms(bboxes=boxes,
+                                          scores=scores,
+                                          background_label=0,
+                                          score_threshold=0.5,
+                                          post_threshold=0.1,
+                                          nms_top_k=400,
+                                          keep_top_k=200,
+                                          normalized=False)
+    """
+    check_variable_and_dtype(bboxes, 'BBoxes', ['float32', 'float64'],
+                             'matrix_nms')
+    check_variable_and_dtype(scores, 'Scores', ['float32', 'float64'],
+                             'matrix_nms')
+    check_type(score_threshold, 'score_threshold', float, 'matrix_nms')
+    check_type(post_threshold, 'post_threshold', float, 'matrix_nms')
+    check_type(nms_top_k, 'nums_top_k', int, 'matrix_nms')
+    check_type(keep_top_k, 'keep_top_k', int, 'matrix_nms')
+    check_type(normalized, 'normalized', bool, 'matrix_nms')
+    check_type(use_gaussian, 'use_gaussian', bool, 'matrix_nms')
+    check_type(gaussian_sigma, 'gaussian_sigma', float, 'matrix_nms')
+    check_type(background_label, 'background_label', int, 'matrix_nms')
+
+    helper = LayerHelper('matrix_nms', **locals())
+    output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+    index = helper.create_variable_for_type_inference(dtype='int')
+    helper.append_op(
+        type="matrix_nms",
+        inputs={'BBoxes': bboxes,
+                'Scores': scores},
+        attrs={
+            'background_label': background_label,
+            'score_threshold': score_threshold,
+            'post_threshold': post_threshold,
+            'nms_top_k': nms_top_k,
+            'gaussian_sigma': gaussian_sigma,
+            'use_gaussian': use_gaussian,
+            'keep_top_k': keep_top_k,
+            'normalized': normalized
+        },
+        outputs={'Out': output,
+                 'Index': index})
+    output.stop_gradient = True
+
+    if return_index:
+        return output, index
+    else:
+        return output
 
 
 def distribute_fpn_proposals(fpn_rois,

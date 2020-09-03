@@ -88,6 +88,8 @@ option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE}
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
+option(WITH_ARM   "Compile PaddlePaddle with arm support"         OFF)
+option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -153,6 +155,9 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
+# lite subgraph compilation depends on CUDNN_ROOT,
+# so include(cudnn) needs to be in front of include(third_party/lite)
+include(cudnn)              # set cudnn libraries, must before configure
 include(third_party)        # download, build, install third_party
 
 if(WITH_DISTRIBUTE)
@@ -172,7 +177,6 @@ if(NOT WIN32)
 endif()
 
 include(flags)              # set paddle compile flags
-include(cudnn)              # set cudnn libraries, must before configure
 
 if(WITH_GPU)
     include(cuda)
@@ -198,6 +202,12 @@ if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)
 endif(WITH_AMD_GPU)
+
+if(WITH_ARM)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+    add_definitions(-DPADDLE_WITH_ARM)
+endif()
 
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 

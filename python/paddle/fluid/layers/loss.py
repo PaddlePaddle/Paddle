@@ -453,6 +453,8 @@ def edit_distance(input,
             # [4]
 
     """
+    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
+    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
     helper = LayerHelper("edit_distance", **locals())
 
     # remove some tokens from input and labels
@@ -1402,9 +1404,14 @@ def sigmoid_cross_entropy_with_logits(x,
     ${comment}
 
     Args:
-        x(${x_type}): ${x_comment}
-        label(${label_type}): ${label_comment}
-        ignore_index(int): ${ignore_index_comment}
+        x(Variable): a 2-D tensor with shape N x D, where N is the batch size and
+                D is the number of classes. This input is a tensor of logits computed
+                by the previous operator. Logits are unscaled log probabilities given
+                as log(p/(1-p)) The data type should be float32 or float64.
+        label (Variable): a 2-D tensor of the same type and shape as X.
+                This input is a tensor of probabalistic labels for each logit.
+        ignore_index(int): Specifies a target value that is ignored and 
+                does not contribute to the input gradient.
         name(str|None): The default value is None.  Normally there is
             no need for user to set this property.  For more information,
             please refer to :ref:`api_guide_Name`
@@ -1429,6 +1436,8 @@ def sigmoid_cross_entropy_with_logits(x,
                 normalize=True) # or False
             # loss = fluid.layers.reduce_sum(loss) # summation of loss
     """
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
+                             'sigmoid_cross_entropy_with_logits')
 
     helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
 

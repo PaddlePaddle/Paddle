@@ -1,7 +1,11 @@
-set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor benchmark)
+if (NOT APPLE AND NOT WIN32)
+    set(INFERENCE_EXTRA_DEPS paddle_fluid_shared)
+else()
+    set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor benchmark)
+endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
-    set(INFERENCE_EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps} ir_pass_manager analysis_predictor)
+    set(INFERENCE_EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps})
 endif()
 
 function(download_data install_dir data_file)
@@ -33,13 +37,13 @@ endfunction()
 
 function(inference_analysis_api_test target install_dir filename)
     inference_analysis_test(${target} SRCS ${filename}
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt --refer_result=${install_dir}/result.txt)
 endfunction()
 
 function(inference_analysis_api_test_build TARGET_NAME filename)
 	inference_analysis_test_build(${TARGET_NAME} SRCS ${filename}
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark)
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS})
 endfunction()
 
 function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir data_path)
@@ -49,7 +53,7 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
              --infer_data=${data_path}
              --warmup_batch_size=${WARMUP_BATCH_SIZE}
              --batch_size=50
-             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
 
@@ -65,7 +69,7 @@ function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_bi
              --infer_data=${data_path}
              --warmup_batch_size=10
              --batch_size=300
-             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=1)
 endfunction()
 
@@ -88,7 +92,7 @@ function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_
              --int8_model=${int8_model_dir}
              --infer_data=${data_path}
              --batch_size=50
-             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_accuracy_layer=false
              --iterations=2)
 endfunction()
@@ -167,7 +171,7 @@ set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_Large")
 download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_large_model.tar.gz" "Ernie_large_data.txt.tar.gz" "Ernie_large_result.txt.tar.gz")
 download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz")
 inference_analysis_test(test_analyzer_ernie_large SRCS analyzer_ernie_tester.cc
-    EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
+    EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
     ARGS --infer_model=${ERNIE_INSTALL_DIR}/model --infer_data=${ERNIE_INSTALL_DIR}/data.txt --refer_result=${ERNIE_INSTALL_DIR}/result.txt --ernie_large=true)
 
 # text_classification
@@ -186,7 +190,7 @@ download_model_and_data(${TRANSFORMER_INSTALL_DIR} "temp%2Ftransformer_model.tar
 inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_tester.cc 
   EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
   ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 
-       --paddle_num_threads=${CPU_NUM_THREADS_ON_CI})
+       --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
 
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
@@ -391,6 +395,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 
+    set(TRT_MODEL_QUANT_YOLOV3_DIR "${INFERENCE_DEMO_INSTALL_DIR}/yolov3_r50_quant_aware")
+    if (NOT EXISTS ${TRT_MODEL_QUANT_YOLOV3_DIR})
+        inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "yolov3_r50_quant_aware.tgz")
+    endif()
+    inference_analysis_test(trt_quant_int8_yolov3_r50_test SRCS trt_quant_int8_yolov3_r50_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TRT_MODEL_QUANT_YOLOV3_DIR})
+
     set(TEST_TRT_DYNAMIC_MODEL2 "${TRT_MODEL_INSTALL_DIR}/complex_model_dynamic")
     if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL2})
         inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL2} ${INFERENCE_URL}/tensorrt_test "complex_model_dynamic2.tar.gz")
@@ -412,6 +424,25 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(test_trt_dynamic_shape_ernie SRCS trt_dynamic_shape_ernie_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4)
+
+    set(TEST_TRT_ERNIE_UNSER_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_unserialized/")
+    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_MODEL})
+        inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_unserialized.tgz")
+    endif()
+
+    inference_analysis_test(test_trt_dynamic_shape_ernie_serialize SRCS trt_dynamic_shape_ernie_deserialize_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized)
+
+    set(TEST_TRT_ERNIE_SER_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_model_4_serialized/")
+    if (NOT EXISTS ${TEST_TRT_ERNIE_SER_MODEL})
+        inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_serialized.tgz")
+    endif()
+
+    inference_analysis_test(test_trt_dynamic_shape_ernie_deserialize SRCS trt_dynamic_shape_ernie_deserialize_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/ernie_model_4_serialized)
+
 endif()
 
 set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")

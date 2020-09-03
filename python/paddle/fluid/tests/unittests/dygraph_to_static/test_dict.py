@@ -19,7 +19,8 @@ import numpy as np
 import unittest
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
 PLACE = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
 )
@@ -75,7 +76,7 @@ class MainNetWithDict(fluid.dygraph.Layer):
         self.output_size = output_size
         self.sub_net = SubNetWithDict(hidden_size, output_size)
 
-    @dygraph_to_static_func
+    @declarative
     def forward(self, input, max_len=4):
         input = fluid.dygraph.to_variable(input)
         cache = {
@@ -121,17 +122,14 @@ class TestNetWithDict(unittest.TestCase):
         self.batch_size = self.x.shape[0]
 
     def _run_static(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            net = MainNetWithDict(batch_size=self.batch_size)
-            # Transform into static graph
-            out = net(self.x)
-            exe = fluid.Executor(PLACE)
-            exe.run(fluid.default_startup_program())
-            ret = exe.run(main_program, fetch_list=out)
-            return ret[0]
+        return self.train(to_static=True)
 
     def _run_dygraph(self):
+        return self.train(to_static=False)
+
+    def train(self, to_static=False):
+        prog_trans = ProgramTranslator()
+        prog_trans.enable(to_static)
         with fluid.dygraph.guard(PLACE):
             net = MainNetWithDict(batch_size=self.batch_size)
             ret = net(self.x)

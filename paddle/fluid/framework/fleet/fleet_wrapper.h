@@ -245,6 +245,11 @@ class FleetWrapper {
   // save cache model
   // cache model can speed up online predict
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
+  // save sparse table filtered by user-defined whitelist
+  int32_t SaveWithWhitelist(int table_id, const std::string& path,
+                            const int mode, const std::string& whitelist_path);
+  void LoadWithWhitelist(const uint64_t table_id, const std::string& path,
+                         const int mode);
   // copy feasign key/value from src_table_id to dest_table_id
   int32_t CopyTable(const uint64_t src_table_id, const uint64_t dest_table_id);
   // copy feasign key/value from src_table_id to dest_table_id
@@ -268,6 +273,10 @@ class FleetWrapper {
   // send client to client message
   std::future<int32_t> SendClientToClientMsg(int msg_type, int to_client_id,
                                              const std::string& msg);
+  // confirm all the updated params in the current pass
+  void Confirm();
+  // revert all the updated params in the current pass
+  void Revert();
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
     if (NULL == s_instance_) {

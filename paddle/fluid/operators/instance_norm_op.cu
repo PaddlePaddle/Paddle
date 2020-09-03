@@ -35,8 +35,7 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 template <typename T>
 static __global__ void repeat_param(const T *input, T *output,
                                     const int repeat_num, const int C) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < repeat_num * C;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP(i, repeat_num * C) {
     int index = i % C;
     output[i] = input[index];
   }

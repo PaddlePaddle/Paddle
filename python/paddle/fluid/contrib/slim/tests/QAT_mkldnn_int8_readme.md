@@ -162,14 +162,14 @@ Image classification models performance was measured using a single thread. The 
 
 >**Intel(R) Xeon(R) Gold 6271**
 
-|    Model     | FP32 (images/s) | INT8 QAT (images/s) | Ratio (INT8/FP32)  |
-| :----------: | :-------------: | :-----------------: | :---------------:  |
-| MobileNet-V1 |      77.00      |       210.76        |      2.74          |
-| MobileNet-V2 |      88.43      |       182.47        |      2.06          |
-|  ResNet101   |      7.20       |        25.88        |      3.60          |
-|   ResNet50   |      13.26      |        47.44        |      3.58          |
-|    VGG16     |      3.48       |        10.11        |      2.90          |
-|    VGG19     |      2.83       |        8.77         |      3.10          |
+|     Model    | FP32 (images/s) | INT8 (images/s) | Ratio (INT8/FP32) |
+|:------------:|:---------------:|:---------------:|:-----------------:|
+| MobileNet-V1 |      74.76      |      221.80     |        2.97       |
+| MobileNet-V2 |      94.19      |      195.78     |        2.08       |
+|   ResNet101  |       7.16      |      26.51      |        3.70       |
+|   ResNet50   |      13.22      |      49.40      |        3.74       |
+|     VGG16    |       3.51      |      10.25      |        2.92       |
+|     VGG19    |       2.84      |       8.58      |        3.02       |
 
 >**Intel(R) Xeon(R) Gold 6148**
 
@@ -203,7 +203,6 @@ Notes:
 | Ernie |    80.20%     |      79.64%       |    -0.56%     |
 
 #### Performance
-
 
 >**Intel(R) Xeon(R) Gold 6271**
 

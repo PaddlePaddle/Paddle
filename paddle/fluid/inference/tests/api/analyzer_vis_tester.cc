@@ -56,8 +56,6 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchIrDebug();
   cfg->SwitchSpecifyInputNames(false);
-  // TODO(TJ): fix fusion gru
-  cfg->pass_builder()->DeletePass("fc_gru_fuse_pass");
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {

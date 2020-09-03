@@ -24,6 +24,7 @@ from .. import core
 from .. import framework
 from .. import backward
 
+from ..layers import nn
 from .base import switch_to_static_graph
 from ... import compat as cpt
 
@@ -359,7 +360,26 @@ class StaticModelRunner(layers.Layer):
         # NOTE: reverse feed vars
         self._input_names.reverse()
 
+        # Step 4. add scale for outputs
+        tmp_program = self._build_program_by_desc(program_desc)
+        self._append_scale_to_output(tmp_program)
+
         return program_desc
+
+    @switch_to_static_graph
+    def _append_scale_to_output(self, program):
+        # 1. append scale & save var
+        scale_output_vars = []
+        with framework.program_guard(program):
+            for i, out in enumerate(self._output_descs):
+                var = program.global_block().var(out.name())
+                var = nn.scale(
+                    var, 1., name="static_model_runner/scale_{}".format(i))
+                scale_output_vars.append(var)
+        # 2. update output names & descs
+        for i, var in enumerate(scale_output_vars):
+            self._output_names[i] = var.name
+            self._output_descs[i] = var.desc
 
     @switch_to_static_graph
     def _append_backward_desc(self):

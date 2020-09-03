@@ -34,12 +34,12 @@ RUN cd /opt && wget -q --no-check-certificate https://github.com/google/protobuf
     tar xzf protobuf-cpp-3.6.1.tar.gz && \
     cd protobuf-3.6.1 && ./configure && make -j4 && make install && cd .. && rm -f protobuf-cpp-3.6.1.tar.gz
 
-# ccache 3.6
-RUN wget https://paddle-ci.cdn.bcebos.com/ccache-3.6.tar.gz && \
-    tar xf ccache-3.6.tar.gz && mkdir /usr/local/ccache-3.6 && cd ccache-3.6 && \
-    ./configure -prefix=/usr/local/ccache-3.6 && \
+# ccache 3.7.9
+RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
+    tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
+    ./configure -prefix=/usr/local/ccache-3.7.9 && \
     make -j8 && make install && \
-    ln -s /usr/local/ccache-3.6/bin/ccache /usr/local/bin/ccache
+    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
 
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
 
@@ -64,5 +64,8 @@ RUN LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH} /o
 
 RUN wget -O /opt/swig-2.0.12.tar.gz https://sourceforge.net/projects/swig/files/swig/swig-2.0.12/swig-2.0.12.tar.gz/download && \
     cd /opt && tar xzf swig-2.0.12.tar.gz && cd /opt/swig-2.0.12 && ./configure && make && make install && cd /opt && rm swig-2.0.12.tar.gz
+
+RUN wget --no-check-certificate  -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
+     tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/
 
 CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]

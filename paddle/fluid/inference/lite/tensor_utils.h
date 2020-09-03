@@ -14,9 +14,8 @@
 
 #pragma once
 
-#include "lite/api/paddle_place.h"
-#include "lite/core/tensor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/inference/lite/engine.h"
 
 namespace paddle {
 namespace inference {
@@ -26,6 +25,21 @@ namespace utils {
 template <typename DstTensor, typename SrcTensor>
 void TensorCopyAsync(DstTensor* dst, const SrcTensor& src,
                      const platform::DeviceContext& ctx);
+
+template <typename DstTensor, typename SrcTensor>
+void TensorDataShare(DstTensor* dst, SrcTensor* src);
+
+template <typename DstTensor, typename SrcTensor>
+void TensorCopy(DstTensor* dst, SrcTensor* src,
+                const platform::DeviceContext& ctx, bool shared = true) {
+  if (shared) {
+    VLOG(3) << "TensorDataShare is running";
+    TensorDataShare(dst, src);
+  } else {
+    VLOG(3) << "TensorCopyAsync is running";
+    TensorCopyAsync(dst, *src, ctx);
+  }
+}
 
 }  // namespace utils
 }  // namespace lite

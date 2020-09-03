@@ -78,9 +78,9 @@ def save_dygraph(state_dict, model_path):
     for k, v in state_dict.items():
         if isinstance(v, (Variable, core.VarBase)):
             model_dict[k] = v.numpy()
+            name_table[k] = v.name
         else:
             model_dict[k] = v
-        name_table[k] = v.name
     model_dict["StructuredToParameterName@@"] = name_table
 
     file_name = model_path + suffix

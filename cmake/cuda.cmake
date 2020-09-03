@@ -4,6 +4,7 @@ endif()
 
 
 if (WITH_NV_JETSON)
+  add_definitions(-DWITH_NV_JETSON)
   set(paddle_known_gpu_archs "53 62 72")
   set(paddle_known_gpu_archs7 "53")
   set(paddle_known_gpu_archs8 "53 62")
@@ -202,9 +203,9 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
 if (NOT WIN32) # windows msvc2015 support c++11 natively. 
-# -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
-list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
-list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
+  # -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
+  list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
+  list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 endif(NOT WIN32)
 
 # in cuda9, suppress cuda warning on eigen 
@@ -226,6 +227,11 @@ if (NOT WIN32)
 else(NOT WIN32)
   list(APPEND CUDA_NVCC_FLAGS  "-Xcompiler \"/wd 4244 /wd 4267 /wd 4819\"")
   list(APPEND CUDA_NVCC_FLAGS  "--compiler-options;/bigobj")
+  if(MSVC_STATIC_CRT)
+    list(APPEND CUDA_NVCC_FLAGS "-Xcompiler" "-MT$<$<CONFIG:Debug>:d>")
+  else()
+    list(APPEND CUDA_NVCC_FLAGS "-Xcompiler" "-MD$<$<CONFIG:Debug>:d>")
+  endif()
   if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
     list(APPEND CUDA_NVCC_FLAGS  "-g -G")
     # match the cl's _ITERATOR_DEBUG_LEVEL

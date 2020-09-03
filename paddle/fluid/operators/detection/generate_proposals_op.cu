@@ -33,9 +33,6 @@ using LoDTensor = framework::LoDTensor;
 namespace {
 
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
 
 int const kThreadsPerBlock = sizeof(uint64_t) * 8;
 
@@ -155,7 +152,7 @@ static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
   int cnt = 0;
   __shared__ int keep_index[BlockSize];
 
-  CUDA_1D_KERNEL_LOOP(i, num) {
+  CUDA_KERNEL_LOOP(i, num) {
     keep_index[threadIdx.x] = -1;
     __syncthreads();
 
@@ -379,7 +376,11 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     float nms_thresh = context.Attr<float>("nms_thresh");
     float min_size = context.Attr<float>("min_size");
     float eta = context.Attr<float>("eta");
-    PADDLE_ENFORCE_GE(eta, 1., "Not support adaptive NMS.");
+    PADDLE_ENFORCE_GE(eta, 1.,
+                      platform::errors::InvalidArgument(
+                          "Not support adaptive NMS. The attribute 'eta' "
+                          "should not less than 1. But received eta=[%d]",
+                          eta));
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
 

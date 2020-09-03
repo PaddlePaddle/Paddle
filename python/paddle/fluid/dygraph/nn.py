@@ -2262,6 +2262,10 @@ class PRelu(layers.Layer):
             assert isinstance(
                 channel,
                 int), "channel argument is required when mode is 'channel'."
+            #NOTE(zhiqiu): The _alpha_shape should be [1, channel] + [1] * len(input_shape[2:]), not [1, channel, 1, 1].
+            # However, the suffix 1 in the list is useless, since the tensor is viewed as one demension array during kernel calculation. 
+            # And, input_shape is not required when mode is 'channel', so it is simplified.
+            #NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
             self._alpha_shape = [1, channel, 1, 1]
         elif mode == 'element':
             assert isinstance(input_shape, (

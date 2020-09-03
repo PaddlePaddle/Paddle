@@ -51,8 +51,11 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
                       "Wrong format set for Input tensor");
 
-    PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Filter tensor");
+    PADDLE_ENFORCE_EQ(
+        filter->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument(
+            "The filter tensor's laytout should be %d, but got %d.",
+            DataLayout::kMKLDNN, filter->layout()));
     PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
                       "Wrong format set for Filter tensor");
 
@@ -62,8 +65,11 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                       "Filter must be with 4 dimensions, i.e. OIHW");
 
     if (bias) {
-      PADDLE_ENFORCE_EQ(bias->layout(), DataLayout::kMKLDNN,
-                        "Wrong layout set for Bias tensor");
+      PADDLE_ENFORCE_EQ(
+          bias->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument(
+              "The bias tensor's laytout should be %d, but got %d.",
+              DataLayout::kMKLDNN, bias->layout()));
       PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::undef,
                         "Wrong format set for Bias tensor");
 

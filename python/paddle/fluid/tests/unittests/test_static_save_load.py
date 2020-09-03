@@ -1153,7 +1153,6 @@ class TestProgramStateOldSave(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            #fluid.load(test_program, "./test_1", None )
             program_state = fluid.load_program_state("test_program_1")
             fluid.set_program_state(main_program, program_state)
 
@@ -1163,6 +1162,11 @@ class TestProgramStateOldSave(unittest.TestCase):
                                      .get_tensor())
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, base_t))
+
+        with fluid.dygraph.guard(place):
+            load_state = fluid.load_program_state("test_program_1")
+            for k, v in load_state.items():
+                self.assertTrue(np.array_equal(base_map[k], v))
 
 
 class TestProgramStateOldSaveSingleModel(unittest.TestCase):

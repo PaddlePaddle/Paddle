@@ -17,6 +17,8 @@ from __future__ import print_function
 import site
 import sys
 import os
+import warnings
+import platform
 
 core_suffix = 'so'
 if os.name == 'nt':
@@ -62,7 +64,6 @@ def avx_supported():
     """
     Whether current system(Linux, MacOS, Windows) is supported with AVX.
     """
-    import platform
     from .. import compat as cpt
     sysstr = platform.system().lower()
     has_avx = False
@@ -159,6 +160,76 @@ def avx_supported():
         sys.stderr.write('Do not get AVX flag on %s\n' % sysstr)
         return False
 
+
+def run_shell_command(cmd):
+    import subprocess
+    out, err = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        shell=True).communicate()
+    if err:
+        return None
+    else:
+        return out.decode('utf-8').strip()
+
+
+def get_dso_path(core_so, dso_name):
+    if core_so and dso_name:
+        return run_shell_command("ldd %s|grep %s|awk '{print $3}'" %
+                                 (core_so, dso_name))
+    else:
+        return None
+
+
+def load_dso(dso_absolute_path):
+    if dso_absolute_path:
+        try:
+            from ctypes import cdll
+            cdll.LoadLibrary(dso_absolute_path)
+        except:
+            warnings.warn("Load {} failed".format(dso_absolute_path))
+
+
+def pre_load(dso_name):
+    if has_avx_core:
+        core_so = current_path + os.sep + 'core_avx.' + core_suffix
+    elif has_noavx_core:
+        core_so = current_path + os.sep + 'core_noavx.' + core_suffix
+    else:
+        core_so = None
+    dso_path = get_dso_path(core_so, dso_name)
+    load_dso(dso_path)
+
+
+def get_glibc_ver():
+    return run_shell_command("ldd --version | awk '/ldd/{print $NF}'").strip()
+
+
+def less_than_ver(a, b):
+    import re
+    import operator
+
+    def to_list(s):
+        s = re.sub('(\.0+)+$', '', s)
+        return [int(x) for x in s.split('.')]
+
+    return operator.lt(to_list(a), to_list(b))
+
+
+# NOTE(zhiqiu): An error may occurs when import paddle in linux platform with glibc < 2.22, 
+# the error message of which is "dlopen: cannot load any more object with static TLS".
+# This happens when:
+# (1) the number of dynamic shared librarys (DSO) loaded > 14,
+# (2) after that, load a dynamic shared library (DSO) with static TLS.
+# For paddle, the problem is that 'libgomp' is a DSO with static TLS, and it is loaded after 14 DSOs.
+# So, here is a tricky way to solve the problem by pre load 'libgomp' before 'core_avx.so'.
+# The final solution is to upgrade glibc to > 2.22 on the target system.
+if platform.system().lower() == 'linux' and less_than_ver(get_glibc_ver(),
+                                                          '2.23'):
+    try:
+        pre_load('libgomp')
+    except Exception as e:
+        # NOTE(zhiqiu): do not abort if failed, since it may success when import core_avx.so
+        sys.stderr.write('Error: Can not preload libgomp.so')
 
 load_noavx = False
 

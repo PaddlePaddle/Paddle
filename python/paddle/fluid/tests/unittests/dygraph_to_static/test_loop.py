@@ -20,8 +20,8 @@ import numpy as np
 import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
+from paddle.fluid.dygraph.jit import declarative
 
 SEED = 2020
 np.random.seed(SEED)
@@ -29,6 +29,9 @@ np.random.seed(SEED)
 
 def while_loop_dyfunc(x):
     i = fluid.dygraph.to_variable(x)
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
     while x < 10:
         i = i + x
         x = x + 1
@@ -37,6 +40,9 @@ def while_loop_dyfunc(x):
 
 def while_loop_dyfun_with_conflict_var(x):
     i = fluid.dygraph.to_variable(x)
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
 
     def relu(y):
         # 'y' is not visible outside the scope.
@@ -56,6 +62,9 @@ def while_loop_dyfunc_with_none(x):
     i = fluid.dygraph.to_variable(x)\
         if x is not None \
         else fluid.dygraph.to_variable(x+1)
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
     flag = 1
     while x < 10:
         i = i + x if flag is not None else x + i
@@ -72,6 +81,10 @@ def for_loop_dyfunc(max_len):
 
 def while_loop_bool_op(x):
     i = fluid.dygraph.to_variable(x)
+
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
     while (x >= 0 and x < 10) or x <= -1 or x < -3 or (x < -7 or x < -5):
         i = i + x
         x = x + 1
@@ -102,6 +115,11 @@ def for_loop_class_var(max_len):
             self.c = 5
 
     foo = Foo()
+
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    # TODO(liym27): Delete it if the type of parameter x can be resolved
+    max_len = fluid.layers.fill_constant(
+        shape=[1], value=max_len, dtype="int32")
     for i in range(max_len):
         foo.b = fluid.layers.zeros(shape=[1], dtype='float32')
         foo.c = foo.b + foo.a
@@ -149,19 +167,17 @@ class TestTransformWhileLoop(unittest.TestCase):
         self.dyfunc = while_loop_dyfunc
 
     def _run_static(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            x_var = fluid.layers.assign(self.x)
-            static_func = dygraph_to_static_func(self.dyfunc)
-
-            out = static_func(x_var)
-            exe = fluid.Executor(self.place)
-            ret = exe.run(main_program, fetch_list=out)
-        return ret
+        return self._run(to_static=True)
 
     def _run_dygraph(self):
+        return self._run(to_static=False)
+
+    def _run(self, to_static):
         with fluid.dygraph.guard(self.place):
-            ret = self.dyfunc(fluid.dygraph.to_variable(self.x))
+            if to_static:
+                ret = declarative(self.dyfunc)(self.x)
+            else:
+                ret = self.dyfunc(self.x)
             return ret.numpy()
 
     def test_ast_to_func(self):
@@ -201,22 +217,20 @@ class TestTransformForLoop(unittest.TestCase):
         self.dyfunc = for_loop_dyfunc
 
     def _run_static(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            static_func = dygraph_to_static_func(self.dyfunc)
-            out = static_func(self.len)
-            exe = fluid.Executor(self.place)
-            ret = exe.run(main_program, fetch_list=out)
-        return ret
+        return self._run(to_static=True)
 
     def _run_dygraph(self):
+        return self._run(to_static=False)
+
+    def _run(self, to_static):
         with fluid.dygraph.guard(self.place):
-            ret = self.dyfunc(self.len)
+            if to_static:
+                ret = declarative(self.dyfunc)(self.len)
+            else:
+                ret = self.dyfunc(self.len)
             return ret.numpy()
 
     def test_ast_to_func(self):
-        static_numpy = self._run_static()
-        self._run_dygraph()
         self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
 
 

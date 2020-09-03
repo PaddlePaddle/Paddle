@@ -237,6 +237,16 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             str1 = "just test"
             self.assertTrue(str1[var1] == 's')
 
+    def test_conpare_op_broadcast(self):
+        a_np = np.random.uniform(-1, 1, [10, 1, 10]).astype(self.dtype)
+        b_np = np.random.uniform(-1, 1, [1, 1, 10]).astype(self.dtype)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            b = fluid.dygraph.to_variable(b_np)
+
+            self.assertEqual((a != b).dtype, fluid.core.VarDesc.VarType.BOOL)
+            self.assertTrue(np.array_equal((a != b).numpy(), a_np != b_np))
+
 
 if __name__ == '__main__':
     unittest.main()

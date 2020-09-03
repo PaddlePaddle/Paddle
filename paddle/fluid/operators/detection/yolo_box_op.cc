@@ -136,6 +136,10 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Whether clip output bonding box in Input(ImgSize) "
                   "boundary. Default true.")
         .SetDefault(true);
+    AddAttr<float>("scale_x_y",
+                   "Scale the center point of decoded bounding "
+                   "box. Default 1.0")
+        .SetDefault(1.);
     AddComment(R"DOC(
          This operator generates YOLO detection boxes from output of YOLOv3 network.
          

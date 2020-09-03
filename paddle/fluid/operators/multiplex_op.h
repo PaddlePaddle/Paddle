@@ -37,9 +37,11 @@ class MultiplexCPUKernel : public framework::OpKernel<T> {
     platform::CPUPlace place = boost::get<platform::CPUPlace>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
       int32_t k = index[i];
-      PADDLE_ENFORCE_GE(k, 0, "index must be nonnegative.");
+      PADDLE_ENFORCE_GE(k, 0, platform::errors::PreconditionNotMet(
+                                  "index must be nonnegative."));
       PADDLE_ENFORCE_LT(static_cast<size_t>(k), ins.size(),
-                        "index exceeds the number of candidate tensors.");
+                        platform::errors::PreconditionNotMet(
+                            "index exceeds the number of candidate tensors."));
       memory::Copy(place, out->data<T>() + i * cols, place,
                    ins[k]->data<T>() + i * cols, cols * sizeof(T));
     }

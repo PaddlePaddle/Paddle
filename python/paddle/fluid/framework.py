@@ -1915,7 +1915,7 @@ class Operator(object):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
-                            elif isinstance(arg, Variable):
+                            elif isinstance(arg, (Variable, core.VarBase)):
                                 in_arg_names.append(cpt.to_text(arg.name))
                             else:
                                 raise TypeError(
@@ -3152,8 +3152,6 @@ class IrOpNode(IrNode):
         """
         assert self.node.op() is not None, \
             "The node operator description can not be None."
-        print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
-        ), old_output_name, new_output_name))
         self.node.op()._rename_output(old_output_name, new_output_name)
 
     def input(self, name):
@@ -3376,6 +3374,12 @@ class IrGraph(object):
         var_desc.set_shape(shape)
         var_desc.set_dtype(var_dtype)
         return IrVarNode(self.graph.create_var_node(var_desc))
+
+    def create_control_dep_var(self):
+        """
+        create a control var
+        """
+        return IrVarNode(self.graph.create_control_dep_var())
 
     def create_var_node_from_desc(self, var_desc):
         """

@@ -14,8 +14,6 @@
 
 from __future__ import print_function
 
-import astor
-import copy
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
@@ -23,8 +21,6 @@ import copy
 import gast
 import inspect
 import textwrap
-
-from paddle.fluid import unique_name
 
 from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import BasicApiTransformer
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
@@ -34,14 +30,9 @@ from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransfor
 from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
 from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransformer
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
-from paddle.fluid.dygraph.dygraph_to_static.utils import dygraph_class_to_static_api
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api, is_dygraph_api, is_to_variable
-from paddle.fluid.dygraph.dygraph_to_static.utils import to_assign_node, to_static_ast, update_args_of_func
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
 
@@ -142,6 +133,9 @@ def convert_to_static(dyfunc):
     Converts dygraph function into static function.
     """
     # Get AST from dygraph function
+    # Note: In Python2, it will raise OSError when inspect function
+    # with decorator directly and dyfunc.__wrapped__ holds the actual function.
+    dyfunc = getattr(dyfunc, '__wrapped__', dyfunc)
     raw_code = inspect.getsource(dyfunc)
     code = textwrap.dedent(raw_code)
     root = gast.parse(code)

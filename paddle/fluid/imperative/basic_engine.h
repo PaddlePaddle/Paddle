@@ -30,7 +30,8 @@ class OpBase;
 
 class BasicEngine : public Engine {
  public:
-  void Init(VarBase* var, const detail::BackwardStrategy& strategy);
+  void Init(VarBase* var, const detail::BackwardStrategy& strategy,
+            bool retain_graph = false);
 
   void Execute() override;
 
@@ -51,6 +52,7 @@ class BasicEngine : public Engine {
       accumulators_;
   std::vector<std::pair<GradientAccumulator*, std::shared_ptr<VariableWrapper>>>
       need_accu_var_list_;
+  bool retain_graph_;
 };
 
 }  // namespace imperative

@@ -55,19 +55,22 @@ class ListTransformer(gast.NodeTransformer):
 
     def visit_If(self, node):
         self.generic_visit(node)
-        if is_control_flow_to_transform(node, self.scope_var_type_dict):
+        if is_control_flow_to_transform(node, self.static_analysis_visitor,
+                                        self.scope_var_type_dict):
             self._transform_list_append_in_control_flow(node)
         return node
 
     def visit_While(self, node):
         self.generic_visit(node)
-        if is_control_flow_to_transform(node, self.scope_var_type_dict):
+        if is_control_flow_to_transform(node, self.static_analysis_visitor,
+                                        self.scope_var_type_dict):
             self._transform_list_append_in_control_flow(node)
         return node
 
     def visit_For(self, node):
         self.generic_visit(node)
-        if is_control_flow_to_transform(node, self.scope_var_type_dict):
+        if is_control_flow_to_transform(node, self.static_analysis_visitor,
+                                        self.scope_var_type_dict):
             self._transform_list_append_in_control_flow(node)
         return node
 

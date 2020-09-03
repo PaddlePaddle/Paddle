@@ -498,7 +498,6 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
     Returns:
         Variable: Warm-up learning rate with the same data type as learning_rate.
     
-    
     Examples:
     
     .. code-block:: python

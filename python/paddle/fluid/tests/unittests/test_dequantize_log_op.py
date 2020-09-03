@@ -26,9 +26,9 @@ def dequantize_log(x, dict_data):
     output_data_f = output_data.flatten()
     for i in range(x_f.size):
         if x_f[i] < 0:
-            output_data_f[i] = -np.power(2, dict_data[x_f[i] + 128])
+            output_data_f[i] = -dict_data[x_f[i] + 128]
         else:
-            output_data_f[i] = np.power(2, dict_data[x_f[i]])
+            output_data_f[i] = dict_data[x_f[i]]
     return output_data_f.reshape(x.shape)
 
 

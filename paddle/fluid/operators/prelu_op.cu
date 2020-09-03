@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/prelu.h"
 #include "paddle/fluid/operators/prelu_op.h"
@@ -23,11 +24,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 #define CUDA_NUM_THREADS 1024
-
-// CUDA: grid stride looping
-#define CUDA_KERNEL_LOOP(i, n)                                 \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
 
 inline static int PADDLE_GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
@@ -49,20 +45,22 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
 
     int numel = x->numel();
     auto dim = x->dims();
-    std::vector<int> input_shape = framework::vectorize<int>(dim);
+
+    VLOG(4) << "dim[0]:" << dim[0] << ", dim[1]:" << dim[1]
+            << ", numel:" << numel;
 
     if (mode == "channel") {
       math::PreluChannelWiseDirectCUDAFunctor<T> prelu_channel_wise;
       prelu_channel_wise(context.cuda_device_context().stream(), x_ptr,
-                         alpha_ptr, o_ptr, input_shape);
+                         alpha_ptr, o_ptr, dim[0], dim[1], numel);
     } else if (mode == "element") {
       math::PreluElementWiseDirectCUDAFunctor<T> prelu_element_wise;
       prelu_element_wise(context.cuda_device_context().stream(), x_ptr,
-                         alpha_ptr, o_ptr, input_shape);
+                         alpha_ptr, o_ptr, dim[0], numel);
     } else {
       math::PreluScalarDirectCUDAFunctor<T> prelu_scalar;
       prelu_scalar(context.cuda_device_context().stream(), x_ptr, alpha_ptr,
-                   o_ptr, input_shape);
+                   o_ptr, numel);
     }
   }
 };
@@ -75,7 +73,6 @@ __global__ void PReluOpGradKernel(const T* x_ptr, const T* alpha_ptr,
                                   size_t channel_num, size_t plane_size,
                                   size_t spatial_size, size_t numel,
                                   PRELU_MODE mode) {
-  size_t index;
   CUDA_KERNEL_LOOP(index, numel) {
     T scale;
     if (mode == Element) {
@@ -99,14 +96,18 @@ template <typename T>
 class PreluOpGradFunctor {
  public:
   void operator()(cudaStream_t stream, const T* x, const T* alpha, const T* dy,
-                  T* dx, T* dalpha, std::vector<int> input_shape,
+                  T* dx, T* dalpha, const framework::DDim& input_dims,
                   PRELU_MODE mode) {
-    size_t plane_size = input_shape[2] * input_shape[3];
-    size_t spatial_size = plane_size * input_shape[1];
-    size_t numel = spatial_size * input_shape[0];
+    size_t numel = 1;
+    for (size_t i = 0; i < input_dims.size(); ++i) {
+      numel *= input_dims[i];
+    }
+    size_t plane_size = numel / input_dims[0] / input_dims[1];
+    size_t spatial_size = numel / input_dims[0];
+
     PReluOpGradKernel<
         T><<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
-        x, alpha, dy, dx, dalpha, input_shape[1], plane_size, spatial_size,
+        x, alpha, dy, dx, dalpha, input_dims[1], plane_size, spatial_size,
         numel, mode);
   }
 };
@@ -161,13 +162,13 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       m = Scalar;
     }
     PreluOpGradFunctor<T> prelu_grad;
-    prelu_grad(stream, x_ptr, alpha_ptr, dy_ptr, dx_ptr, dalpha_tmp_ptr,
-               input_shape, m);
+    prelu_grad(stream, x_ptr, alpha_ptr, dy_ptr, dx_ptr, dalpha_tmp_ptr, dim,
+               m);
 
     if (dalpha_tmp_ptr == nullptr) return;
 
     std::vector<int> reduce_dims;
-    for (size_t i = 0; i < input_shape.size(); i++) {
+    for (size_t i = 0; i < dim.size(); i++) {
       if (mode == "channel" && i == 1) continue;
       if (mode == "element" && i != 0) continue;
       reduce_dims.push_back(i);

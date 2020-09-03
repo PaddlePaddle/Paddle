@@ -589,7 +589,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     float* g = g_tensor->data<float>();
 
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
-      int dim = emb_dim + offset;
+      int dim = emb_dim;
       Eigen::Map<
           Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
           g_mat(g, g_tensor->numel() / dim, dim);
@@ -902,6 +902,21 @@ void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
 #endif
 }
 
+void FleetWrapper::LoadWithWhitelist(const uint64_t table_id,
+                                     const std::string& path, const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->load_with_whitelist(table_id, path,
+                                                          std::to_string(mode));
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "load model of table id: " << table_id
+               << ", from path: " << path << " failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::LoadWhitelist does nothing when no pslib";
+#endif
+}
+
 void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->save(path, std::to_string(mode));
@@ -1003,6 +1018,26 @@ int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
 #ifdef PADDLE_WITH_PSLIB
   auto ret =
       pslib_ptr_->_worker_ptr->save_cache(table_id, path, std::to_string(mode));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "table save cache failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+  return feasign_cnt;
+#else
+  VLOG(0) << "FleetWrapper::SaveCache does nothing when no pslib";
+  return -1;
+#endif
+}
+
+int32_t FleetWrapper::SaveWithWhitelist(int table_id, const std::string& path,
+                                        const int mode,
+                                        const std::string& whitelist_path) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->save_with_whitelist(
+      table_id, path, std::to_string(mode), whitelist_path);
   ret.wait();
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
@@ -1163,6 +1198,28 @@ int32_t FleetWrapper::CopyTable(const uint64_t src_table_id,
 #else
   VLOG(0) << "FleetWrapper::CopyTable does nothing when no pslib";
   return 0;
+#endif
+}
+
+void FleetWrapper::Confirm() {
+#ifdef PADDLE_WITH_PSLIB
+  // FIXME(xujiaqi01): will later support confirm
+  // auto ret = pslib_ptr_->_worker_ptr->confirm();
+  // ret.wait();
+  VLOG(0) << "disable FleetWrapper::Confirm temporarily";
+#else
+  VLOG(0) << "FleetWrapper::Confirm does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::Revert() {
+#ifdef PADDLE_WITH_PSLIB
+  // FIXME(xujiaqi01): will later support revert
+  // auto ret = pslib_ptr_->_worker_ptr->revert();
+  // ret.wait();
+  VLOG(0) << "disable FleetWrapper::Revert temporarily";
+#else
+  VLOG(0) << "FleetWrapper::Revert does nothing when no pslib";
 #endif
 }
 

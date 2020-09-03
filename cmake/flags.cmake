@@ -187,7 +187,7 @@ set(GPU_COMMON_FLAGS
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
-if (NOT WITH_NV_JETSON) 
+if (NOT WITH_NV_JETSON AND NOT WITH_ARM)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
 endif()
 endif(NOT WIN32)
@@ -217,8 +217,8 @@ foreach(flag ${GPU_COMMON_FLAGS})
 endforeach()
 
 if(WIN32 AND MSVC_STATIC_CRT)
-# windows build turn off warnings.
-safe_set_static_flag()
+    # windows build turn off warnings.
+    safe_set_static_flag()
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO

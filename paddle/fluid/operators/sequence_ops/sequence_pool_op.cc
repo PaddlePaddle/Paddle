@@ -24,25 +24,24 @@ class SequencePoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of SequencePoolOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequencePool");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SequencePool");
 
     if (!ctx->IsRuntime()) {
       // Check the lod_level for compile-time.
       auto in_lod_level = ctx->GetLoDLevel("X");
-      PADDLE_ENFORCE_GT(
-          in_lod_level, 0,
-          "The LoD level Input(X) of sequence_pool should be larger than 0.");
+      PADDLE_ENFORCE_GT(in_lod_level, 0, platform::errors::InvalidArgument(
+                                             "The LoD level of Input(X) should "
+                                             "be larger than 0, but received: "
+                                             "lod level %u.",
+                                             in_lod_level));
       ctx->SetLoDLevel("Out", in_lod_level - 1);
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     if (ctx->Attrs().Get<std::string>("pooltype") == "MAX") {
-      PADDLE_ENFORCE_EQ(
-          ctx->HasOutput("MaxIndex"), true,
-          "Output(MaxIndex) of SequencePoolOp should not be null.");
+      OP_INOUT_CHECK(ctx->HasOutput("MaxIndex"), "Output", "MaxIndex",
+                     "SequencePool");
       ctx->SetOutputDim("MaxIndex", ctx->GetInputDim("X"));
     }
   }
@@ -113,16 +112,26 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Gradient of Out should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "The input X should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "SequencePoolGrad");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequencePoolGrad");
+
     auto og_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
-                      "The rank of output grad must equal to Input(X).");
+                      platform::errors::InvalidArgument(
+                          "The rank of output grad must equal to Input(X). But "
+                          "received: input rank %u, input shape [%s].",
+                          og_dims.size(), og_dims));
     for (int64_t i = 1; i < og_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(og_dims[i], x_dims[i], "The dimension mismatch.");
+      PADDLE_ENFORCE_EQ(
+          og_dims[i], x_dims[i],
+          platform::errors::InvalidArgument(
+              "The dimension mismatch between Input(OUT@GRAD) and "
+              "Input(X). Received Input(OUT@GRAD): input rank %u, "
+              "input shape [%s]; received Input(X): input rank %u, "
+              "input shape [%s].",
+              og_dims.size(), og_dims, x_dims.size(), x_dims));
     }
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));

@@ -15,15 +15,8 @@
 from __future__ import print_function
 
 import gast
-import astor
-import copy
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
-from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api, is_dygraph_api, is_to_variable
-from paddle.fluid.dygraph.dygraph_to_static.utils import to_assign_node, to_static_ast, update_args_of_func
-from paddle.fluid.dygraph.dygraph_to_static.utils import dygraph_class_to_static_api, create_api_shape_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_api_shape_node
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 

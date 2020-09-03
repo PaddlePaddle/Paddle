@@ -26,12 +26,15 @@ class GatherOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of GatherOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Index"),
-                   "Input(Index) of GatherOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of GatherOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of GatherOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Index) of GatherOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of GatherOp should not be null."));
 
     auto index_dims = ctx->GetInputDim("Index");
     PADDLE_ENFORCE(index_dims.size() == 1 ||

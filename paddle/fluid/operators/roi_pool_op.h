@@ -63,7 +63,8 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
       rois_batch_size = rois_lod_t->numel();
       PADDLE_ENFORCE_EQ(
           rois_batch_size - 1, batch_size,
-          "The rois_batch_size and imgs batch_size must be the same.");
+          platform::errors::InvalidArgument("The rois_batch_size and imgs "
+                                            "batch_size must be the same."));
       auto* rois_lod = rois_lod_t->data<int64_t>();
       for (int n = 0; n < rois_batch_size - 1; ++n) {
         for (int i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
@@ -75,10 +76,13 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
       rois_batch_size = rois_lod.size() - 1;
       PADDLE_ENFORCE_EQ(
           rois_batch_size, batch_size,
-          "The rois_batch_size and imgs batch_size must be the same.");
+          platform::errors::InvalidArgument("The rois_batch_size and imgs "
+                                            "batch_size must be the same."));
       int rois_num_with_lod = rois_lod[rois_batch_size];
-      PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
-                        "The rois_num from input and lod must be the same.");
+      PADDLE_ENFORCE_EQ(
+          rois_num, rois_num_with_lod,
+          platform::errors::InvalidArgument("The rois_num from input "
+                                            "and lod must be the same."));
       for (int n = 0; n < rois_batch_size; ++n) {
         for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
           roi_batch_id_data[i] = n;

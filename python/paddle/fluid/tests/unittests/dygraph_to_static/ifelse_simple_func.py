@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 
 def add_fn(x):
@@ -142,7 +141,6 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
         self.alpha = 10.
         self.constant_vars = {}
 
-    @dygraph_to_static_func
     def forward(self, input):
         hidden_dim = input.shape[-1]
         if hidden_dim != self.hidden_dim:
@@ -249,4 +247,32 @@ def if_with_class_var(x, y=None):
         x = x + foo.b
     else:
         x = x - foo.b
+    return x
+
+
+def if_tensor_case(x):
+    x = fluid.dygraph.to_variable(x)
+
+    mean = fluid.layers.mean(x)
+    # It is equivalent to `if mean != 0`
+    if mean:
+        for i in range(0, 10):
+            if i > 5:
+                x += 1
+                break
+            x += 1
+    else:
+        for i in range(0, 37):
+            x += 1
+            break
+            x += i
+
+    # join `and`/`or`
+    if fluid.layers.mean(x) + 1 and mean > 1 and x is not None or 2 > 1:
+        x -= 1
+
+    # `not` statement
+    if not (x[0][0] and (mean * x)[0][0]):
+        x += 1
+
     return x

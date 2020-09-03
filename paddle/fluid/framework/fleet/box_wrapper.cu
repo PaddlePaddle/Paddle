@@ -23,9 +23,6 @@
 
 namespace paddle {
 namespace framework {
-#define CUDA_KERNEL_LOOP(i, n)                                 \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
 
 __global__ void PullCopy(float** dest, const boxps::FeatureValueGpu* src,
                          const int64_t* len, int hidden, int slot_num,

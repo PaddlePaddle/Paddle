@@ -49,6 +49,8 @@ class TrainerDesc(object):
         self._infer = False
 
     def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
+        # convert fetch_info to list
+        fetch_info = list(fetch_info)
         for i, v in enumerate(fetch_vars):
             self.proto_desc.fetch_config.fetch_var_names.extend([v.name])
             self.proto_desc.fetch_config.fetch_var_str_format.extend(
