@@ -1052,7 +1052,11 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       astream.wait();
 
       filter_grad->set_layout(DataLayout::kMKLDNN);
-      filter_grad->set_format(GetMKLDNNFormat(*diff_weights_memory_p));
+      // in OneDNN groups in convolution are treated as separate dimension
+      // which is not the case in paddlepaddle
+      auto filter_fmt = GetMKLDNNFormat(*diff_weights_memory_p);
+      filter_grad->set_format(
+          MKLDNNFormatForSize(weights_tz.size(), filter_fmt));
     }
     if (input_grad) {
       auto weights_memory_p = handler.AcquireWeightsMemoryFromDataPrimitive(
