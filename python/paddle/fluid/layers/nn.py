@@ -10610,7 +10610,7 @@ def gaussian_random(shape,
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        shape = utils._convert_shape_to_list(shape)
+        shape = utils.convert_shape_to_list(shape)
         return core.ops.gaussian_random('shape', shape, 'mean',
                                         float(mean), 'std',
                                         float(std), 'seed', seed, 'dtype',
@@ -10627,7 +10627,7 @@ def gaussian_random(shape,
         'dtype': dtype,
         'use_mkldnn': False
     }
-    utils._get_shape_tensor_inputs(
+    utils.get_shape_tensor_inputs(
         inputs=inputs,
         attrs=attrs,
         shape=shape,
@@ -15111,7 +15111,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        shape = utils._convert_shape_to_list(shape)
+        shape = utils.convert_shape_to_list(shape)
         return core.ops.uniform_random('shape', shape, 'min',
                                        float(min), 'max',
                                        float(max), 'seed', seed, 'dtype', dtype)
@@ -15121,7 +15121,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
-    utils._get_shape_tensor_inputs(
+    utils.get_shape_tensor_inputs(
         inputs=inputs, attrs=attrs, shape=shape, op_type='uniform_random/rand')
 
     helper = LayerHelper("uniform_random", **locals())

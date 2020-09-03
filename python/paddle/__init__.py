@@ -230,6 +230,7 @@ from .framework import grad  #DEFINE_ALIAS
 from .framework import no_grad  #DEFINE_ALIAS
 from .framework import save  #DEFINE_ALIAS
 from .framework import load  #DEFINE_ALIAS
+from .framework import SaveLoadConfig  #DEFINE_ALIAS
 from .framework import DataParallel  #DEFINE_ALIAS
 
 from .framework import NoamDecay  #DEFINE_ALIAS
@@ -267,5 +268,6 @@ from . import static
 # high-level api
 from .hapi import Model
 from .hapi import callbacks
+from .hapi import summary
 import paddle.text
 import paddle.vision

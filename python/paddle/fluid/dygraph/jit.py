@@ -293,6 +293,8 @@ class SaveLoadConfig(object):
         self._model_filename = None
         self._params_filename = None
         self._separate_params = False
+        # used for `paddle.load`
+        self._keep_name_table = False
 
         # NOTE: Users rarely use following configs, so these configs are not open to users,
         # reducing user learning costs, but we retain the configuration capabilities
@@ -599,6 +601,54 @@ class SaveLoadConfig(object):
                 "The SaveLoadConfig.separate_params should be bool value, but received input's type is %s."
                 % type(value))
         self._separate_params = value
+
+    @property
+    def keep_name_table(self):
+        """
+        Configures whether keep ``structured_name -> parameter_name`` dict in loaded state dict.
+        This dict is the debugging information saved when call `paddle.save`. 
+        It is generally only used for debugging and does not affect the actual training or inference. 
+        By default, it will not be retained in `paddle.load` result. Default: False.
+        
+        .. note::
+            Only used for ``paddle.load``.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+            
+                paddle.disable_static()
+
+                linear = paddle.nn.Linear(5, 1)
+
+                state_dict = linear.state_dict()
+                paddle.save(state_dict, "paddle_dy")
+
+                configs = paddle.SaveLoadConfig()
+                configs.keep_name_table = True
+                para_state_dict, _ = paddle.load("paddle_dy", configs)
+
+                print(para_state_dict)
+                # the name_table is 'StructuredToParameterName@@'
+                # {'bias': array([0.], dtype=float32), 
+                #  'StructuredToParameterName@@': 
+                #     {'bias': u'linear_0.b_0', 'weight': u'linear_0.w_0'}, 
+                #  'weight': array([[ 0.04230034],
+                #     [-0.1222527 ],
+                #     [ 0.7392676 ],
+                #     [-0.8136974 ],
+                #     [ 0.01211023]], dtype=float32)}
+        """
+        return self._keep_name_table
+
+    @keep_name_table.setter
+    def keep_name_table(self, value):
+        if not isinstance(value, bool):
+            raise TypeError(
+                "The SaveLoadConfig.keep_name_table should be bool value, but received input's type is %s."
+                % type(value))
+        self._keep_name_table = value
 
 
 @switch_to_static_graph
