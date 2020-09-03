@@ -165,11 +165,12 @@ class TestPool3d_API(unittest.TestCase):
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
     def check_max_dygraph_ndhwc_results(self, place):
+        print("run ndchw max pool3d")
         with fluid.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
             input = fluid.dygraph.to_variable(
                 np.transpose(input_np, [0, 2, 3, 4, 1]))
-            result, mask = max_pool3d(
+            result = max_pool3d(
                 input,
                 kernel_size=2,
                 stride=2,
@@ -186,9 +187,10 @@ class TestPool3d_API(unittest.TestCase):
 
             self.assertTrue(
                 np.allclose(
-                    np.transpose(result.numpy(), [0, 5, 2, 3, 4]), result_np))
+                    np.transpose(result.numpy(), [0, 4, 1, 2, 3]), result_np))
 
     def check_max_dygraph_ceilmode_results(self, place):
+        print("run ceil mode max pool3d")
         with fluid.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
             input = fluid.dygraph.to_variable(input_np)
@@ -323,6 +325,8 @@ class TestPool3d_API(unittest.TestCase):
             self.check_max_dygraph_stride_is_none(place)
             self.check_max_dygraph_padding(place)
             self.check_avg_divisor(place)
+            self.check_max_dygraph_ndhwc_results(place)
+            self.check_max_dygraph_ceilmode_results(place)
 
 
 class TestPool3dError_API(unittest.TestCase):
@@ -463,8 +467,7 @@ class TestPool3dError_API(unittest.TestCase):
                     input_pd,
                     kernel_size=2,
                     stride=2,
-                    padding="VALID",
-                    ceil_mode=True,
+                    padding=0,
                     data_format='NDHWC',
                     return_indices=True)
 

@@ -154,7 +154,7 @@ class TestPool2d_API(unittest.TestCase):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
             input = fluid.dygraph.to_variable(
                 np.transpose(input_np, [0, 2, 3, 1]))
-            result, mask = max_pool2d(
+            result = max_pool2d(
                 input,
                 kernel_size=2,
                 stride=2,
@@ -320,6 +320,9 @@ class TestPool2d_API(unittest.TestCase):
             self.check_avg_dygraph_stride_is_none(place)
             self.check_max_dygraph_padding(place)
             self.check_avg_divisor(place)
+            self.check_max_dygraph_padding_results(place)
+            self.check_max_dygraph_ceilmode_results(place)
+            self.check_max_dygraph_nhwc_results(place)
 
 
 class TestPool2dError_API(unittest.TestCase):
@@ -480,17 +483,16 @@ class TestPool2dError_API(unittest.TestCase):
                 input_np = np.random.uniform(-1, 1,
                                              [2, 3, 32, 32]).astype(np.float32)
                 input_pd = fluid.dygraph.to_variable(input_np)
-                padding = "VALID"
                 res_pd = max_pool2d(
                     input_pd,
                     kernel_size=2,
                     stride=2,
-                    padding=padding,
+                    padding=0,
                     ceil_mode=False,
                     data_format='NHWC',
                     return_indices=True)
 
-        self.assertRaises(ValueError, run8)
+        self.assertRaises(ValueError, run9)
 
 
 if __name__ == '__main__':
