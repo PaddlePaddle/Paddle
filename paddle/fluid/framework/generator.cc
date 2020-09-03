@@ -159,25 +159,6 @@ uint64_t Generator::Random64() {
 }
 
 std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
-    uint64_t total_numel, uint64_t grid_size, uint64_t block_size,
-    uint64_t engine_calls_num) {
-  uint64_t cur_offset = this->state_.thread_offset;
-#ifdef PADDLE_WITH_CUDA
-  std::lock_guard<std::mutex> lock(this->mu_);
-  uint64_t numel_per_thread =
-      (total_numel - 1) / (block_size * grid_size * 4) + 1;
-  uint64_t increment = numel_per_thread * engine_calls_num;
-
-  this->state_.thread_offset += increment;
-
-#else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "Increment Offset only support in CUDA place"));
-#endif
-  return std::make_pair(this->state_.current_seed, cur_offset);
-}
-
-std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
     uint64_t increament_offset) {
   uint64_t cur_offset = this->state_.thread_offset;
 #ifdef PADDLE_WITH_CUDA

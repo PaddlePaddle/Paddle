@@ -99,10 +99,6 @@ struct Generator {
 
   uint64_t Random64();
 
-  std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t total_numel,
-                                                uint64_t grid_size,
-                                                uint64_t block_size,
-                                                uint64_t engine_calls_num);
   std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t increament_offset);
 
   void SetIsInitPy(bool);
