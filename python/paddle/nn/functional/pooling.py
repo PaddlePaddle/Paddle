@@ -692,7 +692,7 @@ def max_pool2d(x,
 
     if data_format == "NHWC" and return_indices:
         raise ValueError(
-            "Unsupport data_format: NHWC, when set return_indices as True in max_pool2d API."
+            "When setting return_indices to true, data_format must be set to NCHW in API:max_pool2d"
         )
 
     if in_dygraph_mode():
@@ -818,7 +818,7 @@ def max_pool3d(x,
 
     if data_format == "NDHWC" and return_indices:
         raise ValueError(
-            "Unsupport data_format: NDHWC, when set return_indices as True in max_pool3d API."
+            "When setting return_indices to true, data_format must be set to NCDHW in API:max_pool3d"
         )
 
     if in_dygraph_mode():
