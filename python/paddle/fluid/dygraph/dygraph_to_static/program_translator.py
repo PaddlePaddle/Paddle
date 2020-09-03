@@ -24,6 +24,7 @@ import warnings
 
 import gast
 from paddle.fluid import framework
+from paddle.fluid import in_dygraph_mode
 from paddle.fluid.dygraph import layers
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.layers.utils import flatten
@@ -32,6 +33,7 @@ from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
 from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data
+from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import create_and_update_origin_info_map
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import update_op_callstack_with_origin_info
@@ -285,12 +287,20 @@ class StaticLayer(object):
         Return:
             Outputs of decorated function.
         """
+
         # 1. call dygraph function directly if not enable `declarative`
         if not self._program_trans.enable_declarative:
-            warnings.warn(
-                "The decorator '@paddle.jit.to_static' doesn't work when setting ProgramTranslator.enable=False. "
+            logging_utils.warn(
+                "The decorator '@paddle.jit.to_static' does NOT work when setting ProgramTranslator.enable=False. "
                 "We will just return dygraph output.")
             return self._call_dygraph_function(*args, **kwargs)
+
+        if not in_dygraph_mode() and self._program_trans.enable_declarative:
+            raise RuntimeError(
+                "Failed to run the callable object {} decorated by '@paddle.jit.to_static', "
+                "because it does NOT in dynamic mode. Please disable the static mode to enter dynamic mode with the "
+                "following API: paddle.disable_static().".format(
+                    self.dygraph_function))
 
         # 2. trace ops from dygraph layers and cache the generated program.
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)

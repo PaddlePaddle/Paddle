@@ -87,6 +87,7 @@ class AvgPool1d(layers.Layer):
     Examples:
 
         .. code-block:: python
+
           import paddle
           import paddle.nn as nn
           paddle.disable_static()
@@ -176,6 +177,7 @@ class AvgPool2d(layers.Layer):
         ShapeError: If the output's shape calculated is not greater than 0.
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn as nn
           import numpy as np
@@ -267,6 +269,7 @@ class AvgPool3d(layers.Layer):
 
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn as nn
           import numpy as np
@@ -457,6 +460,7 @@ class MaxPool2d(layers.Layer):
 
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn as nn
           import numpy as np
@@ -547,6 +551,7 @@ class MaxPool3d(layers.Layer):
 
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.nn as nn
           import numpy as np
@@ -915,8 +920,11 @@ class AdaptiveMaxPool2d(layers.Layer):
     """
     This operation applies 2D adaptive max pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size. The difference between adaptive pooling and pooling is adaptive one focus on the output size.
+
     For adaptive max pool2d:
+
     ..  math::
+
        hstart &= floor(i * H_{in} / H_{out})
        hend &= ceil((i + 1) * H_{in} / H_{out})
        wstart &= floor(j * W_{in} / W_{out})
@@ -936,6 +944,7 @@ class AdaptiveMaxPool2d(layers.Layer):
         A callable object of AdaptiveMaxPool2d.
     Examples:
         .. code-block:: python
+
             # adaptive max pool2d
             # suppose input data in shape of [N, C, H, W], `output_size` is [m, n],
             # output shape is [N, C, m, n], adaptive pool divide H and W dimensions
@@ -976,10 +985,13 @@ class AdaptiveMaxPool2d(layers.Layer):
 
 class AdaptiveMaxPool3d(layers.Layer):
     """
-   This operation applies 3D adaptive max pooling on input tensor. The h and w dimensions
+    This operation applies 3D adaptive max pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size. The difference between adaptive pooling and pooling is adaptive one focus on the output size.
+
     For adaptive max pool3d:
+
     ..  math::
+
       dstart &= floor(i * D_{in} / D_{out})
       dend &= ceil((i + 1) * D_{in} / D_{out})
       hstart &= floor(j * H_{in} / H_{out})
@@ -987,10 +999,9 @@ class AdaptiveMaxPool3d(layers.Layer):
       wstart &= floor(k * W_{in} / W_{out})
       wend &= ceil((k + 1) * W_{in} / W_{out})
       Output(i ,j, k) &= max(Input[dstart:dend, hstart:hend, wstart:wend])
+
     Parameters:
-        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-            it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means
-            the size will be the same as that of the input.
+        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of the input.
         return_indices (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
@@ -1002,6 +1013,7 @@ class AdaptiveMaxPool3d(layers.Layer):
         A callable object of AdaptiveMaxPool3d.
     Examples:
         .. code-block:: python
+
             # adaptive max pool3d
             # suppose input data in shape of [N, C, D, H, W], `output_size` is [l, m, n],
             # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
@@ -1028,8 +1040,8 @@ class AdaptiveMaxPool3d(layers.Layer):
             pool = paddle.nn.AdaptiveMaxPool3d(output_size=4)
             out = pool(x)
             # out shape: [2, 3, 4, 4, 4]
-            pool, indices = paddle.nn.AdaptiveMaxPool3d(output_size=3, return_indices=True)
-            out = pool(x)
+            pool = paddle.nn.AdaptiveMaxPool3d(output_size=3, return_indices=True)
+            out, indices = pool(x)
             # out shape: [2, 3, 4, 4, 4], indices shape: [2, 3, 4, 4, 4]
             
     """

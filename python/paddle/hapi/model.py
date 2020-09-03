@@ -47,10 +47,10 @@ from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.fluid.executor import scope_guard, Executor
 from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
-
 from paddle.static import InputSpec as Input
 
 from .callbacks import config_callbacks
+from .model_summary import summary
 
 __all__ = ['Model', ]
 
@@ -731,8 +731,8 @@ class DynamicGraphAdapter(object):
         if not self.model._optimizer or not optim_state:
             return
 
-        # If optimizer performs set_dict when state vars haven't been created,
-        # which would happen when set_dict before minimize, the state would be
+        # If optimizer performs set_state_dict when state vars haven't been created,
+        # which would happen when set_state_dict before minimize, the state would be
         # stored in optimizer._accumulators_holder and loaded lazily.
         # To contrive this when loading from static-graph saved states, extend
         # state dict to include keys named accoring to dygraph naming rules.
@@ -776,7 +776,13 @@ class DynamicGraphAdapter(object):
                                      accum_name + "_0")
                     converted_state[dy_state_name] = state_var
 
-        self.model._optimizer.set_dict(converted_state)
+        if not hasattr(self.model._optimizer, 'set_state_dict'):
+            warnings.warn(
+                "paddle.fluid.optimizer is deprecated in API 2.0, please use paddle.optimizer instead"
+            )
+            self.model._optimizer.set_dict(converted_state)
+        else:
+            self.model._optimizer.set_state_dict(converted_state)
 
 
 class Model(object):
@@ -1821,6 +1827,49 @@ class Model(object):
         if mode == 'test':
             return logs, outputs
         return logs
+
+    def summary(self, input_size=None, batch_size=None, dtype=None):
+        """Prints a string summary of the network.
+
+        Args:
+            input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. 
+                    if not set, input_size will get from ``self._inputs`` if network only have 
+                    one input, input_size can be tuple or InputSpec. if model have multiple 
+                    input, input_size must be a list which contain every input's shape. 
+                    Default: None.
+            batch_size (int, optional): batch size of input tensor, Default: None.
+            dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
+
+        Returns:
+            Dict: a summary of the network including total params and total trainable params.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              from paddle.static import InputSpec
+
+              dynamic = True
+              device = paddle.set_device('cpu')
+              paddle.disable_static(device) if dynamic else None
+           
+              input = InputSpec([None, 1, 28, 28], 'float32', 'image')
+              label = InputSpec([None, 1], 'int64', 'label')
+           
+              model = paddle.Model(paddle.vision.LeNet(classifier_activation=None),
+                  input, label)
+              optim = paddle.optimizer.Adam(
+                  learning_rate=0.001, parameters=model.parameters())
+              model.prepare(
+                  optim,
+                  paddle.nn.CrossEntropyLoss())
+
+              params_info = model.summary()
+              print(params_info)
+
+        """
+
+        return summary(self.network, self._inputs, batch_size, dtype)
 
     def _verify_spec(self, specs, is_input=False):
         out_specs = []
