@@ -10045,8 +10045,6 @@ def stack(x, axis=0, name=None):
 
             data = layers.stack([x1,x2], axis=1) # stack according to axis 1, data.shape=[None, 2, 1, 2]
 
-            # stack single Tensor
-            data = layers.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
 
     """
     axis = 0 if axis is None else axis
