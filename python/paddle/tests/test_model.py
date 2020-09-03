@@ -416,6 +416,29 @@ class TestModelFunction(unittest.TestCase):
             shutil.rmtree(path)
             fluid.disable_dygraph() if dynamic else None
 
+    def test_dynamic_load(self):
+        mnist_data = MnistDataset(mode='train')
+        for new_optimizer in [True, False]:
+            path = tempfile.mkdtemp()
+            paddle.disable_static()
+            net = LeNet()
+            inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
+            labels = [InputSpec([None, 1], 'int64', 'label')]
+            if new_optimizer:
+                optim = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=net.parameters())
+            else:
+                optim = fluid.optimizer.Adam(
+                    learning_rate=0.001, parameter_list=net.parameters())
+            model = Model(net, inputs, labels)
+            model.prepare(
+                optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+            model.fit(mnist_data, batch_size=64, verbose=0)
+            model.save(path + '/test')
+            model.load(path + '/test')
+            shutil.rmtree(path)
+            paddle.enable_static()
+
     def test_dynamic_save_static_load(self):
         path = tempfile.mkdtemp()
         # dynamic saving
