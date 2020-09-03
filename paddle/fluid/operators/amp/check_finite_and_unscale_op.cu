@@ -15,7 +15,6 @@ limitations under the License. */
 #include <cuda.h>
 
 #include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -39,8 +38,7 @@ __global__ void CheckFiniteAndUnscale(const T* in, const T* scale, int num,
 }
 
 template <typename T>
-class CheckFiniteAndUnscaleKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -79,9 +77,6 @@ class CheckFiniteAndUnscaleKernel<platform::CUDADeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    check_finite_and_unscale,
-    ops::CheckFiniteAndUnscaleKernel<paddle::platform::CUDADeviceContext,
-                                     float>,
-    ops::CheckFiniteAndUnscaleKernel<paddle::platform::CUDADeviceContext,
-                                     double>);
+REGISTER_OP_CUDA_KERNEL(check_finite_and_unscale,
+                        ops::CheckFiniteAndUnscaleGpuKernel<float>,
+                        ops::CheckFiniteAndUnscaleGpuKernel<double>);

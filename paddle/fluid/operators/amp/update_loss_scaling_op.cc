@@ -126,7 +126,7 @@ class UpdateLossScalingFunctor<platform::CPUDeviceContext, T> {
                   const int incr_every_n_steps,
                   const int decr_every_n_nan_or_inf, const float incr_ratio,
                   const float decr_ratio, T* updated_loss_scaling_data,
-                  int* good_out_data, int* bad_out_data) {
+                  int* good_out_data, int* bad_out_data) const {
     Update<T>(found_inf_data, pre_loss_scaling_data, good_in_data, bad_in_data,
               incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio,
               decr_ratio, updated_loss_scaling_data, good_out_data,
@@ -140,8 +140,9 @@ class LazyZeroInputs<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& dev_ctx,
                   const bool* found_inf_data,
                   const std::vector<const framework::Tensor*>& xs,
-                  const std::vector<framework::Tensor*>& outs) {
+                  const std::vector<framework::Tensor*>& outs) const {
     if (*found_inf_data) {
+      VLOG(1) << "-- UpdateLossScaling: Infinite values are found in grads. --";
       for (size_t i = 0; i < xs.size(); ++i) {
         auto* out = outs[i];
         T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());

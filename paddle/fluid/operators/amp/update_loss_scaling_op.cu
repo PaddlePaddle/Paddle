@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cuda_runtime.h>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +41,7 @@ class UpdateLossScalingFunctor<platform::CUDADeviceContext, T> {
                   const int incr_every_n_steps,
                   const int decr_every_n_nan_or_inf, const float incr_ratio,
                   const float decr_ratio, T* updated_loss_scaling_data,
-                  int* good_out_data, int* bad_out_data) {
+                  int* good_out_data, int* bad_out_data) const {
     GpuUpdateLossScaling<T><<<1, 1, 0, dev_ctx.stream()>>>(
         found_inf_data, pre_loss_scaling_data, good_in_data, bad_in_data,
         incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio,
@@ -55,10 +55,14 @@ class LazyZeroInputs<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& dev_ctx,
                   const bool* found_inf_data,
                   const std::vector<const framework::Tensor*>& xs,
-                  const std::vector<framework::Tensor*>& outs) {
+                  const std::vector<framework::Tensor*>& outs) const {
+    const auto gpu_place =
+        BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
     bool has_inf{false};
-    cudaMemcpy(&has_inf, found_inf_data, sizeof(bool), cudaMemcpyDeviceToHost);
+    memory::Copy(platform::CPUPlace(), &has_inf, gpu_place, found_inf_data,
+                 sizeof(bool), dev_ctx.stream());
     if (has_inf) {
+      VLOG(1) << "-- UpdateLossScaling: Infinite values are found in grads. --";
       for (size_t i = 0; i < xs.size(); ++i) {
         auto* out = outs[i];
         T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());

@@ -84,8 +84,7 @@ Otherwise, FoundInfinite will be 0 (False).
 };
 
 template <typename T>
-class CheckFiniteAndUnscaleKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+class CheckFiniteAndUnscaleCpuKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
@@ -137,8 +136,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    check_finite_and_unscale,
-    ops::CheckFiniteAndUnscaleKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CheckFiniteAndUnscaleKernel<paddle::platform::CPUDeviceContext,
-                                     double>);
+REGISTER_OP_CPU_KERNEL(check_finite_and_unscale,
+                       ops::CheckFiniteAndUnscaleCpuKernel<float>,
+                       ops::CheckFiniteAndUnscaleCpuKernel<double>);

@@ -66,7 +66,7 @@ class UpdateLossScalingFunctor {
                   const int* bad_in_data, const int incr_every_n_steps,
                   const int decr_every_n_nan_or_inf, const float incr_ratio,
                   const float decr_ratio, T* updated_loss_scaling_data,
-                  int* good_out_data, int* bad_out_data);
+                  int* good_out_data, int* bad_out_data) const;
 };
 
 template <typename DeviceContext, typename T>
@@ -74,7 +74,7 @@ class LazyZeroInputs {
  public:
   void operator()(const DeviceContext& dev_ctx, const bool* found_inf_data,
                   const std::vector<const framework::Tensor*>& xs,
-                  const std::vector<framework::Tensor*>& outs);
+                  const std::vector<framework::Tensor*>& outs) const;
 };
 
 template <typename DeviceContext, typename T>

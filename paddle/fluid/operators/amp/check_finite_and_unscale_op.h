@@ -27,8 +27,5 @@ inline HOSTDEVICE T Inverse(T s) {
   return 1.0 / s;
 }
 
-template <typename DeviceContext, typename T>
-class CheckFiniteAndUnscaleKernel;
-
 }  // namespace operators
 }  // namespace paddle
