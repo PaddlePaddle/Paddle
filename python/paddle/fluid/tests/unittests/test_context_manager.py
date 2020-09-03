@@ -14,6 +14,7 @@
 
 import paddle.fluid as fluid
 import unittest
+import random
 
 
 class TestContextManagerRaiseException(unittest.TestCase):
@@ -30,6 +31,10 @@ class TestContextManagerRaiseException(unittest.TestCase):
         # After test_func1 executed, if fluid.dygraph.guard() in test_func1 safely exited, 
         # fluid.in_dygraph_mode() should be false.
         self.assertEqual(fluid.in_dygraph_mode(), False)
+        num_rand = random.randint(0,9)
+        if num_rand < 4:
+            self.assertEqual(1,3)
+            print("the random number is ",num_rand)
 
 
 if __name__ == '__main__':
