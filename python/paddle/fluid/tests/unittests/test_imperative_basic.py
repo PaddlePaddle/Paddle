@@ -663,7 +663,7 @@ class TestDygraphUtils(unittest.TestCase):
         self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
     def test_append_activation_in_dygraph_global_use_mkldnn_throw(self):
-        a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.double)
+        a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.bool)
         helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
         func = helper.append_activation
         msg = "NotFoundError: Operator relu does not have kernel for " \
