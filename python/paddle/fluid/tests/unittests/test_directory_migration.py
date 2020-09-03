@@ -43,7 +43,7 @@ class TestDirectory(unittest.TestCase):
             'paddle.distributed.prepare_context', 'paddle.DataParallel',
             'paddle.jit', 'paddle.jit.TracedLayer', 'paddle.jit.to_static',
             'paddle.jit.ProgramTranslator', 'paddle.jit.TranslatedLayer',
-            'paddle.jit.save', 'paddle.jit.load', 'paddle.jit.SaveLoadConfig',
+            'paddle.jit.save', 'paddle.jit.load', 'paddle.SaveLoadConfig',
             'paddle.NoamDecay', 'paddle.PiecewiseDecay',
             'paddle.NaturalExpDecay', 'paddle.ExponentialDecay',
             'paddle.InverseTimeDecay', 'paddle.PolynomialDecay',
