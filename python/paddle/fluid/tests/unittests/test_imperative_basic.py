@@ -662,6 +662,24 @@ class TestDygraphUtils(unittest.TestCase):
             res2 = fluid.layers.relu(a)
         self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
+    def test_append_activation_in_dygraph_global_use_mkldnn(self):
+        a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.double)
+        helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
+        func = helper.append_activation
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            fluid.set_flags({'FLAGS_use_mkldnn': True})
+            try:
+                res1 = func(a)
+            except Exception as e:
+                exc_out = e.message
+            finally:
+                fluid.set_flags({'FLAGS_use_mkldnn': False})
+        self.assertNotEqual(
+            exc_out.find(
+                "NotFoundError: Operator relu does not have kernel for data_type[double]:data_layout[MKLDNNLAYOUT]:place[CPUPlace]:library_type[MKLDNN]"
+            ), -1)
+
     def test_append_bias_in_dygraph_exception(self):
         with new_program_scope():
             np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
