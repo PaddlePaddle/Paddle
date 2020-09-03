@@ -43,12 +43,12 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         out, err = proc.communicate()
         returncode = proc.returncode
 
-        print(out)
-        print(err)
+        print('out', out)
+        print('err', err)
 
         assert returncode == 0
         # in python3, type(out) is 'bytes', need use encode
-        assert (out + err).find(
+        assert out.find(
             "dnnl_verbose,exec,cpu,eltwise,jit:avx512_common,forward_training,"
             "data_f32::blocked:abc:f0 diff_undef::undef::f0,,alg:eltwise_relu".
             encode()) != -1

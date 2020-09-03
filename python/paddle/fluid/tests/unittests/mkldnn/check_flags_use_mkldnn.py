@@ -26,10 +26,11 @@ def check():
           fluid.core.globals()["FLAGS_use_mkldnn"])
     print("check: fluid.get_flags('FLAGS_use_mkldnn')=",
           fluid.get_flags(['FLAGS_use_mkldnn']))
+    print("check: DNNL_VERBOSE=", os.environ['DNNL_VERBOSE'])
     a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
     helper = LayerHelper(fluid.unique_name.generate(str("test")), act="relu")
     func = helper.append_activation
-    with fluid.dygraph.guard():
+    with fluid.dygraph.guard(fluid.core.CPUPlace()):
         a = fluid.dygraph.to_variable(a_np)
         res1 = func(a)
         res2 = np.maximum(a_np, 0)

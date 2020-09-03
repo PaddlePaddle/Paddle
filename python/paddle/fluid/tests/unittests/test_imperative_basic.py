@@ -666,20 +666,24 @@ class TestDygraphUtils(unittest.TestCase):
         a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.double)
         helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
         func = helper.append_activation
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            fluid.set_flags({'FLAGS_use_mkldnn': True})
-            try:
-                res1 = func(a)
-            except Exception as e:
-                exc_out = e.message
-                print(exc_out)
-            finally:
-                fluid.set_flags({'FLAGS_use_mkldnn': False})
-        self.assertNotEqual(
-            exc_out.find(
-                "NotFoundError: Operator relu does not have kernel for data_type[double]:data_layout[MKLDNNLAYOUT]:place[CPUPlace]:library_type[MKLDNN]"
-            ), -1)
+        msg = "NotFoundError: Operator relu does not have kernel for " \
+              "data_type[double]:data_layout[MKLDNNLAYOUT]:place[CPUPlace]:library_type[MKLDNN]"
+
+        def check(msg_):
+            with fluid.dygraph.guard(fluid.core.CPUPlace()):
+                a = fluid.dygraph.to_variable(a_np)
+                fluid.set_flags({'FLAGS_use_mkldnn': True})
+                try:
+                    func(a)
+                except Exception as e:
+                    if msg_ in str(e):
+                        raise AttributeError
+                    else:
+                        print(e)
+                finally:
+                    fluid.set_flags({'FLAGS_use_mkldnn': False})
+
+        self.assertRaises(AttributeError, check, msg)
 
     def test_append_bias_in_dygraph_exception(self):
         with new_program_scope():
