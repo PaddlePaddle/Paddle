@@ -26,7 +26,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-SlicePlugin* CreateSlicePluginDeserialize(const void* buffer, size_t length) {
+SlicePlugin *CreateSlicePluginDeserialize(const void *buffer, size_t length) {
   return new SlicePlugin(buffer, length);
 }
 REGISTER_TRT_PLUGIN("slice_plugin", CreateSlicePluginDeserialize);
@@ -65,7 +65,7 @@ SlicePlugin::SlicePlugin(std::vector<int> starts, std::vector<int> ends,
   cudaStreamCreate(&copy_stream_);
 }
 
-SlicePlugin::SlicePlugin(void const* serial_data, size_t serial_length) {
+SlicePlugin::SlicePlugin(void const *serial_data, size_t serial_length) {
   deserializeBase(serial_data, serial_length);
   DeserializeValue(&serial_data, &serial_length, &starts_);
   DeserializeValue(&serial_data, &serial_length, &ends_);
@@ -81,7 +81,7 @@ SlicePlugin::~SlicePlugin() {
   cudaFree(offset_temp_data_);
 }
 
-SlicePlugin* SlicePlugin::clone() const {
+SlicePlugin *SlicePlugin::clone() const {
   return new SlicePlugin(starts_, ends_, axes_, ban_fp16_);
 }
 
@@ -98,7 +98,7 @@ bool SlicePlugin::supportsFormat(nvinfer1::DataType type,
 }
 
 nvinfer1::Dims SlicePlugin::getOutputDimensions(int index,
-                                                const nvinfer1::Dims* inputs,
+                                                const nvinfer1::Dims *inputs,
                                                 int nb_input_dims) {
   auto in_dims = inputs[0];
   nvinfer1::Dims out_dims = in_dims;
@@ -110,9 +110,8 @@ nvinfer1::Dims SlicePlugin::getOutputDimensions(int index,
   return out_dims;
 }
 
-int SlicePlugin::enqueue(int batch_size, const void* const* inputs,
-                         void** outputs, void* workspace,
-                         cudaStream_t stream) {
+int SlicePlugin::enqueue(int batch_size, const void *const *inputs,
+                         void **outputs, void *workspace, cudaStream_t stream) {
   auto input_dims = getInputDims(0);
 
   // notice input dims is [C, H, W], add input batch dim here
@@ -198,7 +197,7 @@ size_t SlicePlugin::getSerializationSize() {
          SerializedSize(axes_) + SerializedSize(ban_fp16_);
 }
 
-void SlicePlugin::serialize(void* buffer) {
+void SlicePlugin::serialize(void *buffer) {
   SerializeValue(&buffer, getPluginType());
   serializeBase(buffer);
   SerializeValue(&buffer, starts_);

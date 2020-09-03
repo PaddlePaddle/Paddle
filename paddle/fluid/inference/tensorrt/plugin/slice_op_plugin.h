@@ -29,7 +29,7 @@ namespace plugin {
 class SlicePlugin : public PluginTensorRT {
  public:
   explicit SlicePlugin(std::vector<int> starts, std::vector<int> ends,
-                              std::vector<int> axes, bool ban_fp16);
+                       std::vector<int> axes, bool ban_fp16);
 
   // It was used for tensorrt deserialization.
   // It should not be called by users.
