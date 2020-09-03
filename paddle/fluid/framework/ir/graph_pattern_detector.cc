@@ -26,9 +26,6 @@
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 #include "paddle/fluid/string/pretty_log.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -1907,38 +1904,45 @@ PDNode *patterns::Bfloat16Placement::operator()(
 }
 
 PDNode *patterns::OrphanedBfloat16::operator()() {
-      auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
-      prev_op->assert_more([&](Node *node) {
-        return platform::HasOpFLOAT32DataType(node->Op());
-      });
-      auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
+  auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+  prev_op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "float32";
+  });
+  auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
 
-      auto *op = pattern->NewNode(op_repr())->assert_is_op();
-      op->assert_more([&](Node *node) {
-        return platform::HasOpBFLOAT16DataType(node->Op());
-      });
-      auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
+  auto *op = pattern->NewNode(op_repr())->assert_is_op();
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+  auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
 
-      auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
-      next_op->assert_more([&](Node *node) {
-        return platform::HasOpFLOAT32DataType(node->Op());
-      });
+  auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+  next_op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "float32";
+  });
 
-      prev_op->LinksTo({prev_out});
-      op->LinksFrom({prev_out}).LinksTo({op_out});
-      next_op->LinksFrom({op_out});
-      return next_op;
+  prev_op->LinksTo({prev_out});
+  op->LinksFrom({prev_out}).LinksTo({op_out});
+  next_op->LinksFrom({op_out});
+  return next_op;
 }
 
 PDNode *patterns::LastBfloat16Ops::operator()() {
   auto *op = pattern->NewNode(op_repr())->assert_is_op();
-  op->assert_more(
-      [&](Node *node) { return platform::HasOpBFLOAT16DataType(node->Op()); });
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
   auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
 
   auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
-  next_op->assert_more(
-      [&](Node *node) { return !platform::HasOpBFLOAT16DataType(node->Op()); });
+  next_op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") !=
+           "bfloat16";
+  });
 
   op->LinksTo({op_out});
   next_op->LinksFrom({op_out});
@@ -1947,13 +1951,17 @@ PDNode *patterns::LastBfloat16Ops::operator()() {
 
 PDNode *patterns::FirstBfloat16Ops::operator()() {
   auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
-  prev_op->assert_more(
-      [&](Node *node) { return !platform::HasOpBFLOAT16DataType(node->Op()); });
+  prev_op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") !=
+           "bfloat16";
+  });
   auto *op_in = pattern->NewNode(op_in_repr())->AsOutput();
 
   auto *op = pattern->NewNode(op_repr())->assert_is_op();
-  op->assert_more(
-      [&](Node *node) { return platform::HasOpBFLOAT16DataType(node->Op()); });
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
 
   prev_op->LinksTo({op_in});
   op->LinksFrom({op_in});

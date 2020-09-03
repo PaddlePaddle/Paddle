@@ -59,8 +59,7 @@ ProgramDesc BuildProgramDesc() {
 
   for (auto& v :
        std::vector<std::string>({"a", "b", "c", "f", "g", "h", "k", "l"})) {
-    auto* var = prog.MutableBlock(0)->Var(v);
-    var->SetType(proto::VarType::SELECTED_ROWS);
+    prog.MutableBlock(0)->Var(v);
   }
 
   SetOp(&prog, "concat", "concat1", {"a", "b"}, {"c"});

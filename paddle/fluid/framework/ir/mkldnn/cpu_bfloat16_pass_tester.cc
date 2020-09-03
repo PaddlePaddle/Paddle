@@ -77,7 +77,7 @@ static const std::initializer_list<std::string> variable_names{
 ProgramDesc BuildProgramDesc(bool use_mkldnn) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
-    auto* var = prog.MutableBlock(0)->Var(v);
+    prog.MutableBlock(0)->Var(v);
   }
   SetOp(&prog, "dropout", "Dropout1", {"z"}, {"a"}, use_mkldnn, "float32");
   SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, "bfloat16");
