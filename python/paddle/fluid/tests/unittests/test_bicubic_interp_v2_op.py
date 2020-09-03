@@ -522,7 +522,7 @@ class TestBicubicOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_scale_shape)
             self.assertRaises(ValueError, test_scale_value)
             self.assertRaises(ValueError, test_size_and_scale)
-            self.assertRaises(TypeError, test_size_type)
+            self.assertRaises(ValueError, test_size_type)
 
 
 if __name__ == "__main__":
