@@ -143,7 +143,7 @@ _supported_all_dtype_ = ["int32", "int64",
                          "float16", "float32", "float64"]
 _dtype2index = {
     "int32": 0, "int64": 1, "float16": 2, "float32": 3, "float64": 4,
-    "int": 0, "float": 3,
+    "int": 0, "long": 0, "float": 3,
     VarDesc.VarType.INT32: 0, VarDesc.VarType.INT64: 1,
     VarDesc.VarType.FP16: 2,VarDesc.VarType.FP32: 3,
     VarDesc.VarType.FP64: 4}

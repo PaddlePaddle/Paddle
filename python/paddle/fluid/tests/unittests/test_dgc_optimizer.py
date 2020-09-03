@@ -93,9 +93,10 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             len(dgc_momentum_optimizer.get_accumulators()), accumulator_count)
         with framework.program_guard(program, init_program):
             opts = dgc_momentum_optimizer.apply_gradients(params_grads)
-        self.assertEqual(len(opts), 2)
+        self.assertEqual(len(opts), 3)
         sgd_op = opts[-1]
-        self.assertEqual([op.type for op in opts], ["scale", name])
+        self.assertEqual([op.type for op in opts],
+                         ["fill_constant", "elementwise_mul", name])
         self.assertFalse(sgd_op.attr('use_nesterov'))
 
         # Check accumulators

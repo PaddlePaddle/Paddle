@@ -131,7 +131,7 @@ def sum_even_util_limit(max_len, limit):
         elif i > limit:
             break
 
-        ret_sum += i
+        ret_sum += i.astype("int32")
     return ret_sum
 
 

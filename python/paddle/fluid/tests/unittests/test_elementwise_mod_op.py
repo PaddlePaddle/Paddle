@@ -184,7 +184,7 @@ class TestRemainderAPI(unittest.TestCase):
                 # rule 5: y is Tensor, x is scalar
                 np_x = np.array([2, 3, 4])
                 x = paddle.to_tensor(np_x)
-                self.assertRaises(TypeError, paddle.remainder, x=3, y=x)
+                self.assertRaises(TypeError, paddle.remainder, x=np_x, y=x)
 
                 # rule 6: y is Tensor, x is Tensor
                 np_x = np.array([1., 2., 4])

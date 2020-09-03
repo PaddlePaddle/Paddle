@@ -93,7 +93,7 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(y.shape, self.shape)
                 self.assertEqual(y.stop_gradient, True)
                 self.assertEqual(y.type, core.VarDesc.VarType.LOD_TENSOR)
-                z = x + y
+                z = x + y.astype("float32")
                 self.assertTrue(np.array_equal(z.numpy(), 2 * self.array))
 
                 x = paddle.to_tensor(
