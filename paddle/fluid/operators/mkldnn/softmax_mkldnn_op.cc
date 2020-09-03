@@ -140,7 +140,8 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(
         dout->dims(), dx->dims(),
-        "The shape of softmax_grad's input and output must be identical.");
+        platform::errors::InvalidArgument(
+            "The shape of softmax_grad's input and output must be identical."));
 
     auto dims = dout->dims();  // input and output share the same shape
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());

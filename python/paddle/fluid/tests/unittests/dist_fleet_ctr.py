@@ -198,8 +198,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         fleet.stop_worker()
 
     def do_dataset_training(self, fleet):
-        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
-        )
+        train_file_list = ctr_dataset_reader.prepare_fake_data()
 
         exe = fluid.Executor(fluid.CPUPlace())
 
@@ -208,9 +207,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         thread_num = 2
         batch_size = 128
-        filelist = []
-        for _ in range(thread_num):
-            filelist.append(train_file_path)
+        filelist = train_file_list
 
         # config dataset
         dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()

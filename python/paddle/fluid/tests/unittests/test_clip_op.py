@@ -138,8 +138,9 @@ class TestClipAPI(unittest.TestCase):
         out_6 = paddle.clip(images, max=max)
         out_7 = paddle.clip(images, max=-1.)
         out_8 = paddle.clip(images)
+        out_9 = paddle.clip(paddle.cast(images, 'float64'), min=0.2, max=0.9)
 
-        res1, res2, res3, res4, res5, res6, res7, res8 = exe.run(
+        res1, res2, res3, res4, res5, res6, res7, res8, res9 = exe.run(
             fluid.default_main_program(),
             feed={
                 "image": data,
@@ -147,7 +148,7 @@ class TestClipAPI(unittest.TestCase):
                 "max": np.array([0.8]).astype('float32')
             },
             fetch_list=[
-                out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8
+                out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8, out_9
             ])
 
         self.assertTrue(np.allclose(res1, data.clip(0.2, 0.8)))
@@ -158,6 +159,8 @@ class TestClipAPI(unittest.TestCase):
         self.assertTrue(np.allclose(res6, data.clip(max=0.8)))
         self.assertTrue(np.allclose(res7, data.clip(max=-1)))
         self.assertTrue(np.allclose(res8, data))
+        self.assertTrue(
+            np.allclose(res9, data.astype(np.float64).clip(0.2, 0.9)))
 
     def test_clip_dygraph(self):
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
