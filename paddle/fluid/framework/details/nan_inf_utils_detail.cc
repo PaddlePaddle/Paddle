@@ -207,6 +207,21 @@ void CheckNanInf<paddle::platform::float16>(
     PrintNanInf(value, numel, print_num, op_type, var_name);
   }
 }
+
+template <>
+void CheckNanInf<paddle::platform::bfloat16>(
+    const paddle::platform::bfloat16* value, const size_t numel, int print_num,
+    const std::string& op_type, const std::string& var_name) {
+  float sum = 0.0f;
+#pragma omp parallel for reduction(+ : sum)
+  for (size_t i = 0; i < numel; ++i) {
+    sum += static_cast<float>(value[i] - value[i]);
+  }
+
+  if (std::isnan(sum) || std::isinf(sum)) {
+    PrintNanInf(value, numel, print_num, op_type, var_name);
+  }
+}
 #endif
 
 template <>
