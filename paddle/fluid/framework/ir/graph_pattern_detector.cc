@@ -26,6 +26,7 @@
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/string/pretty_log.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -1889,6 +1890,71 @@ PDNode *patterns::QuantizePlacement::operator()(
     supported_op_types = quantize_enabled_op_types;
   }
   auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
+  return op;
+}
+
+PDNode *patterns::Bfloat16Placement::operator()(
+    const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
+  std::unordered_set<std::string> supported_op_types =
+      std::unordered_set<std::string>();
+  if (!bfloat16_enabled_op_types.empty()) {
+    supported_op_types = bfloat16_enabled_op_types;
+  }
+  auto *op = pattern->NewNode(op_repr())->assert_is_ops(supported_op_types);
+  return op;
+}
+
+PDNode *patterns::OrphanedBfloat16::operator()() {
+      auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+      prev_op->assert_more([&](Node *node) {
+        return platform::HasOpFLOAT32DataType(node->Op());
+      });
+      auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
+
+      auto *op = pattern->NewNode(op_repr())->assert_is_op();
+      op->assert_more([&](Node *node) {
+        return platform::HasOpBFLOAT16DataType(node->Op());
+      });
+      auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
+
+      auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+      next_op->assert_more([&](Node *node) {
+        return platform::HasOpFLOAT32DataType(node->Op());
+      });
+
+      prev_op->LinksTo({prev_out});
+      op->LinksFrom({prev_out}).LinksTo({op_out});
+      next_op->LinksFrom({op_out});
+      return next_op;
+}
+
+PDNode *patterns::LastBfloat16Ops::operator()() {
+  auto *op = pattern->NewNode(op_repr())->assert_is_op();
+  op->assert_more(
+      [&](Node *node) { return platform::HasOpBFLOAT16DataType(node->Op()); });
+  auto *op_out = pattern->NewNode(op_out_repr())->AsOutput();
+
+  auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+  next_op->assert_more(
+      [&](Node *node) { return !platform::HasOpBFLOAT16DataType(node->Op()); });
+
+  op->LinksTo({op_out});
+  next_op->LinksFrom({op_out});
+  return next_op;
+}
+
+PDNode *patterns::FirstBfloat16Ops::operator()() {
+  auto *prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+  prev_op->assert_more(
+      [&](Node *node) { return !platform::HasOpBFLOAT16DataType(node->Op()); });
+  auto *op_in = pattern->NewNode(op_in_repr())->AsOutput();
+
+  auto *op = pattern->NewNode(op_repr())->assert_is_op();
+  op->assert_more(
+      [&](Node *node) { return platform::HasOpBFLOAT16DataType(node->Op()); });
+
+  prev_op->LinksTo({op_in});
+  op->LinksFrom({op_in});
   return op;
 }
 
