@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
-#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "pybind11/numpy.h"
@@ -105,7 +104,6 @@ struct ValidDTypeToPyArrayChecker {
   }
 
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float16);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::bfloat16);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(float);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(double);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(bool);
@@ -121,9 +119,6 @@ inline std::string TensorDTypeToPyDTypeStr(
   if (type == proto_type) {                                                 \
     if (std::is_same<T, platform::float16>::value) {                        \
       return "e";                                                           \
-    } else if (std::is_same<T, platform::bfloat16>::value) {                \
-      /* NumPy character code of uint16 due to no support for bfloat16 */   \
-      return "H";                                                           \
     } else {                                                                \
       constexpr auto kIsValidDType = ValidDTypeToPyArrayChecker<T>::kValue; \
       PADDLE_ENFORCE_EQ(                                                    \
@@ -267,10 +262,10 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
                                                         zero_copy);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
-    // since there is still no support for bfloat16 in NumPy,
-    // uint16 is used for casting bfloat16
-    SetTensorFromPyArrayT<paddle::platform::bfloat16, P>(self, array, place,
-                                                         zero_copy);
+    // TODO(cql): temporary keeping uint16, which is used for casting float16
+    // before. It should be depracated later.
+    SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
+                                                        zero_copy);
   } else if (py::isinstance<py::array_t<bool>>(array)) {
     SetTensorFromPyArrayT<bool, P>(self, array, place, zero_copy);
   } else {
@@ -484,8 +479,6 @@ inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
   switch (src_type) {
     case framework::proto::VarType::FP16:
       return _sliceAndConcat<paddle::platform::float16>(self, obj, dim);
-    case framework::proto::VarType::BF16:
-      return _sliceAndConcat<paddle::platform::bfloat16>(self, obj, dim);
     case framework::proto::VarType::FP32:
       return _sliceAndConcat<float>(self, obj, dim);
     case framework::proto::VarType::FP64:

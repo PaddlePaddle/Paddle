@@ -18,7 +18,6 @@
 #include <unordered_map>
 
 using float16 = paddle::platform::float16;
-using bfloat16 = paddle::platform::bfloat16;
 
 namespace paddle {
 namespace framework {
