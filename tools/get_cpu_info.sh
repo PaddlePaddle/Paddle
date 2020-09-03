@@ -46,4 +46,3 @@ else
   cmake_ver=" Not installed"
 fi
 echo "CMake Version          :$cmake_ver"
-
