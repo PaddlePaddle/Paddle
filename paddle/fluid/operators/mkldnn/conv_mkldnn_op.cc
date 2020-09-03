@@ -1056,7 +1056,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       // which is not the case in paddlepaddle
       auto filter_fmt = GetMKLDNNFormat(*diff_weights_memory_p);
       filter_grad->set_format(
-          MKLDNNFormatForSize(weights_tz.size(), filter_fmt));
+          platform::MKLDNNFormatForSize(weights_tz.size(), filter_fmt));
     }
     if (input_grad) {
       auto weights_memory_p = handler.AcquireWeightsMemoryFromDataPrimitive(
