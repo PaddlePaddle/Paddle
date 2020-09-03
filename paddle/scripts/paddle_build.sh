@@ -528,14 +528,14 @@ EOF
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
-        tmp_dir=`mktemp -d`
         tmpfile_rand=`date +%s%N`
         tmpfile=$tmp_dir/$tmpfile_rand
         ut_startTime_s=`date +%s`
         ctest --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
         collect_failed_tests
-        #rm -f $tmp_dir/*
+        set +x
+        mactest_error=0
         retry_unittests_record=''
         retry_time=3
         exec_times=0
@@ -545,17 +545,19 @@ EOF
             while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
                 do
                     retry_unittests_record="$retry_unittests_record$failed_test_lists"
-                    failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                    failed_test_lists_ult=`echo "${failed_test_lists}"`
+                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
                     echo "========================================="
                     echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                     echo "========================================="
                     echo "The following unittest will be re-run:"
-                    echo "${failed_test_lists_ult}"
+                    echo "${retry_unittests}"
+                    echo "========================================="
 
+                    retry_unittests_regular=''
                     for line in ${retry_unittests[@]} ;
                         do
-                            if [[ "$retry_unittests_regular" = "" ]];then
+                            if [[ "$retry_unittests_regular" == "" ]];then
                                 retry_unittests_regular="^$line$"
                             else
                                 retry_unittests_regular="$retry_unittests_regular|^$line$"
@@ -565,9 +567,10 @@ EOF
                     failed_test_lists=''
                     ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
                     collect_failed_tests
-                    retry_unittests_regular=''
+                    exec_times=$[$exec_times+1]
                 done
         fi
+        #mactest_error=$?
         ut_endTime_s=`date +%s`
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
@@ -582,7 +585,7 @@ EOF
                 echo "The following tests have been re-ran:"
                 echo "${retry_unittests_record}"
             else
-                failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                failed_test_lists_ult=`echo "${failed_test_lists}"`
                 echo "========================================"
                 echo "Summary Failed Tests... "
                 echo "========================================"
