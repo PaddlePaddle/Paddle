@@ -25,25 +25,32 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("Ids"),
-                   "Input(Ids) of LookupTableOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("W"),
-                   "Input(W) of LookupTableOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutputs("Outputs"),
-                   "Output(Outs) of LookupTableOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("Ids"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Ids) of LookupTableOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(W) of LookupTableOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Outs) of LookupTableOp should not be null."));
 
     auto ids_dims = ctx->GetInputsDim("Ids");
     auto table_dims = ctx->GetInputDim("W");
 
-    PADDLE_ENFORCE_EQ(table_dims.size(), 2,
-                      "Only 2 dimensions of the 'Embedding' is supported.");
+    PADDLE_ENFORCE_EQ(
+        table_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Only 2 dimensions of the 'Embedding' is supported."));
 
     for (auto &ids_dim : ids_dims) {
       PADDLE_ENFORCE_EQ(ids_dim.size(), 2,
-                        "The dimension of the 'Ids' tensor must be 2.");
+                        platform::errors::InvalidArgument(
+                            "The dimension of the 'Ids' tensor must be 2."));
     }
 
     auto endpoints = ctx->Attrs().Get<std::vector<std::string>>("endpoints");
+    // for fluid.embedding
     auto lookup_table_version =
         ctx->Attrs().Get<std::string>("lookup_table_version");
 

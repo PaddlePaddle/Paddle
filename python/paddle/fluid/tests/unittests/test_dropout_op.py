@@ -40,6 +40,23 @@ class TestDropoutOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestDropoutOpInput1d(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((2000)).astype("float32")}
+        self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((2000)).astype('uint8')
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestDropoutOp2(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
@@ -435,6 +452,13 @@ class TestDropoutFAPIError(unittest.TestCase):
                 paddle.nn.functional.dropout(x2, axis=[0, 5])
 
             self.assertRaises(ValueError, test_axis_max)
+
+            def test_axis_min():
+                # minimum of axis should greater equal than 0
+                x2 = fluid.data(name='x2', shape=[3, 4, 5, 6], dtype="float32")
+                paddle.nn.functional.dropout(x2, axis=[0, -1])
+
+            self.assertRaises(ValueError, test_axis_min)
 
             def test_axis_len():
                 # length of axis should not greater than dimensions of x
