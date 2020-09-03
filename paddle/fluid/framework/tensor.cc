@@ -19,11 +19,10 @@ namespace paddle {
 namespace framework {
 extern size_t SizeOfType(proto::VarType::Type type);
 void Tensor::check_memory_size() const {
-  PADDLE_ENFORCE_NOT_NULL(
-      holder_,
-      platform::errors::PreconditionNotMet(
-          "The `holder_` of Tensor is nullptr. Tensor holds no memory. "
-          "Call Tensor::mutable_data first."));
+  PADDLE_ENFORCE_NOT_NULL(holder_, platform::errors::PreconditionNotMet(
+                                       "The `holder_` of Tensor is nullptr. "
+                                       "Tensor holds no memory. "
+                                       "Call Tensor::mutable_data first."));
   PADDLE_ENFORCE_LE(
       numel() * SizeOfType(type()), memory_size(),
       platform::errors::PreconditionNotMet(
