@@ -23,8 +23,11 @@ import subprocess
 import six
 import argparse
 import pickle
+import random
 import numpy as np
 import time
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 import paddle.fluid.dygraph as dygraph
@@ -382,21 +385,21 @@ class TestParallelDyGraphRunnerBase(object):
         raise NotImplementedError(
             "train_one_loop should be implemented by the child classes.")
 
+    def _get_data(self, batch, args):
+        if args.update_method != "local":
+            new_batch = []
+            for offset, item in enumerate(batch):
+                if offset % 2 == args.trainer_id:
+                    new_batch.append(item)
+            return new_batch
+        else:
+            return batch
+
     def run_trainer(self, args):
 
         seed = 90
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         place = fluid.CUDAPlace(device_id)
-
-        def _get_data(batch):
-            if args.update_method != "local":
-                new_batch = []
-                for offset, item in enumerate(batch):
-                    if offset % 2 == args.trainer_id:
-                        new_batch.append(item)
-                return new_batch
-            else:
-                return batch
 
         with fluid.dygraph.guard(place):
             fluid.default_startup_program().random_seed = seed
@@ -422,7 +425,7 @@ class TestParallelDyGraphRunnerBase(object):
             out_losses = []
             print_to_err(type(self).__name__, "begin to run dygraph training")
             for step_id, data in enumerate(train_reader()):
-                data = _get_data(data)
+                data = self._get_data(data, args)
                 if step_id == RUN_STEP:
                     break
                 loss = self.run_one_loop(model, opt, data)
@@ -443,6 +446,47 @@ class TestParallelDyGraphRunnerBase(object):
                 opt.minimize(loss)
                 model.clear_gradients()
         print_to_out(out_losses)
+
+    def run_trainer_with_spawn(self, args):
+        # 1. enable dygraph
+        paddle.disable_static()
+
+        # 2. init seed
+        seed = 90
+        paddle.static.default_startup_program().random_seed = seed
+        paddle.static.default_main_program().random_seed = seed
+        np.random.seed(seed)
+        random.seed = seed
+        # get trainer id
+        args.trainer_id = paddle.distributed.get_rank()
+
+        # 3. init parallel env
+        if args.update_method == "nccl2":
+            paddle.distributed.init_parallel_env()
+
+        # 4. train model
+        model, train_reader, opt = self.get_model()
+        if args.update_method == "nccl2":
+            model = paddle.DataParallel(model)
+
+        out_losses = []
+        for step_id, data in enumerate(train_reader()):
+            data = self._get_data(data, args)
+            if step_id == RUN_STEP:
+                break
+            loss = self.run_one_loop(model, opt, data)
+            out_losses.append(loss.numpy())
+
+            if args.update_method == "nccl2":
+                loss = model.scale_loss(loss)
+
+            loss.backward()
+            if args.update_method == "nccl2":
+                model.apply_collective_grads()
+
+            opt.minimize(loss)
+            model.clear_gradients()
+        return out_losses
 
 
 def runtime_main(test_class):

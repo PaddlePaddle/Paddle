@@ -36,7 +36,8 @@ FetchOpHandle::FetchOpHandle(ir::Node *node, FetchResultType *data,
 FetchOpHandle::~FetchOpHandle() {}
 
 void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
-  PADDLE_THROW("Nobody should wait FetchOp. Unexpceted Error");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "No nodes need to wait FetchOp. Unexpceted Error."));
 }
 
 static void CheckDims(const framework::DDim &tensor_dims,
@@ -117,7 +118,7 @@ static void TransData(const framework::LoDTensor &src_item,
       TensorCopy(src_item, platform::CPUPlace(), dst_item);
 #endif
     } else {
-      dst_item->ShareDataWith(src_item);
+      TensorCopy(src_item, platform::CPUPlace(), dst_item);
     }
   } else {
     dst_item->clear();

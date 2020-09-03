@@ -57,8 +57,8 @@ class LayerTest(unittest.TestCase):
     @contextlib.contextmanager
     def static_graph(self):
         with new_program_scope():
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            paddle.manual_seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
             yield
 
     def get_static_graph_result(self,
@@ -77,8 +77,8 @@ class LayerTest(unittest.TestCase):
     def dynamic_graph(self, force_to_use_cpu=False):
         with fluid.dygraph.guard(
                 self._get_place(force_to_use_cpu=force_to_use_cpu)):
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            paddle.manual_seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
             yield
 
 
@@ -299,7 +299,7 @@ class TestLayer(LayerTest):
                 my_syncbn = paddle.nn.SyncBatchNorm(3)
                 dy_ret = my_syncbn(base.to_variable(t))
                 dy_ret_value = dy_ret.numpy()
-            self.assertTrue(np.array_equal(static_ret, static_ret))
+            self.assertTrue(np.array_equal(static_ret, dy_ret_value))
 
     def test_relu(self):
         with self.static_graph():
@@ -1034,7 +1034,7 @@ class TestLayer(LayerTest):
             static_rlt2 = self.get_static_graph_result(
                 feed=feed_dict, fetch_list=[nce_loss2])[0]
 
-        with self.dynamic_graph(force_to_use_cpu=True):
+        with self.dynamic_graph():
             words = []
             for i in range(window_size):
                 words.append(base.to_variable(inp_word[i]))
@@ -1070,7 +1070,7 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
         self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
 
-        with self.dynamic_graph(force_to_use_cpu=True):
+        with self.dynamic_graph():
             custom_weight = np.random.randn(dict_size, 128).astype("float32")
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
@@ -1996,13 +1996,13 @@ class TestLayer(LayerTest):
             exe = fluid.Executor(place)
 
             exe.run(fluid.default_startup_program())
-            x = np.random.rand(3, 32, 32).astype("float32")
-            y = np.array([[1], [0], [1]])
+            # x = np.random.rand(3, 32, 32).astype("float32")
+            # y = np.array([[1], [0], [1]])
             static_out = exe.run(feed={"input": x,
                                        "label": y},
                                  fetch_list=result[0])
 
-        with self.dynamic_graph():
+        with self.dynamic_graph(force_to_use_cpu=True):
             data = base.to_variable(x)
             label = base.to_variable(y)
             fc_out = fluid.layers.fc(data, size=10)

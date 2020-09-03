@@ -110,7 +110,7 @@ def scope_guard(scope):
         _switch_scope(ex)
 
 
-def as_numpy(tensor):
+def as_numpy(tensor, copy=False):
     """
     Convert a Tensor to a numpy.ndarray, its only support Tensor without LoD information.
     For higher dimensional sequence data, please use LoDTensor directly.
@@ -129,6 +129,7 @@ def as_numpy(tensor):
 
     Args:
        tensor(Variable): a instance of Tensor
+       copy(bool, optional): Whether to use deep copy.
 
     Returns:
         numpy.ndarray
@@ -145,7 +146,10 @@ def as_numpy(tensor):
             Please set the parameter 'return_numpy' as 'False' to \
             return LoDTensor itself directly.")
     if tensor._is_initialized():
-        return np.array(tensor)
+        if copy:
+            return np.array(tensor)
+        else:
+            return np.asarray(tensor)
     else:
         return None
 
@@ -350,7 +354,7 @@ def _fetch_var(name, scope=None, return_numpy=True):
         " program.")
     tensor = var.get_tensor()
     if return_numpy:
-        tensor = as_numpy(tensor)
+        tensor = as_numpy(tensor, copy=True)
     return tensor
 
 

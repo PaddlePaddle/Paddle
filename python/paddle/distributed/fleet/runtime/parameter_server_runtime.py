@@ -154,15 +154,16 @@ class ParameterServerRuntime(RuntimeBase):
             kwargs["sparse_attrs"] = get_sparse_attrs()
             return kwargs
 
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops, _has_global_step
 
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import \
             SyncStrategy, GeoStrategy
 
         trainer_config = self.async_strategy.get_trainer_runtime_config()
-        lrs = _get_lr_ops(self.origin_main_program)
 
-        if len(lrs) > 0:
+        lrs = _has_global_step(_get_lr_ops(self.origin_main_program))
+
+        if lrs:
             kwargs = {"need_global_step": "1"}
         else:
             kwargs = {"need_global_step": "0"}
@@ -196,6 +197,18 @@ class ParameterServerRuntime(RuntimeBase):
         else:
             warnings.warn("communicator has been initialized, skip")
 
+    def _get_executor(self):
+        if self.role_maker._is_heter_worker():
+            if self.role_maker._get_heter_worker_device() == "GPU":
+                gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+                executor = Executor(fluid.CUDAPlace(gpu_id))
+            else:
+                raise ValueError("Not Support Device {}".format(
+                    self.role_maker._get_heter_worker_device()))
+        else:
+            executor = fluid.Executor(fluid.CPUPlace())
+        return executor
+
     def _init_server(self, *args, **kwargs):
         if len(args) > 1:
             raise ValueError("init server can only accept 1 args: `dirname`")
@@ -204,8 +217,14 @@ class ParameterServerRuntime(RuntimeBase):
         else:
             model_dirname = None
 
-        executor = fluid.Executor(fluid.CPUPlace())
+        if self.role_maker._is_heter_worker():
+            self._init_worker()
+
+        executor = self._get_executor()
         executor.run(fluid.default_startup_program())
+
+        if self.role_maker._is_heter_worker():
+            return
 
         if not model_dirname:
             return
@@ -237,12 +256,12 @@ class ParameterServerRuntime(RuntimeBase):
         # self._load_sparse_params(dirname=model_dir, varnames=distribtued_varnames)
 
     def _run_server(self):
-        executor = fluid.Executor(fluid.CPUPlace())
+        executor = self._get_executor()
         executor.run(fluid.default_main_program())
 
     def _stop_worker(self):
         self._communicator.stop()
-        executor = fluid.Executor(fluid.CPUPlace())
+        executor = self._get_executor()
         executor.close()
 
     def _get_optimizer_status(self, op, param_name):
