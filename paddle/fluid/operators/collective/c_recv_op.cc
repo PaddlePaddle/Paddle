@@ -31,7 +31,7 @@ class CRecvOp : public framework::OperatorWithKernel {
   }
 };
 
-class CSendOpMaker : public framework::OpProtoAndCheckerMaker {
+class CRecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("Out", "(Tensor) tensor to receive.");
