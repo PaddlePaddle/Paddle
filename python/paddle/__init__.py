@@ -267,5 +267,6 @@ from . import static
 # high-level api
 from .hapi import Model
 from .hapi import callbacks
+from .hapi import summary
 import paddle.text
 import paddle.vision
