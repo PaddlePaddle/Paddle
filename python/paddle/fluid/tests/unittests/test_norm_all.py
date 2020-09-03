@@ -61,7 +61,7 @@ def p_norm(x, axis, porder, keepdims=False):
 
 def frobenius_norm(x, axis=None, keepdims=False):
     if isinstance(axis, list): axis = tuple(axis)
-    if axis is None: axis = (-2, -1)
+    if axis is None: x = x.reshape(1, x.size)
     r = np.linalg.norm(
         x, ord='fro', axis=axis, keepdims=keepdims).astype(x.dtype)
     return r
@@ -290,7 +290,6 @@ class API_NormTest(unittest.TestCase):
         run_pnorm(self, p=2, axis=[0, 1], shape_x=[2, 3, 4], dtype="float64")
         run_pnorm(self, p=2, axis=-1, shape_x=[2, 3, 4], dtype="float64")
         run_pnorm(self, p=1, axis=[0, 1], shape_x=[2, 3, 4], dtype="float64")
-        run_pnorm(self, p=0, axis=[0, 1], shape_x=[2, 3, 4], dtype="float64")
         run_pnorm(
             self, p=np.inf, axis=[0, 1], shape_x=[2, 3, 4], dtype="float64")
         run_pnorm(
