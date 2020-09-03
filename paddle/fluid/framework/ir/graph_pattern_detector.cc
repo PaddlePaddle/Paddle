@@ -26,7 +26,9 @@
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
+#ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 #include "paddle/fluid/string/pretty_log.h"
 #include "paddle/fluid/string/printf.h"
 
