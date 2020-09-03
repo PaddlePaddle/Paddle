@@ -22,6 +22,10 @@ from paddle.fluid.layer_helper import LayerHelper
 
 
 def check():
+    print("check: fluid.core.globals()['FLAGS_use_mkldnn']=",
+          fluid.core.globals()["FLAGS_use_mkldnn"])
+    print("check: fluid.get_flags('FLAGS_use_mkldnn')=",
+          fluid.get_flags(['FLAGS_use_mkldnn']))
     a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
     helper = LayerHelper(fluid.unique_name.generate(str("test")), act="relu")
     func = helper.append_activation

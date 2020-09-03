@@ -27,6 +27,7 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         self._python_interp += " check_flags_use_mkldnn.py"
 
         self.env = os.environ.copy()
+        self.env[str("GLOG_v")] = str("3")
         self.env[str("DNNL_VERBOSE")] = str("1")
         self.env[str("FLAGS_use_mkldnn")] = str("1")
 
@@ -47,7 +48,7 @@ class TestFlagsUseMkldnn(unittest.TestCase):
 
         assert returncode == 0
         # in python3, type(out) is 'bytes', need use encode
-        assert out.find(
+        assert (out + err).find(
             "dnnl_verbose,exec,cpu,eltwise,jit:avx512_common,forward_training,"
             "data_f32::blocked:abc:f0 diff_undef::undef::f0,,alg:eltwise_relu".
             encode()) != -1
