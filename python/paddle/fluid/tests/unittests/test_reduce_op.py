@@ -487,6 +487,13 @@ class API_TestSumOpError(unittest.TestCase):
 
         self.assertRaises(ValueError, test_dtype2)
 
+        def test_dtype3():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float64")
+                paddle.sum(data, dtype="int32")
+
+        self.assertRaises(ValueError, test_dtype3)
+
         def test_type():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data(name="data", shape=[10], dtype="int32")
@@ -551,21 +558,21 @@ class API_TestSumOp(unittest.TestCase):
             (res2 == np.sum(input_data, axis=(0, 1, 2))).all(), True)
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.data("data", shape=[10, 10], dtype="float64")
-            result_sum = paddle.sum(x=data, axis=1, dtype="float64")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            input_data = np.random.rand(10, 10).astype(np.float64)
+            input_data = np.random.rand(10, 10).astype(np.float32)
+            data = fluid.data("data", shape=[10, 10], dtype="float32")
+            result_sum = paddle.sum(x=data, axis=1, dtype="float32")
+
+            exe = fluid.Executor(fluid.CPUPlace())
             res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
 
         self.assertTrue(np.allclose(res, np.sum(input_data, axis=1)))
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.data("data", shape=[10, 10], dtype="int64")
-            result_sum = paddle.sum(x=data, axis=1)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            input_data = np.random.rand(10, 10).astype(np.int64)
+            input_data = np.random.rand(10, 10).astype(np.int32)
+            data = fluid.data("data", shape=[10, 10], dtype="int32")
+            result_sum = paddle.sum(x=data, axis=1, dtype="int32")
+
+            exe = fluid.Executor(fluid.CPUPlace())
             res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
 
         self.assertTrue(np.allclose(res, np.sum(input_data, axis=1)))

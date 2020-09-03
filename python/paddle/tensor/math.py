@@ -869,14 +869,10 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'], 'sum')
         x_dtype = convert_dtype(x.dtype)
 
-        if x_dtype == "float64" and dtype == "float32":
+        if (x_dtype == "float64" and dtype in ["float32", "int32"]) or \
+                (x_dtype == "int64" and dtype == "int32"):
             raise ValueError("The input(x)'s dtype is {} but the attr(dtype) of sum is {}, "
-                             "which may cause data type overflows. Please reset attr(dtype)."
-                             .format(x_dtype, dtype))
-
-        elif x_dtype == "int64" and dtype == "int32":
-            raise ValueError("The input(x)'s dtype is {} but the attr(dtype) of sum is {}, "
-                             "which may cause data type overflows. Please reset attr(dtype)."
+                             "which may cause data type overflows. Please reset attr(dtype) of sum."
                              .format(x_dtype, dtype))
 
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'sum')
