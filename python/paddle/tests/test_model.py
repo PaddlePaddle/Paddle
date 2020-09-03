@@ -499,6 +499,26 @@ class TestModelFunction(unittest.TestCase):
             self.assertTrue(params[0].shape[1] == 10)
             fluid.disable_dygraph() if dynamic else None
 
+    def test_summary(self):
+        def _get_param_from_state_dict(state_dict):
+            params = 0
+            for k, v in state_dict.items():
+                params += np.prod(v.numpy().shape)
+            return params
+
+        for dynamic in [True, False]:
+            device = paddle.set_device('cpu')
+            fluid.enable_dygraph(device) if dynamic else None
+            net = MyModel()
+            inputs = [InputSpec([None, 20], 'float32', 'x')]
+            model = Model(net, inputs)
+            model.prepare()
+            params_info = model.summary()
+            gt_params = _get_param_from_state_dict(net.state_dict())
+
+            np.testing.assert_allclose(params_info['total_params'], gt_params)
+            print(params_info)
+
     def test_export_deploy_model(self):
         for dynamic in [True, False]:
             fluid.enable_dygraph() if dynamic else None

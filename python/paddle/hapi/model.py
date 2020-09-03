@@ -47,10 +47,10 @@ from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.fluid.executor import scope_guard, Executor
 from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
-
 from paddle.static import InputSpec as Input
 
 from .callbacks import config_callbacks
+from .model_summary import summary
 
 __all__ = ['Model', ]
 
@@ -626,7 +626,7 @@ class DynamicGraphAdapter(object):
         labels = [to_variable(l) for l in to_list(labels)]
 
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
@@ -635,7 +635,7 @@ class DynamicGraphAdapter(object):
             self.ddp_model.apply_collective_grads()
         else:
             outputs = self.model.network.forward(
-                * [to_variable(x) for x in inputs])
+                *[to_variable(x) for x in inputs])
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
@@ -646,7 +646,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -659,7 +659,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -690,7 +690,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss and len(metrics):
@@ -1827,6 +1827,49 @@ class Model(object):
         if mode == 'test':
             return logs, outputs
         return logs
+
+    def summary(self, input_size=None, batch_size=None, dtype=None):
+        """Prints a string summary of the network.
+
+        Args:
+            input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. 
+                    if not set, input_size will get from ``self._inputs`` if network only have 
+                    one input, input_size can be tuple or InputSpec. if model have multiple 
+                    input, input_size must be a list which contain every input's shape. 
+                    Default: None.
+            batch_size (int, optional): batch size of input tensor, Default: None.
+            dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
+
+        Returns:
+            Dict: a summary of the network including total params and total trainable params.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              from paddle.static import InputSpec
+
+              dynamic = True
+              device = paddle.set_device('cpu')
+              paddle.disable_static(device) if dynamic else None
+           
+              input = InputSpec([None, 1, 28, 28], 'float32', 'image')
+              label = InputSpec([None, 1], 'int64', 'label')
+           
+              model = paddle.Model(paddle.vision.LeNet(classifier_activation=None),
+                  input, label)
+              optim = paddle.optimizer.Adam(
+                  learning_rate=0.001, parameters=model.parameters())
+              model.prepare(
+                  optim,
+                  paddle.nn.CrossEntropyLoss())
+
+              params_info = model.summary()
+              print(params_info)
+
+        """
+
+        return summary(self.network, self._inputs, batch_size, dtype)
 
     def _verify_spec(self, specs, is_input=False):
         out_specs = []
