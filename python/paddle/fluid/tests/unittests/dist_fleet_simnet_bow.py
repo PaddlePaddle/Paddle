@@ -220,8 +220,8 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
         """
 
         exe = fluid.Executor(fluid.CPUPlace())
-        fleet.init_worker()
         exe.run(fluid.default_startup_program())
+        fleet.init_worker()
         batch_size = 4
         # reader
         train_reader = paddle.batch(fake_simnet_reader(), batch_size=batch_size)
