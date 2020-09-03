@@ -44,7 +44,7 @@ class Conv1dTestCase(unittest.TestCase):
         self.spartial_shape = spartial_shape
         self.filter_size = filter_size
         self.data_format = data_format
-        self.channel_last = (self.data_format == "NHWC")
+        self.channel_last = (self.data_format == "NLC")
 
         self.padding = padding
         self.padding_mode = padding_mode
