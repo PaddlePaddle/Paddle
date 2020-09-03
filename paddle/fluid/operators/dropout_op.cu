@@ -186,7 +186,9 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
             context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
       }
 
-      auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
+      int device_id = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace())
+                          .GetDeviceId();
+      auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
       if (gen_cuda->GetIsInitPy() && (!context.Attr<bool>("fix_seed"))) {
         auto seed_offset = gen_cuda->IncrementOffset(1);
         RandomGeneratorWithGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(

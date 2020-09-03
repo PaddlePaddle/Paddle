@@ -43,9 +43,11 @@ const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
     cuda_device_flags.resize(num_cuda_devices);
     default_cuda_generators.resize(num_cuda_devices);
   });
-  platform::Place place;
-  if (device_id == -1)
+  if (device_id == -1) {
+    platform::Place place;
     device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+  }
+
   std::call_once(cuda_device_flags[device_id], [device_id]() {
     default_cuda_generators[device_id] =
         std::make_shared<Generator>(GetRandomSeed(), device_id);

@@ -16,7 +16,7 @@
 import paddle.fluid as fluid
 from paddle.fluid import core
 
-__all__ = ['manual_seed', 'get_cuda_state', 'set_cuda_state']
+__all__ = ['manual_seed', 'get_cuda_rng_state', 'set_cuda_rng_state']
 
 
 def manual_seed(seed):
@@ -51,7 +51,7 @@ def manual_seed(seed):
     return core.default_cpu_generator().manual_seed(seed)
 
 
-def get_cuda_state():
+def get_cuda_rng_state():
     """
 
     Get random state of cuda generators.
@@ -66,8 +66,7 @@ def get_cuda_state():
         .. code-block:: python
 
             import paddle
-            gen = paddle.manual_seed(102)
-            sts = paddle.get_cuda_state()
+            sts = paddle.get_cuda_rng_state()
 
     """
     state_list = []
@@ -78,13 +77,13 @@ def get_cuda_state():
     return state_list
 
 
-def set_cuda_state(state_list):
+def set_cuda_rng_state(state_list):
     """
 
     Sets generator state for all cuda generators
 
     Args:
-        state_list(list): The cuda states to set back to cuda generators. state_list is obtained from get_cuda_state().
+        state_list(list): The cuda states to set back to cuda generators. state_list is obtained from get_cuda_rng_state().
 
     Returns:
         None
@@ -93,9 +92,8 @@ def set_cuda_state(state_list):
         .. code-block:: python
 
             import paddle
-            gen = paddle.manual_seed(102)
-            sts = paddle.get_cuda_state()
-            paddle.set_cuda_state(sts)
+            sts = paddle.get_cuda_rng_state()
+            paddle.set_cuda_rng_state(sts)
 
     """
     if core.is_compiled_with_cuda():

@@ -36,9 +36,8 @@ class TestGeneratorSeed(unittest.TestCase):
         fluid.enable_dygraph()
 
         gen.manual_seed(111111111)
-        st = paddle.get_cuda_state()
-        #x_data = np.arange(1, 101).reshape(2, 50).astype("float32")
-        #x = paddle.to_variable(x_data)
+        st = paddle.get_cuda_rng_state()
+
         x = fluid.layers.uniform_random(
             [2, 10], dtype="float32", min=0.0, max=1.0)
         x_again = fluid.layers.uniform_random(
@@ -49,12 +48,9 @@ class TestGeneratorSeed(unittest.TestCase):
         print("x_again: {}".format(x_again.numpy()))
         x = x + x_again + x_third
         y = fluid.layers.dropout(x, 0.5)
-        #gen.manual_seed(111111111)
-        # gen.set_state(st)
-        paddle.set_cuda_state(st)
-        #gen = paddle.manual_seed(123431)
-        #x1 = np.arange(1,101).reshape(2,50).astype("float32")
-        #x1 = paddle.to_variable(x_data)
+
+        paddle.set_cuda_rng_state(st)
+
         x1 = fluid.layers.uniform_random(
             [2, 10], dtype="float32", min=0.0, max=1.0)
         x1_again = fluid.layers.uniform_random(
@@ -65,8 +61,7 @@ class TestGeneratorSeed(unittest.TestCase):
         y1 = fluid.layers.dropout(x1, 0.5)
         y_np = y.numpy()
         y1_np = y1.numpy()
-        #print(y_np)
-        #print(y1_np)
+
         if core.is_compiled_with_cuda():
             print(">>>>>>> dropout dygraph >>>>>>>")
             self.assertTrue(np.allclose(y_np, y1_np))
@@ -77,9 +72,9 @@ class TestGeneratorSeed(unittest.TestCase):
 
         paddle.manual_seed(12312321111)
         x = fluid.layers.gaussian_random([120], dtype="float32")
-        st1 = paddle.get_cuda_state()
+        st1 = paddle.get_cuda_rng_state()
         x1 = fluid.layers.gaussian_random([120], dtype="float32")
-        paddle.set_cuda_state(st1)
+        paddle.set_cuda_rng_state(st1)
         x2 = fluid.layers.gaussian_random([120], dtype="float32")
         paddle.manual_seed(12312321111)
         x3 = fluid.layers.gaussian_random([120], dtype="float32")
@@ -87,10 +82,6 @@ class TestGeneratorSeed(unittest.TestCase):
         x1_np = x1.numpy()
         x2_np = x2.numpy()
         x3_np = x3.numpy()
-        #print("x: {}".format(x_np))
-        #print("x1: {}".format(x1_np))
-        #print("x2: {}".format(x2_np))
-        #print("x3: {}".format(x3_np))
 
         if core.is_compiled_with_cuda():
             print(">>>>>>> gaussian random dygraph >>>>>>>")
@@ -124,7 +115,7 @@ class TestGeneratorSeed(unittest.TestCase):
         fluid.disable_dygraph()
 
         gen = paddle.manual_seed(123123143)
-        cur_state = paddle.get_cuda_state()
+        cur_state = paddle.get_cuda_rng_state()
 
         startup_program = fluid.Program()
         train_program = fluid.Program()

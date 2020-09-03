@@ -64,7 +64,10 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
     int64_t size = tensor->numel();
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
+
+    int device_id =
+        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()).GetDeviceId();
+    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
 
     if (gen_cuda->GetIsInitPy() && seed_flag) {
       auto seed_offset = gen_cuda->IncrementOffset(1);
@@ -102,7 +105,10 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
     T std = static_cast<T>(context.Attr<float>("std"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(-1);
+
+    int device_id =
+        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()).GetDeviceId();
+    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
 
     if (gen_cuda->GetIsInitPy() && seed_flag) {
       auto seed_offset = gen_cuda->IncrementOffset(1);
