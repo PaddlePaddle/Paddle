@@ -120,10 +120,7 @@ class TestQuant2Int8MkldnnPass(unittest.TestCase):
                 "Y": block.var('mul_weights')
             },
             outputs={"Out": block.var('mul_output')},
-            attrs={
-                'use_mkldnn': self.use_mkldnn,
-                # 'in_num_col_dims': self.mul_in_num_col_dims
-            })
+            attrs={'use_mkldnn': self.use_mkldnn})
 
     def remove_fuse_activation_attribute(self, graph):
         for op in graph.all_op_nodes():
