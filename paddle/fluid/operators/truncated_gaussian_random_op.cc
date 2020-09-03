@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <limits>
 #include <random>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -167,22 +168,10 @@ class CPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     TruncatedNormal<T> truncated_normal(mean, std);
     int64_t size = tensor->numel();
 
-    if (framework::Generator::GetInstance()->is_init_py) {
-      std::mt19937_64& gen_engine =
-          framework::Generator::GetInstance()->GetCPUEngine();
-      for (int64_t i = 0; i < size; ++i) {
-        data[i] = truncated_normal(dist(gen_engine));
-      }
-    } else {
-      unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-      std::minstd_rand engine;
-      if (seed == 0) {
-        seed = std::random_device()();
-      }
-      engine.seed(seed);
-      for (int64_t i = 0; i < size; ++i) {
-        data[i] = truncated_normal(dist(engine));
-      }
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    auto engine = framework::GetCPURandomEngine(seed);
+    for (int64_t i = 0; i < size; ++i) {
+      data[i] = truncated_normal(dist(*engine));
     }
   }
 };

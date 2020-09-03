@@ -1,4 +1,10 @@
 {
+    "wlist_file" : [
+        "../python/paddle/fluid/contrib", 
+        "../python/paddle/verison.py",
+        "../python/paddle/fluid/core_avx.py",
+        "../python/paddle/distributed"
+    ],
     "wlist_inneed":[
         "append_LARS",
         "BuildStrategy.debug_graphviz_path",
@@ -142,7 +148,20 @@
         "Callback.on_eval_batch_end",
         "Callback.on_test_batch_begin",
         "Callback.on_test_batch_end",
-        "Model.prepare"
+        "Model.prepare",
+        "SimpleRNNCell",
+        "SimpleRNNCell.forward",
+        "LSTMCell",
+        "LSTMCell.forward",
+        "GRUCell",
+        "GRUCell.forward",
+        "SimpleRNN",
+        "GRU",
+        "LSTM",
+        "RNN",
+        "BiRNN",
+        "RNNCellBase",
+        "RNNCellBase.get_initial_states"
     ],
     "wlist_no_op_pass":[
         "gelu",
@@ -228,6 +247,7 @@
         "prroi_pool"
     ],
     "wlist_temp":[
+        "to_tensor",
         "ChunkEvaluator",
         "EditDistance",
         "ErrorClipByValue",
