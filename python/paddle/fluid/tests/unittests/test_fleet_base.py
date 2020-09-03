@@ -18,6 +18,7 @@ import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import os
 import paddle.fluid as fluid
+import numpy as np
 
 
 class TestFleetBase(unittest.TestCase):
@@ -123,6 +124,85 @@ class TestFleetBase(unittest.TestCase):
     def test_exception(self):
         import paddle.distributed.fleet as fleet
         self.assertRaises(Exception, fleet.init_worker)
+
+
+class TestFleetBaseSingleRunCollective(unittest.TestCase):
+    def setUp(self):
+        os.environ.pop("PADDLE_TRAINER_ENDPOINTS")
+
+    def gen_data(self):
+        return {
+            "x": np.random.random(size=(128, 32)).astype('float32'),
+            "y": np.random.randint(
+                2, size=(128, 1)).astype('int64')
+        }
+
+    def test_single_run_collective_minimize(self):
+        input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+        input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+
+        fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
+        prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+        cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+        avg_cost = paddle.mean(x=cost)
+
+        fleet.init(is_collective=True)
+        optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+        optimizer = fleet.distributed_optimizer(optimizer)
+        optimizer.minimize(avg_cost)
+
+        place = fluid.CUDAPlace(0) if paddle.fluid.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+
+        exe = fluid.Executor(place)
+        exe.run(paddle.static.default_startup_program())
+
+        for i in range(10):
+            cost_val = exe.run(feed=self.gen_data(), fetch_list=[avg_cost.name])
+            print("cost of step[{}] = {}".format(i, cost_val))
+
+
+class TestFleetBaseSingleRunPS(unittest.TestCase):
+    def setUp(self):
+        os.environ.pop("PADDLE_PSERVERS_IP_PORT_LIST")
+
+    def gen_data(self):
+        return {
+            "x": np.random.random(size=(128, 32)).astype('float32'),
+            "y": np.random.randint(
+                2, size=(128, 1)).astype('int64')
+        }
+
+    def test_single_run_ps_minimize(self):
+        input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+        input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+
+        fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
+        prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+        cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+        avg_cost = paddle.mean(x=cost)
+
+        fleet.init()
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer.minimize(avg_cost)
+        if fleet.is_server():
+            fleet.init_server()
+            fleet.run_server()
+        elif fleet.is_worker():
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            step = 100
+            for i in range(step):
+                cost_val = exe.run(program=fluid.default_main_program(),
+                                   feed=self.gen_data(),
+                                   fetch_list=[avg_cost.name])
+                print("worker_index: %d, step%d cost = %f" %
+                      (fleet.worker_index(), i, cost_val[0]))
+            fleet.save_persistables(exe, "fleet_single_model/")
+            print("save fleet models done.")
 
 
 if __name__ == "__main__":
