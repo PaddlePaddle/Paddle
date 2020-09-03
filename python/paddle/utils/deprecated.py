@@ -45,7 +45,7 @@ def deprecated(update_to="", since="", reason=""):
 
     def decorator(func):
         # TODO(zhiqiu): We temporally disable the warnings for 2.0-bata, and it should be re-enabled in the future.
-        return func
+        # return func
         """construct warning message, and return a decorated function or class."""
         assert isinstance(update_to, str), 'type of "update_to" must be str.'
         assert isinstance(since, str), 'type of "since" must be str.'
@@ -56,9 +56,10 @@ def deprecated(update_to="", since="", reason=""):
         _reason = reason.strip()
 
         msg = 'API "{}.{}" is deprecated'.format(func.__module__, func.__name__)
+
         if len(_since) > 0:
             msg += " since {}".format(_since)
-        msg += ", and may be removed in future versions."
+        msg += ", and will be removed in future versions."
         if len(_update_to) > 0:
             assert _update_to.startswith(
                 "paddle."
@@ -67,6 +68,11 @@ def deprecated(update_to="", since="", reason=""):
             msg += ' Please use "{}" instead.'.format(_update_to)
         if len(_reason) > 0:
             msg += "\n reason: {}".format(_reason)
+        if func.__doc__:
+            func.__doc__ = ('\n\nWarning: ' + msg + '\n') + func.__doc__
+        # TODO(Joejiong) Early returning the wrapper function, currently we disable the warning wrapper, 
+        # because the 2.0beta APIs are still under development, we will restore the warning functionality when 2.0 rc APIs become stable.
+        return func
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -75,6 +81,7 @@ def deprecated(update_to="", since="", reason=""):
                2. since version is empty, in this case, API is deprecated in all versions.
                3. current version is newer than since version.
             """
+            msg = "\033[93mWarning %s \033[0m" % (msg)
             v_current = [int(i) for i in paddle.__version__.split(".")]
             v_current += [0] * (4 - len(v_current))
             v_since = [int(i) for i in _since.split(".")]

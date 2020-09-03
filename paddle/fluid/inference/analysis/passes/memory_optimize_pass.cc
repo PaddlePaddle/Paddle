@@ -90,32 +90,6 @@ void MemoryOptimizePass::CollectLifeCycle(
   }
 }
 
-// TODO(Superjomn) Make this a general help method.
-int DataTypeToSpace(framework::proto::VarType_Type type) {
-  switch (type) {
-    case framework::proto::VarType_Type_BOOL:
-      return sizeof(bool);
-    case framework::proto::VarType_Type_FP32:
-      return sizeof(float);
-    case framework::proto::VarType_Type_INT32:
-      return sizeof(int32_t);
-    case framework::proto::VarType_Type_INT64:
-      return sizeof(int64_t);
-    case framework::proto::VarType_Type_INT16:
-      return sizeof(int16_t);
-    case framework::proto::VarType_Type_FP16:
-      return sizeof(int16_t);
-    case framework::proto::VarType_Type_FP64:
-      return sizeof(double);
-    case framework::proto::VarType_Type_UINT8:
-      return sizeof(unsigned char);
-    case framework::proto::VarType_Type_INT8:
-      return sizeof(int8_t);
-    default:
-      PADDLE_THROW("Unknown data type");
-  }
-}
-
 void MemoryOptimizePass::CollectVarMemorySize(
     space_table_t* space_table) const {
   const int fake_batch_size = 1;
@@ -163,7 +137,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
       int size = std::accumulate(shape.begin(), shape.end(), 1,
                                  std::multiplies<int>());
       (*space_table)[node->Var()->Name()] =
-          size * DataTypeToSpace(node->Var()->GetDataType());
+          size * paddle::framework::SizeOfType(node->Var()->GetDataType());
     }
   }
 }

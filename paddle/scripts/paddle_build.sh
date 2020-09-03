@@ -273,7 +273,7 @@ function cmake_gen() {
 function abort(){
     echo "Your change doesn't follow PaddlePaddle's code style." 1>&2
     echo "Please use pre-commit to check what is wrong." 1>&2
-    exit 1
+    exit 4
 }
 
 function check_style() {
@@ -303,7 +303,7 @@ function check_style() {
     
     if [ $commit_files == 'off' ];then
         echo "code format error"
-        exit 1
+        exit 4
     fi
     trap : 0
 }
@@ -1427,6 +1427,7 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_and_check)
+        set +e
         $(check_style >&2)
         check_style_code=$?
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
