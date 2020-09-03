@@ -26,23 +26,23 @@ from paddle.fluid.core import AnalysisConfig
 class SlicePluginTRTTest1(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[3, 3, 3, 3], dtype="float32")
+            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="float32")
             axes = [1, 3]
             starts = [0, 1]
             ends = [2, 3]
-            slice_out = fluid.layers.slice(data, axes=axes, starts=starts, ends=ends)
+            slice_out = fluid.layers.slice(
+                data, axes=axes, starts=starts, ends=ends)
             out = fluid.layers.batch_norm(slice_out, is_test=True)
 
         self.feeds = {
-            "data": np.random.random((3, 3, 3, 3)).astype("float32"), 
+            "data": np.random.random((3, 3, 3, 3)).astype("float32"),
         }
         # Diff occurred between GPU and TRT. 
         # In order to provide TRT CI ASAP, this test for trt part 
         # is disabled temporarily. 
         self.enable_trt = True
         self.trt_parameters = SlicePluginTRTTest1.TensorRTParam(
-             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -57,23 +57,23 @@ class SlicePluginTRTTest1(InferencePassTest):
 class SlicePluginTRTTest2(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[3, 3, 3, 3], dtype="float32")
+            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="float32")
             axes = [2, 3]
             starts = [-3, -2]
             ends = [-1, 3]
-            slice_out = fluid.layers.slice(data, axes=axes, starts=starts, ends=ends)
+            slice_out = fluid.layers.slice(
+                data, axes=axes, starts=starts, ends=ends)
             out = fluid.layers.batch_norm(slice_out, is_test=True)
 
         self.feeds = {
-            "data": np.random.random((3, 3, 3, 3)).astype("float32"), 
+            "data": np.random.random((3, 3, 3, 3)).astype("float32"),
         }
         # Diff occurred between GPU and TRT. 
         # In order to provide TRT CI ASAP, this test for trt part 
         # is disabled temporarily. 
         self.enable_trt = True
         self.trt_parameters = SlicePluginTRTTest2.TensorRTParam(
-             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -88,23 +88,23 @@ class SlicePluginTRTTest2(InferencePassTest):
 class SlicePluginTRTTest3(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[3, 3, 3, 3], dtype="float32")
+            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="float32")
             axes = [2, 3]
             starts = [-5, -2]
             ends = [-1, 8]
-            slice_out = fluid.layers.slice(data, axes=axes, starts=starts, ends=ends)
+            slice_out = fluid.layers.slice(
+                data, axes=axes, starts=starts, ends=ends)
             out = fluid.layers.batch_norm(slice_out, is_test=True)
 
         self.feeds = {
-            "data": np.random.random((3, 3, 3, 3)).astype("float32"), 
+            "data": np.random.random((3, 3, 3, 3)).astype("float32"),
         }
         # Diff occurred between GPU and TRT. 
         # In order to provide TRT CI ASAP, this test for trt part 
         # is disabled temporarily. 
         self.enable_trt = True
         self.trt_parameters = SlicePluginTRTTest3.TensorRTParam(
-             1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
 
     def test_check_output(self):
