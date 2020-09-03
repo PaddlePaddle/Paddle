@@ -43,9 +43,9 @@ const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
     cuda_device_flags.resize(num_cuda_devices);
     default_cuda_generators.resize(num_cuda_devices);
   });
-  if (device_id == -1) {
-    platform::Place place;
-    device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+  if (device_id < 0) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "cuda device id shoule be greater than 0"));
   }
 
   std::call_once(cuda_device_flags[device_id], [device_id]() {
