@@ -290,7 +290,7 @@ def interpolate(x,
     ]
     if resample not in resample_methods:
         raise ValueError(
-            "The 'resample' of image_resize can only be 'area', 'linaer', 'bilinear', 'trilinear', "
+            "The 'resample' of image_resize can only be 'area', 'linear', 'bilinear', 'trilinear', "
             " 'bicubic' or 'nearest' currently.")
 
     if resample in ['LINEAR'] and len(x.shape) != 3:
