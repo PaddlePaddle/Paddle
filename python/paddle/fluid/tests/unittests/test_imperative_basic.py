@@ -670,6 +670,7 @@ class TestDygraphUtils(unittest.TestCase):
               "data_type[double]:data_layout[MKLDNNLAYOUT]:place[CPUPlace]:library_type[MKLDNN]"
 
         def check(msg_):
+
             with fluid.dygraph.guard(fluid.core.CPUPlace()):
                 a = fluid.dygraph.to_variable(a_np)
                 fluid.set_flags({'FLAGS_use_mkldnn': True})
