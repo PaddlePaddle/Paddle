@@ -20,6 +20,7 @@ import numpy as np
 from ..framework import Variable
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
+from sys import version_info
 
 
 def convert_to_list(value, n, name, dtype=np.int):
@@ -369,11 +370,19 @@ def check_shape(shape):
     else:
         for ele in shape:
             if not isinstance(ele, Variable):
-                if ele <= 0:
+                if ele < 0:
                     raise ValueError(
                         "All elements in ``shape`` must be positive when it's a list or tuple"
                     )
-                if not isinstance(ele, int):
-                    raise TypeError(
-                        "All elements in ``shape`` must be integers when it's a list or tuple"
-                    )
+                if version_info.major == 2:
+                    if not isinstance(ele, int) and not isinstance(ele, long):
+                        raise TypeError(
+                            "All elements in ``shape`` must be integers when it's a list or tuple"
+                        )
+                elif version_info.major == 3:
+                    if not isinstance(ele, int):
+                        raise TypeError(
+                            "All elements in ``shape`` must be integers when it's a list or tuple"
+                        )
+                else:
+                    raise Exception('Please use python2 or python3')
