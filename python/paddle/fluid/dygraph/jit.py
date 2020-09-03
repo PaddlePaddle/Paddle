@@ -778,14 +778,21 @@ def save(layer, model_path, input_spec=None, configs=None):
     if configs is None:
         configs = SaveLoadConfig()
 
+    # avoid change user given input_spec
+    inner_input_spec = None
     if input_spec is not None:
         if not isinstance(input_spec, list):
             raise TypeError(
                 "The input input_spec should be 'list', but received input_spec's type is %s."
                 % type(input_spec))
+        inner_input_spec = []
         for var in input_spec:
-            if not isinstance(var, (core.VarBase, Variable,
-                                    paddle.static.InputSpec)):
+            if isinstance(var, paddle.static.InputSpec):
+                inner_input_spec.append(var)
+            elif isinstance(var, (core.VarBase, Variable)):
+                inner_input_spec.append(
+                    paddle.static.InputSpec.from_tensor(var))
+            else:
                 raise TypeError(
                     "The element in input_spec list should be 'Variable' or `paddle.static.InputSpec`, but received element's type is %s."
                     % type(var))
@@ -794,10 +801,9 @@ def save(layer, model_path, input_spec=None, configs=None):
     # TODO(chenweihang): add support for other method, not only forward
     if isinstance(layer.forward, StaticLayer):
         concrete_program = layer.forward.concrete_program
-        inner_input_spec = input_spec
     else:
         # transform in jit.save, if input_spec is incomplete, declarative will throw error
-        static_forward = declarative(layer.forward, input_spec=input_spec)
+        static_forward = declarative(layer.forward, input_spec=inner_input_spec)
         concrete_program = static_forward.concrete_program
         # the input_spec has been used in declarative, which is equal to 
         # @declarative with input_spec and jit.save without input_spec,
