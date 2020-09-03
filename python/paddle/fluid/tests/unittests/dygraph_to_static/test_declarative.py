@@ -47,8 +47,8 @@ class SimpleNet(Layer):
         return z
 
     @declarative(input_spec=[[InputSpec([None, 10]), InputSpec([None, 10])]])
-    def func_with_list(self, l):
-        x, y, int_val = l
+    def func_with_list(self, l, int_val=1):
+        x, y = l
         z = x + y
         z = z + int_val
         return z
@@ -60,10 +60,7 @@ class SimpleNet(Layer):
     def func_with_dict(self, d):
         x = d['x']
         y = d['y']
-        int_val = d['int_val']
-
         z = x + y
-        z = z + int_val
 
         return z
 
@@ -114,10 +111,10 @@ class TestInputSpec(unittest.TestCase):
             self.assertTrue(len(net.add_func.program_cache) == 1)
 
             # 5. test input with list
-            out = net.func_with_list([x, y, int_val])
+            out = net.func_with_list([x, y], int_val)
 
             # 6. test input with dict
-            out = net.func_with_dict({'x': x, 'y': y, 'int_val': int_val})
+            out = net.func_with_dict({'x': x, 'y': y})
 
             # 7. test input with lits contains dict
             int_np = np.ones([1]).astype('float32')
@@ -275,6 +272,31 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             foo_3 = paddle.jit.to_static(foo_func)
             with self.assertRaises(ValueError):
                 foo_3.concrete_program
+
+
+class TestInputDefaultName(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.net = SimpleNet()
+
+    def assert_default_name(self, func_name, input_names):
+        decorated_func = getattr(self.net, func_name)
+
+        spec_names = [x.name for x in decorated_func.inputs]
+        print(spec_names)
+        self.assertListEqual(spec_names, input_names)
+
+    def test_common_input(self):
+        self.assert_default_name('forward', ['x'])
+
+    def test_list_input(self):
+        self.assert_default_name('func_with_list', ['l_0', 'l_1'])
+
+    def test_dict_input(self):
+        self.assert_default_name('func_with_dict', ['x', 'y'])
+
+    def test_nest_input(self):
+        self.assert_default_name('func_with_list_dict', ['dl_0', 'x', 'y'])
 
 
 class TestDeclarativeAPI(unittest.TestCase):
