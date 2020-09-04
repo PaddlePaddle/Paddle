@@ -138,13 +138,10 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            input_data = np.array([0.5, 0.6, 0.7]).astype("float32")
-            label_data = np.array([1.0, 0.0, 1.0]).astype("float32")
 
             paddle.disable_static()
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.to_tensor([0.5, 0.6, 0.7], 'float32')
+            label = paddle.to_tensor([1.0, 0.0, 1.0], 'float32')
             output = paddle.nn.functional.binary_cross_entropy(input, label)
             print(output.numpy())  # [0.65537095]
 
@@ -277,8 +274,8 @@ def binary_cross_entropy_with_logits(logit,
 
             import paddle
             paddle.disable_static()
-            logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
-            label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
+            logit = paddle.to_tensor([5.0, 1.0, 3.0])
+            label = paddle.to_tensor([1.0, 0.0, 1.0])
             output = paddle.nn.functional.binary_cross_entropy_with_logits(logit, label)
             print(output.numpy())  # [0.45618808]
 
@@ -569,13 +566,10 @@ def l1_loss(input, label, reduction='mean', name=None):
     Examples:
         .. code-block:: python
             import paddle
-            import numpy as np
 
             paddle.disable_static()
-            input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
-            label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.to_tensor([[1.5, 0.8], [0.2, 1.3]])
+            label = paddle.to_tensor([[1.7, 1], [0.4, 0.5]])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label)
             print(l1_loss.numpy())
@@ -868,7 +862,7 @@ def mse_loss(input, label, reduction='mean', name=None):
     Examples:
 
         .. code-block:: python
-            import numpy as np
+
             import paddle
 
 
@@ -878,8 +872,6 @@ def mse_loss(input, label, reduction='mean', name=None):
             input = paddle.data(name="input", shape=[1])
             label = paddle.data(name="label", shape=[1])
             place = paddle.CPUPlace()
-            input_data = np.array([1.5]).astype("float32")
-            label_data = np.array([1.7]).astype("float32")
 
             output = mse_loss(input,label)
             exe = paddle.static.Executor(place)
@@ -894,8 +886,8 @@ def mse_loss(input, label, reduction='mean', name=None):
 
             # dynamic graph mode
             paddle.disable_static()
-            input = paddle.to_variable(input_data)
-            label = paddle.to_variable(label_data)
+            input = paddle.to_tensor(1.5)
+            label = paddle.to_tensor(1.7)
             output = mse_loss(input, label)
             print(output.numpy())
             # [0.04000002]
