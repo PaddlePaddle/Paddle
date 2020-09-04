@@ -1611,11 +1611,8 @@ def clip(x, min=None, max=None, name=None):
             # [[4.5, 6.4]
     """
 
-    np_dtype = np.float32
-    if x.dtype == VarDesc.VarType.FP64:
-        np_dtype = np.float64
-    fmin = float(np.finfo(np_dtype).min)
-    fmax = float(np.finfo(np_dtype).max)
+    fmin = float(np.finfo(np.float32).min)
+    fmax = float(np.finfo(np.float32).max)
 
     if in_dygraph_mode():
         if isinstance(min, Variable):

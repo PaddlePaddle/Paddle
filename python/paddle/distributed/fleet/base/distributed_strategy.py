@@ -118,7 +118,7 @@ class DistributedStrategy(object):
             strategy = fleet.DistributedStrategy()
             strategy.dgc = True
             strategy.recompute = True
-            strategy.recompute_configs = {"checkpoint": ["x"]}
+            strategy.recompute_configs = {"checkpoints": ["x"]}
             strategy.save_to_prototxt("dist_strategy.prototxt")
         """
         with open(output, "w") as fout:
@@ -133,7 +133,7 @@ class DistributedStrategy(object):
 
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
-            strategy.load_from_prototxt("dist_strategy.protoxt")
+            strategy.load_from_prototxt("dist_strategy.prototxt")
         """
         with open(pb_file, 'r') as f:
             self.strategy = google.protobuf.text_format.Merge(
@@ -147,6 +147,7 @@ class DistributedStrategy(object):
         Examples:
           .. code-block:: python
 
+            import paddle
             exe_strategy = paddle.fluid.ExecutionStrategy()
             exe_strategy.num_threads = 10
             exe_strategy.num_iteration_per_drop_scope = 10
@@ -179,6 +180,7 @@ class DistributedStrategy(object):
         Examples:
           .. code-block:: python
 
+            import paddle
             build_strategy = paddle.fluid.BuildStrategy()
             build_strategy.enable_sequential_execution = True
             build_strategy.fuse_elewise_add_act_ops = True
@@ -252,14 +254,19 @@ class DistributedStrategy(object):
         a dict.
 
         **Notes**:
-            **Detailed arguments for a_sync_configs**
-            **k_step**: number of local optimization updates before communication
-            **max_merge_var_num**: maximum number of merged gradients before communication
-            **send_queue_size**: a buffer size of worker communication
-            **independent_recv_thread**: if we are using independent recv thread for communication
-            **thread_pool_size**: number of thread pool
-            **send_wait_times**: waiting time for sending gradients
-            **runtime_split_send_recv**: if we are using Tensor split for send and recv during runtime
+            k_step(int): number of local optimization updates before communication
+
+            max_merge_var_num(int): maximum number of merged gradients before communication
+
+            send_queue_size(int): a buffer size of worker communication
+
+            independent_recv_thread(bool): if we are using independent recv thread for communication
+
+            thread_pool_size(int): number of thread pool
+
+            send_wait_times(int): waiting time for sending gradients
+
+            runtime_split_send_recv(bool): if we are using Tensor split for send and recv during runtime
 
         Examples:
           .. code-block:: python
@@ -270,11 +277,12 @@ class DistributedStrategy(object):
 
             strategy = fleet.DistributedStrategy()
             strategy.a_sync = True  # by default this is True
-            configs = {"k_step": 10000, "send_queue_size": 32}
+            configs = {"k_steps": 1024, "send_queue_size": 32}
             strategy.a_sync_configs = configs
 
             # code block for defining loss and local optimizer
             # sgd = fleet.distributed_optimizer(optimizer, strategy)
+
         """
         return get_msg_dict(self.strategy.a_sync_configs)
 
@@ -314,14 +322,21 @@ class DistributedStrategy(object):
         settings that can be configured through a dict.
 
         **Notes**:
-            **init_loss_scaling(float)**: The initial loss scaling factor. Default 32768.
-            **use_dynamic_loss_scaling(bool)**: Whether to use dynamic loss scaling. Default True.
-            **incr_every_n_steps(int)**: Increases loss scaling every n consecutive steps with finite gradients. Default 1000.
-            **decr_every_n_nan_or_inf(int)**: Decreases loss scaling every n accumulated steps with nan or inf gradients. Default 2.
-            **incr_ratio(float)**: The multiplier to use when increasing the loss scaling. Default 2.0.
-            **decr_ratio(float)**: The less-than-one-multiplier to use when decreasing the loss scaling. Default 0.5.
-            **custom_white_list(list[str])**: Users' custom white list which always execution fp16.
-            **custom_black_list(list[str])**: Users' custom black list which forbidden execution fp16.
+            init_loss_scaling(float): The initial loss scaling factor. Default 32768.
+
+            use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. Default True.
+
+            incr_every_n_steps(int): Increases loss scaling every n consecutive steps with finite gradients. Default 1000.
+
+            decr_every_n_nan_or_inf(int): Decreases loss scaling every n accumulated steps with nan or inf gradients. Default 2.
+
+            incr_ratio(float): The multiplier to use when increasing the loss scaling. Default 2.0.
+
+            decr_ratio(float): The less-than-one-multiplier to use when decreasing the loss scaling. Default 0.5.
+
+            custom_white_list(list[str]): Users' custom white list which always execution fp16.
+
+            custom_black_list(list[str]): Users' custom black list which forbidden execution fp16.
 
         Examples:
           .. code-block:: python
@@ -553,7 +568,7 @@ class DistributedStrategy(object):
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.recompute = True
-            strategy.recompute_configs = {"checkpionts": ["x", "y"]}
+            strategy.recompute_configs = {"checkpoints": ["x", "y"]}
 
         """
         return get_msg_dict(self.strategy.recompute_configs)
@@ -603,6 +618,7 @@ class DistributedStrategy(object):
 
         **Notes**:
             **Detailed arguments for pipeline_configs**
+
             **micro_batch**: the number of small batches in each user defined batch
 
         Examples:
@@ -626,10 +642,10 @@ class DistributedStrategy(object):
     @property
     def localsgd(self):
         """
-        Indicating whether we are using Local SGD training. For more details, please refer to
-        [Don't Use Large Mini-Batches, Use Local SGD](https://arxiv.org/pdf/1808.07217.pdf),
+        Indicating whether we are using Local SGD training. Default Value: False
+        For more details, please refer to
+        `Don't Use Large Mini-Batches, Use Local SGD <https://arxiv.org/pdf/1808.07217.pdf>`_.
 
-        Default Value: False
 
         Examples:
           .. code-block:: python
@@ -655,13 +671,12 @@ class DistributedStrategy(object):
         setting that can be configured through a dict.
 
         **Notes**:
-            **k_steps(int)**: The local steps for training before parameter
-                synchronization. Default 1. If strategy.auto is set True, the
-                local steps will be calculated automatically during training.
-                The algorithm is referenced in this paper: 
-                [Adaptive Communication Strategies to Achieve the Best Error-Runtime Trade-off in Local-Update SGD](https://arxiv.org/pdf/1810.08313.pdf).
-                In this case, k_steps indicates the first local steps which
-                is suggested setting to 1.
+            k_steps(int) The local steps for training before parameter synchronization. Default 1.
+
+            If strategy.auto is set True, the local steps will be calculated automatically during training.
+            The algorithm is referenced in this paper: 
+            `Adaptive Communication Strategies to Achieve the Best Error-Runtime Trade-off in Local-Update SGD <https://arxiv.org/pdf/1810.08313.pdf>`_.
+            In this case, k_steps indicates the first local steps which is suggested setting to 1.
 
         Examples:
           .. code-block:: python
@@ -712,14 +727,16 @@ class DistributedStrategy(object):
         settings that can be configured through a dict.
 
         **Notes**:
-            **rampup_begin_step(int)**: The beginning step from which gradient compression is implemented. Default 0.
-            **rampup_step(int)**: Time steps used in sparsity warm-up periods. Default is 1.
-                For example, if the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 100,
-                it will use 0.75 at 0~19 steps, and 0.9375 at 20~39 steps, and so on. And when reach sparsity array
-                ends, it will use 0.999 then and after.
-            **sparsity(list[float])**: Get top important element from gradient tensor, the ratio is (1 - sparsity).
-                Default is [0.999]. For example, if the sparsity is [0.99, 0.999], the top [1%, 0.1%] important
-                element will be transmitted.
+            rampup_begin_step(int): The beginning step from which gradient compression is implemented. Default 0.
+
+            rampup_step(int): Time steps used in sparsity warm-up periods. Default is 1. \
+                    For example, if the sparsity is [0.75, 0.9375, 0.984375, 0.996, 0.999], and the rampup_step is 100, \
+                    it will use 0.75 at 0~19 steps, and 0.9375 at 20~39 steps, and so on. And when reach sparsity array \
+                    ends, it will use 0.999 then and after.
+
+            sparsity(list[float]): Get top important element from gradient tensor, the ratio is (1 - sparsity). \
+                    Default is [0.999]. For example, if the sparsity is [0.99, 0.999], the top [1%, 0.1%] important \
+                    element will be transmitted.
 
         Examples:
           .. code-block:: python
@@ -749,7 +766,8 @@ class DistributedStrategy(object):
         to model parameters.
 
         Examples:
-        .. code-block:: python
+          .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.gradient_merge = True
@@ -768,11 +786,15 @@ class DistributedStrategy(object):
     def gradient_merge_configs(self):
         """
         the key-value configs of distribute_strategy
-        Keys: 
-            k_steps (int): the update period of the parameters
-            avg (bool): whether to average the gradients of each mini-batch,
-                the default value is `True`
-        Example:
+
+        **Note**:
+            k_steps(int): the update period of the parameters.
+
+            avg(bool): whether to average the gradients of each mini-batch, the default value is `True`
+
+        Examples:
+          .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.gradient_merge = True
@@ -826,6 +848,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.lars = True
@@ -882,6 +905,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
+
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.lamb = True

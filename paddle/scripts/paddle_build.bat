@@ -216,7 +216,7 @@ pip install -U %PADDLE_WHL_FILE_WIN% --user
 if %ERRORLEVEL% NEQ 0 (
     call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
-    exit /b 3
+    exit /b 1
 )
 
 python %work_dir%\paddle\scripts\installation_validate.py
@@ -225,7 +225,7 @@ goto:eof
 :test_whl_pacakage_error
 call paddle_winci\Scripts\deactivate.bat 2>NUL
 echo Test import paddle failed, will exit!
-exit /b 3
+exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :unit_test
@@ -248,6 +248,9 @@ goto:eof
 
 :unit_test_error
 call paddle_winci\Scripts\deactivate.bat 2>NUL
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
+set end=%end:~4,10%
+call :timestamp "%start%" "%end%" "TestCases Total"
 echo Running unit tests failed, will exit!
 exit /b 8
 
@@ -268,7 +271,7 @@ goto:eof
 :test_inference_error
 call paddle_winci\Scripts\deactivate.bat 2>NUL
 echo Testing fluid library for inference failed!
-exit /b 5
+exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :check_change_of_unittest
