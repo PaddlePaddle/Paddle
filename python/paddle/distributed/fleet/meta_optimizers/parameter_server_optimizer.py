@@ -15,17 +15,6 @@ from paddle import fluid
 from .meta_optimizer_base import MetaOptimizerBase
 from paddle.fluid import core
 
-dtype_to_size = {
-    core.VarDesc.VarType.FP16: 2,
-    core.VarDesc.VarType.FP32: 4,
-    core.VarDesc.VarType.FP64: 8,
-    core.VarDesc.VarType.INT16: 2,
-    core.VarDesc.VarType.INT32: 4,
-    core.VarDesc.VarType.INT64: 8,
-    core.VarDesc.VarType.BOOL: 1,
-    core.VarDesc.VarType.UINT8: 1,
-}
-
 
 class ParameterServerOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -158,6 +147,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             return
 
         import psutil
+        from paddle.fluid.incubate.fleet.parameter_server.ir.vars_metatools import dtype_to_size
         free = psutil.virtual_memory().free
 
         param_grad_pairs = compiled_config.origin_sparse_pairs + compiled_config.origin_dense_pairs
