@@ -854,7 +854,7 @@ class AdaptiveMaxPool1d(layers.Layer):
 
        lend &= ceil((i + 1) * L_{in} / L_{out})
 
-       Output(i) &= max(Input[lstart:lend])}
+       Output(i) &= max(Input[lstart:lend])
 
     Args:
         output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
@@ -939,7 +939,7 @@ class AdaptiveMaxPool2d(layers.Layer):
     Shape:
         x (Tensor): The input tensor of adaptive max pool2d operator, which is a 4-D tensor. The data type can be float32, float64.
         output (Tensor): The output tensor of adaptive max pool2d operator, which is a 4-D tensor. The data type is same as input x.
-    
+
     Returns:
         A callable object of AdaptiveMaxPool2d.
     Examples:
@@ -1043,7 +1043,7 @@ class AdaptiveMaxPool3d(layers.Layer):
             pool = paddle.nn.AdaptiveMaxPool3d(output_size=3, return_indices=True)
             out, indices = pool(x)
             # out shape: [2, 3, 4, 4, 4], indices shape: [2, 3, 4, 4, 4]
-            
+
     """
 
     def __init__(self, output_size, return_indices=False, name=None):
