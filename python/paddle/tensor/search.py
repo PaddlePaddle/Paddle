@@ -311,10 +311,6 @@ def index_select(x, index, axis=0, name=None):
     Returns:
         Tensor: A Tensor with same data type as ``x``.
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
-        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
-
     Examples:
         .. code-block:: python
             
@@ -717,10 +713,6 @@ def masked_select(x, mask, name=None):
 
     Returns: A 1-D Tensor which is the same data type  as ``x``.
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
-        TypeError: ``mask`` must be a Tensor and the data type of ``mask`` must be bool.
-
     Examples:
 
         .. code-block:: python
