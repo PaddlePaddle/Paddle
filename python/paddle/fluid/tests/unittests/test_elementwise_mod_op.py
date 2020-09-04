@@ -220,6 +220,14 @@ class TestRemainderAPI(unittest.TestCase):
                 z_expected = np.array([0, 1, 1, -1])
                 self.assertEqual(np.allclose(z_expected, z.numpy()), True)
 
+                np_x = np.array([-3, 3])
+                np_y = np.array([[2, 3], [-2, -1]])
+                x = paddle.to_tensor(np_x, dtype="int64")
+                y = paddle.to_tensor(np_y, dtype="int64")
+                z = x % y
+                z_expected = np.array([[1, 0], [-1, 0]])
+                self.assertEqual(np.allclose(z_expected, z.numpy()), True)
+
 
 if __name__ == '__main__':
     unittest.main()
