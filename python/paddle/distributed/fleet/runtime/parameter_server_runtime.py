@@ -202,6 +202,9 @@ class ParameterServerRuntime(RuntimeBase):
             if self.role_maker._get_heter_worker_device() == "GPU":
                 gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
                 executor = Executor(fluid.CUDAPlace(gpu_id))
+            elif self.role_maker._get_heter_worker_device() == "XPU":
+                xpu_id = int(os.getenv("FLAGS_selected_xpus", "0"))
+                executor = Executor(fluid.XPUPlace(xpu_id))
             else:
                 raise ValueError("Not Support Device {}".format(
                     self.role_maker._get_heter_worker_device()))
