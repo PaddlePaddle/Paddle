@@ -282,7 +282,7 @@ class StaticLayer(object):
 
         return self._descriptor_cache[instance]
 
-    def _clone():
+    def _clone(self):
         return self.__class__(self._dygraph_function, self._input_spec)
 
     def __call__(self, *args, **kwargs):
