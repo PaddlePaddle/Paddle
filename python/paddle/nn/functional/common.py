@@ -115,8 +115,6 @@ def interpolate(x,
     smoother than corresponding surfaces obtained by bilinear interpolation or
     nearest-neighbor interpolation.
 
-    Area interpolation is same as adaptive avg pooling.
-
     Example:
 
     .. code-block:: text
