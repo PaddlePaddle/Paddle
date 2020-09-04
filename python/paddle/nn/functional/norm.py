@@ -176,14 +176,13 @@ def batch_norm(x,
     mean_out = running_mean
     variance_out = running_var
 
-    true_data_format = ['NC', 'NCL', 'NCHW', 'NCWH', 'NCDHW']
+    true_data_format = ['NC', 'NCL', 'NCHW', 'NCDHW']
     if data_format not in true_data_format:
         raise ValueError(
-            "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCWH', 'NCDHW', but receive {}".
+            "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', but receive {}".
             format(data_format))
 
-    if data_format != 'NCWH':
-        data_format = 'NCHW'
+    data_format = 'NCHW'
 
     if in_dygraph_mode():
         # for dygraph need tuple
