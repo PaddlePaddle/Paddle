@@ -237,10 +237,6 @@ def numel(x, name=None):
 
     Returns:
         Tensor: The number of elements for the input Tensor.
-    
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
-
 
     Examples:
         .. code-block:: python
