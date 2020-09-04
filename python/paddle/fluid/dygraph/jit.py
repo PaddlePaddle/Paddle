@@ -873,9 +873,9 @@ def save(layer, model_path, input_spec=None, configs=None):
                                            inner_input_spec)
 
     # NOTE(chenweihang): [ Get output variables ]
-    # For output var, we only support VarBase spec, and actually,
-    # we only need the var name of output, and we don't recommended 
-    # to use output_spec, the rule is like [ Get input variables name ]
+    # the rule is like [ Get input variables name ]. For output var, 
+    # we only support VarBase spec, and actually, we only need the 
+    # var name of output, and we don't recommended to use output_spec
     output_vars = _get_output_vars(concrete_program.outputs,
                                    configs.output_spec)
 
@@ -884,10 +884,8 @@ def save(layer, model_path, input_spec=None, configs=None):
     # saved to inference program may not need by dygraph Layer, 
     # we only record the state_dict variable's structured name
     state_names_dict = dict()
-    value_dict = dict()
     for structured_name, var in six.iteritems(layer.state_dict()):
         state_names_dict[var.name] = structured_name
-        value_dict[var.name] = var
 
     # 4. share parameters from Layer to scope & record var info
     scope = core.Scope()

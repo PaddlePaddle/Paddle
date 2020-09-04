@@ -138,15 +138,15 @@ class FunctionSpec(object):
         return input_with_spec
 
     @switch_to_static_graph
-    def to_static_inputs_with_spec(self, input_spec, main_program):
+    def to_static_inputs_with_spec(self, input_with_spec, main_program):
         """
         Constructs feed layer by inputs with InputSpec information for main program.
 
         Args:
-            input_spec(tuple|list): input arguments by replacing argument with InputSpec.
+            input_with_spec(tuple): input arguments by replacing argument with InputSpec.
             main_program(Program): main program for inserting feed layer.
         """
-        flat_input_spec = flatten(input_spec)
+        flat_input_spec = flatten(input_with_spec)
 
         inputs = []
         block = main_program.global_block()
@@ -163,7 +163,7 @@ class FunctionSpec(object):
                 feed_layer = var_spec
             inputs.append(feed_layer)
 
-        return pack_sequence_as(input_spec, inputs)
+        return pack_sequence_as(input_with_spec, inputs)
 
     def _verify_input_spec(self, input_spec):
         """

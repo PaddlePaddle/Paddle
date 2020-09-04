@@ -587,7 +587,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
         out = train_with_label(layer)
 
         model_path = "test_prune_to_static_after_train"
-        configs = paddle.jit.SaveLoadConfig()
+        configs = paddle.SaveLoadConfig()
         configs.output_spec = [out]
         paddle.jit.save(
             layer,
@@ -604,7 +604,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
         layer = LinerNetWithLabel(784, 1)
 
         model_path = "test_prune_to_static_no_train"
-        configs = paddle.jit.SaveLoadConfig()
+        configs = paddle.SaveLoadConfig()
         # TODO: no train, cannot get output_spec var here
         # now only can use index
         configs.output_spec = layer.forward.outputs[:1]
@@ -646,7 +646,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
         train(layer)
 
         model_path = "test_not_prune_output_spec_name_warning"
-        configs = paddle.jit.SaveLoadConfig()
+        configs = paddle.SaveLoadConfig()
         out = paddle.to_variable(np.random.random((1, 1)).astype('float'))
         configs.output_spec = [out]
         paddle.jit.save(layer, model_path, configs=configs)
@@ -678,7 +678,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
         train_with_label(layer)
 
         model_path = "test_prune_to_static_after_train"
-        configs = paddle.jit.SaveLoadConfig()
+        configs = paddle.SaveLoadConfig()
         out = paddle.to_variable(np.random.random((1, 1)).astype('float'))
         configs.output_spec = [out]
         with self.assertRaises(ValueError):
