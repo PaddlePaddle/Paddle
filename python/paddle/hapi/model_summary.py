@@ -138,11 +138,11 @@ def summary_string(model, input_size, batch_size=-1, dtypes=None):
                 summary[m_key]["output_shape"][0] = batch_size
 
             params = 0
-            if hasattr(module, "weight"):
+            if hasattr(module, "weight") and hasattr(module.weight, "shape"):
                 params += np.prod(module.weight.shape)
                 summary[m_key]["trainable"] = module.weight.trainable or (
                     not module.weight.stop_gradient)
-            if hasattr(module, "bias"):
+            if hasattr(module, "bias") and hasattr(module.bias, "shape"):
                 params += np.prod(module.bias.shape)
             summary[m_key]["nb_params"] = params
 
