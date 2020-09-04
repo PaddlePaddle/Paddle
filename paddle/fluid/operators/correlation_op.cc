@@ -138,12 +138,10 @@ class CorrelationOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input1"), true,
-                      "Input(Input1) should not be null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input2"), true,
-                      "Input(Input2) should not be null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Output")), true,
-                      "Input(Output@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("Input1"), "Input", "X", "CorrelationOp");
+    OP_INOUT_CHECK(ctx->HasInput("Input2"), "Input", "Y", "CorrelationOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Output")), "Input",
+                   "Output@GRAD", "CorrelationGradOp");
 
     auto in1_dims = ctx->GetInputDim("Input1");
     auto in2_dims = ctx->GetInputDim("Input2");
@@ -154,10 +152,6 @@ class CorrelationOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    const auto* var = ctx.InputVar(framework::GradVarName("Output"));
-    if (var == nullptr) {
-      PADDLE_THROW("cannot find Output@GRAD");
-    }
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Input1"), ctx.GetPlace());
   }
