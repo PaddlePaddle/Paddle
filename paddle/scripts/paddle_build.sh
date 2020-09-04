@@ -528,6 +528,7 @@ EOF
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
+        set +e
         ut_startTime_s=`date +%s`
         ctest --output-on-failure -j $2;mactest_error=$?
         ut_endTime_s=`date +%s`
