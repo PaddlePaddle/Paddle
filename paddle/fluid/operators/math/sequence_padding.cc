@@ -35,7 +35,8 @@ void CopyValidData(framework::Tensor* dst_tensor,
     int valid_seq_len = seq_offsets[seq_idx + 1] - seq_offsets[seq_idx];
     PADDLE_ENFORCE_GE(
         pad_seq_len, valid_seq_len,
-        "The padded sequence length can not be less than its original length.");
+        platform::errors::InvalidArgument("The padded sequence length can not "
+                                          "be less than its original length."));
     int seq_data_offset = seq_offsets[seq_idx] * step_width;
     int pad_data_offset = layout == kBatchLengthWidth
                               ? seq_idx * pad_seq_len * step_width
@@ -95,9 +96,11 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
 
     CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
               step_width, layout);
-    PADDLE_ENFORCE(pad_value.numel() == 1 || pad_value.numel() == step_width,
-                   "The numel of 'pad_value' can only be 1 or be equal to the "
-                   "'step_width'.");
+    PADDLE_ENFORCE(
+        pad_value.numel() == 1 || pad_value.numel() == step_width,
+        platform::errors::InvalidArgument(
+            "The numel of 'pad_value' can only be 1 or be equal to the "
+            "'step_width'."));
 
     // fill padding value
     T* pad_data = pad_tensor->data<T>();

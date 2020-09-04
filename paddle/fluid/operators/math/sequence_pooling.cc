@@ -42,15 +42,20 @@ class MaxSeqPoolFunctor {
     auto out_dims = output->dims();
     auto idx_dims = index->dims();
     PADDLE_ENFORCE_GT(in_dims.size(), 1,
-                      "The rank of input shall be greater than 1.");
+                      platform::errors::InvalidArgument(
+                          "The rank of input shall be greater than 1."));
     PADDLE_ENFORCE_GT(out_dims.size(), 1,
-                      "The rank of output shall be greater than 1.");
+                      platform::errors::InvalidArgument(
+                          "The rank of output shall be greater than 1."));
     for (int64_t i = 1; i < in_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(in_dims[i], out_dims[i],
-                        "The dimension of input and output shall be same.");
+      PADDLE_ENFORCE_EQ(
+          in_dims[i], out_dims[i],
+          platform::errors::InvalidArgument(
+              "The dimension of input and output shall be same."));
     }
     PADDLE_ENFORCE_EQ(idx_dims, out_dims,
-                      "The dimension of index and output shall be same.");
+                      platform::errors::InvalidArgument(
+                          "The dimension of index and output shall be same."));
 
     auto lod_level = input.lod().size();
     auto starts = input.lod()[lod_level - 1];
@@ -94,12 +99,16 @@ class MaxSeqPoolFunctor<T, true> {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     PADDLE_ENFORCE_GT(in_dims.size(), 1,
-                      "The rank of input shall be greater than 1.");
+                      platform::errors::InvalidArgument(
+                          "The rank of input shall be greater than 1."));
     PADDLE_ENFORCE_GT(out_dims.size(), 1,
-                      "The rank of output shall be greater than 1.");
+                      platform::errors::InvalidArgument(
+                          "The rank of output shall be greater than 1."));
     for (int64_t i = 1; i < in_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(in_dims[i], out_dims[i],
-                        "The dimension of input and output shall be same.");
+      PADDLE_ENFORCE_EQ(
+          in_dims[i], out_dims[i],
+          platform::errors::InvalidArgument(
+              "The dimension of input and output shall be same."));
     }
 
     auto lod_level = input.lod().size();
@@ -139,16 +148,21 @@ class MaxSeqPoolGradFunctor {
     auto ig_dims = in_grad->dims();
     auto idx_dims = index.dims();
     PADDLE_ENFORCE_GT(og_dims.size(), 1,
-                      "The rank of output@Grad shall be greater than 1.");
+                      platform::errors::InvalidArgument(
+                          "The rank of output@Grad shall be greater than 1."));
     PADDLE_ENFORCE_GT(ig_dims.size(), 1,
-                      "The rank of input@Grad shall be greater than 1.");
+                      platform::errors::InvalidArgument(
+                          "The rank of input@Grad shall be greater than 1."));
     for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(
           og_dims[i], ig_dims[i],
-          "The dimension of input@Grad and output@Grad shall be same.");
+          platform::errors::InvalidArgument(
+              "The dimension of input@Grad and output@Grad shall be same."));
     }
-    PADDLE_ENFORCE_EQ(idx_dims, og_dims,
-                      "The dimension of index and output@Grad shall be same.");
+    PADDLE_ENFORCE_EQ(
+        idx_dims, og_dims,
+        platform::errors::InvalidArgument(
+            "The dimension of index and output@Grad shall be same."));
 
     const T* og_data = out_grad.data<T>();
     const int* max_index = index.data<int>();
@@ -246,7 +260,8 @@ class SumSeqPoolGradFunctor {
     int64_t in_w = in_grad->numel() / in_grad->dims()[0];
     PADDLE_ENFORCE_EQ(
         in_w, out_w,
-        "The feature size of input@Grad and output@Grad shall be same.");
+        platform::errors::InvalidArgument(
+            "The feature size of input@Grad and output@Grad shall be same."));
     const T* out_g_data = out_grad.data<T>();
     T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
@@ -298,7 +313,8 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       auto place = context.GetPlace();
       PADDLE_ENFORCE_EQ(
           platform::is_cpu_place(place), true,
-          "Sequence_pool should run on CPU Device when pooltype is SUM");
+          platform::errors::InvalidArgument(
+              "Sequence_pool should run on CPU Device when pooltype is SUM"));
       const T* src = input.data<T>();
       T* dst = output->mutable_data<T>(place);
       jit::seq_pool_attr_t attr(
@@ -342,7 +358,8 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
         out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
                               std::sqrt(static_cast<T>(h));
       } else {
-        PADDLE_THROW("unsupported pooling pooltype");
+        PADDLE_THROW(
+            platform::errors::InvalidArgument("unsupported pooling pooltype"));
       }
     }
   }
@@ -400,7 +417,8 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
       } else if (pooltype == "FIRST") {
         in_g_e.chip(0, 0).device(place) = out_g_e_v;
       } else {
-        PADDLE_THROW("unsupported pooling pooltype");
+        PADDLE_THROW(
+            platform::errors::InvalidArgument("unsupported pooling pooltype"));
       }
     }
   }
