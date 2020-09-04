@@ -1419,13 +1419,13 @@ function main() {
     local CMD=$1 
     local parallel_number=$2
     init
-    set -x
+    set -xe
     nvidia-smi
     if [ $? -eq 0 ];then
       python ${PADDLE_ROOT}/tools/summary_env.py
       bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
-    set +x
+    set +xe
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
