@@ -21,7 +21,6 @@ rem =================================================
 
 rem -------clean up environment-----------
 set work_dir=%cd%
-if exist build rmdir build /s/q
 mkdir build
 cd /d build
 tree .
