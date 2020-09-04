@@ -41,12 +41,12 @@ class LarsOptimizer(MetaOptimizerBase):
             momentum=opt._momentum,
             lars_coeff=configs['lars_coeff'],
             lars_weight_decay=configs['lars_weight_decay'],
-            epsilon=configs['epsilon'],
-            exclude_from_weight_decay=configs['exclude_from_weight_decay'],
             parameter_list=opt._parameter_list,
             regularization=opt.regularization,
             grad_clip=opt._grad_clip,
-            name=opt._name)
+            name=opt._name,
+            exclude_from_weight_decay=configs['exclude_from_weight_decay'],
+            epsilon=configs['epsilon'])
 
     def _can_apply(self):
         if self.user_defined_strategy.lars:
