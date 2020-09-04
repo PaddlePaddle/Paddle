@@ -267,16 +267,10 @@ class TestDistBase(unittest.TestCase):
         elif col_type == "alltoall":
             temp11, temp12 = np.split(input1, 2)
             temp21, temp22 = np.split(input2, 2)
-            need_result1 = np.hstack((temp11, temp21))
-            need_result2 = np.hstack((temp12, temp22))
-            print("input1:", input1)
-            print("input2:", input2)
-            print("need_result1:", need_result1)
-            print("need_result2:", need_result2)
-            print("tr0_out:", tr0_out)
-            print("tr1_out:", tr1_out)
-            self.assertTrue(np.allclose(tr1_out, need_result1))
-            self.assertTrue(np.allclose(tr2_out, need_result2))
+            need_result1 = np.vstack((temp11, temp21))
+            need_result2 = np.vstack((temp12, temp22))
+            self.assertTrue(np.allclose(tr0_out, need_result1))
+            self.assertTrue(np.allclose(tr1_out, need_result2))
         elif col_type == "reduce_scatter":
             tmp = input1 + input2
             need_result1 = tmp[0:tmp.shape[0] // 2]
