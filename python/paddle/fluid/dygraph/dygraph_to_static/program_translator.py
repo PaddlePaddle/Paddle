@@ -274,6 +274,8 @@ class StaticLayer(object):
         to parse the class instance correctly instead of the `StaticLayer` instance.
         """
         if instance not in self._descriptor_cache:
+            if instance is None:
+                return self
             # Note(Aurelius84): To construct new instance of StaticLayer when we
             # first encouter the bound function of layer and cache it.
             new_static_layer = self._clone()
