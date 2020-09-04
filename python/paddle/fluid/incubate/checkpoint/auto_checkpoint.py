@@ -144,10 +144,10 @@ class AutoCheckpointChecker(object):
     def __str__(self):
         return "run_env:{} platform:{} job_id:{} \
             hdfs_home:{} hdfs_name:{} hdfs_ugi:{} \
-            hdfs_checkpoint_path:{} trainer_id:{} ce_test".format(
-            self._run_env, self._platform, self._hdfs_home, self._hdfs_name,
-            self._hdfs_ugi, self._hdfs_checkpoint_path, self._trainer_id,
-            self._ce_test)
+            hdfs_checkpoint_path:{} trainer_id:{} ce_test:{}".format(
+            self._run_env, self._platform, self._job_id, self._hdfs_home,
+            self._hdfs_name, self._hdfs_ugi, self._hdfs_checkpoint_path,
+            self._trainer_id, self._ce_test)
 
     @property
     def trainer_id(self):
@@ -305,7 +305,7 @@ class TrainEpochRange(SerializableBase):
         if self._checker.ce_test:
             config = None
 
-        from paddle.fleet.utils.fs import HDFSClient
+        from paddle.fluid.incubate.fleet.utils.fs import HDFSClient
         self._hdfs = HDFSClient(self._checker.hdfs_home, config)
 
         self._cper = CheckpointSaver(self._hdfs)
@@ -469,7 +469,8 @@ class TrainEpochRange(SerializableBase):
                     self._save_checkpoint()
                 else:
                     assert False, "not supported acp_type:{}".format(g_acp_type)
-            self._last_checkpoint_time = time.time()
+
+                self._last_checkpoint_time = time.time()
 
     def _save_checkpoint(self):
         """

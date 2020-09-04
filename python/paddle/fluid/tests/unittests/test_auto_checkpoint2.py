@@ -20,14 +20,14 @@ from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
 import os
 import sys
 
-from paddle.fleet.utils.fs import LocalFS, HDFSClient
+from paddle.fluid.incubate.fleet.utils.fs import LocalFS, HDFSClient
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
 from paddle.fluid.framework import program_guard
 from paddle.fluid import unique_name
 
 import numpy as np
-from paddle.io import Dataset, BatchSampler, DataLoader
+from paddle.fluid.io import DataLoader
 
 from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBase, get_logger
 from paddle.fluid.tests.unittests.test_auto_checkpoint import AutoCheckPointACLBase
