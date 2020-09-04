@@ -1306,11 +1306,6 @@ def reshape(x, shape, name=None):
     Returns:
         Tensor: A reshaped Tensor with the same data type as ``x``.
 
-    Raises:
-        ValueError: If more than one elements of ``shape`` is -1.
-        ValueError: If the element of ``shape`` is 0, the corresponding dimension should be less than or equal to the dimension of ``x``.
-        ValueError: If the elements in ``shape`` is negative except -1.
-
     Examples:
         .. code-block:: python
 

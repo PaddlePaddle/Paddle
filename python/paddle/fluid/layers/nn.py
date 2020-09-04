@@ -6098,11 +6098,6 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     Returns:
         Tensor: A reshaped Tensor with the same data type as ``x``. It is a new tensor variable if ``inplace`` is ``False``, otherwise it is ``x``. If ``act`` is None, return the reshaped tensor variable, otherwise return the activated tensor variable.
 
-    Raises:
-        TypeError: If actual_shape is neither Tensor nor None.
-        ValueError: If more than one elements of ``shape`` is -1.
-        ValueError: If the element of ``shape`` is 0, the corresponding dimension should be less than or equal to the dimension of ``x``.
-        ValueError: If the elements in ``shape`` is negative except -1.
 
     Examples:
         .. code-block:: python
