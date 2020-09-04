@@ -12175,13 +12175,10 @@ def logical_and(x, y, out=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
-            x_data = np.array([True], dtype=np.bool)
-            y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.to_tensor(x_data)
-            y = paddle.to_tensor(y_data)
+            x = paddle.to_tensor([True])
+            y = paddle.to_tensor([True, False, True, False])
             res = paddle.logical_and(x, y)
             print(res.numpy()) # [True False True False]
     """
@@ -12294,11 +12291,9 @@ def logical_not(x, out=None, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            import numpy as np
 
             paddle.disable_static()
-            x_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.to_variable(x_data)
+            x = paddle.to_tensor([True, False, True, False])
             res = paddle.logical_not(x)
             print(res.numpy()) # [False  True False  True]
     """

@@ -59,6 +59,7 @@ void BindGenerator(py::module* m_ptr) {
       .def_property("_is_init_py", &framework::Generator::GetIsInitPy,
                     &framework::Generator::SetIsInitPy);
   m.def("default_cpu_generator", &framework::DefaultCPUGenerator);
-}  // end Generator
-}  // end namespace pybind
+  m.def("default_cuda_generator", &framework::GetDefaultCUDAGenerator);
+}
+}  // namespace pybind
 }  // namespace paddle

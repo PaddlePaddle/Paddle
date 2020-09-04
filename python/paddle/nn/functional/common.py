@@ -1091,6 +1091,8 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
                                  'alpha_dropout')
 
     if training:
+        if p == 1:
+            return layers.scale(x, scale=0.)
         #get transformation params
         alpha = 1.6732632423543772848170429916717
         scale = 1.0507009873554804934193349852946
