@@ -301,7 +301,7 @@ class Quant2Int8MkldnnPass(object):
         weight = self._load_param(self._scope, weight_var_name)
         if scales.size == 1 or scales.size == weight.shape[0]:
             w_fp32 = np.divide(np.multiply(weight, self._s8_max).T, scales.T).T
-        elif scales.size == weight.shape[1]:
+        elif len(weight.shape) > 1 and scales.size == weight.shape[1]:
             w_fp32 = np.divide(np.multiply(weight, self._s8_max), scales)
         else:
             raise ValueError(

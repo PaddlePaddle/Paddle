@@ -57,12 +57,15 @@ class TestQuant2Int8MkldnnPass(unittest.TestCase):
         self.mul_input = np.random.random(self.mul_input_size).astype(
             self.dtype)
         self.mul_weights = np.ones(self.mul_weights_size, self.dtype)
+        self.mul_weights_bad = np.ones([1, 1], self.dtype)
         self.mul_output = np.ndarray(self.mul_output_size).astype(self.dtype)
         self.mul_output_scale = np.linspace(1, 5, num=5).astype(self.dtype)
+
         self.variables_mul = {
             "mul_input": self.mul_input,
             "mul_weights": self.mul_weights,
             "mul_output": self.mul_output,
+            "mul_weights_bad": self.mul_weights_bad
         }
 
     def prepare_program(self, program):
@@ -184,6 +187,11 @@ class TestQuant2Int8MkldnnPass(unittest.TestCase):
                 [[127, 63.5, 42.3333, 31.75, 25.4],
                  [127, 63.5, 42.3333, 31.75, 25.4],
                  [127, 63.5, 42.3333, 31.75, 25.4]])
+
+            param = self.scope.var("mul_weights").get_tensor()
+            param.set(self.variables_mul["mul_weights_bad"], self.place)
+            with self.assertRaises(ValueError):
+                qpass._dequantize_op_weights(graph, op_node, "Y", "Out")
 
 
 if __name__ == '__main__':
