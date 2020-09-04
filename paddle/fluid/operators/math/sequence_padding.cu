@@ -76,11 +76,10 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
 
     CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
               step_width, layout);
-    PADDLE_ENFORCE(
-        pad_value.numel() == 1 || pad_value.numel() == step_width,
-        platform::errors::InvalidArgument(
-            "The numel of 'pad_value' can only be 1 or be equal to the "
-            "'step_width'."));
+    PADDLE_ENFORCE(pad_value.numel() == 1 || pad_value.numel() == step_width,
+                   platform::errors::InvalidArgument(
+                       "The numel of 'pad_value' can only be 1 or be equal to "
+                       "the 'step_width'."));
 
     const int kBlockSize = 512;
 
