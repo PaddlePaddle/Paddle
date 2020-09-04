@@ -245,8 +245,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             "The type of 'axis'  must be int or None in argmin, but received %s."
             % (type(axis)))
 
-    if dtype is None or not (isinstance(dtype, str) or isinstance(dtype,
-                                                                  np.dtype)):
+    if not (isinstance(dtype, str) or isinstance(dtype, np.dtype)):
         raise TypeError(
             "the type of 'dtype' in argmin must be str or np.dtype, but received {}".
             format(dtype(dtype)))
