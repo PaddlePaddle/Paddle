@@ -22,13 +22,14 @@ void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(holder_, platform::errors::PreconditionNotMet(
                                        "The `holder_` of Tensor is nullptr. "
                                        "Tensor holds no memory. "
-                                       "Call Tensor::mutable_data first."));
+                                       "Call Tensor::mutable_data firstly."));
   PADDLE_ENFORCE_LE(
       numel() * SizeOfType(type()), memory_size(),
       platform::errors::PreconditionNotMet(
-          "Tensor's dims_ is out of bound."
-          "Tensor's dims_ must be equal or lesser than the size of memory."
-          "But received  Tensor's dims_ = d%, memory's size = %d.",
+          "Tensor's dimension is out of bound."
+          "Tensor's dimension must be equal or less than the size of its "
+          "memory."
+          "But received  Tensor's dimension is d%, memory's size is %d.",
           numel() * SizeOfType(type()), memory_size()));
 }
 
@@ -41,21 +42,20 @@ size_t Tensor::memory_size() const {
 void* Tensor::mutable_data(const platform::Place& place,
                            proto::VarType::Type type, size_t requested_size) {
   type_ = type;
-  PADDLE_ENFORCE_GE(numel(), 0,
-                    platform::errors::PreconditionNotMet(
-                        "The Tensor's numel must be "
-                        "equal or larger than zero. "
-                        "Please check Tensor::dims, or Tensor::Resize has been "
-                        "called first. The Tensor's shape is [",
-                        dims(), "] now"));
+  PADDLE_ENFORCE_GE(numel(), 0, platform::errors::PreconditionNotMet(
+                                    "The Tensor's element number must be "
+                                    "equal or larger than zero. "
+                                    "The Tensor's shape is [",
+                                    dims(), "] now"));
   size_t size = numel() * SizeOfType(type);
   if (requested_size) {
-    PADDLE_ENFORCE_GE(requested_size, size,
-                      platform::errors::InvalidArgument(
-                          "The requested memory size is less than the tensor."
-                          "But received  the requested memory size is d%, "
-                          "memory size of Tensor is %d.",
-                          requested_size, size));
+    PADDLE_ENFORCE_GE(
+        requested_size, size,
+        platform::errors::InvalidArgument(
+            "The requested memory size is less than the memory size of Tensor. "
+            "But received requested memory size is d%, "
+            "memory size of Tensor is %d.",
+            requested_size, size));
     size = requested_size;
   }
   /* some versions of boost::variant don't have operator!= */
@@ -72,9 +72,8 @@ void* Tensor::mutable_data(const platform::Place& place,
 
 void* Tensor::mutable_data(const platform::Place& place,
                            size_t requested_size) {
-  PADDLE_ENFORCE_NOT_NULL(this->holder_,
-                          platform::errors::PreconditionNotMet(
-                              "The `holder_` of Tensor is nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(this->holder_, platform::errors::PreconditionNotMet(
+                                             "The tensor is not initialized."));
   return mutable_data(place, type_, requested_size);
 }
 
@@ -89,7 +88,7 @@ Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   PADDLE_ENFORCE_GE(
       begin_idx, 0,
       platform::errors::OutOfRange("The start row index must be greater than 0."
-                                   "But received  the start index is d%.",
+                                   "But received the start index is d%.",
                                    begin_idx));
   PADDLE_ENFORCE_LE(
       end_idx, dims_[0],
@@ -97,7 +96,7 @@ Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   PADDLE_ENFORCE_LT(
       begin_idx, end_idx,
       platform::errors::InvalidArgument(
-          "The start row index must be lesser than the end row index."
+          "The start row index must be less than the end row index."
           "But received the start index = %d, the end index = %d.",
           begin_idx, end_idx));
 
