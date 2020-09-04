@@ -86,8 +86,10 @@ def summary(net, input_size, batch_size=None, dtypes=None):
     elif isinstance(input_size, list):
         _input_size = []
         for item in input_size:
+            if isinstance(item, int):
+                item = (item, )
             assert isinstance(item,
-                              (list, InputSpec)), 'When input_size is list, \
+                              (tuple, InputSpec)), 'When input_size is list, \
             expect item in input_size is a tuple or InputSpec, but got {}'.format(
                                   type(item))
 
@@ -97,6 +99,8 @@ def summary(net, input_size, batch_size=None, dtypes=None):
                     batch_size = item.shape[0]
             else:
                 _input_size.append(item)
+    elif isinstance(input_size, int):
+        _input_size = (input_size, )
     else:
         _input_size = input_size
 
