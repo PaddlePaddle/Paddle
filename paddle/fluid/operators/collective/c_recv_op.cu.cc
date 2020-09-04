@@ -27,7 +27,7 @@ class CRecvOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
-    auto out = ctx.Input<framework::LoDTensor>("Out");
+    auto out = ctx.Output<framework::LoDTensor>("Out");
     int numel = out->numel();
     ncclDataType_t dtype = platform::ToNCCLDataType(out->type());
 
@@ -44,9 +44,13 @@ class CRecvOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     int peer = ctx.Attr<int>("peer");
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::ncclRecv(const_cast<T*>(out->data<T>()), numel,
-                                    dtype, peer, comm->comm(), stream));
+    PADDLE_ENFORCE_LT(
+        peer, comm->nranks(),
+        platform::errors::InvalidArgument("The value of peer (%d) you set must "
+                                          "be less than comm->nranks (%d).",
+                                          peer, comm->nranks()));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
+        out->data<T>(), numel, dtype, peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " recv "
             << framework::product(out->dims()) << " from " << peer;
 #else

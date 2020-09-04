@@ -21,20 +21,34 @@ class CRecvOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CRecv");
+    int peer = ctx->Attrs().Get<int>("peer");
+    int ring_id = ctx->Attrs().Get<int>("ring_id");
+    PADDLE_ENFORCE_GE(
+        peer, 0,
+        platform::errors::InvalidArgument(
+            "The peer (%d) for c_send_op must be non-negative.", peer));
+    PADDLE_ENFORCE_GE(
+        ring_id, 0,
+        platform::errors::InvalidArgument(
+            "The ring_id (%d) for c_send_op must be non-negative.", ring_id));
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Out"), ctx.GetPlace());
+    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto dtype = out->type();
+    return framework::OpKernelType(dtype, ctx.GetPlace());
+    // OperatorWithKernel::IndicateVarDataType(ctx, "Out"), ctx.GetPlace());
   }
 };
 
 class CRecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("Out", "(Tensor) tensor to receive.");
+    AddOutput("Out", "(Tensor) tensor to receive.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("peer", "(int default 0) rank id for sender.").SetDefault(0);

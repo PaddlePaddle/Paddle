@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/c_scatter_op.h"
+#include "paddle/fluid/operators/collective/c_gather_op.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -23,13 +23,13 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class CScatterOpCUDAKernel : public framework::OpKernel<T> {
+class CGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
-    int numel = x->numel();
+    int send_numel = x->numel();
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
 
     int nranks = ctx.Attr<int>("nranks");
@@ -39,7 +39,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
     PADDLE_ENFORCE_EQ(nranks, comm->nranks(),
                       platform::errors::InvalidArgument(
-                          "The number of ranks (%d) you set must "
+                          "The number of ranks (%d) you set of must "
                           "be equal to comm->nranks (%d).",
                           nranks, comm->nranks()));
     PADDLE_ENFORCE_GE(
@@ -63,22 +63,20 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
 
     framework::DDim x_dims = x->dims();
     framework::DDim out_dims(x_dims);
-    out_dims[0] /= nranks;
+    out_dims[0] *= nranks;
     auto send_buf = x->data<T>();
-    auto send_numel = numel / nranks;
-    auto recv_buf = out->mutable_data<T>(out_dims, place);
     auto offset = 0;
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
+        send_buf, send_numel, dtype, root_id, comm->comm(), stream));
     if (root_id == comm->rank()) {
+      auto recv_buf = out->mutable_data<T>(out_dims, place);
       for (auto i = 0; i < nranks; ++i) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            platform::dynload::ncclSend(send_buf + offset, send_numel, dtype,
-                                        root_id, comm->comm(), stream));
+        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
+            recv_buf + offset, send_numel, dtype, i, comm->comm(), stream));
         offset += send_numel;
       }
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
-        recv_buf, send_numel, dtype, root_id, comm->comm(), stream));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
 #else
     PADDLE_ENFORCE_EQ(
@@ -94,8 +92,8 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(c_scatter, ops::CScatterOpCUDAKernel<float>,
-                        ops::CScatterOpCUDAKernel<double>,
-                        ops::CScatterOpCUDAKernel<int>,
-                        ops::CScatterOpCUDAKernel<int64_t>,
-                        ops::CScatterOpCUDAKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(c_gather, ops::CGatherOpCUDAKernel<float>,
+                        ops::CGatherOpCUDAKernel<double>,
+                        ops::CGatherOpCUDAKernel<int>,
+                        ops::CGatherOpCUDAKernel<int64_t>,
+                        ops::CGatherOpCUDAKernel<plat::float16>);

@@ -19,12 +19,12 @@ import numpy as np
 from test_collective_base import TestDistBase
 
 
-class TestCSendRecvOp(TestDistBase):
+class TestCAllToAllOp(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_sendrecv(self):
-        self.check_with_place("collective_sendrecv_op.py", "sendrecv")
+    def test_alltoall(self):
+        self.check_with_place("collective_alltoall_op.py", "alltoall")
 
 
 if __name__ == '__main__':

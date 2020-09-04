@@ -21,7 +21,19 @@ class CSendOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CSend");
+    int peer = ctx->Attrs().Get<int>("peer");
+    int ring_id = ctx->Attrs().Get<int>("ring_id");
+    PADDLE_ENFORCE_GE(
+        peer, 0,
+        platform::errors::InvalidArgument(
+            "The peer (%d) for c_send_op must be non-negative.", peer));
+    PADDLE_ENFORCE_GE(
+        ring_id, 0,
+        platform::errors::InvalidArgument(
+            "The ring_id (%d) for c_send_op must be non-negative.", ring_id));
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(

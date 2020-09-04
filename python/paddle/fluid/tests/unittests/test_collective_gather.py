@@ -19,12 +19,12 @@ import numpy as np
 from test_collective_base import TestDistBase
 
 
-class TestCSendRecvOp(TestDistBase):
+class TestCGatherOp(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_sendrecv(self):
-        self.check_with_place("collective_sendrecv_op.py", "sendrecv")
+    def test_gather(self):
+        self.check_with_place("collective_gather_op.py", "gather")
 
 
 if __name__ == '__main__':

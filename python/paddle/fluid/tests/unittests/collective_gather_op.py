@@ -36,7 +36,7 @@ from functools import reduce
 from test_collective_base import TestCollectiveRunnerBase, runtime_main
 
 
-class TestCollectiveSendRecv(TestCollectiveRunnerBase):
+class TestCollectiveGather(TestCollectiveRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
@@ -45,25 +45,22 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
         with fluid.program_guard(main_prog, startup_program):
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32')
-            if rank == 0:
-                main_prog.global_block().append_op(
-                    type="c_recv",
-                    outputs={'Out': tindata},
-                    attrs={'ring_id': ring_id,
-                           'peer': 1})
-            else:
-                main_prog.global_block().append_op(
-                    type="c_send",
-                    inputs={'X': tindata},
-                    attrs={'ring_id': ring_id,
-                           'peer': 0})
+            toutdata = layers.data(
+                name="toutdata", shape=[20, 1000], dtype='float32')
+            main_prog.global_block().append_op(
+                type="c_gather",
+                inputs={'X': tindata},
+                outputs={'Out': toutdata},
+                attrs={'ring_id': ring_id,
+                       'nranks': 2,
+                       'root': 1})
             main_prog.global_block().append_op(
                 type="c_sync_comm_stream",
-                inputs={'X': tindata},
-                outputs={'Out': tindata},
+                inputs={'X': toutdata},
+                outputs={'Out': toutdata},
                 attrs={'ring_id': ring_id})
-            return tindata
+            return toutdata
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveSendRecv, "sendrecv", 0)
+    runtime_main(TestCollectiveGather, "gather", 0)

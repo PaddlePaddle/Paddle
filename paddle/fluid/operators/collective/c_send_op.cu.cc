@@ -44,6 +44,12 @@ class CSendOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     int peer = ctx.Attr<int>("peer");
+    PADDLE_ENFORCE_LT(
+        peer, comm->nranks(),
+        platform::errors::InvalidArgument("The value of peer (%d) you set must "
+                                          "be less than comm->nranks (%d).",
+                                          peer, comm->nranks()));
+
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
         x->data<T>(), numel, dtype, peer, comm->comm(), stream));
     VLOG(3) << "rank " << comm->rank() << " send "
