@@ -324,7 +324,7 @@ def interpolate(x,
         return paddle.nn.functional.adaptive_avg_pool3d(x, size)
 
     helper = LayerHelper('{}_interp_v2'.format(resample_type), **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='x')
     if len(x.shape) == 3 and data_format not in ['NCW', 'NWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
