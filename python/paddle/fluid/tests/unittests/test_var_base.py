@@ -33,16 +33,28 @@ class TestVarBase(unittest.TestCase):
         def _test_place(place):
             with fluid.dygraph.guard():
                 paddle.set_default_dtype('float32')
+                # set_default_dtype should not take effect on int
                 x = paddle.to_tensor(1, place=place, stop_gradient=False)
                 self.assertTrue(np.array_equal(x.numpy(), [1]))
                 self.assertNotEqual(x.dtype, core.VarDesc.VarType.FP32)
 
+                # set_default_dtype should not take effect on numpy
+                x = paddle.to_tensor(
+                    np.array([1.2]).astype('float16'),
+                    place=place,
+                    stop_gradient=False)
+                self.assertTrue(
+                    np.array_equal(x.numpy(), np.array([1.2], 'float16')))
+                self.assertEqual(x.dtype, core.VarDesc.VarType.FP16)
+
+                # set_default_dtype take effect on float
                 x = paddle.to_tensor(1.2, place=place, stop_gradient=False)
                 self.assertTrue(
                     np.array_equal(x.numpy(), np.array([1.2]).astype(
                         'float32')))
                 self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
 
+                # set_default_dtype take effect on complex
                 x = paddle.to_tensor(1 + 2j, place=place, stop_gradient=False)
                 self.assertTrue(np.array_equal(x.numpy(), [1 + 2j]))
                 self.assertEqual(x.dtype, 'complex64')
