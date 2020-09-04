@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/stream_callback_manager.h"
-#include <utility>
+
+#include "cuda.h"
+#include "cuda_runtime_api.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

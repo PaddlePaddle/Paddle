@@ -14,10 +14,10 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <algorithm>
-#include <memory>
-#include <vector>
 
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
+#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {

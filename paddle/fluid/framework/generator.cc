@@ -15,12 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 
 #include <glog/logging.h>
-
-#include <deque>
 #include <memory>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
 
 namespace paddle {
 namespace framework {

@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 
 #ifdef PADDLE_WITH_XBYAK
-#include "xbyak/xbyak.h"
 #include "xbyak/xbyak_util.h"
 #endif
 
@@ -31,7 +30,6 @@ limitations under the License. */
 #include <unistd.h>
 #endif  // _WIN32
 
-#include <algorithm>
 #include "gflags/gflags.h"
 
 DECLARE_double(fraction_of_cpu_memory_to_use);

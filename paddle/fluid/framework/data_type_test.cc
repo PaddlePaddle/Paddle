@@ -14,8 +14,20 @@
 #include "paddle/fluid/framework/data_type.h"
 
 #include <string>
+
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
+#include "gtest/gtest_pred_impl.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace platform {
+struct bfloat16;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
 
 TEST(DataType, float16) {
   using paddle::framework::Tensor;

@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/unroll_array_ops.h"
+
 #include <gtest/gtest.h>
-#include <algorithm>
 #include <array>
-#include <cstdint>
+
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
+#include "gtest/gtest_pred_impl.h"
 
 namespace paddle {
 namespace framework {

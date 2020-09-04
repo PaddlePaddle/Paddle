@@ -13,11 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
+
 #include <string>
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#endif
+
+#include "cuda_runtime_api.h"
+#include "driver_types.h"
+#include "glog/logging.h"
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
+#include "gtest/gtest_pred_impl.h"
 
 TEST(Event, CpuElapsedTime) {
   using paddle::platform::Event;

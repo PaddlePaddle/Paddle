@@ -14,6 +14,10 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_resource_pool.h"
+
+#include "cuda_runtime_api.h"
+#include "driver_types.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {

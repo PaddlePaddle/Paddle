@@ -14,8 +14,9 @@
 
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
 
-#include <cuda.h>
-#include <cuda_runtime.h>
+#include "cuda_runtime_api.h"
+#include "driver_types.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace memory {

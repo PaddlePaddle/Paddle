@@ -13,18 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdint.h>
-#include <string.h>
-#include <algorithm>
-#include <iterator>
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/framework/version.h"
 
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/memory/memory.h"
+namespace paddle {
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

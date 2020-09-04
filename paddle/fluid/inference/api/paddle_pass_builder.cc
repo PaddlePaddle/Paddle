@@ -17,6 +17,7 @@
 #include <cudnn.h>
 #endif
 #include <glog/logging.h>
+#include <sstream>
 
 namespace paddle {
 
