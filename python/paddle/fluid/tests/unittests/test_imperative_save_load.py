@@ -374,8 +374,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 adam._learning_rate.step_num = 0
 
             para_state_dict, opti_state_dict = paddle.load("./test_dy")
-            print(opti_state_dict['LR_Scheduler'])
-            adam.set_dict(opti_state_dict)
+            adam.set_state_dict(opti_state_dict)
 
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
@@ -393,7 +392,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 var.set(np.zeros_like(np_t), place)
 
-            ptb_model.set_dict(para_state_dict)
+            ptb_model.set_state_dict(stat_dict=para_state_dict)
 
             state_dict = ptb_model.state_dict()
 
@@ -483,7 +482,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             if isinstance(adam._learning_rate, LearningRateDecay):
                 adam._learning_rate.step_num = 0
 
-            adam.set_dict(self.opti_dict)
+            adam.set_state_dict(self.opti_dict)
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
                 if isinstance(v, core.VarBase):
@@ -500,7 +499,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 var.set(np.zeros_like(np_t), place)
 
-            ptb_model.set_dict(self.state_dict)
+            ptb_model.set_state_dict(self.state_dict)
 
             state_dict = ptb_model.state_dict()
 
@@ -593,7 +592,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             if isinstance(adam._learning_rate, LearningRateDecay):
                 adam._learning_rate.step_num = 0
 
-            adam.set_dict(np_opti_dict)
+            adam.set_state_dict(np_opti_dict)
 
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
@@ -613,7 +612,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 var.set(np.zeros_like(np_t), place)
 
-            ptb_model.set_dict(np_state_dict)
+            ptb_model.set_state_dict(np_state_dict)
 
             state_dict = ptb_model.state_dict()
 
@@ -656,8 +655,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_hidden = None
             last_cell = None
 
-            adam.set_dict(self.opti_dict)
-            ptb_model.set_dict(self.state_dict)
+            adam.set_state_dict(self.opti_dict)
+            ptb_model.set_state_dict(self.state_dict)
 
             for i in range(1):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
@@ -745,8 +744,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_cell = None
 
             state_dict, opti_dict = fluid.load_dygraph("./test_dy")
-            adam.set_dict(opti_dict)
-            ptb_model.set_dict(state_dict)
+            adam.set_state_dict(opti_dict)
+            ptb_model.set_state_dict(state_dict)
 
             for i in range(1):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
@@ -849,8 +848,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for k, v in self.state_dict.items():
                 np_state_dict[k] = v.numpy()
 
-            adam.set_dict(np_opti_dict)
-            ptb_model.set_dict(np_state_dict)
+            adam.set_state_dict(np_opti_dict)
+            ptb_model.set_state_dict(np_state_dict)
             for i in range(1):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
@@ -911,6 +910,22 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             para_state_dict, opti_state_dict = paddle.load(
                 os.path.join('saved_dy', 'emb_dy.pdopt'))
+
+    def test_load_compatible_with_keep_name_table(self):
+        with fluid.dygraph.guard():
+            emb = fluid.dygraph.Embedding([10, 10])
+            state_dict = emb.state_dict()
+            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy'))
+
+            para_state_dict, opti_state_dict = paddle.load(
+                os.path.join('saved_dy', 'emb_dy'), True)
+            self.assertTrue(para_state_dict != None)
+            self.assertTrue(opti_state_dict == None)
+
+            para_state_dict, opti_state_dict = paddle.load(
+                os.path.join('saved_dy', 'emb_dy'), keep_name_table=True)
+            self.assertTrue(para_state_dict != None)
+            self.assertTrue(opti_state_dict == None)
 
 
 if __name__ == '__main__':

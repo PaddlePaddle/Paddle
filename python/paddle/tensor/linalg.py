@@ -810,7 +810,7 @@ def cholesky(x, upper=False, name=None):
             a = np.random.rand(3, 3)
             a_t = np.transpose(a, [1, 0])
             x_data = np.matmul(a, a_t) + 1e-03
-            x = paddle.to_variable(x_data)
+            x = paddle.to_tensor(x_data)
             out = paddle.cholesky(x, upper=False)
             print(out.numpy())
             # [[1.190523   0.         0.        ]
@@ -855,15 +855,16 @@ def bmm(x, y, name=None):
     Examples:
         import paddle
 
-        # In imperative mode:
-        # size input1: (2, 2, 3) and input2: (2, 3, 2)
-        input1 = np.array([[[1.0, 1.0, 1.0],[2.0, 2.0, 2.0]],[[3.0, 3.0, 3.0],[4.0, 4.0, 4.0]]])
-        input2 = np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],[[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
-
         paddle.disable_static()
-        
-        x = paddle.to_variable(input1)
-        y = paddle.to_variable(input2)
+
+        # In imperative mode:
+        # size x: (2, 2, 3) and y: (2, 3, 2)
+        x = paddle.to_tensor([[[1.0, 1.0, 1.0],
+                               [2.0, 2.0, 2.0]],
+                              [[3.0, 3.0, 3.0],
+                               [4.0, 4.0, 4.0]]])
+        y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
+                              [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
         out = paddle.bmm(x, y)
         #output size: (2, 2, 2)
         #output value:
@@ -924,10 +925,8 @@ def histogram(input, bins=100, min=0, max=0):
     Code Example 2:
         .. code-block:: python
             import paddle
-            import numpy as np
             paddle.disable_static(paddle.CPUPlace())
-            inputs_np = np.array([1, 2, 1]).astype(np.float)
-            inputs = paddle.to_variable(inputs_np)
+            inputs = paddle.to_tensor([1, 2, 1])
             result = paddle.histogram(inputs, bins=4, min=0, max=3)
             print(result) # [0, 2, 1, 0]
             paddle.enable_static()

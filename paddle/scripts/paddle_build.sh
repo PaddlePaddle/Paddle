@@ -273,7 +273,7 @@ function cmake_gen() {
 function abort(){
     echo "Your change doesn't follow PaddlePaddle's code style." 1>&2
     echo "Please use pre-commit to check what is wrong." 1>&2
-    exit 1
+    exit 4
 }
 
 function check_style() {
@@ -303,7 +303,7 @@ function check_style() {
     
     if [ $commit_files == 'off' ];then
         echo "code format error"
-        exit 1
+        exit 4
     fi
     trap : 0
 }
@@ -530,6 +530,7 @@ EOF
         fi
         tmpfile_rand=`date +%s%N`
         tmpfile=$tmp_dir/$tmpfile_rand
+        set +e
         ut_startTime_s=`date +%s`
         ctest --output-on-failure -j $2 | tee $tmpfile
         failed_test_lists=''
@@ -1014,7 +1015,7 @@ set +x
                     
                     retry_unittests_record="$retry_unittests_record$failed_test_lists"
                     failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                     echo "========================================="
                     echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                     echo "========================================="
@@ -1450,24 +1451,49 @@ function example() {
     fi
 }
 
+function summary_check_problems() {
+    set +x
+    local check_style_code=$1
+    local example_code=$2
+    if [ $check_style_code -ne 0 -o $example_code -ne 0 ];then
+      echo "========================================"
+      echo "summary problems:"
+      echo "========================================"
+      if [ $check_style_code -ne 0 ];then
+        echo "- Check code style failed! Please check the log and fix problems."
+      fi
+      if [ $example_code -ne 0 ];then
+        echo "- Check example code failed! Please check the log and fix problems."
+      fi
+      [ $check_style_code -ne 0 ] && exit $check_style_code
+      [ $example_code -ne 0 ] && exit $example_code
+    fi
+    set -x
+}
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
     init
     if [ "$CMD" != "assert_file_approvals" ];then
       python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_and_check)
-        check_style
+        set +e
+        $(check_style >&2)
+        check_style_code=$?
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
-        example
+        $(example >&2)
+        example_code=$?
+        summary_check_problems $check_style_code $example_code
         assert_api_spec_approvals
         ;;
       build)

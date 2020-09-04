@@ -85,7 +85,7 @@ class SGD(Optimizer):
             name=name)
         self.type = "sgd"
 
-    @no_grad()
+    @no_grad
     def _append_optimize_op(self, block, param_and_grad):
         lr = self._create_param_lr(param_and_grad)
         if framework.in_dygraph_mode():

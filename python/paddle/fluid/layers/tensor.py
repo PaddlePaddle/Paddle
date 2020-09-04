@@ -29,6 +29,7 @@ from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, con
 from paddle.utils import deprecated
 import numpy
 import warnings
+from .utils import check_shape
 
 __all__ = [
     'create_tensor', 'create_parameter', 'create_global_var', 'cast',
@@ -657,12 +658,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     Returns:
         Tensor: Tensor which is created according to shape and dtype.
 
-    Raises:
-        TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
-            and the data type of ``out`` must be the same as the ``dtype``. 
-        TypeError: The shape must be one of list, tuple and Tensor, the data type of ``shape``
-            must be int32 or int64 when ``shape`` is a Tensor
-
     Examples:
         .. code-block:: python
 
@@ -694,7 +689,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             attrs['str_value'] = str(float(value))
 
     if in_dygraph_mode():
-        shape = utils._convert_shape_to_list(shape)
+        shape = utils.convert_shape_to_list(shape)
         if out is None:
             out = _varbase_creator(dtype=dtype)
 
@@ -718,20 +713,18 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             value = cast(value, dtype)
         inputs['ValueTensor'] = value
 
+    check_shape(shape)
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
-
-    if isinstance(shape, Variable):
-        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
 
     if out is not None:
         check_variable_and_dtype(out, 'out', [convert_dtype(dtype)],
                                  'fill_constant')
 
     helper = LayerHelper("fill_constant", **locals())
-    utils._get_shape_tensor_inputs(
+    utils.get_shape_tensor_inputs(
         inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant')
 
     if out is None:
@@ -1050,10 +1043,6 @@ def ones(shape, dtype, force_cpu=False):
 
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
-    Raises:
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
-            be int32 or int64 when it's a Tensor.
 
     Examples:
         .. code-block:: python
@@ -1086,10 +1075,6 @@ def zeros(shape, dtype, force_cpu=False, name=None):
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
-    Raises:
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
-            be int32 or int64 when it's a Tensor.
     Examples:
         .. code-block:: python
 
