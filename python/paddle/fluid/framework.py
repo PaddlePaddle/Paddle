@@ -587,8 +587,6 @@ def convert_np_dtype_to_dtype_(np_dtype):
         core.VarDesc.VarType: the data type in Paddle.
 
     """
-    if np_dtype is None:
-        np_dtype = paddle.framework.get_default_dtype()
     dtype = np.dtype(np_dtype)
     if dtype == np.float32:
         return core.VarDesc.VarType.FP32
