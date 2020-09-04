@@ -71,17 +71,12 @@ class WhileOp : public framework::OperatorBase {
     if (!is_test) {
       const std::vector<framework::OpDesc *> &all_ops = block->AllOps();
       for (const framework::OpDesc *op : all_ops) {
-        if (op->Type() == "while") {
-          continue;
-        }
         const framework::VariableNameMap &input_var_names = op->Inputs();
         const framework::VariableNameMap &output_var_names = op->Outputs();
         for (auto &ipt : input_var_names) {
           for (const std::string &var_name : ipt.second) {
             if (StrInVaraiableNameMap(var_name, output_var_names)) {
               no_copy_var_names.insert(var_name);
-              std::cout << "1111111 In block " << block->ID() << ", "
-                        << var_name << "didn't need copy\n";
             }
           }
         }
