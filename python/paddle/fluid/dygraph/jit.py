@@ -210,7 +210,11 @@ def declarative(function=None, input_spec=None):
 
     # for usage: `declarative(foo, ...)`
     if function is not None:
-        return decorated(function)
+        if isinstance(function, Layer):
+            function.forward = decorated(function.forward)
+            return function
+        else:
+            return decorated(function)
 
     # for usage: `@declarative`
     return decorated

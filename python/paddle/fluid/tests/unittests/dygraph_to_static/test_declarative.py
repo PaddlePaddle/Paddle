@@ -295,5 +295,24 @@ class TestDeclarativeAPI(unittest.TestCase):
             func(np.ones(5).astype("int32"))
 
 
+class TestDecorateModelDirectly(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        program_trans.enable(True)
+        self.x = to_variable(np.ones([4, 10]).astype('float32'))
+
+    def test_fake_input(self):
+        net = SimpleNet()
+        net = declarative(net)
+        y = net(self.x)
+        self.assertTrue(len(net.forward.program_cache) == 1)
+
+    def test_input_spec(self):
+        net = SimpleNet()
+        net = declarative(net, input_spec=[InputSpec([None, 10])])
+        self.assertTrue(len(net.forward.inputs) == 1)
+        self.assertTrue(len(net.forward.program_cache) == 1)
+
+
 if __name__ == '__main__':
     unittest.main()
