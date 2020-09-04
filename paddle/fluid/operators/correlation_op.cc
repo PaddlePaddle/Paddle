@@ -69,10 +69,8 @@ class CorrelationOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input1"), true,
-                      "Input(input1) cannot be null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input2"), true,
-                      "Input(input2) cannot be null");
+    OP_INOUT_CHECK(ctx->HasInput("Input1"), "Input", "X", "CorrelationOp");
+    OP_INOUT_CHECK(ctx->HasInput("Input2"), "Input", "Y", "CorrelationOp");
     int stride1 = ctx->Attrs().Get<int>("stride1");
     int stride2 = ctx->Attrs().Get<int>("stride2");
     int max_displacement = ctx->Attrs().Get<int>("max_displacement");
@@ -81,8 +79,18 @@ class CorrelationOp : public framework::OperatorWithKernel {
 
     auto in_dims = ctx->GetInputDim("Input1");
     auto in2_dims = ctx->GetInputDim("Input2");
-    PADDLE_ENFORCE_EQ(in_dims.size() == 4, true, "input1 must be 4-dims");
-    PADDLE_ENFORCE_EQ(in2_dims.size() == 4, true, "input2 must be 4-dims");
+
+    PADDLE_ENFORCE_EQ(in_dims.size() == 4, true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of CorrelationOp must be 4 dims."
+                          "But received dims is %d.",
+                          in_dims.size()));
+
+    PADDLE_ENFORCE_EQ(in2_dims.size() == 4, true,
+                      platform::errors::InvalidArgument(
+                          "Input(Y) of CorrelationOp must be 4 dims."
+                          "But received dims is %d.",
+                          in2_dims.size()));
     std::vector<int64_t> output_shape =
         CorrelationOutputSize(in_dims[0], in_dims[2], in_dims[3], stride1,
                               stride2, kernel_size, pad_size, max_displacement);
@@ -95,7 +103,8 @@ class CorrelationOp : public framework::OperatorWithKernel {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input1");
     PADDLE_ENFORCE_EQ(input_data_type, ctx.Input<Tensor>("Input2")->type(),
-                      "Input1 and Input2 shoule have same type");
+                      platform::errors::InvalidArgument(
+                          "X and Y shoule have the same datatype"));
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 

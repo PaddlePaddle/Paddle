@@ -154,7 +154,8 @@ class CorrelationCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must be CUDAPlace");
+                      platform::errors::InvalidArgument(
+                          "Correlation only supports GPU now."));
 
     auto *input1 = ctx.Input<Tensor>("Input1");
     auto *input2 = ctx.Input<Tensor>("Input2");
@@ -391,7 +392,8 @@ class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must use CUDAPlace.");
+                      platform::errors::InvalidArgument(
+                          "Correlation only supports GPU now."));
     const auto *input1 = ctx.Input<Tensor>("Input1");
     const auto *input2 = ctx.Input<Tensor>("Input2");
     const auto *grad_output =
