@@ -1614,8 +1614,6 @@ class LarsMomentumOptimizer(Optimizer):
             momentum (float): momentum factor
         lars_coeff (float): Defines how much we trust the layer to change its weights.
         lars_weight_decay (float): Weight decay coefficient for decaying using LARS.
-        epsilon (float): Epsilon to avoid Division by Zero when calculate local lr.
-        exclude_from_weight_decay (list[str], optional): Name string of layers which will be exclude from lars weight decay.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
@@ -1630,7 +1628,9 @@ class LarsMomentumOptimizer(Optimizer):
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
-
+        exclude_from_weight_decay (list[str], optional): Name string of layers which will be exclude from lars weight decay.
+        epsilon (float): Epsilon to avoid Division by Zero when calculate local lr.
+        
     Examples:
         .. code-block:: python
 
@@ -1658,12 +1658,12 @@ class LarsMomentumOptimizer(Optimizer):
                  momentum,
                  lars_coeff=0.001,
                  lars_weight_decay=0.0005,
-                 epsilon=0,
-                 exclude_from_weight_decay=None,
                  parameter_list=None,
                  regularization=None,
                  grad_clip=None,
-                 name=None):
+                 name=None,
+                 exclude_from_weight_decay=None,
+                 epsilon=0):
         assert learning_rate is not None
         assert momentum is not None
         super(LarsMomentumOptimizer, self).__init__(

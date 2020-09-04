@@ -22,9 +22,9 @@ template <typename T>
 __global__ void MomentumLarsKernel(const T* p, const T* g, const T* v,
                                    const T* learning_rate, const T mu,
                                    const int64_t num, const T lars_coeff,
-                                   const T lars_weight_decay, const T epsilon,
-                                   const T* p_norm, const T* g_norm, T* p_out,
-                                   T* v_out) {
+                                   const T lars_weight_decay, const T* p_norm,
+                                   const T* g_norm, T* p_out, T* v_out,
+                                   const T epsilon) {
   T lr = learning_rate[0];
   T local_lr = learning_rate[0];
   CUDA_KERNEL_LOOP(i, num) {

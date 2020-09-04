@@ -71,6 +71,7 @@ class LarsOptimizer(MetaOptimizerBase):
         return self.lars_opt.backward(loss, startup_program, parameter_list,
                                       no_grad_set, callbacks)
 
+    # the following function will be used by AMP if both LARS and AMP are turn on together.
     def apply_gradients(self, params_grads):
         return self.lars_opt.apply_gradients(params_grads=params_grads)
 
