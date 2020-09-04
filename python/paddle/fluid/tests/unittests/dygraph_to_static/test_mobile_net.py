@@ -14,6 +14,7 @@
 
 import time
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
@@ -447,8 +448,8 @@ def train_mobilenet(args, to_static):
     with fluid.dygraph.guard(args.place):
 
         np.random.seed(SEED)
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         if args.model == "MobileNetV1":
             net = MobileNetV1(class_dim=args.class_dim, scale=1.0)

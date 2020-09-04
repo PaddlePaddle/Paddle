@@ -177,7 +177,7 @@ class RandomSampler(Sampler):
                 def __len__(self):
                     return self.num_samples
 
-            sampler = RandomSampler(data_souce=RandomDataset(100))
+            sampler = RandomSampler(data_source=RandomDataset(100))
 
             for index in sampler:
                 print(index)
@@ -216,7 +216,11 @@ class RandomSampler(Sampler):
     def __iter__(self):
         n = len(self.data_source)
         if self.generator:
-            for index in self.generator:
+            for i in range(self.num_samples):
+                try:
+                    index = next(self.generator)
+                except StopIteration:
+                    return
                 yield index
         else:
             if self.replacement:

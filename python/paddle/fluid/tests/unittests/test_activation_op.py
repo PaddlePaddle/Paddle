@@ -191,6 +191,59 @@ class TestTanh(TestActivation, TestParameter):
         self.dtype = np.float32
 
 
+class TestTanhAPI(unittest.TestCase):
+    # test paddle.tanh, paddle.nn.tanh, paddle.nn.functional.tanh
+    def setUp(self):
+        self.dtype = 'float32'
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [10, 12], self.dtype)
+            out1 = F.tanh(x)
+            th = paddle.nn.Tanh()
+            out2 = th(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = np.tanh(self.x_np)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_variable(self.x_np)
+        out1 = F.tanh(x)
+        out2 = paddle.tanh(x)
+        th = paddle.nn.Tanh()
+        out3 = th(x)
+        out_ref = np.tanh(self.x_np)
+        for r in [out1, out2, out3]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', [10, 12], self.dtype)
+            out = fluid.layers.tanh(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = np.tanh(self.x_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.tanh, 1)
+            # The input dtype must be float16, float32.
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.tanh, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.tanh(x_fp16)
+
+
 class TestAtan(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "atan"
@@ -664,6 +717,9 @@ class TestSoftshrinkAPI(unittest.TestCase):
             # The input dtype must be float16, float32, float64.
             x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, F.softshrink, x_int32)
+            # The threshold must be no less than zero
+            x_fp32 = paddle.data(name='x_fp32', shape=[12, 10], dtype='float32')
+            self.assertRaises(ValueError, F.softshrink, x_fp32, -1.0)
             # support the input dtype is float16
             x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
             F.softshrink(x_fp16)
@@ -903,18 +959,30 @@ class TestReluAPI(unittest.TestCase):
             F.relu(x_fp16)
 
 
+def ref_leaky_relu(x, alpha=0.01):
+    out = np.copy(x)
+    out[out < 0] *= alpha
+    return out
+
+
 class TestLeakyRelu(TestActivation):
+    def get_alpha(self):
+        return 0.02
+
     def setUp(self):
         self.op_type = "leaky_relu"
         self.init_dtype()
+        alpha = self.get_alpha()
 
+        np.random.seed(10)
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         # The same reason with TestAbs
-        x[np.abs(x) < 0.005] = 0.02
-        out = np.maximum(x, 0.02 * x)
+        x[np.abs(x) < 0.005] = 0.05
+        out = ref_leaky_relu(x, alpha)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
+        self.attrs = {'alpha': alpha}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -922,18 +990,78 @@ class TestLeakyRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestLeakyReluOpError(unittest.TestCase):
+class TestLeakyReluAlpha1(TestLeakyRelu):
+    def get_alpha(self):
+        return 2
+
+
+class TestLeakyReluAlpha2(TestLeakyRelu):
+    def get_alpha(self):
+        return -0.01
+
+
+class TestLeakyReluAlpha3(TestLeakyRelu):
+    def get_alpha(self):
+        return -2.0
+
+
+class TestLeakyReluAPI(unittest.TestCase):
+    # test paddle.nn.LeakyReLU, paddle.nn.functional.leaky_relu,
+    # fluid.layers.leaky_relu
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
+        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [10, 12])
+            out1 = F.leaky_relu(x)
+            m = paddle.nn.LeakyReLU()
+            out2 = m(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = ref_leaky_relu(self.x_np)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_variable(self.x_np)
+        out1 = F.leaky_relu(x)
+        m = paddle.nn.LeakyReLU()
+        out2 = m(x)
+        out_ref = ref_leaky_relu(self.x_np)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+
+        out1 = F.leaky_relu(x, 0.6)
+        m = paddle.nn.LeakyReLU(0.6)
+        out2 = m(x)
+        out_ref = ref_leaky_relu(self.x_np, 0.6)
+        for r in [out1, out2]:
+            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', [10, 12])
+            out = fluid.layers.leaky_relu(x, 0.01)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_leaky_relu(self.x_np)
+        self.assertEqual(np.allclose(out_ref, res[0]), True)
+
     def test_errors(self):
-        with program_guard(Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.leaky_relu, 1)
+            self.assertRaises(TypeError, F.leaky_relu, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.leaky_relu, x_int32)
-            # support the input dtype is float32
-            x_fp16 = fluid.layers.data(
-                name='x_fp16', shape=[12, 10], dtype='float32')
-            fluid.layers.leaky_relu(x_fp16)
+            x_int32 = paddle.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, F.leaky_relu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            F.leaky_relu(x_fp16)
 
 
 def gelu(x, approximate):

@@ -378,7 +378,7 @@ def _load_persistable_vars_by_program(model_path,
             new_var = framework._varbase_creator(
                 type=each_var.type(),
                 name=each_var.name(),
-                shpae=each_var.shape(),
+                shape=each_var.shape(),
                 dtype=each_var.dtype(),
                 persistable=True)
         if params_filename is None:
@@ -488,6 +488,15 @@ def _load_persistable_vars(model_path,
     return load_var_dict
 
 
+# NOTE(chenweihang): to adapt paddle.load to get state_dict
+def _remove_varname_suffix(var_dict, program_holder):
+    no_suffix_var_dict = dict()
+    for var_name in var_dict:
+        no_suffix_name = program_holder._suffix_varname_dict[var_name]
+        no_suffix_var_dict[no_suffix_name] = var_dict[var_name]
+    return no_suffix_var_dict
+
+
 def _construct_program_holders(model_path, model_filename=None):
     # make sure the path has been checked
     program_holder_dict = dict()
@@ -517,7 +526,8 @@ def _construct_program_holders(model_path, model_filename=None):
 def _construct_params_and_buffers(model_path,
                                   programs,
                                   separate_params=False,
-                                  params_filename=None):
+                                  params_filename=None,
+                                  append_suffix=True):
     var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
     if os.path.exists(var_info_path):
         var_dict = _load_persistable_vars(model_path, var_info_path,
@@ -526,6 +536,10 @@ def _construct_params_and_buffers(model_path,
     else:
         var_dict = _load_persistable_vars_by_program(
             model_path, programs['forward'], params_filename)
+
+    if not append_suffix:
+        var_dict = _remove_varname_suffix(var_dict, programs['forward'])
+
     return var_dict
 
 
@@ -636,7 +650,7 @@ class TranslatedLayer(layers.Layer):
             )
         if not isinstance(persistable_vars, dict):
             raise TypeError(
-                "TranslatedLayer need to use persisatbale variable dict for initialization."
+                "TranslatedLayer need to use persistable variable dict for initialization."
             )
 
         self._program_holder_dict = programs
@@ -685,7 +699,7 @@ class TranslatedLayer(layers.Layer):
         # 1. load program desc & construct _ProgramHolder
         programs = _construct_program_holders(model_path, model_filename)
 
-        # 2. load layer parameters & parameter attirbutes
+        # 2. load layer parameters & buffers
         persistable_vars = _construct_params_and_buffers(
             model_path, programs, separate_params, params_filename)
 
@@ -753,7 +767,7 @@ class TranslatedLayer(layers.Layer):
                                          core.VarDesc.VarType.STEP_SCOPES, True)
             tmp_scope_vec.value().set_scope(program_holder.scope)
 
-            # 2. run prorgam by op
+            # 2. run program by op
             trace_program = program_holder.infer_program if self._is_test else program_holder.train_program
             end_op_index = program_holder.infer_program.block(0).op_size()
             framework._dygraph_tracer().trace_op(
@@ -774,7 +788,7 @@ class TranslatedLayer(layers.Layer):
             # will be SelectedRows, not LoDTensor. But tracer will just
             # set param grad VarBase by forward VarBase(LoDTensor)
             # If we don't change grad_var type here, RunProgramOp need
-            # transform SelectedRows to LoDTensor forcely, it may not
+            # transform SelectedRows to LoDTensor forcibly, it may not
             # be user wanted result.
             for persistable_var in persistable_vars:
                 grad_var_name = var.name + core.grad_var_suffix()

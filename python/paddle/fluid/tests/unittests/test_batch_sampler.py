@@ -18,6 +18,7 @@ import unittest
 
 import paddle.fluid as fluid
 from paddle.io import BatchSampler, Dataset, Sampler, SequenceSampler, RandomSampler
+from paddle.io import DistributedBatchSampler
 
 
 class RandomDataset(Dataset):
@@ -87,6 +88,18 @@ class TestRandomSampler(unittest.TestCase):
         for i in iter(sampler):
             rets.append(i)
         assert tuple(sorted(rets)) == tuple(range(0, 60))
+
+    def test_with_generator_num_samples(self):
+        dataset = RandomDataset(100, 10)
+        generator = iter(range(0, 60))
+        sampler = RandomSampler(
+            dataset, generator=generator, num_samples=50, replacement=True)
+        assert len(sampler) == 50
+
+        rets = []
+        for i in iter(sampler):
+            rets.append(i)
+        assert tuple(sorted(rets)) == tuple(range(0, 50))
 
 
 class TestBatchSampler(unittest.TestCase):
@@ -180,6 +193,16 @@ class TestBatchSamplerWithSamplerShuffle(unittest.TestCase):
             self.assertTrue(False)
         except AssertionError:
             pass
+
+
+class TestDistributedBatchSamplerWithSampler(TestBatchSampler):
+    def init_batch_sampler(self):
+        dataset = RandomDataset(1000, 10)
+        bs = DistributedBatchSampler(
+            dataset=dataset,
+            batch_size=self.batch_size,
+            drop_last=self.drop_last)
+        return bs
 
 
 if __name__ == '__main__':

@@ -25,7 +25,7 @@ class TestParallelDygraphMnist(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
-        self._dygraph = False  #True
+        self._dygraph = True
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
