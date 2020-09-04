@@ -81,8 +81,8 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     ep_norm.device(*place) = eigen_p.square().sum().sqrt();
     eg_norm.device(*place) = eigen_g.square().sum().sqrt();
     MomentumLarsKernel<<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-        p, g, v, lr, mu, param->numel(), lars_coeff, lars_weight_decay, epsilon,
-        p_norm_data, g_norm_data, p_out, v_out);
+        p, g, v, lr, mu, param->numel(), lars_coeff, lars_weight_decay,
+        p_norm_data, g_norm_data, p_out, v_out, epsilon);
   }
 };
 
