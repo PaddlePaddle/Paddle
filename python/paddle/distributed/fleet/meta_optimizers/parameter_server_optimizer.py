@@ -167,14 +167,11 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         for param_grad_pair in param_grad_pairs:
             param, grad = param_grad_pair
             param_memory_size += param.m_size
-            param_memory_size += grad.m_size
             processed_var_names.add(param.name)
-            processed_var_names.add(grad.name)
-        print("param_grads memory: %d" % param_memory_size)
 
-        upper_mem_use = param_memory_size * 2.5
+        upper_mem_use = param_memory_size * 5.0
 
-        _tmp_vars = dict()
+        program_tmp_vars = dict()
         batch_size = 1024
         for op in program.global_block().ops:
             for var_name in op.output_arg_names:
@@ -198,20 +195,19 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                         data_count *= (-x)
                     else:
                         data_count *= x
-                _tmp_vars[var_name] = (data_count, neg_dim_count,
-                                       dtype_to_size[var.dtype])
+                program_tmp_vars[var_name] = (data_count, neg_dim_count,
+                                              dtype_to_size[var.dtype])
 
-        for varname in _tmp_vars:
-            data_count, neg_dim_count, _ = _tmp_vars[varname]
+        for varname in program_tmp_vars:
+            data_count, neg_dim_count, type_size = program_tmp_vars[varname]
             if neg_dim_count == 1:
                 data_count *= batch_size
-            var_memory = data_count * _
+            var_memory = data_count * type_size
             upper_mem_use += var_memory
-        print("upper mem: %d" % (upper_mem_use))
 
         if upper_mem_use < psutil.virtual_memory().free:
             # auto geo
-            a_sync_configs["k_steps"] = 400
+            a_sync_configs["k_steps"] = 800
         else:
             # auto async
             a_sync_configs["k_steps"] = 0
