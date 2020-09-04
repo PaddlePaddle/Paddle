@@ -489,7 +489,7 @@ class TestBicubicOpError(unittest.TestCase):
                 out = interpolate(
                     x,
                     size=None,
-                    mode='trilinear',
+                    mode='bicubic',
                     align_corners=False,
                     scale_factor=[1, 2, 2])
 
@@ -498,14 +498,24 @@ class TestBicubicOpError(unittest.TestCase):
                 out = interpolate(
                     x,
                     size=None,
-                    mode='trilinear',
+                    mode='bicubic',
                     align_corners=False,
                     scale_factor=None)
+
+            def test_size_and_scale2():
+                x = fluid.data(
+                    name="input", shape=[2, 3, 6, 9, 4], dtype="float32")
+                out = interpolate(
+                    x,
+                    size=[2, 2, 2],
+                    mode='trilinear',
+                    align_corners=False,
+                    scale_factor=2.0)
 
             def test_size_type():
                 x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
                 out = interpolate(
-                    x, size={2, 2}, mode='trilinear', align_corners=False)
+                    x, size={2, 2}, mode='bicubic', align_corners=False)
 
             self.assertRaises(ValueError, test_mode_type)
             self.assertRaises(ValueError, test_input_shape)
@@ -522,7 +532,8 @@ class TestBicubicOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_scale_shape)
             self.assertRaises(ValueError, test_scale_value)
             self.assertRaises(ValueError, test_size_and_scale)
-            self.assertRaises(ValueError, test_size_type)
+            self.assertRaises(ValueError, test_size_and_scale2)
+            self.assertRaises(TypeError, test_size_type)
 
 
 if __name__ == "__main__":
