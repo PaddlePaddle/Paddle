@@ -202,6 +202,10 @@ list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 
+
+
+list(REMOVE_ITEM TEST_OPS test_sampling_id_op)
+
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
 LIST(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
