@@ -393,8 +393,8 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
-                "uniform only supports [float32, float64], but the default dtype is %s"
-                % dtype)
+                "uniform/rand only supports [float32, float64], but the default dtype is {}".
+                format(dtype))
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -405,15 +405,15 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
                                        float(min), 'max',
                                        float(max), 'seed', seed, 'dtype', dtype)
 
-    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
-    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random/rand')
+    check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')
+    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform/rand')
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
     utils.get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform_random/rand')
+        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform/rand')
 
-    helper = LayerHelper("uniform_random", **locals())
+    helper = LayerHelper("uniform", **locals())
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="uniform_random", inputs=inputs, attrs=attrs,
