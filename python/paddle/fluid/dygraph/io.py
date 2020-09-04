@@ -625,6 +625,7 @@ class TranslatedLayer(layers.Layer):
 
             # fine-tune
             translated_layer.train()
+            adam = opt.Adam(learning_rate=0.001, parameters=translated_layer.parameters())
             train(translated_layer, loader, loss_fn, adam)
 
     """
