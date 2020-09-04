@@ -206,11 +206,6 @@ list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 
 list(REMOVE_ITEM TEST_OPS test_sampling_id_op)
 
-LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
-LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
-LIST(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
-LIST(REMOVE_ITEM TEST_OPS test_dataloader_auto_checkpoint)
-LIST(REMOVE_ITEM TEST_OPS test_dataloader_auto_checkpoint2)
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
@@ -256,6 +251,11 @@ set(TEST_OPS_WITH_GC
   test_space_to_depth_op
   test_squared_l2_distance_op)
 
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
+LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
+LIST(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
+LIST(REMOVE_ITEM TEST_OPS test_dataloader_auto_checkpoint)
+LIST(REMOVE_ITEM TEST_OPS test_dataloader_auto_checkpoint2)
 if (APPLE OR WIN32)
   LIST(REMOVE_ITEM TEST_OPS test_hdfs)
   LIST(REMOVE_ITEM TEST_OPS test_fs_interface)
