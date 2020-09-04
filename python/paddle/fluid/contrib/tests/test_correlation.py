@@ -69,9 +69,17 @@ class TestCorrelationOp(unittest.TestCase):
         x_shape = (2, 10, 3, 3)
         x_type = 'float32'
         x1 = fluid.layers.data(
-            name='x1', shape=x_shape, dtype=x_type, append_batch_size=False)
+            name='x1',
+            shape=x_shape,
+            dtype=x_type,
+            append_batch_size=False,
+            stop_gradient=False)
         x2 = fluid.layers.data(
-            name='x2', shape=x_shape, dtype=x_type, append_batch_size=False)
+            name='x2',
+            shape=x_shape,
+            dtype=x_type,
+            append_batch_size=False,
+            stop_gradient=False)
 
         x1_np = np.random.randn(2, 3, 4, 5).astype(x_type)
         x2_np = np.random.randn(2, 3, 4, 5).astype(x_type)
@@ -93,9 +101,15 @@ class TestCorrelationOp(unittest.TestCase):
             stride1=1,
             stride2=1)
 
+        loss = fluid.layers.reduce_mean(out)
+        optimizer = fluid.optimizer.Momentum(0.0001, 0.9)
+        optimizer.minimize(loss)
+
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
-        res = exe.run(feed={'x1': x1_np, 'x2': x2_np}, fetch_list=[out.name])
+        res = exe.run(feed={'x1': x1_np,
+                            'x2': x2_np},
+                      fetch_list=[out.name, loss.name])
 
         self.assertTrue(np.allclose(res[0], out_np))
 
