@@ -62,6 +62,8 @@ def corr(x_1,
 
 class TestCorrelationOp(unittest.TestCase):
     def test_check_output(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
         np.random.seed(13)
         np.set_printoptions(threshold=np.inf)
         x_shape = (2, 10, 3, 3)
@@ -116,6 +118,8 @@ class Net(fluid.dygraph.Layer):
 
 class TestCorrelationOpDyGraph(unittest.TestCase):
     def test_check_output(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
         np.random.seed(13)
         np.set_printoptions(threshold=np.inf)
         x_shape = (2, 10, 3, 3)
