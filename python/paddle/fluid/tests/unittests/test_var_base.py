@@ -534,10 +534,10 @@ class TestVarBaseInplaceVersion(unittest.TestCase):
         var = paddle.ones(shape=[4, 2, 3], dtype="float32")
         self.assertEqual(var.inplace_version, 0)
 
-        var.bump_inplace_version()
+        var._bump_inplace_version()
         self.assertEqual(var.inplace_version, 1)
 
-        var.bump_inplace_version()
+        var._bump_inplace_version()
         self.assertEqual(var.inplace_version, 2)
 
 

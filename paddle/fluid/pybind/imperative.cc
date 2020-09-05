@@ -643,7 +643,7 @@ void BindImperative(py::module *m_ptr) {
 
              return var->InplaceVersionCounter().CurrentVersion();
            })
-      .def("bump_inplace_version",
+      .def("_bump_inplace_version",
            [](std::shared_ptr<imperative::VarBase> &self) {
              // NOTE(liym27): bump_version is only used for inplace operation
              BumpInplaceVersion(self);

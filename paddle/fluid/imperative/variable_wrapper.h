@@ -133,15 +133,15 @@ class VariableWrapper {
     }
   }
 
-  uint32_t InplaceVersion() const { return wrapper_inplace_version_; }
+  uint32_t InplaceVersion() const { return inplace_version_snapshot_; }
 
   void SetInplaceVersion(std::shared_ptr<VariableWrapper> wrapper) {
     auto new_version =
         wrapper->MutableVar()->InplaceVersionCounter().CurrentVersion();
     VLOG(6) << "The wrapper version of VariableWrapper '" << name_
-            << "' will be updated from " << wrapper_inplace_version_ << "to "
+            << "' will be updated from " << inplace_version_snapshot_ << "to "
             << new_version;
-    wrapper_inplace_version_ = new_version;
+    inplace_version_snapshot_ = new_version;
   }
 
  private:
@@ -179,7 +179,7 @@ class VariableWrapper {
   int overrided_stop_gradient_{-1};
   bool persistable_{false};
 
-  uint32_t wrapper_inplace_version_ = 0;
+  uint32_t inplace_version_snapshot_ = 0;
 
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};
