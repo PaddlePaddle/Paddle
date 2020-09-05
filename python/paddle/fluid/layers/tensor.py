@@ -606,7 +606,7 @@ def assign(input, output=None):
             })
 
     if is_inplace and in_dygraph_mode():
-        output.bump_inplace_version()
+        output._bump_inplace_version()
 
     return output
 
