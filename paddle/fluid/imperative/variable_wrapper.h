@@ -27,7 +27,7 @@ class GradOpNode;
 class VariableWrapper {
  public:
   friend class VarBase;
-
+  VariableWrapper(VariableWrapper&) = default;
   explicit VariableWrapper(const std::string& name) : name_(name) {}
 
   const framework::Variable& Var() const { return var_; }
@@ -135,9 +135,9 @@ class VariableWrapper {
 
   uint32_t InplaceVersion() const { return inplace_version_snapshot_; }
 
-  void SetInplaceVersion(std::shared_ptr<VariableWrapper> wrapper) {
-    auto new_version =
-        wrapper->MutableVar()->InplaceVersionCounter().CurrentVersion();
+  void ResetInplaceVersion() {
+    auto new_version = var_.InplaceVersionCounter().CurrentVersion();
+
     VLOG(6) << "The wrapper version of VariableWrapper '" << name_
             << "' will be updated from " << inplace_version_snapshot_ << "to "
             << new_version;
@@ -179,7 +179,9 @@ class VariableWrapper {
   int overrided_stop_gradient_{-1};
   bool persistable_{false};
 
-  uint32_t inplace_version_snapshot_ = 0;
+  // Used for checking whether there is any inplace operation affecting gradient
+  // calculation.
+  uint32_t inplace_version_snapshot_{0};
 
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};

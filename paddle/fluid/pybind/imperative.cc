@@ -640,7 +640,6 @@ void BindImperative(py::module *m_ptr) {
                  platform::errors::InvalidArgument(
                      "Tensor of %s is Empty, please check if it has no data.",
                      self.Name()));
-
              return var->InplaceVersionCounter().CurrentVersion();
            })
       .def("_bump_inplace_version",

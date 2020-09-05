@@ -313,10 +313,10 @@ class TracedGradOp {
       const std::vector<std::shared_ptr<VariableWrapper>>& var_wrappers) {
     std::vector<std::shared_ptr<VariableWrapper>> result;
     result.reserve(var_wrappers.size());
-    for (auto& var : var_wrappers) {
-      std::shared_ptr<VariableWrapper> new_var(var);
-      new_var->SetInplaceVersion(var);
-      result.emplace_back(new_var);
+    for (auto& var_wrapper : var_wrappers) {
+      VariableWrapper new_var_wrapper = *var_wrapper.get();
+      new_var_wrapper.ResetInplaceVersion();
+      result.emplace_back(std::make_shared<VariableWrapper>(new_var_wrapper));
     }
     return result;
   }
