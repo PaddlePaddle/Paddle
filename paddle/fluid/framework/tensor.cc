@@ -20,7 +20,6 @@ namespace framework {
 extern size_t SizeOfType(proto::VarType::Type type);
 void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(holder_, platform::errors::PreconditionNotMet(
-                                       "The `holder_` of Tensor is nullptr. "
                                        "Tensor holds no memory. "
                                        "Call Tensor::mutable_data firstly."));
   PADDLE_ENFORCE_LE(
@@ -42,11 +41,12 @@ size_t Tensor::memory_size() const {
 void* Tensor::mutable_data(const platform::Place& place,
                            proto::VarType::Type type, size_t requested_size) {
   type_ = type;
-  PADDLE_ENFORCE_GE(numel(), 0, platform::errors::PreconditionNotMet(
-                                    "The Tensor's element number must be "
-                                    "equal or larger than zero. "
-                                    "The Tensor's shape is [",
-                                    dims(), "] now"));
+  PADDLE_ENFORCE_GE(
+      numel(), 0,
+      platform::errors::PreconditionNotMet(
+          "The Tensor's element number must be equal or larger than zero. "
+          "The Tensor's shape is [",
+          dims(), "] now"));
   size_t size = numel() * SizeOfType(type);
   if (requested_size) {
     PADDLE_ENFORCE_GE(
