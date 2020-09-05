@@ -43,6 +43,42 @@ namespace framework {
 
 class LoDTensor;
 
+/*
+ NOTE(liym27): [ What is TensorInplaceVersion used for? ]
+
+ TensorInplaceVersion is a version counter and every Tensor has a version
+ counter. It's used to check whether an inplace operation will result in an
+ incorrect gradient calculation. Version is incemented when the data of the
+ Variable is modified in place.
+
+ - Question: In what scenarios will version counters be shared?
+ - Answer: When two Variables/VarBases share the same C++ Tensor(may be not the
+ same Allocation), both of them share the same version counter. For examples:
+  1. `z = paddle.assign(input=x, output=y)`, `z` shares the same version counter
+    of `y` because z and y is the same VarBase;
+  2. `y = x.detach()`, `y` shares the same version counter of `x`.
+
+ - Question: In what scenarios will version counters NOT be shared?
+ - Answer: Replacing a `Variable`'s data by calling Tensor::ShareDataWith(...)`.
+    Because `Tensor::ShareDataWith(...)` only shares Allocation but not
+    framework::Tensor.
+
+ - Question: Why put the inplace_version_counter_ in framework::Tensor instead
+ of Allocation or Variable?
+*/
+
+class TensorInplaceVersion {
+ public:
+  explicit TensorInplaceVersion(uint32_t inplace_version = 0)
+      : inplace_version_(inplace_version) {}
+  bool IsUnique() const { return inplace_version_ == 0; }
+  void Bump() { ++inplace_version_; }
+  uint32_t CurrentVersion() const { return inplace_version_; }
+
+ private:
+  uint32_t inplace_version_;
+};
+
 class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
@@ -189,6 +225,9 @@ class Tensor {
 
   void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
                            const proto::VarType::Type type);
+  TensorInplaceVersion& InplaceVersionCounter() {
+    return inplace_version_counter_;
+  }
 
  private:
   /*! holds the memory block if allocated. */
@@ -225,6 +264,7 @@ class Tensor {
    *          PlaceHolder::ptr_ and where the tensor data really begins.
    */
   size_t offset_;
+  TensorInplaceVersion inplace_version_counter_;
 };
 
 }  // namespace framework

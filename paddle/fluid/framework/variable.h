@@ -18,29 +18,10 @@
 #include <typeindex>
 #include <typeinfo>
 
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type_traits.h"
-
 namespace paddle {
 namespace framework {
-
-// NOTE(liym27): [ What is VariableInplaceVersion used for? ]
-//
-// VariableInplaceVersion is a version counter and every Variable has a version
-// counter.
-// It's used to check whether an inplace operation will result in an incorrect
-// gradient calculation.
-// Version is incemented when the data of the Variable is modified in place.
-class VariableInplaceVersion {
- public:
-  explicit VariableInplaceVersion(uint32_t inplace_version = 0)
-      : inplace_version_(inplace_version) {}
-  bool IsUnique() const { return inplace_version_ == 0; }
-  void Bump() { ++inplace_version_; }
-  uint32_t CurrentVersion() const { return inplace_version_; }
-
- private:
-  uint32_t inplace_version_;
-};
 
 class Variable {
  public:
@@ -88,9 +69,14 @@ class Variable {
     return holder_->Type();
   }
 
-  VariableInplaceVersion& InplaceVersionCounter() {
-    return inplace_version_counter_;
-  }
+ private:
+  // This method hides type T, so it doesn't appear as a template parameter of
+  // Variable.
+  framework::TensorInplaceVersion& InplaceVersionCounter();
+
+ public:
+  uint32_t CurrentInplaceVersion();
+  void BumpInplaceVersion();
 
  private:
   struct Placeholder {
@@ -124,9 +110,48 @@ class Variable {
   };
 
   // pointers to a PlaceholderImpl object indeed.
-  std::unique_ptr<Placeholder> holder_;
-  VariableInplaceVersion inplace_version_counter_;
+  std::shared_ptr<Placeholder> holder_;
 };
+
+inline framework::TensorInplaceVersion& Variable::InplaceVersionCounter() {
+  if (IsType<framework::Tensor>()) {
+    return GetMutable<framework::Tensor>()->InplaceVersionCounter();
+  } else if (IsType<framework::LoDTensor>()) {
+    return GetMutable<framework::LoDTensor>()->InplaceVersionCounter();
+  } else if (IsType<framework::SelectedRows>()) {
+    return GetMutable<framework::SelectedRows>()
+        ->mutable_value()
+        ->InplaceVersionCounter();
+  } else if (IsType<framework::LoDTensorArray>()) {
+    auto tensor_array = GetMutable<framework::LoDTensorArray>();
+    return tensor_array->at(0).InplaceVersionCounter();
+  } else {
+    // NOTE(liym27): Other types of data are not supported, like Scope.
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Only supports Tensor, LoDTensor, SelectedRows and "
+        "LoDTensorArray to have TensorInplaceVersion."));
+  }
+}
+inline uint32_t Variable::CurrentInplaceVersion() {
+  try {
+    return InplaceVersionCounter().CurrentVersion();
+  } catch (platform::EnforceNotMet& exception) {
+    // Don't print exception.what() because it contains too much information,
+    // including C++ traceback.
+    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows and "
+               "LoDTensorArray to have TensorInplaceVersion.";
+    return 0;
+  }
+}
+
+inline void Variable::BumpInplaceVersion() {
+  try {
+    InplaceVersionCounter().Bump();
+  } catch (platform::EnforceNotMet& exception) {
+    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows and "
+               "LoDTensorArray to have TensorInplaceVersion.";
+  }
+}
 
 }  // namespace framework
 }  // namespace paddle

@@ -400,7 +400,7 @@ void BumpInplaceVersion(std::shared_ptr<imperative::VarBase> var) {
       platform::errors::InvalidArgument(
           "Tensor %s has not been initialized, please check if it has no data.",
           var->Name()));
-  var->MutableVar()->InplaceVersionCounter().Bump();
+  var->MutableVar()->BumpInplaceVersion();
 }
 
 }  // namespace imperative

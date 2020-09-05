@@ -34,8 +34,10 @@ class TestInplace(unittest.TestCase):
 
             # NOTE(liym27): assign(input, output) is an inplace operation for output.
             # There is inplace-related processing for api assign, var.inplace_version should be 2 not 1.
-
             self.assertEqual(var.inplace_version, 2)
+
+            var[2] = 3
+            self.assertEqual(var.inplace_version, 3)
 
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
@@ -50,10 +52,13 @@ class TestInplace(unittest.TestCase):
             var_c = var_b**2
             var_b[1:2] = 3.3  # var_b is modified inplace after using it
 
-            loss = paddle.nn.functional.relu(var_c)
+            var_d = var_b**2
+
+            loss = paddle.nn.functional.relu(var_c + var_d)
             with self.assertRaisesRegexp(
-                    core.EnforceNotMet,
-                    "received variable_version:1 != wrapper_version:0"):
+                    RuntimeError,
+                    "received tensor_version:{} != wrapper_version_snapshot:{}".
+                    format(1, 0)):
                 loss.backward()
 
     def test_backward_success_1(self):

@@ -313,10 +313,22 @@ class TracedGradOp {
       const std::vector<std::shared_ptr<VariableWrapper>>& var_wrappers) {
     std::vector<std::shared_ptr<VariableWrapper>> result;
     result.reserve(var_wrappers.size());
+
     for (auto& var : var_wrappers) {
-      std::shared_ptr<VariableWrapper> new_var(var);
-      new_var->SetInplaceVersion(var);
-      result.emplace_back(new_var);
+      // NOTE(liym27):
+      //  Emplace back original var_wrapper if its inplace_version is not
+      //  changed.
+      //  Otherwise, it will affect the accuracy of the model results and affect
+      //  double grad.
+      if (!var->MutableVar()->IsInitialized() ||
+          var->InplaceVersionSnapshot() ==
+              var->MutableVar()->CurrentInplaceVersion()) {
+        result.emplace_back(var);
+      } else {
+        VariableWrapper new_var_wrapper = *var.get();
+        new_var_wrapper.ResetInplaceVersion();
+        result.emplace_back(std::make_shared<VariableWrapper>(new_var_wrapper));
+      }
     }
     return result;
   }
