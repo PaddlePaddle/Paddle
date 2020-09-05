@@ -23,6 +23,7 @@ import sys
 import subprocess
 from contextlib import closing
 import socket
+import paddle.fluid as fluid
 
 logger = logging.getLogger("root")
 logger.propagate = False
@@ -144,6 +145,7 @@ class Pod(object):
         self.trainers = []
         self.servers = []
         self.workers = []
+        self.heter_workers = []
         self.gpus = []
 
     def __str__(self):
@@ -257,7 +259,7 @@ def terminate_local_procs(procs):
                 p.log_fn.close()
             logger.debug("terminate process id:{}".format(p.proc.pid))
 
-    #wait all process terminiated
+    # wait all process terminiated
     time.sleep(3)
     for step in range(0, 50):
         alive = False
@@ -394,10 +396,10 @@ def start_local_trainers(cluster,
                          training_script_args,
                          log_dir=None):
     current_env = copy.copy(os.environ.copy())
-    #paddle broadcast ncclUniqueId use socket, and
-    #proxy maybe make trainers unreachable, so delete them.
-    #if we set them to "", grpc will log error message "bad uri"
-    #so just delete them.
+    # paddle broadcast ncclUniqueId use socket, and
+    # proxy maybe make trainers unreachable, so delete them.
+    # if we set them to "", grpc will log error message "bad uri"
+    # so just delete them.
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
@@ -502,3 +504,198 @@ def watch_local_trainers(procs, nranks):
         raise
 
     return alive
+
+
+def port_check(port, ip=os.getenv("POD_IP", "127.0.0.1")):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.connect((ip, port))
+        s.shutdown(2)
+        print('Failed: %s:%d is Unavailable' % (ip, port))
+        return False
+    except Exception as e:
+        print('Success: %s:%d is Available' % (ip, port))
+        return True
+
+
+def get_user_define_endpoints(offset=0):
+    """
+    origin_endpoint: ip:port
+    user_define_endpoint: ip:(port+offset)
+    """
+    paddle_trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
+    assert paddle_trainer_endpoints != None
+    paddle_user_define_endpoints_list = []
+    for ip_port in paddle_trainer_endpoints.split(","):
+        ip = ip_port.split(":")[0]
+        port = ip_port.split(":")[1]
+        new_port = int(port) + offset
+        paddle_user_define_endpoints_list.append(":".join((ip, str(new_port))))
+    paddle_user_define_endpoints = ",".join(paddle_user_define_endpoints_list)
+    return paddle_user_define_endpoints
+
+
+def heter_cloud_env_set(args):
+    mode = args.distributed_mode
+    paddle_trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
+    assert paddle_trainer_endpoints != None
+
+    environs = {}
+    current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+
+    paddle_server_endpoints = get_user_define_endpoints(1)
+    current_ip_port = paddle_server_endpoints.split(",")[current_id]
+    port = int(current_ip_port.split(":")[1])
+    assert port_check(port) == True
+    environs["PADDLE_PSERVERS_IP_PORT_LIST"] = paddle_server_endpoints
+    environs["PADDLE_PSERVER_PORT"] = port
+
+    if mode == "ps_heter":
+        paddle_heter_worker_endpoints = get_user_define_endpoints(2)
+        current_heter_ip_port = paddle_heter_worker_endpoints.split(",")[
+            current_id]
+        heter_port = int(current_heter_ip_port.split(":")[1])
+        assert port_check(heter_port) == True
+        environs[
+            "PADDLE_HETER_TRAINER_IP_PORT_LIST"] = paddle_heter_worker_endpoints
+        environs["PADDLE_HETER_TRAINER_DEVICE"] = args.heter_worker_device
+        environs["PADDLE_HETER_TRAINER_PORT"] = heter_port
+
+    for k, v in environs.items():
+        os.environ[k] = str(v)
+    logger.info("Set heter parameter server env: {}".format(
+        pretty_print_envs(environs)))
+
+
+def heter_local_env_set(args):
+    mode = args.distributed_mode
+    server_port_list = list(find_free_ports(args.server_num))
+    trainer_port_list = list(find_free_ports(args.worker_num))
+    heter_worker_port_list = list(find_free_ports(args.heter_worker_num))
+    local_ip = "127.0.0.1"
+
+    pserver_ip_port_list = []
+    for i in range(args.server_num):
+        pserver_ip_port_list.append(":".join((local_ip, str(server_port_list[i])
+                                              )))
+
+    trainer_ip_port_list = []
+    for i in range(args.worker_num):
+        trainer_ip_port_list.append(":".join((local_ip, str(trainer_port_list[
+            i]))))
+
+    heter_worker_ip_port_list = []
+    for i in range(args.heter_worker_num):
+        heter_worker_ip_port_list.append(":".join((local_ip, str(
+            heter_worker_port_list[i]))))
+
+    environs = {}
+    environs["PADDLE_PSERVERS_IP_PORT_LIST"] = ",".join(pserver_ip_port_list)
+    environs["PADDLE_TRAINER_ENDPOINTS"] = ",".join(trainer_ip_port_list)
+    environs["PADDLE_HETER_TRAINER_IP_PORT_LIST"] = ",".join(
+        trainer_ip_port_list)
+    environs["POD_IP"] = local_ip
+    environs["PADDLE_HETER_TRAINER_DEVICE"] = args.heter_worker_device
+    environs["PADDLE_TRAINERS_NUM"] = str(args.worker_num)
+    for k, v in environs.items():
+        os.environ[k] = str(v)
+
+    logger.info("Set heter parameter server env: {}".format(
+        pretty_print_envs(environs)))
+
+
+def start_server(args, server_idx, current_env):
+    proc_env = {
+        "TRAINING_ROLE": "PSERVER",
+        "PADDLE_PORT": os.getenv("PADDLE_PSERVERS_IP_PORT_LIST").split(",")[
+            server_idx].split(":")[1]
+    }
+    current_env.update(proc_env)
+    cmd = [sys.executable, "-u", args.training_script
+           ] + args.training_script_args
+
+    if args.log_dir is not None:
+        os.system("mkdir -p {}".format(args.log_dir))
+        fn = open("%s/serverlog.%d" % (args.log_dir, server_idx), "w")
+        proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
+    else:
+        proc = subprocess.Popen(cmd, env=current_env)
+
+    tp = TrainerProc()
+    tp.proc = proc
+    tp.rank = server_idx
+    tp.local_rank = server_idx
+    tp.log_fn = fn
+    tp.log_offset = fn.tell() if fn else None
+    tp.cmd = cmd
+    return tp, cmd, fn
+
+
+def start_trainer(args, trainer_idx, current_env, use_paddlecloud):
+    if use_paddlecloud:
+        gpu_id = 0
+    else:
+        cuda_device_num = fluid.core.get_cuda_device_count()
+        gpu_id = trainer_idx % cuda_device_num
+
+    proc_env = {
+        "PADDLE_TRAINER_ID": str(trainer_idx),
+        "TRAINING_ROLE": "TRAINER",
+        "PADDLE_PORT": os.getenv("PADDLE_TRAINER_ENDPOINTS").split(",")[
+            trainer_idx].split(":")[1],
+        "FLAGS_selected_gpus": str(gpu_id),
+    }
+    current_env.update(proc_env)
+    cmd = [sys.executable, "-u", args.training_script
+           ] + args.training_script_args
+
+    if args.log_dir is not None:
+        os.system("mkdir -p {}".format(args.log_dir))
+        fn = open("%s/workerlog.%d" % (args.log_dir, trainer_idx), "w")
+        proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
+    else:
+        proc = subprocess.Popen(cmd, env=current_env)
+
+    tp = TrainerProc()
+    tp.proc = proc
+    tp.rank = trainer_idx
+    tp.local_rank = trainer_idx
+    tp.log_fn = fn
+    tp.log_offset = fn.tell() if fn else None
+    tp.cmd = cmd
+    return tp, cmd, fn
+
+
+def start_heter_trainer(args, heter_trainer_idx, current_env, use_paddlecloud):
+    if use_paddlecloud:
+        gpu_id = 0
+    else:
+        cuda_device_num = fluid.core.get_cuda_device_count()
+        gpu_id = heter_trainer_idx % cuda_device_num
+
+    proc_env = {
+        "TRAINING_ROLE": "HETER_TRAINER",
+        "PADDLE_PORT": os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST").split(",")
+        [heter_trainer_idx].split(":")[1],
+        "FLAGS_selected_gpus": str(gpu_id)
+    }
+
+    current_env.update(proc_env)
+    cmd = [sys.executable, "-u", args.training_script
+           ] + args.training_script_args
+
+    if args.log_dir is not None:
+        os.system("mkdir -p {}".format(args.log_dir))
+        fn = open("%s/heterlog.%d" % (args.log_dir, heter_trainer_idx), "w")
+        proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
+    else:
+        proc = subprocess.Popen(cmd, env=current_env)
+
+    tp = TrainerProc()
+    tp.proc = proc
+    tp.rank = heter_trainer_idx
+    tp.local_rank = heter_trainer_idx
+    tp.log_fn = fn
+    tp.log_offset = fn.tell() if fn else None
+    tp.cmd = cmd
+    return tp, cmd, fn

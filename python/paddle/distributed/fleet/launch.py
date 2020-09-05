@@ -87,7 +87,33 @@ def _parse_args():
 see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/training/cluster_howto.html#permalink-8--nccl2-
 ''')
 
-    #Optional arguments for the launch helper
+    parser.add_argument(
+        "--log_dir",
+        type=str,
+        default="log",
+        help="The path for each process's log.If it's not set, the log will printed to default pipe."
+    )
+
+    parser.add_argument(
+        "training_script",
+        type=str,
+        help="The full path to the single GPU training "
+        "program/script to be launched in parallel, "
+        "followed by all the arguments for the "
+        "training script")
+
+    parser.add_argument('training_script_args', nargs=REMAINDER)
+
+    parser.add_argument(
+        "-d",
+        "--distributed_mode",
+        type=str,
+        choices=["collective", "ps", "ps_heter", "ps_gpu", ""],
+        default="",
+        help="Distributed running mode: collective/ps/ps_gpu/ps_heter")
+
+    # collective
+
     parser.add_argument(
         "--ips",
         type=str,
@@ -101,31 +127,26 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "each process is bound to a single GPU. And if it's not set, this module will use all the gpu cards for training."
     )
 
+    # parameter server
     parser.add_argument(
         "--servers", type=str, default="", help="User defined servers ip:port")
     parser.add_argument(
         "--workers", type=str, default="", help="User defined workers ip:port")
-    parser.add_argument("--worker_num", type=int, help="number of workers")
-
-    parser.add_argument("--server_num", type=int, help="number of servers")
 
     parser.add_argument(
-        "--log_dir",
-        type=str,
-        default="log",
-        help="The path for each process's log.If it's not set, the log will printed to default pipe."
-    )
-    #positional
+        "--worker_num", type=int, default=2, help="number of workers")
     parser.add_argument(
-        "training_script",
-        type=str,
-        help="The full path to the single GPU training "
-        "program/script to be launched in parallel, "
-        "followed by all the arguments for the "
-        "training script")
+        "--server_num", type=int, default=2, help="number of servers")
 
-    #rest from the training program
-    parser.add_argument('training_script_args', nargs=REMAINDER)
+    parser.add_argument(
+        "--heter_worker_num", type=int, default=2, help="num of heter workers")
+    parser.add_argument(
+        "--heter_worker_device",
+        type=str,
+        default="gpu",
+        choices=["gpu", "xpu"],
+        help="heter worker device")
+
     return parser.parse_args()
 
 
@@ -138,7 +159,7 @@ def get_cluster_from_args(args, gpus):
 
     # node_ip = args.node_ip
     assert node_ip in node_ips, "Can't find your local ip {%s} in node_ips: {%s}" \
-                % (node_ip, node_ips)
+        % (node_ip, node_ips)
     node_rank = node_ips.index(node_ip)
 
     logger.debug("parsed from args: node_ips:{} node_ip:{} node_rank:{}".format(
@@ -175,8 +196,8 @@ def get_gpus(gpus):
             cuda_visible_devices_list = cuda_visible_devices.split(',')
             for x in gpus.split(','):
                 assert x in cuda_visible_devices_list, "Can't find "\
-                "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
-                % (x, cuda_visible_devices)
+                    "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                    % (x, cuda_visible_devices)
             gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in gpus.split(',')
@@ -225,6 +246,31 @@ def launch_collective(args):
 
 
 def launch_ps(args):
+    cloud_flag = cloud_utils.use_paddlecloud()
+
+    if args.distributed_mode == "ps":
+        if cloud_flag:
+            # run ps mode on paddlecloud, do nothing
+            cmd = [sys.executable, "-u", args.training_script] + \
+                args.training_script_args
+            proc = subprocess.Popen(cmd)
+            proc.wait()
+            return
+        else:
+            # run ps_cpu mode in given args
+            launch_ps_cpu(args)
+            return
+
+    # for ps heter mode launch
+    if cloud_flag:
+        heter_cloud_env_set(args)
+    else:
+        heter_local_env_set(args)
+
+    launch_ps_heter(args, cloud_flag)
+
+
+def launch_ps_cpu(args):
     ports = None
     start_port = 6170
     if args.server_num:
@@ -273,7 +319,7 @@ def launch_ps(args):
         _, current_node_ip = get_host_name_ip()
 
     assert current_node_ip in node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
-                % (current_node_ip, node_ips)
+        % (current_node_ip, node_ips)
     node_rank = node_ips.index(current_node_ip)
     logger.debug(
         "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}, server_ports:{}".
@@ -410,6 +456,107 @@ def launch_ps(args):
     print("all parameter server are killed", file=sys.stderr)
 
 
+def launch_ps_heter(args, use_paddlecloud):
+    default_env = os.environ.copy()
+    current_env = copy.copy(default_env)
+    current_env.pop("http_proxy", None)
+    current_env.pop("https_proxy", None)
+
+    procs = []
+    cmds = []
+    log_fns = []
+
+    server_proc_idx_list = []
+    trainer_proc_idx_list = []
+    heter_proc_idx_list = []
+    idx = 0
+
+    if use_paddlecloud:
+        # for paddlecloud k8s
+        current_ip = os.getenv("POD_IP")
+        current_port = os.getenv("PADDLE_PORT")
+        current_idx = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(",").index(
+            ":".join((current_ip, current_port)))
+
+        server_tp, server_cmd, server_fn = start_server(args, current_idx,
+                                                        current_env)
+        procs.append(server_tp)
+        cmds.append(server_cmd)
+        log_fns.append(server_fn)
+        server_proc_idx_list.append(idx)
+        idx += 1
+
+        trainer_tp, trainer_cmd, trainer_fn = start_trainer(
+            args, current_idx, current_env, use_paddlecloud)
+        procs.append(trainer_tp)
+        cmds.append(trainer_cmd)
+        log_fns.append(trainer_fn)
+        trainer_proc_idx_list.append(idx)
+        idx += 1
+
+        if args.distributed_mode == "ps_heter":
+            heter_tp, heter_cmd, heter_fn = start_heter_trainer(
+                args, current_idx, current_env, use_paddlecloud)
+            procs.append(heter_tp)
+            cmds.append(heter_cmd)
+            log_fns.append(heter_fn)
+            heter_proc_idx_list.append(idx)
+            idx += 1
+
+    else:
+        for current_idx in range(args.server_num):
+            server_tp, server_cmd, server_fn = start_server(args, current_idx,
+                                                            current_env)
+            procs.append(server_tp)
+            cmds.append(server_cmd)
+            log_fns.append(server_fn)
+            server_proc_idx_list.append(idx)
+            idx += 1
+
+        for current_idx in range(args.worker_num):
+            trainer_tp, trainer_cmd, trainer_fn = start_trainer(
+                args, current_idx, current_env, use_paddlecloud)
+            procs.append(trainer_tp)
+            cmds.append(trainer_cmd)
+            log_fns.append(trainer_fn)
+            trainer_proc_idx_list.append(idx)
+            idx += 1
+
+        if args.distributed_mode == "ps_heter":
+            for current_idx in range(args.heter_worker_num):
+                heter_tp, heter_cmd, heter_fn = start_heter_trainer(
+                    args, current_idx, current_env, use_paddlecloud)
+                procs.append(heter_tp)
+                cmds.append(heter_cmd)
+                log_fns.append(heter_fn)
+                heter_proc_idx_list.append(idx)
+                idx += 1
+
+    logger.info(
+        "Please check servers and workers logs in {}/workerlog.* and {}/serverlog.* and {}/heterlog.*".
+        format(args.log_dir, args.log_dir, args.log_dir))
+
+    # only wait worker to finish here
+    for i in trainer_proc_idx_list:
+        procs[i].proc.wait()
+
+    for log in log_fns:
+        log.close()
+
+    if args.distributed_mode == "ps_heter":
+        print(
+            "all workers exit, going to finish heter trainer", file=sys.stderr)
+        procs[i].proc.terminate()
+
+    for i in server_proc_idx_list:
+        print(
+            "all workers exit, going to finish parameter server",
+            file=sys.stderr)
+        procs[i].proc.terminate()
+
+    print("all parameter server are killed", file=sys.stderr)
+
+
 def launch():
     args = _parse_args()
     logger = get_logger()
@@ -424,19 +571,20 @@ def launch():
         if co_arg in " ".join(sys.argv[1:-1])
     ]
     cuda_device_num = fluid.core.get_cuda_device_count()
-    if len(has_ps_args) > 0 or cuda_device_num == 0:
+
+    if len(has_ps_args
+           ) > 0 or args.distributed_mode in ["ps", "ps_gpu", "ps_heter"]:
         logger.info(
-            "Run parameter-sever cpu mode. pserver arguments:{}, cuda count:{}".
+            "Run parameter-sever mode. pserver arguments:{}, cuda count:{}".
             format(has_ps_args, cuda_device_num))
         launch_ps(args)
-    elif len(has_collective_args) > 0:
+    elif len(has_collective_args) > 0 or args.distributed_mode == "collective":
         logger.info("Run collective gpu mode. gpu arguments:{}, cuda count:{}".
                     format(has_collective_args, cuda_device_num))
         launch_collective(args)
-    else:
-        logger.warning(
-            "Not found distinct arguments. Default use gpu collective mode")
-        launch_collective(args)
+    logger.warning(
+        "Not found distinct arguments. Default use gpu collective mode")
+    launch_collective(args)
 
 
 if __name__ == "__main__":
