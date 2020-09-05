@@ -1616,7 +1616,7 @@ def clip(x, min=None, max=None, name=None):
 
     helper = LayerHelper('clip', **locals())
     output = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype())
+        dtype=helper.input_dtype('x'))
     helper.append_op(
         type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
 
