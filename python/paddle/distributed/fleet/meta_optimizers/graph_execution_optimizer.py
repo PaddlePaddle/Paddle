@@ -148,9 +148,6 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
 
         sync_allreduce = dist_strategy.sync_nccl_allreduce
         if sync_allreduce:
-            paddle.fluid.framework.set_flags({
-                "FLAGS_sync_nccl_allreduce": True
-            })
             exe_strategy.num_threads = local_build_strategy.nccl_comm_num + 1
             if local_build_strategy.use_hierarchical_allreduce:
                 exe_strategy.num_threads = 2 * local_build_strategy.nccl_comm_num + 1
