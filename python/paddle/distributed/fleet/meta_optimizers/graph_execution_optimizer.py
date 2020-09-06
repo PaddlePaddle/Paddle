@@ -191,7 +191,11 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
 
     def _disable_strategy(self, dist_strategy):
         # TODO(guru4elephant): should close all PE related flags here
-        pass
+        return
+
+    def _enable_strategy(self, dist_strategy):
+        # by default, graph execution strategy is enabled
+        return
 
     def minimize(self,
                  loss,

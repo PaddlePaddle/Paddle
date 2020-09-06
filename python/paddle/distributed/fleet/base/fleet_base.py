@@ -1008,6 +1008,18 @@ class Fleet(object):
             MetaOptimizerFactory()._get_valid_meta_optimizers(
                 self.user_defined_optimizer)
 
+        context["user_defined_strategy"] = self.user_defined_strategy[:]
+
+        # trigger the auto-parallel in very strict condition
+        # strategy = DistributedStrategy()
+        # strategy.auto = True
+        # optimizer = paddle.optimizer.SGD(learning_rate=0.1)
+        # optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        if self.user_defined_strategy._is_strict_auto():
+            # turn on all the strategy for each optimizer
+            for opt in distributed_optimizer_list:
+                opt._enable_strategy(self.user_defined_strategy)
+
         valid_optimizer_list = []
         valid_graph_optimizer_list = []
         can_not_apply_optimizer_list = []
