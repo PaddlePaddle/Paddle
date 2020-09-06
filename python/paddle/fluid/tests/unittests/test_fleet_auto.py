@@ -19,7 +19,7 @@ import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 
 
-class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
+class TestDistributedStrategyAuto(unittest.TestCase):
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
@@ -27,7 +27,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
                        "127.0.0.1:36001,127.0.0.2:36001"
 
-    def test_gradient_merge_optimizer(self):
+    def test_distributed_strategy_auto(self):
         fleet.init(is_collective=True)
         input_x = paddle.fluid.layers.data(
             name="x", shape=[32], dtype='float32')
