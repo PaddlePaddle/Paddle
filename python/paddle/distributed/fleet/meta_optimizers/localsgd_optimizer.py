@@ -36,7 +36,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
             return False
 
         return isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum) \
-                or isinstance(self.inner_opt, paddle.optimizer.momentum.SGD)
+                or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD)
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.localsgd = False
