@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import copy
 import warnings
 import paddle
 from paddle.fluid.framework import dygraph_only
@@ -1008,7 +1009,7 @@ class Fleet(object):
             MetaOptimizerFactory()._get_valid_meta_optimizers(
                 self.user_defined_optimizer)
 
-        context["user_defined_strategy"] = self.user_defined_strategy[:]
+        context["user_defined_strategy"] = copy.copy(self.user_defined_strategy)
 
         # trigger the auto-parallel in very strict condition
         # strategy = DistributedStrategy()
