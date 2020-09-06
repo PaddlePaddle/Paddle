@@ -86,11 +86,11 @@ class TestLoggingUtils(unittest.TestCase):
             with mock.patch.object(sys, 'stdout', stream):
                 logging_utils.warn(warn_msg)
                 logging_utils.error(error_msg)
-                self.translator_logger.verbosity_level = 2
+                self.translator_logger.verbosity_level = 1
                 logging_utils.log(1, log_msg_1)
                 logging_utils.log(2, log_msg_2)
 
-            result_msg = '\n'.join([warn_msg, error_msg, log_msg_2, ""])
+            result_msg = '\n'.join([warn_msg, error_msg, log_msg_1, ""])
             self.assertEqual(result_msg, stream.getvalue())
 
     def test_log_transformed_code(self):
