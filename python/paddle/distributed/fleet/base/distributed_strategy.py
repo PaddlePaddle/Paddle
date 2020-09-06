@@ -27,6 +27,7 @@ def __non_auto_func_called__(func):
     def __impl__(*args, **kwargs):
         global non_auto_func_called
         non_auto_func_called = False
+        return func(*args, **kwargs)
 
     return __impl__
 
