@@ -217,6 +217,8 @@ from .tensor.search import index_select  #DEFINE_ALIAS
 from .tensor.search import nonzero  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
 from .framework.random import manual_seed  #DEFINE_ALIAS
+from .framework.random import get_cuda_rng_state  #DEFINE_ALIAS
+from .framework.random import set_cuda_rng_state  #DEFINE_ALIAS
 from .framework import Variable  #DEFINE_ALIAS
 from .framework import ParamAttr  #DEFINE_ALIAS
 from .framework import create_global_var  #DEFINE_ALIAS
@@ -230,6 +232,7 @@ from .framework import grad  #DEFINE_ALIAS
 from .framework import no_grad  #DEFINE_ALIAS
 from .framework import save  #DEFINE_ALIAS
 from .framework import load  #DEFINE_ALIAS
+from .framework import SaveLoadConfig  #DEFINE_ALIAS
 from .framework import DataParallel  #DEFINE_ALIAS
 
 from .framework import NoamDecay  #DEFINE_ALIAS
@@ -267,5 +270,6 @@ from . import static
 # high-level api
 from .hapi import Model
 from .hapi import callbacks
+from .hapi import summary
 import paddle.text
 import paddle.vision

@@ -174,14 +174,12 @@ def pow(x, y, name=None):
         ..  code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
             
             # example 1: y is a float
-            x_data = np.array([1, 2, 3])
+            x = paddle.to_tensor([1, 2, 3])
             y = 2
-            x = paddle.to_tensor(x_data)
             res = paddle.pow(x, y)
             print(res.numpy()) # [1 4 9]
             
@@ -291,13 +289,10 @@ Examples:
     ..  code-block:: python
 
         import paddle
-        import numpy as np
 
         paddle.disable_static()
-        np_x = np.array([2, 3, 4]).astype('float64')
-        np_y = np.array([1, 5, 2]).astype('float64')
-        x = paddle.to_variable(np_x)
-        y = paddle.to_variable(np_y)
+        x = paddle.to_tensor([2, 3, 4], 'float64')
+        y = paddle.to_tensor([1, 5, 2], 'float64')
         z = paddle.add(x, y)
         np_z = z.numpy()
         print(np_z)  # [3., 8., 6. ]
@@ -335,14 +330,11 @@ def divide(x, y, name=None):
         ..  code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
-            np_x = np.array([2, 3, 4]).astype('float64')
-            np_y = np.array([1, 5, 2]).astype('float64')
-            x = paddle.to_tensor(np_x)
-            y = paddle.to_tensor(np_y)
+            x = paddle.to_tensor([2, 3, 4], dtype='float64')
+            y = paddle.to_tensor([1, 5, 2], dtype='float64')
             z = paddle.divide(x, y)
             print(z.numpy())  # [2., 0.6, 2.]
 
@@ -440,14 +432,11 @@ def floor_divide(x, y, name=None):
         ..  code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
-            np_x = np.array([2, 3, 8, 7])
-            np_y = np.array([1, 5, 3, 3])
-            x = paddle.to_tensor(np_x)
-            y = paddle.to_tensor(np_y)
+            x = paddle.to_tensor([2, 3, 8, 7])
+            y = paddle.to_tensor([1, 5, 3, 3])
             z = paddle.floor_divide(x, y)
             print(z.numpy())  # [2, 0, 2, 2]
 
@@ -530,14 +519,11 @@ def remainder(x, y, name=None):
         ..  code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
-            np_x = np.array([2, 3, 8, 7])
-            np_y = np.array([1, 5, 3, 3])
-            x = paddle.to_tensor(np_x)
-            y = paddle.to_tensor(np_y)
+            x = paddle.to_tensor([2, 3, 8, 7])
+            y = paddle.to_tensor([1, 5, 3, 3])
             z = paddle.remainder(x, y)
             print(z.numpy())  # [0, 3, 2, 1]
 
@@ -612,20 +598,15 @@ def multiply(x, y, axis=-1, name=None):
         ..  code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
-            x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
-            y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
-            x = paddle.to_tensor(x_data)
-            y = paddle.to_tensor(y_data)
+            x = paddle.to_tensor([[1, 2], [3, 4]])
+            y = paddle.to_tensor([[5, 6], [7, 8]])
             res = paddle.multiply(x, y)
             print(res.numpy()) # [[5, 12], [21, 32]]
 
-            x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
-            y_data = np.array([1, 2], dtype=np.float32)
-            x = paddle.to_tensor(x_data)
-            y = paddle.to_tensor(y_data)
+            x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            y = paddle.to_tensor([1, 2])
             res = paddle.multiply(x, y, axis=1)
             print(res.numpy()) # [[[1, 2, 3], [2, 4, 6]]]
 
@@ -654,36 +635,28 @@ Examples:
 
         paddle.disable_static()
   
-        x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
-        y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
+        x = paddle.to_tensor([[1, 2], [3, 4]])
+        y = paddle.to_tensor([[5, 6], [7, 8]])
         res = paddle.maximum(x, y)
         print(res.numpy())
         #[[5. 6.]
         # [7. 8.]]
 
-        x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
-        y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
+        x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+        y = paddle.to_tensor([1, 2])
         res = paddle.maximum(x, y, axis=1)
         print(res.numpy())
         #[[[1. 2. 3.]
         #  [2. 2. 3.]]]
 
-        x_data = np.array([2, 3, 5], dtype=np.float32)
-        y_data = np.array([1, 4, np.nan], dtype=np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
+        x = paddle.to_tensor([2, 3, 5], dtype='float32')
+        y = paddle.to_tensor([1, 4, np.nan], dtype='float32')
         res = paddle.maximum(x, y)
         print(res.numpy())
         #[ 2.  4. nan]
 
-        x_data = np.array([5, 3, np.inf], dtype=np.float32)
-        y_data = np.array([1, 4, 5], dtype=np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
+        x = paddle.to_tensor([5, 3, np.inf], dtype='float32')
+        y = paddle.to_tensor([1, 4, 5], dtype='float32')
         res = paddle.maximum(x, y)
         print(res.numpy())
         #[ 5.  4. inf]
@@ -703,38 +676,31 @@ Examples:
 
         import paddle
         import numpy as np
+
         paddle.disable_static()
   
-        x_data = np.array([[1, 2], [3, 4]], dtype=np.float32)
-        y_data = np.array([[5, 6], [7, 8]], dtype=np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
+        x = paddle.to_tensor([[1, 2], [3, 4]], dtype='float32')
+        y = paddle.to_tensor([[5, 6], [7, 8]], dtype='float32')
         res = paddle.minimum(x, y)
         print(res.numpy())
         #[[1. 2.]
         # [3. 4.]]
 
-        x_data = np.array([[[1, 2, 3], [1, 2, 3]]], dtype=np.float32)
-        y_data = np.array([1, 2], dtype=np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
+        x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]], dtype='float32')
+        y = paddle.to_tensor([1, 2], dtype='float32')
         res = paddle.minimum(x, y, axis=1)
         print(res.numpy())
         #[[[1. 1. 1.]
         #  [2. 2. 2.]]]
 
-        x_data = np.array([2, 3, 5], dtype=np.float32)
-        y_data = np.array([1, 4, np.nan], dtype=np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
+        x = paddle.to_tensor([2, 3, 5], dtype='float32')
+        y = paddle.to_tensor([1, 4, np.nan], dtype='float32')
         res = paddle.minimum(x, y)
         print(res.numpy())
         #[ 1.  3. nan]
 
-        x_data = np.array([5, 3, np.inf], dtype=np.float32)
-        y_data = np.array([1, 4, 5], dtype=np.float32)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
+        x = paddle.to_tensor([5, 3, np.inf], dtype='float32')
+        y = paddle.to_tensor([1, 4, 5], dtype='float32')
         res = paddle.minimum(x, y)
         print(res.numpy())
         #[1. 3. 5.]
@@ -794,33 +760,33 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         it's data type is the same as `x`.
 
     Raises:
-        ValueError: The :attr:`dtype` must be float64 or int64.
+        ValueError: If the data type of `x` is float64, :attr:`dtype` can not be float32 or int32.
+        ValueError: If the data type of `x` is int64, :attr:`dtype` can not be int32.
         TypeError: The type of :attr:`axis` must be int, list or tuple.
 
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
             paddle.disable_static()
 
-            # x is a Tensor variable with following elements:
+            # x is a Tensor with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
-            x_data = np.array([[0.2, 0.3, 0.5, 0.9],[0.1, 0.2, 0.6, 0.7]]).astype('float32')
-            x = paddle.to_variable(x_data)
+            x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
+                                  [0.1, 0.2, 0.6, 0.7]])
             out1 = paddle.sum(x)  # [3.5]
             out2 = paddle.sum(x, axis=0)  # [0.3, 0.5, 1.1, 1.6]
             out3 = paddle.sum(x, axis=-1)  # [1.9, 1.6]
             out4 = paddle.sum(x, axis=1, keepdim=True)  # [[1.9], [1.6]]
 
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
+            # y is a Tensor with shape [2, 2, 2] and elements as below:
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y_data = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]]).astype('float32')
-            y = paddle.to_variable(y_data)
+            y = paddle.to_tensor([[[1, 2], [3, 4]], 
+                                  [[5, 6], [7, 8]]])
             out5 = paddle.sum(y, axis=[1, 2]) # [10, 26]
             out6 = paddle.sum(y, axis=[0, 1]) # [16, 20]
     """
@@ -850,10 +816,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                     'out_dtype': convert_np_dtype_to_dtype_(dtype)
                 })
                 dtype_flag = True
-        else:
-            raise ValueError(
-                "The value of 'dtype' in sum op must be float64, int64, but received of {}".
-                format(dtype))
 
     if in_dygraph_mode():
         axis = axis if axis != None and axis != [] else [0]
@@ -867,6 +829,17 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                                        'reduce_all', reduce_all_flag)
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sum')
+
+    if dtype is not None:
+        check_dtype(dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'], 'sum')
+        x_dtype = convert_dtype(x.dtype)
+
+        if (x_dtype == "float64" and dtype in ["float32", "int32"]) or \
+                (x_dtype == "int64" and dtype == "int32"):
+            raise ValueError("The input(x)'s dtype is {} but the attr(dtype) of sum is {}, "
+                             "which may cause data type overflows. Please reset attr(dtype) of sum."
+                             .format(x_dtype, dtype))
+
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'sum')
 
     helper = LayerHelper('sum', **locals())
@@ -1121,9 +1094,9 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
             paddle.disable_static()
 
-            x = paddle.to_variable(data_x)
-            y = paddle.to_variable(data_y)
-            input = paddle.to_variable(data_input)
+            x = paddle.to_tensor(data_x)
+            y = paddle.to_tensor(data_y)
+            input = paddle.to_tensor(data_input)
 
             out = paddle.tensor.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
 
@@ -1204,12 +1177,10 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     .. code-block:: python
 
         import paddle
-        import numpy as np
 
         paddle.disable_static()
 
-        x = np.array([[-1.5, 0., 2.], [3., 1.2, -2.4]])
-        x = paddle.to_tensor(x)
+        x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
         out1 = paddle.logsumexp(x) # [3.4691226]
         out2 = paddle.logsumexp(x, 1) # [2.15317821, 3.15684602]
 
@@ -1260,12 +1231,10 @@ def inverse(x, name=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
-
-            mat_np = np.array([[2, 0], [0, 2]]).astype("float32")
             paddle.disable_static()
-            mat = paddle.to_variable(mat_np)
+
+            mat = paddle.to_tensor([[2, 0], [0, 2]], dtype='float32')
             inv = paddle.inverse(mat)
             print(inv) # [[0.5, 0], [0, 0.5]]
 
@@ -1316,16 +1285,15 @@ def max(x, axis=None, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             paddle.disable_static()
 
             # data_x is a variable with shape [2, 4]
             # the axis is a int element
-            data_x = np.array([[0.2, 0.3, 0.5, 0.9],
-                               [0.1, 0.2, 0.6, 0.7]])
-            x = paddle.to_variable(data_x)
+
+            x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
+                                  [0.1, 0.2, 0.6, 0.7]])
             result1 = paddle.max(x)
             print(result1.numpy())
             #[0.9]
@@ -1342,9 +1310,9 @@ def max(x, axis=None, keepdim=False, name=None):
 
             # data_y is a variable with shape [2, 2, 2]
             # the axis is list 
-            data_y = np.array([[[1.0, 2.0], [3.0, 4.0]],
-                               [[5.0, 6.0], [7.0, 8.0]]])
-            y = paddle.to_variable(data_y)
+
+            y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
+                                  [[5.0, 6.0], [7.0, 8.0]]])
             result5 = paddle.max(y, axis=[1, 2])
             print(result5.numpy())
             #[4. 8.]
@@ -1411,16 +1379,14 @@ def min(x, axis=None, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             paddle.disable_static()
 
-            # data_x is a variable with shape [2, 4]
+            # x is a tensor with shape [2, 4]
             # the axis is a int element
-            data_x = np.array([[0.2, 0.3, 0.5, 0.9],
-                            [0.1, 0.2, 0.6, 0.7]])
-            x = paddle.to_variable(data_x)
+            x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
+                                  [0.1, 0.2, 0.6, 0.7]])
             result1 = paddle.min(x)
             print(result1.numpy())
             #[0.1]
@@ -1435,11 +1401,10 @@ def min(x, axis=None, keepdim=False, name=None):
             #[[0.2]
             # [0.1]]
 
-            # data_y is a variable with shape [2, 2, 2]
+            # y is a variable with shape [2, 2, 2]
             # the axis is list 
-            data_y = np.array([[[1.0, 2.0], [3.0, 4.0]],
-                               [[5.0, 6.0], [7.0, 8.0]]])
-            y = paddle.to_variable(data_y)
+            y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
+                                  [[5.0, 6.0], [7.0, 8.0]]])
             result5 = paddle.min(y, axis=[1, 2])
             print(result5.numpy()) 
             #[1. 5.]
@@ -1596,11 +1561,9 @@ def clip(x, min=None, max=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
-            x = np.array([[1.2,3.5], [4.5,6.4]]).astype('float32')
-            x1 = paddle.to_variable(x)
+            x1 = paddle.to_tensor([[1.2, 3.5], [4.5, 6.4]], 'float32')
             out1 = paddle.clip(x1, min=3.5, max=5.0)
             out2 = paddle.clip(x1, min=2.5)
             print(out1.numpy())
@@ -1611,11 +1574,8 @@ def clip(x, min=None, max=None, name=None):
             # [[4.5, 6.4]
     """
 
-    np_dtype = np.float32
-    if x.dtype == VarDesc.VarType.FP64:
-        np_dtype = np.float64
-    fmin = float(np.finfo(np_dtype).min)
-    fmax = float(np.finfo(np_dtype).max)
+    fmin = float(np.finfo(np.float32).min)
+    fmax = float(np.finfo(np.float32).max)
 
     if in_dygraph_mode():
         if isinstance(min, Variable):
@@ -1656,7 +1616,7 @@ def clip(x, min=None, max=None, name=None):
 
     helper = LayerHelper('clip', **locals())
     output = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype())
+        dtype=helper.input_dtype('x'))
     helper.append_op(
         type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
 
@@ -1704,9 +1664,9 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 
             paddle.disable_static()
 
-            case1 = paddle.to_variable(case1)
-            case2 = paddle.to_variable(case2)
-            case3 = paddle.to_variable(case3)
+            case1 = paddle.to_tensor(case1)
+            case2 = paddle.to_tensor(case2)
+            case3 = paddle.to_tensor(case3)
             data1 = paddle.trace(case1) # data1.shape = [1]
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
@@ -1897,10 +1857,8 @@ def isfinite(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             paddle.disable_static()
-            x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            x = paddle.to_tensor(x_np)
+            x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             out = paddle.tensor.isfinite(x)
             print(out.numpy())  # [False  True  True False  True False False]
     """
@@ -1928,10 +1886,8 @@ def isinf(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             paddle.disable_static()
-            x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            x = paddle.to_tensor(x_np)
+            x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             out = paddle.tensor.isinf(x)
             print(out.numpy())  # [ True False False  True False False False]
     """
@@ -1959,10 +1915,8 @@ def isnan(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             paddle.disable_static()
-            x_np = np.array([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            x = paddle.to_tensor(x_np)
+            x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             out = paddle.tensor.isnan(x)
             print(out.numpy())  # [False False False False False  True  True]
     """
@@ -2005,14 +1959,12 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
             # the axis is a int element
-            data_x = np.array([[0.2, 0.3, 0.5, 0.9],
-                         [0.1, 0.2, 0.6, 0.7]]).astype(np.float32)
-            x = paddle.to_tensor(data_x)
+            x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
+                                  [0.1, 0.2, 0.6, 0.7]])
             out1 = paddle.prod(x)
             print(out1.numpy())
             # [0.0002268]
@@ -2038,9 +1990,8 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             # int64
 
             # the axis is list
-            data_y = np.array([[[1.0, 2.0], [3.0, 4.0]],
-                               [[5.0, 6.0], [7.0, 8.0]]])
-            y = paddle.to_tensor(data_y)
+            y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
+                                  [[5.0, 6.0], [7.0, 8.0]]])
             out6 = paddle.prod(y, [0, 1])
             print(out6.numpy())
             # [105. 384.]
@@ -2073,12 +2024,10 @@ def sign(x, name=None):
     Examples:
         .. code-block:: python
 
-          import numpy as np
           import paddle
 
-          data = np.array([3.0, 0.0, -2.0, 1.7], dtype='float32')
           paddle.disable_static()
-          x = paddle.to_tensor(data)
+          x = paddle.to_tensor([3.0, 0.0, -2.0, 1.7], dtype='float32')
           out = paddle.sign(x=x)
           print(out)  # [1.0, 0.0, -1.0, 1.0]
     """
@@ -2113,12 +2062,9 @@ def tanh(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
-
-            x_data = np.array([-0.4, -0.2, 0.1, 0.3])
-            x = paddle.to_tensor(x_data)
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
             out = paddle.tanh(x)
             print(out.numpy())
             # [-0.37994896 -0.19737532  0.09966799  0.29131261]
