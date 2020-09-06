@@ -1477,19 +1477,32 @@ def linspace(start, stop, num, dtype=None, name=None):
 
     helper = LayerHelper("linspace", **locals())
 
+    start_dtype = convert_dtype(tensor_start.dtype)
+    stop_dtype = convert_dtype(tensor_stop.dtype)
+    out_dtype = convert_dtype(dtype)
     if isinstance(start, Variable):
-        check_dtype(start.dtype, 'start', (convert_dtype(dtype)), 'linspace')
+        check_dtype(start.dtype, 'start',
+                    ['float32', 'float64', 'int32', 'int64'], 'linspace')
     else:
         check_type(start, 'start', (int, float), 'linspace')
 
     if isinstance(stop, Variable):
-        check_dtype(stop.dtype, 'stop', (convert_dtype(dtype)), 'linspace')
+        check_dtype(stop.dtype, 'stop',
+                    ['float32', 'float64', 'int32', 'int64'], 'linspace')
     else:
         check_type(stop, 'stop', (int, float), 'linspace')
     if isinstance(num, Variable):
         check_dtype(num.dtype, 'num', ['int32'], 'linspace')
     check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
                 'linspace')
+    if ((stop_dtype == "float64" or start_dtype == "float64") and
+            out_dtype in ["float32", "int32"]) or ((stop_dtype == "int64" or
+                                                    start_dtype == "int64") and
+                                                   out_dtype == "int32"):
+        raise ValueError(
+            "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
+            "which may cause data type overflows. Please reset attr(dtype) of linspace."
+            .format(start_dtype, stop_dtype, dtype))
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
