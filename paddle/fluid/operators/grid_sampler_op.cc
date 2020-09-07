@@ -115,7 +115,7 @@ class GridSampleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>(
         "padding_mode",
         "(bool, default true) The padding method used when source"
-        "index is out of input images. It can be 'zeros', 'reflect' and "
+        "index is out of input images. It can be 'zeros', 'reflection' and "
         "'border'.")
         .SetDefault("zeros");
 
