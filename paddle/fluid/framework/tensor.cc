@@ -44,7 +44,7 @@ void* Tensor::mutable_data(const platform::Place& place,
   PADDLE_ENFORCE_GE(
       numel(), 0,
       platform::errors::PreconditionNotMet(
-          "The Tensor's element number must be equal or larger than zero. "
+          "The Tensor's element number must be equal or greater than zero. "
           "The Tensor's shape is [",
           dims(), "] now"));
   size_t size = numel() * SizeOfType(type);
