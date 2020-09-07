@@ -183,8 +183,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         x (Tensor): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
         p (float|string, optional): Order of the norm. Supported values are `fro`, `0`, `1`, `2`,
-           `inf`, `-inf` and any positive real number yielding the corresponding p-norm. 
-            Not supported, ord < 0 and nuclear norm. Default value is `fro`.
+           `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0 and nuclear norm. 
+            Default value is `fro`.
         axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
             or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
             If `axis < 0`, the dimension to norm operation is rank(input) + axis.
@@ -254,6 +254,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         if in_dygraph_mode():
             if dim is None:
+                print("fro dim None")
                 return core.ops.frobenius_norm(input, 'keep_dim', keepdim,
                                                'reduce_all', True)
             return core.ops.frobenius_norm(input, 'dim', dim, 'keep_dim',
@@ -386,6 +387,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             if p == "fro":
                 return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
             else:
+                print("valueerror frofor")
                 raise ValueError(
                     "only valid string values are 'fro', found {}".format(p))
         elif isinstance(p, (int, float)):
