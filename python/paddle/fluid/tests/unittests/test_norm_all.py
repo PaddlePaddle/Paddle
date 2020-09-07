@@ -262,6 +262,7 @@ def run_graph(self, p, axis, shape_x, dtype):
 
     # compute frobenius norm along last two dimensions.
     out_fro = paddle.norm(x, p='fro')
+    out_fro = paddle.norm(x, p='fro', axis=0)
     out_fro = paddle.norm(x, p='fro', axis=[0, 1])
     # compute 2-order  norm along [0,1] dimension.
     out_pnorm = paddle.norm(x, p=2, axis=[0, 1])
@@ -430,11 +431,13 @@ class API_NormTest(unittest.TestCase):
                 paddle.norm(data, p=p, out=out)
 
             self.assertRaises(TypeError, err_dtype, "fro", [2, 2], "int64")
+            self.assertRaises(TypeError, err_dtype, "inf", [2], "int64")
             out = fluid.data(name="out", shape=[1], dtype="int64")
             self.assertRaises(TypeError, err_dtype, "fro", [2, 2], "float64",
                               out)
             self.assertRaises(TypeError, err_dtype, 2, [10], "int64")
             self.assertRaises(TypeError, err_dtype, 2, [10], "float64", out)
+            self.assertRaises(TypeError, err_dtype, 0, [1, 0], "float64")
 
             data = fluid.data(name="data_2d", shape=[2, 2], dtype="float64")
             self.assertRaises(ValueError, paddle.norm, data, p="unsupport norm")
