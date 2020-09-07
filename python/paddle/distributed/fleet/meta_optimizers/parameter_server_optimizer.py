@@ -14,6 +14,9 @@
 from paddle import fluid
 from .meta_optimizer_base import MetaOptimizerBase
 from paddle.fluid import core
+import subprocess
+import re
+import platform
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
@@ -132,6 +135,34 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return _main, _startup
 
     def _try_auto_apply_geo(self, program, compiled_config):
+        def get_sys_free_mem():
+            plat = platform.system()
+            if platform.system() == "Darwin":
+                vm = subprocess.Popen(
+                    ['vm_stat'], stdout=subprocess.PIPE).communicate()[0]
+                # Process vm_stat
+                vmLines = vm.split('\n')
+                sep = re.compile(':[\s]+')
+                vmStats = {}
+                for row in range(1, len(vmLines) - 2):
+                    rowText = vmLines[row].strip()
+                    rowElements = sep.split(rowText)
+                    vmStats[(rowElements[0]
+                             )] = int(rowElements[1].strip('\.')) * 4096
+                return vmStats["Pages free"]
+            elif platform.system() == "Linux":
+                mems = {}
+                with open('/proc/meminfo', 'rb') as f:
+                    for line in f:
+                        fields = line.split()
+                        mems[fields[0]] = int(fields[1]) * 1024
+                free = mems[b'MemFree:']
+                return free
+            else:
+                raise ValueError(
+                    "%s platform is unsupported is parameter server optimizer" %
+                    (platform.system()))
+
         if self.user_defined_strategy.auto == False:
             return
 
@@ -146,9 +177,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             self.user_defined_strategy.a_sync_configs = a_sync_configs
             return
 
-        import psutil
         from paddle.fluid.incubate.fleet.parameter_server.ir.vars_metatools import dtype_to_size
-        free = psutil.virtual_memory().free
+        free = get_sys_free_mem()
 
         param_grad_pairs = compiled_config.origin_sparse_pairs + compiled_config.origin_dense_pairs
         processed_var_names = set(["@EMPTY@"])
@@ -195,7 +225,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             var_memory = data_count * type_size
             upper_mem_use += var_memory
 
-        if upper_mem_use < psutil.virtual_memory().free:
+        if upper_mem_use < free:
             # auto geo
             a_sync_configs["k_steps"] = 800
         else:
