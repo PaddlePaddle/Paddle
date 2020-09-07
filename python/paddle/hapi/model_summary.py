@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import numbers
 
 import paddle
 import paddle.nn as nn
@@ -142,12 +143,20 @@ def summary_string(model, input_size, batch_size=-1, dtypes=None):
                 summary[m_key]["output_shape"][0] = batch_size
 
             params = 0
-            if hasattr(module, "weight") and hasattr(module.weight, "shape"):
-                params += np.prod(module.weight.shape)
-                summary[m_key]["trainable"] = module.weight.trainable or (
-                    not module.weight.stop_gradient)
-            if hasattr(module, "bias") and hasattr(module.bias, "shape"):
-                params += np.prod(module.bias.shape)
+
+            layer_state_dict = module.state_dict()
+            for k, v in layer_state_dict.items():
+                params += np.prod(v.shape)
+
+                try:
+                    if (getattr(getattr(module, k), 'trainable')) and (
+                            not getattr(getattr(module, k), 'stop_gradient')):
+                        summary[m_key]["trainable"] = True
+                    else:
+                        summary[m_key]["trainable"] = False
+                except:
+                    summary[m_key]["trainable"] = True
+
             summary[m_key]["nb_params"] = params
 
         if (not isinstance(module, nn.Sequential) and
@@ -156,8 +165,23 @@ def summary_string(model, input_size, batch_size=-1, dtypes=None):
 
             hooks.append(module.register_forward_post_hook(hook))
 
+    def _check_input_size(input_sizes):
+        for input_size in input_sizes:
+            for item in input_size:
+                if not isinstance(item, numbers.Number):
+                    raise TypeError(
+                        "Expected item in input size be a number, but got {}".
+                        format(type(item)))
+
+                if item <= 0:
+                    raise ValueError(
+                        "Expected item in input size greater than zero, but got {}".
+                        format(item))
+
     if isinstance(input_size, tuple):
         input_size = [input_size]
+
+    _check_input_size(input_size)
 
     x = [
         paddle.rand(
