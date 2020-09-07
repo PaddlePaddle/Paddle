@@ -33,12 +33,23 @@ class TestEmptyOp(OpTest):
         self.check_output_customized(self.verify_output)
 
     def verify_output(self, outs):
-        total_value = np.sum(np.array(outs[0]))
-        mean_value = np.mean(np.array(outs[0]))
-        always_non_zero = total_value != 0.0 and mean_value != 0.0
-        always_zero = total_value == 0.0 and mean_value == 0.0
-        self.assertTrue(always_zero or always_non_zero,
-                        'always_zero or always_non_zero.')
+        data_type = outs[0].dtype
+        if data_type in ['float32', 'float64', 'int32', 'int64']:
+            max_value = np.nanmax(outs[0])
+            min_value = np.nanmin(outs[0])
+
+            always_full_zero = max_value == 0.0 and min_value == 0.0
+            always_non_full_zero = max_value > min_value
+            self.assertTrue(always_full_zero or always_non_full_zero,
+                            'always_full_zero or always_non_full_zero.')
+        elif data_type in ['bool']:
+            total_num = outs[0].size
+            true_num = np.sum(outs[0] == True)
+            false_num = np.sum(outs[0] == False)
+            self.assertTrue(total_num == true_num + false_num,
+                            'The value should always be True or False.')
+        else:
+            self.assertTrue(False, 'invalid data type')
 
     def init_config(self):
         shape = [500, 3]
@@ -107,12 +118,23 @@ class TestEmptyOp_ShapeTensor(OpTest):
         self.check_output_customized(self.verify_output)
 
     def verify_output(self, outs):
-        total_value = np.sum(np.array(outs[0]))
-        mean_value = np.mean(np.array(outs[0]))
-        always_non_zero = total_value != 0.0 and mean_value != 0.0
-        always_zero = total_value == 0.0 and mean_value == 0.0
-        self.assertTrue(always_zero or always_non_zero,
-                        'always_zero or always_non_zero.')
+        data_type = outs[0].dtype
+        if data_type in ['float32', 'float64', 'int32', 'int64']:
+            max_value = np.nanmax(outs[0])
+            min_value = np.nanmin(outs[0])
+
+            always_full_zero = max_value == 0.0 and min_value == 0.0
+            always_non_full_zero = max_value > min_value
+            self.assertTrue(always_full_zero or always_non_full_zero,
+                            'always_full_zero or always_non_full_zero.')
+        elif data_type in ['bool']:
+            total_num = outs[0].size
+            true_num = np.sum(outs[0] == True)
+            false_num = np.sum(outs[0] == False)
+            self.assertTrue(total_num == true_num + false_num,
+                            'The value should always be True or False.')
+        else:
+            self.assertTrue(False, 'invalid data type')
 
 
 # Situation 3: Attr(shape) is a list(with tensor)
@@ -141,22 +163,33 @@ class TestEmptyOp_ShapeTensorList(OpTest):
         self.check_output_customized(self.verify_output)
 
     def verify_output(self, outs):
-        total_value = np.sum(np.array(outs[0]))
-        mean_value = np.mean(np.array(outs[0]))
-        always_non_zero = total_value != 0.0 and mean_value != 0.0
-        always_zero = total_value == 0.0 and mean_value == 0.0
-        self.assertTrue(always_zero or always_non_zero,
-                        'always_zero or always_non_zero.')
+        data_type = outs[0].dtype
+        if data_type in ['float32', 'float64', 'int32', 'int64']:
+            max_value = np.nanmax(outs[0])
+            min_value = np.nanmin(outs[0])
+
+            always_full_zero = max_value == 0.0 and min_value == 0.0
+            always_non_full_zero = max_value > min_value
+            self.assertTrue(always_full_zero or always_non_full_zero,
+                            'always_full_zero or always_non_full_zero.')
+        elif data_type in ['bool']:
+            total_num = outs[0].size
+            true_num = np.sum(outs[0] == True)
+            false_num = np.sum(outs[0] == False)
+            self.assertTrue(total_num == true_num + false_num,
+                            'The value should always be True or False.')
+        else:
+            self.assertTrue(False, 'invalid data type')
 
 
 class TestEmptyAPI(unittest.TestCase):
     def __check_out__(self, out, dtype='float32'):
-        total_value = np.sum(np.array(out), dtype=dtype)
-        mean_value = np.mean(np.array(out), dtype=dtype)
-        always_non_zero = total_value != 0.0 and mean_value != 0.0
-        always_zero = total_value == 0.0 and mean_value == 0.0
-        self.assertTrue(always_zero or always_non_zero,
-                        'always_zero or always_non_zero.')
+        max_value = np.nanmax(np.array(out))
+        min_value = np.nanmin(np.array(out))
+        always_non_full_zero = max_value > min_value
+        always_full_zero = max_value == 0.0 and min_value == 0.0
+        self.assertTrue(always_full_zero or always_non_full_zero,
+                        'always_full_zero or always_non_full_zero.')
 
     def test_dygraph_api_out(self):
         paddle.disable_static()
@@ -216,11 +249,11 @@ class TestEmptyAPI(unittest.TestCase):
             },
             fetch_list=[out_1, out_2, out_3, out_4, out_5])
 
-        self.__check_out__(res_1[0][0], dtype)
-        self.__check_out__(res_2[0][0], dtype)
-        self.__check_out__(res_3[0][0], dtype)
-        self.__check_out__(res_4[0][0], dtype)
-        self.__check_out__(res_5[0][0], dtype)
+        self.__check_out__(res_1, dtype)
+        self.__check_out__(res_2, dtype)
+        self.__check_out__(res_3, dtype)
+        self.__check_out__(res_4, dtype)
+        self.__check_out__(res_5, dtype)
 
 
 class TestEmptyError(unittest.TestCase):

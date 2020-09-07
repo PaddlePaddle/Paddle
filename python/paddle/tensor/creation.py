@@ -986,16 +986,17 @@ def diag(x, offset=0, padding_value=0, name=None):
 
 def empty(shape, dtype=None, name=None):
     """
-    This Op return a Tensor with uninitialized which size is same as ``shape``.
+    This Op returns a Tensor with uninitialized data which size is same as ``shape``.
     
     Args:
         shape(list|tuple|Tensor): Shape of the Tensor to be created.
-                The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
+                The data type of dimension of shape is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
                 the elements of it should be integers or Tensors with shape [1].
                 If ``shape`` is an Tensor, it should be an 1-D Tensor.
         dtype(np.dtype|str, optional): Data type of the output Tensor
             which can be bool, float16, float32, float64, int32, int64, if dytpe is `None`, the data
-            type of created Tensor is `float32`
+            type of created Tensor use global default dtype (see ``get_default_dtype``
+            for details).
         name(str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
     
@@ -1013,31 +1014,36 @@ def empty(shape, dtype=None, name=None):
           import paddle
           import numpy as np
 
-          paddle.disable_static()  # Now we are in imperative mode
+          paddle.disable_static()   # Now we are in imperative mode
+          paddle.set_device("cpu")  # and use cpu device
 
-          # attr shape is a list which doesn't contain Tensor.
-          data1 = paddle.empty(shape=[2,1], dtype='int64') 
-          #[[0]
-          # [0]]
+          # example 1: argument ``shape`` is a list which doesn't contain Tensor.
+          data1 = paddle.empty(shape=[2,3], dtype='float32')
+          #[[4.3612203e+27 1.8176809e+31 1.3555911e-19]     # uninitialized
+          # [1.1699684e-19 1.3563156e-19 3.6408321e-11]]    # uninitialized
 
-          # attr shape is a Tensor.
-          shape_data = np.array([2, 1]).astype('int32')
+          # example 2: argument ``shape`` is a Tensor, the data type must be int64 or int32.
+          shape_data = np.array([2, 3]).astype('int32')
           shape = paddle.to_tensor(shape_data)
-          data2 = paddle.empty(shape=shape, dtype='int64')
+          data2 = paddle.empty(shape=shape, dtype='float32')
+          #[[1.7192326e-37 4.8125365e-38 1.9866003e-36]     # uninitialized
+          # [1.3284029e-40 7.1117408e-37 2.5353012e+30]]    # uninitialized
 
-          # attr shape is a list which contains Tensor.
-          shape_data = np.array([1]).astype('int32')
-          shape = paddle.to_tensor(shape_data)
-          data3 = paddle.empty(shape=[2, shape], dtype='int64')
+          # example 3: argument ``shape`` is a list which contains Tensor.
+          dim2_data = np.array([3]).astype('int32')
+          dim2 = paddle.to_tensor(dim2_data)
+          data3 = paddle.empty(shape=[2, dim2], dtype='float32')
+          #[[1.1024214e+24 7.0379409e+22 6.5737699e-34]     # uninitialized
+          # [7.5563101e+31 7.7130405e+31 2.8020654e+20]]    # uninitialized
     """
 
     if dtype is None:
-        dtype = 'float32'
+        dtype = paddle.get_default_dtype()
 
     dtype = convert_dtype(dtype)
 
     if in_dygraph_mode():
-        shape = utils._convert_shape_to_list(shape)
+        shape = utils.convert_shape_to_list(shape)
 
         out = core.ops.empty('shape', shape, 'dtype',
                              convert_np_dtype_to_dtype_(dtype))
@@ -1058,7 +1064,7 @@ def empty(shape, dtype=None, name=None):
         check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'empty')
 
     attrs = {}
-    utils._get_shape_tensor_inputs(
+    utils.get_shape_tensor_inputs(
         inputs=inputs, attrs=attrs, shape=shape, op_type='empty')
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
