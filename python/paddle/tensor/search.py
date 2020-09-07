@@ -166,6 +166,12 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         raise TypeError(
             "The type of 'axis'  must be int or None in argmax, but received %s."
             % (type(axis)))
+
+    if not (isinstance(dtype, str) or isinstance(dtype, np.dtype)):
+        raise TypeError(
+            "the type of 'dtype' in argmax must be str or np.dtype, but received {}".
+            format(type(dtype)))
+
     var_dtype = convert_np_dtype_to_dtype_(dtype)
     check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
     flatten = False
@@ -238,6 +244,12 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         raise TypeError(
             "The type of 'axis'  must be int or None in argmin, but received %s."
             % (type(axis)))
+
+    if not (isinstance(dtype, str) or isinstance(dtype, np.dtype)):
+        raise TypeError(
+            "the type of 'dtype' in argmin must be str or np.dtype, but received {}".
+            format(dtype(dtype)))
+
     var_dtype = convert_np_dtype_to_dtype_(dtype)
     check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
     flatten = False
@@ -287,10 +299,6 @@ def index_select(x, index, axis=0, name=None):
     Returns:
         Tensor: A Tensor with same data type as ``x``.
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
-        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
-
     Examples:
         .. code-block:: python
             
@@ -670,10 +678,6 @@ def masked_select(x, mask, name=None):
 
     Returns: A 1-D Tensor which is the same data type  as ``x``.
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
-        TypeError: ``mask`` must be a Tensor and the data type of ``mask`` must be bool.
-
     Examples:
 
         .. code-block:: python

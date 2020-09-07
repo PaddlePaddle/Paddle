@@ -277,11 +277,6 @@ def concat(input, axis=0, name=None):
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
-    Raises:
-        TypeError: ``input`` must be one of list, tuple or Tensor.
-        TypeError: The data type of ``input`` must be one of bool, float16, float32, float64, int32 and int64. 
-        TypeError: The ``axis`` must be int or Tensor. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
-        TypeError: All the Tensors in ``input`` must have the same data type.
 
     Returns:
         Tensor: A Tensor with the same data type as ``input``.
@@ -1438,14 +1433,6 @@ def linspace(start, stop, num, dtype=None, name=None):
         the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
         the value with input :attr:`start`. 
 
-    Raises:
-        TypeError: The ``dtype`` must be one of int32, int64, float32 and float64.
-        TypeError: The type of ``num`` must be int When it's not a Tensor.
-        TypeError: The data type of ``num`` must be int32  When it's  a Tensor.
-        TypeError: The data type of ``start`` and  ``stop`` must be same as ``dtype`` When it's  a Tensor.
-
-
-
     Examples:
         .. code-block:: python
 
@@ -1459,6 +1446,8 @@ def linspace(start, stop, num, dtype=None, name=None):
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
+    if not isinstance(num, Variable):
+        check_type(num, 'num', (int), 'linspace')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if not isinstance(start, Variable):
@@ -1473,21 +1462,32 @@ def linspace(start, stop, num, dtype=None, name=None):
 
     helper = LayerHelper("linspace", **locals())
 
+    start_dtype = convert_dtype(tensor_start.dtype)
+    stop_dtype = convert_dtype(tensor_stop.dtype)
+    out_dtype = convert_dtype(dtype)
     if isinstance(start, Variable):
-        check_dtype(start.dtype, 'start', (convert_dtype(dtype)), 'linspace')
+        check_dtype(start.dtype, 'start',
+                    ['float32', 'float64', 'int32', 'int64'], 'linspace')
     else:
         check_type(start, 'start', (int, float), 'linspace')
 
     if isinstance(stop, Variable):
-        check_dtype(stop.dtype, 'stop', (convert_dtype(dtype)), 'linspace')
+        check_dtype(stop.dtype, 'stop',
+                    ['float32', 'float64', 'int32', 'int64'], 'linspace')
     else:
         check_type(stop, 'stop', (int, float), 'linspace')
     if isinstance(num, Variable):
         check_dtype(num.dtype, 'num', ['int32'], 'linspace')
-    else:
-        check_type(num, 'num', (int), 'linspace')
     check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
                 'linspace')
+    if ((stop_dtype == "float64" or start_dtype == "float64") and
+            out_dtype in ["float32", "int32"]) or ((stop_dtype == "int64" or
+                                                    start_dtype == "int64") and
+                                                   out_dtype == "int32"):
+        raise ValueError(
+            "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
+            "which may cause data type overflows. Please reset attr(dtype) of linspace."
+            .format(start_dtype, stop_dtype, dtype))
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
@@ -1614,9 +1614,6 @@ def eye(num_rows,
 
     Returns:
         Tensor: An identity Tensor or LoDTensor of shape batch_shape + [num_rows, num_columns].
-    Raises:
-        TypeError: The `dtype` must be one of float16, float32, float64, int32 and int64.
-        TypeError: The `num_columns` must be non-negative int.
 
     Examples:
         .. code-block:: python
