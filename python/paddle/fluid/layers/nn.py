@@ -6316,6 +6316,15 @@ def unsqueeze(input, axes, name=None):
 
     """
     if in_dygraph_mode():
+        if isinstance(axes, int):
+            axes = [axes]
+        elif isinstance(axes, Variable):
+            axes = [axes.numpy().item(0)]
+        elif isinstance(axes, (list, tuple)):
+            axes = [
+                item.numpy().item(0) if isinstance(item, Variable) else item
+                for item in axes
+            ]
         out, _ = core.ops.unsqueeze2(input, 'axes', axes)
         return out
 
