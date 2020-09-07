@@ -273,7 +273,6 @@ class StaticLayer(object):
         of `Net` instance. After decorated by `@paddle.jit.to_static`, it will firstly to call `__get__`
         to parse the class instance correctly instead of the `StaticLayer` instance.
         """
-
         if instance not in self._descriptor_cache:
             if instance is None:
                 return self
