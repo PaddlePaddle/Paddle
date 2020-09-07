@@ -211,8 +211,8 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             weight.shape[0] + padding_idx)
 
         if padding_idx >= weight.shape[0] or padding_idx <= -weight.shape[0]:
-            raise ValueError(
-                "padding_idx must be within [-weight.shape[0], weight.shape[0]]")
+            raise ValueError("padding_idx must be within [-{}, {}]".format(
+                weight.shape[0], weight.shape[0]))
 
         helper.append_op(
             type='lookup_table_v2',
