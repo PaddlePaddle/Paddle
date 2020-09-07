@@ -913,6 +913,12 @@ class Optimizer(object):
         for param in self._parameter_list:
             if not param.trainable:
                 continue
+            if hasattr(
+                    param, "_is_sparse"
+            ) and param._is_sparse and self.regularization is not None:
+                raise RuntimeError(
+                    "Optimizer don't support weight_decay with sparse parameters, please set it to None."
+                )
             if param._grad_ivar() is not None:
                 grad_var = param._grad_ivar()
                 params_grads.append((param, grad_var))
