@@ -518,15 +518,14 @@ def port_check(port, ip=os.getenv("POD_IP", "127.0.0.1")):
         return True
 
 
-def get_user_define_endpoints(offset=0):
+def get_user_define_endpoints(origin_endpoints, offset=0):
     """
     origin_endpoint: ip:port
     user_define_endpoint: ip:(port+offset)
     """
-    paddle_trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
-    assert paddle_trainer_endpoints != None
+    assert origin_endpoints != None
     paddle_user_define_endpoints_list = []
-    for ip_port in paddle_trainer_endpoints.split(","):
+    for ip_port in origin_endpoints.split(","):
         ip = ip_port.split(":")[0]
         port = ip_port.split(":")[1]
         new_port = int(port) + offset
@@ -537,21 +536,27 @@ def get_user_define_endpoints(offset=0):
 
 def heter_cloud_env_set(args):
     mode = args.distributed_mode
-    paddle_trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
-    assert paddle_trainer_endpoints != None
-
     environs = {}
-    current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
 
-    paddle_server_endpoints = get_user_define_endpoints(1)
-    current_ip_port = paddle_server_endpoints.split(",")[current_id]
-    port = int(current_ip_port.split(":")[1])
-    assert port_check(port) == True
-    environs["PADDLE_PSERVERS_IP_PORT_LIST"] = paddle_server_endpoints
-    environs["PADDLE_PSERVER_PORT"] = port
+    paddle_trainer_endpoints = os.getenv("TRAINER_IP_PORT_LIST", "")
+    assert paddle_trainer_endpoints != None
+    environs["PADDLE_TRAINER_ENDPOINTS"] = paddle_trainer_endpoints
+
+    paddle_pserver_endpoints = os.getenv("PSERVER_IP_PORT_LIST", "")
+    assert paddle_pserver_endpoints != None
+    environs["PADDLE_PSERVERS_IP_PORT_LIST"] = paddle_pserver_endpoints
+
+    current_id = int(os.getenv("POD_INDEX", None))
+    assert current_id != None
+    environs["PADDLE_TRAINER_ENDPOINTS"] = current_id
+
+    trainers_num = int(os.getenv("TRAINERS_NUM", 0))
+    assert trainers_num != 0
+    environs["PADDLE_TRAINER_NUM"] = trainers_num
 
     if mode == "ps_heter":
-        paddle_heter_worker_endpoints = get_user_define_endpoints(2)
+        paddle_heter_worker_endpoints = get_user_define_endpoints(
+            paddle_pserver_endpoints, 1)
         current_heter_ip_port = paddle_heter_worker_endpoints.split(",")[
             current_id]
         heter_port = int(current_heter_ip_port.split(":")[1])
