@@ -159,5 +159,28 @@ class API_TestDyUnsqueeze2(unittest.TestCase):
             self.assertTrue(np.allclose(input1, out_np))
 
 
+class API_TestDyUnsqueezeAxisTensor(unittest.TestCase):
+    def test_out(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 10]).astype("int32")
+            input1 = np.squeeze(input_1, axis=1)
+            input = fluid.dygraph.to_variable(input_1)
+            output = paddle.unsqueeze(input, axis=paddle.to_tensor([1]))
+            out_np = output.numpy()
+            self.assertTrue(np.allclose(input1, out_np))
+
+
+class API_TestDyUnsqueezeAxisTensorList(unittest.TestCase):
+    def test_out(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 1, 10]).astype("int32")
+            input1 = np.squeeze(input_1, axis=[1, 2])
+            input = fluid.dygraph.to_variable(input_1)
+            output = paddle.unsqueeze(
+                input, axis=[paddle.to_tensor([1]), paddle.to_tensor([2])])
+            out_np = output.numpy()
+            self.assertTrue(np.allclose(input1, out_np))
+
+
 if __name__ == "__main__":
     unittest.main()
