@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.static import InputSpec
 from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator, Layer, jit
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram, StaticLayer
 
 from test_basic_api_transformation import dyfunc_to_variable
 
@@ -82,6 +82,23 @@ class SimpleNet(Layer):
         z = z + bias
 
         return z
+
+
+class TestStaticLayerInstance(unittest.TestCase):
+    def test_instance_same_class(self):
+        with fluid.dygraph.guard(fluid.CPUPlace()):
+            net_1 = SimpleNet()
+            net_2 = SimpleNet()
+
+            self.assertTrue(isinstance(net_1.forward, StaticLayer))
+            self.assertTrue(isinstance(net_2.forward, StaticLayer))
+            self.assertNotEqual(net_1.forward, net_2.forward)
+
+            # convert layer into static progam of net_1
+            net_1.forward.concrete_program
+            self.assertTrue(len(net_1.forward.program_cache) == 1)
+            # check no conversion applid with net_2
+            self.assertTrue(len(net_2.forward.program_cache) == 0)
 
 
 class TestInputSpec(unittest.TestCase):
@@ -224,7 +241,6 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
         # 1. specific InputSpec for `x`/`y`
         concrete_program_1 = foo.get_concrete_program(
             InputSpec([None, 10]), InputSpec([10]))
-        print(concrete_program_1)
         self.assertTrue(len(foo.program_cache) == 1)
 
         # 2. specific `c`/`d` explicitly with same default value
