@@ -121,7 +121,7 @@ REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
-                  i ops::ReduceSumDoubleGradDescMaker,
+                  ops::ReduceSumDoubleGradDescMaker,
                   ops::ReduceSumDoubleGradOpBaseMaker,
                   ops::ReduceSumGradNoNeedBufferVarInferer);
 
