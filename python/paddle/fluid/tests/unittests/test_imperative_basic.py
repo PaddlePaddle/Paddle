@@ -652,7 +652,7 @@ class TestDygraphUtils(unittest.TestCase):
         a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
         helper = LayerHelper(fluid.unique_name.generate("test"), act="relu")
         func = helper.append_activation
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(fluid.core.CPUPlace()):
             a = fluid.dygraph.to_variable(a_np)
             fluid.set_flags({'FLAGS_use_mkldnn': True})
             try:

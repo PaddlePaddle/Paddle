@@ -16,6 +16,7 @@ else()
   set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
   set(paddle_known_gpu_archs9 "30 35 50 52 60 61 70")
   set(paddle_known_gpu_archs10 "30 35 50 52 60 61 70 75")
+  set(paddle_known_gpu_archs11 "35 50 52 60 61 70 75 80")
 endif()
 
 ######################################################################################
@@ -186,6 +187,10 @@ elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 10.0) # CUDA 9.x
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
 elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0) # CUDA 10.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs10})
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
+elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0) # CUDA 11.x
+  set(paddle_known_gpu_archs ${paddle_known_gpu_archs11})
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
 endif()

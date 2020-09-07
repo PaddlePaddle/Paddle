@@ -38,6 +38,7 @@ static uint64_t GetRandomSeed() {
 struct GeneratorState {
   int64_t device = -1;
   uint64_t current_seed = 34342423252;
+  uint64_t thread_offset = 0;
   std::mt19937_64 cpu_engine;
 };
 
@@ -49,6 +50,7 @@ struct Generator {
     this->state_.cpu_engine = *engine;
     this->state_.device = -1;
     this->state_.current_seed = seed;
+    this->state_.thread_offset = 0;
     this->engine_ = engine;
     VLOG(4) << "initial seed: " << this->state_.current_seed
             << ", cpu engine: " << &this->state_.cpu_engine;
@@ -59,11 +61,25 @@ struct Generator {
     this->state_.cpu_engine = *engine;
     this->state_.device = -1;
     this->state_.current_seed = seed;
+    this->state_.thread_offset = 0;
     this->engine_ = engine;
     VLOG(4) << "initial seed: " << this->state_.current_seed
             << ", cpu engine: " << &this->state_.cpu_engine;
     this->is_init_py_ = true;  // TODO(zhiqiu): remove it in future
   }
+  Generator(uint64_t seed, uint64_t device_id) {
+    std::seed_seq seq({seed});
+    auto engine = std::make_shared<std::mt19937_64>(seq);
+    this->state_.cpu_engine = *engine;
+    this->state_.device = device_id;
+    this->state_.current_seed = seed;
+    this->state_.thread_offset = 0;
+    this->engine_ = engine;
+    VLOG(4) << "initial seed: " << this->state_.current_seed
+            << ", cpu engine: " << &this->state_.cpu_engine;
+    this->is_init_py_ = false;  // TODO(zhiqiu): remove it in future
+  }
+
   Generator(const Generator& other) = delete;
 
   // get random state
@@ -83,8 +99,11 @@ struct Generator {
 
   uint64_t Random64();
 
+  std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t increament_offset);
+
   void SetIsInitPy(bool);
   bool GetIsInitPy() const;
+  uint64_t get_device_id() { return this->state_.device; }
 
  private:
   GeneratorState state_;
@@ -104,6 +123,9 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator();
 std::shared_ptr<std::mt19937_64> OpDefaultCPUEngine();
 
 std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
+
+const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(
+    int64_t device_id = -1);
 
 }  // namespace framework
 }  // namespace paddle

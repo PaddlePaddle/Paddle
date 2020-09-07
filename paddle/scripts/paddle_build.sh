@@ -273,7 +273,7 @@ function cmake_gen() {
 function abort(){
     echo "Your change doesn't follow PaddlePaddle's code style." 1>&2
     echo "Please use pre-commit to check what is wrong." 1>&2
-    exit 1
+    exit 4
 }
 
 function check_style() {
@@ -303,7 +303,7 @@ function check_style() {
     
     if [ $commit_files == 'off' ];then
         echo "code format error"
-        exit 1
+        exit 4
     fi
     trap : 0
 }
@@ -528,6 +528,7 @@ EOF
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
+        set +e
         ut_startTime_s=`date +%s`
         ctest --output-on-failure -j $2;mactest_error=$?
         ut_endTime_s=`date +%s`
@@ -1421,12 +1422,14 @@ function main() {
     init
     if [ "$CMD" != "assert_file_approvals" ];then
       python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_and_check)
+        set +e
         $(check_style >&2)
         check_style_code=$?
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}

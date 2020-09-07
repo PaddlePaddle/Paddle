@@ -168,7 +168,7 @@ def avg_pool1d(x,
                count_include_pad=True,
                ceil_mode=False,
                name=None):
-    """ 
+    """
     This API implements average pooling 1d operation,
     See more details in :ref:`api_nn_pooling_AvgPool1d` .
 
@@ -280,7 +280,7 @@ def avg_pool2d(x,
     """
     This API implements average pooling 2d operation.
     See more details in :ref:`api_nn_pooling_AvgPool2d` .
- 
+
     Args:
         x (Tensor): The input tensor of pooling operator which is a 4-D tensor with
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"` or
@@ -640,7 +640,7 @@ def max_pool2d(x,
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
-        return_indices (bool): Whether to return the max indices along with the outputs.
+        return_indices (bool): Whether to return the max indices along with the outputs. Default False, only support `"NCHW"` data format
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_height, input_width]`.
@@ -690,15 +690,30 @@ def max_pool2d(x,
     padding, padding_algorithm = _update_padding_nd(
         padding, num_dims=2, channel_last=channel_last, ceil_mode=ceil_mode)
 
-    if in_dygraph_mode():
-        output = core.ops.max_pool2d_with_index(
-            x, 'ksize', kernel_size, 'global_pooling', False, 'strides', stride,
-            'paddings', padding, 'padding_algorithm', padding_algorithm,
-            'use_cudnn', True, 'ceil_mode', ceil_mode, 'use_mkldnn', False,
-            'exclusive', True, 'data_format', data_format)
-        return output if return_indices else output[0]
+    if data_format == "NHWC" and return_indices:
+        raise ValueError(
+            "When setting return_indices to true, data_format must be set to NCHW in API:max_pool2d"
+        )
 
-    op_type = 'max_pool2d_with_index'
+    if in_dygraph_mode():
+        if data_format == "NCHW":
+            output = core.ops.max_pool2d_with_index(
+                x, 'ksize', kernel_size, 'global_pooling', False, 'strides',
+                stride, 'paddings', padding, 'padding_algorithm',
+                padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
+                'use_mkldnn', False, 'exclusive', True, 'data_format',
+                data_format)
+            return output if return_indices else output[0]
+        elif data_format == "NHWC" and not return_indices:
+            output = core.ops.pool2d(
+                x, 'pooling_type', 'max', 'ksize', kernel_size,
+                'global_pooling', False, 'padding_algorithm', padding_algorithm,
+                'strides', stride, 'paddings', padding, 'use_cudnn', True,
+                'ceil_mode', ceil_mode, 'use_mkldnn', False, 'exclusive', True,
+                'data_format', data_format)
+            return output
+
+    op_type = 'max_pool2d_with_index' if data_format == "NCHW" else "max_pool2d"
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
@@ -739,7 +754,7 @@ def max_pool3d(x,
     See more details in :ref:`api_nn_pooling_MaxPool3d` .
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 5-D tensor with
-                          shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"` or `"NDHWC"`, where N represents batch size, C represents the number of channels, D, H and W represent the depth, height and width of the feature respectively. 
+                          shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"` or `"NDHWC"`, where N represents batch size, C represents the number of channels, D, H and W represent the depth, height and width of the feature respectively.
         kernel_size (int|list|tuple): The pool kernel size. If the kernel size
             is a tuple or list, it must contain three integers,
             (kernel_size_Depth, kernel_size_Height, kernel_size_Width).
@@ -755,7 +770,7 @@ def max_pool3d(x,
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool): ${ceil_mode_comment}
-        return_indices (bool): Whether to return the max indices along with the outputs.
+        return_indices (bool): Whether to return the max indices along with the outputs. Default False. Only support "NDCHW" data_format.
         data_format (string): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
                         The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_depth, input_height, input_width]`.
@@ -801,15 +816,30 @@ def max_pool3d(x,
     padding, padding_algorithm = _update_padding_nd(
         padding, 3, channel_last=channel_last, ceil_mode=ceil_mode)
 
-    if in_dygraph_mode():
-        output = core.ops.max_pool3d_with_index(
-            x, 'pooling_type', 'max', 'ksize', kernel_size, 'strides', stride,
-            'paddings', padding, 'global_pooling', False, 'padding_algorithm',
-            padding_algorithm, 'use_cudnn', True, 'ceil_mode', ceil_mode,
-            'use_mkldnn', False, 'exclusive', True, 'data_format', data_format)
-        return output if return_indices else output[0]
+    if data_format == "NDHWC" and return_indices:
+        raise ValueError(
+            "When setting return_indices to true, data_format must be set to NCDHW in API:max_pool3d"
+        )
 
-    op_type = "max_pool3d_with_index"
+    if in_dygraph_mode():
+        if data_format == "NCDHW":
+            output = core.ops.max_pool3d_with_index(
+                x, 'pooling_type', 'max', 'ksize', kernel_size, 'strides',
+                stride, 'paddings', padding, 'global_pooling', False,
+                'padding_algorithm', padding_algorithm, 'use_cudnn', True,
+                'ceil_mode', ceil_mode, 'use_mkldnn', False, 'exclusive', True,
+                'data_format', data_format)
+            return output if return_indices else output[0]
+        elif data_format == "NDHWC" and not return_indices:
+            output = core.ops.pool3d(
+                x, 'pooling_type', 'max', 'ksize', kernel_size,
+                'global_pooling', False, 'padding_algorithm', padding_algorithm,
+                'strides', stride, 'paddings', padding, 'use_cudnn', True,
+                'ceil_mode', ceil_mode, 'use_mkldnn', False, 'exclusive', True,
+                'data_format', data_format)
+            return output
+
+    op_type = "max_pool3d_with_index" if data_format == "NCDHW" else "max_pool3d"
     helper = LayerHelper(op_type, **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
@@ -841,7 +871,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     """
     This API implements adaptive average pooling 1d operation.
     See more details in :ref:`api_nn_pooling_AdaptiveAvgPool1d` .
-    
+
     Args:
         x (Tensor): The input tensor of pooling operator, which is a 3-D tensor
                               with shape [N, C, L].  The format of input tensor is NCL,
@@ -976,6 +1006,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     if isinstance(output_size, int):
         output_size = utils.convert_to_list(output_size, 2, 'output_size')
     else:
+        output_size = list(output_size)
         if output_size[0] == None:
             output_size[0] = in_h
         if output_size[1] == None:
@@ -1079,6 +1110,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     if isinstance(output_size, int):
         output_size = utils.convert_to_list(output_size, 3, 'output_size')
     else:
+        output_size = list(output_size)
         if output_size[0] == None:
             output_size[0] = in_l
         if output_size[1] == None:
@@ -1123,8 +1155,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
                               with shape [N, C, L].  The format of input tensor is NCL,
                               where N is batch size, C is the number of channels, L is the
                               length of the feature. The data type is float32 or float64.
-        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
-                it must contain one int.
+        output_size (int): The pool kernel size. The value should be an integer.
         return_indices (bool): If true, the index of max pooling point will be returned along
                 with outputs. It cannot be set in average pooling type. Default False.
         name(str, optional): For detailed information, please refer
@@ -1134,9 +1165,10 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
             Tensor: The output tensor of adaptive pooling result. The data type is same
                       as input tensor.
     Raises:
-            ValueError: 'output_size' should be a integer or list or tuple with length as 1.
+            ValueError: 'output_size' should be an integer.
     Examples:
         .. code-block:: python
+
               # max adaptive pool1d
               # suppose input data in shape of [N, C, L], `output_size` is m or [m],
               # output shape is [N, C, m], adaptive pool divide L dimension
@@ -1162,7 +1194,7 @@ def adaptive_max_pool1d(x, output_size, return_indices=False, name=None):
     check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                              'adaptive_max_pool1d')
     _check_input(x, 3)
-    check_type(output_size, 'pool_size', (int), 'adaptive_max_pool1d')
+    check_type(output_size, 'pool_size', int, 'adaptive_max_pool1d')
     check_type(return_indices, 'return_indices', bool, 'adaptive_max_pool1d')
 
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
@@ -1201,15 +1233,19 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
     """
         This operation applies a 2D adaptive max pooling on input tensor.
         See more details in :ref:`api_nn_pooling_AdaptiveMaxPool2d` .
+
         Args:
             x (Tensor): The input tensor of adaptive max pool2d operator, which is a 4-D tensor. The data type can be float16, float32, float64, int32 or int64.
             output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain two elements, (H, W). H and W can be either a int, or None which means the size will be the same as that of the input.
             return_indices (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
             name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
+
         Returns:
             Tensor: The output tensor of adaptive max pool2d result. The data type is same as input tensor.
+
         Examples:
             .. code-block:: python
+
               # max adaptive pool2d
               # suppose input data in the shape of [N, C, H, W], `output_size` is [m, n]
               # output shape is [N, C, m, n], adaptive pool divide H and W dimensions
@@ -1247,6 +1283,7 @@ def adaptive_max_pool2d(x, output_size, return_indices=False, name=None):
     if isinstance(output_size, int):
         output_size = utils.convert_to_list(output_size, 2, 'output_size')
     else:
+        output_size = list(output_size)
         if output_size[0] == None:
             output_size[0] = in_h
         if output_size[1] == None:
@@ -1283,15 +1320,19 @@ def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
     """
         This operation applies a 3D adaptive max pooling on input tensor.
         See more details in :ref:`api_nn_pooling_AdaptiveMaxPool3d` .
+
         Args:
             x (Tensor): The input tensor of adaptive max pool3d operator, which is a 5-D tensor. The data type can be float32, float64.
             output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of the input.
             return_indices (bool): If true, the index of max pooling point will be returned along with outputs. Default False.
             name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
+
         Returns:
             Tensor: The output tensor of adaptive max pool3d result. The data type is same as input tensor.
+
         Examples:
             .. code-block:: python
+
               # adaptive max pool3d
               # suppose input data in the shape of [N, C, D, H, W], `output_size` is [l, m, n]
               # output shape is [N, C, l, m, n], adaptive pool divide D, H and W dimensions
@@ -1333,6 +1374,7 @@ def adaptive_max_pool3d(x, output_size, return_indices=False, name=None):
     if isinstance(output_size, int):
         output_size = utils.convert_to_list(output_size, 3, 'output_size')
     else:
+        output_size = list(output_size)
         if output_size[0] == None:
             output_size[0] = in_l
         if output_size[1] == None:

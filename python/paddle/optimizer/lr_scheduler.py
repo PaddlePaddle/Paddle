@@ -109,7 +109,7 @@ class _LRScheduler(object):
         """
         self.keys = ['last_epoch', 'last_lr']
 
-    def set_dict(self, state_dict):
+    def set_state_dict(self, state_dict):
         """
         Loads the schedulers state.
         """
@@ -126,8 +126,8 @@ class _LRScheduler(object):
                 "There are some unused values in state_dict. Maybe the optimizer have different 'LearningRateDecay' when invoking state_dict and set_dict"
             )
 
-    # alias for set_dict
-    set_state_dict = set_dict
+    # alias for set_state_dict
+    set_dict = set_state_dict
 
     def get_lr(self):
         # calculate by python float

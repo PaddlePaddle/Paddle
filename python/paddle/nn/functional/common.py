@@ -910,12 +910,12 @@ def dropout(x,
             #get mask shape
             input_shape = x.shape
             drop_axes = [axis] if isinstance(axis, int) else axis
-            if max(drop_axes) > len(input_shape) - 1:
-                raise ValueError("axis value should less than dimensions of x:{}, but get drop_axes value:{} " \
+            if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
+                raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
                                  .format(len(input_shape), max(drop_axes)))
             if len(drop_axes) > len(input_shape):
                 raise ValueError(
-                    "length of axis should not greater than dimensions of x:{}, but get length of drop axes: {}".
+                    "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".
                     format(len(input_shape), len(drop_axes)))
             mask_shape = [1] * len(input_shape)
             for i in drop_axes:
@@ -1091,6 +1091,8 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
                                  'alpha_dropout')
 
     if training:
+        if p == 1:
+            return layers.scale(x, scale=0.)
         #get transformation params
         alpha = 1.6732632423543772848170429916717
         scale = 1.0507009873554804934193349852946

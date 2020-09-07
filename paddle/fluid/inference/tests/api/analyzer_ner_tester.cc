@@ -123,7 +123,7 @@ void profile(bool memory_load = false) {
     size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(size, 0);
     int64_t *result = static_cast<int64_t *>(output[0].data.data());
-    for (size_t i = 0; i < std::min(11UL, size); i++) {
+    for (size_t i = 0; i < std::min<size_t>(11, size); i++) {
       EXPECT_EQ(result[i], chinese_ner_result_data[i]);
     }
   }

@@ -44,7 +44,7 @@ class Conv1dTestCase(unittest.TestCase):
         self.spartial_shape = spartial_shape
         self.filter_size = filter_size
         self.data_format = data_format
-        self.channel_last = (self.data_format == "NHWC")
+        self.channel_last = (self.data_format == "NLC")
 
         self.padding = padding
         self.padding_mode = padding_mode
@@ -147,6 +147,14 @@ class Conv1dErrorTestCase(Conv1dTestCase):
                 self.paddle_nn_layer()
 
 
+class Conv1dTypeErrorTestCase(Conv1dTestCase):
+    def runTest(self):
+        place = fluid.CPUPlace()
+        with dg.guard(place):
+            with self.assertRaises(TypeError):
+                self.paddle_nn_layer()
+
+
 def add_cases(suite):
     suite.addTest(Conv1dTestCase(methodName='runTest'))
     suite.addTest(Conv1dTestCase(methodName='runTest', stride=[1], dilation=2))
@@ -161,6 +169,7 @@ def add_cases(suite):
         Conv1dTestCase(
             methodName='runTest', padding=2, data_format='NLC'))
     suite.addTest(Conv1dTestCase(methodName='runTest', padding=[1]))
+    suite.addTest(Conv1dTestCase(methodName='runTest', padding=[1, 2]))
     suite.addTest(Conv1dTestCase(methodName='runTest', padding=2))
     suite.addTest(Conv1dTestCase(methodName='runTest'))
     suite.addTest(
@@ -178,7 +187,7 @@ def add_cases(suite):
 
 def add_error_cases(suite):
     suite.addTest(
-        Conv1dErrorTestCase(
+        Conv1dTypeErrorTestCase(
             methodName='runTest', padding_mode="reflect", padding="valid"))
     suite.addTest(
         Conv1dErrorTestCase(
