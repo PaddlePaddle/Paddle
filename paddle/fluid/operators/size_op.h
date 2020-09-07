@@ -28,14 +28,15 @@ class SizeKernel : public framework::OpKernel<T> {
     auto* out_t = ctx.Output<Tensor>("Out");
     auto place = ctx.GetPlace();
     auto out_data = out_t->mutable_data<int64_t>(place);
-    if (place == platform::CPUPlace()) {
+    auto cpu_place = platform::CPUPlace();
+    if (place == cpu_place) {
       out_data[0] = in_t->numel();
     } else {
-      Tensor tmp_tensor;
-      auto tmp_data =
-          tmp_tensor.mutable_data<int64_t>(out_t->dims(), platform::CPUPlace());
-      tmp_data[0] = in_t->numel();
-      TensorCopy(tmp_tensor, place, out_t);
+      Tensor cpu_tensor;
+      auto cpu_data =
+          cpu_tensor.mutable_data<int64_t>(out_t->dims(), cpu_place);
+      cpu_data[0] = in_t->numel();
+      TensorCopy(cpu_tensor, place, out_t);
     }
   }
 };
