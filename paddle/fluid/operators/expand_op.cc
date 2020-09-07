@@ -235,8 +235,14 @@ class ExpandDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    op->SetInput("X", this->OutputGrad(framework::GradVarName("Input")));
+    op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
     op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    if (this->HasInput("expand_times_tensor")) {
+      op->SetInput("expand_times_tensor", this->Input("expand_times_tensor"));
+    }
+    if (this->HasInput("ExpandTimes")) {
+      op->SetInput("ExpandTimes", this->Input("ExpandTimes"));
+    }
     op->SetAttrMap(this->Attrs());
     op->SetType("expand");
   }
