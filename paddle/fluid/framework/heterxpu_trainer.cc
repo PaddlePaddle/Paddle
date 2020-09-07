@@ -339,7 +339,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #endif
 #ifdef PADDLE_WITH_XPU
         auto place = thread_tensor->place();
-        xpu_set_device(boost::get<platform::XPUPlace>(place).device);
+        xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
         platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
         platform::DeviceContext* dev_ctx = pool.Get(place);
         const platform::XPUDeviceContext* xpu_ctx = reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
@@ -364,7 +364,7 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #endif
 #ifdef PADDLE_WITH_XPU
       auto place = root_tensor->place();
-      xpu_set_device(boost::get<platform::XPUPlace>(place).device);
+      xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
       platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
       platform::DeviceContext* dev_ctx = pool.Get(place);
       const platform::XPUDeviceContext* xpu_ctx = reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
