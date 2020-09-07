@@ -51,11 +51,11 @@ void TestSequencePoolingSum(const DeviceContext &context,
 
   // check tensor contruction result
   PADDLE_ENFORCE_EQ(in_grad.dims().size(), out_grad.dims().size(),
-                    platform::errors::InvalidArgument(
+                    paddle::platform::errors::InvalidArgument(
                         "The dimension of input and output shall be same."));
   for (int64_t i = 1; i < out_grad.dims().size(); ++i) {
     PADDLE_ENFORCE_EQ(in_grad.dims()[i], out_grad.dims()[i],
-                      platform::errors::InvalidArgument(
+                      paddle::platform::errors::InvalidArgument(
                           "The dimension of input and output shall be same."));
   }
 
