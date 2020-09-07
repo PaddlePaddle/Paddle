@@ -475,87 +475,71 @@ class API_TestSumOpError(unittest.TestCase):
     def test_errors(self):
         def test_dtype1():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.sum(data, dtype="int32")
+                data = fluid.data(name="data", shape=[10], dtype="float64")
+                paddle.sum(data, dtype="float32")
 
         self.assertRaises(ValueError, test_dtype1)
 
         def test_dtype2():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.sum(data, dtype="float32")
+                data = fluid.data(name="data", shape=[10], dtype="int64")
+                paddle.sum(data, dtype="int32")
 
         self.assertRaises(ValueError, test_dtype2)
 
         def test_dtype3():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="int32")
-                paddle.sum(data, dtype="bool")
-
-        self.assertRaises(ValueError, test_dtype3)
-
-        def test_dtype4():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                data = fluid.data(name="data", shape=[10], dtype="int32")
+                data = fluid.data(name="data", shape=[10], dtype="float64")
                 paddle.sum(data, dtype="int32")
 
         self.assertRaises(ValueError, test_dtype3)
 
+        def test_type():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="int32")
+                paddle.sum(data, dtype="bool")
+
+        self.assertRaises(TypeError, test_type)
+
 
 class API_TestSumOp(unittest.TestCase):
+    def run_static(self,
+                   shape,
+                   x_dtype,
+                   attr_axis,
+                   attr_dtype=None,
+                   np_axis=None):
+        if np_axis is None:
+            np_axis = attr_axis
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.data("data", shape=shape, dtype=x_dtype)
+            result_sum = paddle.sum(x=data, axis=attr_axis, dtype=attr_dtype)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            input_data = np.random.rand(*shape).astype(x_dtype)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
+
+        self.assertTrue(
+            np.allclose(
+                res, np.sum(input_data.astype(attr_dtype), axis=np_axis)))
+
     def test_static(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.data("data", shape=[10, 10], dtype="float32")
-            result_sum = paddle.sum(x=data, axis=1, dtype="float64")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            input_data = np.random.rand(10, 10).astype(np.float32)
-            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
-        self.assertEqual(
-            (res == np.sum(input_data.astype(np.float64), axis=1)).all(), True)
+        shape = [10, 10]
+        axis = 1
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.data("data", shape=[10, 10], dtype="int32")
-            result_sum = paddle.sum(x=data, axis=1, dtype="int64")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            input_data = np.random.randint(10, size=(10, 10)).astype(np.int32)
-            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
-        self.assertEqual(
-            (res == np.sum(input_data.astype(np.int64), axis=1)).all(), True)
+        self.run_static(shape, "int32", axis, attr_dtype=None)
+        self.run_static(shape, "int32", axis, attr_dtype="int32")
+        self.run_static(shape, "int32", axis, attr_dtype="int64")
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.data("data", shape=[10, 10], dtype="int32")
-            result_sum = paddle.sum(x=data, axis=1)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            input_data = np.random.randint(10, size=(10, 10)).astype(np.int32)
-            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
-        self.assertEqual((res == np.sum(input_data, axis=1)).all(), True)
+        self.run_static(shape, "float32", axis, attr_dtype=None)
+        self.run_static(shape, "float32", axis, attr_dtype="float32")
+        self.run_static(shape, "float32", axis, attr_dtype="float64")
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data = fluid.data("data", shape=[10, 10], dtype="int32")
-            result_sum = paddle.sum(x=data, axis=1)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            input_data = np.random.randint(10, size=(10, 10)).astype(np.int32)
-            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
-        self.assertEqual((res == np.sum(input_data, axis=1)).all(), True)
-
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_data = np.random.randint(10, size=(5, 5, 5)).astype(np.int32)
-            data = fluid.data("data", shape=[5, 5, 5], dtype="int32")
-            sum1 = paddle.sum(x=data, axis=[0, 1])
-            sum2 = paddle.sum(x=data, axis=())
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            res1, res2 = exe.run(feed={"data": input_data},
-                                 fetch_list=[sum1, sum2])
-
-        self.assertEqual((res1 == np.sum(input_data, axis=(0, 1))).all(), True)
-        self.assertEqual(
-            (res2 == np.sum(input_data, axis=(0, 1, 2))).all(), True)
+        shape = [5, 5, 5]
+        self.run_static(shape, "int32", (0, 1), attr_dtype="int32")
+        self.run_static(
+            shape, "int32", (), attr_dtype="int32", np_axis=(0, 1, 2))
 
     def test_dygraph(self):
         np_x = np.random.random([2, 3, 4]).astype('int32')
