@@ -83,6 +83,49 @@ class TestElementwiseAddOp(OpTest):
         self.axis = -1
 
 
+class TestXPUElementwiseAddOp(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_add"
+        self.init_dtype()
+        self.init_input_output()
+        self.init_axis()
+
+        self.inputs = {'X': self.x, 'Y': self.y}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': False, 'use_xpu': True}
+        self.outputs = {'Out': self.out}
+
+    def test_check_output(self):
+        if self.dtype == np.float32 and core.is_compiled_with_xpu():
+            place = core.XPUPlace(0)
+            self.check_output_with_place(place, check_dygraph=False)
+
+    def test_check_grad_normal(self):
+        if self.dtype == np.float32 and core.is_compiled_with_xpu():
+            place = core.XPUPlace(0)
+            self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        if self.dtype == np.float32 and core.is_compiled_with_xpu():
+            place = core.XPUPlace(0)
+            self.check_grad_with_place(place, ['Y'], 'Out')
+
+    def test_check_grad_ingore_y(self):
+        if self.dtype == np.float32 and core.is_compiled_with_xpu():
+            place = core.XPUPlace(0)
+            self.check_grad_with_place(place, ['X'], 'Out')
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_axis(self):
+        self.axis = -1
+
+
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestFP16ElementwiseAddOp(TestElementwiseAddOp):

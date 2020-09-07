@@ -69,6 +69,28 @@ class TestActivation(OpTest):
         pass
 
 
+class TestXPUActivation(TestActivation):
+    def setUp(self):
+        self.op_type = "exp"
+        self.init_dtype()
+        self.init_kernel_type()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.exp(x)
+
+        self.attrs = {'use_xpu': True}
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        if core.is_compiled_with_xpu():
+            place = core.XPUPlace(0)
+            self.check_output_with_place(place, atol=1e-3)
+
+
 class TestParameter(object):
     def test_out_name(self):
         with fluid.program_guard(fluid.Program()):
@@ -108,6 +130,25 @@ class TestSigmoid(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
+
+
+class TestXPUSigmoid(TestXPUActivation):
+    def setUp(self):
+        self.op_type = "sigmoid"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        out = 1 / (1 + np.exp(-x))
+
+        self.attrs = {'use_xpu': True}
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if core.is_compiled_with_xpu():
+            place = core.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ['X'], 'Out', max_relative_error=0.01)
 
 
 class TestLogSigmoid(TestActivation):
@@ -198,6 +239,18 @@ class TestTanh(TestActivation, TestParameter):
         # when using and not using inplace. Therefore, set dtype as float32
         # for now.
         self.dtype = np.float32
+
+
+class TestXPUTanh(TestXPUSigmoid):
+    def setUp(self):
+        self.op_type = "tanh"
+        self.init_dtype()
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.tanh(x)
+
+        self.attrs = {'use_xpu': True}
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
 
 
 class TestTanhAPI(unittest.TestCase):
@@ -751,6 +804,19 @@ class TestSqrt(TestActivation, TestParameter):
         self.check_grad(['X'], 'Out')
 
 
+class TestXPUSqrt(TestXPUSigmoid):
+    def setUp(self):
+        self.op_type = "sqrt"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.sqrt(x)
+
+        self.attrs = {'use_xpu': True}
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
@@ -788,6 +854,24 @@ class TestAbs(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestXPUAbs(TestXPUSigmoid):
+    def setUp(self):
+        self.op_type = "abs"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [4, 25]).astype(self.dtype)
+        # Because we set delta = 0.005 in calculating numeric gradient,
+        # if x is too small, such as 0.002, x_neg will be -0.003
+        # x_pos will be 0.007, so the numeric gradient is inaccurate.
+        # we should avoid this
+        x[np.abs(x) < 0.005] = 0.02
+        out = np.abs(x)
+
+        self.attrs = {'use_xpu': True}
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
 
 
 class TestCeil(TestActivation):
@@ -924,6 +1008,21 @@ class TestRelu(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestXPURelu(TestXPUSigmoid):
+    def setUp(self):
+        self.op_type = "relu"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        out = np.maximum(x, 0)
+
+        self.attrs = {'use_xpu': True}
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
 
 
 class TestReluAPI(unittest.TestCase):
@@ -1116,6 +1215,19 @@ class TestGelu(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestXPUGelu(TestXPUSigmoid):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.init_dtype()
+        approximate = False
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        out = gelu(x, approximate)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {"approximate": approximate, 'use_xpu': True}
 
 
 class TestGELUAPI(unittest.TestCase):
@@ -1476,6 +1588,19 @@ class TestLog(TestActivation):
         self.assertRaises(TypeError, fluid.layers.log, in2)
 
 
+class TestXPULog(TestXPUSigmoid):
+    def setUp(self):
+        self.op_type = "log"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.log(x)
+
+        self.attrs = {'use_xpu': True}
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+
 class TestLog1p(TestActivation):
     def setUp(self):
         self.op_type = "log1p"
@@ -1537,6 +1662,19 @@ class TestSquare(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
+class TestXPUSquare(TestXPUSigmoid):
+    def setUp(self):
+        self.op_type = "square"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.square(x)
+
+        self.attrs = {'use_xpu': True}
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+
 class TestPow(TestActivation):
     def setUp(self):
         self.op_type = "pow"
@@ -1553,6 +1691,19 @@ class TestPow(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestXPUPow(TestXPUSigmoid):
+    def setUp(self):
+        self.op_type = "pow"
+        self.init_dtype()
+
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        out = np.power(x, 3)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.attrs = {'factor': 3.0, 'use_xpu': True}
+        self.outputs = {'Out': out}
 
 
 class TestPow_factor_tensor(TestActivation):
