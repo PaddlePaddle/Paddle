@@ -375,7 +375,8 @@ class UpsamplingNearest2d(layers.Layer):
     """
     This op upsamples a batch of images, using nearest neighbours' pixel values.
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w), 
-    and the upsampling only applies on the two dimensions(height and width).
+    where in_w is width of the input tensor, in_h is the height of the input tensor.
+    And the upsampling only applies on the two dimensions(height and width).
 
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
@@ -459,7 +460,8 @@ class UpsamplingBilinear2d(layers.Layer):
     """
     This op upsamples a batch of images, using bilinear' pixel values.
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w), 
-    and the upsampling only applies on the two dimensions(height and width).
+    where in_w is width of the input tensor, in_h is the height of the input tensor.
+    And the upsampling only applies on the two dimensions(height and width).
 
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
