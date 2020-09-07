@@ -206,7 +206,7 @@ def launch_collective(args):
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
     if cloud_utils.use_paddlecloud() and trainers_num != 1:
-        cluster, pod = cloud_utils.get_cloud_cluster(args.ips, gpus)
+        cluster, pod = cloud_utils.get_cloud_cluster(args.ips, gpus, start_port)
         logger.info("get cluster from cloud:{}".format(cluster))
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"

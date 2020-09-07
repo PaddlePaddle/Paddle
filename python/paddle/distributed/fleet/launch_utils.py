@@ -426,10 +426,6 @@ def start_local_trainers(cluster,
                             len(pod.trainers),
                             pretty_print_envs(proc_env, ("Distributed Envs",
                                                          "Value"))))
-            logger.info(
-                "More details for debug about commands and environments are written in {}/run.sh".
-                format(log_dir))
-
         fn = None
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))

@@ -170,7 +170,7 @@ def get_gpus(selected_gpus):
     if selected_gpus is None:
         from paddle.fluid import core
         gpus_num = core.get_cuda_device_count()
-        selected_gpus = [str(x) for x in range(0, gpus_num)]
+        gpus = [str(x) for x in range(0, gpus_num)]
     else:
         cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
         if cuda_visible_devices is None or cuda_visible_devices == "":
@@ -207,8 +207,8 @@ def get_cluster_and_pod(args):
     pod = None
 
     if args.use_paddlecloud and trainers_num != 1:
-        cluster, pod = cloud_utils.get_cloud_cluster(args.cluster_node_ips,
-                                                     selected_gpus)
+        cluster, pod = cloud_utils.get_cloud_cluster(
+            args.cluster_node_ips, args.started_port, selected_gpus)
         logger.info("get cluster from cloud:{}".format(cluster))
     else:
         cluster, pod = get_cluster_from_args(args, selected_gpus)

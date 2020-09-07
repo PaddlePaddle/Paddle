@@ -44,7 +44,6 @@ export PADDLE_TRAINERS_NUM=2
 export POD_IP=127.0.0.1
 export PADDLE_TRAINERS=127.0.0.1,127.0.0.2
 export PADDLE_TRAINER_ID=0
-export PADDLE_TRAINER_ENDPOINTS=127.0.0.1:35789,127.0.0.2:35789
 
 export PADDLE_PORT=35789
 export TRAINER_PORTS_NUM=2
@@ -81,7 +80,7 @@ if [ -f $file_1 ]; then
 fi
 
 
-export PADDLE_TRAINER_ENDPOINTS=127.0.0.1:6170,127.0.0.2:6170
+export DISTRIBUTED_TRAINER_ENDPOINTS=127.0.0.1:6170,127.0.0.1:6171,127.0.0.2:6170,127.0.0.2:6171
 
 echo ""
 echo "paddle.distributed.launch async poll process test"
