@@ -122,16 +122,16 @@ def summary_string(model, input_size, batch_size=-1, dtypes=None):
 
     depth = len(list(model.sublayers()))
 
-    def register_hook(module):
-        def hook(module, input, output):
-            class_name = str(module.__class__).split(".")[-1].split("'")[0]
+    def register_hook(layer):
+        def hook(layer, input, output):
+            class_name = str(layer.__class__).split(".")[-1].split("'")[0]
 
             try:
-                module_idx = int(module._full_name.split('_')[-1])
+                layer_idx = int(layer._full_name.split('_')[-1])
             except:
-                module_idx = len(summary)
+                layer_idx = len(summary)
 
-            m_key = "%s-%i" % (class_name, module_idx + 1)
+            m_key = "%s-%i" % (class_name, layer_idx + 1)
             summary[m_key] = OrderedDict()
             summary[m_key]["input_shape"] = list(input[0].shape)
             summary[m_key]["input_shape"][0] = batch_size
@@ -144,13 +144,13 @@ def summary_string(model, input_size, batch_size=-1, dtypes=None):
 
             params = 0
 
-            layer_state_dict = module.state_dict()
+            layer_state_dict = layer.state_dict()
             for k, v in layer_state_dict.items():
                 params += np.prod(v.shape)
 
                 try:
-                    if (getattr(getattr(module, k), 'trainable')) and (
-                            not getattr(getattr(module, k), 'stop_gradient')):
+                    if (getattr(getattr(layer, k), 'trainable')) and (
+                            not getattr(getattr(layer, k), 'stop_gradient')):
                         summary[m_key]["trainable"] = True
                     else:
                         summary[m_key]["trainable"] = False
@@ -159,11 +159,11 @@ def summary_string(model, input_size, batch_size=-1, dtypes=None):
 
             summary[m_key]["nb_params"] = params
 
-        if (not isinstance(module, nn.Sequential) and
-                not isinstance(module, nn.LayerList) and
-            (not (module == model) or depth < 1)):
+        if (not isinstance(layer, nn.Sequential) and
+                not isinstance(layer, nn.LayerList) and
+            (not (layer == model) or depth < 1)):
 
-            hooks.append(module.register_forward_post_hook(hook))
+            hooks.append(layer.register_forward_post_hook(hook))
 
     def _check_input_size(input_sizes):
         for input_size in input_sizes:
@@ -221,7 +221,12 @@ def summary_string(model, input_size, batch_size=-1, dtypes=None):
             "{0:,}".format(summary[layer]["nb_params"]), )
         total_params += summary[layer]["nb_params"]
 
-        total_output += np.prod(summary[layer]["output_shape"])
+        try:
+            total_output += np.prod(summary[layer]["output_shape"])
+        except:
+            for output_shape in summary[layer]["output_shape"]:
+                total_output += np.prod(output_shape)
+
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"] == True:
                 trainable_params += summary[layer]["nb_params"]
