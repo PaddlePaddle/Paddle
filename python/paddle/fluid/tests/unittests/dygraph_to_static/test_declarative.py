@@ -283,7 +283,6 @@ class TestInputDefaultName(unittest.TestCase):
         decorated_func = getattr(self.net, func_name)
 
         spec_names = [x.name for x in decorated_func.inputs]
-        print(spec_names)
         self.assertListEqual(spec_names, input_names)
 
     def test_common_input(self):
