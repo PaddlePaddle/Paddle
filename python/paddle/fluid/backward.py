@@ -251,12 +251,19 @@ def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
         begin_idx = 0
     if end_idx is None:
         end_idx = len(op_descs)
-    for i in range(begin_idx, end_idx):
-        op_desc = op_descs[i]
-        if isinstance(op_desc, tuple):
-            op_desc = op_desc[0]
-        op_desc._rename_input(old_name, new_name)
-        op_desc._rename_output(old_name, new_name)
+    if isinstance(op_descs, (list, tuple)):
+        for i in range(begin_idx, end_idx):
+            op_desc = op_descs[i]
+            if isinstance(op_desc, tuple):
+                op_desc = op_desc[0]
+            op_desc._rename_input(old_name, new_name)
+            op_desc._rename_output(old_name, new_name)
+    if isinstance(op_descs, collections.OrderedDict):
+        for key, value in op_descs.items():
+            if isinstance(value, (list, tuple)):
+                for op_desc in value:
+                    op_desc._rename_input(old_name, new_name)
+                    op_desc._rename_output(old_name, new_name)
 
 
 def _create_op_desc_(op_type, inputs, outputs, attrs):
@@ -369,6 +376,41 @@ def _append_grad_suffix_(name):
     return cpt.to_text(name) + core.grad_var_suffix()
 
 
+def _accumulate_gradients_by_sum_op_(var_name, renamed_vars, pending_sum_ops,
+                                     op_idx):
+    """
+    Use sum op to accumulate_gradients, the gradients are stored in renamed_vars.
+    """
+    pending_sum_ops[op_idx] = []
+    pending_sum_ops[op_idx].append(
+        _create_op_desc_("sum", {"X": renamed_vars[var_name]},
+                         {"Out": [var_name]}, {"use_mkldnn": False}))
+    renamed_vars[var_name] = [var_name]
+
+
+def _accumulate_gradients_by_add_ops_(var_name, renamed_vars, pending_sum_ops,
+                                      op_idx):
+    """
+    Use several inplace add op to accumulate_gradients, the gradients are stored in renamed_vars.
+    """
+    pending_sum_ops[op_idx] = []
+    out_name = renamed_vars[var_name][0]
+    for i in range(1, len(renamed_vars[var_name])):
+        x_name = out_name
+        y_name = renamed_vars[var_name][i]
+        if i != len(renamed_vars[var_name]) - 1:
+            out_name = var_name + '@ADD@' + str(i)
+        else:
+            out_name = var_name
+        pending_sum_ops[op_idx].append(
+            _create_op_desc_("elementwise_add", {"X": [x_name],
+                                                 "Y": [y_name]
+                                                 }, {"Out": [out_name]},
+                             {"use_mkldnn": False,
+                              "for_grad_accum": True}))
+    renamed_vars[var_name] = [var_name]
+
+
 def _addup_repetitive_outputs_(op_descs, block_idx):
     """
     In backward part, an variable may be the output of more than one ops.
@@ -376,7 +418,9 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     In these cases, the variable should be the accumulation of all the outputs.
     `sum_op`s are added to implement the accumulate.
     """
-    pending_sum_ops = []
+    _MAX_ADD_NUM_ = 8
+    #pending_sum_ops = []
+    pending_sum_ops = collections.OrderedDict()
     var_rename_count = collections.defaultdict(int)
     renamed_vars = collections.defaultdict(list)
     renamed_var_start_idx = collections.defaultdict(list)
@@ -385,10 +429,13 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
             if "@GRAD" not in var_name:
                 continue
             if len(renamed_vars[var_name]) > 1:
-                pending_sum_ops.append((_create_op_desc_(
-                    "sum", {"X": renamed_vars[var_name]}, {"Out": [var_name]},
-                    {"use_mkldnn": False}), idx))
-                renamed_vars[var_name] = [var_name]
+                if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
+                    _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
+                                                     pending_sum_ops, idx)
+                else:
+                    _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
+                                                      pending_sum_ops, idx)
+
         for param_idx, param_name in enumerate(op_desc.output_names()):
             arg_names = op_desc.output(param_name)
             for arg_idx, var_name in enumerate(arg_names):
@@ -440,13 +487,25 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                     renamed_vars[var_name].append(new_name)
 
     for var_name, inputs in six.iteritems(renamed_vars):
-        if len(inputs) > 1:
-            pending_sum_ops.append(
-                (_create_op_desc_("sum", {"X": inputs}, {"Out": [var_name]},
-                                  {"use_mkldnn": False}), len(op_descs)))
+        if len(renamed_vars[var_name]) > 1:
+            if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
+                _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
+                                                 pending_sum_ops, len(op_descs))
+            else:
+                _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
+                                                  pending_sum_ops,
+                                                  len(op_descs))
+
     # sum_op descs are sorted according to their insert position
-    for p in reversed(pending_sum_ops):
-        op_descs.insert(p[1], p[0])
+    for key, value in collections.OrderedDict(
+            reversed(list(pending_sum_ops.items()))).items():
+        # NOTE(zhiqiu): Since reversed, the idx of op_descs to be inserted will remains correct.
+        # For example, [0, 1, 2], and we want to insert 'a' at idx 1, 'b' at idx 2, and the expected result is [0, 1, 'a', 2, 'b'].
+        # If reversed, we first insert 'b' at idx 2, it becomes [0, 1, 2, 'b'], and then insert 'a' at idx 1, it becomes [0, 1, 'a', 2, 'b'].
+        # If not reverse, we first insert 'a' at idx 1, it becomes [0, 1, 'a', 2], and then insert 'b' at idx 2, it becomes [0, 1, 'a', 'b', 2].
+        idx = key
+        for i, op in enumerate(value):
+            op_descs.insert(idx + i, op)
 
     return op_descs
 

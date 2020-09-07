@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+
 #include <memory>
 #include <string>
+
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 namespace paddle {
@@ -63,6 +66,12 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
     AddInput("Y",
              "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
              "should be int32, int64, float32, float64.");
+  }
+  void AddOpAttr() override {
+    AddAttr<bool>("for_grad_accum",
+                  "(bool, default false), Specify if the elementwise_add op is "
+                  "used for gradient accumulation")
+        .SetDefault(false);
   }
 
   std::string GetOpFuntionality() const override {
@@ -129,3 +138,12 @@ REGISTER_OP_CPU_KERNEL(
                                         int>,
     ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int64_t>);
+
+REGISTER_OP_VERSION(elementwise_add)
+    .AddCheckpoint(
+        R"ROC(enhance elementwise_add to support gradient accumulation)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "for_grad_accum",
+            "To specify if the elementwise_add op is used for gradient "
+            "accumulation",
+            false));
