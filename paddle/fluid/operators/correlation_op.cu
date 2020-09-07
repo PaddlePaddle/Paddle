@@ -14,13 +14,13 @@ limitations under the License. */
 
 #include <algorithm>
 #include <string>
-#include "paddle/fluid/operators/correlation_op.h"
-
-#define THREADS_PER_BLOCK 32
-#define FULL_MASK 0xffffffff
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
+
+#define THREADS_PER_BLOCK 32
+#define FULL_MASK 0xffffffff
 
 using framework::Tensor;
 using DataLayout = framework::DataLayout;

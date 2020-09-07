@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/correlation_op.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -50,9 +50,9 @@ inline std::vector<int64_t> CorrelationOutputSize(int batch, int input_height,
 class CorrelationOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input1", "input1");
-    AddInput("Input2", "input2");
-    AddOutput("Output", "output");
+    AddInput("Input1", "Input is a 4-D Tensor with shape [N, C, H, W]");
+    AddInput("Input2", "Input is a 4-D Tensor with shape [N, C, H, W]");
+    AddOutput("Output", "Output of CorrelationOp");
     AddAttr<int>("pad_size", "pad size for input1 and input2");
     AddAttr<int>("kernel_size", "kernel size of input1 and input2");
     AddAttr<int>("max_displacement", "max displacement of input1 and input2");

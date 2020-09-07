@@ -1565,8 +1565,8 @@ def correlation(x,
     <https://arxiv.org/pdf/1709.02371.pdf>_
 
     Args:
-        x(Tensor): The input tensor, The data type is float32 and float64.
-        y(Tensor): The input tensor. The data type is float32 and float64.
+        x(Tensor): . The data type is float32 and float64.
+        y(Tensor): The input y is 4-D Tensor with shape [N, C, H, W]. The data type is float32 and float64.
         pad_size(int): Pad size. The data type is int.
         max_displacement(int): Max displacement. The data type is int.
         stride1(int): stride size of x. The data type is int.
