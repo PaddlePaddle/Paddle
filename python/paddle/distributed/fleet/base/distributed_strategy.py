@@ -16,6 +16,7 @@ import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
 from paddle.fluid.framework import Variable, set_flags, core
 import google.protobuf.text_format
+import google.protobuf
 
 __all__ = ["DistributedStrategy"]
 
