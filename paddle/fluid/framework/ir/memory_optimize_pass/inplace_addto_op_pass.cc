@@ -29,14 +29,14 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class BufferSharedInplaceOpPass : public MemoryReusePass {
+class InplaceAddToOpPass : public MemoryReusePass {
  protected:
-  std::string ReuseType() const override { return "inplace addto"; }
+  std::string ReuseType() const override { return "inplace"; }
 
   void Run(Graph *graph) const override;
 };
 
-void BufferSharedInplaceOpPass::Run(Graph *graph) const {
+void InplaceAddToOpPass::Run(Graph *graph) const {
   const auto &last_live_ops =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
 
@@ -62,8 +62,9 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
           op_desc, platform::errors::NotFound("Op(%s) can not find opdesc.",
                                               op->Name()));
 
-      auto &infer_inplace = OpInfoMap::Instance().Get(op_type).infer_inplace_;
-      if (!infer_inplace) {
+      // only elementwise_add op with for_grad_accum = true should be processed.
+      if (op_type != "elementwise_add" ||
+          op_desc->GetAttrIfExists<bool>("for_grad_accum") == false) {
         continue;
       }
 
@@ -72,8 +73,11 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
       if (in_nodes.size() == 1) {
         candidate_ops[op][var_name] = *in_nodes.begin();
       }
+      VLOG(4) << "Find op " << op_type << " with input(" << var_name
+              << ") that can do inplace add to";
     }
   }
+  return;
 
   // Step 2: Check which vars can be inplaced indeed
   for (auto &op_vars_pair : candidate_ops) {
@@ -156,8 +160,7 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(buffer_shared_inplace_pass,
-              paddle::framework::ir::BufferSharedInplaceOpPass)
+REGISTER_PASS(inplace_addto_op_pass, paddle::framework::ir::InplaceAddToOpPass)
     .RequirePassAttr(paddle::framework::ir::kMemOptVarInfoMapList)
     .RequirePassAttr(paddle::framework::ir::kLastLiveOpsOfVars)
     .RequirePassAttr(paddle::framework::ir::kUseCuda);

@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/async_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
@@ -319,6 +321,14 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   ref_cnt_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
   graph = ref_cnt_pass->Apply(graph);
   VLOG(10) << "ReferenceCountPass Applied";
+
+  auto addto_pass = ir::PassRegistry::Instance().Get("inplace_addto_op_pass");
+  addto_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
+  addto_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
+  addto_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+  VLOG(10) << "Start to apply inplace_addto_op_pass";
+  graph = addto_pass->Apply(graph);
+  VLOG(10) << "inplace_addto_op_pass Applied";
 
   if (build_strategy_.enable_inplace_) {
     auto inplace_pass =
@@ -1068,3 +1078,4 @@ USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);
 USE_PASS(buffer_shared_inplace_pass);
 USE_PASS(buffer_shared_cross_op_memory_reuse_pass);
+USE_PASS(inplace_addto_op_pass);
