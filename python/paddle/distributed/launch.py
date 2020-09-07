@@ -162,7 +162,10 @@ def get_cluster_from_args(args, selected_gpus):
             x for x in range(started_port, started_port + len(selected_gpus))
         ]
 
-    return get_cluster(node_ips, node_ip, free_ports, selected_gpus)
+    trainer_endpoints = []
+    for ip in node_ips:
+        trainer_endpoints += ["%s:%d" % (ip, port) for port in free_ports]
+    return get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus)
 
 
 def get_gpus(selected_gpus):

@@ -19,7 +19,7 @@ from paddle.distributed.utils import get_cluster, logger
 
 def get_cloud_cluster(args_node_ips, args_node_ip, args_port, selected_gpus):
     """
-    args_node_ips, args_node_ip:string
+    args_node_ips:string, args_node_ip:string, args_port: int, selected_gpus:list
     """
     #you can automatically get ip info while using paddlecloud multi nodes mode.
     node_ips = os.getenv("PADDLE_TRAINERS")
@@ -47,32 +47,42 @@ automatically got from PADDLE_TRAINERS(multi nodes) or POD_IP(single node).\
 Your input cluster_node_ips: {} doesn't equals to IPs: {} from \
 paddlecloud environment.".format(args_node_ips, node_ips))
 
-    started_port = args_port
-    print("num_nodes:", num_nodes)
-    if num_nodes > 1:
-        try:
-            paddle_port = int(os.getenv("PADDLE_PORT", ""))
-            paddle_port_num = int(os.getenv("TRAINER_PORTS_NUM", ""))
+    # DISTRIBUTED_TRAINER_ENDPOINTS: new environment since paddlecloud 1.8.4
+    trainer_endpoints = os.getenv("DISTRIBUTED_TRAINER_ENDPOINTS")
+    if trainer_endpoints is None:
+        started_port = args_port
+        if num_nodes > 1:
+            try:
+                paddle_port = int(os.getenv("PADDLE_PORT", ""))
+                paddle_port_num = int(os.getenv("TRAINER_PORTS_NUM", ""))
 
-            if paddle_port_num >= len(
-                    selected_gpus) and paddle_port != args_port:
-                logger.warning("Use Cloud specified port:{}.".format(
-                    paddle_port))
-                started_port = paddle_port
+                if paddle_port_num >= len(
+                        selected_gpus) and paddle_port != args_port:
+                    logger.warning("Use Cloud specified port:{}.".format(
+                        paddle_port))
+                    started_port = paddle_port
 
-        except Exception as e:
-            print(e)
-            pass
+            except Exception as e:
+                print(e)
+                pass
 
-    if started_port is None:
-        started_port = 6170
+        if started_port is None:
+            started_port = 6170
+        ports = [
+            x for x in range(started_port, started_port + len(selected_gpus))
+        ]
+        trainer_endpoints = []
+        for ip in node_ips:
+            trainer_endpoints += ["%s:%d" % (ip, port) for port in ports]
+    else:
+        trainer_endpoints = trainer_endpoints.split(",")
 
-    logger.debug("parsed from args:node_ips:{} \
-        node_ip:{} node_rank:{} started_port:{}"
-                 .format(node_ips, node_ip, node_rank, started_port))
+    logger.debug("parsed from args: node_ips:{} \
+        node_ip:{} node_rank:{} trainer_endpoints:{}"
+                 .format(node_ips, node_ip, node_rank, trainer_endpoints))
 
-    ports = [x for x in range(started_port, started_port + len(selected_gpus))]
-    cluster, pod = get_cluster(node_ips, node_ip, ports, selected_gpus)
+    cluster, pod = get_cluster(node_ips, node_ip, trainer_endpoints,
+                               selected_gpus)
     return cluster, cluster.pods[node_rank]
 
 
