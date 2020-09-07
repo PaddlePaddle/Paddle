@@ -244,10 +244,6 @@ def full_like(x, fill_value, dtype=None, name=None):
     Returns:
         Tensor: Tensor which is created according to ``x``, ``fill_value`` and ``dtype``.
     
-    Raises:
-        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None.
-    
     Examples:
         .. code-block:: python
 
@@ -303,11 +299,6 @@ def ones(shape, dtype=None, name=None):
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
 
-    Raises:
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
-            be int32 or int64 when it's a Tensor.
-    
     Examples:
         .. code-block:: python
 
@@ -391,11 +382,6 @@ def zeros(shape, dtype=None, name=None):
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
-    Raises:
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
-            be int32 or int64 when it's a Tensor.
-    
     Examples:
         .. code-block:: python
 
@@ -480,10 +466,6 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 
     Returns:
         Tensor: An identity Tensor or LoDTensor of shape [num_rows, num_columns].
-    
-    Raises:
-        TypeError: The ``dtype`` must be one of float16, float32, float64, int32 int64 and None.
-        TypeError: The ``num_columns`` must be non-negative int.
 
     Examples:
         .. code-block:: python
@@ -532,11 +514,6 @@ def full(shape, fill_value, dtype=None, name=None):
     Returns:
         Tensor: Tensor which is created according to ``shape``, ``fill_value`` and ``dtype``.
 
-    Raises:
-        TypeError: The ``dtype`` must be one of None, bool, float16, float32, float64, int32 and int64.
-        TypeError: The ``shape`` must be one of Tensor, list and tuple. The data type of ``shape`` must
-            be int32 or int64 when the it's a Tensor
-    
     Examples:
         .. code-block:: python
 
