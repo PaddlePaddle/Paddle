@@ -143,6 +143,27 @@ class TestPool1d_API(unittest.TestCase):
             result = avg_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
+    def check_avg_dygraph_padding_results(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            result = F.avg_pool1d(
+                input,
+                kernel_size=2,
+                stride=2,
+                padding=[1],
+                count_include_pad=True)
+
+            result_np = avg_pool1D_forward_naive(
+                input_np, ksize=[2], strides=[2], paddings=[1], exclusive=False)
+
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+            avg_pool1d_dg = paddle.nn.AvgPool1d(
+                kernel_size=2, stride=None, padding=1, count_include_pad=True)
+            result = avg_pool1d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
     def check_max_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")

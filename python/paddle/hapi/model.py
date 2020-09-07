@@ -1868,8 +1868,13 @@ class Model(object):
               print(params_info)
 
         """
-
-        return summary(self.network, self._inputs, batch_size, dtype)
+        assert (input_size is not None or self._inputs is not None
+                ), "'input_size' or 'self._input' must be set"
+        if input_size is not None:
+            _input_size = input_size
+        else:
+            _input_size = self._inputs
+        return summary(self.network, _input_size, batch_size, dtype)
 
     def _verify_spec(self, specs, is_input=False):
         out_specs = []
