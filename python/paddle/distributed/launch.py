@@ -208,7 +208,8 @@ def get_cluster_and_pod(args):
 
     if args.use_paddlecloud and trainers_num != 1:
         cluster, pod = cloud_utils.get_cloud_cluster(
-            args.cluster_node_ips, args.started_port, selected_gpus)
+            args.cluster_node_ips, args.node_ip, args.started_port,
+            selected_gpus)
         logger.info("get cluster from cloud:{}".format(cluster))
     else:
         cluster, pod = get_cluster_from_args(args, selected_gpus)

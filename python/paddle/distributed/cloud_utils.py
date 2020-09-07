@@ -17,10 +17,11 @@ import paddle
 from paddle.distributed.utils import get_cluster, logger
 
 
-def get_cloud_cluster(args_node_ips, args_port, selected_gpus):
+def get_cloud_cluster(args_node_ips, args_node_ip, args_port, selected_gpus):
     """
-    args_node_ips:string, args_port: int, selected_gpus:list
+    args_node_ips:string, args_node_ip:string, args_port: int, selected_gpus:list
     """
+    #you can automatically get ip info while using paddlecloud multi nodes mode.
     node_ips = os.getenv("PADDLE_TRAINERS")
     assert node_ips is not None, "PADDLE_TRAINERS should not be None"
 
@@ -33,6 +34,11 @@ def get_cloud_cluster(args_node_ips, args_port, selected_gpus):
     node_ips = node_ips.split(",")
     num_nodes = len(node_ips)
     node_rank = int(node_rank)
+
+    if node_ip != "127.0.0.1" and node_ip != args_node_ip:
+        logger.warning("Please NOTE: When using paddlecloud, node_ip is \
+automatically got from POD_IP. Your input node_ip: {} doesn't equals to \
+node_ip: {} from paddlecloud environment.".format(args_node_ip, node_ip))
 
     if args_node_ips != "127.0.0.1" and args_node_ips != ",".join(node_ips):
         logger.warning(

@@ -21,6 +21,7 @@ def get_cloud_cluster(args_node_ips, selected_gpus, args_port=6170):
     """
     args_node_ips:string, selected_gpus:list, args_port: int
     """
+    #you can automatically get ip info while using paddlecloud multi nodes mode.
     node_ips = os.getenv("PADDLE_TRAINERS")
     assert node_ips is not None, "PADDLE_TRAINERS should not be None"
 
