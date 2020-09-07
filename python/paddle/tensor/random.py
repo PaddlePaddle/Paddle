@@ -60,7 +60,6 @@ def bernoulli(x, name=None):
         .. code-block:: python
 
         import paddle
-        import numpy as np
 
         paddle.disable_static()
 
@@ -188,7 +187,6 @@ def standard_normal(shape, dtype=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
@@ -209,8 +207,9 @@ def standard_normal(shape, dtype=None, name=None):
             #   [ 0.8086993 ,  0.6868893 ]]]  # random
 
             # example 3: attr shape is a Tensor, the data type must be int64 or int32.
-            shape_tensor = paddle.to_tensor(np.array([2, 3]))
-            out3 = paddle.standard_normal(shape_tensor)
+            shape_tensor = paddle.to_tensor([2, 3])
+            result_3 = paddle.standard_normal(shape_tensor)
+
             # [[-2.878077 ,  0.17099959,  0.05111201]  # random
             #  [-0.3761474, -1.044801  ,  1.1870178 ]]  # random
 
@@ -258,7 +257,6 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
@@ -266,11 +264,11 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             # [[ 0.17501129  0.32364586  1.561118  ]  # random
             #  [-1.7232178   1.1545963  -0.76156676]]  # random
 
-            mean_tensor = paddle.to_tensor(np.array([1.0, 2.0, 3.0]))
+            mean_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
             out2 = paddle.normal(mean=mean_tensor)
             # [ 0.18644847 -1.19434458  3.93694787]  # random
 
-            std_tensor = paddle.to_tensor(np.array([1.0, 2.0, 3.0]))
+            std_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
             out3 = paddle.normal(mean=mean_tensor, std=std_tensor)
             # [1.00780561 3.78457445 5.81058198]  # random
 
@@ -357,7 +355,6 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     Examples:
         .. code-block:: python
             
-            import numpy as np
             import paddle
 
             paddle.disable_static()
@@ -379,8 +376,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
             # example 3:
             # attr shape is a Tensor, the data type must be int64 or int32.
-            shape = np.array([2, 3])
-            shape_tensor = paddle.to_tensor(shape)
+            shape_tensor = paddle.to_tensor([2, 3])
             result_3 = paddle.tensor.random.uniform(shape_tensor)
             # if shape_tensor's value is [2, 3]
             # result_3 is:
@@ -393,8 +389,8 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         dtype = paddle.framework.get_default_dtype()
         if dtype not in ['float32', 'float64']:
             raise TypeError(
-                "uniform only supports [float32, float64], but the default dtype is %s"
-                % dtype)
+                "uniform/rand only supports [float32, float64], but the default dtype is {}".
+                format(dtype))
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -405,15 +401,15 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
                                        float(min), 'max',
                                        float(max), 'seed', seed, 'dtype', dtype)
 
-    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random/rand')
-    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random/rand')
+    check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')
+    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform/rand')
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
     utils.get_shape_tensor_inputs(
-        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform_random/rand')
+        inputs=inputs, attrs=attrs, shape=shape, op_type='uniform/rand')
 
-    helper = LayerHelper("uniform_random", **locals())
+    helper = LayerHelper("uniform", **locals())
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="uniform_random", inputs=inputs, attrs=attrs,
@@ -454,7 +450,6 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
@@ -473,8 +468,10 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
             # example 3:
             # attr shape is a Tensor
-            shape_tensor = paddle.to_tensor(np.array([3]))
-            out3 = paddle.randint(low=-5, high=5, shape=shape_tensor)
+
+            shape_tensor = paddle.to_tensor(3)
+            result_3 = paddle.randint(low=-5, high=5, shape=shape_tensor)
+
             # [-2, 2, 3]  # random
 
             # example 4:
@@ -604,7 +601,6 @@ def rand(shape, dtype=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
             # example 1: attr shape is a list which doesn't contain Tensor.
@@ -624,8 +620,9 @@ def rand(shape, dtype=None, name=None):
             #   [0.870881  , 0.2984597 ]]]  # random
 
             # example 3: attr shape is a Tensor, the data type must be int64 or int32.
-            shape_tensor = paddle.to_tensor(np.array([2, 3]))
-            out2 = paddle.rand(shape_tensor)
+            shape_tensor = paddle.to_tensor([2, 3])
+            result_3 = paddle.rand(shape_tensor)
+
             # [[0.22920267, 0.841956  , 0.05981819],  # random
             #  [0.4836288 , 0.24573246, 0.7516129 ]]  # random
 

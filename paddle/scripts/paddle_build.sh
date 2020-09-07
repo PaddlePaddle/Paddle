@@ -528,6 +528,7 @@ EOF
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
+        set +e
         ut_startTime_s=`date +%s`
         ctest --output-on-failure -j $2;mactest_error=$?
         ut_endTime_s=`date +%s`
@@ -1421,6 +1422,7 @@ function main() {
     init
     if [ "$CMD" != "assert_file_approvals" ];then
       python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
     case $CMD in
       build_only)

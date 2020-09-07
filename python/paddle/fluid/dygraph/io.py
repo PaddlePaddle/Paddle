@@ -488,6 +488,15 @@ def _load_persistable_vars(model_path,
     return load_var_dict
 
 
+# NOTE(chenweihang): to adapt paddle.load to get state_dict
+def _remove_varname_suffix(var_dict, program_holder):
+    no_suffix_var_dict = dict()
+    for var_name in var_dict:
+        no_suffix_name = program_holder._suffix_varname_dict[var_name]
+        no_suffix_var_dict[no_suffix_name] = var_dict[var_name]
+    return no_suffix_var_dict
+
+
 def _construct_program_holders(model_path, model_filename=None):
     # make sure the path has been checked
     program_holder_dict = dict()
@@ -517,7 +526,8 @@ def _construct_program_holders(model_path, model_filename=None):
 def _construct_params_and_buffers(model_path,
                                   programs,
                                   separate_params=False,
-                                  params_filename=None):
+                                  params_filename=None,
+                                  append_suffix=True):
     var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
     if os.path.exists(var_info_path):
         var_dict = _load_persistable_vars(model_path, var_info_path,
@@ -526,6 +536,10 @@ def _construct_params_and_buffers(model_path,
     else:
         var_dict = _load_persistable_vars_by_program(
             model_path, programs['forward'], params_filename)
+
+    if not append_suffix:
+        var_dict = _remove_varname_suffix(var_dict, programs['forward'])
+
     return var_dict
 
 
@@ -542,89 +556,92 @@ class TranslatedLayer(layers.Layer):
         .. code-block:: python
 
             import numpy as np
-            import paddle.fluid as fluid
-            from paddle.fluid.dygraph import Linear
-            from paddle.fluid.dygraph import declarative
+            import paddle
+            import paddle.nn as nn
+            import paddle.optimizer as opt
 
-            BATCH_SIZE = 32
-            BATCH_NUM = 20
+            BATCH_SIZE = 16
+            BATCH_NUM = 4
+            EPOCH_NUM = 4
 
-            def random_batch_reader():
-                def _get_random_images_and_labels(image_shape, label_shape):
-                    image = np.random.random(size=image_shape).astype('float32')
-                    label = np.random.random(size=label_shape).astype('int64')
+            IMAGE_SIZE = 784
+            CLASS_NUM = 10
+
+            # define a random dataset
+            class RandomDataset(paddle.io.Dataset):
+                def __init__(self, num_samples):
+                    self.num_samples = num_samples
+
+                def __getitem__(self, idx):
+                    image = np.random.random([IMAGE_SIZE]).astype('float32')
+                    label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
                     return image, label
 
-                def __reader__():
-                    for _ in range(BATCH_NUM):
-                        batch_image, batch_label = _get_random_images_and_labels(
-                            [BATCH_SIZE, 784], [BATCH_SIZE, 1])
-                        yield batch_image, batch_label
+                def __len__(self):
+                    return self.num_samples
 
-                return __reader__
-
-            class LinearNet(fluid.dygraph.Layer):
-                def __init__(self, in_size, out_size):
+            class LinearNet(nn.Layer):
+                def __init__(self):
                     super(LinearNet, self).__init__()
-                    self._linear = Linear(in_size, out_size)
+                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
-                @declarative
+                @paddle.jit.to_static
                 def forward(self, x):
                     return self._linear(x)
 
+            def train(layer, loader, loss_fn, opt):
+                for epoch_id in range(EPOCH_NUM):
+                    for batch_id, (image, label) in enumerate(loader()):
+                        out = layer(image)
+                        loss = loss_fn(out, label)
+                        loss.backward()
+                        opt.step()
+                        opt.clear_grad()
+                        print("Epoch {} batch {}: loss = {}".format(
+                            epoch_id, batch_id, np.mean(loss.numpy())))
+
             # enable dygraph mode
-            fluid.enable_dygraph() 
+            place = paddle.CPUPlace()
+            paddle.disable_static(place) 
 
             # 1. train & save model.
+
             # create network
-            net = LinearNet(784, 1)
-            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+            layer = LinearNet()
+            loss_fn = nn.CrossEntropyLoss()
+            adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
+
             # create data loader
-            train_loader = fluid.io.DataLoader.from_generator(capacity=5)
-            train_loader.set_batch_generator(random_batch_reader())
+            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+            loader = paddle.io.DataLoader(dataset,
+                places=place,
+                batch_size=BATCH_SIZE,
+                shuffle=True,
+                drop_last=True,
+                num_workers=2)
+
             # train
-            for data in train_loader():
-                img, label = data
-                label.stop_gradient = True
+            train(layer, loader, loss_fn, adam)
 
-                cost = net(img)
-
-                loss = fluid.layers.cross_entropy(cost, label)
-                avg_loss = fluid.layers.mean(loss)
-
-                avg_loss.backward()
-                adam.minimize(avg_loss)
-                net.clear_gradients()
-
+            # save
             model_path = "linear.example.model"
-            fluid.dygraph.jit.save(
-                layer=net,
-                model_path=model_path,
-                input_spec=[img])
+            paddle.jit.save(layer, model_path)
 
             # 2. load model as TranslatedLayer
-            translated_layer = fluid.dygraph.jit.load(model_path)
+
+            # load
+            translated_layer = paddle.jit.load(model_path)
+
             # inference
             translated_layer.eval()
-            x = fluid.dygraph.to_variable(np.random.random((1, 784)).astype('float32'))
+            x = paddle.randn([1, IMAGE_SIZE], 'float32')
             pred = translated_layer(x)
+
             # fine-tune
             translated_layer.train()
-            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=translated_layer.parameters())
-            train_loader = fluid.io.DataLoader.from_generator(capacity=5)
-            train_loader.set_batch_generator(random_batch_reader())
-            for data in train_loader():
-                img, label = data
-                label.stop_gradient = True
+            adam = opt.Adam(learning_rate=0.001, parameters=translated_layer.parameters())
+            train(translated_layer, loader, loss_fn, adam)
 
-                cost = translated_layer(img)
-
-                loss = fluid.layers.cross_entropy(cost, label)
-                avg_loss = fluid.layers.mean(loss)
-
-                avg_loss.backward()
-                adam.minimize(avg_loss)
-                translated_layer.clear_gradients()
     """
 
     def __init__(self, programs, persistable_vars):
@@ -685,7 +702,7 @@ class TranslatedLayer(layers.Layer):
         # 1. load program desc & construct _ProgramHolder
         programs = _construct_program_holders(model_path, model_filename)
 
-        # 2. load layer parameters & parameter attributes
+        # 2. load layer parameters & buffers
         persistable_vars = _construct_params_and_buffers(
             model_path, programs, separate_params, params_filename)
 
@@ -800,3 +817,107 @@ class TranslatedLayer(layers.Layer):
 
     def eval(self):
         self._is_test = True
+
+    def program(self, method_name='forward'):
+        """
+        Gets translated program of specified method.
+
+        Args:
+            - method_name (string): mehtod name corresponding to the program
+                to be obtained. Default: 'forward'.
+        
+        Returns:
+            Program
+
+        Examples:
+            .. code-block:: python
+            
+                import numpy as np
+                import paddle
+                import paddle.nn as nn
+                import paddle.optimizer as opt
+
+                BATCH_SIZE = 16
+                BATCH_NUM = 4
+                EPOCH_NUM = 4
+
+                IMAGE_SIZE = 784
+                CLASS_NUM = 10
+
+                # define a random dataset
+                class RandomDataset(paddle.io.Dataset):
+                    def __init__(self, num_samples):
+                        self.num_samples = num_samples
+
+                    def __getitem__(self, idx):
+                        image = np.random.random([IMAGE_SIZE]).astype('float32')
+                        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                        return image, label
+
+                    def __len__(self):
+                        return self.num_samples
+
+                class LinearNet(nn.Layer):
+                    def __init__(self):
+                        super(LinearNet, self).__init__()
+                        self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+
+                    @paddle.jit.to_static
+                    def forward(self, x):
+                        return self._linear(x)
+
+                def train(layer, loader, loss_fn, opt):
+                    for epoch_id in range(EPOCH_NUM):
+                        for batch_id, (image, label) in enumerate(loader()):
+                            out = layer(image)
+                            loss = loss_fn(out, label)
+                            loss.backward()
+                            opt.step()
+                            opt.clear_grad()
+                            print("Epoch {} batch {}: loss = {}".format(
+                                epoch_id, batch_id, np.mean(loss.numpy())))
+
+                # enable dygraph mode
+                place = paddle.CPUPlace()
+                paddle.disable_static(place) 
+
+                # create network
+                layer = LinearNet()
+                loss_fn = nn.CrossEntropyLoss()
+                adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
+
+                # create data loader
+                dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+                loader = paddle.io.DataLoader(dataset,
+                    places=place,
+                    batch_size=BATCH_SIZE,
+                    shuffle=True,
+                    drop_last=True,
+                    num_workers=2)
+
+                # train
+                train(layer, loader, loss_fn, adam)
+
+                # save
+                model_path = "linear.example.model"
+                paddle.jit.save(layer, model_path)
+
+                # load
+                translated_layer = paddle.jit.load(model_path)
+
+                # get program
+                program = translated_layer.program()
+        """
+        # 1. get program holder
+        program_holder = self._program_holder_dict.get(method_name, None)
+        if program_holder is None:
+            raise ValueError(
+                "The method `%s` is not exists in loaded TranslatedLayer." %
+                method_name)
+
+        # 2. get inference program desc
+        program_desc = program_holder.infer_program
+
+        # 3. construct program
+        program = _build_program_by_desc(program_desc)
+        return program
