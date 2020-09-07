@@ -389,7 +389,23 @@ class TestCUDNNLstmOp(OpTest):
         output, (last_hidden, last_cell) = rnn1(
             input, sequence_length=self.sequence_length)
 
-        flat_w = np.ones((weight_size)).astype(self.dtype)
+        flat_w = []
+        for i in range(self.num_layers):
+            if i == 0:
+                weight_ih = np.ones(
+                    (4 * hidden_size, input_size), dtype=self.dtype)
+            else:
+                weight_ih = np.ones(
+                    (4 * hidden_size, hidden_size), dtype=self.dtype)
+            weight_hh = np.ones((4 * hidden_size,
+                                 hidden_size)).astype(self.dtype)
+            bias_ih = np.ones((4 * hidden_size)).astype(self.dtype)
+            bias_hh = np.ones((4 * hidden_size)).astype(self.dtype)
+            flat_w.append(("weight" + str(4 * i), weight_ih))
+            flat_w.append(("weight" + str(4 * i + 1), weight_hh))
+            flat_w.append(("weight" + str(4 * i + 2), bias_ih))
+            flat_w.append(("weight" + str(4 * i + 3), bias_hh))
+
         init_h = np.zeros((self.num_layers, batch_size,
                            hidden_size)).astype(self.dtype)
         init_c = np.zeros((self.num_layers, batch_size,
@@ -398,7 +414,7 @@ class TestCUDNNLstmOp(OpTest):
 
         self.inputs = {
             'Input': input,
-            'W': flat_w,
+            'WeightList': flat_w,
             'InitH': init_h,
             'InitC': init_c
         }
@@ -429,7 +445,7 @@ class TestCUDNNLstmOp(OpTest):
     def test_grad_with_place(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(place,
-                                   set(['Input', 'W', 'InitH', 'InitC']),
+                                   set(['Input', 'InitH', 'InitC']),
                                    ['Out', 'LastH', 'LastC'])
 
 

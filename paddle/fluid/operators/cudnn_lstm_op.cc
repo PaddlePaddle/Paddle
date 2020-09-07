@@ -25,7 +25,7 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "CudnnLSTM");
-    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "CudnnLSTM");
+    OP_INOUT_CHECK(ctx->HasInputs("WeightList"), "Input", "W", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasInput("InitH"), "Input", "InitH", "CudnnLSTM");
     OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTM");
 
@@ -109,10 +109,10 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              "hidden_size)"
              "and When is_bidirec is True, the shape will be (num_layers*2 x "
              "batch_size x hidden_size)");
-    AddInput("W",
-             "(Tensor) the learnable hidden-hidden weights."
-             " The shape is (N), where N is total weight size of the LSTM. "
-             " cudnn concatenate all the weight to one Tensor");
+    AddInput("WeightList", "(vector<Tensor>), stores weight and bias data. ")
+        .AsDispensable()
+        .AsDuplicable();
+
     AddOutput("Reserve",
               "(Tensor, a temporary output Tensor to store the reserve_data "
               "of cudnn kernel.")
@@ -207,7 +207,8 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "CudnnLSTMGrad");
-    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "CudnnLSTMGrad");
+    // OP_INOUT_CHECK(ctx->HasInput("WeightList"), "Input", "WeightList",
+    // "CudnnLSTMGrad");
     OP_INOUT_CHECK(ctx->HasInput("InitH"), "Input", "InitH", "CudnnLSTMGrad");
     OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTMGrad");
 
@@ -242,7 +243,7 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("InitH", this->Input("InitH"));
     op->SetInput("InitC", this->Input("InitC"));
-    op->SetInput("W", this->Input("W"));
+    op->SetInput("WeightList", this->Input("WeightList"));
     op->SetInput("Reserve", this->Output("Reserve"));
     op->SetInput("StateOut", this->Output("StateOut"));
     op->SetInput("Out", this->Output("Out"));
@@ -251,7 +252,8 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput(framework::GradVarName("LastH"), this->OutputGrad("LastH"));
 
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
-    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    op->SetOutput(framework::GradVarName("WeightList"),
+                  this->InputGrad("WeightList", false));
     op->SetOutput(framework::GradVarName("InitH"), this->InputGrad("InitH"));
     op->SetOutput(framework::GradVarName("InitC"), this->InputGrad("InitC"));
     op->SetAttrMap(this->Attrs());
