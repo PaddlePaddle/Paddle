@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 import numpy as np
 import numbers
 
@@ -108,6 +109,11 @@ def summary(net, input_size, batch_size=None, dtypes=None):
     if batch_size is None:
         batch_size = -1
 
+    if not paddle.in_dynamic_mode():
+        warnings.warn(
+            "Your model was created in static mode, this may not get correct summary information!"
+        )
+
     result, params_info = summary_string(net, _input_size, batch_size, dtypes)
     print(result)
 
@@ -144,7 +150,11 @@ def summary_string(model, input_size, batch_size=-1, dtypes=None):
 
             params = 0
 
-            layer_state_dict = layer.state_dict()
+            if paddle.in_dynamic_mode():
+                layer_state_dict = layer._parameters
+            else:
+                layer_state_dict = layer.state_dict()
+
             for k, v in layer_state_dict.items():
                 params += np.prod(v.shape)
 
