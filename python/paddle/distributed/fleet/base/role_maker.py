@@ -13,6 +13,7 @@
 # limitations under the License.
 """Defination of Role Makers."""
 import os
+import time
 import numpy as np
 import warnings
 from multiprocessing import Process, Manager
@@ -256,7 +257,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 self._http_server_d["running"] = False
             self._iface = self.__get_default_iface()
             # this environment variable can be empty
-            self._prefix = os.getenv("SYS_JOB_ID", "")
 
     def _barrier(self, comm_world):
         if isinstance(comm_world, fluid.core.Gloo):
@@ -421,8 +421,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
             # format: string(ip:port,ip:port), eg. 127.0.0.1:6001,127.0.0.1:6002
             self._server_endpoints = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
-            self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
-                                               "").split(",")
+
             if self._server_endpoints is None:
                 # back to non_distributed execution.
                 self._server_endpoints = ""
@@ -436,6 +435,13 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 return
 
             self._server_endpoints = self._server_endpoints.split(",")
+
+            self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+            if self._worker_endpoints:
+                self._worker_endpoints = self._worker_endpoints.split(",")
+            else:
+                self._worker_endpoints = []
+
             trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
             training_role = os.environ["TRAINING_ROLE"]
 
@@ -502,6 +508,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._heter_trainers_num = heter_trainers_num
         self._heter_trainer_endpoints = heter_trainer_eplist
 
+        self._init_gloo = bool(int(os.getenv("PADDLE_WITH_GLOO", "0")))
+
     def _collective_env(self):
         self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
@@ -519,22 +527,29 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             set([x.split(':')[0] for x in self._worker_endpoints]))
 
     def _init_gloo_env(self):
-        def init_gloo_instance(role="trainer"):
-            role = role.lower()
-            assert role in ["trainer", "pserver", "all"]
-            if role == "trainer":
-                all_list = self._worker_endpoints
-                rank = self._current_id
-            elif role == "pserver":
-                all_list = self._server_endpoints
-                rank = self._current_id
+        def init_gloo_instance(role):
+            if role == "TRAINER":
+                nodes = self.worker_num()
+                rank = self.worker_index()
+            elif role == "PSERVER":
+                nodes = self.server_num()
+                rank = self.server_index()
+            elif role == "ALL":
+                nodes = self.worker_num() + self.server_num()
+
+                if self.is_worker():
+                    rank = self.worker_index()
+                else:
+                    rank = self.worker_num() + self.server_index()
             else:
-                all_list = self._worker_endpoints + self._server_endpoints
-                rank = all_list.index(self._cur_endpoint)
+                raise ValueError(
+                    "role: {} can not be recognized, must in [TRAINER/PSERVER/ALL]".
+                    format(role))
+
             gloo = fluid.core.Gloo()
             gloo.set_rank(rank)
-            gloo.set_size(len(all_list))
-            gloo.set_prefix(self._prefix)
+            gloo.set_size(nodes)
+            gloo.set_prefix("")
             gloo.set_iface(self._iface)
             gloo.set_timeout_seconds(self._init_timeout_seconds,
                                      self._run_timeout_seconds)
@@ -542,10 +557,14 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 gloo.set_http_store(self._http_ip_port[0],
                                     int(self._http_ip_port[1]), role)
             else:
-                gloo.set_hdfs_store(self._hdfs_path + "/" + role,
-                                    self._hdfs_name, self._hdfs_ugi)
+                gloo.set_hdfs_store(
+                    os.path.join(self._hdfs_path, role), self._hdfs_name,
+                    self._hdfs_ugi)
             gloo.init()
             return gloo
+
+        if not self._init_gloo:
+            return
 
         # paddlecloud support gloo
         if self._role == Role.WORKER:
@@ -566,20 +585,19 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 # start child process
                 self._http_server.start()
             self._node_type = 1
-            gloo = init_gloo_instance("trainer")
+            gloo = init_gloo_instance("TRAINER")
+            self._node_type_comm = gloo
+        elif self._role == Role.SERVER:
+            self._node_type = 0
+            gloo = init_gloo_instance("PSERVER")
             self._node_type_comm = gloo
         else:
-            assert self._role == Role.SERVER
-            self._node_type = 0
-            gloo = init_gloo_instance("pserver")
-            self._node_type_comm = gloo
+            raise ValueError(
+                "role: {} can not be recognized, must in [TRAINER/PSERVER]".
+                format(self._role))
 
-        all_list = self._worker_endpoints + self._server_endpoints
-        self._rank = all_list.index(self._cur_endpoint)
-        self._size = len(all_list)
-
-        gloo = init_gloo_instance("all")
-        self._all_comm = gloo
+        # gloo = init_gloo_instance("ALL")
+        # self._all_comm = gloo
 
         if self._http_server is not None:
             # set running status to False
@@ -594,10 +612,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             if not self._is_collective:
                 self._ps_env()
-                if "PADDLE_WITH_GLOO" in os.environ:
-                    self._init_gloo = bool(os.environ["PADDLE_WITH_GLOO"])
-                if self._init_gloo:
-                    self._init_gloo_env()
             else:
                 self._collective_env()
             self._role_is_generated = True
@@ -672,11 +686,13 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
         self._node_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
 
+        self._init_gloo_env()
+
     def _user_defined_collective_env(self):
         self._worker_endpoints = self._kwargs.get("worker_endpoints")
         self._current_id = self._kwargs.get("current_id")
         self._trainers_num = len(self._worker_endpoints)
-        self._training_role = Role.Worker
+        self._training_role = Role.WORKER
         self._node_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
 
@@ -687,8 +703,6 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
         if not self._role_is_generated:
             if not self._is_collective:
                 self._user_defined_ps_env()
-                if self._init_gloo:
-                    self._init_gloo_env()
             else:
                 self._user_defined_collective_env()
             self._role_is_generated = True
