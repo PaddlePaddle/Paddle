@@ -166,10 +166,22 @@ class ArgMinMaxOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "'axis'(%d) must be less than Rank(X)(%d).", axis, x_dims.size()));
 
+    const int& dtype = ctx->Attrs().Get<int>("dtype");
+    PADDLE_ENFORCE_EQ(
+        (dtype < 0 || dtype == 2 || dtype == 3), true,
+        platform::errors::InvalidArgument(
+            "The attribute of dtype in argmin/argmax must be [%s] or [%s], but "
+            "received [%s]",
+            paddle::framework::DataTypeToString(
+                framework::proto::VarType::INT32),
+            paddle::framework::DataTypeToString(
+                framework::proto::VarType::INT64),
+            paddle::framework::DataTypeToString(
+                static_cast<framework::proto::VarType::Type>(dtype))));
+
     auto x_rank = x_dims.size();
     if (axis < 0) axis += x_rank;
     if (ctx->IsRuntime()) {
-      const int& dtype = ctx->Attrs().Get<int>("dtype");
       if (dtype == framework::proto::VarType::INT32) {
         int64_t all_element_num = 0;
         if (flatten) {

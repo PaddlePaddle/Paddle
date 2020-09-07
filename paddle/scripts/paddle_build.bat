@@ -20,13 +20,12 @@ rem       Paddle CI Task On Windows Platform
 rem =================================================
 
 rem -------clean up environment-----------
+wmic process where name="op_function_generator.exe" call terminate  2>NUL
 set work_dir=%cd%
-if exist build rmdir build /s/q
 mkdir build
 cd /d build
 tree .
 dir paddle\fluid\pybind\Release
-taskkill /f /im op_function_generator.exe  2>NUL
 
 rem ------initialize the virtual environment------
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
@@ -59,7 +58,7 @@ if not defined WITH_AVX set WITH_AVX=ON
 if not defined WITH_TESTING set WITH_TESTING=ON
 if not defined WITH_PYTHON set WITH_PYTHON=ON
 if not defined ON_INFER set ON_INFER=ON
-if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=OFF
+if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
 if not defined WITH_TPCACHE set WITH_TPCACHE=ON
 
 rem ------set cache third_party------
@@ -402,7 +401,7 @@ taskkill /f /im git-remote-https.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
 taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
-taskkill /f /im op_function_generator.exe  2>NUL
+wmic process where name="op_function_generator.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
 call paddle_winci\Scripts\deactivate.bat 2>NUL
 taskkill /f /im python.exe  2>NUL

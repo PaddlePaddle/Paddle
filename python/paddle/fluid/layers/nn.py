@@ -4815,11 +4815,6 @@ def split(input, num_or_sections, dim=-1, name=None):
     Returns:
         list(Tensor): The list of segmented Tensors.
 
-    Raises:
-        TypeError: The data type of ``input`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: ``num_or_sections`` is not int, list or tuple.
-        TypeError: ``dim`` is not int or Tensor. The data type of ``dim`` must be int32 or int64 when it's a Tensor.
-
     Example:
         .. code-block:: python
 
@@ -6103,11 +6098,6 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     Returns:
         Tensor: A reshaped Tensor with the same data type as ``x``. It is a new tensor variable if ``inplace`` is ``False``, otherwise it is ``x``. If ``act`` is None, return the reshaped tensor variable, otherwise return the activated tensor variable.
 
-    Raises:
-        TypeError: If actual_shape is neither Tensor nor None.
-        ValueError: If more than one elements of ``shape`` is -1.
-        ValueError: If the element of ``shape`` is 0, the corresponding dimension should be less than or equal to the dimension of ``x``.
-        ValueError: If the elements in ``shape`` is negative except -1.
 
     Examples:
         .. code-block:: python
@@ -8256,10 +8246,6 @@ def gather(input, index, overwrite=True):
     Returns:
         output (Tensor): The output is a tensor with the same rank as input.
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must to be one of float16, float32, float64, int32, int64, uint8.
-        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
-
     Examples:
 
         .. code-block:: python
@@ -8349,10 +8335,6 @@ def gather_nd(input, index, name=None):
 
     Returns:
         output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
-    
-    Raises:
-        TypeError: ``input`` must be a Tensor and the data type of ``input`` must be one of float32, float64, int32 and int64.
-        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be one of int32 and int64.
 
     Examples:
 
@@ -12175,13 +12157,10 @@ def logical_and(x, y, out=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
-            x_data = np.array([True], dtype=np.bool)
-            y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.to_tensor(x_data)
-            y = paddle.to_tensor(y_data)
+            x = paddle.to_tensor([True])
+            y = paddle.to_tensor([True, False, True, False])
             res = paddle.logical_and(x, y)
             print(res.numpy()) # [True False True False]
     """
@@ -12294,11 +12273,9 @@ def logical_not(x, out=None, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            import numpy as np
 
             paddle.disable_static()
-            x_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.to_variable(x_data)
+            x = paddle.to_tensor([True, False, True, False])
             res = paddle.logical_not(x)
             print(res.numpy()) # [False  True False  True]
     """
