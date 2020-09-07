@@ -36,7 +36,7 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
     'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
-    'set_verbosity'
+    'set_verbosity', 'save', 'load', 'SaveLoadConfig'
 ]
 
 
