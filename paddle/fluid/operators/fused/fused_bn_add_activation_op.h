@@ -65,7 +65,8 @@ class FusedBatchNormAddActGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("X", this->Input("X"));
-    op->SetInput("Z", this->Output("Z"));
+    op->SetInput("Z", this->Input("Z"));
+    op->SetInput("Y", this->Output("Y"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
     op->SetInput("Scale", this->Input("Scale"));

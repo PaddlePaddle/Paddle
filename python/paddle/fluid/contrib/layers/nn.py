@@ -45,6 +45,7 @@ from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 
 from paddle.fluid import core
+from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
 
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
@@ -57,7 +58,7 @@ __all__ = [
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
     'sparse_embedding', 'partial_sum', 'tdm_child', 'rank_attention',
     'tdm_sampler', 'batch_fc', '_pull_box_extended_sparse', 'bilateral_slice',
-    'correlation'
+    'correlation', 'fused_bn_add_act'
 ]
 
 
@@ -1625,3 +1626,98 @@ def correlation(x,
             },
             outputs={"Output": output})
     return output
+
+
+def fused_bn_add_act(x,
+                     y,
+                     momentum=0.9,
+                     epsilon=1e-05,
+                     param_attr=None,
+                     bias_attr=None,
+                     moving_mean_name=None,
+                     moving_variance_name=None,
+                     act=None,
+                     name=None):
+    helper = LayerHelper('fused_bn_add_act', **locals())
+
+    check_variable_and_dtype(x, 'input', ['float16', 'float32'],
+                             'fused_bn_add_activation')
+    check_variable_and_dtype(y, 'input', ['float16', 'float32'],
+                             'fused_bn_add_activation')
+    x_dtype = helper.input_dtype("x")
+    bn_param_dtype = core.VarDesc.VarType.FP32
+
+    x_shape = x.shape
+    channel_num = x_shape[-1]
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=bn_param_dtype,
+        default_initializer=Constant(1.0))
+    bias = helper.create_parameter(
+        attr=helper.bias_attr,
+        shape=param_shape,
+        dtype=bn_param_dtype,
+        is_bias=True)
+
+    mean = helper.create_parameter(
+        attr=ParamAttr(
+            name=moving_mean_name, initializer=Constant(0.0), trainable=False),
+        shape=param_shape,
+        dtype=bn_param_dtype)
+    mean.stop_gradient = True
+
+    variance = helper.create_parameter(
+        attr=ParamAttr(
+            name=moving_variance_name,
+            initializer=Constant(1.0),
+            trainable=False),
+        shape=param_shape,
+        dtype=bn_param_dtype)
+    variance.stop_gradient = True
+
+    # create output
+    # mean and mean_out share the same memory
+    mean_out = mean
+    # variance and variance out share the same memory
+    variance_out = variance
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=bn_param_dtype, stop_gradient=True)
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=bn_param_dtype, stop_gradient=True)
+
+    reserve_space = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
+
+    batch_norm_out = helper.create_variable_for_type_inference(
+        core.VarDesc.VarType.FP16)
+
+    inputs = {
+        "X": x,
+        "Z": y,
+        "Scale": scale,
+        "Bias": bias,
+        "Mean": mean,
+        "Variance": variance
+    }
+    attrs = {"epsilon": epsilon, 'momentum': momentum}
+
+    outputs = {
+        "Y": batch_norm_out,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out,
+        "SavedMean": saved_mean,
+        "SavedVariance": saved_variance,
+        "ReserveSpace": reserve_space
+    }
+
+    helper.append_op(
+        type="fused_bn_add_activation",
+        inputs=inputs,
+        outputs=outputs,
+        attrs=attrs)
+
+    return batch_norm_out

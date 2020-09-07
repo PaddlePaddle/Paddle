@@ -35,10 +35,6 @@ void FusedBatchNormAddActOp::InferShape(
                  "FusedBatchNormAddActOp");
   OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "Variance",
                  "FusedBatchNormAddActOp");
-  OP_INOUT_CHECK(ctx->HasInput("SavedMean"), "Input", "SavedMean",
-                 "FusedBatchNormAddActOp");
-  OP_INOUT_CHECK(ctx->HasInput("SavedVariance"), "Input", "SavedVariance",
-                 "FusedBatchNormAddActOp");
 
   // check output
   OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "FusedBatchNormAddActOp");
@@ -250,7 +246,7 @@ void FusedBatchNormAddActGradOp::InferShape(
   const int C = in_dims[in_dims.size() - 1];
 
   ctx->SetOutputDim(framework::GradVarName("X"), in_dims);
-  ctx->SetOutputDim(framework::GradVarName("X"), in_dims);
+  ctx->SetOutputDim(framework::GradVarName("Z"), in_dims);
   ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
   ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
 }
