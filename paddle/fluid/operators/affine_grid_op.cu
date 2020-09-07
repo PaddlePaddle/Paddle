@@ -62,11 +62,11 @@ __global__ void affine_grid_kernel(const int count, int n, int out_h, int out_w,
 
     int theta_offset = n * 6;  // 2 * 3;
     // affine from (h_coor, w_coor) to (x, y)
-    output[index * 2] = theta[theta_offset] * h_coor +
-                        theta[theta_offset + 1] * w_coor +
+    output[index * 2] = theta[theta_offset] * w_coor +
+                        theta[theta_offset + 1] * h_coor +
                         theta[theta_offset + 2];
-    output[index * 2 + 1] = theta[theta_offset + 3] * h_coor +
-                            theta[theta_offset + 4] * w_coor +
+    output[index * 2 + 1] = theta[theta_offset + 3] * w_coor +
+                            theta[theta_offset + 4] * h_coor +
                             theta[theta_offset + 5];
   }
 }
@@ -86,13 +86,13 @@ __global__ void affine_grid_grad_kernel(const int count, int n, int out_h,
 
     int theta_offset = n * 6;  // 2 * 3;
     T out_grad_x = out_grad[index * 2];
-    platform::CudaAtomicAdd(theta_grad + theta_offset, out_grad_x * h_coor);
-    platform::CudaAtomicAdd(theta_grad + theta_offset + 1, out_grad_x * w_coor);
+    platform::CudaAtomicAdd(theta_grad + theta_offset, out_grad_x * w_coor);
+    platform::CudaAtomicAdd(theta_grad + theta_offset + 1, out_grad_x * h_coor);
     platform::CudaAtomicAdd(theta_grad + theta_offset + 2, out_grad_x);
 
     T out_grad_y = out_grad[index * 2 + 1];
-    platform::CudaAtomicAdd(theta_grad + theta_offset + 3, out_grad_y * h_coor);
-    platform::CudaAtomicAdd(theta_grad + theta_offset + 4, out_grad_y * w_coor);
+    platform::CudaAtomicAdd(theta_grad + theta_offset + 3, out_grad_y * w_coor);
+    platform::CudaAtomicAdd(theta_grad + theta_offset + 4, out_grad_y * h_coor);
     platform::CudaAtomicAdd(theta_grad + theta_offset + 5, out_grad_y);
   }
 }

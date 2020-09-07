@@ -232,7 +232,7 @@ def conv1d(x,
         raise ValueError("Attr(data_format) should be 'NCL' or 'NLC'. "
                          "Received Attr(data_format): {}.".format(data_format))
 
-    channel_last = (data_format == "NHWC")
+    channel_last = (data_format == "NLC")
     channel_dim = -1 if channel_last else 1
     conv2d_data_format = "NHWC" if channel_last else "NCHW"
     num_channels = x.shape[channel_dim]
@@ -399,7 +399,7 @@ def conv2d(x,
             `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`, and when 
             `data_format` is `"NCHW"`, `padding` can be in the form `[[0,0], [0,0], 
             [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NHWC"`, `pool_padding` can be in the form
+            when `data_format` is `"NHWC"`, `padding` can be in the form
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         dilation (int|tuple): The dilation size. It means the spacing between the kernel
@@ -733,20 +733,31 @@ def conv_transpose1d(x,
 
     stride = utils.convert_to_list(stride, 1, 'stride') + [1]
     dilation = utils.convert_to_list(dilation, 1, 'dilation') + [1]
-    output_padding = utils.convert_to_list(output_padding, 1,
-                                           'output_padding') + [0]
-    if output_padding[0] > stride[0]:
+
+    if output_size is None:
+        output_size = []
+    else:
+        if output_padding != 0:
+            raise ValueError('output_padding option is mutually exclusive with '
+                             'output_size')
+        if isinstance(output_size, (list, tuple, int)):
+            output_size = utils.convert_to_list(output_size, 1,
+                                                'output_size') + [1]
+        else:
+            raise ValueError(
+                "output_size should be int, or list, tuple of ints")
+
+    if output_padding == 0:
+        output_padding = []
+    else:
+        output_padding = utils.convert_to_list(output_padding, 1,
+                                               'output_padding') + [0]
+
+    if len(output_padding) > 0 and output_padding[0] > stride[0]:
         raise ValueError(
             "The size of output_padding should not be greater than stride."
             "But got output_padding={} and stride={}".format(output_padding[0],
                                                              stride[0]))
-
-    if output_size is None:
-        output_size = []
-    elif isinstance(output_size, (list, tuple, int)):
-        output_size = utils.convert_to_list(output_size, 1, 'output_size') + [1]
-    else:
-        raise ValueError("output_size should be int, or list, tuple of ints")
 
     op_type = 'conv2d_transpose'
     num_filters = weight.shape[1]
@@ -761,16 +772,17 @@ def conv_transpose1d(x,
     weight = nn.unsqueeze(input=weight, axes=[-1])
 
     if in_dygraph_mode():
-        attrs = ('output_size', output_size, 'strides', stride, 'paddings',
-                 padding, 'padding_algorithm', padding_algorithm, 'dilations',
-                 dilation, 'groups', groups, 'use_cudnn', use_cudnn,
-                 'data_format', conv2d_data_format)
+        attrs = ('output_padding', output_padding, 'output_size', output_size,
+                 'strides', stride, 'paddings', padding, 'padding_algorithm',
+                 padding_algorithm, 'dilations', dilation, 'groups', groups,
+                 'use_cudnn', use_cudnn, 'data_format', conv2d_data_format)
         out = getattr(core.ops, op_type)(x, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
     else:
         inputs = {'Input': [x], 'Filter': [weight]}
         attrs = {
+            'output_padding': output_padding,
             'output_size': output_size,
             'strides': stride,
             'paddings': padding,
@@ -791,12 +803,6 @@ def conv_transpose1d(x,
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
 
-    if output_size is None:
-        out = pad2d(
-            out,
-            padding=[0, output_padding, 0, 0],
-            data_format=conv2d_data_format,
-            name=name)
     out = nn.squeeze(input=out, axes=[squeeze_axis])
     return out
 
@@ -888,9 +894,9 @@ def conv_transpose2d(x,
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_height, pad_width]` or 
             `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `"NCHW"`, `pool_padding` can be in the form 
+            and when `data_format` is `"NCHW"`, `padding` can be in the form 
             `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NHWC"`, `pool_padding` can be in the form 
+            when `data_format` is `"NHWC"`, `padding` can be in the form 
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
@@ -1116,9 +1122,9 @@ def conv3d(x,
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_depth, pad_height, pad_width]` or
             `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `"NCDHW"`, `pool_padding` can be in the form
+            and when `data_format` is `"NCDHW"`, `padding` can be in the form
             `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
+            when `data_format` is `"NDHWC"`, `padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         dilation (int|tuple): The dilation size. It means the spacing between the kernel points. 
@@ -1340,9 +1346,9 @@ def conv_transpose3d(x,
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_depth, pad_height, pad_width]` or
             `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `"NCDHW"`, `pool_padding` can be in the form
+            and when `data_format` is `"NCDHW"`, `padding` can be in the form
             `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NDHWC"`, `pool_padding` can be in the form
+            when `data_format` is `"NDHWC"`, `padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side

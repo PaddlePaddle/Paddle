@@ -97,7 +97,7 @@ class LearningRateDecay(object):
         """
         self.keys = ['step_num']
 
-    def set_dict(self, state_dict):
+    def set_state_dict(self, state_dict):
         """
         Loads the schedulers state.
         """
@@ -113,6 +113,9 @@ class LearningRateDecay(object):
             warnings.warn(
                 "There are some unused values in state_dict. Maybe the optimizer have different 'LearningRateDecay' when invoking state_dict and set_dict"
             )
+
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
 
     def step(self):
         raise NotImplementedError()
