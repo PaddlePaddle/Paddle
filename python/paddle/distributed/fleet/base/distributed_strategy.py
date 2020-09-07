@@ -15,10 +15,25 @@
 import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
 from paddle.fluid.framework import Variable, set_flags, core
+from paddle.fluid.wrapped_decorator import wrap_decorator
 import google.protobuf.text_format
 import google.protobuf
 
 __all__ = ["DistributedStrategy"]
+
+non_auto_func_called = True
+
+
+def __non_auto_func_called__(func):
+    def __impl__(*args, **kwargs):
+        global non_auto_func_called
+        non_auto_func_called = False
+        return func(*args, **kwargs)
+
+    return __impl__
+
+
+is_strict_auto = wrap_decorator(__non_auto_func_called__)
 
 
 def get_msg_dict(msg):
@@ -165,6 +180,7 @@ class DistributedStrategy(object):
         return execution_strategy
 
     @execution_strategy.setter
+    @is_strict_auto
     def execution_strategy(self, strategy):
         fields = self.strategy.execution_strategy.DESCRIPTOR.fields
         for f in fields:
@@ -204,6 +220,7 @@ class DistributedStrategy(object):
         return build_strategy
 
     @build_strategy.setter
+    @is_strict_auto
     def build_strategy(self, strategy):
         fields = self.strategy.build_strategy.DESCRIPTOR.fields
         for f in fields:
@@ -238,6 +255,7 @@ class DistributedStrategy(object):
         return self.strategy.a_sync
 
     @a_sync.setter
+    @is_strict_auto
     def a_sync(self, flag):
         if isinstance(flag, bool):
             self.strategy.a_sync = flag
@@ -288,6 +306,7 @@ class DistributedStrategy(object):
         return get_msg_dict(self.strategy.a_sync_configs)
 
     @a_sync_configs.setter
+    @is_strict_auto
     def a_sync_configs(self, configs):
         check_configs_key(self.strategy.a_sync_configs, configs,
                           "a_sync_configs")
@@ -310,6 +329,7 @@ class DistributedStrategy(object):
         return self.strategy.amp
 
     @amp.setter
+    @is_strict_auto
     def amp(self, flag):
         if isinstance(flag, bool):
             self.strategy.amp = flag
@@ -352,6 +372,7 @@ class DistributedStrategy(object):
         return get_msg_dict(self.strategy.amp_configs)
 
     @amp_configs.setter
+    @is_strict_auto
     def amp_configs(self, configs):
         check_configs_key(self.strategy.amp_configs, configs, "amp_configs")
         assign_configs_value(self.strategy.amp_configs, configs)
@@ -389,6 +410,7 @@ class DistributedStrategy(object):
         return self.strategy.sync_nccl_allreduce
 
     @sync_nccl_allreduce.setter
+    @is_strict_auto
     def sync_nccl_allreduce(self, flag):
         if isinstance(flag, bool):
             self.strategy.sync_nccl_allreduce = flag
@@ -412,6 +434,7 @@ class DistributedStrategy(object):
         return self.strategy.use_hierarchical_allreduce
 
     @use_hierarchical_allreduce.setter
+    @is_strict_auto
     def use_hierarchical_allreduce(self, flag):
         if isinstance(flag, bool):
             self.strategy.use_hierarchical_allreduce = flag
@@ -436,6 +459,7 @@ class DistributedStrategy(object):
         return self.strategy.hierarchical_allreduce_inter_nranks
 
     @hierarchical_allreduce_inter_nranks.setter
+    @is_strict_auto
     def hierarchical_allreduce_inter_nranks(self, value):
         if isinstance(value, int):
             self.strategy.hierarchical_allreduce_inter_nranks = value
@@ -462,6 +486,7 @@ class DistributedStrategy(object):
         return self.strategy.sync_batch_norm
 
     @sync_batch_norm.setter
+    @is_strict_auto
     def sync_batch_norm(self, flag):
         if isinstance(flag, bool):
             self.strategy.sync_batch_norm = flag
@@ -484,6 +509,7 @@ class DistributedStrategy(object):
         return self.strategy.fuse_all_reduce_ops
 
     @fuse_all_reduce_ops.setter
+    @is_strict_auto
     def fuse_all_reduce_ops(self, flag):
         if isinstance(flag, bool):
             self.strategy.fuse_all_reduce_ops = flag
@@ -507,6 +533,7 @@ class DistributedStrategy(object):
         return self.strategy.fuse_grad_size_in_MB
 
     @fuse_grad_size_in_MB.setter
+    @is_strict_auto
     def fuse_grad_size_in_MB(self, value):
         if isinstance(value, int):
             self.strategy.fuse_grad_size_in_MB = value
@@ -518,6 +545,7 @@ class DistributedStrategy(object):
         return self.strategy.fuse_grad_size_in_TFLOPS
 
     @_fuse_grad_size_in_TFLOPS.setter
+    @is_strict_auto
     def _fuse_grad_size_in_TFLOPS(self, value):
         if isinstance(value, float):
             self.strategy.fuse_grad_size_in_TFLOPS = value
@@ -544,6 +572,7 @@ class DistributedStrategy(object):
         return self.strategy.nccl_comm_num
 
     @nccl_comm_num.setter
+    @is_strict_auto
     def nccl_comm_num(self, value):
         if isinstance(value, int):
             self.strategy.nccl_comm_num = value
@@ -551,6 +580,7 @@ class DistributedStrategy(object):
             print("WARNING: nccl_comm_num should have value of int type")
 
     @recompute.setter
+    @is_strict_auto
     def recompute(self, flag):
         if isinstance(flag, bool):
             self.strategy.recompute = flag
@@ -575,6 +605,7 @@ class DistributedStrategy(object):
         return get_msg_dict(self.strategy.recompute_configs)
 
     @recompute_configs.setter
+    @is_strict_auto
     def recompute_configs(self, configs):
         check_configs_key(self.strategy.recompute_configs, configs,
                           "checkpoint_configs")
@@ -599,6 +630,7 @@ class DistributedStrategy(object):
         return self.strategy.pipeline
 
     @pipeline.setter
+    @is_strict_auto
     def pipeline(self, flag):
         if isinstance(flag, bool):
             self.strategy.pipeline = flag
@@ -635,6 +667,7 @@ class DistributedStrategy(object):
         return get_msg_dict(self.strategy.pipeline_configs)
 
     @pipeline_configs.setter
+    @is_strict_auto
     def pipeline_configs(self, configs):
         check_configs_key(self.strategy.pipeline_configs, configs,
                           "pipeline_configs")
@@ -659,6 +692,7 @@ class DistributedStrategy(object):
         return self.strategy.localsgd
 
     @localsgd.setter
+    @is_strict_auto
     def localsgd(self, flag):
         if isinstance(flag, bool):
             self.strategy.localsgd = flag
@@ -691,6 +725,7 @@ class DistributedStrategy(object):
         return get_msg_dict(self.strategy.localsgd_configs)
 
     @localsgd_configs.setter
+    @is_strict_auto
     def localsgd_configs(self, configs):
         check_configs_key(self.strategy.localsgd_configs, configs,
                           "localsgd_configs")
@@ -715,6 +750,7 @@ class DistributedStrategy(object):
         return self.strategy.dgc
 
     @dgc.setter
+    @is_strict_auto
     def dgc(self, flag):
         if isinstance(flag, bool):
             self.strategy.dgc = flag
@@ -750,6 +786,7 @@ class DistributedStrategy(object):
         return get_msg_dict(self.strategy.dgc_configs)
 
     @dgc_configs.setter
+    @is_strict_auto
     def dgc_configs(self, configs):
         check_configs_key(self.strategy.dgc_configs, configs, "dgc_configs")
         assign_configs_value(self.strategy.dgc_configs, configs)
@@ -777,6 +814,7 @@ class DistributedStrategy(object):
         return self.strategy.gradient_merge
 
     @gradient_merge.setter
+    @is_strict_auto
     def gradient_merge(self, flag):
         if isinstance(flag, bool):
             self.strategy.gradient_merge = flag
@@ -804,6 +842,7 @@ class DistributedStrategy(object):
         return get_msg_dict(self.strategy.gradient_merge_configs)
 
     @gradient_merge_configs.setter
+    @is_strict_auto
     def gradient_merge_configs(self, configs):
         check_configs_key(self.strategy.gradient_merge_configs, configs,
                           "gradient_configs")
@@ -828,6 +867,7 @@ class DistributedStrategy(object):
         return self.strategy.lars
 
     @lars.setter
+    @is_strict_auto
     def lars(self, flag):
         if isinstance(flag, bool):
             self.strategy.lars = flag
@@ -863,6 +903,7 @@ class DistributedStrategy(object):
         return get_msg_dict(self.strategy.lars_configs)
 
     @lars_configs.setter
+    @is_strict_auto
     def lars_configs(self, configs):
         check_configs_key(self.strategy.lars_configs, configs, "lars_configs")
         assign_configs_value(self.strategy.lars_configs, configs)
@@ -888,6 +929,7 @@ class DistributedStrategy(object):
         return self.strategy.lamb
 
     @lamb.setter
+    @is_strict_auto
     def lamb(self, flag):
         if isinstance(flag, bool):
             self.strategy.lamb = flag
@@ -918,15 +960,21 @@ class DistributedStrategy(object):
         return get_msg_dict(self.strategy.lamb_configs)
 
     @lamb_configs.setter
+    @is_strict_auto
     def lamb_configs(self, configs):
         check_configs_key(self.strategy.lamb_configs, configs, "lamb_configs")
         assign_configs_value(self.strategy.lamb_configs, configs)
 
     @property
     def elastic(self):
+        """
+        Indicating whether we want to do current distributed training on clusters with elastic resources.
+        Currently, this is configuration is not valid.
+        """
         return self.strategy.elastic
 
     @elastic.setter
+    @is_strict_auto
     def elastic(self, flag):
         if isinstance(flag, bool):
             self.strategy.elastic = flag
@@ -935,6 +983,25 @@ class DistributedStrategy(object):
 
     @property
     def auto(self):
+        """
+        Indicating whether we are using auto-parallel configuration
+        This feature is currently an experimental feature. Currently, 
+        auto-parallelism can be used only when a user does not set any other
+        strategy configs except auto. For details, please reference the following
+        code example
+        Default Value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.auto = True
+
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        """
         return self.strategy.auto
 
     @auto.setter
@@ -946,9 +1013,27 @@ class DistributedStrategy(object):
 
     @property
     def cudnn_exhaustive_search(self):
+        """
+        Indicating whether to use exhaustive search method to choose convolution algorithms.
+        Exhaustive search attempts all cuDNN algorithms to choose the fastest algorithm.
+        This method is time-consuming, the choosed algorithm will be cached for the given layer specifications.
+        Once the layer specifications (like batch size, feature map size) are changed, it will search again.
+        Default Value: True
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.cudnn_exhaustive_search = False
+
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        """
         return self.strategy.cudnn_exhaustive_search
 
     @cudnn_exhaustive_search.setter
+    @is_strict_auto
     def cudnn_exhaustive_search(self, flag):
         if isinstance(flag, bool):
             self.strategy.cudnn_exhaustive_search = flag
@@ -959,9 +1044,28 @@ class DistributedStrategy(object):
 
     @property
     def conv_workspace_size_limit(self):
+        """
+        The workspace limit size in MB unit for choosing cuDNN convolution algorithms.
+        The inner funciton of cuDNN obtain the fastest suited algorithm that fits within this memory limit.
+        Usually, large workspace size may lead to choose faster algorithms,
+        but significant increasing memory workspace. Users need to trade-off between memory and speed.
+        Default Value: 4000
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.conv_workspace_size_limit = 1024
+
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        
+        """
         return self.strategy.conv_workspace_size_limit
 
     @conv_workspace_size_limit.setter
+    @is_strict_auto
     def conv_workspace_size_limit(self, value):
         if isinstance(value, int):
             self.strategy.conv_workspace_size_limit = value
@@ -972,9 +1076,26 @@ class DistributedStrategy(object):
 
     @property
     def cudnn_batchnorm_spatial_persistent(self):
+        """
+        Indicates whether to use the mode CUDNN_BATCHNORM_SPATIAL_PERSISTENT function in batchnorm.
+        This is only useful in cudnn.
+        Default Value: True
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.cudnn_batchnorm_spatial_persistent = True
+
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy)
+
+        """
         return self.strategy.cudnn_batchnorm_spatial_persistent
 
     @cudnn_batchnorm_spatial_persistent.setter
+    @is_strict_auto
     def cudnn_batchnorm_spatial_persistent(self, flag):
         if isinstance(flag, bool):
             self.strategy.cudnn_batchnorm_spatial_persistent = flag
@@ -1005,6 +1126,12 @@ class DistributedStrategy(object):
         for i, key in enumerate(keys):
             if core.globals().is_public(key):
                 core.globals()[key] = values[i]
+
+    def _is_strict_auto(self):
+        global non_auto_func_called
+        if self.strategy.auto and non_auto_func_called:
+            return True
+        return False
 
     def __repr__(self):
         spacing = 2

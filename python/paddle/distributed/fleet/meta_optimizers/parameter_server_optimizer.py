@@ -157,4 +157,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return None, None
 
     def _disable_strategy(self, dist_strategy):
+        dist_strategy.a_sync_configs = {}
         self.user_defined_strategy.a_sync_configs = {}
+
+    def _enable_strategy(self, dist_strategy):
+        dist_strategy.a_sync = True
+        dist_strategy.a_sync_configs = {}
