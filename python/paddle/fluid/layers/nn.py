@@ -5985,7 +5985,10 @@ def one_hot(input, depth, allow_out_of_range=False):
     return one_hot_out
 
 
-def autoincreased_step_counter(counter_name=None, begin=1, step=1):
+def autoincreased_step_counter(counter_name=None,
+                               begin=1,
+                               step=1,
+                               force_cpu=True):
     """
     :api_attr: Static Graph
 
@@ -6020,7 +6023,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     if is_new_var:
         helper.set_variable_initializer(
             counter, initializer=Constant(
-                value=begin - 1, force_cpu=True))
+                value=begin - 1, force_cpu=force_cpu))
         helper.main_program.global_block()._prepend_op(
             type='increment',
             inputs={'X': [counter]},

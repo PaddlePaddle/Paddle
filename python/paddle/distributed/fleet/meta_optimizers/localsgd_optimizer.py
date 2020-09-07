@@ -44,10 +44,6 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         dist_strategy.localsgd = False
         dist_strategy.localsgd_configs = {}
 
-    def _enable_strategy(self, dist_strategy):
-        dist_strategy.localsgd = True
-        dist_strategy.localsgd_configs = {"k_steps": 1}
-
     def snapshot_name(self, param_name):
         return param_name + self.snapshot_key
 
@@ -75,6 +71,31 @@ class LocalSGDOptimizer(MetaOptimizerBase):
             for param, snapshot in param2snapshot:
                 layers.assign(param, snapshot)
 
+    def _generate_avg_loss(self, program_block, loss, avg_loss):
+        program_block.append_op(
+            type='c_allreduce_sum',
+            inputs={'X': [loss]},
+            outputs={'Out': [avg_loss]},
+            attrs={
+                'ring_id': 0,
+                OP_ROLE_KEY: OpRole.Optimize,
+                'use_calc_stream': True
+            })
+        program_block.append_op(
+            type='c_sync_calc_stream',
+            inputs={'X': [avg_loss]},
+            outputs={'Out': [avg_loss]},
+            attrs={OP_ROLE_KEY: OpRole.Optimize})
+
+        program_block.append_op(
+            type='scale',
+            inputs={'X': [avg_loss]},
+            outputs={'Out': [avg_loss]},
+            attrs={
+                'scale': 1.0 / self.role_maker.worker_num(),
+                OP_ROLE_KEY: OpRole.Optimize
+            })
+
     def minimize_impl(self,
                       loss,
                       startup_program=None,
@@ -98,7 +119,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
 
         p2s = self.create_snapshot_vars(main_block.program)
         with program_guard(main_block.program, startup_program):
-            step = layers.autoincreased_step_counter(begin=0)
+            step = layers.autoincreased_step_counter(begin=0, force_cpu=False)
             k_steps = layers.create_global_var(
                 name="k_steps",
                 shape=[1],
@@ -113,8 +134,12 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                 persistable=True)
 
             if auto_steps:
-                avg_loss = layers.collective._c_allreduce(
-                    loss) / self.role_maker.worker_num()
+                avg_loss = layers.create_global_var(
+                    name="avg_loss",
+                    shape=[1],
+                    value=float(0),
+                    dtype=loss.dtype,
+                    persistable=True)
 
                 lr_0 = layers.create_global_var(
                     name="lr_0",
@@ -128,11 +153,11 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                     value=float(0),
                     dtype='float32',
                     persistable=True)
-
                 global_lr = self.inner_opt._global_learning_rate()
 
                 def initialize():
-                    layers.assign(loss, loss_0)
+                    self._generate_avg_loss(main_block, loss, avg_loss)
+                    layers.assign(avg_loss, loss_0)
                     layers.assign(global_lr, lr_0)
 
                 layers.cond(step == 0, initialize)
@@ -194,9 +219,10 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                         attrs={OP_ROLE_KEY: OpRole.Optimize})
 
                 if auto_steps:
+                    self._generate_avg_loss(main_block, loss, avg_loss)
                     next_local_steps = layers.cast(
                         layers.ceil(
-                            layers.sqrt(lr_0 * loss / (global_lr * loss_0) *
+                            layers.sqrt(lr_0 * avg_loss / (global_lr * loss_0) *
                                         float(init_k_steps))),
                         dtype='int64')
                     max_local_steps = layers.fill_constant(
