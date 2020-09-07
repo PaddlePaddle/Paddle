@@ -244,8 +244,8 @@ ENDIF()
 
 if(WITH_GPU)
     if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
-	    include(external/cub)       # download cub
-	    list(APPEND third_party_deps extern_cub)
+        include(external/cub)       # download cub
+	list(APPEND third_party_deps extern_cub)
     endif()
     set(CUDAERROR_URL  "http://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz" CACHE STRING "" FORCE)
     file_download_and_uncompress(${CUDAERROR_URL} "cudaerror") # download file cudaErrorMessage
