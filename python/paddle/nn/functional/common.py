@@ -80,6 +80,8 @@ def interpolate(x,
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
+    Where in_w is width of the input tensor, in_h is the height of the input tensor,
+    in_d is the depth of the intput tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
@@ -114,6 +116,12 @@ def interpolate(x,
     data points on a two-dimensional regular grid. The interpolated surface is
     smoother than corresponding surfaces obtained by bilinear interpolation or
     nearest-neighbor interpolation.
+
+    Area interpolation is to perform area interpolation
+    in both the 3rd dimension(in height direction) , the 4th dimension(in width
+    direction) and the 5th dimension(in depth direction) on input tensor. Set to 
+    area will directly call `paddle.nn.functional.adaptive_avg_pool1d` or 
+    `paddle.nn.functional.adaptive_avg_pool2d` or `paddle.nn.functional.adaptive_avg_pool3d`.
 
     Example:
 
@@ -210,7 +218,7 @@ def interpolate(x,
              If a Tensor Variable, its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
-             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is a list.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is either a list or a tuple or a Tensor.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'area', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
@@ -493,9 +501,12 @@ def upsample(x,
              name=None):
     """
     This op resizes a batch of images.
+
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
+    Where in_w is width of the input tensor, in_h is the height of the input tensor,
+    in_d is the depth of the intput tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
@@ -520,12 +531,21 @@ def upsample(x,
     data points on a two-dimensional regular grid. The interpolated surface is
     smoother than corresponding surfaces obtained by bilinear interpolation or
     nearest-neighbor interpolation.
+
     Trilinear interpolation is an extension of linear interpolation for
     interpolating functions of three variables (e.g. D-direction,
     H-direction and W-direction in this op) on a rectilinear 3D grid.
+
     The linear interpolation is performed on three directions.
     align_corners and align_mode are optional parameters,the calculation method
     of interpolation can be selected by them.
+
+    Area interpolation is to perform area interpolation
+    in both the 3rd dimension(in height direction) , the 4th dimension(in width
+    direction) and the 5th dimension(in depth direction) on input tensor. Set to
+    area will directly call `paddle.nn.functional.adaptive_avg_pool1d` or
+    `paddle.nn.functional.adaptive_avg_pool2d` or `paddle.nn.functional.adaptive_avg_pool3d`.
+
     Example:
     .. code-block:: text
         For scale_factor:
@@ -620,7 +640,8 @@ def upsample(x,
              If a Tensor Variable, its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
-             And :attr:`size` has a higher priority than :attr:`scale_factor`.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if 
+             it is either a list or a tuple or a Tensor.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'

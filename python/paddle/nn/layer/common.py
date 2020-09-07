@@ -134,9 +134,12 @@ class Linear(layers.Layer):
 class Upsample(layers.Layer):
     """
     This op resizes a batch of images.
+
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
+    Where in_w is width of the input tensor, in_h is the height of the input tensor,
+    in_d is the depth of the intput tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
@@ -170,6 +173,12 @@ class Upsample(layers.Layer):
     The linear interpolation is performed on three directions.
     align_corners and align_mode are optional parameters,the calculation method
     of interpolation can be selected by them.
+
+    Area interpolation is to perform area interpolation
+    in both the 3rd dimension(in height direction) , the 4th dimension(in width
+    direction) and the 5th dimension(in depth direction) on input tensor. Set to
+    area will directly call `paddle.nn.functional.adaptive_avg_pool1d` or
+    `paddle.nn.functional.adaptive_avg_pool2d` or `paddle.nn.functional.adaptive_avg_pool3d`.
 
     Example:
 
@@ -275,7 +284,7 @@ class Upsample(layers.Layer):
              If a Tensor Variable, its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
-             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is a list.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`. Has to match input size if it is either a list or a tuple or a Tensor.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'nearst', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
@@ -384,7 +393,8 @@ class UpsamplingNearest2d(layers.Layer):
         scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.
-             Default: None. Has to match input size if it is a list.
+             Has to match input size if it is either a list or a tuple or a Tensor.
+             Default: None.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
             `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
@@ -469,7 +479,8 @@ class UpsamplingBilinear2d(layers.Layer):
         scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`.
-             Default: None. Has to match input size if it is a list.
+             Has to match input size if it is either a list or a tuple or a Tensor.
+             Default: None.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
             `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
