@@ -21,6 +21,7 @@ import six
 import textwrap
 import threading
 import warnings
+import weakref
 
 import gast
 from paddle.fluid import framework
@@ -245,6 +246,7 @@ class StaticLayer(object):
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
         self._program_cache = ProgramCache()
+        self._descriptor_cache = weakref.WeakKeyDictionary()
         # Note: Hold a reference to ProgramTranslator for switching `enable_declarative`.
         self._program_trans = ProgramTranslator()
 
@@ -271,8 +273,19 @@ class StaticLayer(object):
         of `Net` instance. After decorated by `@paddle.jit.to_static`, it will firstly to call `__get__`
         to parse the class instance correctly instead of the `StaticLayer` instance.
         """
-        self._class_instance = instance
-        return self
+        if instance not in self._descriptor_cache:
+            if instance is None:
+                return self
+            # Note(Aurelius84): To construct new instance of StaticLayer when we
+            # first encouter the bound function of layer and cache it.
+            new_static_layer = self._clone()
+            new_static_layer._class_instance = instance
+            self._descriptor_cache[instance] = new_static_layer
+
+        return self._descriptor_cache[instance]
+
+    def _clone(self):
+        return self.__class__(self._dygraph_function, self._input_spec)
 
     def __call__(self, *args, **kwargs):
         """
