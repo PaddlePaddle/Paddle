@@ -328,8 +328,8 @@ class TestChannelWiseFakeQuantDequantOp(OpTest):
                 scale_v = np.max(np.abs(self.inputs['X'][:, i])).astype(
                     "float32")
                 scales.append(scale_v)
-                output[:, i] = np.round(outputs[:, i] * range_v /
-                                        scale_v) * scale_v / range_v
+                outputs[:, i] = np.round(outputs[:, i] * range_v /
+                                         scale_v) * scale_v / range_v
 
         self.outputs = {
             'Out': outputs,
@@ -352,7 +352,7 @@ class TestChannelWiseFakeQuantDequantOp(OpTest):
 
 
 class TestChannelWiseFakeQuantDequantOp1(TestChannelWiseFakeQuantDequantOp):
-    def set_quant_axis(self):
+    def set_arg(self):
         self.quant_axis = 1
         self.inputs = {
             'X': np.random.random((15, 20, 5, 5)).astype("float32"),
@@ -360,13 +360,13 @@ class TestChannelWiseFakeQuantDequantOp1(TestChannelWiseFakeQuantDequantOp):
 
 
 class TestChannelWiseFakeQuantDequantOp2(TestChannelWiseFakeQuantDequantOp):
-    def set_quant_axis(self):
+    def set_arg(self):
         self.quant_axis = 0
         self.inputs = {'X': np.random.random((30, 15)).astype("float32"), }
 
 
 class TestChannelWiseFakeQuantDequantOp3(TestChannelWiseFakeQuantDequantOp):
-    def set_quant_axis(self):
+    def set_arg(self):
         self.quant_axis = 1
         self.inputs = {'X': np.random.random((30, 15)).astype("float32"), }
 
