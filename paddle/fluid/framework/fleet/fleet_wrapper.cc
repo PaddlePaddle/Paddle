@@ -768,14 +768,13 @@ void FleetWrapper::PushDenseVarsAsync(
     int count = tensor->numel();
     float* g_data = tensor->data<float>();
 
-    Variable *pin_var = scope.FindVar(t + "pin");
+    Variable* pin_var = scope.FindVar(t + "pin");
     LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
-    float *pin_g = pin_tensor->mutable_data<float>(tensor->dims(), platform::CPUPlace());
-    memory::Copy(
-        platform::CPUPlace(),
-        pin_g,
-        BOOST_GET_CONST(platform::XPUPlace, place),
-        g_data, sizeof(float) * count);
+    float *pin_g =
+        pin_tensor->mutable_data<float>(tensor->dims(), platform::CPUPlace());
+    memory::Copy(platform::CPUPlace(), pin_g,
+                 BOOST_GET_CONST(platform::XPUPlace, place), g_data,
+                 sizeof(float) * count);
 
     float* g = pin_g;
     if (scale_datanorm >= 0) {

@@ -134,9 +134,9 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope,
 #ifdef PADDLE_WITH_XPU
   else {
     memory::Copy(platform::CPUPlace(), data_ptr,
-        BOOST_GET_CONST(platform::XPUPlace, tensor->place()),
-        tensor->data<void>(),
-        tensor->numel() * SizeOfType(tensor->type()));
+                 BOOST_GET_CONST(platform::XPUPlace, tensor->place()),
+                 tensor->data<void>(),
+                 tensor->numel() * SizeOfType(tensor->type()));
   }
 #endif
 }

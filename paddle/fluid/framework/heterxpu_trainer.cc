@@ -22,7 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
-#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
+    (defined PADDLE_WITH_PSLIB)
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -140,11 +141,11 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
     }                                                                   \
   } while (0)
 
-#define HeterMemcpyXpuFunc(cpp_type, proto_type)                       \
-  do {                                                             \
-    if (root_tensor->type() == proto_type) {                       \
+#define HeterMemcpyXpuFunc(cpp_type, proto_type)                \
+  do {                                                          \
+    if (root_tensor->type() == proto_type) {                    \
       HeterMemCpy<cpp_type>(thread_tensor, root_tensor, place); \
-    }                                                              \
+    }                                                           \
   } while (0)
 #ifdef PADDLE_WITH_CUDA
       _ForEachDataType_(HeterMemcpyFunc);
@@ -168,8 +169,9 @@ void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
                                   cudaStream_t stream) {
 #endif
 #ifdef PADDLE_WITH_XPU
-void HeterXpuTrainer::HeterMemCpy(LoDTensor *thread_tensor, LoDTensor *root_tensor,
-                            const paddle::platform::Place& thread_place) {
+void HeterXpuTrainer::HeterMemCpy(
+    LoDTensor *thread_tensor, LoDTensor *root_tensor,
+    const paddle::platform::Place& thread_place) {
 #endif
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
