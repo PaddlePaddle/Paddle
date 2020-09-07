@@ -65,7 +65,16 @@ class DatasetFactory(object):
 class DatasetBase(object):
     """ Base dataset class. """
 
-    def __init__(self):
+    def __init__(self,
+                 batch_size=batch_size,
+                 thread_num=thread_num,
+                 use_var=use_var,
+                 pipe_command=pipe_command,
+                 input_type=input_type,
+                 fs_name=fs_name,
+                 fs_ugi=fs_ugi,
+                 download_cmd=download_cmd,
+                 eval_candidate_size=eval_candidate_size):
         """ Init. """
         # define class name here
         # to decide whether we need create in memory instance
@@ -74,6 +83,15 @@ class DatasetBase(object):
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 1
         self.filelist = []
+        self.set_batch_size(batch_size)
+        self.set_thread(thread_num)
+        self.set_use_var(use_var)
+        self.set_pipe_command(pipe_command)
+        self.set_input_type(input_type)
+        self.set_hdfs_config(fs_name, fs_ugi)
+        if eval_candidate_size > 0:
+            self.set_fea_eval(eval_candidate_size, True)
+        self.set_download_cmd(download_cmd)
 
     def set_pipe_command(self, pipe_command):
         """
@@ -297,13 +315,13 @@ class DatasetBase(object):
         if self.thread_num > len(self.filelist):
             self.thread_num = len(self.filelist)
         self.dataset.set_thread_num(self.thread_num)
-        self.dataset.set_data_feed_desc(self.desc())
+        self.dataset.set_data_feed_desc(self._desc())
         self.dataset.create_readers()
 
     def _finish_to_run(self):
         self.dataset.destroy_readers()
 
-    def desc(self):
+    def _desc(self):
         """
         Returns a protobuf message for this DataFeedDesc
 
@@ -312,7 +330,7 @@ class DatasetBase(object):
 
               import paddle.fluid as fluid
               dataset = fluid.DatasetFactory().create_dataset()
-              print(dataset.desc())
+              print(dataset._desc())
 
         Returns:
             A string message
@@ -336,9 +354,35 @@ class InMemoryDataset(DatasetBase):
         dataset = paddle.fluid.DatasetFactory().create_dataset("InMemoryDataset")
     """
 
-    def __init__(self):
+    def __init__(self,
+                 batch_size=1,
+                 thread_num=1,
+                 use_var=[],
+                 pipe_command="cat",
+                 input_type=0,
+                 fs_name="",
+                 fs_ugi="",
+                 download_cmd="cat",
+                 eval_candidate_size=-1,
+                 data_feed_type="MultiSlotInMemoryDataFeed",
+                 queue_num=-1,
+                 parse_ins_id=False,
+                 parse_content=False,
+                 fleet_send_batch_size=1024,
+                 fleet_send_sleep_seconds=0,
+                 merge_by_lineid=False,
+                 merge_size=2):
         """ Init. """
-        super(InMemoryDataset, self).__init__()
+        super(InMemoryDataset, self).__init__(
+            batch_size=batch_size,
+            thread_num=thread_num,
+            use_var=use_var,
+            pipe_command=pipe_command,
+            input_type=input_type,
+            fs_name=fs_name,
+            fs_ugi=fs_ugi,
+            download_cmd=download_cmd,
+            eval_candidate_size=eval_candidate_size)
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
         self.is_user_set_queue_num = False
@@ -350,6 +394,14 @@ class InMemoryDataset(DatasetBase):
         self.enable_pv_merge = False
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
+        self.set_feed_type(data_feed_type)
+        self.set_queue_num(queue_num)
+        self.set_parse_ins_id(parse_ins_id)
+        self.set_parse_content(parse_content)
+        self.set_fleet_send_batch_size(fleet_send_batch_size)
+        self.set_fleet_send_sleep_seconds(fleet_send_sleep_seconds)
+        if merge_by_lineid:
+            self.set_merge_by_lineid(merge_size)
 
     def set_feed_type(self, data_feed_type):
         """
@@ -373,7 +425,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_parse_logkey(self.parse_logkey)
         self.dataset.set_merge_by_sid(self.merge_by_sid)
         self.dataset.set_enable_pv_merge(self.enable_pv_merge)
-        self.dataset.set_data_feed_desc(self.desc())
+        self.dataset.set_data_feed_desc(self._desc())
         self.dataset.create_channel()
         self.dataset.create_readers()
 
@@ -881,7 +933,7 @@ class QueueDataset(DatasetBase):
             self.thread_num = 1
         self.dataset.set_thread_num(self.thread_num)
         self.dataset.set_filelist(self.filelist)
-        self.dataset.set_data_feed_desc(self.desc())
+        self.dataset.set_data_feed_desc(self._desc())
         self.dataset.create_readers()
 
     def local_shuffle(self):
