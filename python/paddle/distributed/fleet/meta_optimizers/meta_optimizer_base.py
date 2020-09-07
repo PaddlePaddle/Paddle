@@ -48,6 +48,10 @@ class MetaOptimizerBase(Optimizer):
         raise NotImplementedError("you should implement disable strategy in {}".
                                   format(type(self).__name__))
 
+    def _enable_strategy(self, dist_strategy):
+        raise NotImplementedError("you should implement enable strategy in {}".
+                                  format(type(self).__name__))
+
     def apply_gradients(self, params_grads):
         return self.inner_opt.apply_gradients(params_grads=params_grads)
 
