@@ -42,9 +42,9 @@ def deprecate_keep_name_table(func):
             warnings.warn(
                 "The argument `keep_name_table` has deprecated, please use `SaveLoadConfig.keep_name_table`.",
                 DeprecationWarning)
-            configs = SaveLoadConfig()
-            configs.keep_name_table = keep_name_table
-            return configs
+            config = SaveLoadConfig()
+            config.keep_name_table = keep_name_table
+            return config
 
         # deal with arg `keep_name_table`
         if len(args) > 1 and isinstance(args[1], bool):
@@ -52,7 +52,7 @@ def deprecate_keep_name_table(func):
             args[1] = __warn_and_build_configs__(args[1])
         # deal with kwargs
         elif 'keep_name_table' in kwargs:
-            kwargs['configs'] = __warn_and_build_configs__(kwargs[
+            kwargs['config'] = __warn_and_build_configs__(kwargs[
                 'keep_name_table'])
             kwargs.pop('keep_name_table')
         else:
