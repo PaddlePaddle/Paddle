@@ -48,6 +48,7 @@ Your input cluster_node_ips: {} doesn't equals to IPs: {} from \
 paddlecloud environment.".format(args_node_ips, node_ips))
 
     # DISTRIBUTED_TRAINER_ENDPOINTS: new environment since paddlecloud 1.8.4
+    # e.g: DISTRIBUTED_TRAINER_ENDPOINTS="ip1:port1,ip1:port2,ip1:port3,ip1:port4,ip2:port5,ip2:port6,ip2:port7,ip2:port8"
     trainer_endpoints = os.getenv("DISTRIBUTED_TRAINER_ENDPOINTS")
     if trainer_endpoints is None:
         started_port = args_port
