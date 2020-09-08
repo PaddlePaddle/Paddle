@@ -231,7 +231,7 @@ class Fleet(object):
 
         Returns:
             int: worker numbers
-        
+
         Examples:
             .. code-block:: python
 
@@ -567,7 +567,8 @@ class Fleet(object):
 
         """
 
-        self._runtime_handle._save_persistables(executor, dirname, main_program)
+        self._runtime_handle._save_persistables(
+            executor, dirname, main_program)
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
@@ -737,7 +738,7 @@ class Fleet(object):
         """
         Set the value of the learning rate manually in the optimizer. 
         Only work in dygraph mode
- 
+
         Args:
             value (float|Tensor): the value of learning rate
 
@@ -877,7 +878,7 @@ class Fleet(object):
         """
         Execute the optimizer once.
         Only work in dygraph mode
- 
+
         Returns: None
 
         Examples:
@@ -1009,7 +1010,8 @@ class Fleet(object):
             MetaOptimizerFactory()._get_valid_meta_optimizers(
                 self.user_defined_optimizer)
 
-        context["user_defined_strategy"] = copy.copy(self.user_defined_strategy)
+        context["user_defined_strategy"] = copy.copy(
+            self.user_defined_strategy)
 
         # trigger the auto-parallel in very strict condition
         # strategy = DistributedStrategy()
@@ -1019,7 +1021,7 @@ class Fleet(object):
         if self.user_defined_strategy._is_strict_auto():
             # turn on all the strategy for each optimizer
             for opt in distributed_optimizer_list:
-                opt._enable_strategy(self.user_defined_strategy)
+                opt._enable_strategy(self.user_defined_strategy, context)
 
         valid_optimizer_list = []
         valid_graph_optimizer_list = []
