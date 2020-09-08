@@ -229,7 +229,7 @@ class ExpandGradOpMaker : public framework::SingleGradOpMaker<T> {
 };
 
 template <typename T>
-class ExpandDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
+class ExpandDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
