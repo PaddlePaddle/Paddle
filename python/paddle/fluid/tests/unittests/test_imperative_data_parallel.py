@@ -42,6 +42,7 @@ class MLP(fluid.Layer):
 
 class TestDataParallelStateDict(unittest.TestCase):
     def test_data_parallel_state_dict(self):
+        self.assertTrue(False)
         with fluid.dygraph.guard():
             strategy = paddle.distributed.prepare_context()
             mlp = MLP()
