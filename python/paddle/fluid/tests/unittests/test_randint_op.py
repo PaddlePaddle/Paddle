@@ -58,6 +58,11 @@ class TestRandintOpError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.randint, 5, dtype='float32')
             self.assertRaises(ValueError, paddle.randint, 5, 5)
             self.assertRaises(ValueError, paddle.randint, -5)
+            self.assertRaises(TypeError, paddle.randint, 5, shape=['2'])
+            shape_tensor = paddle.static.data('X', [1])
+            self.assertRaises(TypeError, paddle.randint, 5, shape=shape_tensor)
+            self.assertRaises(
+                TypeError, paddle.randint, 5, shape=[shape_tensor])
 
 
 class TestRandintOp_attr_tensorlist(OpTest):

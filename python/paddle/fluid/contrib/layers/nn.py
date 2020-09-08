@@ -37,7 +37,7 @@ import warnings
 import inspect
 
 import numpy as np
-
+import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
@@ -56,7 +56,8 @@ __all__ = [
     'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
     'sparse_embedding', 'partial_sum', 'tdm_child', 'rank_attention',
-    'tdm_sampler', 'batch_fc', '_pull_box_extended_sparse', 'bilateral_slice'
+    'tdm_sampler', 'batch_fc', '_pull_box_extended_sparse', 'bilateral_slice',
+    'correlation'
 ]
 
 
@@ -1546,3 +1547,81 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
         attrs={'has_offset': has_offset},
         outputs={'Out': out})
     return out
+
+
+def correlation(x,
+                y,
+                pad_size,
+                kernel_size,
+                max_displacement,
+                stride1,
+                stride2,
+                corr_type_multiply=1):
+    """
+
+    This operation compute correlation of two tensor.
+    For more information of correlation, please refer to PWC-Net: 
+    CNNs for Optical Flow Using Pyramid, Warping, and Cost Volume 
+    <https://arxiv.org/pdf/1709.02371.pdf>_
+
+    Args:
+        x(Tensor): The input x is 4-D Tensor with shape [N, C, H, W]. The data type is float32 and float64.
+        y(Tensor): The input y is 4-D Tensor with shape [N, C, H, W]. The data type is float32 and float64.
+        pad_size(int): Pad size. The data type is int.
+        max_displacement(int): Max displacement. The data type is int.
+        stride1(int): stride size of x. The data type is int.
+        stride2(int): stride size of y. The data type is int.
+        corr_type_multiply(int, optional): The type of multiply. The data type is int. Default: 1.
+
+    Returns:
+        Tensor: The data type is same as input tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            x1 = fluid.layers.data(name='x1',
+                               shape=x_shape,
+                               dtype=x_type,
+                               append_batch_size=False)
+            x2 = fluid.layers.data(name='x2',
+                                shape=x_shape,
+                                dtype=x_type,
+                                append_batch_size=False)
+
+
+            out = fluid.contrib.correlation(
+                            x1,
+                            x2,
+                            pad_size=4,
+                            kernel_size=1,
+                            max_displacement=4,
+                            stride1=1,
+                            stride2=1)
+
+    """
+
+    helper = LayerHelper("correlation", **locals())
+    output = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if paddle.fluid.in_dygraph_mode():
+        attrs = ("pad_size", pad_size, "kernel_size", kernel_size,
+                 "max_displacement", max_displacement, "stride1", stride1,
+                 "stride2", stride2, "corr_type_multiply", corr_type_multiply)
+        output = getattr(core.ops, "correlation")(x, y, *attrs)
+    else:
+        helper.append_op(
+            type="correlation",
+            inputs={"Input1": x,
+                    "Input2": y},
+            attrs={
+                "pad_size": pad_size,
+                "kernel_size": kernel_size,
+                "max_displacement": max_displacement,
+                "stride1": stride1,
+                "stride2": stride2,
+                "corr_type_multiply": corr_type_multiply
+            },
+            outputs={"Output": output})
+    return output

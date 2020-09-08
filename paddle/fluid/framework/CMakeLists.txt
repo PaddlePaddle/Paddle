@@ -272,7 +272,7 @@ cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatib
 
 cc_library(save_load_util SRCS save_load_util DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
-cc_library(generator SRCS generator.cc)
+cc_library(generator SRCS generator.cc DEPS enforce place)
 
 # Get the current working branch
 execute_process(

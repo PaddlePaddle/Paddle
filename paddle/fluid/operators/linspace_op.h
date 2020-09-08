@@ -14,20 +14,38 @@ limitations under the License. */
 
 #pragma once
 #include <functional>
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename T>
 class CPULinspaceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    T start = context.Input<framework::Tensor>("Start")->data<T>()[0];
-    T stop = context.Input<framework::Tensor>("Stop")->data<T>()[0];
+    auto* pre_start = context.Input<framework::Tensor>("Start");
+    auto* pre_stop = context.Input<framework::Tensor>("Stop");
     int32_t num = context.Input<framework::Tensor>("Num")->data<int32_t>()[0];
     auto* out = context.Output<framework::Tensor>("Out");
+    auto dtype = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("dtype"));
+
+    Tensor start_t;
+    Tensor stop_t;
+    auto start_dtype =
+        framework::OpKernelType(pre_start->type(), context.GetPlace());
+    auto stop_dtype =
+        framework::OpKernelType(pre_stop->type(), context.GetPlace());
+    auto out_dtype = framework::OpKernelType(dtype, context.GetPlace());
+    framework::TransDataType(start_dtype, out_dtype, *pre_start, &start_t);
+    framework::TransDataType(stop_dtype, out_dtype, *pre_stop, &stop_t);
+
+    T start = start_t.data<T>()[0];
+    T stop = stop_t.data<T>()[0];
     PADDLE_ENFORCE(num > 0, "The num of linspace op should be larger than 0.");
 
     out->Resize(framework::make_ddim({num}));

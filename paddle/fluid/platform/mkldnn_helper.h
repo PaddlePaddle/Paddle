@@ -161,6 +161,12 @@ inline mkldnn::memory::data_type MKLDNNGetDataType<uint8_t>() {
   return mkldnn::memory::data_type::u8;
 }
 
+template <>
+inline mkldnn::memory::data_type
+MKLDNNGetDataType<paddle::platform::bfloat16>() {
+  return mkldnn::memory::data_type::bf16;
+}
+
 inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
                     const mkldnn::engine& engine) {
   auto reorder_prim = mkldnn::reorder(src, dst);
