@@ -617,6 +617,7 @@ function fetch_upstream_develop_if_not_exist() {
 function generate_upstream_develop_api_spec() {
     fetch_upstream_develop_if_not_exist
     cur_branch=`git branch | grep \* | cut -d ' ' -f2`
+    git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen $1
     build $2
