@@ -72,6 +72,7 @@ from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
 from .common import assign  #DEFINE_ALIAS
 from .common import interpolate  #DEFINE_ALIAS
+from .common import upsample  #DEFINE_ALIAS
 from .common import bilinear  #DEFINE_ALIAS
 from .conv import conv1d  #DEFINE_ALIAS
 from .conv import conv_transpose1d  #DEFINE_ALIAS

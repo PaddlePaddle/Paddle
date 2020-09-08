@@ -178,6 +178,9 @@ class TestAdaptiveAvgPool3dAPI(unittest.TestCase):
             out_5 = paddle.nn.functional.adaptive_avg_pool3d(
                 x=x, output_size=[None, 3, None])
 
+            out_6 = paddle.nn.functional.interpolate(
+                x=x, mode="area", size=[2, 3, 5])
+
             assert np.allclose(out_1.numpy(), self.res_1_np)
 
             assert np.allclose(out_2.numpy(), self.res_2_np)
@@ -187,6 +190,8 @@ class TestAdaptiveAvgPool3dAPI(unittest.TestCase):
             assert np.allclose(out_4.numpy(), self.res_4_np)
 
             assert np.allclose(out_5.numpy(), self.res_5_np)
+
+            assert np.allclose(out_6.numpy(), self.res_3_np)
 
 
 class TestAdaptiveAvgPool3dClassAPI(unittest.TestCase):
