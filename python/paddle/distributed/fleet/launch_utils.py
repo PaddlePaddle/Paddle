@@ -555,7 +555,7 @@ def heter_cloud_env_set(args):
 
     trainers_num = int(os.getenv("TRAINERS_NUM", 0))
     assert trainers_num != 0
-    environs["PADDLE_TRAINER_NUM"] = trainers_num
+    environs["PADDLE_TRAINERS_NUM"] = trainers_num
 
     current_id = int(os.getenv("POD_INDEX", 0))
 
