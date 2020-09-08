@@ -238,6 +238,9 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
         cur_node_endpoints = [
             endpoint for endpoint in trainer_endpoints if ip in endpoint
         ]
+        assert len(cur_node_endpoints) >= len(
+            selected_gpus
+        ), "current trainer_endpoints size should be greater equal than selected_gpus size."
         for i in range(len(selected_gpus)):
             trainer = Trainer()
             trainer.gpus.append(selected_gpus[i])
