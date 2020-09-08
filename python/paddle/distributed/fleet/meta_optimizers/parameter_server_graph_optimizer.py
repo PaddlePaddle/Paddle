@@ -39,6 +39,11 @@ class ParameterServerGraphOptimizer(ParameterServerOptimizer):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.a_sync_configs = {}
 
+    def _enable_strategy(self, dist_strategy):
+        # only open up the async mode for auto-parallel
+        dist_strategy.a_sync = True
+        dist_strategy.a_sync_configs = {}
+
     def _is_graph_out(self):
         return True
 
