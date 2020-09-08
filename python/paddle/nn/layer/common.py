@@ -26,7 +26,7 @@ __all__ = [
     'Pool2D',
     'Embedding',
     'Linear',
-    'UpSample',
+    'Upsample',
     'Pad2D',
     'UpsamplingNearest2d',
     'UpsamplingBilinear2d',
@@ -131,12 +131,15 @@ class Linear(layers.Layer):
         return out
 
 
-class UpSample(layers.Layer):
+class Upsample(layers.Layer):
     """
     This op resizes a batch of images.
+
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
+    Where in_w is width of the input tensor, in_h is the height of the input tensor,
+    in_d is the depth of the intput tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
@@ -170,6 +173,12 @@ class UpSample(layers.Layer):
     The linear interpolation is performed on three directions.
     align_corners and align_mode are optional parameters,the calculation method
     of interpolation can be selected by them.
+
+    Area interpolation is to perform area interpolation
+    in both the 3rd dimension(in height direction) , the 4th dimension(in width
+    direction) and the 5th dimension(in depth direction) on input tensor. Set to
+    area will directly call `paddle.nn.functional.adaptive_avg_pool1d` or
+    `paddle.nn.functional.adaptive_avg_pool2d` or `paddle.nn.functional.adaptive_avg_pool3d`.
 
     Example:
 
@@ -273,9 +282,9 @@ class UpSample(layers.Layer):
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|Tensor|list|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.Has to match input size if it is a list.
+        scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
+             least one of :attr:`size` or :attr:`scale_factor` must be set.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`. Has to match input size if it is either a list or a tuple or a Tensor.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'nearst', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
@@ -322,7 +331,7 @@ class UpSample(layers.Layer):
             paddle.disable_static()
 
             input_data = np.random.rand(2,3,6,10).astype("float32")
-            upsample_out  = paddle.nn.UpSample(size=[12,12])
+            upsample_out  = paddle.nn.Upsample(size=[12,12])
 
             input = paddle.to_tensor(input_data)
             output = upsample_out(x=input)
@@ -339,7 +348,7 @@ class UpSample(layers.Layer):
                  align_mode=0,
                  data_format='NCHW',
                  name=None):
-        super(UpSample, self).__init__()
+        super(Upsample, self).__init__()
         self.size = size
         self.scale_factor = scale_factor
         self.mode = mode.lower()
@@ -366,7 +375,8 @@ class UpsamplingNearest2d(layers.Layer):
     """
     This op upsamples a batch of images, using nearest neighbours' pixel values.
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w), 
-    and the upsampling only applies on the two dimensions(height and width).
+    where in_w is width of the input tensor, in_h is the height of the input tensor.
+    And the upsampling only applies on the two dimensions(height and width).
 
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
@@ -381,10 +391,11 @@ class UpsamplingNearest2d(layers.Layer):
              layer, the shape is (out_h, out_w) when input is a 4-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|int|list|Tensor|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
-             Default: None. Has to match input size if it is a list.
+        scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
+             least one of :attr:`size` or :attr:`scale_factor` must be set.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.
+             Has to match input size if it is either a list or a tuple or a Tensor.
+             Default: None.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
             `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
@@ -449,7 +460,8 @@ class UpsamplingBilinear2d(layers.Layer):
     """
     This op upsamples a batch of images, using bilinear' pixel values.
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w), 
-    and the upsampling only applies on the two dimensions(height and width).
+    where in_w is width of the input tensor, in_h is the height of the input tensor.
+    And the upsampling only applies on the two dimensions(height and width).
 
     Bilinear interpolation is an extension of linear interpolation for
     interpolating functions of two variables (e.g. H-direction and
@@ -466,10 +478,11 @@ class UpsamplingBilinear2d(layers.Layer):
              layer, the shape is (out_h, out_w) when input is a 4-D Tensor. 
              Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale_factor (float|int|list|Tensor|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
-             Default: None. Has to match input size if it is a list.
+        scale_factor (float|int|list|tuple|Tensor|None): The multiplier for the input height or width. At
+             least one of :attr:`size` or :attr:`scale_factor` must be set.
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.
+             Has to match input size if it is either a list or a tuple or a Tensor.
+             Default: None.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
             `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
