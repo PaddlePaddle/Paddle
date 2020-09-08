@@ -324,24 +324,23 @@ class InMemoryDataset(DatasetBase):
         if kwargs.get("queue_num", -1) > 0:
             queue_num = kwargs.get("queue_num", -1)
             self._set_queue_num(queue_num)
+        merge_size = kwargs.get("merge_size", -1)
+        if merge_size > 0:
+            self._set_merge_by_lineid(merge_size)
+
         parse_ins_id = kwargs.get("parse_ins_id", False)
-        if parse_ins_id:
-            self._set_parse_ins_id(parse_ins_id)
+        self._set_parse_ins_id(parse_ins_id)
 
         parse_content = kwargs.get("parse_content", False)
-        if parse_content:
-            self._set_parse_content(parse_content)
+        self._set_parse_content(parse_content)
 
         fleet_send_batch_size = kwargs.get("fleet_send_batch_size", None)
         if fleet_send_batch_size:
             self._set_fleet_send_batch_size(fleet_send_batch_size)
 
         fleet_send_sleep_seconds = kwargs.get("fleet_send_sleep_seconds", None)
-        if fleet_send_batch_size:
+        if fleet_send_sleep_seconds:
             self._set_fleet_send_sleep_seconds(fleet_send_sleep_seconds)
-        merge_size = kwargs.get("merge_size", -1)
-        if merge_size > 0:
-            self._set_merge_by_lineid(merge_size)
 
         fea_eval = kwargs.get("fea_eval", False)
         if fea_eval:
@@ -781,6 +780,12 @@ class QueueDataset(DatasetBase):
         """
         super(QueueDataset, self).__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
+
+    def init(self, **kwargs):
+        """
+        should be called only once in user's python scripts to initialize seetings of dataset instance
+        """
+        super(QueueDataset, self).init(**kwargs)
 
     def _prepare_to_run(self):
         """
