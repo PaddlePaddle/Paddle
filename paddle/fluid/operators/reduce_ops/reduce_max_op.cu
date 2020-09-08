@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
+// #include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_func.cu.h"
 
-REGISTER_OP_CUDA_KERNEL(reduce_max,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          float, ops::MaxFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          double, ops::MaxFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int, ops::MaxFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int64_t, ops::MaxFunctor>);
+REGISTER_OP_CUDA_KERNEL(
+    reduce_max, paddle::operators::ReduceMinMaxCUDAKernel<float, cub::Max>,
+    paddle::operators::ReduceMinMaxCUDAKernel<int64_t, cub::Max>,
+    paddle::operators::ReduceMinMaxCUDAKernel<double, cub::Max>,
+    paddle::operators::ReduceMinMaxCUDAKernel<int, cub::Max>);
