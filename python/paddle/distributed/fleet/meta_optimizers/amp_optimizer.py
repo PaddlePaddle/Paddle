@@ -14,8 +14,6 @@
 import paddle.fluid.contrib.mixed_precision as mixed_precision
 from .meta_optimizer_base import MetaOptimizerBase
 
-__all__ = ["AMPOptimizer"]
-
 
 class AMPOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -43,6 +41,17 @@ class AMPOptimizer(MetaOptimizerBase):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.amp = False
         dist_strategy.amp_configs = {}
+
+    def _enable_strategy(self, dist_strategy):
+        dist_strategy.amp = True
+        dist_strategy.amp_configs = {
+            "init_loss_scaling": 32768.0,
+            "incr_every_n_steps": 1000,
+            "decr_every_n_nan_or_inf": 2,
+            "incr_ratio": 2.0,
+            "decr_ratio": 8.0,
+            "use_dynamic_loss_scaling": True
+        }
 
     def minimize_impl(self,
                       loss,

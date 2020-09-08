@@ -15,8 +15,6 @@ from paddle.fluid.optimizer import Momentum, DGCMomentumOptimizer
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
-__all__ = ["DGCOptimizer"]
-
 
 class DGCOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -70,6 +68,10 @@ class DGCOptimizer(MetaOptimizerBase):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.dgc = False
         dist_strategy.dgc_configs = {}
+
+    def _enable_strategy(self, dist_strategy):
+        dist_strategy.dgc = True
+        dist_strategy.dgc_configs = {"rampup_begin_step": 0, "rampup_step": 1}
 
     def backward(self,
                  loss,

@@ -116,6 +116,8 @@ void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
       return platform::to_void_cast(tensor.data<unsigned char>());
     case mkldnn::memory::data_type::s32:
       return platform::to_void_cast(tensor.data<int32_t>());
+    case mkldnn::memory::data_type::bf16:
+      return platform::to_void_cast(tensor.data<paddle::platform::bfloat16>());
     default:
       PADDLE_THROW(
           platform::errors::InvalidArgument("Wrong mkldnn type provided."));

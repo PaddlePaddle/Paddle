@@ -40,7 +40,7 @@ class TestGetAndSetFlagsErrors(unittest.TestCase):
     def test_errors(self):
         flags_list = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
         flag = 1
-        flag_private = {'FLAGS_use_mkldnn': True}
+        flag_private = {'FLAGS_free_idle_chunk': True}
 
         # flags type of set_flags should be dict.
         def test_set_flags_input_type():
@@ -51,7 +51,7 @@ class TestGetAndSetFlagsErrors(unittest.TestCase):
         # flags in set_flags should be public flags.
         def test_set_private_flag():
 
-            fluid.get_flags('FLAGS_use_mkldnn')
+            fluid.set_flags(flag_private)
 
         self.assertRaises(ValueError, test_set_private_flag)
 
@@ -63,7 +63,7 @@ class TestGetAndSetFlagsErrors(unittest.TestCase):
 
         # flags in get_flags should be public flags.
         def test_get_private_flag():
-            fluid.get_flags('FLAGS_use_mkldnn')
+            fluid.get_flags('FLAGS_free_idle_chunk')
 
         self.assertRaises(ValueError, test_get_private_flag)
 

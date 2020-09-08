@@ -23,6 +23,7 @@ template <typename T>
 static ::DLDataType GetDLDataTypeCode() {
   ::DLDataType dtype;
   if (std::is_same<T, platform::float16>::value ||
+      std::is_same<T, platform::bfloat16>::value ||
       std::is_floating_point<T>::value) {
     dtype.code = kDLFloat;
   } else if (std::is_unsigned<T>::value) {
