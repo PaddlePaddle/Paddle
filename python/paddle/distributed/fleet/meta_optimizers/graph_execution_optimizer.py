@@ -190,7 +190,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         # TODO(guru4elephant): should close all PE related flags here
         return
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context):
         # by default, graph execution strategy is enabled
         return
 

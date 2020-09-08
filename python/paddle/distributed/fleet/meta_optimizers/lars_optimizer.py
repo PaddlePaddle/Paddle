@@ -59,7 +59,10 @@ class LarsOptimizer(MetaOptimizerBase):
         dist_strategy.lars = False
         dist_strategy.lars_configs = {}
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context):
+        if context["role_maker"]._is_collective == False:
+            return
+
         dist_strategy.lars = True
         dist_strategy.lars_configs = {
             "lars_coeff": 0.01,

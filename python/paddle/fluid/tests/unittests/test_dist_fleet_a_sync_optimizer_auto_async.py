@@ -30,7 +30,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
             "127.0.0.1:36001,127.0.0.2:36001"
 
-    def test_a_sync_optimizer1(self):
+    def test_a_sync_optimizer3(self):
         os.environ["TRAINING_ROLE"] = "TRAINER"
         import paddle.distributed.fleet as fleet
 
@@ -42,10 +42,22 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
         input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32')
+            name="x",
+            shape=[-1, 1],
+            dtype="int64",
+            lod_level=1,
+            append_batch_size=False)
+        x_embedding = paddle.fluid.layers.embedding(
+            is_distributed=False,
+            input=input_x,
+            size=[1000000000, 100000],
+            param_attr=paddle.fluid.ParamAttr(
+                name="embedding",
+                initializer=paddle.fluid.initializer.Constant(value=0.01)),
+            is_sparse=True)
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
-        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+        fc_1 = paddle.fluid.layers.fc(input=x_embedding, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
         cost = paddle.fluid.layers.cross_entropy(
@@ -54,7 +66,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.auto = True
-        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

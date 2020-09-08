@@ -69,7 +69,10 @@ class DGCOptimizer(MetaOptimizerBase):
         dist_strategy.dgc = False
         dist_strategy.dgc_configs = {}
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context):
+        if context["role_maker"]._is_collective == False:
+            return
+
         dist_strategy.dgc = True
         dist_strategy.dgc_configs = {"rampup_begin_step": 0, "rampup_step": 1}
 

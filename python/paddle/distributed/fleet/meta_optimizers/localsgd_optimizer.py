@@ -44,7 +44,10 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         dist_strategy.localsgd = False
         dist_strategy.localsgd_configs = {}
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context):
+        if context["role_maker"]._is_collective == False:
+            return
+
         dist_strategy.localsgd = True
         dist_strategy.localsgd_configs = {"k_steps": 1}
 

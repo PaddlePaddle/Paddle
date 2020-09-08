@@ -45,7 +45,7 @@ class GradientMergeOptimizer(MetaOptimizerBase):
         dist_strategy.gradient_merge = False
         dist_strategy.gradient_merge_configs = {}
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context):
         # we currently do not support auto-enable gradient merge
         return
 

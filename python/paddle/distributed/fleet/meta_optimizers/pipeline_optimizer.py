@@ -111,7 +111,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         dist_strategy.pipeline = False
         dist_strategy.pipeline_configs = {}
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context):
         # we do not support enable pipeline automatically right now
         return
 
