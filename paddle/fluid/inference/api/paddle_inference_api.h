@@ -73,7 +73,7 @@ class PD_INFER_DECL Tensor {
 
 class PD_INFER_DECL Predictor {
  public:
-  Predictor() = default;
+  Predictor() = delete;
   ~Predictor() {}
   // Use for clone
   explicit Predictor(std::unique_ptr<paddle::PaddlePredictor>&& pred)

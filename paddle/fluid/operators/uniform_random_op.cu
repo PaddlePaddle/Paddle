@@ -51,6 +51,39 @@ struct UniformGenerator {
   }
 };
 
+template <typename T>
+struct UniformGeneratorOffset {
+  T min_, max_;
+  unsigned int seed_;
+  T diag_val_;
+  unsigned int diag_num_;
+  unsigned int diag_step_;
+  int offset_;
+  __host__ __device__ UniformGeneratorOffset(T min, T max, int seed,
+                                             int diag_num, int diag_step,
+                                             T diag_val, int offset)
+      : min_(min),
+        max_(max),
+        seed_(seed),
+        diag_num_(diag_num),
+        diag_step_(diag_step),
+        diag_val_(diag_val),
+        offset_(offset) {}
+
+  __host__ __device__ T operator()(const unsigned int n) const {
+    thrust::minstd_rand rng;
+    rng.seed(seed_);
+    thrust::uniform_real_distribution<T> dist(min_, max_);
+    rng.discard(n + offset_);
+    T out = dist(rng);
+    unsigned int remainder = n % (diag_step_ + 1);
+    if (remainder == 0 && diag_num_ > n / (diag_step_ + 1)) {
+      out = diag_val_;
+    }
+    return out;
+  }
+};
+
 // It seems that Eigen::Tensor::random in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
@@ -89,10 +122,11 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     }
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-
+    bool seed_flag = false;
     if (seed == 0) {
       std::random_device rd;
       seed = rd();
+      seed_flag = true;
     }
 
     T min = static_cast<T>(context.Attr<float>("min"));
@@ -104,10 +138,23 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     T diag_val = static_cast<T>(context.Attr<float>("diag_val"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    thrust::transform(
-        index_sequence_begin, index_sequence_begin + size,
-        thrust::device_ptr<T>(data),
-        UniformGenerator<T>(min, max, seed, diag_num, diag_step, diag_val));
+    int device_id =
+        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()).GetDeviceId();
+    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
+    if (gen_cuda->GetIsInitPy() && seed_flag) {
+      auto seed_offset = gen_cuda->IncrementOffset(1);
+      int gen_offset = size * seed_offset.second;
+      thrust::transform(
+          index_sequence_begin, index_sequence_begin + size,
+          thrust::device_ptr<T>(data),
+          UniformGeneratorOffset<T>(min, max, seed_offset.first, diag_num,
+                                    diag_step, diag_val, gen_offset));
+    } else {
+      thrust::transform(
+          index_sequence_begin, index_sequence_begin + size,
+          thrust::device_ptr<T>(data),
+          UniformGenerator<T>(min, max, seed, diag_num, diag_step, diag_val));
+    }
   }
 };
 
