@@ -19,7 +19,6 @@
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
-
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"

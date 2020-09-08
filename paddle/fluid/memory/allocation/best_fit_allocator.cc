@@ -14,11 +14,6 @@
 
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 
-#include <cmath>
-#include <list>
-#include <map>
-#include <string>
-
 namespace paddle {
 namespace memory {
 namespace allocation {

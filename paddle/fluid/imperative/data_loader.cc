@@ -15,14 +15,9 @@
 #ifndef _WIN32
 
 #include "paddle/fluid/imperative/data_loader.h"
-
-#include <string.h>
 #include <sys/wait.h>
-
-#include <atomic>
 #include <csignal>
 #include <map>
-#include <set>
 
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/platform/enforce.h"

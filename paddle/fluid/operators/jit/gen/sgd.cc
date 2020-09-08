@@ -15,7 +15,7 @@
 #include "paddle/fluid/operators/jit/gen/sgd.h"
 #include <stddef.h>  // offsetof
 #include <memory>
-#include <vector>
+
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
