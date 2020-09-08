@@ -248,8 +248,10 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return None, None
 
     def _disable_strategy(self, dist_strategy):
-        dist_strategy.a_sync_configs = {}
-        self.user_defined_strategy.a_sync_configs = {}
+        dist_strategy.a_sync = False
+        a_sync_configs = dist_strategy.a_sync_configs
+        a_sync_configs["k_steps"] = -1
+        dist_strategy.a_sync_configs = a_sync_configs
 
     def _enable_strategy(self, dist_strategy, context):
         if dist_strategy.auto == False:
@@ -263,9 +265,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         a_sync_configs = dist_strategy.a_sync_configs
 
         from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
-        compiled_config = public.CompileTimeStrategy(context["origin_main_program"],
-                                                     context["origin_startup_program"],
-                                                     None, context["role_maker"])
+        compiled_config = public.CompileTimeStrategy(
+            context["origin_main_program"], context["origin_startup_program"],
+            None, context["role_maker"])
 
         is_geo = self._can_apply_geo(
             dist_strategy, context["origin_main_program"], compiled_config)
