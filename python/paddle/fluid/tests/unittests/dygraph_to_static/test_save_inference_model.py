@@ -133,7 +133,7 @@ class TestPartialProgramRaiseError(unittest.TestCase):
             x = fluid.dygraph.to_variable(x_data)
             out = net(x)
 
-            program_cache = SimpleFcLayer.forward.program_cache
+            program_cache = net.forward.program_cache
             _, (concrete_program, _) = program_cache.last()
 
             params = concrete_program.parameters

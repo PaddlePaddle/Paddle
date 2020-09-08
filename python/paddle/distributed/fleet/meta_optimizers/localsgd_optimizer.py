@@ -14,8 +14,8 @@
 
 from __future__ import print_function
 
+import paddle
 from paddle.fluid import program_guard, layers, default_main_program
-from paddle.fluid.optimizer import Momentum, SGD
 from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, CollectiveHelper, is_update_op
 
@@ -35,12 +35,18 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         if self.role_maker.worker_num() <= 1:
             return False
 
-        return isinstance(self.inner_opt, Momentum) \
-                or isinstance(self.inner_opt, SGD)
+        return isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum) \
+                or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum) \
+                or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD) \
+                or isinstance(self.inner_opt, paddle.fluid.optimizer.SGD)
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.localsgd = False
         dist_strategy.localsgd_configs = {}
+
+    def _enable_strategy(self, dist_strategy):
+        dist_strategy.localsgd = True
+        dist_strategy.localsgd_configs = {"k_steps": 1}
 
     def snapshot_name(self, param_name):
         return param_name + self.snapshot_key

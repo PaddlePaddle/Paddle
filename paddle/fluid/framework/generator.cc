@@ -21,9 +21,45 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
+
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
+
+const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(int64_t device_id) {
+#ifdef PADDLE_WITH_CUDA
+
+  static int64_t num_cuda_devices = -1;
+  static std::once_flag num_devices_init_flag;
+  static std::deque<std::once_flag> cuda_device_flags;
+  static std::vector<std::shared_ptr<Generator>> default_cuda_generators;
+
+  std::call_once(num_devices_init_flag, []() {
+    num_cuda_devices = paddle::platform::GetCUDADeviceCount();
+    cuda_device_flags.resize(num_cuda_devices);
+    default_cuda_generators.resize(num_cuda_devices);
+  });
+  if (device_id < 0) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "cuda device id shoule be greater than 0"));
+  }
+
+  std::call_once(cuda_device_flags[device_id], [device_id]() {
+    default_cuda_generators[device_id] =
+        std::make_shared<Generator>(GetRandomSeed(), device_id);
+    VLOG(4) << "initial seed: "
+            << default_cuda_generators[device_id]->GetCurrentSeed();
+  });
+  return default_cuda_generators[device_id];
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "getDefaultCUDAGenerator only support in CUDA place"));
+#endif
+}
 
 const std::shared_ptr<Generator>& DefaultCPUGenerator() {
   static auto default_cpu_generator =
@@ -103,6 +139,7 @@ uint64_t Generator::Seed() {
 void Generator::SetCurrentSeed(uint64_t seed) {
   std::lock_guard<std::mutex> lock(this->mu_);
   this->state_.current_seed = seed;
+  this->state_.thread_offset = 0;
   std::seed_seq seq({seed});
   this->engine_->seed(seq);
 }
@@ -121,6 +158,22 @@ uint64_t Generator::Random64() {
   std::lock_guard<std::mutex> lock(this->mu_);
   auto engine = this->engine_;
   return (*engine)();
+}
+
+std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
+    uint64_t increament_offset) {
+  uint64_t cur_offset = this->state_.thread_offset;
+#ifdef PADDLE_WITH_CUDA
+  std::lock_guard<std::mutex> lock(this->mu_);
+
+  this->state_.thread_offset += increament_offset;
+
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "Increment Offset only support in CUDA place"));
+#endif
+  return std::make_pair(static_cast<int>(this->state_.current_seed),
+                        cur_offset);
 }
 
 void Generator::SetIsInitPy(bool is_init_py) {

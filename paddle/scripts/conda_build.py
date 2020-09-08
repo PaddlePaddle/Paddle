@@ -42,7 +42,6 @@ requirements:
     - nltk
     - scipy
     - requests
-    - pyyaml
     - pillow
     - graphviz
     - protobuf
@@ -62,7 +61,6 @@ requirements:
     - nltk
     - scipy
     - requests
-    - pyyaml
     - pillow
     - graphviz
     - protobuf
@@ -89,13 +87,11 @@ about:
 pip install /package/objgraph-3.4.1.tar.gz
 pip install /package/prettytable-0.7.tar.gz
 pip install /package/rarfile-3.0.tar.gz --no-deps
-pip install /package/funcsigs-1.0.2.tar.gz
 """
 
         self.blt_const = r""" 
 pip install C:\package\objgraph-3.4.1.tar.gz
 pip install C:\package\prettytable-0.7.tar.gz
-pip install C:\package\funcsigs-1.0.2.tar.gz
 pip install C:\package\rarfile-3.0.tar.gz --no-deps
 git clone https://github.com/PaddlePaddle/recordio.git
 cd recordio\python

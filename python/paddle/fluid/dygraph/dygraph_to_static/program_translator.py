@@ -21,9 +21,11 @@ import six
 import textwrap
 import threading
 import warnings
+import weakref
 
 import gast
 from paddle.fluid import framework
+from paddle.fluid import in_dygraph_mode
 from paddle.fluid.dygraph import layers
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.layers.utils import flatten
@@ -32,6 +34,7 @@ from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
 from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data
+from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import create_and_update_origin_info_map
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import update_op_callstack_with_origin_info
@@ -243,6 +246,7 @@ class StaticLayer(object):
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
         self._program_cache = ProgramCache()
+        self._descriptor_cache = weakref.WeakKeyDictionary()
         # Note: Hold a reference to ProgramTranslator for switching `enable_declarative`.
         self._program_trans = ProgramTranslator()
 
@@ -269,8 +273,19 @@ class StaticLayer(object):
         of `Net` instance. After decorated by `@paddle.jit.to_static`, it will firstly to call `__get__`
         to parse the class instance correctly instead of the `StaticLayer` instance.
         """
-        self._class_instance = instance
-        return self
+        if instance not in self._descriptor_cache:
+            if instance is None:
+                return self
+            # Note(Aurelius84): To construct new instance of StaticLayer when we
+            # first encouter the bound function of layer and cache it.
+            new_static_layer = self._clone()
+            new_static_layer._class_instance = instance
+            self._descriptor_cache[instance] = new_static_layer
+
+        return self._descriptor_cache[instance]
+
+    def _clone(self):
+        return self.__class__(self._dygraph_function, self._input_spec)
 
     def __call__(self, *args, **kwargs):
         """
@@ -283,12 +298,20 @@ class StaticLayer(object):
         Return:
             Outputs of decorated function.
         """
+
         # 1. call dygraph function directly if not enable `declarative`
         if not self._program_trans.enable_declarative:
-            warnings.warn(
-                "The decorator '@paddle.jit.to_static' doesn't work when setting ProgramTranslator.enable=False. "
+            logging_utils.warn(
+                "The decorator '@paddle.jit.to_static' does NOT work when setting ProgramTranslator.enable=False. "
                 "We will just return dygraph output.")
             return self._call_dygraph_function(*args, **kwargs)
+
+        if not in_dygraph_mode() and self._program_trans.enable_declarative:
+            raise RuntimeError(
+                "Failed to run the callable object {} decorated by '@paddle.jit.to_static', "
+                "because it does NOT in dynamic mode. Please disable the static mode to enter dynamic mode with the "
+                "following API: paddle.disable_static().".format(
+                    self.dygraph_function))
 
         # 2. trace ops from dygraph layers and cache the generated program.
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
@@ -393,19 +416,43 @@ class StaticLayer(object):
     def concrete_program(self):
         """
         Returns recent ConcreteProgram instance of decorated function.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.jit import to_static
+                from paddle.static import InputSpec
+
+                paddle.disable_static()
+
+                def foo(x, y):
+                    z = x + y
+                    return z
+                
+                # usage 1:
+                decorated_foo = to_static(foo, input_spec=[InputSpec([10], name='x'), InputSpec([10], name='y')])
+                print(decorated_foo.concrete_program)
+
+                # usage 2:
+                decorated_foo = to_static(foo)
+                out_foo = decorated_foo(paddle.rand([10]), paddle.rand([10]))
+                print(decorated_foo.concrete_program)
         """
         # if specific the `input_spec`, the length of program_cache will always 1,
         # else, return the last one.
         cached_program_len = len(self._program_cache)
         # If specific `input_spec`, apply convertion from dygraph layers into static Program.
         if cached_program_len == 0:
-            if len(self._function_spec.flat_input_spec) > 0:
-                input_spec = self._function_spec.input_spec
+            input_spec = self._function_spec.input_spec
+            has_input_spec = (input_spec is not None and len(input_spec) > 0)
+            if has_input_spec:
                 concrete_program, _ = self.get_concrete_program(*input_spec)
                 return concrete_program
             else:
-                raise ValueError("No valid transformed program for {}".format(
-                    self._function_spec))
+                raise ValueError(
+                    "No valid transformed program for {}.\n\t    Please specific `input_spec` in `@paddle.jit.to_static` or feed input tensor to call the decorated function at once.\n".
+                    format(self._function_spec))
         # If more than one programs have been cached, return the recent converted program by default.
         elif cached_program_len > 1:
             logging.warning(
@@ -617,7 +664,7 @@ class ProgramCache(object):
         return len(self._caches)
 
     def concrete_programs(self):
-        return [cp for key, (cp, _) in self._caches.iteritems()]
+        return [cp for key, (cp, _) in six.iteritems(self._caches)]
 
 
 def synchronized(func):

@@ -154,15 +154,16 @@ class ParameterServerRuntime(RuntimeBase):
             kwargs["sparse_attrs"] = get_sparse_attrs()
             return kwargs
 
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops, _has_global_step
 
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import \
             SyncStrategy, GeoStrategy
 
         trainer_config = self.async_strategy.get_trainer_runtime_config()
-        lrs = _get_lr_ops(self.origin_main_program)
 
-        if len(lrs) > 0:
+        lrs = _has_global_step(_get_lr_ops(self.origin_main_program))
+
+        if lrs:
             kwargs = {"need_global_step": "1"}
         else:
             kwargs = {"need_global_step": "0"}
@@ -201,6 +202,9 @@ class ParameterServerRuntime(RuntimeBase):
             if self.role_maker._get_heter_worker_device() == "GPU":
                 gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
                 executor = Executor(fluid.CUDAPlace(gpu_id))
+            elif self.role_maker._get_heter_worker_device() == "XPU":
+                xpu_id = int(os.getenv("FLAGS_selected_xpus", "0"))
+                executor = Executor(fluid.XPUPlace(xpu_id))
             else:
                 raise ValueError("Not Support Device {}".format(
                     self.role_maker._get_heter_worker_device()))
