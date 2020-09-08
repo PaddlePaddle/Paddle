@@ -73,17 +73,11 @@ class LogsumexpKernel : public framework::OpKernel<OutT> {
 
     auto axis = context.Attr<std::vector<int>>("axis");
     auto keepdim = context.Attr<bool>("keepdim");
+    auto reduce_all = context.Attr<bool>("reduce_all");
 
-    // The dims has full dim, set the reduce_all is True
     const auto& input_dim_size = input->dims().size();
-    for (size_t i = 0; i < axis.size(); i++) {
-      if (axis[i] < 0) {
-        axis[i] += input_dim_size;
-      }
-    }
-    std::sort(axis.begin(), axis.end());
-
-    bool reduce_all = (static_cast<const int>(axis.size()) == input_dim_size);
+    // The dims has full dim, set the reduce_all is True
+    reduce_all |= (static_cast<const int>(axis.size()) == input_dim_size);
 
     if (reduce_all) {
       // Flatten and reduce 1-D tensor
@@ -127,13 +121,9 @@ class LogsumexpGradKernel : public framework::OpKernel<T> {
     input_grad->mutable_data<T>(context.GetPlace());
 
     auto axis = context.Attr<std::vector<int>>("axis");
+    auto reduce_all = context.Attr<bool>("reduce_all");
     const auto input_dim_size = context.Input<Tensor>("X")->dims().size();
-    for (size_t i = 0; i < axis.size(); i++) {
-      if (axis[i] < 0) {
-        axis[i] += input_dim_size;
-      }
-    }
-    bool reduce_all = (static_cast<const int>(axis.size()) == input_dim_size);
+    reduce_all |= (static_cast<const int>(axis.size()) == input_dim_size);
 
     if (reduce_all) {
       auto x = EigenVector<T>::Flatten(*input);

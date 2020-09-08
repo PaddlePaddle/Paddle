@@ -65,26 +65,38 @@ class LogsumexpOp : public framework::OperatorWithKernel {
     }
 
     bool keepdim = ctx->Attrs().Get<bool>("keepdim");
+    bool reduce_all = ctx->Attrs().Get<bool>("reduce_all");
     auto dims_vector = vectorize(x_dims);
-    if (keepdim) {
-      for (size_t i = 0; i < axis.size(); ++i) {
-        dims_vector[axis[i]] = 1;
-      }
+    if (reduce_all) {
+      if (keepdim)
+        ctx->SetOutputDim(
+            "Out", framework::make_ddim(std::vector<int64_t>(x_rank, 1)));
+      else
+        ctx->SetOutputDim("Out", {1});
     } else {
-      const int kDelFlag = -1;
-      for (size_t i = 0; i < axis.size(); ++i) {
-        dims_vector[axis[i]] = kDelFlag;
+      auto dims_vector = vectorize(x_dims);
+      if (keepdim) {
+        for (size_t i = 0; i < axis.size(); ++i) {
+          dims_vector[axis[i]] = 1;
+        }
+      } else {
+        const int kDelFlag = -1;
+        for (size_t i = 0; i < axis.size(); ++i) {
+          dims_vector[axis[i]] = kDelFlag;
+        }
+        dims_vector.erase(
+            std::remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
+            dims_vector.end());
       }
-      std::remove(dims_vector.begin(), dims_vector.end(), kDelFlag);
-    }
-    if (!keepdim && dims_vector.empty()) {
-      dims_vector.push_back(1);
-    }
-    auto out_dims = framework::make_ddim(dims_vector);
-    ctx->SetOutputDim("Out", out_dims);
-    if (axis[0] != 0) {
-      // Only pass LoD when not reducing on the first dim.
-      ctx->ShareLoD("X", /*->*/ "Out");
+      if (!keepdim && dims_vector.size() == 0) {
+        dims_vector.push_back(1);
+      }
+      auto out_dims = framework::make_ddim(dims_vector);
+      ctx->SetOutputDim("Out", out_dims);
+      if (axis.size() > 0 && axis[0] != 0) {
+        // Only pass LoD when not reducing on the first dim.
+        ctx->ShareLoD("X", /*->*/ "Out");
+      }
     }
   }
 };
@@ -107,6 +119,10 @@ class LogsumexpOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) "
                   "If true, retain the reduced dimension with length 1.")
         .SetDefault(false);
+    AddAttr<bool>("reduce_all",
+                  "(bool, default false) "
+                  "If true, output a scalar reduced along all dimensions.")
+        .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
 logsumexp Operator.
 
@@ -127,8 +143,7 @@ class LogsumexpGrapOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "logsumexp");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    "Out@GRAD", "logsumexp");
-    ctx->SetOutputDim(framework::GradVarName("X"),
-                      ctx->GetInputDim(framework::GradVarName("Out")));
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
 

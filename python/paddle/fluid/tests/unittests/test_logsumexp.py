@@ -18,11 +18,13 @@ import numpy as np
 from op_test import OpTest
 
 
-def ref_logsumexp(x, axis=None, keepdim=False):
+def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
     if isinstance(axis, int):
         axis = (axis, )
     elif isinstance(axis, list):
         axis = tuple(axis)
+    if reduce_all:
+        axis = None
     out = np.log(np.exp(x).sum(axis=axis, keepdims=keepdim))
     return out
 
@@ -34,17 +36,19 @@ class TestLogsumexp(OpTest):
         self.dtype = 'float64'
         self.axis = [-1]
         self.keepdim = False
+        self.reduce_all = False
         self.set_attrs()
 
         np.random.seed(10)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        out = ref_logsumexp(x, self.axis, self.keepdim)
+        out = ref_logsumexp(x, self.axis, self.keepdim, self.reduce_all)
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {
-            'dim': self.axis,
-            'keep_dim': self.keepdim,
+            'axis': self.axis,
+            'keepdim': self.keepdim,
+            'reduce_all': self.reduce_all
         }
 
     def set_attrs(self):
@@ -77,6 +81,11 @@ class TestLogsumexp_keepdim(TestLogsumexp):
         self.keepdim = True
 
 
+class TestLogsumexp_reduce_all(TestLogsumexp):
+    def set_attrs(self):
+        self.reduce_all = True
+
+
 class TestLogsumexpError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -102,7 +111,7 @@ class TestLogsumexpAPI(unittest.TestCase):
         self.assertTrue(np.allclose(res[0], out_ref))
 
         paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x)
+        x = paddle.to_variable(self.x)
         out = paddle.logsumexp(x, axis, keepdim)
         self.assertTrue(np.allclose(out.numpy(), out_ref))
         paddle.enable_static()
@@ -117,7 +126,7 @@ class TestLogsumexpAPI(unittest.TestCase):
 
     def test_alias(self):
         paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x)
+        x = paddle.to_variable(self.x)
         out1 = paddle.logsumexp(x)
         out2 = paddle.tensor.logsumexp(x)
         out3 = paddle.tensor.math.logsumexp(x)

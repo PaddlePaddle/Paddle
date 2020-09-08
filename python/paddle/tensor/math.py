@@ -1187,18 +1187,21 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     """
     if isinstance(axis, int):
         axis = [axis]
+    reduce_all = True if axis is None \
+        or len(axis)==0 \
+        or len(axis) == len(x.shape) else False
     if axis is None or len(axis) == 0:
         axis = [0]
 
     if in_dygraph_mode():
-        return core.ops.logsumexp(x, 'axis', axis, 'keepdim', keepdim)
+        return core.ops.logsumexp(x, 'axis', axis, 'keepdim', keepdim, 'reduce_all', reduce_all)
 
     check_variable_and_dtype(x, 'x',
                              ['float32', 'float64'],
                              'logsumexp')
 
     helper = LayerHelper('logsumexp', **locals())
-    attrs = {'axis': axis, 'keepdim': keepdim}
+    attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all':reduce_all}
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
         type='logsumexp', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
