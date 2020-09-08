@@ -296,13 +296,13 @@ function check_style() {
     commit_files=on
     for file_name in `git diff --numstat upstream/$BRANCH |awk '{print $NF}'`;do
         if ! pre-commit run --files $file_name ; then
-            git diff
             commit_files=off
         fi
     done 
     
     if [ $commit_files == 'off' ];then
         echo "code format error"
+        git diff 2>&1
         exit 4
     fi
     trap : 0
@@ -1447,7 +1447,7 @@ function example() {
     cd ${PADDLE_ROOT}/tools
     python sampcd_processor.py cpu;example_error=$?
     if [ "$example_error" != "0" ];then
-      echo "Code instance execution failed"
+      echo "Code instance execution failed" >&2
       exit 5
     fi
 }
@@ -1456,15 +1456,19 @@ function summary_check_problems() {
     set +x
     local check_style_code=$1
     local example_code=$2
+    local check_style_info=$3
+    local example_info=$4
     if [ $check_style_code -ne 0 -o $example_code -ne 0 ];then
       echo "========================================"
       echo "summary problems:"
       echo "========================================"
       if [ $check_style_code -ne 0 ];then
-        echo "- Check code style failed! Please check the log and fix problems."
+        echo "- Check code style failed! Error infomations follow:"
+        echo "$check_style_info" | grep "code format error" -A $(echo "$check_style_info" | wc -l)
       fi
       if [ $example_code -ne 0 ];then
-        echo "- Check example code failed! Please check the log and fix problems."
+        echo "- Check example code failed! Error informations follow:"
+        echo "$example_info" | grep "API check -- Example Code" -A $(echo "$example_info" | wc -l)
       fi
       [ $check_style_code -ne 0 ] && exit $check_style_code
       [ $example_code -ne 0 ] && exit $example_code
@@ -1486,15 +1490,15 @@ function main() {
         ;;
       build_and_check)
         set +e
-        $(check_style >&2)
+        check_style_info=$(check_style)
         check_style_code=$?
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
-        $(example >&2)
+        example_info=$(example)
         example_code=$?
-        summary_check_problems $check_style_code $example_code
+        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
         assert_api_spec_approvals
         ;;
       build)
