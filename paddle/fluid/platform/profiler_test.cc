@@ -16,8 +16,6 @@ limitations under the License. */
 
 #include <string>
 
-#include "cuda_runtime_api.h"
-#include "driver_types.h"
 #include "glog/logging.h"
 #include "gtest/gtest-message.h"
 #include "gtest/gtest-test-part.h"
