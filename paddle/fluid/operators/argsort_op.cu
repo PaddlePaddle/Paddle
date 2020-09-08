@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <thrust/copy.h>
 #include <thrust/execution_policy.h>
 #include <thrust/sort.h>
 #include "cub/cub.cuh"
@@ -45,6 +46,15 @@ struct SegmentOffsetIter {
 
   int num_cols_;
 };
+
+template <typename T>
+static __global__ void FillFlattenIndex(T* indices, T numel) {
+  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int stride = blockDim.x * gridDim.x;
+  for (int i = index; i < numel; i += stride) {
+    indices[i] = i
+  }
+}
 
 template <typename T>
 static __global__ void FillIndex(T* indices, T num_rows, T num_cols) {
@@ -192,7 +202,7 @@ void ArgFullAssign(const platform::CUDADeviceContext& ctx, const Tensor* dO,
       num_cols);
 }
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -205,8 +215,25 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
     auto in_dims = input->dims();
     axis = (axis < 0) ? (in_dims.size() + axis) : axis;
 
-    int64_t numel = input->numel();
-    int64_t groups = numel / in_dims[axis];
+    const T* in_data = input->data<T>();
+    auto size = input->numel();
+    T* out_data = output->mutable_data<T>(ctx.GetPlace());
+    int64_t* ids_data = indices->mutable_data<int64_t>(ctx.GetPlace());
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    const int block_size =
+        std::min(static_cast<int>(size), dev_ctx.GetMaxPhysicalThreadCount());
+    int size_ = static_cast<int>(size);
+    int block_size_ = static_cast<int>(block_size);
+    const int grid_size =
+        std::min(1024, (size_ + block_size_ - 1) / block_size_);
+    // Init a index array
+    FillFlattenIndex<<<grid_size, block_size, 0, dev_ctx.stream()>>>(ids_data,
+                                                                     size);
+
+    thrust::copy(thrust::device, in_data, in_data + size, out_data);
+    thrust::sort_by_key(thrust::device, out_data, out_data + size, ids_data);
+    return;
 
     // Special case for full sort, speedup ~190x.
     if (axis == -1 || axis + 1 == in_dims.size()) {
@@ -345,11 +372,17 @@ class ArgsortGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_CUDA_KERNEL(
-    argsort, paddle::operators::ArgsortOpCUDAKernel<float>,
-    paddle::operators::ArgsortOpCUDAKernel<double>,
-    paddle::operators::ArgsortOpCUDAKernel<int>,
-    paddle::operators::ArgsortOpCUDAKernel<int64_t>,
-    paddle::operators::ArgsortOpCUDAKernel<paddle::platform::float16>);
+    argsort,
+    paddle::operators::ArgsortOpCUDAKernel<paddle::platform::CUDADeviceContext,
+                                           float>,
+    paddle::operators::ArgsortOpCUDAKernel<paddle::platform::CUDADeviceContext,
+                                           double>,
+    paddle::operators::ArgsortOpCUDAKernel<paddle::platform::CUDADeviceContext,
+                                           int>,
+    paddle::operators::ArgsortOpCUDAKernel<paddle::platform::CUDADeviceContext,
+                                           int64_t>,
+    paddle::operators::ArgsortOpCUDAKernel<paddle::platform::CUDADeviceContext,
+                                           paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(
     argsort_grad, paddle::operators::ArgsortGradOpCUDAKernel<float>,
     paddle::operators::ArgsortGradOpCUDAKernel<double>,
