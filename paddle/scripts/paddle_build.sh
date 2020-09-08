@@ -1496,6 +1496,7 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
+        set +e
         example_info=$(example)
         example_code=$?
         summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
