@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_type
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers.layer_function_generator import templatedoc
 from .. import fluid
+from ..fluid.framework import in_dygraph_mode
+from paddle.common_ops_import import *
 
 # TODO: define logic functions of a tensor  
 from ..fluid.layers import is_empty  #DEFINE_ALIAS
@@ -69,13 +71,12 @@ def equal_all(x, y, name=None):
     Examples:
         .. code-block:: python
 
-          import numpy as np
           import paddle
 
           paddle.disable_static()
-          x = paddle.to_variable(np.array([1, 2, 3]))
-          y = paddle.to_variable(np.array([1, 2, 3]))
-          z = paddle.to_variable(np.array([1, 4, 3]))
+          x = paddle.to_tensor([1, 2, 3])
+          y = paddle.to_tensor([1, 2, 3])
+          z = paddle.to_tensor([1, 4, 3])
           result1 = paddle.equal_all(x, y)
           print(result1.numpy()) # result1 = [True ]
           result2 = paddle.equal_all(x, z)
@@ -91,75 +92,65 @@ def equal_all(x, y, name=None):
 
 
 @templatedoc()
-def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
+def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
-	:alias_main: paddle.allclose
-	:alias: paddle.allclose,paddle.tensor.allclose,paddle.tensor.logic.allclose
-
     ${comment}
 
     Args:
-        input(inputtype):{input_comment}.
-        other(othertype):{other_comment}.
-        rtol(rtoltype,optional):{rtol_comment}.
-        atol(atoltype,optional):{atol_comment}.
-        equal_nan(equalnantype,optional):{equal_nan_comment}.
-        name(STR, optional): The default value is None.
-                        Normally there is no need for user to set this property.
-                        For more information, please refer to :ref:`api_guide_Name`.
+        x(Tensor): ${input_comment}.
+        y(Tensor): ${other_comment}.
+        rtol(rtoltype, optional): ${rtol_comment}.
+        atol(atoltype, optional): ${atol_comment}.
+        equal_nan(equalnantype, optional): ${equal_nan_comment}.
+        name (str, optional): Name for the operation. For more information, please
+            refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
-        ${out_comment}.
+        Tensor: ${out_comment}.
 
-    Return Type:
-        ${out_type}
-        
+    Raises:
+        TypeError: The data type of ``x`` must be one of float32, float64.
+        TypeError: The data type of ``y`` must be one of float32, float64.
+        TypeError: The type of ``rtol`` must be float.
+        TypeError: The type of ``atol`` must be float.
+        TypeError: The type of ``equal_nan`` must be bool.
+
     Examples:
         .. code-block:: python
 
           import paddle
-          import paddle.fluid as fluid
-          import numpy as np
 
-          use_cuda = fluid.core.is_compiled_with_cuda()
+          paddle.disable_static()
 
-          a = fluid.data(name="a", shape=[2], dtype='float32')
-          b = fluid.data(name="b", shape=[2], dtype='float32')
-
-          result = paddle.allclose(a, b, rtol=1e-05, atol=1e-08,
+          x = paddle.to_tensor([10000., 1e-07])
+          y = paddle.to_tensor([10000.1, 1e-08])
+          result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
-          result_nan = paddle.allclose(a, b, rtol=1e-05, atol=1e-08,
+          np_result1 = result1.numpy()
+          # [False]
+          result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
+          np_result2 = result2.numpy()
+          # [False]
 
-          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-          exe = fluid.Executor(place)
-          exe.run(fluid.default_startup_program())
-
-          x = np.array([10000., 1e-07]).astype("float32")
-          y = np.array([10000.1, 1e-08]).astype("float32")
-          result_v, result_nan_v = exe.run(
-              feed={'a': x, 'b': y},
-              fetch_list=[result, result_nan])
-          print(result_v, result_nan_v)
-          # Output: (array([False]), array([False]))
-
-          x = np.array([10000., 1e-08]).astype("float32")
-          y = np.array([10000.1, 1e-09]).astype("float32")
-          result_v, result_nan_v = exe.run(
-              feed={'a': x, 'b': y},
-              fetch_list=[result, result_nan])
-          print(result_v, result_nan_v)
-          # Output: (array([ True]), array([ True]))
-
-          x = np.array([1.0, float('nan')]).astype("float32")
-          y = np.array([1.0, float('nan')]).astype("float32")
-          result_v, result_nan_v = exe.run(
-              feed={'a': x, 'b': y},
-              fetch_list=[result, result_nan])
-          print(result_v, result_nan_v)
-          # Output: (array([False]), array([ True]))
+          x = paddle.to_tensor([1.0, float('nan')])
+          y = paddle.to_tensor([1.0, float('nan')])
+          result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
+                                  equal_nan=False, name="ignore_nan")
+          np_result1 = result1.numpy()
+          # [False]
+          result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
+                                      equal_nan=True, name="equal_nan")
+          np_result2 = result2.numpy()
+          # [True]
     """
 
+    if in_dygraph_mode():
+        return core.ops.allclose(x, y, 'rtol', rtol, 'atol', atol, 'equal_nan',
+                                 equal_nan)
+
+    check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
+    check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
     check_type(rtol, 'rtol', float, 'allclose')
     check_type(atol, 'atol', float, 'allclose')
     check_type(equal_nan, 'equal_nan', bool, 'allclose')
@@ -167,7 +158,7 @@ def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     helper = LayerHelper("allclose", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
 
-    inputs = {'Input': input, 'Other': other}
+    inputs = {'Input': x, 'Other': y}
     outputs = {'Out': out}
     attrs = {'rtol': rtol, 'atol': atol, 'equal_nan': equal_nan}
     helper.append_op(
@@ -198,12 +189,11 @@ def equal(x, y, name=None):
     Examples:
         .. code-block:: python
 
-          import numpy as np
           import paddle
 
           paddle.disable_static()
-          x = paddle.to_variable(np.array([1, 2, 3]))
-          y = paddle.to_variable(np.array([1, 3, 2]))
+          x = paddle.to_tensor([1, 2, 3])
+          y = paddle.to_tensor([1, 3, 2])
           result1 = paddle.equal(x, y)
           print(result1.numpy())  # result1 = [True False False]
     """
@@ -230,12 +220,11 @@ def greater_equal(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            x = paddle.to_variable(np.array([1, 2, 3]))
-            y = paddle.to_variable(np.array([1, 3, 2]))
+            x = paddle.to_tensor([1, 2, 3])
+            y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.greater_equal(x, y)
             print(result1.numpy())  # result1 = [True False True]
     """
@@ -262,12 +251,11 @@ def greater_than(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            x = paddle.to_variable(np.array([1, 2, 3]))
-            y = paddle.to_variable(np.array([1, 3, 2]))
+            x = paddle.to_tensor([1, 2, 3])
+            y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.greater_than(x, y)
             print(result1.numpy())  # result1 = [False False True]
     """
@@ -295,12 +283,11 @@ def less_equal(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            x = paddle.to_variable(np.array([1, 2, 3]))
-            y = paddle.to_variable(np.array([1, 3, 2]))
+            x = paddle.to_tensor([1, 2, 3])
+            y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.less_equal(x, y)
             print(result1.numpy())  # result1 = [True True False]
     """
@@ -328,12 +315,11 @@ def less_than(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            x = paddle.to_variable(np.array([1, 2, 3]))
-            y = paddle.to_variable(np.array([1, 3, 2]))
+            x = paddle.to_tensor([1, 2, 3])
+            y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.less_than(x, y)
             print(result1.numpy())  # result1 = [False True False]
     """
@@ -361,12 +347,12 @@ def not_equal(x, y, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
+
             import paddle
 
             paddle.disable_static()
-            x = paddle.to_variable(np.array([1, 2, 3]))
-            y = paddle.to_variable(np.array([1, 3, 2]))
+            x = paddle.to_tensor([1, 2, 3])
+            y = paddle.to_tensor([1, 3, 2])
             result1 = paddle.not_equal(x, y)
             print(result1.numpy())  # result1 = [False True True]
     """

@@ -15,17 +15,18 @@
 from __future__ import print_function
 
 import os
+import pickle
 import unittest
 import numpy as np
-
 import paddle
+from paddle.static import InputSpec
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.io import VARIABLE_FILENAME, EXTRA_VAR_INFO_FILENAME
+from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME
 
 BATCH_SIZE = 32
-BATCH_NUM = 20
+BATCH_NUM = 10
 SEED = 10
 
 
@@ -79,7 +80,7 @@ class LinearNetReturnLoss(fluid.dygraph.Layer):
 
 def train(layer, input_size=784, label_size=1):
     # create optimizer
-    adam = fluid.optimizer.SGDOptimizer(
+    sgd = fluid.optimizer.SGDOptimizer(
         learning_rate=0.01, parameter_list=layer.parameters())
     # create data loader
     train_loader = fluid.io.DataLoader.from_generator(capacity=5)
@@ -96,7 +97,7 @@ def train(layer, input_size=784, label_size=1):
         avg_loss = fluid.layers.mean(loss)
 
         avg_loss.backward()
-        adam.minimize(avg_loss)
+        sgd.minimize(avg_loss)
         layer.clear_gradients()
     return [img], layer, avg_loss
 
@@ -107,7 +108,8 @@ class TestJitSaveLoad(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
     def train_and_save_model(self, model_path=None, configs=None):
         layer = LinearNet(784, 1)
@@ -148,14 +150,14 @@ class TestJitSaveLoad(unittest.TestCase):
         train_layer.train()
         load_train_layer.train()
         # train & compare
-        _, _, train_loss = train(train_layer)
-        _, _, load_train_loss = train(load_train_layer)
+        img0, _, train_loss = train(train_layer)
+        img1, _, load_train_loss = train(load_train_layer)
         self.assertTrue(
             np.array_equal(train_loss.numpy(), load_train_loss.numpy()))
 
     def load_dygraph_state_dict(self, train_layer):
         train_layer.eval()
-        # contruct new model
+        # construct new model
         new_layer = LinearNet(784, 1)
         model_dict, _ = fluid.dygraph.load_dygraph(self.model_path)
         new_layer.set_dict(model_dict)
@@ -175,30 +177,97 @@ class TestJitSaveLoad(unittest.TestCase):
                 model_path=self.model_path,
                 input_spec=example_inputs)
 
-    def test_load_dygraoh_no_path(self):
+    def test_load_dygraph_no_path(self):
         model_path = "model.test_jit_save_load.no_path"
         new_layer = LinearNet(784, 1)
         with self.assertRaises(ValueError):
             model_dict, _ = fluid.dygraph.load_dygraph(model_path)
 
-    def test_load_dygraph_no_var_info(self):
-        model_path = "model.test_jit_save_load.no_var_info"
-        self.train_and_save_model(model_path=model_path)
-        # remove `__variables.info__`
-        var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
-        os.remove(var_info_path)
-        new_layer = LinearNet(784, 1)
-        with self.assertRaises(RuntimeError):
-            model_dict, _ = fluid.dygraph.load_dygraph(model_path)
 
-    def test_load_dygraph_not_var_file(self):
-        model_path = "model.test_jit_save_load.no_var_file"
+class LinearNetMultiInput(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetMultiInput, self).__init__()
+        self._linear1 = Linear(in_size, out_size)
+        # self._linear2 = Linear(in_size, out_size)
+
+    @declarative(input_spec=[
+        InputSpec(
+            [None, 8], dtype='float32'), InputSpec(
+                [None, 8], dtype='float32')
+    ])
+    def forward(self, x, y):
+        x_out = self._linear1(x)
+        y_out = self._linear1(y)
+        loss = fluid.layers.mean(x_out + y_out)
+        return x_out, y_out, loss
+
+
+class TestSaveLoadWithInputSpec(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        fluid.enable_dygraph()
+
+    def test_with_input_spec(self):
+        net = LinearNetReturnLoss(8, 8)
+        # set x.shape = [None, 8]
+        net.forward = declarative(
+            net.forward, input_spec=[InputSpec(
+                [None, 8], name='x')])
+
+        model_path = "model.input_spec.output_spec"
         configs = fluid.dygraph.jit.SaveLoadConfig()
-        configs.params_filename = "__params__"
-        self.train_and_save_model(model_path=model_path, configs=configs)
-        new_layer = LinearNet(784, 1)
-        with self.assertRaises(RuntimeError):
-            model_dict, _ = fluid.dygraph.load_dygraph(model_path)
+        # check inputs and outputs
+        self.assertTrue(len(net.forward.inputs) == 1)
+        input_x = net.forward.inputs[0]
+        self.assertTrue(input_x.shape == (-1, 8))
+        self.assertTrue(input_x.name == 'x')
+
+        # 1. prune loss
+        configs.output_spec = net.forward.outputs[:1]
+        fluid.dygraph.jit.save(net, model_path, configs=configs)
+
+        # 2. load to infer
+        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        pred = infer_layer(x)
+
+    def test_multi_in_out(self):
+        net = LinearNetMultiInput(8, 8)
+
+        model_path = "model.multi_inout.output_spec1"
+        configs = fluid.dygraph.jit.SaveLoadConfig()
+        # 1. check inputs and outputs
+        self.assertTrue(len(net.forward.inputs) == 2)
+        input_x = net.forward.inputs[0]
+        input_y = net.forward.inputs[1]
+        self.assertTrue(input_x.shape == (-1, 8))
+        self.assertTrue(input_y.shape == (-1, 8))
+
+        # 2. prune loss
+        configs.output_spec = net.forward.outputs[:2]
+        fluid.dygraph.jit.save(net, model_path, configs=configs)
+
+        # 3. load to infer
+        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        y = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        # 4. predict
+        pred_x, pred_y = infer_layer(x, y)
+
+        # 1. prune y and loss
+        model_path = "model.multi_inout.output_spec2"
+        configs.output_spec = net.forward.outputs[:1]
+        fluid.dygraph.jit.save(net, model_path, [input_x], configs)
+        # 2. load again
+        infer_layer2 = fluid.dygraph.jit.load(model_path, configs=configs)
+        # 3. predict
+        pred_xx = infer_layer2(x)
+
+        # 4. assert pred_x == pred_xx
+        self.assertTrue(np.allclose(pred_x.numpy(), pred_xx.numpy()))
 
 
 class TestJitSaveLoadConfig(unittest.TestCase):
@@ -206,7 +275,8 @@ class TestJitSaveLoadConfig(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
     def basic_save_load(self, layer, model_path, configs):
         # 1. train & save
@@ -298,7 +368,8 @@ class TestJitMultipleLoading(unittest.TestCase):
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
         # train and save base model
         self.train_and_save_orig_model()
 
@@ -316,6 +387,78 @@ class TestJitMultipleLoading(unittest.TestCase):
         for _, var in state_dict.items():
             self.assertTrue(var.name not in name_set)
             name_set.add(var.name)
+
+
+class LinearNetReturnHidden(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetReturnHidden, self).__init__()
+        self._linear_1 = Linear(in_size, out_size)
+        self._linear_2 = Linear(in_size, out_size)
+
+    @declarative
+    def forward(self, x):
+        y = self._linear_1(x)
+        z = self._linear_2(y)
+        loss = fluid.layers.mean(z)
+        return y, loss
+
+
+class TestJitPruneModelAndLoad(unittest.TestCase):
+    def setUp(self):
+        self.linear_size = 4
+        self.model_path = "model.jit_prune_model_and_load"
+        # enable dygraph mode
+        fluid.enable_dygraph()
+        # config seed
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
+
+    def train_and_save(self):
+        train_layer = LinearNetReturnHidden(8, 8)
+        adam = fluid.optimizer.AdamOptimizer(
+            learning_rate=0.1, parameter_list=train_layer.parameters())
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        for i in range(10):
+            hidden, loss = train_layer(x)
+            loss.backward()
+            adam.minimize(loss)
+            train_layer.clear_gradients()
+
+        configs = fluid.dygraph.jit.SaveLoadConfig()
+        configs.output_spec = [hidden]
+        fluid.dygraph.jit.save(
+            layer=train_layer,
+            model_path=self.model_path,
+            input_spec=[x],
+            configs=configs)
+
+        return train_layer
+
+    def test_load_pruned_model(self):
+        train_layer = self.train_and_save()
+        train_layer.eval()
+
+        infer_layer = fluid.dygraph.jit.load(self.model_path)
+
+        x = fluid.dygraph.to_variable(
+            np.random.random((4, 8)).astype('float32'))
+        self.assertTrue(
+            np.array_equal(train_layer(x)[0].numpy(), infer_layer(x).numpy()))
+
+    def test_load_var_not_in_extra_var_info(self):
+        self.train_and_save()
+
+        # chage extra var info
+        var_info_path = os.path.join(self.model_path, EXTRA_VAR_INFO_FILENAME)
+        with open(var_info_path, 'rb') as f:
+            extra_var_info = pickle.load(f)
+            extra_var_info.clear()
+        with open(var_info_path, 'wb') as f:
+            pickle.dump(extra_var_info, f, protocol=2)
+
+        with self.assertRaises(RuntimeError):
+            fluid.dygraph.jit.load(self.model_path)
 
 
 if __name__ == '__main__':

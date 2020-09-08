@@ -907,10 +907,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
         def test_x_dim_imperative_lt_2():
             with fluid.dygraph.guard():
-                x_np = np.array(
-                    [0.88103855, 0.9908683, 0.6226845, 0.53331435,
-                     0.07999352]).astype(np.float32)
-                label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
+                x_np = np.random.random(size=(5, )).astype(np.float64)
+                label_np = np.random.randint(0, 10, size=(5, )).astype(np.int64)
                 x = paddle.to_variable(x_np)
                 label = paddle.to_variable(label_np)
                 nll_loss = paddle.nn.loss.NLLLoss()
@@ -933,13 +931,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
         def test_NLLLoss_reduction_imperative_not_sum_mean_none():
             with fluid.dygraph.guard():
-                x_np = np.array(
-                    [[0.88103855, 0.9908683, 0.6226845],
-                     [0.53331435, 0.07999352, 0.8549948],
-                     [0.25879037, 0.39530203, 0.698465],
-                     [0.73427284, 0.63575995, 0.18827209],
-                     [0.05689114, 0.0862954, 0.6325046]]).astype(np.float32)
-                label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
+                x_np = np.random.random(size=(5, 3)).astype(np.float64)
+                label_np = np.random.randint(0, 3, size=(5, )).astype(np.int64)
                 x = paddle.to_variable(x_np)
                 label = paddle.to_variable(label_np)
                 nll_loss = paddle.nn.loss.NLLLoss(reduction='')
@@ -962,13 +955,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
         def test_nll_loss_function_reduction_imperative_not_sum_mean_none():
             with fluid.dygraph.guard():
-                x_np = np.array(
-                    [[0.88103855, 0.9908683, 0.6226845],
-                     [0.53331435, 0.07999352, 0.8549948],
-                     [0.25879037, 0.39530203, 0.698465],
-                     [0.73427284, 0.63575995, 0.18827209],
-                     [0.05689114, 0.0862954, 0.6325046]]).astype(np.float32)
-                label_np = np.array([0, 2, 1, 1, 0]).astype(np.int64)
+                x_np = np.random.random(size=(5, 3)).astype(np.float64)
+                label_np = np.random.randint(0, 3, size=(5, )).astype(np.int64)
                 x = paddle.to_variable(x_np)
                 label = paddle.to_variable(label_np)
                 res = paddle.nn.functional.nll_loss(x, label, reduction='')

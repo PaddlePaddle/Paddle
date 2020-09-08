@@ -14,8 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/size_op.h"
 
-REGISTER_OP_CUDA_KERNEL(size, paddle::operators::SizeKernel<int>,
-                        paddle::operators::SizeKernel<int32_t>,
-                        paddle::operators::SizeKernel<float>,
-                        paddle::operators::SizeKernel<bool>,
-                        paddle::operators::SizeKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    size, paddle::operators::SizeKernel<int>,
+    paddle::operators::SizeKernel<int64_t>,
+    paddle::operators::SizeKernel<paddle::platform::float16>,
+    paddle::operators::SizeKernel<float>, paddle::operators::SizeKernel<bool>,
+    paddle::operators::SizeKernel<double>);

@@ -112,13 +112,10 @@ class TestMKLDNNSwishDim2(TestSwish):
     def setUp(self):
         super(TestMKLDNNSwishDim2, self).setUp()
 
-        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
-        beta = 2.3
-        out = x * expit(beta * x)
+        self.attrs["use_mkldnn"] = True
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True, "beta": beta}
+    def init_dtype(self):
+        self.dtype = np.float32
 
     def init_dtype(self):
         self.dtype = np.float32

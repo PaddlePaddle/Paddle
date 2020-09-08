@@ -12,37 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Copyright(c) 2020 PaddlePaddle Authors.All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0(the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http:  // www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from __future__ import print_function
 from functools import reduce
 
 import collections
 import math
 import os
+import warnings
 
 import six
+import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.core import CommContext
+import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
+from paddle.fluid.transpiler.details.program_utils import delete_ops
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
 STEP_COUNTER = "@PS_STEP_COUNTER@"
+LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
+
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
@@ -50,20 +42,34 @@ op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 
+SPARSE_OP_LIST = ["lookup_table", "lookup_table_v2"]
+SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
+
 
 def _get_lr_ops(program):
     lr_ops = []
     for index, op in enumerate(program.global_block().ops):
         role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
         if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                        role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
-                        int(OPT_OP_ROLE_ATTR_VALUE):
+                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                int(OPT_OP_ROLE_ATTR_VALUE):
             lr_ops.append(op)
     return lr_ops
 
 
+def _has_global_step(lr_ops):
+    if len(lr_ops) > 0:
+        for idx, op in enumerate(lr_ops):
+            if op.type != 'increment':
+                continue
+            counter = op.input("X")[0]
+            if counter == LEARNING_RATE_DECAY_COUNTER:
+                return True
+    return False
+
+
 def is_sparse_op(op):
-    if op.type == "lookup_table" and op.attr('is_sparse') is True and op.attr(
+    if op.type in SPARSE_OP_LIST and op.attr('is_sparse') is True and op.attr(
             'is_distributed') is False:
         return True
 
@@ -75,7 +81,7 @@ def is_sparse_op(op):
 
 
 def is_distributed_sparse_op(op):
-    if op.type == "lookup_table" and op.attr('is_distributed') is True:
+    if op.type in SPARSE_OP_LIST and op.attr('is_distributed') is True:
         return True
 
     if op.type == "distributed_lookup_table" and op.attr(
@@ -109,9 +115,20 @@ class MergedVariable:
         self.offsets = offsets
 
 
+def Singleton(cls):
+    _instance = {}
+
+    def _singleton(*args, **kargs):
+        if cls not in _instance:
+            _instance[cls] = cls(*args, **kargs)
+        return _instance[cls]
+
+    return _singleton
+
+
+@Singleton
 class CompileTimeStrategy(object):
     def __init__(self, main_program, startup_program, strategy, role_maker):
-
         self.min_block_size = 8192
 
         self.origin_main_program = main_program
@@ -163,6 +180,12 @@ class CompileTimeStrategy(object):
 
     def get_ps_endpoints(self):
         return self.role_maker.get_pserver_endpoints()
+
+    def get_heter_worker_endpoints(self):
+        return self.role_maker._get_heter_worker_endpoints()
+
+    def get_heter_worker_endpoint(self):
+        return self.role_maker._get_heter_worker_endpoint()
 
     def get_origin_programs(self):
         return self.origin_main_program, self.origin_startup_program
@@ -782,11 +805,10 @@ class CompileTimeStrategy(object):
 
         def _get_sparse_varnames():
             varnames = []
-            op_types = {"lookup_table": "W"}
             for op in origin_program.global_block().ops:
-                if op.type in op_types.keys() \
+                if op.type in SPARSE_OP_TYPE_DICT.keys() \
                         and op.attr('remote_prefetch') is True:
-                    param_name = op.input(op_types[op.type])[0]
+                    param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
                     varnames.append(param_name)
 
             return list(set(varnames))
@@ -797,6 +819,30 @@ class CompileTimeStrategy(object):
 
         return sparse_param_grads, dense_param_grads
 
+    def remove_var_pair_by_grad(self, var_name):
+
+        for index, pair in enumerate(self.merged_variables_pairs):
+            var = pair[0]
+            var_grad = pair[1]
+            if var_grad.merged_var.name == var_name:
+                del self.merged_variables_pairs[index]
+
+        for index, pair in enumerate(self.merged_dense_pairs):
+            var = pair[0]
+            var_grad = pair[1]
+            if var_grad.merged_var.name == var_name:
+                del self.merged_dense_pairs[index]
+                return
+
+        for index, pair in enumerate(self.merged_sparse_pairs):
+            var = pair[0]
+            var_grad = pair[1]
+            if var_grad.merged_var.name == var_name:
+                del self.merged_sparse_pairs[index]
+                return
+
+        print("Not find {} in self.merge_pairs".format(var_name))
+
 
 def _is_opt_role_op(op):
     # NOTE : depend on oprole to find out whether this op is for
@@ -804,7 +850,7 @@ def _is_opt_role_op(op):
     op_maker = core.op_proto_and_checker_maker
     optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
     if op_maker.kOpRoleAttrName() in op.attr_names and \
-                    int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+            int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
         return True
     return False
 

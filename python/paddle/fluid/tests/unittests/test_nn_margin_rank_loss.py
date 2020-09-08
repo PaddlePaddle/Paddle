@@ -54,9 +54,11 @@ def create_test_case(margin, reduction):
                 margin=margin,
                 reduction=reduction)
             with program_guard(Program(), Program()):
-                x = paddle.nn.data(name="x", shape=[10, 10], dtype="float64")
-                y = paddle.nn.data(name="y", shape=[10, 10], dtype="float64")
-                label = paddle.nn.data(
+                x = paddle.static.data(
+                    name="x", shape=[10, 10], dtype="float64")
+                y = paddle.static.data(
+                    name="y", shape=[10, 10], dtype="float64")
+                label = paddle.static.data(
                     name="label", shape=[10, 10], dtype="float64")
                 result = paddle.nn.functional.margin_ranking_loss(
                     x, y, label, margin, reduction)
@@ -78,9 +80,11 @@ def create_test_case(margin, reduction):
                 margin=margin,
                 reduction=reduction)
             with program_guard(Program(), Program()):
-                x = paddle.nn.data(name="x", shape=[10, 10], dtype="float64")
-                y = paddle.nn.data(name="y", shape=[10, 10], dtype="float64")
-                label = paddle.nn.data(
+                x = paddle.static.data(
+                    name="x", shape=[10, 10], dtype="float64")
+                y = paddle.static.data(
+                    name="y", shape=[10, 10], dtype="float64")
+                label = paddle.static.data(
                     name="label", shape=[10, 10], dtype="float64")
                 margin_rank_loss = paddle.nn.loss.MarginRankingLoss(
                     margin=margin, reduction=reduction)
@@ -172,6 +176,16 @@ class MarginRakingLossError(unittest.TestCase):
                 margin=0.1, reduction="reduce_mean")
 
         self.assertRaises(ValueError, test_margin_value_error)
+
+        def test_functional_margin_value_error():
+            x = paddle.static.data(name="x", shape=[10, 10], dtype="float64")
+            y = paddle.static.data(name="y", shape=[10, 10], dtype="float64")
+            label = paddle.static.data(
+                name="label", shape=[10, 10], dtype="float64")
+            result = paddle.nn.functional.margin_ranking_loss(
+                x, y, label, margin=0.1, reduction="reduction_mean")
+
+        self.assertRaises(ValueError, test_functional_margin_value_error)
 
 
 if __name__ == "__main__":

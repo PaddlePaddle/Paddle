@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/fluid/platform/port.h"
@@ -219,7 +220,7 @@ $$out = \\frac{1}{\\sqrt{x}}$$
 )DOC";
 
 UNUSED constexpr char AbsDoc[] = R"DOC(
-Abs Activation Operator.
+Abs Operator.
 
 $$out = |x|$$
 
@@ -241,6 +242,8 @@ $$out = \\left \\lfloor x \\right \\rfloor$$
 
 UNUSED constexpr char CosDoc[] = R"DOC(
 Cosine Operator. Computes cosine of x element-wise.
+
+Input range is `(-inf, inf)` and output range is `[-1,1]`.
 
 $$out = cos(x)$$
 
@@ -314,13 +317,6 @@ $$out = x^2$$
 
 )DOC";
 
-UNUSED constexpr char SoftplusDoc[] = R"DOC(
-Softplus Activation Operator.
-
-$$out = \ln(1 + e^{x})$$
-
-)DOC";
-
 UNUSED constexpr char SoftsignDoc[] = R"DOC(
 Softsign Activation Operator.
 
@@ -334,7 +330,7 @@ class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of acos operator");
     AddOutput("Out", "Output of acos operator");
     AddComment(R"DOC(
-Arccosine Activation Operator.
+Arccosine Operator.
 
 $$out = \cos^{-1}(x)$$
 
@@ -345,10 +341,12 @@ $$out = \cos^{-1}(x)$$
 class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of asin operator");
+    AddInput("X",
+             "Input of asin operator, an N-D Tensor, with data type float32, "
+             "float64 or float16.");
     AddOutput("Out", "Output of asin operator");
     AddComment(R"DOC(
-Arcsine Activation Operator.
+Arcsine Operator.
 
 $$out = \sin^{-1}(x)$$
 
@@ -359,12 +357,14 @@ $$out = \sin^{-1}(x)$$
 class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of atan operator");
+    AddInput("X",
+             "Input of atan operator, an N-D Tensor, with data type float32, "
+             "float64 or float16.");
     AddOutput("Out", "Output of atan operator");
     AddComment(R"DOC(
-Arctanh Activation Operator.
+Arctangent Operator.
 
-$$out = \tanh^{-1}(x)$$
+$$out = \tan^{-1}(x)$$
 
 )DOC");
   }
@@ -388,6 +388,36 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
 LeakyRelu Activation Operator.
 
 $$out = \max(x, \alpha * x)$$
+
+)DOC");
+  }
+};
+
+class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "Input of Softplus operator, an N-D Tensor, with data type "
+             "float32, float64 or float16.");
+    AddOutput(
+        "Out",
+        "Output of Softplus operator, a Tensor with shape same as input.");
+    AddAttr<float>("beta", "The value of beta for Softplus.").SetDefault(1.0f);
+    AddAttr<float>("threshold", "The value of threshold for Softplus.")
+        .SetDefault(20.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel.")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "use_cudnn",
+        "(bool, default false) Only used in cudnn kernel, need install cudnn.")
+        .SetDefault(false);
+    AddComment(R"DOC(
+:strong:`Softplus Activation Operator`
+
+..  math::
+    out = \frac{1}{\beta} * \log(1 + \exp(\beta * x)) \\
+    \text{For numerical stability, the implementation reverts to the linear function when :}\,x \times \beta > threshold.
 
 )DOC");
   }
@@ -669,7 +699,6 @@ REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log1p, Log1pDoc);
 REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
-REGISTER_ACTIVATION_OP_MAKER(Softplus, SoftplusDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
 
 template <ActBwdOpFwdDeps kDepValue>
@@ -756,8 +785,8 @@ class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   }
 };
 
-// leaky_relu Grad: dx=dy if y>=0 else alpha * dy
-// leaky_relu GradGrad: ddy=ddx if y>=0 else alpha * ddx
+// leaky_relu Grad: dx=dy if x>=0 else alpha * dy
+// leaky_relu GradGrad: ddy=ddx if x>=0 else alpha * ddx
 template <typename T>
 class LeakyReluDoubleGradMaker
     : public ::paddle::framework::SingleGradOpMaker<T> {
@@ -767,8 +796,8 @@ class LeakyReluDoubleGradMaker
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("leaky_relu_grad_grad");
-    // input1: Out
-    op->SetInput("Out", this->Input("Out"));
+    // input1: X
+    op->SetInput("X", this->Input("X"));
     // X@GRAD@GRAD: ddx
     op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(this->Attrs());
@@ -1205,4 +1234,35 @@ REGISTER_OP_CPU_KERNEL(
                               ops::AbsGradFunctor<int>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                               ops::AbsGradFunctor<int64_t>>);
+/* ========================================================================== */
+
+/* ==========================  register checkpoint ===========================*/
+REGISTER_OP_VERSION(leaky_relu)
+    .AddCheckpoint(
+        R"ROC(fix leaky_relu, bahavior changed when alpha < 0 or alpha > 1)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .BugfixWithBehaviorChanged(
+                "leaky_relu calculate formula before checkponit: out = max(x, "
+                "alpha * x); after checkpoint: out = x if x > 0 else alpha * "
+                "x"));
+
+REGISTER_OP_VERSION(hard_shrink)
+    .AddCheckpoint(
+        R"ROC(fix hard_shrink, bahavior changed when threshold<0)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .BugfixWithBehaviorChanged(
+                "hard_shrink calculate formula before checkponit: out = x * "
+                "((x < -threshold) + (x > threshold)); after checkpoint: out = "
+                "x * (((x < -threshold) + (x > threshold)) > 0)"));
+
+REGISTER_OP_VERSION(softplus)
+    .AddCheckpoint(
+        R"ROC(add new attributes [beta] and [threshold], and the formula is changed to "
+         " softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\ \\text{For numerical"
+         " stability, the implementation reverts to the linear function when: beta * x > threshold.})ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("beta", "The beta value of the new formula", 1.0f)
+            .NewAttr("threshold", "The threshold value of the new formula",
+                     20.0f));
+
 /* ========================================================================== */

@@ -14,6 +14,7 @@
 
 import time
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
@@ -22,6 +23,8 @@ from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 
 import unittest
+
+from predictor_utils import PredictorTools
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -445,8 +448,8 @@ def train_mobilenet(args, to_static):
     with fluid.dygraph.guard(args.place):
 
         np.random.seed(SEED)
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         if args.model == "MobileNetV1":
             net = MobileNetV1(class_dim=args.class_dim, scale=1.0)
@@ -550,6 +553,12 @@ def predict_dygraph_jit(args, data):
         return pred_res.numpy()
 
 
+def predict_analysis_inference(args, data):
+    output = PredictorTools(args.model_save_path, VARIABLE_FILENAME, [data])
+    out = output()
+    return out
+
+
 class TestMobileNet(unittest.TestCase):
     def setUp(self):
         self.args = Args()
@@ -577,12 +586,18 @@ class TestMobileNet(unittest.TestCase):
         dy_pre = predict_dygraph(self.args, image)
         st_pre = predict_static(self.args, image)
         dy_jit_pre = predict_dygraph_jit(self.args, image)
+        predictor_pre = predict_analysis_inference(self.args, image)
         self.assertTrue(
             np.allclose(dy_pre, st_pre),
             msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
         self.assertTrue(
             np.allclose(dy_jit_pre, st_pre),
             msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(dy_jit_pre, st_pre))
+        self.assertTrue(
+            np.allclose(
+                predictor_pre, st_pre, atol=1e-5),
+            msg="inference_pred_res:\n {}\n, st_pre: \n{}.".format(
+                predictor_pre, st_pre))
 
     def test_mobile_net(self):
         # MobileNet-V1

@@ -21,7 +21,7 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from test_dist_fleet_base import TestFleetBase
-from dist_simnet_bow import train_network
+from dist_fleet_simnet_bow import train_network
 
 
 @unittest.skip(reason="Skip unstable ut, add it after PR 22957 merged")
@@ -44,7 +44,7 @@ class TestDistGeoClipByGlobalNormTranspiler(unittest.TestCase):
         strategy.geo_sgd_mode = True
         strategy.geo_sgd_need_push_nums = 5
 
-        avg_cost, _, _ = train_network(batch_size, is_distribute, is_sparse)
+        avg_cost, _, _, _ = train_network(batch_size, is_distribute, is_sparse)
         fluid.clip.set_gradient_clip(
             clip=fluid.clip.GradientClipByGlobalNorm(2.0))
 

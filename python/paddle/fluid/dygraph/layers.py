@@ -29,6 +29,9 @@ from .layer_object_helper import LayerObjectHelper
 from .base import program_desc_tracing_guard, param_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
+from paddle.fluid.executor import Executor, global_scope
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import _current_expected_place as _get_device
 
 __all__ = ['Layer']
 
@@ -161,7 +164,7 @@ class Layer(core.Layer):
 
               print(net.state_dict())
         """
-        for layer in self.sublayers():
+        for layer in self.children():
             layer.apply(fn)
 
         fn(self)
@@ -283,7 +286,7 @@ class Layer(core.Layer):
     def create_parameter(self,
                          shape,
                          attr=None,
-                         dtype='float32',
+                         dtype=None,
                          is_bias=False,
                          default_initializer=None):
         """Create parameters for this layer.
@@ -352,6 +355,56 @@ class Layer(core.Layer):
                 include_sublayers=include_sublayers)
         ]
         return ret
+
+    def children(self):
+        """Returns an iterator over immediate children layers.
+
+        Yields:
+            Layer: a child layer
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    fc2 = fluid.Linear(3, 10, bias_attr=False)
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+                    
+                    layer_list = list(model.children())
+
+                    print(layer_list)
+
+        """
+        for _, layer in self.named_children():
+            yield layer
+
+    def named_children(self):
+        """Returns an iterator over immediate children layers, yielding both
+        the name of the layer as well as the layer itself.
+
+        Yields:
+            (string, Layer): Tuple containing a name and child layer
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    fc2 = fluid.Linear(3, 10, bias_attr=False)
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+                    for prefix, layer in model.named_children():
+                        print(prefix, layer)
+
+        """
+        memo = set()
+        for name, layer in self._sub_layers.items():
+            if layer is not None and layer not in memo:
+                memo.add(layer)
+                yield name, layer
 
     def sublayers(self, include_sublayers=True):
         """Returns a list of sub layers.
@@ -503,7 +556,10 @@ class Layer(core.Layer):
                 "The name of buffer should be a string, but received {}.".
                 format(type(name).__name__))
         elif '.' in name:
-            raise KeyError("The name of buffer can not contain \".\"")
+            raise KeyError(
+                "The name of buffer can not contain `.`, "
+                "because when you access the newly added buffer in the "
+                "form of `self.**.**`, it will cause AttributeError.")
         elif name == '':
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
@@ -686,20 +742,38 @@ class Layer(core.Layer):
         Returns:
             Parameter: the parameter passed in.
         """
-        if parameter is None:
-            self._parameters[name] = None
-        elif not isinstance(parameter, framework.Parameter):
+        if '_parameters' not in self.__dict__:
+            raise RuntimeError(
+                "super(YourLayer, self).__init__() should be called firstly.")
+        elif not isinstance(name, six.string_types):
             raise TypeError(
-                "parameter assignment requires Parameter or None, but got '{}'"
-                .format(type(parameter).__name__))
+                "The name of parameter should be a string, but received {}.".
+                format(type(name).__name__))
+        elif '.' in name:
+            raise KeyError(
+                "The name of parameter can not contain `.`, "
+                "because when you access the newly added parameter in the "
+                "form of `self.**.**`, it will cause AttributeError.")
+        elif name == '':
+            raise KeyError("The name of parameter can not be empty.")
+        elif hasattr(self, name) and name not in self._parameters:
+            raise KeyError("The parameter '{}' already exists.".format(name))
+        elif parameter is not None and not isinstance(parameter,
+                                                      framework.Parameter):
+            raise TypeError(
+                "The parameter to be added should be a Parameter, but received {}.".
+                format(type(parameter).__name__))
+        else:
+            if parameter is None:
+                self._parameters[name] = None
 
-        if len(self._loaddict_holder) > 0:
-            assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
-                parameter.name)
+            if len(self._loaddict_holder) > 0:
+                assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in state_dict".format(
+                    parameter.name)
 
-            parameter.set_value(self._loaddict_holder[parameter.name])
+                parameter.set_value(self._loaddict_holder[parameter.name])
 
-        self._parameters[name] = parameter
+            self._parameters[name] = parameter
         return parameter
 
     def __getattr__(self, name):
@@ -726,7 +800,7 @@ class Layer(core.Layer):
                 raise ValueError(
                     "super(YourLayer, self).__init__() should be called first")
             if len(self._loaddict_holder) > 0:
-                assert value.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
+                assert value.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in state_dict".format(
                     value.name)
 
                 value.set_value(self._loaddict_holder[value.name])
@@ -872,12 +946,13 @@ class Layer(core.Layer):
                     destination = destination_temp
         return destination
 
-    def set_dict(self,
-                 stat_dict,
-                 include_sublayers=True,
-                 use_structured_name=True):
+    @framework.deprecate_stat_dict
+    def set_state_dict(self,
+                       state_dict,
+                       include_sublayers=True,
+                       use_structured_name=True):
         '''
-        Set parameters and persistable buffers from stat_dict. All the parameters and buffers will be reset by the tensor in the stat_dict
+        Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
@@ -890,72 +965,67 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                import paddle
+                
+                paddle.disable_static()
+                
+                emb = paddle.nn.Embedding([10, 10])
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
-                    
-                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
+                state_dict = emb.state_dict()
+                paddle.save(state_dict, "paddle_dy")
+                
+                para_state_dict, _ = paddle.load("paddle_dy")
 
-                    emb.set_dict( para_state_dict )
-
-        '''
-        self.load_dict(
-            stat_dict,
-            include_sublayers=include_sublayers,
-            use_structured_name=use_structured_name)
-
-    def load_dict(self,
-                  stat_dict,
-                  include_sublayers=True,
-                  use_structured_name=True):
-        '''
-        Set parameters and persistable buffers from stat_dict. All the parameters and persistabl buffers will be reset by the tensor in the stat_dict
-
-        This api will be Deprecated. Please use set_dict
-
-        Parameters:
-            state_dict(dict) : Dict contains all the parameters and persistable buffers.
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
-                                                  Default: True
-        Returns:
-            None
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
-
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
-                    
-                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
-
-                    emb.load_dict( para_state_dict )
+                emb.set_state_dict(para_state_dict)
 
         '''
 
-        inner_state_dict = self.state_dict()
+        def _check_match(key, param):
+            state = state_dict.get(key, None)
+            if state is None:
+                raise ValueError("{} is not found in the provided dict.".format(
+                    key))
+            if list(state.shape) != list(param.shape):
+                raise ValueError(
+                    "{} receives a shape {}, but the expected shape is {}.".
+                    format(key, list(state.shape), list(param.shape)))
+            return param, state
 
-        for name, param_or_buffer in inner_state_dict.items():
-            key_name = name if use_structured_name else param_or_buffer.name
-            if key_name in stat_dict:
-                param_or_buffer.set_value(stat_dict[key_name])
-            else:
-                raise RuntimeError(
-                    "Parameter or persistable buffer not found, Can't find [ {} ] in stat_dict"
-                    "use_structured_name is set to [{}]".format(
-                        key_name, use_structured_name))
-        unused_para_list = []
-        for k, v in stat_dict.items():
-            if k not in inner_state_dict:
-                unused_para_list.append(k)
-        if len(unused_para_list) > 0:
-            warnings.warn(
-                "Variables [ {} ] are not used, because not included in layers state_dict".
-                format(" ".join(unused_para_list)))
+        matched_param_state = []
+        for key, param in self.state_dict().items():
+            key_name = key if use_structured_name else param.name
+            try:
+                match_res = _check_match(key_name, param)
+                matched_param_state.append(match_res)
+            except ValueError as err:
+                warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
+
+        if in_dygraph_mode():
+            for param, state in matched_param_state:
+                param.set_value(state)
+        else:
+
+            def _set_var(var, ndarray):
+                t = global_scope().find_var(var.name).get_tensor()
+                p = t._place()
+                if p.is_cpu_place():
+                    place = core.CPUPlace()
+                elif p.is_cuda_pinned_place():
+                    place = core.CUDAPinnedPlace()
+                else:
+                    p = core.Place()
+                    p.set_place(t._place())
+                    place = core.CUDAPlace(p.gpu_device_id())
+                t.set(ndarray, place)
+
+            executor = Executor(_get_device())._default_executor
+            # restore parameter states
+            core._create_loaded_parameter(
+                [param for param, state in matched_param_state],
+                global_scope(), executor)
+            for param, state in matched_param_state:
+                _set_var(param, state)
+
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
+    load_dict = set_state_dict
