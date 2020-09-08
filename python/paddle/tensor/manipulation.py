@@ -746,8 +746,6 @@ def unsqueeze(x, axis, name=None):
             print(out3.shape)  # [1, 1, 1, 5, 10]
             
     """
-    if isinstance(axis, int):
-        axis = [axis]
 
     return layers.unsqueeze(x, axis, name)
 
