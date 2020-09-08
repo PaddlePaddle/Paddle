@@ -841,6 +841,12 @@ FetchResultType ParallelExecutor::Run(
 
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
   auto fetch_data = member_->executor_->Run(fetch_tensors, return_merged);
+
+  for (auto &p : member_->places_) {
+    platform::DeviceContextPool::Instance().Get(p)->Wait();
+  }
+
+
   return fetch_data;
 }
 

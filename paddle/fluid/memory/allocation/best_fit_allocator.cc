@@ -15,6 +15,7 @@
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 
 #include "paddle/fluid/platform/enforce.h"
+#include <cmath>
 
 namespace paddle {
 namespace memory {

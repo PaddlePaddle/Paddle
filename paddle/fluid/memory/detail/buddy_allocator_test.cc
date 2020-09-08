@@ -19,7 +19,6 @@ limitations under the License. */
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
-#include "driver_types.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest-message.h"
 #include "gtest/gtest-test-part.h"

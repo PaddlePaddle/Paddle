@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <memory>
 
-#include "cuda_runtime_api.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest-message.h"
 #include "gtest/gtest-test-part.h"

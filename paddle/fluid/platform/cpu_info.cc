@@ -30,6 +30,7 @@ limitations under the License. */
 #include <unistd.h>
 #endif  // _WIN32
 
+#include <algorithm>
 #include "gflags/gflags.h"
 
 DECLARE_double(fraction_of_cpu_memory_to_use);
