@@ -34,7 +34,7 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
       platform::errors::InvalidArgument(
         "The two inputs height must be equal."
         "But recieved first input height  = [%d], second input height = [%d]",
-        input1.height, input2.height));
+        in1_height, input2.height()));
     output->set_height(in1_height);
 
     framework::Vector<int64_t> in1_rows(input1.rows());
