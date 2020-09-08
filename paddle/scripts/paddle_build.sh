@@ -273,7 +273,7 @@ function cmake_gen() {
 function abort(){
     echo "Your change doesn't follow PaddlePaddle's code style." 1>&2
     echo "Please use pre-commit to check what is wrong." 1>&2
-    exit 1
+    exit 4
 }
 
 function check_style() {
@@ -303,7 +303,7 @@ function check_style() {
     
     if [ $commit_files == 'off' ];then
         echo "code format error"
-        exit 1
+        exit 4
     fi
     trap : 0
 }
@@ -528,8 +528,50 @@ EOF
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
+        tmpfile_rand=`date +%s%N`
+        tmpfile=$tmp_dir/$tmpfile_rand
+        set +e
         ut_startTime_s=`date +%s`
-        ctest --output-on-failure -j $2;mactest_error=$?
+        ctest --output-on-failure -j $2 | tee $tmpfile
+        failed_test_lists=''
+        collect_failed_tests
+        set +x
+        mactest_error=0
+        retry_unittests_record=''
+        retry_time=3
+        exec_times=0
+        exec_time_array=('first' 'second' 'third')
+        if [ -n "$failed_test_lists" ];then
+            mactest_error=1
+            while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
+                do
+                    retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                    failed_test_lists_ult=`echo "${failed_test_lists}"`
+                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                    echo "========================================="
+                    echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                    echo "========================================="
+                    echo "The following unittest will be re-run:"
+                    echo "${retry_unittests}"
+                    echo "========================================="
+
+                    retry_unittests_regular=''
+                    for line in ${retry_unittests[@]} ;
+                        do
+                            if [[ "$retry_unittests_regular" == "" ]];then
+                                retry_unittests_regular="^$line$"
+                            else
+                                retry_unittests_regular="$retry_unittests_regular|^$line$"
+                            fi
+                        done
+                    rm -f $tmp_dir/*
+                    failed_test_lists=''
+                    ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                    collect_failed_tests
+                    exec_times=$[$exec_times+1]
+                done
+        fi
+        #mactest_error=$?
         ut_endTime_s=`date +%s`
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
@@ -537,7 +579,21 @@ EOF
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
         if [ "$mactest_error" != 0 ];then
-            exit 8;
+            if [[ "$failed_test_lists" == "" ]]; then
+                echo "========================================"
+                echo "There are failed tests, which have been successful after re-run:"
+                echo "========================================"
+                echo "The following tests have been re-ran:"
+                echo "${retry_unittests_record}"
+            else
+                failed_test_lists_ult=`echo "${failed_test_lists}"`
+                echo "========================================"
+                echo "Summary Failed Tests... "
+                echo "========================================"
+                echo "The following tests FAILED: "
+                echo "${failed_test_lists_ult}"
+                exit 8;
+            fi
         fi
     fi
 }
@@ -561,6 +617,7 @@ function fetch_upstream_develop_if_not_exist() {
 function generate_upstream_develop_api_spec() {
     fetch_upstream_develop_if_not_exist
     cur_branch=`git branch | grep \* | cut -d ' ' -f2`
+    git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen $1
     build $2
@@ -1395,24 +1452,49 @@ function example() {
     fi
 }
 
+function summary_check_problems() {
+    set +x
+    local check_style_code=$1
+    local example_code=$2
+    if [ $check_style_code -ne 0 -o $example_code -ne 0 ];then
+      echo "========================================"
+      echo "summary problems:"
+      echo "========================================"
+      if [ $check_style_code -ne 0 ];then
+        echo "- Check code style failed! Please check the log and fix problems."
+      fi
+      if [ $example_code -ne 0 ];then
+        echo "- Check example code failed! Please check the log and fix problems."
+      fi
+      [ $check_style_code -ne 0 ] && exit $check_style_code
+      [ $example_code -ne 0 ] && exit $example_code
+    fi
+    set -x
+}
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
     init
     if [ "$CMD" != "assert_file_approvals" ];then
       python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_and_check)
-        check_style
+        set +e
+        $(check_style >&2)
+        check_style_code=$?
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
-        example
+        $(example >&2)
+        example_code=$?
+        summary_check_problems $check_style_code $example_code
         assert_api_spec_approvals
         ;;
       build)

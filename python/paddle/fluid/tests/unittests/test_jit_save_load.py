@@ -183,25 +183,6 @@ class TestJitSaveLoad(unittest.TestCase):
         with self.assertRaises(ValueError):
             model_dict, _ = fluid.dygraph.load_dygraph(model_path)
 
-    def test_load_dygraph_no_var_info(self):
-        model_path = "model.test_jit_save_load.no_var_info"
-        self.train_and_save_model(model_path=model_path)
-        # remove `__variables.info__`
-        var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
-        os.remove(var_info_path)
-        new_layer = LinearNet(784, 1)
-        with self.assertRaises(RuntimeError):
-            model_dict, _ = fluid.dygraph.load_dygraph(model_path)
-
-    def test_load_dygraph_not_var_file(self):
-        model_path = "model.test_jit_save_load.no_var_file"
-        configs = fluid.dygraph.jit.SaveLoadConfig()
-        configs.params_filename = "__params__"
-        self.train_and_save_model(model_path=model_path, configs=configs)
-        new_layer = LinearNet(784, 1)
-        with self.assertRaises(RuntimeError):
-            model_dict, _ = fluid.dygraph.load_dygraph(model_path)
-
 
 class LinearNetMultiInput(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):

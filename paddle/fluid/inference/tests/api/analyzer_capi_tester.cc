@@ -44,7 +44,7 @@ void zero_copy_run() {
   const int channels = 3;
   const int height = 318;
   const int width = 318;
-  float input[batch_size * channels * height * width] = {0};
+  float *input = new float[batch_size * channels * height * width]();
 
   int shape[4] = {batch_size, channels, height, width};
   int shape_size = 4;
@@ -65,6 +65,7 @@ void zero_copy_run() {
 
   PD_PredictorZeroCopyRun(config, inputs, in_size, &outputs, &out_size);
 
+  delete[] input;
   delete[] inputs;
   delete[] outputs;
 }
@@ -88,6 +89,9 @@ TEST(PD_AnalysisConfig, profile_mkldnn) {
   PD_EnableMkldnnQuantizer(config);
   bool quantizer_enable = PD_MkldnnQuantizerEnabled(config);
   CHECK(quantizer_enable) << "NO";
+  PD_EnableMkldnnBfloat16(config);
+  bool bfloat16_enable = PD_MkldnnBfloat16Enabled(config);
+  CHECK(bfloat16_enable) << "NO";
   PD_SetMkldnnCacheCapacity(config, 0);
   PD_SetModel(config, prog_file.c_str(), params_file.c_str());
   PD_DeleteAnalysisConfig(config);

@@ -67,7 +67,7 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
         scale_tensor[0], 1,
         platform::errors::InvalidArgument(
             "Scale's shape must be 1, but got shape = %d .", scale_tensor[0]));
-    // out_w = -1;
+    out_w = -1;
   } else {
     auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
     if (scale.size() > 0) {
@@ -159,8 +159,8 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
                       platform::errors::InvalidArgument(
                           "Scale's shape must be 2 or 1, but got shape = %d .",
                           scale_tensor[0]));
-    // out_h = -1;
-    // out_w = -1;
+    out_h = -1;
+    out_w = -1;
   } else {
     auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
     if (scale.size() > 0) {
@@ -264,9 +264,9 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
                       platform::errors::InvalidArgument(
                           "Scale's shape must be 3 or 1, but got shape = %d .",
                           scale_tensor[0]));
-    // out_d = -1;
-    // out_h = -1;
-    // out_w = -1;
+    out_d = -1;
+    out_h = -1;
+    out_w = -1;
   } else {
     auto scale = ctx->Attrs().Get<std::vector<float>>("scale");
     if (scale.size() > 0) {
@@ -633,6 +633,9 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(InterpolateV2GradNoNeedBufferVarsInferer,
 }  // namespace operators
 }  // namespace paddle
 
+// interp_v2 support scale_factor whose input type is list, this operation is
+// not
+// compatible with interp_op, so a new one is added in paddle2.0
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(bilinear_interp_v2, ops::InterpolateV2Op,
                   ops::InterpolateV2OpMaker,

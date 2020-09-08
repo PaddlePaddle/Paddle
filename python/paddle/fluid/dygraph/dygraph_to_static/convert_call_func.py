@@ -31,6 +31,7 @@ from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticLayer
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
 from paddle.fluid.dygraph.layers import Layer
 
 # TODO(liym27): A better way to do this.
@@ -118,14 +119,9 @@ def convert_call(func):
     func_self = None
     converted_call = None
 
-    # Function in convert_call may be decorated by another `@declarative`,
+    # Function in convert_call may be decorated by another `@to_static`,
     # in this case, unwraps it into a raw method or function.
-    if isinstance(func, StaticLayer):
-        instance = func._class_instance
-        if instance is not None:
-            func = func.dygraph_function.__get__(instance)
-        else:
-            func = func.dygraph_function
+    _, func = unwrap_decorators(func)
 
     if is_builtin_len(func):
         return convert_len
@@ -155,7 +151,8 @@ def convert_call(func):
                 if inspect.isfunction(fn):
                     global_functions.add(fn)
                 elif isinstance(fn, StaticLayer):
-                    global_functions.add(fn.dygraph_function)
+                    _, fn = unwrap_decorators(fn)
+                    global_functions.add(fn)
 
             if func in global_functions:
                 converted_call = convert_to_static(func)
@@ -189,7 +186,8 @@ def convert_call(func):
     elif hasattr(func, '__class__') and hasattr(func.__class__, '__call__'):
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
-                forward_func = convert_to_static(func.forward)
+                _, forward_func = unwrap_decorators(func.forward)
+                forward_func = convert_to_static(forward_func)
                 setattr(func, 'forward', forward_func)
                 func_self = func
             except Exception:

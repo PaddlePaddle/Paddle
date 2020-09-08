@@ -136,9 +136,12 @@ def is_api_in_module(node, module_prefix):
         #  import_str = "".join(import_statements)
         import paddle
         import paddle.fluid as fluid
-        import paddle.fluid.layers as layers
-        from paddle.fluid.dygraph import to_variable
         import paddle.fluid.dygraph as dygraph
+        import paddle.fluid.layers as layers
+
+        from paddle.fluid.dygraph import to_variable
+        from paddle import to_tensor
+
         return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
                                                                 module_prefix))
     except NameError:
@@ -146,15 +149,18 @@ def is_api_in_module(node, module_prefix):
 
 
 def is_dygraph_api(node):
+
     # Note: A api in module dygraph_to_static is not a real dygraph api.
     if is_api_in_module(node, "paddle.fluid.dygraph.dygraph_to_static"):
         return False
 
+    # TODO(liym27): A better way to determine whether it is a dygraph api.
+    #  Consider the decorator @dygraph_only
     return is_api_in_module(node, "paddle.fluid.dygraph")
 
 
 def is_paddle_api(node):
-    return is_api_in_module(node, "paddle.fluid")
+    return is_api_in_module(node, "paddle")
 
 
 # Is numpy_api cannot reuse is_api_in_module because of numpy module problem
@@ -233,14 +239,6 @@ def _add_keywords_to(node, dygraph_api_name):
     return
 
 
-def is_to_variable(node):
-    assert isinstance(node, gast.Call)
-    if is_dygraph_api(node):
-        api_name = ast_to_source_code(node.func).strip()
-        return api_name.endswith("to_variable")
-    return False
-
-
 def to_static_ast(node, class_node):
     assert isinstance(node, gast.Call)
     assert isinstance(class_node, gast.Call)
@@ -265,29 +263,6 @@ def to_static_ast(node, class_node):
 
     gast.fix_missing_locations(node)
 
-    return node
-
-
-def to_assign_node(node):
-    # Transform dygraph api `fluid.dygraph.to_variable` to static api `fluid.layers.assign`.
-    # NOTE:
-    #   1. Api `to_variable` supports data type {float16, float32, float64, int16, int32, int64, uint8, uint16},
-    #   but api `assign` only supports {float32, float64, int32, int64, bool};
-    #   2. If the input of api `assign` is numpy.ndarray, its size cannot be greater than 1024 * 1024.
-    assert isinstance(node, gast.Call)
-    assign_api = gast.parse('fluid.layers.assign').body[0].value
-    node.func = assign_api
-
-    if node.args:
-        node.args = [node.args[0]]
-        node.keywords = []
-    else:
-        for idx, kw in enumerate(node.keywords):
-            if kw.arg == 'value':
-                node.keywords[idx].arg = 'input'
-                node.keywords = [node.keywords[idx]]
-                node.args = []
-                break
     return node
 
 
