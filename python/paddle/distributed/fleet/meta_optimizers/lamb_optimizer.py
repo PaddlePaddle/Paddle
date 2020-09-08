@@ -16,8 +16,6 @@ from paddle.fluid.optimizer import LambOptimizer as LAMB
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
-__all__ = ["LambOptimizer"]
-
 
 class LambOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -76,6 +74,13 @@ class LambOptimizer(MetaOptimizerBase):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.lamb = False
         dist_strategy.lamb_configs = {}
+
+    def _enable_strategy(self, dist_strategy):
+        dist_strategy.lamb = True
+        dist_strategy.lamb_configs = {
+            "lamb_weight_decay": 0.01,
+            "exclude_from_weight_decay": []
+        }
 
     def backward(self,
                  loss,

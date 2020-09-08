@@ -101,6 +101,9 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnDropoutGetStatesSize);                     \
   __macro(cudnnSetDropoutDescriptor);                     \
   __macro(cudnnRestoreDropoutDescriptor);                 \
+  __macro(cudnnCreateRNNDataDescriptor);                  \
+  __macro(cudnnDestroyRNNDataDescriptor);                 \
+  __macro(cudnnSetRNNDataDescriptor);                     \
   __macro(cudnnCreateRNNDescriptor);                      \
   __macro(cudnnGetRNNParamsSize);                         \
   __macro(cudnnGetRNNWorkspaceSize);                      \
@@ -109,6 +112,11 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnRNNBackwardData);                          \
   __macro(cudnnRNNBackwardWeights);                       \
   __macro(cudnnRNNForwardInference);                      \
+  __macro(cudnnRNNForwardTrainingEx);                     \
+  __macro(cudnnSetRNNPaddingMode);                        \
+  __macro(cudnnRNNBackwardDataEx);                        \
+  __macro(cudnnRNNBackwardWeightsEx);                     \
+  __macro(cudnnRNNForwardInferenceEx);                    \
   __macro(cudnnDestroyDropoutDescriptor);                 \
   __macro(cudnnDestroyRNNDescriptor);                     \
   __macro(cudnnSetTensorNdDescriptorEx);

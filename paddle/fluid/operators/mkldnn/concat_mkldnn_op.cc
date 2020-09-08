@@ -30,10 +30,12 @@ using platform::to_void_cast;
 
 static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
   for (auto* input : inputs) {
-    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Input tensor");
-    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Input tensor");
+    PADDLE_ENFORCE_EQ(
+        input->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument("Wrong layout set for Input tensor"));
+    PADDLE_ENFORCE_NE(
+        input->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for Input tensor"));
   }
 }
 
@@ -49,7 +51,7 @@ static platform::CPUPlace GetCpuPlace(
     const paddle::framework::ExecutionContext& ctx) {
   auto place = ctx.GetPlace();
   PADDLE_ENFORCE(paddle::platform::is_cpu_place(place),
-                 "It must use CPUPlace.");
+                 platform::errors::InvalidArgument("It must use CPUPlace."));
   return BOOST_GET_CONST(platform::CPUPlace, place);
 }
 

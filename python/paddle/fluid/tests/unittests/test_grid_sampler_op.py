@@ -73,7 +73,7 @@ def unnormalizeAndClip(grid_slice, max_val, align_corners, padding_mode):
 
     if padding_mode == "border":
         grid_slice = clip(grid_slice, 0, max_val)
-    elif padding_mode == "reflect":
+    elif padding_mode == "reflection":
         double_range = 2 * max_val if align_corners else (max_val + 1) * 2
         grid_abs = np.abs(grid_slice) if align_corners else np.abs(grid_slice +
                                                                    0.5)
@@ -211,7 +211,7 @@ class Case2(TestGridSamplerOp):
         self.grid_shape = (2, 8, 9, 2)
         self.theta_shape = (2, 2, 3)
         self.align_corners = False
-        self.padding_mode = "reflect"
+        self.padding_mode = "reflection"
         self.mode = "bilinear"
 
 
@@ -221,7 +221,7 @@ class Case3(TestGridSamplerOp):
         self.grid_shape = (2, 8, 9, 2)
         self.theta_shape = (2, 2, 3)
         self.align_corners = True
-        self.padding_mode = "reflect"
+        self.padding_mode = "reflection"
         self.mode = "bilinear"
 
 
@@ -231,7 +231,7 @@ class Case4(TestGridSamplerOp):
         self.grid_shape = (2, 8, 9, 2)
         self.theta_shape = (2, 2, 3)
         self.align_corners = False
-        self.padding_mode = "reflect"
+        self.padding_mode = "reflection"
         self.mode = "nearest"
         self.numeric_grad_delta = 0.0001
 
