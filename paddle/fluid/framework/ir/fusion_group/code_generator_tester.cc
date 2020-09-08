@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include <gtest/gtest.h>
 #include <cmath>
 #include <string>
