@@ -519,6 +519,10 @@ class TestModelFunction(unittest.TestCase):
             np.testing.assert_allclose(params_info['total_params'], gt_params)
             print(params_info)
 
+            model.summary(input_size=(20))
+            model.summary(input_size=[(20)])
+            model.summary(input_size=(20), batch_size=2)
+
     def test_export_deploy_model(self):
         for dynamic in [True, False]:
             fluid.enable_dygraph() if dynamic else None
