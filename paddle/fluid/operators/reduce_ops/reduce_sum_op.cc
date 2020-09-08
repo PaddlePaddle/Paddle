@@ -51,7 +51,7 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceSumGradNoNeedBufferVarInferer, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceSumGradNoNeedBufferVarInference, "X");
 template <typename T>
 class ReduceSumDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
