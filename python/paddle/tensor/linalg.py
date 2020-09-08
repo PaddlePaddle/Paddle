@@ -254,7 +254,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         if in_dygraph_mode():
             if dim is None:
-                print("fro dim None")
                 return core.ops.frobenius_norm(input, 'keep_dim', keepdim,
                                                'reduce_all', True)
             return core.ops.frobenius_norm(input, 'dim', dim, 'keep_dim',
@@ -387,7 +386,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             if p == "fro":
                 return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
             else:
-                print("valueerror frofor")
                 raise ValueError(
                     "only valid string values are 'fro', found {}".format(p))
         elif isinstance(p, (int, float)):
