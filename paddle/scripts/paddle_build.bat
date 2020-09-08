@@ -111,6 +111,8 @@ goto:success
 :CASE_wincheck_openblas
 set WITH_MKL=OFF
 set WITH_GPU=ON
+rem Temporarily turn off WITH_INFERENCE_API_TEST on GPU due to compile hang
+set WITH_INFERENCE_API_TEST=OFF
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
