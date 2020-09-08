@@ -567,8 +567,7 @@ class Fleet(object):
 
         """
 
-        self._runtime_handle._save_persistables(
-            executor, dirname, main_program)
+        self._runtime_handle._save_persistables(executor, dirname, main_program)
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
@@ -1010,8 +1009,7 @@ class Fleet(object):
             MetaOptimizerFactory()._get_valid_meta_optimizers(
                 self.user_defined_optimizer)
 
-        context["user_defined_strategy"] = copy.copy(
-            self.user_defined_strategy)
+        context["user_defined_strategy"] = copy.copy(self.user_defined_strategy)
 
         # trigger the auto-parallel in very strict condition
         # strategy = DistributedStrategy()
