@@ -26,6 +26,7 @@ namespace operators {
 namespace math {
 
 using float16 = paddle::platform::float16;
+using bfloat16 = paddle::platform::bfloat16;
 
 template struct SetConstant<platform::CUDADeviceContext, platform::float16>;
 template struct SetConstant<platform::CUDADeviceContext, float>;
@@ -34,12 +35,13 @@ template struct SetConstant<platform::CUDADeviceContext, int>;
 template struct SetConstant<platform::CUDADeviceContext, int64_t>;
 template struct SetConstant<platform::CUDADeviceContext, bool>;
 
-#define DEFINE_GPU_TRANS(RANK)                                           \
-  template struct Transpose<platform::CUDADeviceContext, float, RANK>;   \
-  template struct Transpose<platform::CUDADeviceContext, double, RANK>;  \
-  template struct Transpose<platform::CUDADeviceContext, float16, RANK>; \
-  template struct Transpose<platform::CUDADeviceContext, int8_t, RANK>;  \
-  template struct Transpose<platform::CUDADeviceContext, int32_t, RANK>; \
+#define DEFINE_GPU_TRANS(RANK)                                            \
+  template struct Transpose<platform::CUDADeviceContext, float, RANK>;    \
+  template struct Transpose<platform::CUDADeviceContext, double, RANK>;   \
+  template struct Transpose<platform::CUDADeviceContext, float16, RANK>;  \
+  template struct Transpose<platform::CUDADeviceContext, bfloat16, RANK>; \
+  template struct Transpose<platform::CUDADeviceContext, int8_t, RANK>;   \
+  template struct Transpose<platform::CUDADeviceContext, int32_t, RANK>;  \
   template struct Transpose<platform::CUDADeviceContext, int64_t, RANK>;
 
 DEFINE_GPU_TRANS(1);
@@ -121,6 +123,7 @@ struct TransposeNormal<platform::CUDADeviceContext, T> {
   template struct TransposeNormal<platform::CUDADeviceContext, TYPE>
 
 DEFINE_GPU_TRANS_NORMAL(float16);
+DEFINE_GPU_TRANS_NORMAL(bfloat16);
 DEFINE_GPU_TRANS_NORMAL(float);
 DEFINE_GPU_TRANS_NORMAL(double);
 DEFINE_GPU_TRANS_NORMAL(int);

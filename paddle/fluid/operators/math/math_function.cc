@@ -103,7 +103,8 @@ struct TransposeNormal<platform::CPUDeviceContext, T> {
 #define DEFINE_CPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<platform::CPUDeviceContext, TYPE>
 
-DEFINE_CPU_TRANS_NORMAL(float16);
+DEFINE_CPU_TRANS_NORMAL(platform::float16);
+DEFINE_CPU_TRANS_NORMAL(platform::bfloat16);
 DEFINE_CPU_TRANS_NORMAL(float);
 DEFINE_CPU_TRANS_NORMAL(double);
 DEFINE_CPU_TRANS_NORMAL(int);

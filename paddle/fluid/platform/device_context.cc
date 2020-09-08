@@ -146,8 +146,8 @@ void CPUDeviceContext::InitPoolDevice() {
   using EigenThreadPool = Eigen::ThreadPoolTempl<EigenEnv>;
   int num_threads = std::thread::hardware_concurrency();
   eigen_threadpool_.reset(new EigenThreadPool(num_threads));
-  eigen_pool_device_.reset(new Eigen::ThreadPoolDevice(eigen_threadpool_.get(),
-                                                       num_threads, nullptr));
+  eigen_pool_device_.reset(
+      new Eigen::ThreadPoolDevice(eigen_threadpool_.get(), num_threads));
 }
 
 Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
