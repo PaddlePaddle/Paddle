@@ -118,11 +118,13 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
   const int64_t reduced = x->numel() / unreduced;
   DDim out_dim(out->dims());
   DDim x_dim(x->dims());
-  framework::Tensor* mutable_out = const_cast<framework::Tensor*>(out);
-  framework::Tensor* mutable_dout = const_cast<framework::Tensor*>(dout);
+  framework::Tensor mutable_out;
+  framework::Tensor mutable_dout;
+  mutable_out.ShareDataWith(*out);
+  mutable_dout.ShareDataWith(*dout);
   // reshape dOut, Out {unreduced}
-  mutable_dout->Resize({unreduced});
-  mutable_out->Resize({unreduced});
+  mutable_dout.Resize({unreduced});
+  mutable_out.Resize({unreduced});
   // transpose and reshape X
   Tensor shuffled_x;
   GetShuffledInput<DeviceContext, T>(context, x, &shuffled_x, dims);
@@ -144,8 +146,8 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
   trans(context.template device_context<DeviceContext>(), dx_tmp, dx,
         origin_axis);
 
-  mutable_dout->Resize(out_dim);
-  mutable_out->Resize(out_dim);
+  mutable_dout.Resize(out_dim);
+  mutable_out.Resize(out_dim);
 }
 
 template <typename DeviceContext, typename T, typename Functor>
