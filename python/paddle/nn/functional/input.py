@@ -210,8 +210,8 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
             weight.shape[0] + padding_idx)
 
-        if padding_idx >= weight.shape[0] or padding_idx <= -weight.shape[0]:
-            raise ValueError("padding_idx must be within [-{}, {}]".format(
+        if padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]:
+            raise ValueError("padding_idx must be within [-{}, {})".format(
                 weight.shape[0], weight.shape[0]))
 
         helper.append_op(
