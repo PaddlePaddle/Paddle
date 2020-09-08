@@ -12,9 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <unordered_map>
 #include "paddle/fluid/framework/data_layout_transform.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 

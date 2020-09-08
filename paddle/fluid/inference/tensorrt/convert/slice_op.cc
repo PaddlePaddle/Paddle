@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {

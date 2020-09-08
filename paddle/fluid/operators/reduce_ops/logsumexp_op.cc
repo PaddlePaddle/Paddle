@@ -13,10 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/logsumexp_op.h"
-#include <memory>
+
 #include <string>
-#include <utility>
-#include <vector>
 
 namespace paddle {
 namespace operators {

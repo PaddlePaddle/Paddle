@@ -13,10 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/device_worker_factory.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/string/string_helper.h"
 
 #if defined _WIN32 || defined __APPLE__
 #else

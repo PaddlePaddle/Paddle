@@ -13,12 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_mkldnn_pass.h"
-#include <algorithm>
-#include <memory>
-#include <string>
-#include <vector>
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 
 #ifdef PADDLE_WITH_MKLDNN
-#include <algorithm>
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 

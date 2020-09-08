@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/increment_op.h"
-#include <memory>
+
 #include <string>
 
 namespace paddle {

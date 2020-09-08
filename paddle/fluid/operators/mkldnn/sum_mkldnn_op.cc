@@ -24,11 +24,7 @@
   See the License for the specific language governing permissions and
   limitations under the License. */
 
-#include "mkldnn.hpp"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/operators/sum_op.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
 namespace paddle {

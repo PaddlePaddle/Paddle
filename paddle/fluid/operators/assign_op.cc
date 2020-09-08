@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/assign_op.h"
 
-#include <memory>
 #include <string>
 
 namespace paddle {

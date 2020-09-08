@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
-#include <string>
 #include <vector>
 #include "paddle/fluid/platform/enforce.h"
 

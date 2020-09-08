@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
-#include <string>
-#include <vector>
 
 namespace paddle {
 namespace operators {

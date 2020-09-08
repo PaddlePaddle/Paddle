@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass.h"
 #include <string>
 #include <unordered_set>
-#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
 namespace framework {

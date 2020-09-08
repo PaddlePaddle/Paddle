@@ -13,12 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_bn_fuse_pass.h"
-#include <algorithm>
-#include <functional>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {

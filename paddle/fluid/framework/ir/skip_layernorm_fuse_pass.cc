@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/skip_layernorm_fuse_pass.h"
 #include <string>
 #include <unordered_set>
-#include <vector>
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {

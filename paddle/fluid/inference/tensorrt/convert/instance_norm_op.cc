@@ -12,8 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "glog/logging.h"
+#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/instance_norm_op_plugin.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {

@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/dequantize_log_op.h"
-#include <math.h>
+
 #include <string>
-#include <vector>
 
 namespace paddle {
 namespace operators {

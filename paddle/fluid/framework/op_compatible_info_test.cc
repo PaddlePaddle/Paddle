@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/op_compatible_info.h"
-#include <iostream>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {

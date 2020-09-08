@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
-#include "paddle/fluid/inference/tensorrt/plugin/emb_eltwise_layernorm_plugin.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {

@@ -13,7 +13,6 @@
    limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/tensor_formatter.h"
 

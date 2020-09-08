@@ -13,11 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass.h"
-#include <memory>
+
 #include <string>
-#include <utility>
+
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {

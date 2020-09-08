@@ -13,11 +13,9 @@
  * limitations under the License. */
 
 #include "paddle/fluid/framework/ir/seqpool_cvm_concat_fuse_pass.h"
-#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
 namespace framework {

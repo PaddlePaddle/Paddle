@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/isfinite_op.h"
+
 #include <string>
-#include <vector>
 
 namespace paddle {
 namespace operators {

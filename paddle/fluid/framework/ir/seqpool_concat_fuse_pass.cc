@@ -16,7 +16,6 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/lod_tensor.h"
 
 #define MAX_CONCAT_INPUTS 200
 

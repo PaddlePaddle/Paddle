@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/isfinite_v2_op.h"
+
 #include <string>
-#include <vector>
+
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace plat = paddle::platform;
 
