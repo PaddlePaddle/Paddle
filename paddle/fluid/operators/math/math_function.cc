@@ -60,6 +60,20 @@ DEFINE_CPU_TRANS(4);
 DEFINE_CPU_TRANS(5);
 DEFINE_CPU_TRANS(6);
 
+// define transpose normal
+#define DEFINE_CPU_TRANS_NORMAL(TYPE) \
+  template struct TransposeNormal<platform::CPUDeviceContext, TYPE>
+
+DEFINE_CPU_TRANS_NORMAL(float16);
+DEFINE_CPU_TRANS_NORMAL(float);
+DEFINE_CPU_TRANS_NORMAL(double);
+DEFINE_CPU_TRANS_NORMAL(int);
+DEFINE_CPU_TRANS_NORMAL(int64_t);
+DEFINE_CPU_TRANS_NORMAL(bool);
+DEFINE_CPU_TRANS_NORMAL(int16_t);
+DEFINE_CPU_TRANS_NORMAL(uint8_t);
+DEFINE_CPU_TRANS_NORMAL(int8_t);
+
 struct TensorSetConstantCPU {
   TensorSetConstantCPU(framework::Tensor* tensor, float value)
       : tensor_(tensor), value_(value) {}
