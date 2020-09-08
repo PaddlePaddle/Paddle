@@ -73,8 +73,13 @@ class EmbeddingStatic(unittest.TestCase):
                     dtype="int32")
 
                 emb = functional.embedding(
-                    x=label, weight=weight, sparse=True, name="embedding")
+                    x=label,
+                    weight=weight,
+                    padding_idx=129,
+                    sparse=True,
+                    name="embedding")
 
+        with self.assertRaises(ValueError):
             test_bad_x()
 
 
