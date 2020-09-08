@@ -180,11 +180,13 @@ class TestCompareOpPlace(unittest.TestCase):
 
     def test_place_2(self):
         place = paddle.CPUPlace()
+        data_place = place
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
+            data_place = paddle.CUDAPinnedPlace()
         paddle.disable_static(place)
         data = np.array([9], dtype="int64")
-        data_tensor = paddle.to_tensor(data, place=paddle.CUDAPinnedPlace())
+        data_tensor = paddle.to_tensor(data, place=data_place)
         result = data_tensor == 0
         self.assertEqual((result.numpy() == np.array([False])).all(), True)
 
