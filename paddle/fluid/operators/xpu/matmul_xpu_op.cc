@@ -110,8 +110,12 @@ class MatMulXPUKernel : public framework::OpKernel<T> {
     auto mat_dim_b =
         math::CreateMatrixDescriptor(ColumnMatrixFromVector(y->dims()), 0,
                                      context.Attr<bool>("transpose_Y"));
-    PADDLE_ENFORCE_EQ(mat_dim_a.width_, mat_dim_b.height_);
-    PADDLE_ENFORCE_EQ(mat_dim_a.batch_size_, mat_dim_b.batch_size_);
+    PADDLE_ENFORCE_EQ(
+        mat_dim_a.width_, mat_dim_b.height_,
+        platform::errors::InvalidArgument("Shape mistake in matmul_op"));
+    PADDLE_ENFORCE_EQ(
+        mat_dim_a.batch_size_, mat_dim_b.batch_size_,
+        platform::errors::InvalidArgument("Shape mistake in matmul_op"));
     T alpha = static_cast<T>(context.Attr<float>("alpha"));
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
@@ -121,18 +125,25 @@ class MatMulXPUKernel : public framework::OpKernel<T> {
           xpu::fc_int16(dev_ctx.x_context(), mat_dim_a.trans_, mat_dim_b.trans_,
                         mat_dim_a.height_, mat_dim_b.width_, mat_dim_a.width_,
                         alpha, x->data<T>(), y->data<T>(), 0.0f, data_c);
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS,
-                     "Baidu kunlun is not proper installed [%d]", r);
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External(
+              "XPU API return wrong value[%d], please check whether "
+              "Baidu Kunlun Card is properly installed.",
+              r));
     } else {
       // batch matmul
-      PADDLE_ENFORCE(mat_dim_a.batch_size_ == mat_dim_b.batch_size_);
       int r = xpu::batched_gemm_int16(dev_ctx.x_context(), mat_dim_a.trans_,
                                       mat_dim_b.trans_, mat_dim_a.batch_size_,
                                       mat_dim_a.height_, mat_dim_b.width_,
                                       mat_dim_a.width_, alpha, x->data<T>(),
                                       y->data<T>(), data_c, nullptr, nullptr);
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS,
-                     "Baidu kunlun is not proper installed [%d]", r);
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External(
+              "XPU API return wrong value[%d], please check whether "
+              "Baidu Kunlun Card is properly installed.",
+              r));
     }
   }
 };
@@ -158,8 +169,11 @@ static framework::Tensor XPUFoldHeadAndLastDims(
 
   int r = xpu::transpose(context.x_context(), input.data<T>(), output.data<T>(),
                          in_shape_host.data(), axis_host.data(), /*ndims=*/3);
-  PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS,
-                 "Baidu kunlun is not proper installed [%d]", r);
+  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        r));
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
 
   return output;
@@ -200,8 +214,12 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
     auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
-    PADDLE_ENFORCE_EQ(mat_dim_a.width_, mat_dim_b.height_);
-    PADDLE_ENFORCE_EQ(mat_dim_a.batch_size_, mat_dim_b.batch_size_);
+    PADDLE_ENFORCE_EQ(
+        mat_dim_a.width_, mat_dim_b.height_,
+        platform::errors::InvalidArgument("Shape mistake in matmul_grad_op"));
+    PADDLE_ENFORCE_EQ(
+        mat_dim_a.batch_size_, mat_dim_b.batch_size_,
+        platform::errors::InvalidArgument("Shape mistake in matmul_grad_op"));
     T alpha = static_cast<T>(context.Attr<float>("alpha"));
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
@@ -211,18 +229,25 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
           xpu::fc_int16(dev_ctx.x_context(), mat_dim_a.trans_, mat_dim_b.trans_,
                         mat_dim_a.height_, mat_dim_b.width_, mat_dim_a.width_,
                         alpha, a.data<T>(), b.data<T>(), 0.0f, data_c);
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS,
-                     "Baidu kunlun is not proper installed [%d]", r);
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External(
+              "XPU API return wrong value[%d], please check whether "
+              "Baidu Kunlun Card is properly installed.",
+              r));
     } else {
       // batch matmul
-      PADDLE_ENFORCE(mat_dim_a.batch_size_ == mat_dim_b.batch_size_);
       int r = xpu::batched_gemm_int16(dev_ctx.x_context(), mat_dim_a.trans_,
                                       mat_dim_b.trans_, mat_dim_a.batch_size_,
                                       mat_dim_a.height_, mat_dim_b.width_,
                                       mat_dim_a.width_, alpha, a.data<T>(),
                                       b.data<T>(), data_c, nullptr, nullptr);
-      PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS,
-                     "Baidu kunlun is not proper installed [%d]", r);
+      PADDLE_ENFORCE_EQ(
+          r, XPU_SUCCESS,
+          platform::errors::External(
+              "XPU API return wrong value[%d], please check whether "
+              "Baidu Kunlun Card is properly installed.",
+              r));
     }
   }
 

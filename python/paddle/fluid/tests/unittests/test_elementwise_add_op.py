@@ -83,6 +83,8 @@ class TestElementwiseAddOp(OpTest):
         self.axis = -1
 
 
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestXPUElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
@@ -97,7 +99,7 @@ class TestXPUElementwiseAddOp(OpTest):
     def test_check_output(self):
         if self.dtype == np.float32 and core.is_compiled_with_xpu():
             place = core.XPUPlace(0)
-            self.check_output_with_place(place, check_dygraph=False)
+            self.check_output_with_place(place)
 
     def test_check_grad_normal(self):
         if self.dtype == np.float32 and core.is_compiled_with_xpu():

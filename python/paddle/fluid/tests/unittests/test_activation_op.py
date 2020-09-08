@@ -69,6 +69,8 @@ class TestActivation(OpTest):
         pass
 
 
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestXPUActivation(TestActivation):
     def setUp(self):
         self.op_type = "exp"
@@ -132,6 +134,8 @@ class TestSigmoid(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
 
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestXPUSigmoid(TestXPUActivation):
     def setUp(self):
         self.op_type = "sigmoid"
@@ -241,6 +245,8 @@ class TestTanh(TestActivation, TestParameter):
         self.dtype = np.float32
 
 
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestXPUTanh(TestXPUSigmoid):
     def setUp(self):
         self.op_type = "tanh"
@@ -804,6 +810,8 @@ class TestSqrt(TestActivation, TestParameter):
         self.check_grad(['X'], 'Out')
 
 
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestXPUSqrt(TestXPUSigmoid):
     def setUp(self):
         self.op_type = "sqrt"
@@ -856,6 +864,8 @@ class TestAbs(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestXPUAbs(TestXPUSigmoid):
     def setUp(self):
         self.op_type = "abs"
@@ -1010,6 +1020,8 @@ class TestRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestXPURelu(TestXPUSigmoid):
     def setUp(self):
         self.op_type = "relu"
@@ -1217,6 +1229,8 @@ class TestGelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestXPUGelu(TestXPUSigmoid):
     def setUp(self):
         self.op_type = "gelu"
@@ -1588,6 +1602,8 @@ class TestLog(TestActivation):
         self.assertRaises(TypeError, fluid.layers.log, in2)
 
 
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestXPULog(TestXPUSigmoid):
     def setUp(self):
         self.op_type = "log"
@@ -1662,6 +1678,8 @@ class TestSquare(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestXPUSquare(TestXPUSigmoid):
     def setUp(self):
         self.op_type = "square"
@@ -1693,6 +1711,8 @@ class TestPow(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
 class TestXPUPow(TestXPUSigmoid):
     def setUp(self):
         self.op_type = "pow"

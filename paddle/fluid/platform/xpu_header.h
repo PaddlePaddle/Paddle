@@ -40,11 +40,10 @@ class XPUActHelper {
         {"square", xpu::Activation_t::SQUARE}};
 
     auto res = str2act.find(act_type_str);
-    if (res == str2act.end()) {
-      PADDLE_THROW("NOT support the activation type(%s) in XPU", act_type_str);
-    } else {
-      return res->second;
-    }
+    PADDLE_THROW_NE(res, str2act.end(),
+                    platform::errors::InvalidArgument(
+                        "Invalid activation type(%s) in XPU", act_type_str));
+    return res->second;
   }
 };
 #endif

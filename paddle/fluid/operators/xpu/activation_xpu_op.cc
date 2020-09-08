@@ -67,9 +67,12 @@ void xpu_activation_forward(const framework::ExecutionContext &ctx,
   auto xpu_context = ctx.device_context<DeviceContext>().x_context();
   r = xpu::activation_forward(xpu_context, type, x->numel(),
                               reinterpret_cast<const float *>(x_data),
-                              const_cast<float *>(y_data));
-  PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS,
-                 "Baidu Kunlun is not properly installed [%d]", r);
+                              reinterpret_cast<float *>(y_data));
+  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        r));
 }
 
 template <typename DeviceContext, typename T>
@@ -88,12 +91,16 @@ void xpu_activation_backward(const framework::ExecutionContext &ctx,
   if (dOut != nullptr) y_grad = dOut->data<T>();
   T *x_grad = dX->mutable_data<T>(ctx.GetPlace());
   auto xpu_context = ctx.device_context<DeviceContext>().x_context();
-  int r = xpu::activation_backward(
-      xpu_context, type, dX->numel(), reinterpret_cast<const float *>(x_data),
-      reinterpret_cast<const float *>(y_data),
-      reinterpret_cast<const float *>(y_grad), const_cast<float *>(x_grad));
-  PADDLE_ENFORCE(r == xpu::Error_t::SUCCESS,
-                 "Baidu Kunlun is not properly installed [%d]", r);
+  int r = xpu::activation_backward(xpu_context, type, dX->numel(),
+                                   reinterpret_cast<const float *>(x_data),
+                                   reinterpret_cast<const float *>(y_data),
+                                   reinterpret_cast<const float *>(y_grad),
+                                   reinterpret_cast<float *>(x_grad));
+  PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        r));
 }
 
 template <typename T, xpu::Activation_t::act_enum algorithm>
