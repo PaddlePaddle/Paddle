@@ -780,10 +780,10 @@ def kl_div(input, label, reduction='mean', name=None):
             input = np.random.uniform(-10, 10, shape).astype('float32')
             target = np.random.uniform(-10, 10, shape).astype('float32')
 
-            # 'batchmean' reduction, loss shape will be [N]
+            # 'batchmean' reduction, loss shape will be [1]
             pred_loss = F.kl_div(paddle.to_tensor(input),
                                  paddle.to_tensor(target), reduction='batchmean')
-            # shape=[5]
+            # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
             pred_loss = F.kl_div(paddle.to_tensor(input),

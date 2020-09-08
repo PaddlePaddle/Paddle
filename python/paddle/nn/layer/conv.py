@@ -1084,7 +1084,7 @@ class ConvTranspose3d(_ConvNd):
             bias_attr=bias_attr,
             data_format=data_format)
 
-    def forward(self, x, output_size):
+    def forward(self, x, output_size=None):
         if output_size is None:
             output_padding = self.output_padding
         else:
