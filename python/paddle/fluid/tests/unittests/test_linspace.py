@@ -156,7 +156,7 @@ class TestLinspaceOpError(unittest.TestCase):
             def test_start_dtype():
                 start = fluid.data(shape=[1], dtype="float64", name="start")
                 fluid.layers.linspace(start, 10, 1, dtype="float32")
-
+            
             self.assertRaises(ValueError, test_start_dtype)
 
             def test_end_dtype():

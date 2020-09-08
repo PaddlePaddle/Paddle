@@ -1461,13 +1461,19 @@ function summary_check_problems() {
     if [ $check_style_code -ne 0 -o $example_code -ne 0 ];then
       echo "========================================"
       echo "summary problems:"
+      if [ $check_style_code -ne 0 -a $example_code -ne 0 ];then
+        echo "There are 2 errors: Code format error and Example code error."
+      else
+        [ $check_style_code -ne 0 ] && echo "There is 1 error: Code format error."
+        [ $example_code -ne 0 ] && echo "There is 1 error: Example code error."
+      fi
       echo "========================================"
       if [ $check_style_code -ne 0 ];then
-        echo "- Check code style failed! Error infomations follow:"
+        echo "*****Code format error***** Please fix it according to the diff information:"
         echo "$check_style_info" | grep "code format error" -A $(echo "$check_style_info" | wc -l)
       fi
       if [ $example_code -ne 0 ];then
-        echo "- Check example code failed! Error informations follow:"
+        echo "*****Example code error***** Please fix the error listed in the information:"
         echo "$example_info" | grep "API check -- Example Code" -A $(echo "$example_info" | wc -l)
       fi
       [ $check_style_code -ne 0 ] && exit $check_style_code
