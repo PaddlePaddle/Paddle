@@ -65,16 +65,7 @@ class DatasetFactory(object):
 class DatasetBase(object):
     """ Base dataset class. """
 
-    def __init__(self,
-                 batch_size=batch_size,
-                 thread_num=thread_num,
-                 use_var=use_var,
-                 pipe_command=pipe_command,
-                 input_type=input_type,
-                 fs_name=fs_name,
-                 fs_ugi=fs_ugi,
-                 download_cmd=download_cmd,
-                 eval_candidate_size=eval_candidate_size):
+    def __init__(self):
         """ Init. """
         # define class name here
         # to decide whether we need create in memory instance
@@ -83,14 +74,22 @@ class DatasetBase(object):
         self.dataset = core.Dataset("MultiSlotDataset")
         self.thread_num = 1
         self.filelist = []
+
+    def init(self,
+             batch_size=1,
+             thread_num=1,
+             use_var=[],
+             pipe_command="cat",
+             input_type=0,
+             fs_name="",
+             fs_ugi="",
+             download_cmd="cat"):
         self.set_batch_size(batch_size)
         self.set_thread(thread_num)
         self.set_use_var(use_var)
         self.set_pipe_command(pipe_command)
         self.set_input_type(input_type)
         self.set_hdfs_config(fs_name, fs_ugi)
-        if eval_candidate_size > 0:
-            self.set_fea_eval(eval_candidate_size, True)
         self.set_download_cmd(download_cmd)
 
     def set_pipe_command(self, pipe_command):
@@ -127,51 +126,6 @@ class DatasetBase(object):
 
         """
         self.proto_desc.rank_offset = rank_offset
-
-    def set_fea_eval(self, record_candidate_size, fea_eval=True):
-        """
-        set fea eval mode for slots shuffle to debug the importance level of
-        slots(features), fea_eval need to be set True for slots shuffle.
-        
-        Args:
-            record_candidate_size(int): size of instances candidate to shuffle 
-                                        one slot
-            fea_eval(bool): whether enable fea eval mode to enable slots shuffle.
-                            default is True.
-            
-        Examples:
-            .. code-block:: python
-
-            import paddle.fluid as fluid
-            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-            dataset.set_fea_eval(1000000, True)
-
-        """
-        if fea_eval:
-            self.dataset.set_fea_eval(fea_eval, record_candidate_size)
-        self.fea_eval = fea_eval
-
-    def slots_shuffle(self, slots):
-        """
-        Slots Shuffle 
-        Slots Shuffle is a shuffle method in slots level, which is usually used 
-        in sparse feature with large scale of instances. To compare the metric, i.e.
-        auc while doing slots shuffle on one or several slots with baseline to 
-        evaluate the importance level of slots(features).
-        
-        Args:
-            slots(list[string]): the set of slots(string) to do slots shuffle.
-
-        Examples:
-            import paddle.fluid as fluid
-            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-            dataset.set_merge_by_lineid()
-            #suppose there is a slot 0
-            dataset.slots_shuffle(['0'])
-        """
-        if self.fea_eval:
-            slots_set = set(slots)
-            self.dataset.slots_shuffle(slots_set)
 
     def set_batch_size(self, batch_size):
         """
@@ -354,35 +308,9 @@ class InMemoryDataset(DatasetBase):
         dataset = paddle.fluid.DatasetFactory().create_dataset("InMemoryDataset")
     """
 
-    def __init__(self,
-                 batch_size=1,
-                 thread_num=1,
-                 use_var=[],
-                 pipe_command="cat",
-                 input_type=0,
-                 fs_name="",
-                 fs_ugi="",
-                 download_cmd="cat",
-                 eval_candidate_size=-1,
-                 data_feed_type="MultiSlotInMemoryDataFeed",
-                 queue_num=-1,
-                 parse_ins_id=False,
-                 parse_content=False,
-                 fleet_send_batch_size=1024,
-                 fleet_send_sleep_seconds=0,
-                 merge_by_lineid=False,
-                 merge_size=2):
+    def __init__(self):
         """ Init. """
-        super(InMemoryDataset, self).__init__(
-            batch_size=batch_size,
-            thread_num=thread_num,
-            use_var=use_var,
-            pipe_command=pipe_command,
-            input_type=input_type,
-            fs_name=fs_name,
-            fs_ugi=fs_ugi,
-            download_cmd=download_cmd,
-            eval_candidate_size=eval_candidate_size)
+        super(InMemoryDataset, self).__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
         self.is_user_set_queue_num = False
@@ -394,13 +322,54 @@ class InMemoryDataset(DatasetBase):
         self.enable_pv_merge = False
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
+
+    def init(self, **kwargs):
+        """
+        should be called only once in user's python scripts to initialize seetings of dataset instance
+        """
+        batch_size = kwargs.get("batch_size", 1)
+        thread_num = kwargs.get("thread_num", 1)
+        use_var = kwargs.get("use_var", [])
+        input_type = kwargs.get("input_type", 0)
+        fs_name = kwargs.get("fs_name", "")
+        fs_ugi = kwargs.get("fs_ugi", "")
+        pipe_command = kwargs.get("pipe_command", "cat")
+        download_cmd = kwargs.get("download_cmd", "cat")
+
+        super(InMemoryDataset, self).init(
+            batch_size=batch_size,
+            thread_num=thread_num,
+            use_var=use_var,
+            pipe_command=pipe_command,
+            input_type=input_type,
+            fs_name=fs_name,
+            fs_ugi=fs_ugi,
+            download_cmd=download_cmd)
+
+        data_feed_type = kwargs.get("data_feed_type",
+                                    "MultiSlotInMemoryDataFeed")
         self.set_feed_type(data_feed_type)
-        self.set_queue_num(queue_num)
-        self.set_parse_ins_id(parse_ins_id)
-        self.set_parse_content(parse_content)
-        self.set_fleet_send_batch_size(fleet_send_batch_size)
-        self.set_fleet_send_sleep_seconds(fleet_send_sleep_seconds)
-        if merge_by_lineid:
+
+        if kwargs.get("queue_num", -1) > 0:
+            queue_num = kwargs.get("queue_num", -1)
+            self.set_queue_num(queue_num)
+        parse_ins_id = kwargs.get("parse_ins_id", False)
+        if parse_ins_id:
+            self.set_parse_ins_id(parse_ins_id)
+
+        parse_content = kwargs.get("parse_content", False)
+        if parse_content:
+            self.set_parse_content(parse_content)
+
+        fleet_send_batch_size = kwargs.get("fleet_send_batch_size", None)
+        if fleet_send_batch_size:
+            self.set_fleet_send_batch_size(fleet_send_batch_size)
+
+        fleet_send_sleep_seconds = kwargs.get("fleet_send_sleep_seconds", None)
+        if fleet_send_batch_size:
+            self.set_fleet_send_sleep_seconds(fleet_send_sleep_seconds)
+        merge_size = kwargs.get("merge_size", -1)
+        if merge_size > 0:
             self.set_merge_by_lineid(merge_size)
 
     def set_feed_type(self, data_feed_type):
@@ -900,6 +869,51 @@ class InMemoryDataset(DatasetBase):
                                                 global_data_size)
             return global_data_size[0]
         return local_data_size[0]
+
+    def set_fea_eval(self, record_candidate_size, fea_eval=True):
+        """
+        set fea eval mode for slots shuffle to debug the importance level of
+        slots(features), fea_eval need to be set True for slots shuffle.
+        
+        Args:
+            record_candidate_size(int): size of instances candidate to shuffle 
+                                        one slot
+            fea_eval(bool): whether enable fea eval mode to enable slots shuffle.
+                            default is True.
+            
+        Examples:
+            .. code-block:: python
+
+            import paddle.fluid as fluid
+            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset.set_fea_eval(1000000, True)
+
+        """
+        if fea_eval:
+            self.dataset.set_fea_eval(fea_eval, record_candidate_size)
+        self.fea_eval = fea_eval
+
+    def slots_shuffle(self, slots):
+        """
+        Slots Shuffle 
+        Slots Shuffle is a shuffle method in slots level, which is usually used 
+        in sparse feature with large scale of instances. To compare the metric, i.e.
+        auc while doing slots shuffle on one or several slots with baseline to 
+        evaluate the importance level of slots(features).
+        
+        Args:
+            slots(list[string]): the set of slots(string) to do slots shuffle.
+
+        Examples:
+            import paddle.fluid as fluid
+            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset.set_merge_by_lineid()
+            #suppose there is a slot 0
+            dataset.slots_shuffle(['0'])
+        """
+        if self.fea_eval:
+            slots_set = set(slots)
+            self.dataset.slots_shuffle(slots_set)
 
 
 class QueueDataset(DatasetBase):

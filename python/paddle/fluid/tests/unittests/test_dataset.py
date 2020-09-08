@@ -951,14 +951,19 @@ class TestDataset2(unittest.TestCase):
             exe.run(startup_program)
             dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
                 "InMemoryDataset")
-            dataset.set_batch_size(32)
-            dataset.set_thread(3)
+            dataset.init(
+                batch_size=32,
+                thread_num=3,
+                pipe_command="cat",
+                use_var=slots_vars)
+            #dataset.set_batch_size(32)
+            #dataset.set_thread(3)
             dataset.set_filelist([
                 "test_in_memory_dataset2_run2_a.txt",
                 "test_in_memory_dataset2_run2_b.txt"
             ])
-            dataset.set_pipe_command("cat")
-            dataset.set_use_var(slots_vars)
+            #dataset.set_pipe_command("cat")
+            #dataset.set_use_var(slots_vars)
             dataset.load_into_memory()
             try:
                 dataset.global_shuffle(fleet)
