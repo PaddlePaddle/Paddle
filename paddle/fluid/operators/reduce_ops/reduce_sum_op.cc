@@ -93,7 +93,7 @@ REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
 REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
                   ops::ReduceSumDoubleOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumDoubleOpGradMaker<paddle::imperative::OpBase>,
-                  ops::ReduceSumGradNoNeedBufferVarInferer);
+                  ops::ReduceSumGradNoNeedBufferVarInference);
 
 REGISTER_OP_CPU_KERNEL(
     reduce_sum, ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,
