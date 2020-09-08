@@ -1673,8 +1673,8 @@ class Embedding(layers.Layer):
         if self._embedding_dim <= 0:
             raise ValueError("embedding_dim must be gather than 0")
 
-        if self._padding_idx >= num_embeddings or self._padding_idx <= -num_embeddings:
-            raise ValueError("padding_idx must be within [-{}, {}]".format(
+        if self._padding_idx >= num_embeddings or self._padding_idx < -num_embeddings:
+            raise ValueError("padding_idx must be within [-{}, {})".format(
                 num_embeddings, num_embeddings))
 
         self._dtype = self._helper.get_default_dtype()
