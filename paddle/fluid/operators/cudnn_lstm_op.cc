@@ -113,6 +113,13 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the learnable hidden-hidden weights."
              " The shape is (N), where N is total weight size of the LSTM. "
              " cudnn concatenate all the weight to one Tensor");
+    AddInput("sequence_length",
+             "(Tensor) When the input data is padding, "
+             "set this parameter. This parameter represents "
+             "the variable sequence"
+             "lengths in a batch. The size of the vector has "
+             "to equal the batch_size.")
+        .AsDispensable();
     AddOutput("Reserve",
               "(Tensor, a temporary output Tensor to store the reserve_data "
               "of cudnn kernel.")
@@ -155,13 +162,6 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(0);
-    AddAttr<std::vector<int>>("sequence_length",
-                              "(vector<int>) When the input data is padding, "
-                              "set this parameter. This parameter represents "
-                              "the variable sequence"
-                              "lengths in a batch. The size of the vector has "
-                              "to equal the batch_size.")
-        .SetDefault({});
     AddComment(R"DOC(
 CUDNN LSTM implementation
 

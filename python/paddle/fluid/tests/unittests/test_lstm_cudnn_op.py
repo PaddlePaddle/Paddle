@@ -400,7 +400,8 @@ class TestCUDNNLstmOp(OpTest):
             'Input': input,
             'W': flat_w,
             'InitH': init_h,
-            'InitC': init_c
+            'InitC': init_c,
+            'sequence_length': self.sequence_length
         }
         self.attrs = {
             'dropout_prob': 0.0,
@@ -408,7 +409,6 @@ class TestCUDNNLstmOp(OpTest):
             'input_size': input_size,
             'hidden_size': hidden_size,
             'num_layers': 1,
-            'sequence_length': self.sequence_length.tolist()
         }
         self.outputs = {
             'Out': output,
@@ -428,9 +428,10 @@ class TestCUDNNLstmOp(OpTest):
 
     def test_grad_with_place(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place,
-                                   set(['Input', 'W', 'InitH', 'InitC']),
-                                   ['Out', 'LastH', 'LastC'])
+        self.check_grad_with_place(
+            place,
+            set(['Input', 'W', 'InitH', 'InitC', 'sequence_length']),
+            ['Out', 'LastH', 'LastC'])
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

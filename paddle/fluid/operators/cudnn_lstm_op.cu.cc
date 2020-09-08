@@ -56,7 +56,20 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     int num_layers = ctx.Attr<int>("num_layers");
     bool is_test = ctx.Attr<bool>("is_test");
     int seed = ctx.Attr<int>("seed");
-    auto sequence_length = ctx.Attr<std::vector<int>>("sequence_length");
+
+    int sequence_length_size = 0;
+    static std::vector<int> vec_seq_length;
+    framework::Tensor new_seq_length;
+    if (ctx.HasInput("sequence_length")) {
+      auto *sequence_length = ctx.Input<Tensor>("sequence_length");
+      sequence_length_size = sequence_length->numel();
+      framework::TensorCopy(*sequence_length, platform::CPUPlace(),
+                            &new_seq_length);
+      LOG(INFO) << "new_seq_length: " << new_seq_length;
+      auto data = new_seq_length.data<int>();
+      vec_seq_length = std::vector<int>(data, data + sequence_length_size);
+    }
+    LOG(INFO) << "sequence_length_size: " << sequence_length_size;
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
@@ -73,7 +86,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     platform::ScopedRNNBase rnn(seq_length, batch_size, input_size, hidden_size,
                                 num_layers, dropout_prob, seed, weight_numel,
                                 state_initialized, is_bidirec);
-    rnn.Create<T>(handle, ctx.GetPlace(), sequence_length, &workspace_size,
+    rnn.Create<T>(handle, ctx.GetPlace(), vec_seq_length, &workspace_size,
                   &reserve_size, state_out);
 
     framework::Tensor workspace_data_;
@@ -84,7 +97,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
         {static_cast<int64_t>(reserve_size)}, ctx.GetPlace());
 
     if (is_test) {
-      if (sequence_length.empty()) {
+      if (vec_seq_length.empty()) {
         // for inference
         // This interface is used when the input/output is unpadded.
         PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInference(
@@ -114,7 +127,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
 #endif
       }
     } else {
-      if (sequence_length.empty()) {
+      if (vec_seq_length.empty()) {
         // for train
         // This interface is used when the input/output is unpadded.
         PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardTraining(
@@ -203,7 +216,20 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     int hidden_size = ctx.Attr<int>("hidden_size");
     int num_layers = ctx.Attr<int>("num_layers");
     int seed = ctx.Attr<int>("seed");
-    auto sequence_length = ctx.Attr<std::vector<int>>("sequence_length");
+
+    int sequence_length_size = 0;
+    std::vector<const Tensor *> sequence_length_list;
+    static std::vector<int> vec_seq_length;
+    framework::Tensor new_seq_length;
+    if (ctx.HasInput("sequence_length")) {
+      auto *sequence_length = ctx.Input<Tensor>("sequence_length");
+      sequence_length_size = sequence_length->numel();
+      framework::TensorCopy(*sequence_length, platform::CPUPlace(),
+                            &new_seq_length);
+      LOG(INFO) << "new_seq_length: " << new_seq_length;
+      auto data = new_seq_length.data<int>();
+      vec_seq_length = std::vector<int>(data, data + sequence_length_size);
+    }
 
     int seq_length = input_dims[0];
     int batch_size = input->dims()[1];
@@ -217,7 +243,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
                                 num_layers, dropout_prob, seed, weight_numel,
                                 true, is_bidirec);
 
-    rnn.Create<T>(handle, ctx.GetPlace(), sequence_length, &workspace_size,
+    rnn.Create<T>(handle, ctx.GetPlace(), vec_seq_length, &workspace_size,
                   &reserve_size, const_cast<Tensor *>(state_out));
 
     framework::Tensor workspace_data_;
@@ -225,7 +251,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     workspace_data_.mutable_data<uint8_t>(ctx.GetPlace());
     const uint8_t *reserve_data = reserve->data<uint8_t>();
 
-    if (sequence_length.empty()) {
+    if (vec_seq_length.empty()) {
       // This interface is used when the input/output is unpadded.
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardData(
           handle, rnn.rnn_desc(), seq_length, rnn.y_desc(), out_data,
