@@ -101,6 +101,29 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [7, 11]
+        eps = 0.05
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+        y = layers.reduce_sum(x, dim=0)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 class TestMulDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
