@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/tensor.h"
+
 #include <gtest/gtest.h>
 #include <string>
-#include "paddle/fluid/platform/float16.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
