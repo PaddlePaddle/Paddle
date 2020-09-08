@@ -33,15 +33,7 @@ class ElementwiseMulOp : public ElementwiseOp {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    using mkldnn::memory;
-    auto CanMKLDNNElementwiseMulBeUsed = [&]() {
-      auto x_dims = ctx.Input<Tensor>("X")->dims();
-      auto y_dims = ctx.Input<Tensor>("Y")->dims();
-      int rankdiff = x_dims.size() - y_dims.size();
-      return true;
-    };
-
-    if (platform::CanMKLDNNBeUsed(ctx) && CanMKLDNNElementwiseMulBeUsed()) {
+    if (platform::CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
