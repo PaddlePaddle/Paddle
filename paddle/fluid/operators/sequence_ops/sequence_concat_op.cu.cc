@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/sequence_ops/sequence_concat_op.h"
-#include "paddle/fluid/framework/op_registry.h"
 
 template <typename T>
 using Kernel =
