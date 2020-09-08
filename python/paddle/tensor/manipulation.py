@@ -85,11 +85,6 @@ def concat(x, axis=0, name=None):
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
-    Raises:
-        TypeError: ``x`` must be list or tuple.
-        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32 and int64. 
-        TypeError: The ``axis`` must be int or Tensor. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
-        TypeError: All the Tensors in ``x`` must have the same data type.
 
     Returns:
         Tensor: A Tensor with the same data type as ``x``.
@@ -474,10 +469,7 @@ def split(x, num_or_sections, axis=0, name=None):
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
         list(Tensor): The list of segmented Tensors.
-    Raises:
-        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: ``num_or_sections`` is not int, list or tuple.
-        TypeError: ``axis`` is not int or Tensor. the data type of ``axis`` must be int32 or int64 when it's a Tensor.
+    
     Example:
         .. code-block:: python
             
@@ -754,8 +746,6 @@ def unsqueeze(x, axis, name=None):
             print(out3.shape)  # [1, 1, 1, 5, 10]
             
     """
-    if isinstance(axis, int):
-        axis = [axis]
 
     return layers.unsqueeze(x, axis, name)
 
@@ -796,11 +786,6 @@ def gather(x, index, axis=None, name=None):
     Returns:
         output (Tensor): The output is a tensor with the same rank as ``x``.
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must to be one of float16, float32, float64, int32, int64, uint8.
-        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
-        TypeError: ``axis`` must be a Tensor or int and the data type of ``index`` must be int32 or int64 when it's a Tensor.
-
     Examples:
 
         .. code-block:: python
@@ -1002,10 +987,7 @@ def chunk(x, chunks, axis=0, name=None):
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
         list(Tensor): The list of segmented Tensors.
-    Raises:
-        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: ``chunks`` is not int.
-        TypeError: ``axis`` is not int or Tensor. the data type of ``axis`` must be int32 or int64 when it's a Tensor.
+    
     Example:
         .. code-block:: python
             
@@ -1017,7 +999,7 @@ def chunk(x, chunks, axis=0, name=None):
             x_np = np.random.random([3, 9, 5]).astype("int32")
             x = paddle.to_tensor(x_np)
 
-            out0, out1, out22 = paddle.chunk(x, chunks=3, axis=1)
+            out0, out1, out2 = paddle.chunk(x, chunks=3, axis=1)
             # out0.shape [3, 3, 5]
             # out1.shape [3, 3, 5]
             # out2.shape [3, 3, 5]
@@ -1290,11 +1272,6 @@ def reshape(x, shape, name=None):
     Returns:
         Tensor: A reshaped Tensor with the same data type as ``x``.
 
-    Raises:
-        ValueError: If more than one elements of ``shape`` is -1.
-        ValueError: If the element of ``shape`` is 0, the corresponding dimension should be less than or equal to the dimension of ``x``.
-        ValueError: If the elements in ``shape`` is negative except -1.
-
     Examples:
         .. code-block:: python
 
@@ -1381,10 +1358,6 @@ def gather_nd(x, index, name=None):
     Returns:
         output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of float32, float64, int32 and int64.
-        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be one of int32 and int64.
-
     Examples:
 
         .. code-block:: python

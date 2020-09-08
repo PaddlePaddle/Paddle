@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
 #include "paddle/fluid/operators/reduce_ops/logsumexp_op.h"
 
 REGISTER_OP_CUDA_KERNEL(logsumexp,
@@ -20,8 +19,3 @@ REGISTER_OP_CUDA_KERNEL(logsumexp,
                                           float, ops::LogsumexpFunctor>,
                         ops::ReduceKernel<paddle::platform::CUDADeviceContext,
                                           double, ops::LogsumexpFunctor>);
-REGISTER_OP_CUDA_KERNEL(
-    logsumexp_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
-                                          float, ops::LogsumexpGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,
-                          ops::LogsumexpGradFunctor>);

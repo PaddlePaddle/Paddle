@@ -112,7 +112,11 @@ TEST(Analyzer_resnet50, compare_determine) {
 TEST(Analyzer_resnet50, save_optim_model) {
   AnalysisConfig cfg;
   std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
+#ifdef _WIN32
+  _mkdir(optimModelPath.c_str());
+#else
   mkdir(optimModelPath.c_str(), 0777);
+#endif
   SetConfig(&cfg);
   SaveOptimModel(&cfg, optimModelPath);
 }
