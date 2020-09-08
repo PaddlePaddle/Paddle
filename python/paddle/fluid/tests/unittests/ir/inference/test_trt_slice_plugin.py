@@ -115,5 +115,36 @@ class SlicePluginTRTTest3(InferencePassTest):
             self.check_output_with_option(use_gpu[i])
 
 
+#fp16
+class SlicePluginTRTTest4(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(name="data", shape=[3, 3, 3, 3], dtype="float32")
+            axes = [2, 3]
+            starts = [-5, -2]
+            ends = [-1, 8]
+            slice_out = fluid.layers.slice(
+                data, axes=axes, starts=starts, ends=ends)
+            out = fluid.layers.batch_norm(slice_out, is_test=True)
+
+        self.feeds = {
+            "data": np.random.random((3, 3, 3, 3)).astype("float32"),
+        }
+        # Diff occurred between GPU and TRT. 
+        # In order to provide TRT CI ASAP, this test for trt part 
+        # is disabled temporarily. 
+        self.enable_trt = True
+        self.trt_parameters = SlicePluginTRTTest3.TensorRTParam(
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
+        self.fetch_list = [out]
+
+    def test_check_output(self):
+        use_gpu = [False]
+        if core.is_compiled_with_cuda():
+            use_gpu.append(True)
+        for i in range(len(use_gpu)):
+            self.check_output_with_option(use_gpu[i])
+
+
 if __name__ == "__main__":
     unittest.main()

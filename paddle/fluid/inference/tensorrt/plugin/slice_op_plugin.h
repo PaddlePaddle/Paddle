@@ -131,7 +131,7 @@ class SlicePluginV2Creator : public nvinfer1::IPluginCreator {
   const char* getPluginVersion() const override { return "1"; }
 
   const nvinfer1::PluginFieldCollection* getFieldNames() override {
-    return &mFieldCollection;
+    return &field_collection_;
   }
 
   nvinfer1::IPluginV2* createPlugin(
@@ -147,17 +147,16 @@ class SlicePluginV2Creator : public nvinfer1::IPluginCreator {
   }
 
   void setPluginNamespace(const char* libNamespace) override {
-    mNamespace = libNamespace;
+    namespace_ = libNamespace;
   }
 
-  const char* getPluginNamespace() const override { return mNamespace.c_str(); }
+  const char* getPluginNamespace() const override { return namespace_.c_str(); }
 
  private:
-  std::string mNamespace;
-  std::string mPluginName;
-  nvinfer1::PluginFieldCollection mFieldCollection;
-  std::vector<nvinfer1::PluginField> mPluginAttributes;
+  std::string namespace_;
+  nvinfer1::PluginFieldCollection field_collection_;
 };
+
 REGISTER_TRT_PLUGIN_V2(SlicePluginV2Creator);
 
 #endif
