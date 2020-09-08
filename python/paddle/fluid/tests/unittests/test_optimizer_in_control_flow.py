@@ -261,7 +261,14 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
             exe.run(startup_program)
 
             np.random.seed(SEED)
+
+            # NOTE(liym27):
+            # This test needs to run in multi cards to test NotImplementedError, but it don't need actual multi cards.
+            # Here to set environment variables CPU_NUM and FLAGS_selected_gpus to simulate multiple cards,
+            # and it actually runs on a single card to reduce CI time.
             os.environ['CPU_NUM'] = str(2)
+            os.environ['FLAGS_selected_gpus'] = "2,3"
+
             pe_exe = fluid.ParallelExecutor(
                 use_cuda=use_cuda,
                 main_program=main_program,
@@ -274,10 +281,8 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
                 },
                            fetch_list=[avg_loss.name])
 
-            if num_devices > 1:
-                self.assertRaises(NotImplementedError, not_implemented_error)
-            else:
-                not_implemented_error()
+            self.assertGreater(num_devices, 1)
+            self.assertRaises(NotImplementedError, not_implemented_error)
 
 
 if __name__ == '__main__':
