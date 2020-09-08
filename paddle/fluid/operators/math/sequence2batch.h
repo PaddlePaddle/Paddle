@@ -68,11 +68,15 @@ class LoDTensor2BatchFunctor {
           lods.size(), 2UL,
           platform::errors::InvalidArgument(
               "The LoD of LoDTensor should inlcude at least 2-level "
-              "sequence information."));
+              "sequence information, but got the LoD level is %lu. Please "
+              "check the input value.",
+              lods.size()));
       PADDLE_ENFORCE_EQ(
           lods[1].size(), static_cast<size_t>(lod_tensor.dims()[0]),
           platform::errors::InvalidArgument(
-              "The LoD information should be consistent with the dims."));
+              "The LoD information should be consistent with the dims, but got "
+              "%lu != %lu. Please check the input value.",
+              lods[1].size(), static_cast<size_t>(lod_tensor.dims()[0])));
       CopyMatrixRowsFunctor<DeviceContext, T> to_batch;
       to_batch(context, lod_tensor, lods[1], batch, true);
       return;
@@ -81,7 +85,9 @@ class LoDTensor2BatchFunctor {
     auto lods = lod_tensor.lod();
     PADDLE_ENFORCE_EQ(lods.size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "Only support one level sequence now."));
+                          "Only support one level sequence now, but got the "
+                          "LoD level is %lu. Please check the input value.",
+                          lods.size()));
 
     const auto& lod = lods[0];
 
@@ -170,11 +176,15 @@ class Batch2LoDTensorFunctor {
         in_lod.size(), 2UL,
         platform::errors::InvalidArgument(
             "The LoD of LoDTensor should inlcude at least 2-level "
-            "sequence information."));
+            "sequence information, but got the LoD level is %lu. Please check "
+            "the input value.",
+            in_lod.size()));
     PADDLE_ENFORCE_EQ(
         in_lod[1].size(), static_cast<size_t>(lod_tensor->dims()[0]),
         platform::errors::InvalidArgument(
-            "The LoD information should be consistent with the dims."));
+            "The LoD information should be consistent with the dims, but got "
+            "%lu != %lu. Please check the input value.",
+            in_lod[1].size(), static_cast<size_t>(lod_tensor->dims()[0])));
     CopyMatrixRowsFunctor<DeviceContext, T> to_seq;
     to_seq(context, batch, in_lod[1], lod_tensor, false);
   }

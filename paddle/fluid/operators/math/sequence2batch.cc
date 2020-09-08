@@ -30,17 +30,23 @@ class CopyMatrixRowsFunctor<platform::CPUDeviceContext, T> {
     auto dst_dims = dst->dims();
     PADDLE_ENFORCE_EQ(src_dims.size(), 2UL,
                       platform::errors::InvalidArgument(
-                          "The source tensor must be a matrix with rank 2. "
-                          "Please check the rank of the source tensor"));
+                          "The source tensor must be a matrix with rank 2, but "
+                          "got the source tensor rank is %lu. "
+                          "Please check the rank of the source tensor",
+                          src_dims.size()));
     PADDLE_ENFORCE_EQ(dst_dims.size(), 2UL,
                       platform::errors::InvalidArgument(
-                          "The destination tensor must be a matrix with rank "
-                          "2. Please check the rank of the source tensor"));
+                          "The destination tensor must be a matrix with rank, "
+                          "but got the destination tensor rank is %lu. "
+                          "Please check the rank of the destination tensor",
+                          dst_dims.size()));
     PADDLE_ENFORCE_EQ(
         src_dims[1], dst_dims[1],
         platform::errors::InvalidArgument(
             "The width of the source tensor and the destination tensor must be "
-            "same. Please check the rank of the source tensor"));
+            "same. But got %lu != %lu.Please check the rank of the source "
+            "tensor",
+            src_dims.size(), dst_dims.size()));
     auto height = dst_dims[0];
     auto width = dst_dims[1];
     auto* src_data = src.data<T>();
