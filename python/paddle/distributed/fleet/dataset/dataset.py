@@ -490,13 +490,13 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = True
         self.parse_ins_id = True
 
-    def set_generate_unique_feasigns(self, generate_uni_feasigns, shard_num):
+    def _set_generate_unique_feasigns(self, generate_uni_feasigns, shard_num):
         self.dataset.set_generate_unique_feasigns(generate_uni_feasigns)
         self.gen_uni_feasigns = generate_uni_feasigns
         self.local_shard_num = shard_num
 
-    def generate_local_tables_unlock(self, table_id, fea_dim, read_thread_num,
-                                     consume_thread_num, shard_num):
+    def _generate_local_tables_unlock(self, table_id, fea_dim, read_thread_num,
+                                      consume_thread_num, shard_num):
         self.dataset.generate_local_tables_unlock(
             table_id, fea_dim, read_thread_num, consume_thread_num, shard_num)
 
@@ -902,6 +902,23 @@ class BoxPSDataset(InMemoryDataset):
         super(BoxPSDataset, self).__init__()
         self.boxps = core.BoxPS(self.dataset)
         self.proto_desc.name = "PaddleBoxDataFeed"
+
+    def init(self, **kwargs):
+        """
+        should be called only once in user's python scripts to initialize seetings of dataset instance
+        """
+        super(BoxPSDataset, self).init(**kwargs)
+
+        rank_offset = kwargs.get("rank_offset", "")
+        self._set_rank_offset(rank_offset)
+        pv_batch_size = kwargs.get("pv_batch_size", 1)
+        self._set_pv_batch_size(pv_batch_size)
+        parse_logkey = kwargs.get("parse_logkey", False)
+        self._set_parse_logkey(parse_logkey)
+        merge_by_sid = kwargs.get("merge_by_sid", False)
+        self._set_merge_by_sid(merge_by_sid)
+        enable_pv_merge = kwargs.get("enable_pv_merge", False)
+        self._set_enable_pv_merge(enable_pv_merge)
 
     def _set_rank_offset(self, rank_offset):
         """

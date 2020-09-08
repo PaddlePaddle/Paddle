@@ -55,7 +55,7 @@ class TestDatasetWithStat(unittest.TestCase):
         dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
             "InMemoryDataset")
         dataset._set_batch_size(32)
-        dataset.set_thread(3)
+        dataset._set_thread(3)
         dataset.set_filelist([
             "test_in_memory_dataset_run_a.txt",
             "test_in_memory_dataset_run_b.txt"

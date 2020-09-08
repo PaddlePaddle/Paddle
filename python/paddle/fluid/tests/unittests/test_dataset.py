@@ -242,8 +242,8 @@ class TestDataset(unittest.TestCase):
         dataset._set_fea_eval(1, True)
         dataset.slots_shuffle(["slot1"])
         dataset.local_shuffle()
-        dataset.set_generate_unique_feasigns(True, 15)
-        dataset.generate_local_tables_unlock(0, 11, 1, 25, 15)
+        dataset._set_generate_unique_feasigns(True, 15)
+        dataset._generate_local_tables_unlock(0, 11, 1, 25, 15)
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
         if self.use_data_loader:
