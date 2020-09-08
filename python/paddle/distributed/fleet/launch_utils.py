@@ -542,8 +542,15 @@ def heter_cloud_env_set(args):
     assert paddle_trainer_endpoints != None
     environs["PADDLE_TRAINER_ENDPOINTS"] = paddle_trainer_endpoints
 
-    paddle_pserver_endpoints = os.getenv("PSERVER_IP_PORT_LIST", "")
-    assert paddle_pserver_endpoints != None
+    # paddle_pserver_endpoints = os.getenv("PSERVER_IP_PORT_LIST", "")
+    # assert paddle_pserver_endpoints != None
+
+    avilable_ports = os.getenv("TRAINER_PORTS", "").split(",")
+    assert len(avilable_ports) >= 3
+
+    psever_port_offset = int(avilable_ports[1]) - int(avilable_ports[0])
+    paddle_pserver_endpoints = get_user_define_endpoints(
+        paddle_trainer_endpoints, psever_port_offset)
     environs["PADDLE_PSERVERS_IP_PORT_LIST"] = paddle_pserver_endpoints
 
     trainers_num = int(os.getenv("TRAINERS_NUM", 0))
@@ -553,8 +560,9 @@ def heter_cloud_env_set(args):
     current_id = int(os.getenv("POD_INDEX", 0))
 
     if mode == "ps_heter":
+        heter_port_offset = int(avilable_ports[2]) - int(avilable_ports[1])
         paddle_heter_worker_endpoints = get_user_define_endpoints(
-            paddle_trainer_endpoints, 1)
+            paddle_pserver_endpoints, heter_port_offset)
         current_heter_ip_port = paddle_heter_worker_endpoints.split(",")[
             current_id]
         heter_port = int(current_heter_ip_port.split(":")[1])
