@@ -273,10 +273,10 @@ class TestAll8DOpWithKeepDim(OpTest):
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
         }
-        self.attrs = {'dim': (2, 3, 4, 5), 'keep_dim': True}
+        self.attrs = {'dim': (5, ), 'keep_dim': True}
         self.outputs = {
             'Out': np.expand_dims(
-                self.inputs['X'].all(axis=self.attrs['dim']), axis=1)
+                self.inputs['X'].all(axis=self.attrs['dim']), axis=5)
         }
 
     def test_check_output(self):
@@ -352,8 +352,7 @@ class TestAnyOpWithKeepDim(OpTest):
         self.attrs = {'dim': (1, ), 'keep_dim': True}
         self.outputs = {
             'Out': np.expand_dims(
-                self.inputs['X'].any(axis=self.attrs['dim']),
-                axis=self.attrs['dim'])
+                self.inputs['X'].any(axis=self.attrs['dim']), axis=1)
         }
 
     def test_check_output(self):
@@ -367,11 +366,10 @@ class TestAny8DOpWithKeepDim(OpTest):
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
         }
-        self.attrs = {'dim': (2, 5), 'keep_dim': True}
+        self.attrs = {'dim': (1, ), 'keep_dim': True}
         self.outputs = {
             'Out': np.expand_dims(
-                self.inputs['X'].any(axis=self.attrs['dim']),
-                axis=self.attrs['dim'])
+                self.inputs['X'].any(axis=self.attrs['dim']), axis=1)
         }
 
     def test_check_output(self):
