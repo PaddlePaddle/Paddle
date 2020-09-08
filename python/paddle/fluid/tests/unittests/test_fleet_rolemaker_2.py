@@ -166,7 +166,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
             "InMemoryDataset")
         dataset.set_filelist(["test_fleet_gloo_role_maker_1.txt"])
-        dataset.set_use_var([show, label])
+        dataset._set_use_var([show, label])
         dataset.load_into_memory()
         dataset.get_memory_data_size(fleet)
         dataset.get_shuffle_data_size(fleet)
