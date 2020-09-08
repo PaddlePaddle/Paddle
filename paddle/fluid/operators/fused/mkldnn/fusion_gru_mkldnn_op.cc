@@ -365,12 +365,19 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     const auto* bias = ctx.Input<Tensor>("Bias");
     auto* hidden = ctx.Output<LoDTensor>("Hidden");
 
+    int x_num_col_dims = ctx.template Attr<int>("x_num_col_dims");
+
+    auto x_mat_dims =
+        input->dims().size() > 2
+            ? framework::flatten_to_2d(input->dims(), x_num_col_dims)
+            : input->dims();
+
     // Get attributes
     const bool is_reverse = ctx.Attr<bool>("is_reverse");
     const bool origin_mode = ctx.Attr<bool>("origin_mode");
 
     // Get tensor dimensions
-    const auto x_dims = framework::vectorize(input->dims());
+    const auto x_dims = framework::vectorize(x_mat_dims);
     const auto weight_h_dims = framework::vectorize(weight_h->dims());
     const auto& input_lod = input->lod()[0];
 
