@@ -113,7 +113,7 @@ def _dygraph_to_static_func_(dygraph_func):
     # TODO: remove this decorator after we finalize training API
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
-        if in_dygraph_mode() or not program_translator.enable_declarative:
+        if in_dygraph_mode() or not program_translator.enable_static:
             warnings.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
                 "dygraph mode or set ProgramTranslator.enable to False. "
