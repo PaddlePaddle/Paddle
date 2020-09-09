@@ -277,13 +277,10 @@ class Fleet(object):
                 fleet.worker_endpoints()
 
         """
-        '''
         if to_string:
             return ",".join(self._role_maker.get_trainer_endpoints())
         else:
             return self._role_maker.get_trainer_endpoints()
-        '''
-        return ["127.0.0.1:1001", "127.0.0.1:1002"]
 
     def server_num(self):
         """
