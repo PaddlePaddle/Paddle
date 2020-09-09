@@ -134,29 +134,60 @@ class API_TestUnsqueeze3(unittest.TestCase):
             result1, = exe.run(feed={"data1": input,
                                      "data2": input2},
                                fetch_list=[result_squeeze])
-            self.assertTrue(np.allclose(input1, result1))
+            self.assertTrue(np.array_equal(input1, result1))
+            self.assertEqual(input1.shape, result1.shape)
 
 
 class API_TestDyUnsqueeze(unittest.TestCase):
     def test_out(self):
         with fluid.dygraph.guard():
             input_1 = np.random.random([5, 1, 10]).astype("int32")
-            input1 = np.squeeze(input_1, axis=1)
+            input1 = np.expand_dims(input_1, axis=1)
             input = fluid.dygraph.to_variable(input_1)
             output = paddle.unsqueeze(input, axis=[1])
             out_np = output.numpy()
-            self.assertTrue(np.allclose(input1, out_np))
+            self.assertTrue(np.array_equal(input1, out_np))
+            self.assertEqual(input1.shape, out_np.shape)
 
 
 class API_TestDyUnsqueeze2(unittest.TestCase):
     def test_out(self):
         with fluid.dygraph.guard():
-            input_1 = np.random.random([5, 1, 10]).astype("int32")
-            input1 = np.squeeze(input_1, axis=1)
-            input = fluid.dygraph.to_variable(input_1)
+            input1 = np.random.random([5, 10]).astype("int32")
+            out1 = np.expand_dims(input1, axis=1)
+            input = fluid.dygraph.to_variable(input1)
             output = paddle.unsqueeze(input, axis=1)
             out_np = output.numpy()
-            self.assertTrue(np.allclose(input1, out_np))
+            self.assertTrue(np.array_equal(out1, out_np))
+            self.assertEqual(out1.shape, out_np.shape)
+
+
+class API_TestDyUnsqueezeAxisTensor(unittest.TestCase):
+    def test_out(self):
+        with fluid.dygraph.guard():
+            input1 = np.random.random([5, 10]).astype("int32")
+            out1 = np.expand_dims(input1, axis=1)
+            input = fluid.dygraph.to_variable(input1)
+            output = paddle.unsqueeze(input, axis=paddle.to_tensor([1]))
+            out_np = output.numpy()
+            self.assertTrue(np.array_equal(out1, out_np))
+            self.assertEqual(out1.shape, out_np.shape)
+
+
+class API_TestDyUnsqueezeAxisTensorList(unittest.TestCase):
+    def test_out(self):
+        with fluid.dygraph.guard():
+            input1 = np.random.random([5, 10]).astype("int32")
+            # Actually, expand_dims supports tuple since version 1.18.0
+            out1 = np.expand_dims(input1, axis=1)
+            out1 = np.expand_dims(out1, axis=2)
+            input = fluid.dygraph.to_variable(input1)
+            output = paddle.unsqueeze(
+                fluid.dygraph.to_variable(input1),
+                axis=[paddle.to_tensor([1]), paddle.to_tensor([2])])
+            out_np = output.numpy()
+            self.assertTrue(np.array_equal(out1, out_np))
+            self.assertEqual(out1.shape, out_np.shape)
 
 
 if __name__ == "__main__":
