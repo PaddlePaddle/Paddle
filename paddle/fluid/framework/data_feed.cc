@@ -2924,17 +2924,6 @@ bool SlotPaddleBoxDataFeedWithQuery::ParseOneInstance(const std::string& line,
     rec->ins_id_ = std::string(str + pos, len);
     pos += len + 1;
   }
-  //  if (parse_content_) {
-  //    int num = strtol(&str[pos], &endptr, 10);
-  //    CHECK(num == 1);  // NOLINT
-  //    pos = endptr - str + 1;
-  //    size_t len = 0;
-  //    while (str[pos + len] != ' ') {
-  //      ++len;
-  //    }
-  //    rec->content_ = std::string(str + pos, len);
-  //    pos += len + 1;
-  //  }
   if (parse_logkey_) {
     int num = strtol(&str[pos], &endptr, 10);
     CHECK(num == 1);  // NOLINT
