@@ -1,8 +1,23 @@
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #pragma once
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
@@ -11,8 +26,8 @@ namespace paddle {
 namespace framework {
 
 struct Node {
-  Node::Node() : parent_node(NULL), id(0), height(0) {}
-  ~Node(){};
+  Node() : parent_node(NULL), id(0), height(0) {}
+  ~Node() {}
   std::vector<Node*> sub_nodes;
   // uint32_t sub_node_num;
   Node* parent_node;
@@ -34,8 +49,7 @@ class Tree {
   void print_tree();
   int dump_tree(const uint64_t table_id, int fea_value_dim,
                 const std::string tree_path);
-  //采样：从叶节点回溯到根节点
-  void trace_back(uint64_t id, std::vector<std::pair<uint64_t, uint32_t>>& ids);
+  bool trace_back(uint64_t id, std::vector<std::pair<uint64_t, uint32_t>>* ids);
   int load(std::string path);
   Node* get_node();
   size_t get_total_node_num();
@@ -75,8 +89,8 @@ class TreeWrapper {
     if (tree_map.find(name) != tree_map.end()) {
       return;
     }
-    TreePtr tree = new Tree();
-    tree.load(tree_path);
+    TreePtr tree = std::make_shared<Tree>();
+    tree->load(tree_path);
     tree_map.insert(std::pair<std::string, TreePtr>{name, tree});
   }
 
@@ -89,32 +103,39 @@ class TreeWrapper {
   }
 
   void sample(const uint16_t sample_slot, const uint64_t type_slot,
-              std::vector<Record>& src_datas,
-              std::vector<Record>& sample_results) {
-    sample_results.clear();
+              const std::vector<Record>& src_datas,
+              std::vector<Record>* sample_results) {
+    sample_results->clear();
+    auto debug_idx = 0;
     for (auto& data : src_datas) {
+      if (debug_idx == 0) {
+        VLOG(0) << "src record";
+        data.Print();
+      }
       uint64_t sample_feasign_idx = -1, type_feasign_idx = -1;
-      for (auto i = 0; i < data.uint64_feasigns_.size(); i++) {
+      for (uint64_t i = 0; i < data.uint64_feasigns_.size(); i++) {
         if (data.uint64_feasigns_[i].slot() == sample_slot) {
           sample_feasign_idx = i;
         }
-        if (data.uint64_feasigns_.slot() == type_slot) {
+        if (data.uint64_feasigns_[i].slot() == type_slot) {
           type_feasign_idx = i;
         }
       }
       if (sample_feasign_idx > 0) {
         std::vector<std::pair<uint64_t, uint32_t>> trace_ids;
-        for (auto name : tree_map) {
-          bool in_tree = tree_map.at(name)->trace_back(
+        for (std::unordered_map<std::string, TreePtr>::iterator ite =
+                 tree_map.begin();
+             ite != tree_map.end(); ite++) {
+          bool in_tree = ite->second->trace_back(
               data.uint64_feasigns_[sample_feasign_idx].sign().uint64_feasign_,
-              trace_ids);
+              &trace_ids);
           if (in_tree) {
             break;
           } else {
             PADDLE_ENFORCE_EQ(trace_ids.size(), 0, "");
           }
         }
-        for (auto i = 0; i < trace_ids.size(); i++) {
+        for (uint64_t i = 0; i < trace_ids.size(); i++) {
           Record instance(data);
           instance.uint64_feasigns_[sample_feasign_idx].sign().uint64_feasign_ =
               trace_ids[i].first;
@@ -122,9 +143,14 @@ class TreeWrapper {
             instance.uint64_feasigns_[type_feasign_idx]
                 .sign()
                 .uint64_feasign_ += trace_ids[i].second * 100;
-          sample_results.push_back(instance);
+          if (debug_idx == 0) {
+            VLOG(0) << "sample results:" << i;
+            instance.Print();
+          }
+          sample_results->push_back(instance);
         }
       }
+      debug_idx += 1;
     }
     return;
   }

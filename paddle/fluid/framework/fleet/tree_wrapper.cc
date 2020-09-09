@@ -1,3 +1,17 @@
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 #pragma once
 #include <memory>
 #include <string>
@@ -6,6 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/fleet/tree_wrapper.h"
 
 namespace paddle {
 namespace framework {
@@ -117,7 +132,7 @@ int Tree::dump_tree(const uint64_t table_id, int fea_value_dim,
   std::shared_ptr<FILE> fp =
       paddle::framework::fs_open(tree_path, "w", &ret, "");
 
-  std::vector<uint64_t> fea_keys, std::vector<float*> pull_result_ptr;
+  std::vector<uint64_t> fea_keys, std::vector<float *> pull_result_ptr;
 
   fea_keys.reserve(_total_node_num);
   pull_result_ptr.reserve(_total_node_num);
@@ -167,7 +182,7 @@ int Tree::dump_tree(const uint64_t table_id, int fea_value_dim,
 }
 
 bool Tree::trace_back(uint64_t id,
-                      std::vector<std::pair<uint64_t, uint32_t>>& ids) {
+                      std::vector<std::pair<uint64_t, uint32_t>>* ids) {
   ids.clear();
   std::unordered_map<uint64_t, Node*>::iterator find_it =
       _leaf_node_map.find(id);
@@ -178,11 +193,11 @@ bool Tree::trace_back(uint64_t id,
     Node* node = find_it->second;
     while (node != NULL) {
       height++;
-      ids.emplace_back(node->id, 0);
+      ids->emplace_back(node->id, 0);
       node = node->parent_node;
     }
-    for (auto& id : ids) {
-      id.second = height--;
+    for (auto& pair_id : *ids) {
+      pair_id.second = height--;
     }
   }
   return true;
