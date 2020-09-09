@@ -13,12 +13,19 @@
 # limitations under the License.
 
 import os
+import six
 import sys
 import traceback
 
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import Location, OriginInfo, global_origin_info_map
 
 ERROR_DATA = "Error data about original source code information and traceback."
+
+SIMPLIFY_EOOR_ENV_NAME = "TRANSLATOR_SIMPLIFY_NEW_EOOR"
+DEFAULT_SIMPLIFY_NEW_EOOR = 1
+
+DISABLE_EOOR_ENV_NAME = "TRANSLATOR_DISABLE_NEW_EOOR"
+DEFAULT_DISABLE_NEW_EOOR = 0
 
 
 def attach_error_data(error, in_runtime=False):
@@ -103,7 +110,10 @@ class ErrorData(object):
 
         # Simplify error value to improve readability if error is raised in runtime
         if self.in_runtime:
-            self._simplify_error_value()
+            if int(
+                    os.getenv(SIMPLIFY_EOOR_ENV_NAME,
+                              DEFAULT_SIMPLIFY_NEW_EOOR)):
+                self._simplify_error_value()
             message_lines.append(str(self.error_value))
             return '\n'.join(message_lines)
 
@@ -150,3 +160,20 @@ class ErrorData(object):
 
         error_value_str = '\n'.join(error_value_lines)
         self.error_value = self.error_type(error_value_str)
+
+    def raise_new_exception(self):
+        if int(os.getenv(DISABLE_EOOR_ENV_NAME, DEFAULT_DISABLE_NEW_EOOR)):
+            raise
+
+        new_exception = self.create_exception()
+        if six.PY3:
+            # NOTE(liym27):
+            # 1. Why `raise new_exception from None`?
+            #   In Python 3, by default, an new exception is raised with trace information of the caught exception.
+            #   This only raises new_exception and hides unwanted implementation details from tracebacks of the
+            #   caught exception.
+            # 2. Use exec to bypass syntax error checking in Python 2.
+
+            six.exec_("raise new_exception from None")
+        else:
+            raise new_exception
