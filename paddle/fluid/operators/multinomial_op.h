@@ -31,7 +31,7 @@ void MultinomialFunctor(T* out_data, const T* in_data,
                         const int64_t num_samples, const bool replacement,
                         const int64_t num_categories,
                         const int64_t num_distributions) {
-  C = num_categories;
+  int64_t C = num_categories;
   T cumulative_probs[C];
 
   std::uniform_real_distribution<T> dist(0, 1);
