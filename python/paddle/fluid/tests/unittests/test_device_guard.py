@@ -133,7 +133,6 @@ class TestDeviceGuard(unittest.TestCase):
                         i = fluid.layers.increment(x=i, value=1, in_place=True)
                         fluid.layers.less_than(x=i, y=loop_len, cond=cond)
 
-        assert len(w) == 1
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
         for op in all_ops:
@@ -169,7 +168,6 @@ class TestDeviceGuard(unittest.TestCase):
                         shape=[1], value=4.0, dtype='float32')
                     result = fluid.layers.less_than(x=x, y=y, force_cpu=False)
 
-        assert len(w) == 2
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
         for op in all_ops:
