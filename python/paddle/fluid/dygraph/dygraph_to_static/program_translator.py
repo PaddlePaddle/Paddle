@@ -811,8 +811,10 @@ class ProgramTranslator(object):
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
         if not self.enable_static:
             warnings.warn(
-                "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable = False. "
-                "We will just return dygraph output.")
+                "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable to False. "
+                "We will just return dygraph output. "
+                "Please call ProgramTranslator.enable(True) if you would like to get static output."
+            )
             return dygraph_func(*args, **kwargs)
 
         function_spec = FunctionSpec(dygraph_func)
@@ -876,8 +878,9 @@ class ProgramTranslator(object):
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
         if not self.enable_static:
             warnings.warn(
-                "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable=False. We will "
-                "just return dygraph output.")
+                "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable to False. We will "
+                "just return dygraph output. Please call ProgramTranslator.enable(True) if you would like to get static output."
+            )
             return dygraph_func
 
         static_func = convert_to_static(dygraph_func)
@@ -929,8 +932,10 @@ class ProgramTranslator(object):
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
         if not self.enable_static:
             warnings.warn(
-                "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable=False."
-                "We will just return dygraph output.")
+                "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable to False."
+                "We will just return dygraph output. "
+                "Please call ProgramTranslator.enable(True) if you would like to get static output."
+            )
             return dygraph_func(*args, **kwargs)
 
         function_spec = FunctionSpec(dygraph_func)

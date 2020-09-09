@@ -775,9 +775,9 @@ def save(layer, model_path, input_spec=None, config=None):
 
     # 1. input check
     prog_translator = ProgramTranslator()
-    if not prog_translator.enable:
+    if not prog_translator.enable_static:
         raise RuntimeError(
-            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable=False."
+            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable to False."
         )
     if not isinstance(layer, Layer):
         raise TypeError(
