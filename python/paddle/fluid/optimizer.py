@@ -1628,8 +1628,8 @@ class LarsMomentumOptimizer(Optimizer):
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
-        exclude_from_weight_decay (list[str], optional): Name string of layers which will be exclude from lars weight decay.
-        epsilon (float): Epsilon to avoid Division by Zero when calculate local lr.
+        exclude_from_weight_decay (list[str], optional): Name string of layers which will be exclude from lars weight decay. Default is None.
+        epsilon (float, optional): Epsilon to avoid Division by Zero when calculate local lr. Default is 0.
         
     Examples:
         .. code-block:: python
