@@ -73,6 +73,33 @@ TEST(LiteEngineOp, GetNativeLayoutType) {
   EXPECT_ANY_THROW(GetNativeLayoutType(DataLayoutType::kNHWC));
 }
 
+template <typename T>
+void test_lite_tensor_data_ptr(PrecisionType precision_type) {
+  void* GetLiteTensorDataPtr(paddle::lite_api::Tensor * src,
+                             PrecisionType precision_type,
+                             TargetType target_type);
+  const int count = 4;
+  paddle::lite::Tensor lite_tensor;
+  lite_tensor.Resize({count});
+  auto* lite_tensor_data = lite_tensor.mutable_data<T>();
+  for (size_t i = 0; i < count; ++i) {
+    lite_tensor_data[i] = i;
+  }
+  paddle::lite_api::Tensor lite_api_tensor(&lite_tensor);
+  T* data = static_cast<T*>(GetLiteTensorDataPtr(
+      &lite_api_tensor, precision_type, TargetType::kHost));
+  for (size_t i = 0; i < count; ++i) {
+    CHECK_EQ(data[i], static_cast<T>(i)) << "the i-th num is not correct.";
+  }
+}
+
+TEST(LiteEngineOp, GetLiteTensorDataPtr) {
+  test_lite_tensor_data_ptr<int64_t>(PrecisionType::kInt64);
+  test_lite_tensor_data_ptr<int32_t>(PrecisionType::kInt32);
+  test_lite_tensor_data_ptr<int8_t>(PrecisionType::kInt8);
+  EXPECT_ANY_THROW(test_lite_tensor_data_ptr<double>(PrecisionType::kUnk));
+}
+
 void test_tensor_copy(const platform::DeviceContext& ctx) {
   // Create LoDTensor.
   std::vector<float> vector({1, 2, 3, 4});
