@@ -127,10 +127,6 @@ class DatasetBase(object):
         """
         self.proto_desc.batch_size = batch_size
 
-    # temp
-    def debug_print(self):
-        print(">>>>>>>>>>batch_size: {}".format(self.proto_desc.batch_size))
-
     def _set_thread(self, thread_num):
         """
         Set thread num, it is the num of readers.
