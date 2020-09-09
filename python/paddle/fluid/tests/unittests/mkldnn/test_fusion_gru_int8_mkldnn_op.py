@@ -58,8 +58,8 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
         # WeightX data shape in PP: [IC, 3 * OC]
         # WeightH data shape in PP: [OC, 2 * OC] + [OC, OC]
         # Scales shape in oneDNN:   [3, OC]
-        scale_ur = 63 / np.max(np.abs(np.concatenate([wx[:,:2*self.OC], wh.flatten()[:2*self.OC * self.OC].reshape(self.OC, 2*self.OC)], axis=0)), axis=0)
-        scale_o = 63 / np.max(np.abs(np.concatenate([wx[:,2*self.OC:], wh.flatten()[2*self.OC * self.OC:].reshape(self.OC, self.OC)], axis=0)), axis=0)
+        scale_ur = 63 / np.max(np.abs(np.concatenate([wx[:, :2*self.OC], wh.flatten()[:2*self.OC * self.OC].reshape(self.OC, 2*self.OC)], axis=0)), axis=0)
+        scale_o = 63 / np.max(np.abs(np.concatenate([wx[:, 2*self.OC:], wh.flatten()[2*self.OC * self.OC:].reshape(self.OC, self.OC)], axis=0)), axis=0)
 
         scale_weights = np.concatenate([scale_ur, scale_o]).astype('float')
 
