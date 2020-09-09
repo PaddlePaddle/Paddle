@@ -21,7 +21,3 @@ objgraph
 astor
 pathlib
 netifaces
-PyGithub
-coverage
-pycrypto
-mock
