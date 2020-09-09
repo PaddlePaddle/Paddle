@@ -18,6 +18,7 @@ import os
 import pickle
 import warnings
 import functools
+from collections import OrderedDict
 
 import six
 import paddle
@@ -678,12 +679,12 @@ def _get_output_vars(outputs, output_spec):
     name_no_exists_error = "The tensor `%s` does not exists. " \
         "Please make sure the name of example Tensor " \
         "in configs.output_spec is the output tensor of " \
-        "Layer.forward.method."
+        "Layer.forward method."
     result_list = []
-    output_vars_dict = {
-        var.name: var
-        for var in outputs if isinstance(var, Variable)
-    }
+    output_vars_dict = OrderedDict()
+    for var in outputs:
+        if isinstance(var, Variable):
+            output_vars_dict[var.name] = var
     if output_spec is None:
         result_list = output_vars_dict.values()
     elif output_spec is not None and len(output_spec) == len(output_vars_dict):
