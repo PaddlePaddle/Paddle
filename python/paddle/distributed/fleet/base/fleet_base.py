@@ -354,6 +354,9 @@ class Fleet(object):
         return self._role_maker.is_server(
         ) or self._role_maker._is_heter_worker()
 
+    def set_util(self, util):
+        self._util = util
+
     def util(self):
         """
         Utility functions that can be used under certain runtime

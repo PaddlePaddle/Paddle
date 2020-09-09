@@ -59,7 +59,7 @@ class TestFleetUtil(unittest.TestCase):
         import paddle.distributed.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        default_util = fleet.util
+        default_util = fleet.util()
         self.assertEqual(default_util, None)
 
     def test_set_user_defined_util(self):
@@ -76,8 +76,8 @@ class TestFleetUtil(unittest.TestCase):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         my_util = UserDefinedUtil()
-        fleet.util = my_util
-        user_id = fleet.util.get_user_id()
+        fleet.set_util(my_util)
+        user_id = fleet.util().get_user_id()
         self.assertEqual(user_id, 10)
 
     def test_fs(self):
