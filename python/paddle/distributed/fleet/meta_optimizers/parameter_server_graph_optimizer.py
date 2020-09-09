@@ -24,6 +24,9 @@ class ParameterServerGraphOptimizer(ParameterServerOptimizer):
         self.meta_optimizers_white_list = []
 
     def _can_apply(self):
+        if self.role_maker._is_collective:
+            return False
+
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         if k_steps < 0:
             return False

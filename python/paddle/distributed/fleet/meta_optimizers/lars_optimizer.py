@@ -47,6 +47,9 @@ class LarsOptimizer(MetaOptimizerBase):
             name=opt._name)
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if self.user_defined_strategy.lars:
             if not isinstance(self.inner_opt, Momentum):
                 logging.warn(
@@ -85,5 +88,5 @@ class LarsOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         optimize_ops, params_grads = \
             self.lars_opt.minimize(loss, startup_program,
-                                      parameter_list, no_grad_set)
+                                   parameter_list, no_grad_set)
         return optimize_ops, params_grads

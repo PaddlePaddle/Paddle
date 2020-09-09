@@ -103,6 +103,9 @@ class PipelineOptimizer(MetaOptimizerBase):
         self.wrapped_opt = PO(self.inner_opt, num_microbatches=num_microbatches)
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if self.user_defined_strategy.pipeline == True:
             return True
         return False
@@ -180,7 +183,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         grad = None
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_backward_op(op) and \
-                OP_ROLE_VAR_KEY in op.attr_names:
+                    OP_ROLE_VAR_KEY in op.attr_names:
                 op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
                 if len(op_role_var) == 0:
                     continue

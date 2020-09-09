@@ -29,6 +29,9 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         self.snapshot_key = '@SNAPSHOT'
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if not self.user_defined_strategy.localsgd:
             return False
 
@@ -36,9 +39,9 @@ class LocalSGDOptimizer(MetaOptimizerBase):
             return False
 
         return isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum) \
-                or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum) \
-                or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD) \
-                or isinstance(self.inner_opt, paddle.fluid.optimizer.SGD)
+            or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum) \
+            or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD) \
+            or isinstance(self.inner_opt, paddle.fluid.optimizer.SGD)
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.localsgd = False

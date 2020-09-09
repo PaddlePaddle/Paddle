@@ -258,13 +258,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         dist_strategy.a_sync_configs = a_sync_configs
 
     def _enable_strategy(self, dist_strategy, context):
-        if dist_strategy.auto == False:
-            return
-
-        if context["role_maker"]._is_collective:
-            self._disable_strategy(dist_strategy)
-            return
-
         a_sync_configs = dist_strategy.a_sync_configs
         if a_sync_configs["k_steps"] >= 0:
             return
