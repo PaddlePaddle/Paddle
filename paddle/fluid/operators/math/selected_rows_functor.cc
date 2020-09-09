@@ -29,11 +29,12 @@ struct SelectedRowsAdd<platform::CPUDeviceContext, T> {
                   const framework::SelectedRows& input2,
                   framework::SelectedRows* output) {
     auto in1_height = input1.height();
-    PADDLE_ENFORCE_EQ(in1_height, input2.height(),
-      platform::errors::InvalidArgument(
-        "The two inputs height must be equal."
-        "But recieved first input height  = [%d], second input height = [%d]",
-        in1_height, input2.height()));
+    PADDLE_ENFORCE_EQ(
+        in1_height, input2.height(),
+        platform::errors::InvalidArgument("The two inputs height must be equal."
+                                          "But recieved first input height  = "
+                                          "[%d], second input height = [%d]",
+                                          in1_height, input2.height()));
     output->set_height(in1_height);
 
     auto& in1_rows = input1.rows();
@@ -51,29 +52,31 @@ struct SelectedRowsAdd<platform::CPUDeviceContext, T> {
     auto& in2_value = input2.value();
 
     auto in1_row_numel = in1_value.numel() / in1_rows.size();
-    PADDLE_ENFORCE_EQ(in1_row_numel, in2_value.numel() / in2_rows.size(),
-      platform::errors::InvalidArgument(
-        "The two inputs width must be equal."
-        "But recieved first input width = [%d], second input width = [%d]",
-        in1_row_numel, in2_value.numel() / in2_rows.size()));
-    PADDLE_ENFORCE_EQ(in1_row_numel, out_value->numel() / out_rows.size(),
-      platform::errors::InvalidArgument(
-        "The input and oupput width must be equal."
-        "But recieved input width = [%d], output width = [%d]",
-        in1_row_numel, out_value->numel() / out_rows.size()));
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel, in2_value.numel() / in2_rows.size(),
+        platform::errors::InvalidArgument(
+            "The two inputs width must be equal."
+            "But recieved first input width = [%d], second input width = [%d]",
+            in1_row_numel, in2_value.numel() / in2_rows.size()));
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel, out_value->numel() / out_rows.size(),
+        platform::errors::InvalidArgument(
+            "The input and oupput width must be equal."
+            "But recieved input width = [%d], output width = [%d]",
+            in1_row_numel, out_value->numel() / out_rows.size()));
 
     auto in1_place = input1.place();
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(in1_place), true,
-      platform::errors::InvalidArgument(
-        "The running enviroment is not on the CPU place."));
+                      platform::errors::InvalidArgument(
+                          "The running enviroment is not on the CPU place."));
     auto in2_place = input2.place();
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(in2_place), true,
-      platform::errors::InvalidArgument(
-        "The running enviroment is not on the CPU place."));
+                      platform::errors::InvalidArgument(
+                          "The running enviroment is not on the CPU place."));
     auto out_place = context.GetPlace();
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(out_place), true,
-      platform::errors::InvalidArgument(
-        "The running enviroment is not on the CPU place."));
+                      platform::errors::InvalidArgument(
+                          "The running enviroment is not on the CPU place."));
 
     auto* out_data = out_value->data<T>();
     auto* in1_data = in1_value.data<T>();
@@ -100,31 +103,35 @@ struct SelectedRowsAddTensor<platform::CPUDeviceContext, T> {
     auto in1_height = input1.height();
     auto in2_dims = input2.dims();
     auto out_dims = output->dims();
-    PADDLE_ENFORCE_EQ(in1_height, in2_dims[0],
-      platform::errors::InvalidArgument(
-        "The two inputs height must be equal."
-        "But recieved first input height = [%d], second input height = [%d]",
-        in1_height, in2_dims[0]));
-    PADDLE_ENFORCE_EQ(in1_height, out_dims[0],
-      platform::errors::InvalidArgument(
-        "The input and output height must be equal."
-        "But recieved input height = [%d], output height = [%d]",
-        in1_height, out_dims[0]));
+    PADDLE_ENFORCE_EQ(
+        in1_height, in2_dims[0],
+        platform::errors::InvalidArgument("The two inputs height must be equal."
+                                          "But recieved first input height = "
+                                          "[%d], second input height = [%d]",
+                                          in1_height, in2_dims[0]));
+    PADDLE_ENFORCE_EQ(
+        in1_height, out_dims[0],
+        platform::errors::InvalidArgument(
+            "The input and output height must be equal."
+            "But recieved input height = [%d], output height = [%d]",
+            in1_height, out_dims[0]));
 
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
-    PADDLE_ENFORCE_EQ(in1_row_numel, input2.numel() / in1_height,
-      platform::errors::InvalidArgument(
-        "The two inputs width must be equal."
-        "But recieved first input width = [%d], second input width = [%d]",
-        in1_row_numel,  input2.numel() / in1_height));
-    PADDLE_ENFORCE_EQ(in1_row_numel, output->numel() / in1_height,
-      platform::errors::InvalidArgument(
-        "The input and output width must be equal."
-        "But recieved input width = [%d], output width = [%d]",
-        in1_row_numel,  output->numel() / in1_height));
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel, input2.numel() / in1_height,
+        platform::errors::InvalidArgument(
+            "The two inputs width must be equal."
+            "But recieved first input width = [%d], second input width = [%d]",
+            in1_row_numel, input2.numel() / in1_height));
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel, output->numel() / in1_height,
+        platform::errors::InvalidArgument(
+            "The input and output width must be equal."
+            "But recieved input width = [%d], output width = [%d]",
+            in1_row_numel, output->numel() / in1_height));
 
     SetConstant<platform::CPUDeviceContext, T> functor;
     functor(context, output, 0.0);
@@ -155,11 +162,12 @@ struct SelectedRowsAddTo<platform::CPUDeviceContext, T> {
                   const int64_t input2_offset,
                   framework::SelectedRows* input2) {
     auto in1_height = input1.height();
-    PADDLE_ENFORCE_EQ(in1_height, input2->height(),
-      platform::errors::InvalidArgument(
-        "The two inputs height must be equal."
-        "But recieved first input height = [%d], second input height = [%d]",
-        in1_height, input2->height()));
+    PADDLE_ENFORCE_EQ(
+        in1_height, input2->height(),
+        platform::errors::InvalidArgument("The two inputs height must be equal."
+                                          "But recieved first input height = "
+                                          "[%d], second input height = [%d]",
+                                          in1_height, input2->height()));
 
     auto& in1_rows = input1.rows();
     auto& in2_rows = *(input2->mutable_rows());
@@ -172,12 +180,12 @@ struct SelectedRowsAddTo<platform::CPUDeviceContext, T> {
 
     auto in1_place = input1.place();
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(in1_place), true,
-      platform::errors::InvalidArgument(
-        "The running enviroment is not on the CPU place."));
+                      platform::errors::InvalidArgument(
+                          "The running enviroment is not on the CPU place."));
     auto in2_place = input2->place();
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(in2_place), true,
-      platform::errors::InvalidArgument(
-        "The running enviroment is not on the CPU place."));
+                      platform::errors::InvalidArgument(
+                          "The running enviroment is not on the CPU place."));
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
@@ -206,10 +214,11 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, T> {
       size += in_rows.end() - in_rows.begin();
       auto in1_height = (*iter)->height();
       PADDLE_ENFORCE_EQ(in1_height, input2->height(),
-        platform::errors::InvalidArgument(
-          "The two inputs height must be equal."
-          "But recieved first input height = [%d], second input height = [%d]",
-          in1_height, input2->height()));
+                        platform::errors::InvalidArgument(
+                            "The two inputs height must be equal."
+                            "But recieved first input height = [%d], second "
+                            "input height = [%d]",
+                            in1_height, input2->height()));
     }
     // concat rows
     std::vector<int64_t> in2_rows;
@@ -247,21 +256,23 @@ struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
     }
     auto in1_height = input1.height();
     auto in2_dims = input2->dims();
-    PADDLE_ENFORCE_EQ(in1_height, in2_dims[0],
-      platform::errors::InvalidArgument(
-        "The two inputs height must be equal."
-        "But recieved first input height = [%d], second input height = [%d]",
-        in1_height, in2_dims[0]));
+    PADDLE_ENFORCE_EQ(
+        in1_height, in2_dims[0],
+        platform::errors::InvalidArgument("The two inputs height must be equal."
+                                          "But recieved first input height = "
+                                          "[%d], second input height = [%d]",
+                                          in1_height, in2_dims[0]));
 
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
-    PADDLE_ENFORCE_EQ(in1_row_numel, input2->numel() / in1_height,
-      platform::errors::InvalidArgument(
-        "The two inputs width must be equal."
-        "But recieved first input width = [%d], second input width = [%d]",
-        in1_row_numel, input2->numel() / in1_height));
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel, input2->numel() / in1_height,
+        platform::errors::InvalidArgument(
+            "The two inputs width must be equal."
+            "But recieved first input width = [%d], second input width = [%d]",
+            in1_row_numel, input2->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
     auto* input2_data = input2->data<T>();
@@ -356,12 +367,12 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
         continue;
       }
       PADDLE_ENFORCE_EQ(input_width, input->value().dims()[1],
-        platform::errors::InvalidArgument(
-          "All inputs should have same "
-          "dimension except for the first one."));
+                        platform::errors::InvalidArgument(
+                            "All inputs should have same "
+                            "dimension except for the first one."));
       PADDLE_ENFORCE_EQ(input_height, input->height(),
-        platform::errors::InvalidArgument(
-          "All inputs should have same height."));
+                        platform::errors::InvalidArgument(
+                            "All inputs should have same height."));
       row_num += input->rows().size();
       merged_row_set.insert(input->rows().begin(), input->rows().end());
     }
@@ -477,12 +488,12 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
         continue;
       }
       PADDLE_ENFORCE_EQ(input_width, input->value().dims()[1],
-        platform::errors::InvalidArgument(
-          "All inputs should have same "
-          "dimension except for the first one."));
+                        platform::errors::InvalidArgument(
+                            "All inputs should have same "
+                            "dimension except for the first one."));
       PADDLE_ENFORCE_EQ(input_height, input->height(),
-        platform::errors::InvalidArgument(
-          "All input should have same height."));
+                        platform::errors::InvalidArgument(
+                            "All input should have same height."));
       row_num += input->rows().size();
       merged_row_set.insert(input->rows().begin(), input->rows().end());
     }
@@ -550,23 +561,23 @@ struct UpdateToTensor<platform::CPUDeviceContext, T> {
                   framework::Tensor* input2) {
     auto in1_height = input1.height();
     auto in2_dims = input2->dims();
-    PADDLE_ENFORCE_EQ(in1_height, in2_dims[0],
-      platform::errors::InvalidArgument(
-        "The two inputs height must be equal."
-        "But recieved first input height = [%d], second input height = [%d]",
-        in1_height, in2_dims[0]));
-
+    PADDLE_ENFORCE_EQ(
+        in1_height, in2_dims[0],
+        platform::errors::InvalidArgument("The two inputs height must be equal."
+                                          "But recieved first input height = "
+                                          "[%d], second input height = [%d]",
+                                          in1_height, in2_dims[0]));
 
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
-    PADDLE_ENFORCE_EQ(in1_row_numel, input2->numel() / in1_height,
-      platform::errors::InvalidArgument(
-        "The two inputs width must be equal."
-        "But recieved first input width = [%d], second input width = [%d]",
-        in1_row_numel, input2->numel() / in1_height));
-
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel, input2->numel() / in1_height,
+        platform::errors::InvalidArgument(
+            "The two inputs width must be equal."
+            "But recieved first input width = [%d], second input width = [%d]",
+            in1_row_numel, input2->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
     auto* input2_data = input2->data<T>();
