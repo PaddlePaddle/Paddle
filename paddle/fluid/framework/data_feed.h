@@ -984,8 +984,13 @@ class ISlotParser {
   virtual ~ISlotParser() {}
   virtual bool Init(const std::vector<AllSlotInfo>& slots) = 0;
   virtual bool ParseOneInstance(
-      const std::string& line,
+      const std::string& line, std::function<int(std::vector<float>&) > GetQueryIndexFunc, 
       std::function<void(std::vector<SlotRecord>&, int)> GetInsFunc) = 0;
+  virtual bool ParseOneInstance(
+      const std::string& line,
+      std::function<void(std::vector<SlotRecord>&, int)> GetInsFunc) {
+    return true;
+  }
   virtual int unroll_instance(std::vector<SlotRecord>& items, int ins_num,
       std::function<void(std::vector<SlotRecord> & )> RealeseMemory){
       return 1;  
@@ -1328,8 +1333,8 @@ class SlotPaddleBoxDataFeed : public DataFeed {
   virtual void LoadIntoMemory();
   virtual void UnrollInstance(std::vector<SlotRecord>& items);
  private:
-  void LoadIntoMemoryByCommand(void);
-  void LoadIntoMemoryByLib(void);
+  virtual void LoadIntoMemoryByCommand(void);
+  virtual void LoadIntoMemoryByLib(void);
   void PutToFeedPvVec(const SlotPvInstance* pvs, int num);
   void PutToFeedSlotVec(const SlotRecord* recs, int num);
   void BuildSlotBatchGPU(const int ins_num);
@@ -1357,7 +1362,7 @@ class SlotPaddleBoxDataFeed : public DataFeed {
                      const UsedSlotGpuType* used_slots);
 #endif
 
- private:
+ protected:
   int thread_id_ = 0;
   int thread_num_ = 0;
   bool parse_ins_id_ = false;
@@ -1398,6 +1403,17 @@ class SlotPaddleBoxDataFeed : public DataFeed {
   platform::Timer trans_timer_;
   platform::Timer copy_timer_;
 };
+
+class SlotPaddleBoxDataFeedWithQuery : public SlotPaddleBoxDataFeed {
+ public:
+  SlotPaddleBoxDataFeedWithQuery() { finish_start_ = false; }
+ private:
+  virtual void LoadIntoMemoryByLib(void);
+  virtual void LoadIntoMemoryByCommand(void);
+  bool ParseOneInstance(const std::string& line, SlotRecord* rec, int query_emb_offset);
+
+};
+
 
 template <class AR, class T>
 paddle::framework::Archive<AR>& operator<<(paddle::framework::Archive<AR>& ar,

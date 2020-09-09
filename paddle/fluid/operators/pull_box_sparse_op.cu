@@ -36,9 +36,19 @@ class PushBoxSparseCUDAKernel : public framework::OpKernel<T> {
     PushBoxSparseFunctor<T>(ctx);
   }
 };
+
+template <typename T>
+class PullBoxQueryEmbCUDAKernel: public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    PullBoxQueryEmbFunctor<T>(ctx);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(pull_box_sparse, ops::PullBoxSparseCUDAKernel<float>)
 REGISTER_OP_CUDA_KERNEL(push_box_sparse, ops::PushBoxSparseCUDAKernel<float>)
+REGISTER_OP_CUDA_KERNEL(pull_box_query_emb, ops::PullBoxQueryEmbCUDAKernel<float>)

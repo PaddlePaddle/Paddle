@@ -125,13 +125,13 @@ void BasicAucCalculator::init(int table_size, int max_batch_size) {
       _d_positive.emplace_back(
           memory::AllocShared(place, _table_size * sizeof(double)));
       _d_negative.emplace_back(
-          memory::Alloc(place, _table_size * sizeof(double)));
+          memory::AllocShared(place, _table_size * sizeof(double)));
       _d_abserr.emplace_back(
-          memory::Alloc(place, _max_batch_size * sizeof(double)));
+          memory::AllocShared(place, _max_batch_size * sizeof(double)));
       _d_sqrerr.emplace_back(
-          memory::Alloc(place, _max_batch_size * sizeof(double)));
+          memory::AllocShared(place, _max_batch_size * sizeof(double)));
       _d_pred.emplace_back(
-          memory::Alloc(place, _max_batch_size * sizeof(double)));
+          memory::AllocShared(place, _max_batch_size * sizeof(double)));
     }
   }
   // reset
@@ -359,6 +359,7 @@ void BoxWrapper::PullSparse(const paddle::platform::Place& place,
                 PULLSPARSE_CASE(64););
     EMBEDX_CASE(16, PULLSPARSE_CASE(0););
     EMBEDX_CASE(256, PULLSPARSE_CASE(0););
+    EMBEDX_CASE(128, PULLSPARSE_CASE(0););
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupport this embedding size [%d]", hidden_size - 3));
@@ -399,6 +400,7 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
                 PUSHSPARSE_CASE(64););
     EMBEDX_CASE(16, PUSHSPARSE_CASE(0););
     EMBEDX_CASE(256, PUSHSPARSE_CASE(0););
+    EMBEDX_CASE(128, PUSHSPARSE_CASE(0););
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupport this embedding size [%d]", hidden_size - 3));
@@ -444,25 +446,34 @@ void BasicAucCalculator::calculate_bucket_error() {
 
 // Deprecated: should use BeginFeedPass & EndFeedPass
 void BoxWrapper::FeedPass(int date,
-                          const std::vector<uint64_t>& feasgin_to_box) const {
+                          const std::vector<uint64_t>& feasgin_to_box) {
   int ret = boxps_ptr_->FeedPass(date, feasgin_to_box);
   PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                 "FeedPass failed in BoxPS."));
 }
 
-void BoxWrapper::BeginFeedPass(int date, boxps::PSAgentBase** agent) const {
+void BoxWrapper::BeginFeedPass(int date, boxps::PSAgentBase** agent) {
   int ret = boxps_ptr_->BeginFeedPass(date, *agent);
+  if(BoxWrapper::is_hbm_query_){
+    int dim = BoxWrapper::embedx_dim_;
+    std::cout << "query emb dim:" << dim << std::endl;
+    query_emb_set_q.emplace_back(dim); 
+  }
   PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                 "BeginFeedPass failed in BoxPS."));
 }
 
-void BoxWrapper::EndFeedPass(boxps::PSAgentBase* agent) const {
+void BoxWrapper::EndFeedPass(boxps::PSAgentBase* agent)  {
+  if(BoxWrapper::is_hbm_query_){
+    std::cout << "END FEED:" << query_emb_set_q.back().h_emb_count << " "<< query_emb_set_q.back().h_emb.size() << std::endl;
+    query_emb_set_q.back().to_hbm();
+  }
   int ret = boxps_ptr_->EndFeedPass(agent);
   PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                 "EndFeedPass failed in BoxPS."));
 }
 
-void BoxWrapper::BeginPass() const {
+void BoxWrapper::BeginPass() {
   int gpu_num = platform::GetCUDADeviceCount();
   for (int i = 0; i < gpu_num; ++i) {
     DeviceBoxData& dev = device_caches_[i];
@@ -477,7 +488,10 @@ void BoxWrapper::SetTestMode(bool is_test) const {
   boxps_ptr_->SetTestMode(is_test);
 }
 
-void BoxWrapper::EndPass(bool need_save_delta) const {
+void BoxWrapper::EndPass(bool need_save_delta)  {
+  if(BoxWrapper::is_hbm_query_){
+    query_emb_set_q.pop_front();
+  }
   int ret = boxps_ptr_->EndPass(need_save_delta);
   PADDLE_ENFORCE_EQ(
       ret, 0, platform::errors::PreconditionNotMet("EndPass failed in BoxPS."));

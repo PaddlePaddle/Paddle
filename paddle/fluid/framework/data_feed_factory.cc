@@ -65,6 +65,7 @@ std::shared_ptr<DataFeed> DataFeedFactory::CreateDataFeed(
 REGISTER_DATAFEED_CLASS(MultiSlotDataFeed);
 REGISTER_DATAFEED_CLASS(MultiSlotInMemoryDataFeed);
 REGISTER_DATAFEED_CLASS(PaddleBoxDataFeed);
+REGISTER_DATAFEED_CLASS(SlotPaddleBoxDataFeedWithQuery);
 #ifdef PADDLE_WITH_BOX_PS
 REGISTER_DATAFEED_CLASS(SlotPaddleBoxDataFeed);
 #endif

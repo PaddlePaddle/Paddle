@@ -2719,6 +2719,307 @@ bool SlotPaddleBoxDataFeed::ParseOneInstance(const std::string& line,
   return (uint64_total_slot_num > 0);
 }
 
+void SlotPaddleBoxDataFeedWithQuery::LoadIntoMemoryByLib(void) {
+  paddle::framework::ISlotParser* parser =
+      global_parser_pool().Get(parser_so_path_, all_slots_info_);
+  CHECK(parser != nullptr);
+
+  boxps::PaddleDataReader* reader = nullptr;
+  if (BoxWrapper::GetInstance()->UseAfsApi() && pipe_command_.empty()) {
+    reader =
+        boxps::PaddleDataReader::New(BoxWrapper::GetInstance()->GetFileMgr());
+  }
+  std::string filename;
+  BufferedLineFileReader line_reader;
+  int from_pool_num = 0;
+  while (this->PickOneFile(&filename)) {
+    VLOG(3) << "PickOneFile, filename=" << filename
+            << ", thread_id=" << thread_id_;
+    std::vector<SlotRecord> record_vec;
+    platform::Timer timeline;
+    timeline.Start();
+    const int max_fetch_num = 10000;
+    int offset = 0;
+
+    SlotRecordPool().get(&record_vec, max_fetch_num);
+    from_pool_num = GetTotalFeaNum(record_vec, max_fetch_num);
+    auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
+    auto& set = box_ptr->query_emb_set_q.back();
+    auto func = [this, &parser, &set, &record_vec, &offset, &max_fetch_num,
+                 &from_pool_num, &filename](const std::string& line) {
+      int old_offset = offset;
+      if (!parser->ParseOneInstance(
+              line,[this, &set](std::vector<float>& query_emb) -> int {
+                        return set.AddEmb(query_emb);
+                },
+                 [this, &offset, &record_vec, &max_fetch_num, &old_offset](
+                        std::vector<SlotRecord>& vec, int num) {
+                vec.resize(num);
+                if (offset + num > max_fetch_num) {
+                  // Considering the prob of show expanding is low, so we don't
+                  // update STAT here
+                  input_channel_->WriteMove(offset, &record_vec[0]);
+                  SlotRecordPool().get(&record_vec[0], offset);
+                  record_vec.resize(max_fetch_num);
+                  offset = 0;
+                  old_offset = 0;
+                }
+                for (int i = 0; i < num; ++i) {
+                  auto& ins = record_vec[offset + i];
+                  ins->reset();
+                  vec[i] = ins;
+                }
+                offset = offset + num;
+              })) {
+        offset = old_offset;
+        LOG(WARNING) << "read file:[" << filename << "] item error, line:["
+                     << line << "]";
+      }
+      if (offset >= max_fetch_num) {
+        input_channel_->Write(std::move(record_vec));
+        STAT_ADD(STAT_total_feasign_num_in_mem,
+                 GetTotalFeaNum(record_vec, max_fetch_num) - from_pool_num);
+        record_vec.clear();
+        SlotRecordPool().get(&record_vec, max_fetch_num);
+        from_pool_num = GetTotalFeaNum(record_vec, max_fetch_num);
+        offset = 0;
+      }
+    };
+    int lines = 0;
+    if (BoxWrapper::GetInstance()->UseAfsApi() && pipe_command_.empty()) {
+      while (reader->open(filename) < 0) {
+        sleep(1);
+      }
+      lines = line_reader.read_api(reader, func);
+      reader->close();
+    } else {
+      if (BoxWrapper::GetInstance()->UseAfsApi()) {
+        this->fp_ = BoxWrapper::GetInstance()->OpenReadFile(
+            filename, this->pipe_command_);
+      } else {
+        int err_no = 0;
+        this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      }
+      CHECK(this->fp_ != nullptr);
+      __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
+      lines = line_reader.read_file(this->fp_.get(), func);
+    }
+    if (offset > 0) {
+      input_channel_->WriteMove(offset, &record_vec[0]);
+      STAT_ADD(STAT_total_feasign_num_in_mem,
+               GetTotalFeaNum(record_vec, max_fetch_num) - from_pool_num);
+      if (offset < max_fetch_num) {
+        SlotRecordPool().put(&record_vec[offset], (max_fetch_num - offset));
+      }
+    } else {
+      SlotRecordPool().put(&record_vec);
+    }
+    record_vec.clear();
+    timeline.Pause();
+    VLOG(3) << "LoadIntoMemoryByLib() read all lines, file=" << filename
+            << ", cost time=" << timeline.ElapsedSec()
+            << " seconds, thread_id=" << thread_id_ << ", count=" << lines
+            << ", filesize=" << line_reader.file_size() / 1024.0 / 1024.0
+            << "MB";
+  }
+  if (reader != nullptr) {
+    delete reader;
+  }
+
+  VLOG(3) << "LoadIntoMemoryByLib() end, thread_id=" << thread_id_
+          << ", total size: " << line_reader.file_size();
+}
+
+void SlotPaddleBoxDataFeedWithQuery::LoadIntoMemoryByCommand(void) {
+  std::string filename;
+  BufferedLineFileReader line_reader;
+  while (this->PickOneFile(&filename)) {
+    VLOG(3) << "PickOneFile, filename=" << filename
+            << ", thread_id=" << thread_id_;
+    if (BoxWrapper::GetInstance()->UseAfsApi()) {
+      this->fp_ = BoxWrapper::GetInstance()->OpenReadFile(filename,
+                                                          this->pipe_command_);
+    } else {
+      int err_no = 0;
+      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+    }
+    CHECK(this->fp_ != nullptr);
+    __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
+
+    std::vector<SlotRecord> record_vec;
+    platform::Timer timeline;
+    timeline.Start();
+    int max_fetch_num = 10000;
+    SlotRecordPool().get(&record_vec, max_fetch_num);
+
+    int offset = 0;
+    int query_emb_offset;
+    auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
+    line_reader.read_file(
+        this->fp_.get(), [this, &record_vec, &offset, &max_fetch_num,&query_emb_offset, &box_ptr,
+                          &filename](const std::string& line) {
+          if (line[0] == '#') {
+            std::vector<float> query_emb;
+            char* pos = const_cast<char*>(line.c_str() + 1);
+            auto& set = box_ptr->query_emb_set_q.back();
+            for (int i = 0; i < set.emb_dim; ++i) {
+              float feasign = strtof(pos, &pos);
+              query_emb.push_back(feasign);
+            }
+            query_emb_offset = set.AddEmb(query_emb);
+            return;
+          }
+          if (ParseOneInstance(line, &record_vec[offset], query_emb_offset)) {
+            ++offset;
+          } else {
+            LOG(WARNING) << "read file:[" << filename << "] item error, line:["
+                         << line << "]";
+          }
+          if (offset >= max_fetch_num) {
+            input_channel_->Write(std::move(record_vec));
+            record_vec.clear();
+            SlotRecordPool().get(&record_vec, max_fetch_num);
+            offset = 0;
+          }
+        });
+    if (offset > 0) {
+      input_channel_->WriteMove(offset, &record_vec[0]);
+      if (offset < max_fetch_num) {
+        SlotRecordPool().put(&record_vec[offset], (max_fetch_num - offset));
+      }
+    } else {
+      SlotRecordPool().put(&record_vec);
+    }
+    record_vec.clear();
+    timeline.Pause();
+    VLOG(3) << "LoadIntoMemory() read all lines, file=" << filename
+            << ", cost time=" << timeline.ElapsedSec()
+            << " seconds, thread_id=" << thread_id_;
+  }
+  VLOG(3) << "LoadIntoMemory() end, thread_id=" << thread_id_
+          << ", total size: " << line_reader.file_size();
+}
+
+bool SlotPaddleBoxDataFeedWithQuery::ParseOneInstance(const std::string& line,
+                                             SlotRecord* ins, int query_emb_offset) {
+  SlotRecord& rec = (*ins);
+  // parse line
+  const char* str = line.c_str();
+  char* endptr = const_cast<char*>(str);
+  int pos = 0;
+
+  thread_local std::vector<std::vector<float>> slot_float_feasigns;
+  thread_local std::vector<std::vector<uint64_t>> slot_uint64_feasigns;
+  slot_float_feasigns.resize(float_use_slot_size_);
+  slot_uint64_feasigns.resize(uint64_use_slot_size_);
+
+  if (parse_ins_id_) {
+    int num = strtol(&str[pos], &endptr, 10);
+    CHECK(num == 1);  // NOLINT
+    pos = endptr - str + 1;
+    size_t len = 0;
+    while (str[pos + len] != ' ') {
+      ++len;
+    }
+    rec->ins_id_ = std::string(str + pos, len);
+    pos += len + 1;
+  }
+  //  if (parse_content_) {
+  //    int num = strtol(&str[pos], &endptr, 10);
+  //    CHECK(num == 1);  // NOLINT
+  //    pos = endptr - str + 1;
+  //    size_t len = 0;
+  //    while (str[pos + len] != ' ') {
+  //      ++len;
+  //    }
+  //    rec->content_ = std::string(str + pos, len);
+  //    pos += len + 1;
+  //  }
+  if (parse_logkey_) {
+    int num = strtol(&str[pos], &endptr, 10);
+    CHECK(num == 1);  // NOLINT
+    pos = endptr - str + 1;
+    size_t len = 0;
+    while (str[pos + len] != ' ') {
+      ++len;
+    }
+    // parse_logkey
+    std::string log_key = std::string(str + pos, len);
+    uint64_t search_id;
+    uint32_t cmatch;
+    uint32_t rank;
+    parser_log_key(log_key, &search_id, &cmatch, &rank);
+
+    rec->ins_id_ = log_key;
+    rec->search_id = search_id;
+    rec->cmatch = cmatch;
+    rec->rank = rank;
+    pos += len + 1;
+  }
+
+  int float_total_slot_num = 0;
+  int uint64_total_slot_num = 0;
+
+  for (size_t i = 0; i < all_slots_info_.size(); ++i) {
+    auto& info = all_slots_info_[i];
+    if (i == 3) {
+        auto& slot_fea = slot_uint64_feasigns[info.slot_value_idx];
+        uint64_t feasign = static_cast<uint64_t>(query_emb_offset);
+        slot_fea.clear();
+        slot_fea.push_back(feasign);
+        ++uint64_total_slot_num;
+        continue;
+    }
+    int num = strtol(&str[pos], &endptr, 10);
+    PADDLE_ENFORCE(num,
+                   "The number of ids can not be zero, you need padding "
+                   "it in data generator; or if there is something wrong with "
+                   "the data, please check if the data contains unresolvable "
+                   "characters.\nplease check this error line: %s",
+                   str);
+
+    if (info.used_idx != -1) {
+      if (info.type[0] == 'f') {  // float
+        auto& slot_fea = slot_float_feasigns[info.slot_value_idx];
+        slot_fea.clear();
+        for (int j = 0; j < num; ++j) {
+          float feasign = strtof(endptr, &endptr);
+          if (fabs(feasign) < 1e-6 && !used_slots_info_[info.used_idx].dense) {
+            continue;
+          }
+          slot_fea.push_back(feasign);
+          ++float_total_slot_num;
+        }
+      } else if (info.type[0] == 'u') {  // uint64
+        auto& slot_fea = slot_uint64_feasigns[info.slot_value_idx];
+        slot_fea.clear();
+        for (int j = 0; j < num; ++j) {
+          uint64_t feasign =
+              static_cast<uint64_t>(strtoull(endptr, &endptr, 10));
+          if (feasign == 0 && !used_slots_info_[info.used_idx].dense) {
+            continue;
+          }
+          slot_fea.push_back(feasign);
+          ++uint64_total_slot_num;
+        }
+      }
+      pos = endptr - str;
+    } else {
+      for (int j = 0; j <= num; ++j) {
+        // pos = line.find_first_of(' ', pos + 1);
+        while (line[pos + 1] != ' ') {
+          pos++;
+        }
+      }
+    }
+  }
+  rec->slot_float_feasigns_.add_slot_feasigns(slot_float_feasigns,
+                                              float_total_slot_num);
+  rec->slot_uint64_feasigns_.add_slot_feasigns(slot_uint64_feasigns,
+                                               uint64_total_slot_num);
+
+  return (uint64_total_slot_num > 0);
+}
 ////////////////////////////// pack ////////////////////////////////////
 #if defined(PADDLE_WITH_CUDA) && defined(_LINUX)
 static void SetCPUAffinity(int tid) {

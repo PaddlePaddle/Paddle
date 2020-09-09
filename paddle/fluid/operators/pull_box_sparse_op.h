@@ -44,6 +44,24 @@ static void PaddingZeros(const framework::ExecutionContext &ctx,
 }
 
 template <typename T>
+static void PullBoxQueryEmbFunctor(const framework::ExecutionContext &ctx) {
+  const auto* input = ctx.Input<framework::LoDTensor>("Id");
+  auto* output = ctx.Output<framework::LoDTensor>("Out");
+
+  auto batch_size = input->dims()[0];
+
+  uint64_t* input_data = reinterpret_cast<uint64_t*>(const_cast<int64_t*>(input->data<int64_t>()));
+  float* output_data = const_cast<float*>(output->mutable_data<float>(ctx.GetPlace()));
+
+#ifdef PADDLE_WITH_BOX_PS
+  auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
+  int i = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
+
+  box_ptr->query_emb_set_q.front().PullQueryEmb(input_data, output_data, batch_size, i);
+#endif
+}
+
+template <typename T>
 static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
   auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
   auto outputs = ctx.MultiOutput<framework::LoDTensor>("Out");
@@ -141,6 +159,15 @@ class PullBoxSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PullBoxSparseFunctor<T>(ctx);
+  }
+};
+
+using LoDTensor = framework::LoDTensor;
+template <typename T>
+class PullBoxQueryEmbCPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    PullBoxQueryEmbFunctor<T>(ctx);
   }
 };
 

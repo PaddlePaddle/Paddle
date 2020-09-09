@@ -125,6 +125,51 @@ class BasicAucCalculator {
   std::mutex _table_mutex;
 };
 
+class QueryEmbSet {
+public:
+  QueryEmbSet(int dim) {
+    emb_dim = dim;
+  }
+
+  ~QueryEmbSet() {
+    for (size_t i = 0; i < d_embs.size(); ++i) {
+      cudaFree(d_embs[i]);
+    }
+  }
+  int AddEmb(std::vector<float>& emb) {
+    int r;
+    h_emb_mtx.lock();
+    h_emb.insert(h_emb.end(), emb.begin(), emb.end());
+    r = h_emb_count;
+    ++h_emb_count;
+    h_emb_mtx.unlock();
+    return r;
+  }
+
+  void to_hbm() {
+    for (int i = 0; i < 8; ++i) {
+      d_embs.push_back(NULL);
+      cudaSetDevice(i);
+      cudaMalloc(&d_embs.back(), h_emb_count * emb_dim * sizeof(float));
+      auto place = platform::CUDAPlace(i);
+      auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+                    platform::DeviceContextPool::Instance().Get(place))
+                    ->stream();
+      cudaMemcpyAsync(d_embs.back(), h_emb.data(), h_emb_count * emb_dim * sizeof(float), cudaMemcpyHostToDevice, stream);
+    }
+  }
+
+  void PullQueryEmb(uint64_t* d_keys, float* d_vals, int num, int gpu_id);
+
+  int emb_dim=0;
+  int h_emb_count=0;
+  std::mutex h_emb_mtx;
+  std::vector<float> h_emb;
+  std::vector<float*> d_embs;
+
+};
+
+
 class BoxWrapper {
   struct DeviceBoxData {
     LoDTensor keys_tensor;
@@ -153,6 +198,7 @@ class BoxWrapper {
   };
 
  public:
+  std::deque<QueryEmbSet> query_emb_set_q;
   virtual ~BoxWrapper() {
     if (file_manager_ != nullptr) {
       file_manager_->destory();
@@ -176,11 +222,11 @@ class BoxWrapper {
     boxps::MPICluster::Ins();
   }
 
-  void FeedPass(int date, const std::vector<uint64_t>& feasgin_to_box) const;
-  void BeginFeedPass(int date, boxps::PSAgentBase** agent) const;
-  void EndFeedPass(boxps::PSAgentBase* agent) const;
-  void BeginPass() const;
-  void EndPass(bool need_save_delta) const;
+  void FeedPass(int date, const std::vector<uint64_t>& feasgin_to_box) ;
+  void BeginFeedPass(int date, boxps::PSAgentBase** agent) ;
+  void EndFeedPass(boxps::PSAgentBase* agent) ;
+  void BeginPass() ;
+  void EndPass(bool need_save_delta) ;
   void SetTestMode(bool is_test) const;
 
   template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM = 0>
@@ -235,7 +281,7 @@ class BoxWrapper {
   void InitializeGPUAndLoadModel(
       const char* conf_file, const std::vector<int>& slot_vector,
       const std::vector<std::string>& slot_omit_in_feedpass,
-      const std::string& model_path, const std::map<std::string, float> &lr_map) {
+      const std::string& model_path, const std::map<std::string, float> &lr_map, bool is_hbm_query) {
     if (nullptr != s_instance_) {
       VLOG(3) << "Begin InitializeGPU";
       std::vector<cudaStream_t*> stream_list;
@@ -258,6 +304,7 @@ class BoxWrapper {
       for (const auto& slot_name : slot_omit_in_feedpass) {
         slot_name_omited_in_feedpass_.insert(slot_name);
       }
+      is_hbm_query_ = is_hbm_query;
       slot_vector_ = slot_vector;
       device_caches_ = new DeviceBoxData[gpu_num];
 
@@ -772,7 +819,7 @@ class BoxWrapper {
   // box device cache
   DeviceBoxData* device_caches_ = nullptr;
   std::map<std::string, float> lr_map_;
-
+  bool is_hbm_query_ = false;
  public:
   static std::shared_ptr<boxps::PaddleShuffler> data_shuffle_;
 
