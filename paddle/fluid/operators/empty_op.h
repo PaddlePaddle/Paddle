@@ -23,6 +23,8 @@
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename DeviceContext, typename T>
 class EmptyKernel : public framework::OpKernel<T> {
  public:
@@ -30,19 +32,10 @@ class EmptyKernel : public framework::OpKernel<T> {
     auto dtype = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));
 
-    framework::Tensor *out_tensor = nullptr;
-    framework::Variable *out_var = context.OutputVar("Out");
+    Tensor *out_tensor = context.Output<Tensor>("Out");
 
-    const std::string op_type = "empty";
-    auto shape = GetShape(context, op_type);
-
-    if (out_var->IsType<framework::LoDTensor>()) {
-      out_tensor = out_var->GetMutable<framework::LoDTensor>();
-      out_tensor->Resize(shape);
-    } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "In empty Op, the output only supports LoDTensor."));
-    }
+    auto shape = GetShape(context);
+    out_tensor->Resize(shape);
 
     out_tensor->mutable_data(context.GetPlace(), dtype);
   }

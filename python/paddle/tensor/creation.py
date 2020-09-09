@@ -1003,11 +1003,6 @@ def empty(shape, dtype=None, name=None):
     Returns:
         Tensor: Tensor which is created according to ``shape`` and ``dtype``, and is uninitialized.
 
-    Raises:
-        TypeError: The ``dtype`` must be one of None, bool, float16, float32, float64, int32 and int64.
-        TypeError: The ``shape`` must be one of Tensor, list and tuple. The data type of ``shape`` must
-            be int32 or int64 when the it's a Tensor.
-    
     Examples:
         .. code-block:: python
 
@@ -1044,12 +1039,9 @@ def empty(shape, dtype=None, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-
         out = core.ops.empty('shape', shape, 'dtype',
                              convert_np_dtype_to_dtype_(dtype))
-
         out.stop_gradient = True
-
         return out
 
     helper = LayerHelper("empty", **locals())
@@ -1068,16 +1060,12 @@ def empty(shape, dtype=None, name=None):
         inputs=inputs, attrs=attrs, shape=shape, op_type='empty')
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
-
     attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
-
     helper.append_op(
         type='empty',
         inputs=inputs,
         outputs={'Out': [out]},
         attrs=attrs,
         stop_gradient=True)
-
     out.stop_gradient = True
-
     return out

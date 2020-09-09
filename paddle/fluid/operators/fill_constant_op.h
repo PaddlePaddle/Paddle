@@ -72,8 +72,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
       }
       value = tensor_data[0];
     }
-    const std::string op_type = "fill_constant";
-    auto shape = GetShape(ctx, op_type);
+    auto shape = GetShape(ctx);
 
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();

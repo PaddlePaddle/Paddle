@@ -54,32 +54,34 @@ class EmptyOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* context) const override {
     OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "empty");
 
-    auto& shape = context->Attrs().Get<std::vector<int64_t>>("shape");
-    if (!context->HasInput("ShapeTensor") &&
-        !context->HasInputs("ShapeTensorList")) {
-      for (size_t i = 0; i < shape.size(); ++i) {
-        PADDLE_ENFORCE_GE(
-            shape[i], 0,
-            platform::errors::InvalidArgument(
-                "Each value of attribute 'shape' is expected to be no less "
-                "than 0. But recieved: shape[%u] = %d; shape = [%s].",
-                i, shape[i], framework::make_ddim(shape)));
-      }
-    }
-
-    if (shape.empty() && context->HasInput("ShapeTensor")) {
-      auto shape_dims = context->GetInputDim("ShapeTensor");
+    if (context->HasInput("ShapeTensor")) {
+      auto dims = context->GetInputDim("ShapeTensor");
       int num_ele = 1;
-      for (int i = 0; i < shape_dims.size(); ++i) {
-        num_ele *= shape_dims[i];
+      for (int i = 0; i < dims.size(); ++i) {
+        num_ele *= dims[i];
       }
-      auto vec_dims = std::vector<int>(num_ele, -1);
-      context->SetOutputDim("Out", framework::make_ddim(vec_dims));
 
-      return;
+      context->SetOutputDim("Out", framework::make_ddim({num_ele}));
+    } else if (context->HasInputs("ShapeTensorList")) {
+      std::vector<int> out_dims;
+      auto dims_list = context->GetInputsDim("ShapeTensorList");
+      for (size_t i = 0; i < dims_list.size(); ++i) {
+        auto& dims = dims_list[i];
+        PADDLE_ENFORCE_EQ(
+            dims, framework::make_ddim({1}),
+            "ShapeError: The shape of Tensor in list must be [1]. "
+            "But received the shape "
+            "is [%s]",
+            dims);
+
+        out_dims.push_back(dims[0]);
+      }
+
+      context->SetOutputDim("Out", framework::make_ddim(out_dims));
+    } else {
+      auto& shape = context->Attrs().Get<std::vector<int64_t>>("shape");
+      context->SetOutputDim("Out", framework::make_ddim(shape));
     }
-
-    context->SetOutputDim("Out", framework::make_ddim(shape));
   }
 
  protected:

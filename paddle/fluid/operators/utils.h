@@ -82,8 +82,7 @@ inline std::vector<T> GetDataFromTensorList(
   return vec_new_data;
 }
 
-inline framework::DDim GetShape(const framework::ExecutionContext& ctx,
-                                std::string op_type) {
+inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
   // 1. shape is a Tensor
   if (ctx.HasInput("ShapeTensor")) {
     auto* shape_tensor = ctx.Input<framework::LoDTensor>("ShapeTensor");
