@@ -122,9 +122,10 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
       outs_dims.reserve(out_num);
 
       // infer output shape
-      PADDLE_ENFORCE_EQ(rpc_ctx.height_sections.size(), out_num,
-                        "tensor split sections size"
-                        "should be equal to output size.");
+      PADDLE_ENFORCE_EQ(
+          rpc_ctx.height_sections.size(), out_num,
+          platform::errors::InvalidArgument("tensor split sections size"
+                                            "should be equal to output size."));
       for (size_t i = 0; i < out_num; ++i) {
         auto dim = send_tensor_dims;
         dim[0] = rpc_ctx.height_sections[i];
