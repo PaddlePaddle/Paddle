@@ -115,7 +115,7 @@ class GridSampleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>(
         "padding_mode",
         "(bool, default true) The padding method used when source"
-        "index is out of input images. It can be 'zeros', 'reflect' and "
+        "index is out of input images. It can be 'zeros', 'reflection' and "
         "'border'.")
         .SetDefault("zeros");
 
@@ -174,6 +174,10 @@ class GridSampleOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "grid_sampler");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Grid")), "Output",
+                   framework::GradVarName("Grid"), "grid_sampler");
     auto input_dims = ctx->GetInputDim("X");
     auto grid_dims = ctx->GetInputDim("Grid");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
