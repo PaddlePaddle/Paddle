@@ -113,12 +113,11 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the learnable hidden-hidden weights."
              " The shape is (N), where N is total weight size of the LSTM. "
              " cudnn concatenate all the weight to one Tensor");
-    AddInput("sequence_length",
+    AddInput("SequenceLength",
              "(Tensor) When the input data is padding, "
              "set this parameter. This parameter represents "
-             "the variable sequence"
-             "lengths in a batch. The size of the vector has "
-             "to equal the batch_size.")
+             "the variable sequence lengths in a batch. "
+             "The size of the vector has to equal the batch_size.")
         .AsDispensable();
     AddOutput("Reserve",
               "(Tensor, a temporary output Tensor to store the reserve_data "
@@ -243,6 +242,9 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("InitH", this->Input("InitH"));
     op->SetInput("InitC", this->Input("InitC"));
     op->SetInput("W", this->Input("W"));
+    if (this->HasInput("SequenceLength")) {
+      op->SetInput("SequenceLength", this->Input("SequenceLength"));
+    }
     op->SetInput("Reserve", this->Output("Reserve"));
     op->SetInput("StateOut", this->Output("StateOut"));
     op->SetInput("Out", this->Output("Out"));

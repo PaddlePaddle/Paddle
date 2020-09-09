@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
@@ -304,7 +305,8 @@ class ScopedRNNTensorDescriptor {
 
   inline cudnnRNNDataDescriptor_t descriptor(
       const cudnnDataType_t cudnn_type, int max_seq_length, int batch_size,
-      int input_size, bool time_major, const std::vector<int>& seq_length) {
+      int input_size, bool time_major,
+      const std::vector<const framework::Tensor*>& seq_length) {
     static float padding_fill = 0.0f;
     cudnnRNNDataLayout_t layout;
 
@@ -314,9 +316,11 @@ class ScopedRNNTensorDescriptor {
       layout = CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED;
     }
 
+    std::vector<int> vec_seq_length =
+        operators::GetDataFromTensor<int>(seq_length[0]);
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetRNNDataDescriptor(
         desc_, cudnn_type, layout, max_seq_length, batch_size, input_size,
-        seq_length.data(), static_cast<void*>(&padding_fill)));
+        vec_seq_length.data(), static_cast<void*>(&padding_fill)));
 
     return desc_;
   }
@@ -324,7 +328,7 @@ class ScopedRNNTensorDescriptor {
   template <typename T>
   inline cudnnRNNDataDescriptor_t descriptor(
       int max_length, int batch_size, int input_size, bool time_major,
-      const std::vector<int>& seq_length) {
+      const std::vector<const framework::Tensor*>& seq_length) {
     return descriptor(CudnnDataType<T>::type, max_length, batch_size,
                       input_size, time_major, seq_length);
   }
@@ -442,8 +446,9 @@ class ScopedRNNBase {
 
   template <typename T>
   void Create(const cudnnHandle_t& handle, const platform::Place& place,
-              const std::vector<int>& sequence_length, size_t* workspace_size,
-              size_t* reserve_size, framework::Tensor* dropout_state) {
+              const std::vector<const framework::Tensor*>& sequence_length,
+              size_t* workspace_size, size_t* reserve_size,
+              framework::Tensor* dropout_state) {
     int numDirections = is_bidirec_ ? 2 : 1;
     cudnnDataType_t cudnn_type = platform::CudnnDataType<T>::type;
 
