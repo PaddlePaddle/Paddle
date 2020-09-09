@@ -73,8 +73,8 @@ struct TransposeNormal<platform::CPUDeviceContext, T> {
     const int rank = axis.size();
     auto in_stride = framework::stride(in.dims());
     auto out_stride = framework::stride(out->dims());
-    const T* in_ptr = reinterpret_cast<const T*>(in.data<T>());
-    T* out_ptr = reinterpret_cast<T*>(out->data<T>());
+    const T* in_ptr = in.data<T>();
+    T* out_ptr = out->data<T>();
 
     auto transpose_helper = [&](int64_t beg, int64_t end) {
       for (int64_t out_idx = beg; out_idx < end; ++out_idx) {

@@ -80,8 +80,8 @@ struct TransposeNormal<platform::CUDADeviceContext, T> {
     const int rank = axis.size();
     auto in_stride = framework::stride(in.dims());
     auto out_stride = framework::stride(out->dims());
-    REINTERPRET(const T, in_ptr, in.data<T>());
-    REINTERPRET(T, out_ptr, out->data<T>());
+    auto* in_ptr = in.data<T>();
+    auto* out_ptr = out->data<T>();
 
     // copy in_stride, out_stride, axis to gpu device
     const platform::CUDAPlace& cuda_place =
@@ -103,7 +103,7 @@ struct TransposeNormal<platform::CUDADeviceContext, T> {
     REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
     REINTERPRET(const int64_t, axis_ptr, cuda_buf + 2 * rank);
 
-    constexpr int MAX_BLOCK_DIM = 512;
+    const int MAX_BLOCK_DIM = context.GetMaxThreadsPerBlock();
     const int MAX_GRID_DIM =
         context.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
     int64_t elements = in.numel();
