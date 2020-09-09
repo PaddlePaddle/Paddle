@@ -36,7 +36,6 @@ namespace paddle {
 namespace imperative {
 
 void BasicEngine::Init(VarBase* var, bool retain_graph) {
-  sorted_sum_gradient_ = FLAGS_sort_sum_gradient;
   retain_graph_ = retain_graph;
   init_node_ = var->GradVarBase()->GradNode();
   var->GradVarBase()->ClearGradNode();
@@ -106,7 +105,7 @@ void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
 
       auto& accumulator = accumulators_[var.get()];
       if (!accumulator) {
-        if (sorted_sum_gradient_) {
+        if (FLAGS_sort_sum_gradient) {
           accumulator.reset(new SortedGradientAccumulator(var.get()));
         } else {
           accumulator.reset(new EagerGradientAccumulator(var.get()));

@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.nn import Embedding
@@ -101,8 +102,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
             for is_sort_sum_gradient in [True, False]:
                 traced_layer = None
                 with fluid.dygraph.guard(place):
-                    fluid.default_startup_program().random_seed = seed
-                    fluid.default_main_program().random_seed = seed
+                    paddle.manual_seed(seed)
+                    paddle.framework.random._manual_program_seed(seed)
 
                     simple_net = SimpleNet(
                         hidden_size=hidden_size,
@@ -145,8 +146,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     dy_loss_value = dy_loss.numpy()
 
                 with new_program_scope():
-                    fluid.default_startup_program().random_seed = seed
-                    fluid.default_main_program().random_seed = seed
+                    paddle.manual_seed(seed)
+                    paddle.framework.random._manual_program_seed(seed)
 
                     simple_net = SimpleNet(
                         hidden_size=hidden_size,

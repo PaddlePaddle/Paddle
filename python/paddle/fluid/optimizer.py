@@ -61,7 +61,7 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    @imperative_base.no_grad()
+    @imperative_base.no_grad
     def __init__(self,
                  learning_rate,
                  parameter_list=None,
@@ -170,7 +170,7 @@ class Optimizer(object):
         return state_dict
 
     @framework.dygraph_only
-    def set_dict(self, state_dict):
+    def set_state_dict(self, state_dict):
         '''
         Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
 
@@ -182,20 +182,22 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                import paddle   
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph(state_dict, "paddle_dy")
+                paddle.disable_static()
 
-                    adam = fluid.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
+                emb = paddle.nn.Embedding([10, 10])
+
+                state_dict = emb.state_dict()
+                paddle.save(state_dict, "paddle_dy")
+
+                adam = paddle.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
                                                 parameter_list=emb.parameters())
-                    state_dict = adam.state_dict()
-                    fluid.save_dygraph(state_dict, "paddle_dy")
+                state_dict = adam.state_dict()
 
-                    para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
+                para_state_dict, opti_state_dict = paddle.load("paddle_dy")
 
-                    adam.set_dict(opti_state_dict)
+                adam.set_state_dict(opti_state_dict)
 
         '''
         from paddle.optimizer.lr_scheduler import _LRScheduler
@@ -256,6 +258,9 @@ class Optimizer(object):
                                                 item.name, model_np.dtype, load_para_np.dtype)
 
                 tensor.set(load_para_np, framework._current_expected_place())
+
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
 
     def get_opti_var_name_list(self):
         return self._opti_name_list
@@ -897,7 +902,7 @@ class Optimizer(object):
             if p.trainable:
                 p.clear_gradient()
 
-    @imperative_base.no_grad()
+    @imperative_base.no_grad
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -1015,7 +1020,7 @@ class SGDOptimizer(Optimizer):
             name=name)
         self.type = "sgd"
 
-    @no_grad()
+    @no_grad
     def _append_optimize_op(self, block, param_and_grad):
         lr = self._create_param_lr(param_and_grad)
         if framework.in_dygraph_mode():
@@ -1552,7 +1557,7 @@ class DGCMomentumOptimizer(Optimizer):
         dgc_op._set_attr(op_maker.kOpRoleVarAttrName(),
                          [param_var.name, grad_var.name])
 
-    @imperative_base.no_grad()
+    @imperative_base.no_grad
     def apply_gradients(self, params_grads):
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
         params_grads, table_param_and_grad, table_optimize_op = \
@@ -4595,15 +4600,16 @@ class RecomputeOptimizer(Optimizer):
             ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 
-    def load(self, stat_dict):
+    @framework.deprecate_stat_dict
+    def load(self, state_dict):
         """
-	:api_attr: Static Graph
+	    :api_attr: Static Graph
 
         load function is not supported by Recompute Optimizer for now.
         :return: None
 
         Args:
-            stat_dict: the dict load by load_persistable method
+            state_dict: the dict load by load_persistable method
 
         Examples:
             .. code-block:: python
@@ -4627,8 +4633,8 @@ class RecomputeOptimizer(Optimizer):
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([fc_1, pred])
                 try:
-                    stat_dict = {}
-                    sgd.load(stat_dict)
+                    state_dict = {}
+                    sgd.load(state_dict)
                 except NotImplementedError as e:
                     print(cpt.get_exception_message(e))
         """

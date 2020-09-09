@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -567,3 +568,14 @@ REGISTER_OP_CPU_KERNEL(
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvTransposeGradKernel<paddle::platform::CPUDeviceContext,
                                      double>);
+
+REGISTER_OP_VERSION(conv_transpose)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade convtranspose add a new attribute [output_padding].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewAttr(
+            "output_padding",
+            "In order to add additional size to one side of each dimension "
+            "in the output",
+            {}));
