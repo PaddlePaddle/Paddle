@@ -47,8 +47,6 @@ SET(OP_HEADER_DEPS xxhash executor)
 if (WITH_GPU)
     if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
         SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
-    else()
-        SET(OP_HEADER_DEPS ${OP_HEADER_DEPS})
     endif()
 endif()
 
