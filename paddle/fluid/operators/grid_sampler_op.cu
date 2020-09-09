@@ -268,7 +268,7 @@ class GridSampleOpCUDAKernel : public framework::OpKernel<T> {
     Mode mode;
     if (padding_mode_s == "border") {
       padding_mode = PaddingMode::border;
-    } else if (padding_mode_s == "reflect") {
+    } else if (padding_mode_s == "reflection") {
       padding_mode = PaddingMode::reflect;
     } else {
       padding_mode = PaddingMode::zeros;
@@ -432,7 +432,7 @@ class GridSampleGradOpCUDAKernel : public framework::OpKernel<T> {
     Mode mode;
     if (padding_mode_s == "border") {
       padding_mode = PaddingMode::border;
-    } else if (padding_mode_s == "reflect") {
+    } else if (padding_mode_s == "reflection") {
       padding_mode = PaddingMode::reflect;
     } else {
       padding_mode = PaddingMode::zeros;

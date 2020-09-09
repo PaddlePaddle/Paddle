@@ -20,6 +20,7 @@ from . import conv
 from . import extension
 from . import activation
 from . import norm
+from . import rnn
 from . import vision
 from . import distance
 from . import transformer
@@ -30,6 +31,7 @@ from .conv import *
 from .extension import *
 from .activation import *
 from .norm import *
+from .rnn import *
 from .vision import *
 
 from .transformer import *
@@ -41,6 +43,7 @@ from .activation import Sigmoid  #DEFINE_ALIAS
 from .activation import LogSoftmax  #DEFINE_ALIAS
 from .activation import HSigmoid  #DEFINE_ALIAS
 from .common import BilinearTensorProduct  #DEFINE_ALIAS
+from .common import Bilinear  #DEFINE_ALIAS
 from .common import Pool2D  #DEFINE_ALIAS
 from .common import Pad2D  #DEFINE_ALIAS
 from .common import ReflectionPad1d  #DEFINE_ALIAS
@@ -56,21 +59,25 @@ from .common import CosineSimilarity  #DEFINE_ALIAS
 from .common import Embedding  #DEFINE_ALIAS
 from .common import Linear  #DEFINE_ALIAS
 from .common import Flatten  #DEFINE_ALIAS
-from .common import UpSample  #DEFINE_ALIAS
+from .common import Upsample  #DEFINE_ALIAS
+from .common import UpsamplingNearest2d  #DEFINE_ALIAS
+from .common import UpsamplingBilinear2d  #DEFINE_ALIAS
 from .common import Dropout  #DEFINE_ALIAS
-from .common import Dropout2D  #DEFINE_ALIAS
-from .common import Dropout3D  #DEFINE_ALIAS
+from .common import Dropout2d  #DEFINE_ALIAS
+from .common import Dropout3d  #DEFINE_ALIAS
 from .common import AlphaDropout  #DEFINE_ALIAS
+from .pooling import AvgPool1d  #DEFINE_ALIAS
+from .pooling import AvgPool2d  #DEFINE_ALIAS
+from .pooling import AvgPool3d  #DEFINE_ALIAS
+from .pooling import MaxPool1d  #DEFINE_ALIAS
+from .pooling import MaxPool2d  #DEFINE_ALIAS
+from .pooling import MaxPool3d  #DEFINE_ALIAS
+from .pooling import AdaptiveAvgPool1d  #DEFINE_ALIAS
 from .pooling import AdaptiveAvgPool2d  #DEFINE_ALIAS
 from .pooling import AdaptiveAvgPool3d  #DEFINE_ALIAS
-from .pooling import AvgPool1d  #DEFINE_ALIAS
-from .pooling import MaxPool1d  #DEFINE_ALIAS
-from .pooling import AdaptiveAvgPool1d  #DEFINE_ALIAS
 from .pooling import AdaptiveMaxPool1d  #DEFINE_ALIAS
-from .pooling import AvgPool2d  #DEFINE_ALIAS
-from .pooling import MaxPool2d  #DEFINE_ALIAS
-from .pooling import AvgPool3d  #DEFINE_ALIAS
-from .pooling import MaxPool3d  #DEFINE_ALIAS
+from .pooling import AdaptiveMaxPool2d  #DEFINE_ALIAS
+from .pooling import AdaptiveMaxPool3d  #DEFINE_ALIAS
 from .conv import Conv1d  #DEFINE_ALIAS
 from .conv import Conv2d  #DEFINE_ALIAS
 from .conv import Conv3d  #DEFINE_ALIAS

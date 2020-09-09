@@ -14,10 +14,6 @@
 from paddle.fluid.optimizer import GradientMergeOptimizer as GM
 from .meta_optimizer_base import MetaOptimizerBase
 
-__all__ = ["GradientMergeOptimizer"]
-
-# amp + gradient merge + lamb
-
 
 class GradientMergeOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -48,6 +44,10 @@ class GradientMergeOptimizer(MetaOptimizerBase):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.gradient_merge = False
         dist_strategy.gradient_merge_configs = {}
+
+    def _enable_strategy(self, dist_strategy):
+        # we currently do not support auto-enable gradient merge
+        return
 
     def minimize_impl(self,
                       loss,

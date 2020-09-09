@@ -16,8 +16,6 @@ from paddle.fluid.optimizer import LambOptimizer as LAMB
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
-__all__ = ["LambOptimizer"]
-
 
 class LambOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
@@ -77,6 +75,13 @@ class LambOptimizer(MetaOptimizerBase):
         dist_strategy.lamb = False
         dist_strategy.lamb_configs = {}
 
+    def _enable_strategy(self, dist_strategy):
+        dist_strategy.lamb = True
+        dist_strategy.lamb_configs = {
+            "lamb_weight_decay": 0.01,
+            "exclude_from_weight_decay": []
+        }
+
     def backward(self,
                  loss,
                  startup_program=None,
@@ -85,6 +90,10 @@ class LambOptimizer(MetaOptimizerBase):
                  callbacks=None):
         return self.lamb_opt.backward(loss, startup_program, parameter_list,
                                       no_grad_set, callbacks)
+
+    # the following function will be used by AMP if both LARS and AMP are turn on together.
+    def apply_gradients(self, params_grads):
+        return self.lamb_opt.apply_gradients(params_grads=params_grads)
 
     def minimize_impl(self,
                       loss,

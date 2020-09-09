@@ -119,7 +119,7 @@ cc_test(data_layout_transform_test SRCS data_layout_transform_test.cc DEPS data_
 cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor
         framework_proto selected_rows data_device_transform data_type_transform data_layout_transform)
 
-cc_library(attribute SRCS attribute.cc DEPS framework_proto boost)
+cc_library(attribute SRCS attribute.cc DEPS framework_proto boost enforce)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
 device_context)
 
@@ -272,7 +272,7 @@ cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatib
 
 cc_library(save_load_util SRCS save_load_util DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
-cc_library(generator SRCS generator.cc)
+cc_library(generator SRCS generator.cc DEPS enforce place)
 
 # Get the current working branch
 execute_process(
