@@ -208,7 +208,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         filelist = train_file_list
 
         # config dataset
-        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
+        dataset = paddle.distributed.QueueDataset()
         pipe_command = 'python ctr_dataset_reader.py'
         '''
         dataset.init(

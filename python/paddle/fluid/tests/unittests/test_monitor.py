@@ -52,8 +52,7 @@ class TestDatasetWithStat(unittest.TestCase):
                 name=slot, shape=[1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
-            "InMemoryDataset")
+        dataset = paddle.distributed.InMemoryDataset()
         dataset._set_batch_size(32)
         dataset._set_thread(3)
         dataset.set_filelist([

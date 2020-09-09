@@ -97,8 +97,10 @@ class DatasetLoaderTestBase(unittest.TestCase):
 
     def check_batch_number(self, place, randomize_batch_num=False):
         main_prog, startup_prog, feeds = self.build_network()
-        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
-            self.dataset_name)
+        if self.dataset_name == "QueueDataset":
+            dataset = paddle.distributed.QueueDataset()
+        else:
+            dataset = paddle.distributed.InMemoryDataset()
         dataset._set_batch_size(BATCH_SIZE)
 
         if isinstance(place, fluid.CPUPlace):

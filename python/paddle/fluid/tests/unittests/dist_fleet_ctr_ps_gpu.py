@@ -114,7 +114,7 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
             filelist.append(train_file_path)
 
         # config dataset
-        dataset = paddle.fleet.DatasetFactory().create_dataset()
+        dataset = paddle.distributed.QueueDataset()
         dataset._set_batch_size(batch_size)
         dataset._set_use_var(self.feeds)
         pipe_command = 'python ctr_dataset_reader.py'
