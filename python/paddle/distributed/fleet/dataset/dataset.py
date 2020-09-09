@@ -192,7 +192,7 @@ class DatasetBase(object):
                 slot_var.type = "uint64"
             else:
                 raise ValueError(
-                    "Currently, fluid.dataset only supports dtype=float32 and dtype=int64"
+                    "Currently, paddle.distributed.fleet.dataset only supports dtype=float32 and dtype=int64"
                 )
 
     def _set_hdfs_config(self, fs_name, fs_ugi):
@@ -272,7 +272,8 @@ class InMemoryDataset(DatasetBase):
     This class should be created by DatasetFactory
 
     Example:
-        dataset = paddle.fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        import paddle
+        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
     """
 
     def __init__(self):
@@ -854,7 +855,7 @@ class FileInstantDataset(DatasetBase):
         .. code-block:: python
 
           import paddle
-          dataset = fluid.DatasetFactory.create_dataset("FileInstantDataset")
+          dataset = paddle.distributed.fleet.DatasetFactory.create_dataset("FileInstantDataset")
     """
 
     def __init__(self):
