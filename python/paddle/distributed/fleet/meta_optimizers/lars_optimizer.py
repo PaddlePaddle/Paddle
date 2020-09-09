@@ -44,13 +44,16 @@ class LarsOptimizer(MetaOptimizerBase):
             parameter_list=opt._parameter_list,
             regularization=opt.regularization,
             grad_clip=opt._grad_clip,
-            name=opt._name)
+            name=opt._name,
+            exclude_from_weight_decay=configs['exclude_from_weight_decay'],
+            epsilon=configs['epsilon'])
 
     def _can_apply(self):
         if self.user_defined_strategy.lars:
             if not isinstance(self.inner_opt, Momentum):
                 logging.warn(
-                    "lars need the inner optimizer to be Momentum optimizer.")
+                    "lars need the inner optimizer to be Momentum optimizer but got {}.".
+                    format(self.inner_opt.type))
                 return False
             return True
         return False
@@ -74,6 +77,10 @@ class LarsOptimizer(MetaOptimizerBase):
                  callbacks=None):
         return self.lars_opt.backward(loss, startup_program, parameter_list,
                                       no_grad_set, callbacks)
+
+    # the following function will be used by AMP if both LARS and AMP are turn on together.
+    def apply_gradients(self, params_grads):
+        return self.lars_opt.apply_gradients(params_grads=params_grads)
 
     def minimize_impl(self,
                       loss,

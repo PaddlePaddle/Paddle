@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 import numpy as np
+import numbers
 
 import paddle
 import paddle.nn as nn
@@ -107,6 +109,11 @@ def summary(net, input_size, batch_size=None, dtypes=None):
     if batch_size is None:
         batch_size = -1
 
+    if not paddle.in_dynamic_mode():
+        warnings.warn(
+            "Your model was created in static mode, this may not get correct summary information!"
+        )
+
     result, params_info = summary_string(net, _input_size, batch_size, dtypes)
     print(result)
 
@@ -121,16 +128,16 @@ def summary_string(model, input_size, batch_size=-1, dtypes=None):
 
     depth = len(list(model.sublayers()))
 
-    def register_hook(module):
-        def hook(module, input, output):
-            class_name = str(module.__class__).split(".")[-1].split("'")[0]
+    def register_hook(layer):
+        def hook(layer, input, output):
+            class_name = str(layer.__class__).split(".")[-1].split("'")[0]
 
             try:
-                module_idx = int(module._full_name.split('_')[-1])
+                layer_idx = int(layer._full_name.split('_')[-1])
             except:
-                module_idx = len(summary)
+                layer_idx = len(summary)
 
-            m_key = "%s-%i" % (class_name, module_idx + 1)
+            m_key = "%s-%i" % (class_name, layer_idx + 1)
             summary[m_key] = OrderedDict()
             summary[m_key]["input_shape"] = list(input[0].shape)
             summary[m_key]["input_shape"][0] = batch_size
@@ -142,22 +149,49 @@ def summary_string(model, input_size, batch_size=-1, dtypes=None):
                 summary[m_key]["output_shape"][0] = batch_size
 
             params = 0
-            if hasattr(module, "weight") and hasattr(module.weight, "shape"):
-                params += np.prod(module.weight.shape)
-                summary[m_key]["trainable"] = module.weight.trainable or (
-                    not module.weight.stop_gradient)
-            if hasattr(module, "bias") and hasattr(module.bias, "shape"):
-                params += np.prod(module.bias.shape)
+
+            if paddle.in_dynamic_mode():
+                layer_state_dict = layer._parameters
+            else:
+                layer_state_dict = layer.state_dict()
+
+            for k, v in layer_state_dict.items():
+                params += np.prod(v.shape)
+
+                try:
+                    if (getattr(getattr(layer, k), 'trainable')) and (
+                            not getattr(getattr(layer, k), 'stop_gradient')):
+                        summary[m_key]["trainable"] = True
+                    else:
+                        summary[m_key]["trainable"] = False
+                except:
+                    summary[m_key]["trainable"] = True
+
             summary[m_key]["nb_params"] = params
 
-        if (not isinstance(module, nn.Sequential) and
-                not isinstance(module, nn.LayerList) and
-            (not (module == model) or depth < 1)):
+        if (not isinstance(layer, nn.Sequential) and
+                not isinstance(layer, nn.LayerList) and
+            (not (layer == model) or depth < 1)):
 
-            hooks.append(module.register_forward_post_hook(hook))
+            hooks.append(layer.register_forward_post_hook(hook))
+
+    def _check_input_size(input_sizes):
+        for input_size in input_sizes:
+            for item in input_size:
+                if not isinstance(item, numbers.Number):
+                    raise TypeError(
+                        "Expected item in input size be a number, but got {}".
+                        format(type(item)))
+
+                if item <= 0:
+                    raise ValueError(
+                        "Expected item in input size greater than zero, but got {}".
+                        format(item))
 
     if isinstance(input_size, tuple):
         input_size = [input_size]
+
+    _check_input_size(input_size)
 
     x = [
         paddle.rand(
@@ -197,7 +231,12 @@ def summary_string(model, input_size, batch_size=-1, dtypes=None):
             "{0:,}".format(summary[layer]["nb_params"]), )
         total_params += summary[layer]["nb_params"]
 
-        total_output += np.prod(summary[layer]["output_shape"])
+        try:
+            total_output += np.prod(summary[layer]["output_shape"])
+        except:
+            for output_shape in summary[layer]["output_shape"]:
+                total_output += np.prod(output_shape)
+
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"] == True:
                 trainable_params += summary[layer]["nb_params"]
