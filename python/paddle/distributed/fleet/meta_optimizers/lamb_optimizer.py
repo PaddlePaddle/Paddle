@@ -79,9 +79,6 @@ class LambOptimizer(MetaOptimizerBase):
         dist_strategy.lamb_configs = {}
 
     def _enable_strategy(self, dist_strategy, context):
-        if context["role_maker"]._is_collective == False:
-            return
-
         dist_strategy.lamb = True
         dist_strategy.lamb_configs = {
             "lamb_weight_decay": 0.01,
