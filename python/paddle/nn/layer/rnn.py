@@ -21,8 +21,11 @@ import sys
 import warnings
 from functools import partial, reduce
 
+import numpy as np
 import paddle
+import paddle.fluid as fluid
 from paddle import framework
+from paddle.device import get_device, get_cudnn_version
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
 from paddle.fluid.dygraph import Layer, LayerList
@@ -135,7 +138,7 @@ def concat_states(states, bidirectional=False, state_components=1):
         componnets = []
         for i in range(state_components):
             componnets.append(states[i::state_components])
-        return [paddle.stack(item) for item in componnets]
+        return tuple([paddle.stack(item) for item in componnets])
 
 
 class RNNCellBase(Layer):
@@ -895,6 +898,114 @@ class RNNMixin(LayerList):
     LSTM and GRU.
     """
 
+    def _init_util(self,
+                   mode,
+                   input_size,
+                   hidden_size,
+                   num_layers=1,
+                   direction="forward",
+                   dropout=0.,
+                   time_major=False,
+                   weight_ih_attr=None,
+                   weight_hh_attr=None,
+                   bias_ih_attr=None,
+                   bias_hh_attr=None):
+        self.mode = mode
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.dropout = dropout
+        self.num_directions = 2 if direction == "bidirectional" else 1
+        self.time_major = time_major
+        self.num_layers = num_layers
+        self.state_components = 2 if mode == "LSTM" else 1
+
+        self.could_use_cudnn = get_device().startswith(
+            "gpu:") and get_cudnn_version()
+        self.could_use_cudnn &= direction != "backward"
+        self.could_use_cudnn &= len(self.parameters()) == num_layers * 4 * (
+            2 if direction == "bidirect" else 1)
+        self.could_use_cudnn &= mode == "LSTM"  # currently only support LSTM
+        self.flatten_parameters()
+
+    def flatten_parameters(self):
+        """
+        Resets parameter data pointer to address in continuous memory block for
+        cudnn usage.
+        """
+        if self.could_use_cudnn:
+            # layer.parameters() is depth first and ordered
+            # for i in layer: for j in direct: w_ih, w_hh, b_ih, b_hh
+            params = self.parameters()
+            shape = [np.prod(param.shape) for param in params]
+            # for static-graph, append coalesce_tensor into startup program
+            with fluid.program_guard(fluid.default_startup_program(),
+                                     fluid.default_startup_program()):
+                with framework.no_grad():
+                    # Parameter would be registered into `self._parameters`,
+                    # wrap the parameter `_flat_weight` to avoid and hide it.
+                    self._flat_weight = [
+                        self.create_parameter(
+                            shape=[np.sum(shape)], dtype=params[0].dtype)
+                    ]
+                    self._helper.append_op(
+                        type="coalesce_tensor",
+                        inputs={"Input": params},
+                        outputs={
+                            "Output": params,
+                            "FusedOutput": self._flat_weight
+                        },
+                        attrs={"copy_data": True,
+                               "dtype": params[0].dtype})
+
+    def _cudnn_impl(self, inputs, initial_states, sequence_length):
+        if not self.time_major:
+            inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
+        # unify LSTM/GRU/SimpleRNN later, currently only support LSTM
+        # TODO(guosheng): use `core.ops.cudnn_lstm` in dygraph mode if support
+        # inplace, since `dropout_state` should be persistable
+        out = self._helper.create_variable_for_type_inference(inputs.dtype)
+        last_h = self._helper.create_variable_for_type_inference(inputs.dtype)
+        last_c = self._helper.create_variable_for_type_inference(inputs.dtype)
+        reserve = self._helper.create_variable_for_type_inference(
+            dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
+        # `state` stands for cudnn dropout state, it should be persitable
+        # in static-graph mode
+        dropout_state = self._helper.create_variable_for_type_inference(
+            dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
+        dropout_state.persistable = True
+
+        inputs = {
+            'Input': inputs,
+            'W': self._flat_weight,
+            'InitH': initial_states[0],
+            'InitC': initial_states[1],
+            'State': dropout_state,
+        }
+        attrs = {
+            'sequence_length': [],
+            'dropout_prob': self.dropout,
+            'is_bidirec': self.num_directions == 2,
+            'input_size': self.input_size,
+            'hidden_size': self.hidden_size,
+            'num_layers': self.num_layers,
+            'is_test': not self.training
+        }
+
+        outputs = {
+            'Out': out,
+            'LastH': last_h,
+            'LastC': last_c,
+            'Reserve': reserve,
+            'StateOut': dropout_state,
+        }
+
+        self._helper.append_op(
+            type="cudnn_lstm", inputs=inputs, outputs=outputs, attrs=attrs)
+        out = paddle.tensor.transpose(out,
+                                      [1, 0, 2]) if not self.time_major else out
+        states = (last_h, last_c)
+        return out, states
+
     def forward(self, inputs, initial_states=None, sequence_length=None):
         batch_index = 1 if self.time_major else 0
         dtype = inputs.dtype
@@ -910,6 +1021,10 @@ class RNNMixin(LayerList):
                         inputs, state_shape, dtype, 0, batch_index, 1)
                     for _ in range(self.state_components)
                 ])
+
+        if self.could_use_cudnn:
+            # Add CPU kernel and dispatch in backend later
+            return self._cudnn_impl(inputs, initial_states, sequence_length)
 
         states = split_states(initial_states, self.num_directions == 2,
                               self.state_components)
@@ -929,6 +1044,16 @@ class RNNMixin(LayerList):
         final_states = concat_states(final_states, self.num_directions == 2,
                                      self.state_components)
         return outputs, final_states
+
+    # def __getattribute__(self, name):
+    #     # read interface
+    #     if name == "_parameters":
+    #         # To hide `self._flat_weight`, use `self.__dict__.get('_parameters')`
+    #         # when need actual `self._parameters` like `Layer.__setattr__` doing
+    #         self.__dict__.get('_parameters')
+    #         return None
+    #     else:
+    #         return super(RNNMixin, self).__getattribute__(name)
 
 
 class SimpleRNN(RNNMixin):
@@ -1062,13 +1187,16 @@ class SimpleRNN(RNNMixin):
                 "direction should be forward, backward or bidirectional, "
                 "received direction = {}".format(direction))
 
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.dropout = dropout
-        self.num_directions = 2 if direction == "bidirectional" else 1
-        self.time_major = time_major
-        self.num_layers = num_layers
-        self.state_components = 1
+        if activation == "tanh":
+            mode = "RNN_TANH"
+        elif activation == "relu":
+            mode = "RNN_RELU"
+        else:
+            raise ValueError("Unknown activation '{}'".format(activation))
+        super(SimpleRNN,
+              self)._init_util(mode, input_size, hidden_size, num_layers,
+                               direction, dropout, time_major, weight_ih_attr,
+                               weight_hh_attr, bias_ih_attr, bias_hh_attr)
 
 
 class LSTM(RNNMixin):
@@ -1200,13 +1328,10 @@ class LSTM(RNNMixin):
                 "direction should be forward, backward or bidirectional, "
                 "received direction = {}".format(direction))
 
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.dropout = dropout
-        self.num_directions = 2 if direction == "bidirectional" else 1
-        self.time_major = time_major
-        self.num_layers = num_layers
-        self.state_components = 2
+        super(LSTM,
+              self)._init_util("LSTM", input_size, hidden_size, num_layers,
+                               direction, dropout, time_major, weight_ih_attr,
+                               weight_hh_attr, bias_ih_attr, bias_hh_attr)
 
 
 class GRU(RNNMixin):
@@ -1335,10 +1460,7 @@ class GRU(RNNMixin):
                 "direction should be forward, backward or bidirectional, "
                 "received direction = {}".format(direction))
 
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.dropout = dropout
-        self.num_directions = 2 if direction == "bidirectional" else 1
-        self.time_major = time_major
-        self.num_layers = num_layers
-        self.state_components = 1
+        super(GRU,
+              self)._init_util("GRU", input_size, hidden_size, num_layers,
+                               direction, dropout, time_major, weight_ih_attr,
+                               weight_hh_attr, bias_ih_attr, bias_hh_attr)
