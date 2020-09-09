@@ -364,20 +364,16 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     const auto* weight_h = ctx.Input<Tensor>("WeightH");
     const auto* bias = ctx.Input<Tensor>("Bias");
     auto* hidden = ctx.Output<LoDTensor>("Hidden");
-
-    int x_num_col_dims = ctx.template Attr<int>("x_num_col_dims");
-
-    auto x_mat_dims =
-        input->dims().size() > 2
-            ? framework::flatten_to_2d(input->dims(), x_num_col_dims)
-            : input->dims();
-
+    auto x_dims = input->dims();
+    auto x_mat_dims = (x_dims.size() > 2 && x_dims[1] == 1)
+                          ? framework::flatten_to_2d(x_dims, 1)
+                          : x_dims;
     // Get attributes
     const bool is_reverse = ctx.Attr<bool>("is_reverse");
     const bool origin_mode = ctx.Attr<bool>("origin_mode");
 
     // Get tensor dimensions
-    const auto x_dims = framework::vectorize(x_mat_dims);
+    const auto x_mat_dims_vec = framework::vectorize(x_mat_dims);
     const auto weight_h_dims = framework::vectorize(weight_h->dims());
     const auto& input_lod = input->lod()[0];
 
@@ -391,8 +387,8 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
           }
           return res;
         }();
-    const int64_t IC = x_dims[1];         // Input channels
-    const int64_t OC = weight_h_dims[0];  // Output channels
+    const int64_t IC = x_mat_dims_vec[1];  // Input channels
+    const int64_t OC = weight_h_dims[0];   // Output channels
 
     GRUMKLDNNHandler<T> handler(ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(),
                                 input, weight_h, h0, is_reverse, N, Ti, IC, OC,
