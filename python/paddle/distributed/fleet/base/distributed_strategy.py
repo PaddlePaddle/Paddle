@@ -17,6 +17,7 @@ from paddle.distributed.fleet.proto import distributed_strategy_pb2
 from paddle.fluid.framework import Variable, set_flags, core
 from paddle.fluid.wrapped_decorator import wrap_decorator
 import google.protobuf.text_format
+import google.protobuf
 
 __all__ = ["DistributedStrategy"]
 
@@ -1133,7 +1134,91 @@ class DistributedStrategy(object):
         return False
 
     def __repr__(self):
+        spacing = 2
+        max_k = 38
+        max_v = 38
+
+        length = max_k + max_v + spacing
+
+        h1_format = "    " + "|{{:^{}s}}|\n".format(length)
+        h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(max_k, " " *
+                                                               spacing, max_v)
+
+        border = "    +" + "".join(["="] * length) + "+"
+        line = "    +" + "".join(["-"] * length) + "+"
+
+        draws = border + "\n"
+        draws += h1_format.format("")
+        draws += h1_format.format("DistributedStrategy Overview")
+        draws += h1_format.format("")
+
         fields = self.strategy.DESCRIPTOR.fields
+        str_res = ""
+
+        env_draws = line + "\n"
         for f in fields:
-            print("{}: {}".format(f.name, f.default_value))
-        return str(self.strategy)
+            if "build_strategy" in f.name or "execution_strategy" in f.name:
+                continue
+            if "_configs" in f.name:
+                continue
+            else:
+                if isinstance(getattr(self.strategy, f.name), bool):
+                    if hasattr(self.strategy, f.name + "_configs"):
+                        if getattr(self.strategy, f.name):
+                            draws += border + "\n"
+                            draws += h1_format.format(
+                                "{} = True, please check {}_configs".format(
+                                    f.name, f.name))
+                            draws += line + "\n"
+                            my_configs = getattr(self.strategy,
+                                                 f.name + "_configs")
+                            config_fields = my_configs.DESCRIPTOR.fields
+                            for ff in config_fields:
+                                if isinstance(
+                                        getattr(my_configs, ff.name),
+                                        google.protobuf.pyext._message.
+                                        RepeatedScalarContainer):
+                                    values = getattr(my_configs, ff.name)
+                                    for i, v in enumerate(values):
+                                        if i == 0:
+                                            draws += h2_format.format(ff.name,
+                                                                      str(v))
+                                        else:
+                                            draws += h2_format.format("",
+                                                                      str(v))
+                                else:
+                                    draws += h2_format.format(
+                                        ff.name,
+                                        str(getattr(my_configs, ff.name)))
+                    else:
+                        env_draws += h2_format.format(
+                            f.name, str(getattr(self.strategy, f.name)))
+                else:
+                    env_draws += h2_format.format(
+                        f.name, str(getattr(self.strategy, f.name)))
+
+        result_res = draws + border + "\n" + h1_format.format(
+            "Environment Flags, Communication Flags")
+        result_res += env_draws
+
+        build_strategy_str = border + "\n"
+        build_strategy_str += h1_format.format("Build Strategy")
+        build_strategy_str += line + "\n"
+
+        fields = self.strategy.build_strategy.DESCRIPTOR.fields
+        for f in fields:
+            build_strategy_str += h2_format.format(
+                f.name, str(getattr(self.strategy.build_strategy, f.name)))
+        build_strategy_str += border + "\n"
+
+        execution_strategy_str = h1_format.format("Execution Strategy")
+        execution_strategy_str += line + "\n"
+
+        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
+        for f in fields:
+            execution_strategy_str += h2_format.format(
+                f.name, str(getattr(self.strategy.execution_strategy, f.name)))
+        execution_strategy_str += border + "\n"
+
+        result_res += build_strategy_str + execution_strategy_str
+        return result_res
