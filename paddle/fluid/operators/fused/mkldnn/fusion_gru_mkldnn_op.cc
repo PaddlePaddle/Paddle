@@ -50,8 +50,8 @@ class GRUMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::gru_forward> {
         platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
       memory_key_ = CreateKey(unique_name, MKLDNNGetDataType<T>());
     } else {
-      memory_key_ = CreateKey(unique_name, MKLDNNGetDataType<T>(),
-                              "-t:", platform::ThreadIDasStr());
+      memory_key_ = CreateKey(unique_name, MKLDNNGetDataType<T>(), "-t:",
+                              platform::ThreadIDasStr());
     }
 
     // Is it int8 kernel

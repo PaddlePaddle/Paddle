@@ -42,24 +42,38 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
         # RNN dimensions
         T = sum(self.lod[0])
         N = len(self.lod[0])
-        
+
         # Input data
         x_f32 = np.random.rand(T, self.IC).astype('float32') * 2 - 1
         scale_data = 63
         shift_data = 64
         x_u8 = (x_f32 * scale_data + shift_data).astype(np.uint8)
-        
+
         # WeightX/WeightH data
         wx = np.random.rand(self.IC, 3 * self.OC).astype('float32') * 2 - 1
         wh = np.random.rand(self.OC, 3 * self.OC).astype('float32') * 2 - 1
-        
+
         # Calculating weight scales
         # scales = 63 / max(abs(channel_wise(weightsX + weightsH)))
         # WeightX data shape in PP: [IC, 3 * OC]
         # WeightH data shape in PP: [OC, 2 * OC] + [OC, OC]
         # Scales shape in oneDNN:   [3, OC]
-        scale_ur = 63 / np.max(np.abs(np.concatenate([wx[:, :2*self.OC], wh.flatten()[:2*self.OC * self.OC].reshape(self.OC, 2*self.OC)], axis=0)), axis=0)
-        scale_o = 63 / np.max(np.abs(np.concatenate([wx[:, 2*self.OC:], wh.flatten()[2*self.OC * self.OC:].reshape(self.OC, self.OC)], axis=0)), axis=0)
+        scale_ur = 63 / np.max(np.abs(
+            np.concatenate(
+                [
+                    wx[:, :2 * self.OC], wh.flatten()[:2 * self.OC * self.OC]
+                    .reshape(self.OC, 2 * self.OC)
+                ],
+                axis=0)),
+                               axis=0)
+        scale_o = 63 / np.max(np.abs(
+            np.concatenate(
+                [
+                    wx[:, 2 * self.OC:], wh.flatten()[2 * self.OC * self.OC:]
+                    .reshape(self.OC, self.OC)
+                ],
+                axis=0)),
+                              axis=0)
 
         scale_weights = np.concatenate([scale_ur, scale_o]).astype('float')
 
@@ -70,9 +84,10 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
             N, self.OC).astype('float32') if self.with_h0 else np.zeros(
                 (N, self.OC), dtype='float32')
 
-        _, _, _, hidden_f32 = fusion_gru(
-            x_f32, self.lod, h0, wx, wh, bias, self.is_reverse, self.origin_mode,
-            ACTIVATION[self.act_state], ACTIVATION[self.act_gate])
+        _, _, _, hidden_f32 = fusion_gru(x_f32, self.lod, h0, wx, wh, bias,
+                                         self.is_reverse, self.origin_mode,
+                                         ACTIVATION[self.act_state],
+                                         ACTIVATION[self.act_gate])
 
         self.inputs = {'X': (x_u8, self.lod), 'WeightX': wx, 'WeightH': wh}
 
@@ -81,7 +96,7 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
 
         if self.with_h0:
             self.inputs['H0'] = h0
-        
+
         if self.force_fp32_output:
             self.error_margin = 1e-1
             self.outputs = {'Hidden': (hidden_f32, self.lod)}
