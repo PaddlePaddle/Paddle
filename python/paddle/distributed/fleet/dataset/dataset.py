@@ -14,7 +14,7 @@
 """This is definition of dataset class, which is high performance IO."""
 
 import paddle
-import paddle.fluid as fluid
+import paddle
 from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
 import paddle.fluid.core as core
@@ -29,8 +29,8 @@ class DatasetFactory(object):
     Example:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+          import paddle
+          dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
 
     """
 
@@ -50,8 +50,8 @@ class DatasetFactory(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset()
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
 
         """
         try:
@@ -100,9 +100,9 @@ class DatasetBase(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset()
-              dataset.set_pipe_command("python my_script.py")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
+              dataset._set_pipe_command("python my_script.py")
 
         Args:
             pipe_command(str): pipe command
@@ -117,8 +117,8 @@ class DatasetBase(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset()
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
               dataset._set_batch_size(128)
 
         Args:
@@ -134,8 +134,8 @@ class DatasetBase(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset()
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
               dataset._set_thread(12)
 
         Args:
@@ -151,8 +151,8 @@ class DatasetBase(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset()
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
               dataset.set_filelist(['a.txt', 'b.txt'])
 
         Args:
@@ -171,9 +171,9 @@ class DatasetBase(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset()
-              dataset.set_use_var([data, label])
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
+              dataset._set_use_var([data, label])
 
         Args:
             var_list(list): variable list
@@ -202,9 +202,9 @@ class DatasetBase(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset()
-              dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
+              dataset._set_hdfs_config("my_fs_name", "my_fs_ugi")
 
         Args:
             fs_name(str): fs name
@@ -219,9 +219,9 @@ class DatasetBase(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset()
-              dataset.set_download_cmd("./read_from_afs")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
+              dataset._set_download_cmd("./read_from_afs")
 
         Args:
             download_cmd(str): customized download command
@@ -249,8 +249,8 @@ class DatasetBase(object):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset()
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
               print(dataset._desc())
 
         Returns:
@@ -389,9 +389,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_queue_num(12)
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset._set_queue_num(12)
 
         """
         self.is_user_set_queue_num = True
@@ -407,9 +407,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_parse_ins_id(True)
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset._set_parse_ins_id(True)
 
         """
         self.parse_ins_id = parse_ins_id
@@ -424,9 +424,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_parse_content(True)
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset._set_parse_content(True)
 
         """
         self.parse_content = parse_content
@@ -441,9 +441,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_fleet_send_batch_size(800)
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset._set_fleet_send_batch_size(800)
 
         """
         self.fleet_send_batch_size = fleet_send_batch_size
@@ -458,9 +458,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_fleet_send_sleep_seconds(2)
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset._set_fleet_send_sleep_seconds(2)
 
         """
         self.fleet_send_sleep_seconds = fleet_send_sleep_seconds
@@ -476,9 +476,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_merge_by_lineid()
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset._set_merge_by_lineid()
 
         """
         self.dataset.set_merge_by_lineid(merge_size)
@@ -502,8 +502,8 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
@@ -521,8 +521,8 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.preload_into_memory()
@@ -542,8 +542,8 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.preload_into_memory()
@@ -559,8 +559,8 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
@@ -578,9 +578,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
@@ -622,9 +622,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
@@ -654,9 +654,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
@@ -691,9 +691,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
@@ -725,9 +725,9 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-            import paddle.fluid as fluid
-            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-            dataset.set_fea_eval(1000000, True)
+            import paddle
+            dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset._set_fea_eval(1000000, True)
 
         """
         if fea_eval:
@@ -746,8 +746,8 @@ class InMemoryDataset(DatasetBase):
             slots(list[string]): the set of slots(string) to do slots shuffle.
 
         Examples:
-            import paddle.fluid as fluid
-            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            import paddle
+            dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
             dataset.set_merge_by_lineid()
             #suppose there is a slot 0
             dataset.slots_shuffle(['0'])
@@ -764,8 +764,8 @@ class QueueDataset(DatasetBase):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+          import paddle
+          dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("QueueDataset")
 
     """
 
@@ -807,8 +807,8 @@ class QueueDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("QueueDataset")
               dataset.local_shuffle()
 
         Raises:
@@ -832,9 +832,9 @@ class QueueDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-              dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("QueueDataset")
               dataset.global_shuffle(fleet)
 
         Raises:
@@ -853,7 +853,7 @@ class FileInstantDataset(DatasetBase):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
           dataset = fluid.DatasetFactory.create_dataset("FileInstantDataset")
     """
 
@@ -864,6 +864,12 @@ class FileInstantDataset(DatasetBase):
         """
         super(FileInstantDataset, self).__init__()
         self.proto_desc.name = "MultiSlotFileInstantDataFeed"
+
+    def init(self, **kwargs):
+        """
+        should be called only once in user's python scripts to initialize seetings of dataset instance
+        """
+        super(FileInstantDataset, self).init(**kwargs)
 
     def local_shuffle(self):
         """
@@ -891,8 +897,8 @@ class BoxPSDataset(InMemoryDataset):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+          import paddle
+          dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("BoxPSDataset")
     """
 
     def __init__(self):
@@ -928,9 +934,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset()
-              dataset.set_rank_offset("rank_offset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
+              dataset._set_rank_offset("rank_offset")
 
         Args:
             rank_offset(str): rank_offset's name
@@ -945,9 +951,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset()
-              dataset.set_pv_batch(128)
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
+              dataset._set_pv_batch_size(128)
         Args:
             pv_batch_size(int): pv batch size
 
@@ -964,9 +970,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_parse_logkey(True)
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset._set_parse_logkey(True)
 
         """
         self.parse_logkey = parse_logkey
@@ -981,9 +987,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_merge_by_sid(True)
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset._set_merge_by_sid(True)
 
         """
         self.merge_by_sid = merge_by_sid
@@ -998,9 +1004,9 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_enable_pv_merge(True)
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset._set_enable_pv_merge(True)
 
         """
         self.enable_pv_merge = enable_pv_merge
@@ -1022,8 +1028,8 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("BoxPSDataset")
               dataset.begin_pass()
         """
         self.boxps.begin_pass()
@@ -1035,8 +1041,8 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("BoxPSDataset")
               dataset.end_pass(True)
         """
         self.boxps.end_pass(need_save_delta)
@@ -1048,8 +1054,8 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("BoxPSDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.preload_into_memory()
@@ -1063,8 +1069,8 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("BoxPSDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
@@ -1078,8 +1084,8 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("BoxPSDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.preload_into_memory()
@@ -1107,8 +1113,8 @@ class BoxPSDataset(InMemoryDataset):
             slots(list[string]): the set of slots(string) to do slots shuffle.
 
         Examples:
-            import paddle.fluid as fluid
-            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            import paddle
+            dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
             dataset.set_merge_by_lineid()
             #suppose there is a slot 0
             dataset.slots_shuffle(['0'])
@@ -1124,8 +1130,8 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
@@ -1148,8 +1154,8 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
@@ -1166,8 +1172,8 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
@@ -1183,8 +1189,8 @@ class BoxPSDataset(InMemoryDataset):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              import paddle
+              dataset = paddle.distributed.fleet.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
