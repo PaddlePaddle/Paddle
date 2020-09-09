@@ -441,8 +441,6 @@ if(WITH_DISTRIBUTE)
     # FIXME(seiriosX) will fix this
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_sparse_embedding_ctr")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_a_sync_optimizer_auto")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ctr")
 
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
     py_test_modules(test_transpiler_ops MODULES test_transpiler_ops ENVS ${dist_ENVS})
