@@ -131,13 +131,17 @@ class Tensor {
 
   const platform::Place& place() const {
     PADDLE_ENFORCE_NOT_NULL(
-        holder_, "Tensor not initialized yet when Tensor::place() is called.");
+        holder_,
+        platform::errors::PreconditionNotMet(
+            "Tensor not initialized yet when Tensor::place() is called."));
     return holder_->place();
   }
 
   proto::VarType::Type type() const {
     PADDLE_ENFORCE_NOT_NULL(
-        holder_, "Tensor not initialized yet when Tensor::type() is called.");
+        holder_,
+        platform::errors::PreconditionNotMet(
+            "Tensor not initialized yet when Tensor::type() is called."));
     return type_;
   }
 
