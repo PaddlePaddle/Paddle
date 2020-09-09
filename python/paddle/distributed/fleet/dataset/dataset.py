@@ -14,7 +14,6 @@
 """This is definition of dataset class, which is high performance IO."""
 
 import paddle
-import paddle
 from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
 import paddle.fluid.core as core
@@ -293,7 +292,7 @@ class InMemoryDataset(DatasetBase):
 
     def init(self, **kwargs):
         """
-        should be called only once in user's python scripts to initialize seetings of dataset instance
+        should be called only once in user's python scripts to initialize setings of dataset instance
         """
         batch_size = kwargs.get("batch_size", 1)
         thread_num = kwargs.get("thread_num", 1)
@@ -780,7 +779,7 @@ class QueueDataset(DatasetBase):
 
     def init(self, **kwargs):
         """
-        should be called only once in user's python scripts to initialize seetings of dataset instance
+        should be called only once in user's python scripts to initialize setings of dataset instance
         """
         super(QueueDataset, self).init(**kwargs)
 
@@ -868,7 +867,7 @@ class FileInstantDataset(DatasetBase):
 
     def init(self, **kwargs):
         """
-        should be called only once in user's python scripts to initialize seetings of dataset instance
+        should be called only once in user's python scripts to initialize setings of dataset instance
         """
         super(FileInstantDataset, self).init(**kwargs)
 
@@ -913,7 +912,7 @@ class BoxPSDataset(InMemoryDataset):
 
     def init(self, **kwargs):
         """
-        should be called only once in user's python scripts to initialize seetings of dataset instance
+        should be called only once in user's python scripts to initialize setings of dataset instance
         """
         super(BoxPSDataset, self).init(**kwargs)
 
