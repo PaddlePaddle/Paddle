@@ -162,7 +162,7 @@ void prefetch_core(
                         platform::errors::InvalidArgument(
                             "The size of Tensor dims must be 2."));
       PADDLE_ENFORCE_EQ(ids_in_this_section.size(), dims[0],
-                        platform::errors::InvalidArgumen(
+                        platform::errors::InvalidArgument(
                             "The size of ids in this section must equal to "
                             "dims[0]: %s, but got %s",
                             dims[0], ids_in_this_section.size()));
