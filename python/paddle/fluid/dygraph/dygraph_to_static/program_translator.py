@@ -302,7 +302,7 @@ class StaticLayer(object):
         # 1. call dygraph function directly if not enable `declarative`
         if not self._program_trans.enable_static:
             logging_utils.warn(
-                "The decorator '@paddle.jit.to_static' does NOT work when ProgramTranslator.enable_static is False. "
+                "The decorator '@paddle.jit.to_static' does NOT work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. If you would like to get static graph output, please call API "
                 "ProgramTranslator.enable_static(True)")
             return self._call_dygraph_function(*args, **kwargs)
