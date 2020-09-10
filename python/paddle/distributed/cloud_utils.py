@@ -76,7 +76,7 @@ paddlecloud environment.".format(args_node_ips, node_ips))
         ]
         trainer_endpoints = []
         for ip in node_ips:
-            trainer_endpoints += ["%s:%d" % (ip, port) for port in ports]
+            trainer_endpoints.append(["%s:%d" % (ip, port) for port in ports])
     else:
         trainer_endpoints_ori = trainer_endpoints.split(",")
         trainer_endpoints = []
