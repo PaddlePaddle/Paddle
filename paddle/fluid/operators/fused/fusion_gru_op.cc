@@ -36,34 +36,29 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
                         ? framework::flatten_to_2d(x_dims, 1)
                         : x_dims;
-
-  auto wx_dims = ctx->GetInputDim("WeightX");
-  auto wx_mat_dims = (wx_dims.size() == 3 && wx_dims[1] == 1)
-                         ? framework::flatten_to_2d(wx_dims, 1)
-                         : wx_dims;
-
   PADDLE_ENFORCE_EQ(
       x_mat_dims.size(), 2,
       platform::errors::InvalidArgument("The size of input X dims should be 2, "
                                         "or 3 with second dimension equal to "
                                         "1, but now Input X dim is:[%s] ",
                                         x_dims));
-  PADDLE_ENFORCE_EQ(wx_mat_dims.size(), 2,
+
+  auto wx_dims = ctx->GetInputDim("WeightX");
+  PADDLE_ENFORCE_EQ(wx_dims.size(), 2,
                     platform::errors::InvalidArgument(
-                        "The size of WeightX dims should be 2, "
-                        "or 3 with second dimension equal to 1, but "
-                        "received WeightX dims is:[%s] ",
-                        wx_dims));
+                        "The rank of Input(WeightX) should be 2, but received "
+                        "WeightX dim size is:%d, WeightX dim is:[%s] ",
+                        wx_dims.size(), wx_dims));
   PADDLE_ENFORCE_EQ(
-      wx_mat_dims[0], x_mat_dims[1],
+      wx_dims[0], x_mat_dims[1],
       platform::errors::InvalidArgument(
           "The first dimension of flattened WeightX"
           "should equal to last dimension of flattened input X, but "
           "received fattened WeightX dimension is:%d, flattened X dimension "
           "is:%d",
-          wx_mat_dims[0], x_mat_dims[1]));
+          wx_dims[0], x_mat_dims[1]));
 
-  int frame_size = wx_mat_dims[1] / 3;
+  int frame_size = wx_dims[1] / 3;
   auto wh_dims = ctx->GetInputDim("WeightH");
 
   PADDLE_ENFORCE_EQ(wh_dims.size(), 2,
@@ -116,16 +111,16 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "Hidden");
   int xx_width;
   if (ctx->Attrs().Get<bool>("use_seq")) {
-    xx_width = wx_mat_dims[1];
+    xx_width = wx_dims[1];
   } else {
-    xx_width = x_mat_dims[1] > wx_mat_dims[1] ? wx_mat_dims[1] : x_mat_dims[1];
+    xx_width = x_mat_dims[1] > wx_dims[1] ? wx_dims[1] : x_mat_dims[1];
     OP_INOUT_CHECK(ctx->HasOutput("ReorderedH0"), "Output", "ReorderedH0",
                    "fusion_gru");
     OP_INOUT_CHECK(ctx->HasOutput("BatchedInput"), "Output", "BatchedInput",
                    "fusion_gru");
     OP_INOUT_CHECK(ctx->HasOutput("BatchedOut"), "Output", "BatchedOut",
                    "fusion_gru");
-    ctx->SetOutputDim("BatchedInput", {x_mat_dims[0], wx_mat_dims[1]});
+    ctx->SetOutputDim("BatchedInput", {x_mat_dims[0], wx_dims[1]});
     ctx->SetOutputDim("BatchedOut", out_dims);
   }
   ctx->SetOutputDim("XX", {x_mat_dims[0], xx_width});
