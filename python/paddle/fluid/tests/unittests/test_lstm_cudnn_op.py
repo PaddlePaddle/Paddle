@@ -437,13 +437,6 @@ class TestCUDNNLstmOp(OpTest):
                  "core is not compiled with CUDA")
 class TestCUDNNLstmOp2(TestCUDNNLstmOp):
     def set_attrs(self):
-        self.sequence_length = np.array([], dtype=np.int32)
-
-
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestCUDNNLstmOp3(TestCUDNNLstmOp):
-    def set_attrs(self):
         self.num_layers = 2
 
 

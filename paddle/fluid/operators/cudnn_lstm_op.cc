@@ -51,6 +51,16 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
                           "received InitH's rank is %d.",
                           init_h_dims.size()));
 
+    if (ctx->HasInput("SequenceLength")) {
+      auto seq_dims = ctx->GetInputDim("SequenceLength");
+      PADDLE_ENFORCE_EQ(
+          in_dims[1], seq_dims[0],
+          platform::errors::InvalidArgument(
+              "The size of SequenceLength has to equal the batch_size. But "
+              "received batch_size is %d and the size of SequenceLength is %d.",
+              in_dims[1], seq_dims[0]));
+    }
+
     PADDLE_ENFORCE_EQ(
         in_dims[1], init_h_dims[1],
         platform::errors::InvalidArgument(
