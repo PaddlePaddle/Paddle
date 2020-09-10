@@ -17,15 +17,284 @@ import time
 import numpy as np
 import warnings
 from multiprocessing import Process, Manager
+
 import paddle.fluid as fluid
 
-#__all__ = ['UserDefinedRoleMaker', 'PaddleCloudRoleMaker']
+# __all__ = ['UserDefinedRoleMaker', 'PaddleCloudRoleMaker']
 
 
 class Role:
     WORKER = 1
     SERVER = 2
     HETER_WORKER = 3
+    ALL = 4
+
+
+class Gloo(object):
+    """
+    Gloo is a universal class for barrier and collective communication
+    """
+
+    class RENDEZVOUS:
+        HDFS = 1
+        FILE = 2
+        HTTP = 3
+
+    def __init__(self,
+                 rendezvous,
+                 role,
+                 role_id,
+                 worker_num,
+                 server_num,
+                 need_init_all=False,
+                 **kwargs):
+        self._rendezvous = rendezvous
+        self._role = role
+        self._role_id = role_id
+        self._worker_num = worker_num
+        self._server_num = server_num
+        self._need_init_all = need_init_all
+
+        self._worker_comm = None
+        self._server_comm = None
+        self._nodes_comm = None
+
+        self._comm_world = ["worker", "server", "all"]
+        self._err_init = "gloo is not initialized, will not communicator with other nodes"
+        self._err_type = "gloo initialized error, please check arguments"
+        self._err_world = "argument error, comm_world must in {}".format(
+            self._comm_world)
+
+        self._is_initialized = False
+        self._init_timeout_seconds = 3600
+        self._run_timeout_seconds = 9999999
+
+        self._iface = self.__get_default_iface()
+
+        if self._rendezvous == Gloo.RENDEZVOUS.HDFS:
+            self._init_dfs(**kwargs)
+        elif self._rendezvous == Gloo.RENDEZVOUS.FILE:
+            self._init_fs(**kwargs)
+        elif self._rendezvous == Gloo.RENDEZVOUS.HTTP:
+            self._init_http(**kwargs)
+        else:
+            raise ValueError(self._err_type)
+
+    def _init_fs(self, **kwargs):
+        raise ValueError("comming soon")
+
+    def _init_dfs(self, **kwargs):
+        def init(rank, nodes, role):
+            gloo = fluid.core.Gloo()
+            gloo.set_rank(rank)
+            gloo.set_size(nodes)
+            gloo.set_prefix("")
+            gloo.set_iface(self._iface)
+            gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                     self._run_timeout_seconds)
+            gloo.set_hdfs_store(os.path.join(dfs_path, role), dfs_name, dfs_ugi)
+            return gloo
+
+        dfs_name = kwargs.get("dfs.name", "")
+        dfs_ugi = kwargs.get("dfs.ugi", "")
+        dfs_path = kwargs.get("dfs.path", "")
+
+        if not dfs_name or not dfs_ugi or not dfs_path:
+            raise ValueError(self._err_type)
+
+        if self._role == Role.WORKER:
+            rank, nodes = self._get_rank_nodes(Role.WORKER)
+            gloo = init(rank, nodes, Role.WORKER)
+            self._worker_comm = gloo
+        else:
+            rank, nodes = self._get_rank_nodes(Role.SERVER)
+            gloo = init(rank, nodes, Role.SERVER)
+            self._server_comm = gloo
+
+        if self._need_init_all:
+            rank, nodes = self._get_rank_nodes(Role.ALL)
+            gloo = init(rank, nodes, Role.ALL)
+            self._nodes_comm = gloo
+
+    def _init_http(self, **kwargs):
+        def __start_kv_server(http_server_d, size_d):
+            from paddle.distributed.fleet.utils import KVServer
+            http_server = KVServer(port, size_d)
+            http_server.start()
+            wait_seconds = 5
+            while http_server_d.get("running",
+                                    False) and not http_server.shoud_stop():
+                time.sleep(wait_seconds)
+            http_server.stop()
+
+        def init_kv_server():
+            size_d = {
+                "trainer": len(self._worker_num),
+                "pserver": len(self._server_num),
+                "all": len(self._worker_num) + len(self._server_num)
+            }
+
+            # child process for http server
+            self._http_server = Process(
+                target=__start_kv_server, args=(self._http_server_d, size_d))
+            self._http_server.daemon = True
+            # set running status to True
+            self._http_server_d["running"] = True
+            # start child process
+            self._http_server.start()
+
+        def init(rank, nodes, role):
+            gloo = fluid.core.Gloo()
+            gloo.set_rank(rank)
+            gloo.set_size(nodes)
+            gloo.set_prefix("")
+            gloo.set_iface(self._iface)
+            gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                     self._run_timeout_seconds)
+            gloo.set_http_store(ip, port, role)
+            return gloo
+
+        ip = kwargs.get("http.ip", "")
+        port = kwargs.get("http.port", "")
+
+        if not ip or not port:
+            raise ValueError(self._err_type)
+
+        port = int(port)
+
+        if self._role == Role.SERVER and self._role_id == 0:
+            init_kv_server()
+
+        if self._role == Role.WORKER:
+            rank, nodes = self._get_rank_nodes(Role.WORKER)
+            gloo = init(rank, nodes, Role.WORKER)
+            self._worker_comm = gloo
+        else:
+            rank, nodes = self._get_rank_nodes(Role.SERVER)
+            gloo = init(rank, nodes, Role.SERVER)
+            self._server_comm = gloo
+
+        if self._need_init_all:
+            rank, nodes = self._get_rank_nodes(Role.ALL)
+            gloo = init(rank, nodes, Role.ALL)
+            self._nodes_comm = gloo
+
+    def _get_rank_nodes(self, role):
+        if role == Role.WORKER:
+            nodes = self._worker_num
+            rank = self._role_id
+        elif role == Role.SERVER:
+            nodes = self._server_num()
+            rank = self._role_id
+        elif role == Role.ALL:
+            nodes = self._worker_num + self._server_num
+
+            if self._role == Role.WORKER:
+                rank = self._role_id
+            else:
+                rank = self._worker_num + self._role_id
+        else:
+            ValueError(self._err_type)
+
+        return rank, nodes
+
+    def __get_default_iface(self):
+        """
+        get default physical interface
+        """
+        default1 = self.__get_default_iface_from_gateway()
+        default2 = self.__get_default_iface_from_interfaces()
+        return default2 if default1 == "lo" else default1
+
+    def __get_default_iface_from_gateway(self):
+        """
+        get default physical interface
+        """
+        import netifaces
+        gateways = netifaces.gateways()
+        if gateways.get(netifaces.AF_INET) != None:
+            gateway = gateways[netifaces.AF_INET]
+            if len(gateway) > 0 and len(gateway[0]) > 1:
+                return gateway[0][1]
+        return "lo"
+
+    def __get_default_iface_from_interfaces(self):
+        """
+        get default physical interface
+        """
+        import netifaces
+        for intf_name in netifaces.interfaces():
+            addresses = netifaces.ifaddresses(intf_name)
+            if netifaces.AF_INET in addresses:
+                ipv4_addresses = addresses[netifaces.AF_INET]
+                for ipv4_address in ipv4_addresses:
+                    if 'broadcast' in ipv4_address:
+                        return intf_name
+        return "lo"
+
+    def barrier(self, comm_world):
+        """
+        dummy barrier, do nothing
+        """
+        if not self._is_initialized:
+            warnings.warn(self._err_init)
+            return
+
+        if comm_world not in self._comm_world:
+            raise ValueError(self._err_world)
+
+        if comm_world == "worker":
+            self._worker_comm.barrier()
+        elif comm_world == "server":
+            self._server_comm.barrier()
+        else:
+            self._nodes_comm.barrier()
+
+    def all_reduce(self, input, mode="sum", comm_world="worker"):
+        if not self._is_initialized:
+            warnings.warn(self._err_init)
+            return input
+
+        if comm_world not in self._comm_world:
+            raise ValueError(self._err_world)
+
+        input = np.array(input)
+        input_shape = input.shape
+        input_list = input.reshape(-1).tolist()
+
+        self.barrier(comm_world)
+
+        if comm_world == "worker":
+            ans = self._worker_comm.all_reduce(input_list, mode)
+        elif comm_world == "server":
+            ans = self._server_comm.all_reduce(input_list, mode)
+        else:
+            ans = self._nodes_comm.all_reduce(input_list, mode)
+
+        output = np.array(ans).reshape(input_shape)
+        return output
+
+    def all_gather(self, input, comm_world="worker"):
+        """
+        dummy all gather, do nothing
+        Args:
+            obj(any): obj to do all gather
+        """
+        if not self._is_initialized:
+            warnings.warn(self._err_init)
+            return input
+
+        if comm_world not in self._comm_world:
+            raise ValueError(self._err_world)
+
+        if comm_world == "worker":
+            output = self._worker_comm.all_gather(input)
+        elif comm_world == "server":
+            output = self._server_comm.all_gather(input)
+        else:
+            output = self._nodes_comm.all_gather(input)
+
+        return output
 
 
 class RoleMakerBase(object):
@@ -47,10 +316,6 @@ class RoleMakerBase(object):
         self._heter_trainer_endpoints = []
         self._heter_trainer_device = "CPU"
         self._is_heter_parameter_server_mode = False
-
-        self._node_type = None
-        self._node_type_comm = None
-        self._all_comm = None
 
     def is_worker(self):
         """
@@ -222,72 +487,25 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def __init__(self, is_collective=False, **kwargs):
         super(PaddleCloudRoleMaker, self).__init__()
         self._is_collective = is_collective
-        self._init_gloo = False  # default no init gloo
-        self._kwargs = kwargs
 
+        self._non_distributed = False
+
+        self._kwargs = kwargs
         self._role_is_generated = False
 
         self._server_endpoints = None
         self._worker_endpoints = None
 
-        self._node_type_comm = None
-        self._all_comm = None
-
-        self._non_distributed = False
-
-        if not self._is_collective:
-            self._hdfs_name = kwargs.get("hdfs_name", "")
-            self._hdfs_ugi = kwargs.get("hdfs_ugi", "")
-            self._hdfs_path = kwargs.get("path", "").rstrip("/")
-            self._init_timeout_seconds = kwargs.get("init_timeout_seconds",
-                                                    3600)
-            self._run_timeout_seconds = kwargs.get("run_timeout_seconds",
-                                                   9999999)
-            ip_port = kwargs.get("http_ip_port", "")
-            self._http_ip_port = []
-            self._http_server = None
-            # if ip_port is not empty, it will use http instead of hdfs
-            if ip_port != "":
-                self._http_ip_port = ip_port.split(":")
-                # it's for communication between processes
-                self._manager = Manager()
-                # global dict to store status
-                self._http_server_d = self._manager.dict()
-                # set running status of http server
-                self._http_server_d["running"] = False
-            self._iface = self.__get_default_iface()
-            # this environment variable can be empty
+        self._gloo = Gloo()  # gloo instance
 
     def _barrier(self, comm_world):
-        if isinstance(comm_world, fluid.core.Gloo):
-            comm_world.barrier()
-        else:
-            print("warning: must init Gloo before using _barrier() function")
+        self._gloo.barrier(comm_world)
 
-    def _all_gather(self, comm_world, input):
-        if isinstance(comm_world, fluid.core.Gloo):
-            self._barrier(comm_world)
-            output = comm_world.all_gather(input)
-            return output
-        else:
-            print("warning: must init Gloo before using _all_gather() function")
-            return None
+    def _all_gather(self, input, comm_world):
+        return self._gloo.all_gather(input, comm_world)
 
-    def _all_reduce(self, comm_world, input, mode="sum"):
-        if isinstance(comm_world, fluid.core.Gloo):
-
-            input = np.array(input)
-
-            input_shape = input.shape
-            input_list = input.reshape(-1).tolist()
-
-            self._barrier(comm_world)
-            ans = comm_world.all_reduce(input_list, mode)
-            output = np.array(ans).reshape(input_shape)
-            return output
-        else:
-            print("warning: must init Gloo before using _all_reduce() function")
-            return None
+    def _all_reduce(self, input, mode="sum", comm_world="worker"):
+        return self._gloo.all_reduce(input, mode, comm_world)
 
     def is_worker(self):
         """
@@ -508,8 +726,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._heter_trainers_num = heter_trainers_num
         self._heter_trainer_endpoints = heter_trainer_eplist
 
-        self._init_gloo = bool(int(os.getenv("PADDLE_WITH_GLOO", "0")))
-
     def _collective_env(self):
         self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
@@ -526,85 +742,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._node_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
 
-    def _init_gloo_env(self):
-        def init_gloo_instance(role):
-            if role == "TRAINER":
-                nodes = self.worker_num()
-                rank = self.worker_index()
-            elif role == "PSERVER":
-                nodes = self.server_num()
-                rank = self.server_index()
-            elif role == "ALL":
-                nodes = self.worker_num() + self.server_num()
-
-                if self.is_worker():
-                    rank = self.worker_index()
-                else:
-                    rank = self.worker_num() + self.server_index()
-            else:
-                raise ValueError(
-                    "role: {} can not be recognized, must in [TRAINER/PSERVER/ALL]".
-                    format(role))
-
-            gloo = fluid.core.Gloo()
-            gloo.set_rank(rank)
-            gloo.set_size(nodes)
-            gloo.set_prefix("")
-            gloo.set_iface(self._iface)
-            gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                     self._run_timeout_seconds)
-            if len(self._http_ip_port) != 0:
-                gloo.set_http_store(self._http_ip_port[0],
-                                    int(self._http_ip_port[1]), role)
-            else:
-                gloo.set_hdfs_store(
-                    os.path.join(self._hdfs_path, role), self._hdfs_name,
-                    self._hdfs_ugi)
-            gloo.init()
-            return gloo
-
-        if not self._init_gloo:
-            return
-
-        # paddlecloud support gloo
-        if self._role == Role.WORKER:
-            if self._current_id == 0 and len(self._http_ip_port) != 0:
-                size_d = {
-                    "trainer": len(self._worker_endpoints),
-                    "pserver": len(self._server_endpoints),
-                    "all":
-                    len(self._worker_endpoints) + len(self._server_endpoints)
-                }
-                # child process for http server
-                self._http_server = Process(
-                    target=self.__start_kv_server,
-                    args=(self._http_server_d, size_d))
-                self._http_server.daemon = True
-                # set running status to True
-                self._http_server_d["running"] = True
-                # start child process
-                self._http_server.start()
-            self._node_type = 1
-            gloo = init_gloo_instance("TRAINER")
-            self._node_type_comm = gloo
-        elif self._role == Role.SERVER:
-            self._node_type = 0
-            gloo = init_gloo_instance("PSERVER")
-            self._node_type_comm = gloo
-        else:
-            raise ValueError(
-                "role: {} can not be recognized, must in [TRAINER/PSERVER]".
-                format(self._role))
-
-        # gloo = init_gloo_instance("ALL")
-        # self._all_comm = gloo
-
-        if self._http_server is not None:
-            # set running status to False
-            self._http_server_d["running"] = False
-            # wait until child process exits
-            self._http_server.join()
-
     def generate_role(self):
         """
         generate role for role maker
@@ -615,50 +752,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 self._collective_env()
             self._role_is_generated = True
-
-    def __get_default_iface(self):
-        """
-        get default physical interface
-        """
-        default1 = self.__get_default_iface_from_gateway()
-        default2 = self.__get_default_iface_from_interfaces()
-        return default2 if default1 == "lo" else default1
-
-    def __get_default_iface_from_gateway(self):
-        """
-        get default physical interface
-        """
-        import netifaces
-        gateways = netifaces.gateways()
-        if gateways.get(netifaces.AF_INET) != None:
-            gateway = gateways[netifaces.AF_INET]
-            if len(gateway) > 0 and len(gateway[0]) > 1:
-                return gateway[0][1]
-        return "lo"
-
-    def __get_default_iface_from_interfaces(self):
-        """
-        get default physical interface
-        """
-        import netifaces
-        for intf_name in netifaces.interfaces():
-            addresses = netifaces.ifaddresses(intf_name)
-            if netifaces.AF_INET in addresses:
-                ipv4_addresses = addresses[netifaces.AF_INET]
-                for ipv4_address in ipv4_addresses:
-                    if 'broadcast' in ipv4_address:
-                        return intf_name
-        return "lo"
-
-    def __start_kv_server(self, http_server_d, size_d):
-        from paddle.distributed.fleet.utils import KVServer
-        http_server = KVServer(int(self._http_ip_port[1]), size_d)
-        http_server.start()
-        wait_seconds = 5
-        while http_server_d.get("running",
-                                False) and not http_server.shoud_stop():
-            time.sleep(wait_seconds)
-        http_server.stop()
 
 
 class UserDefinedRoleMaker(PaddleCloudRoleMaker):
