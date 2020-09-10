@@ -1751,6 +1751,11 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         if input.block.program != prog:
             raise "input must be in the same program as targets"
 
+    # find no grad var by op_path
+    no_grad_vars = _find_no_grad_vars(block, op_path, targets,
+                                      block_no_grad_set)
+    block_no_grad_set.update(no_grad_vars)
+
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
 
     op_path_dict = dict()
