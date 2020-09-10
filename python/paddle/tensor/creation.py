@@ -208,20 +208,20 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             value=data,
             place=place,
             persistable=False,
-            zero_copy=True,
+            zero_copy=False,
             stop_gradient=stop_gradient)
     else:
         name = unique_name.generate('generated_tensor')
         real_tensor = paddle.Tensor(
             value=data.real,
             place=place,
-            zero_copy=True,
+            zero_copy=False,
             name=name + ".real",
             stop_gradient=stop_gradient)
         imag_tensor = paddle.Tensor(
             value=data.imag,
             place=place,
-            zero_copy=True,
+            zero_copy=False,
             name=name + ".imag",
             stop_gradient=stop_gradient)
         return paddle.ComplexTensor(real_tensor, imag_tensor)

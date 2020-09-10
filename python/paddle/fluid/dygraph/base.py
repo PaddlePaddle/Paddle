@@ -25,6 +25,7 @@ from .tracer import Tracer
 import logging
 import objgraph
 from ..data_feeder import convert_dtype
+import warnings
 
 __all__ = [
     'no_grad', 'no_grad_', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph',
@@ -665,8 +666,17 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
     else:
         if isinstance(framework._current_expected_place(),
                       framework.core.CPUPlace):
-            if zero_copy is None:
-                zero_copy = True
+            #TODO(zhiqiu): we found two problems when enable zero_copy on CPUPlace.
+            # (1): eigen requires 16-bytes alignments, but the data of numpy array may not statisfy. 
+            # Details: https://eigen.tuxfamily.org/dox/group__TopicUnalignedArrayAssert.html
+            # (2): when used in flask framework, it may result in hang.
+            # Details: https://github.com/PaddlePaddle/Paddle/issues/26635
+            # So, we temporally diable the zero_copy strategy.
+            if zero_copy == True:
+                warnings.warn(
+                    "Currently, zero_copy is not supported, and it will be discarded."
+                )
+                zero_copy = False
         else:
             assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
 
