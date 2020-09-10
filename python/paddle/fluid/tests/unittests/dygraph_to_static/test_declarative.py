@@ -309,9 +309,16 @@ class TestDecorateModelDirectly(unittest.TestCase):
 
     def test_input_spec(self):
         net = SimpleNet()
-        net = declarative(net, input_spec=[InputSpec([None, 10])])
+        net = declarative(net, input_spec=[InputSpec([None, 8, 10])])
         self.assertTrue(len(net.forward.inputs) == 1)
         self.assertTrue(len(net.forward.program_cache) == 1)
+        input_shape = net.forward.inputs[0].shape
+        self.assertListEqual(list(input_shape), [-1, 8, 10])
+
+        # redecorate
+        net = declarative(net, input_spec=[InputSpec([None, 16, 10])])
+        input_shape = net.forward.inputs[0].shape
+        self.assertListEqual(list(input_shape), [-1, 16, 10])
 
 
 if __name__ == '__main__':
