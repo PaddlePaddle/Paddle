@@ -1194,15 +1194,14 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
         axis = [0]
 
     if in_dygraph_mode():
-        return core.ops.logsumexp(x, 'dim', axis, 'keep_dim', keepdim,
-                                    'reduce_all', reduce_all)
+        return core.ops.logsumexp(x, 'axis', axis, 'keepdim', keepdim, 'reduce_all', reduce_all)
 
     check_variable_and_dtype(x, 'x',
                              ['float32', 'float64'],
                              'logsumexp')
 
     helper = LayerHelper('logsumexp', **locals())
-    attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+    attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all':reduce_all}
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
         type='logsumexp', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
