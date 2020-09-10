@@ -30,7 +30,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
             "127.0.0.1:36001,127.0.0.2:36001"
 
-    def test_a_sync_optimizer1(self):
+    def test_a_sync_optimizer2(self):
         os.environ["TRAINING_ROLE"] = "TRAINER"
         import paddle.distributed.fleet as fleet
 
@@ -54,13 +54,13 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.auto = True
-        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
         self.assertTrue(optimizer.user_defined_strategy.a_sync)
         a_sync_configs = optimizer.user_defined_strategy.a_sync_configs
-        self.assertTrue(a_sync_configs['k_steps'] == 0)
+        self.assertTrue(a_sync_configs['k_steps'] == 800)
 
 
 if __name__ == "__main__":

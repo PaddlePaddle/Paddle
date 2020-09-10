@@ -49,6 +49,9 @@ class LarsOptimizer(MetaOptimizerBase):
             epsilon=configs['epsilon'])
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if self.user_defined_strategy.lars:
             if not isinstance(self.inner_opt, Momentum):
                 logging.warn(
@@ -62,7 +65,7 @@ class LarsOptimizer(MetaOptimizerBase):
         dist_strategy.lars = False
         dist_strategy.lars_configs = {}
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context):
         dist_strategy.lars = True
         dist_strategy.lars_configs = {
             "lars_coeff": 0.01,
@@ -89,5 +92,5 @@ class LarsOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         optimize_ops, params_grads = \
             self.lars_opt.minimize(loss, startup_program,
-                                      parameter_list, no_grad_set)
+                                   parameter_list, no_grad_set)
         return optimize_ops, params_grads
