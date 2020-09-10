@@ -25,6 +25,43 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
 template <typename T>
+void LSTMInferece(const bool &has_seq_length, const cudnnHandle_t &handle,
+                  const int &seq_length, ScopedRNNBase *rnn, const T *x_data,
+                  const T *init_h_data, const T *init_c_data, const T *w_data,
+                  T *out_data, T *last_h_data, T *last_c_data,
+                  framework::Tensor *workspace_data,
+                  const size_t &workspace_size) {
+  if (!has_seq_length) {
+    // for inference
+    // This interface is used when the input/output is unpadded.
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInference(
+        handle, rnn->rnn_desc_(), seq_length, rnn->x_descs_(), x_data,
+        rnn->init_h_desc_(), init_h_data, rnn->init_c_desc_(), init_c_data,
+        rnn->weight_desc_(), w_data, rnn->y_descs_(), out_data,
+        rnn->last_h_desc_(), last_h_data, rnn->last_c_desc_(), last_c_data,
+        workspace_data->data<uint8_t>(), workspace_size));
+  } else {
+#if CUDNN_VERSION >= 7201
+    // for inference
+    // This interface is used when the input/output is padded.
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInferenceEx(
+        handle, rnn->rnn_desc_(), rnn->x_seq_desc_(), x_data,
+        rnn->init_h_desc_(), init_h_data, rnn->init_c_desc_(), init_c_data,
+        rnn->weight_desc_(), w_data, rnn->y_seq_desc_(), out_data,
+        rnn->last_h_desc_(), last_h_data, rnn->last_c_desc_(), last_c_data,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        workspace_data->data<uint8_t>(), workspace_size));
+#else
+    // CUDNN VERSION has to >=7.2.1
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The padded input is supported by "
+        "cudnnRNNForwardInferenceEx, but it only works when "
+        "the version of cudnn is larger than 7.2.1"));
+#endif
+  }
+}
+
+template <typename T>
 class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -90,35 +127,9 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
         {static_cast<int64_t>(reserve_size)}, ctx.GetPlace());
 
     if (is_test) {
-      if (!has_seq_length) {
-        // for inference
-        // This interface is used when the input/output is unpadded.
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInference(
-            handle, rnn.rnn_desc_(), seq_length, rnn.x_descs_(), x_data,
-            rnn.init_h_desc_(), init_h_data, rnn.init_c_desc_(), init_c_data,
-            rnn.weight_desc_(), w_data, rnn.y_descs_(), out_data,
-            rnn.last_h_desc_(), last_h_data, rnn.last_c_desc_(), last_c_data,
-            workspace_data_.data<uint8_t>(), workspace_size));
-      } else {
-#if CUDNN_VERSION >= 7201
-        // for inference
-        // This interface is used when the input/output is padded.
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            platform::dynload::cudnnRNNForwardInferenceEx(
-                handle, rnn.rnn_desc_(), rnn.x_seq_desc_(), x_data,
-                rnn.init_h_desc_(), init_h_data, rnn.init_c_desc_(),
-                init_c_data, rnn.weight_desc_(), w_data, rnn.y_seq_desc_(),
-                out_data, rnn.last_h_desc_(), last_h_data, rnn.last_c_desc_(),
-                last_c_data, nullptr, nullptr, nullptr, nullptr, nullptr,
-                nullptr, nullptr, nullptr, workspace_data_.data<uint8_t>(),
-                workspace_size));
-#else
-        PADDLE_THROW(platform::errors::Unavailable(
-            "The padded input is supported by "
-            "cudnnRNNForwardInferenceEx, but it only works when "
-            "the version of cudnn is larger than 7.2.1"));
-#endif
-      }
+      LSTMInferece<T>(has_seq_length, handle, seq_length, &rnn, x_data,
+                      init_h_data, init_c_data, w_data, out_data, last_h_data,
+                      last_c_data, &workspace_data_, workspace_size);
     } else {
       if (!has_seq_length) {
         // for train
