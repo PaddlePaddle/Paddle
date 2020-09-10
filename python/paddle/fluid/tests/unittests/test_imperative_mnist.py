@@ -26,7 +26,7 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from .utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
