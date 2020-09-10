@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <math.h>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
@@ -62,15 +61,8 @@ void elementwise_floor_div(const framework::ExecutionContext &ctx,
                            const framework::Tensor *x,
                            const framework::Tensor *y, framework::Tensor *z) {
   int axis = ctx.Attr<int>("axis");
-  auto x_dims = x->dims();
-  auto y_dims = y->dims();
-  if (x_dims.size() >= y_dims.size()) {
-    ElementwiseComputeEx<FloorDivFunctor<T>, DeviceContext, T>(
-        ctx, x, y, axis, FloorDivFunctor<T>(), z);
-  } else {
-    ElementwiseComputeEx<InverseFloorDivFunctor<T>, DeviceContext, T>(
-        ctx, x, y, axis, InverseFloorDivFunctor<T>(), z);
-  }
+  ElementwiseComputeEx<FloorDivFunctor<T>, DeviceContext, T>(
+      ctx, x, y, axis, FloorDivFunctor<T>(), z);
 }
 
 template <typename DeviceContext, typename T>
