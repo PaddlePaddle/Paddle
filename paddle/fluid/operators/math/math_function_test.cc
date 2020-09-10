@@ -225,7 +225,7 @@ TEST(math_funciton, set_constant) {
   paddle::operators::math::set_constant(*ctx, &t, 10);
   for (int64_t i = 0; i < t.numel(); ++i) {
     PADDLE_ENFORCE_EQ(10, t.data<int>()[i],
-                      platform::errors::InvalidArgument(
+                      paddle::platform::errors::InvalidArgument(
                           "Each value of input"
                           "tensor should be 10, but received %d.",
                           t.data<int>()[i]));

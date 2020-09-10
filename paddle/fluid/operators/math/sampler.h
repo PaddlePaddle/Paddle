@@ -19,6 +19,8 @@ limitations under the License. */
 #include <random>
 #include <vector>
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace operators {
 namespace math {
