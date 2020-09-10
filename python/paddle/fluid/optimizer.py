@@ -3784,6 +3784,7 @@ class PipelineOptimizer(object):
 
         Args:
             main_program (Program): the main program
+            devices: all used devices
         """
         programs = []
         # Map from device to its corresponding section program info
@@ -3910,10 +3911,10 @@ class PipelineOptimizer(object):
                     data_devices_map[var_name].append(dev_spec)
         return data_devices_map
 
-    def _insert_enq_deq_for_data_var(self, main_block, programs, startup,
-                                     devices):
+    def _insert_sendrecv_for_data_var(self, main_block, programs, startup,
+                                      devices):
         """
-        Insert enqueue and dequeue ops for data var that on other devices.
+        Insert send and recv ops for data var that on other devices.
 
         Args:
             main_block (Block): Global block for main program
@@ -3926,39 +3927,24 @@ class PipelineOptimizer(object):
 
         first_prog = programs[0]['program']
         first_block = first_prog.block(0)
-        enqueue_index = 0
+        insert_index = 0
         for op in first_block.ops:
-            enqueue_index += 1
+            insert_index += 1
             if op.type == "read":
                 break
         first_dev_spec = devices[0]
         for var_name in data_devices_map.keys():
             for device in data_devices_map[var_name]:
                 if device == first_dev_spec: continue
-                # step1: generate queue for each pair of data var and device
-                # that that data on
-                queue_name = var_name + "_blocking_queue"
-                queue_name = unique_name.generate(queue_name)
-                queue_var = startup.block(0).create_var(
-                    name=queue_name,
-                    persistable=True,
-                    type=core.VarDesc.VarType.RAW)
-                startup.block(0).append_op(
-                    type='queue_generator',
-                    attrs={
-                        'names': [queue_name],
-                        'capacity': self._num_microbatches
-                    })
                 main_var = main_block.var(var_name)
                 assert main_var.is_data
                 if not var_name in first_block.vars:
                     self._create_var(first_block, main_var, var_name)
                 first_block._insert_op(
-                    index=enqueue_index,
-                    type='enqueue',
+                    index=insert_index,
+                    type='c_send',
                     inputs={'X': first_block.var(var_name)},
                     attrs={
-                        'queue_name': queue_name,
                         self._op_device_key: first_dev_spec,
                         self._op_role_key: self._op_role.Forward
                     })
@@ -3972,12 +3958,11 @@ class PipelineOptimizer(object):
                 new_var = self._create_var(block, source_var, var_name)
                 block._insert_op(
                     index=0,
-                    type='dequeue',
+                    type='c_recv',
                     outputs={'Out': [new_var]},
                     attrs={
                         self._op_device_key: device,
                         self._op_role_key: self._op_role.Forward,
-                        'queue_name': queue_name,
                     })
 
     def _strip_grad_suffix(self, name):
@@ -4080,23 +4065,22 @@ class PipelineOptimizer(object):
         assert sorted_device_specs == device_specs
         return device_specs
 
-    def _insert_enq_deq_ops_for_boundaries(self, block, origin_block,
-                                           startup_program):
+    def _insert_sendrecv_ops_for_boundaries(self, block, origin_block):
         """
-        Insert a pair of enqueue and dequeue ops for every two
+        Insert a pair of send and recv ops for every two
         consecutive ops on different devices.
         """
-        startup_block = startup_program.global_block()
         extra_index = 0
 
         # A map from var to device spec where op takes it as input,
-        # avoiding multiple enqueue and dequeue ops.
+        # avoiding multiple send and recv ops.
         var_devspec = dict()
 
         for index, op in list(enumerate(origin_block.ops)):
-            # skips lr-related op and vars, as we will process them later.
+            # skips lr-related ops and vars, as we will process them later.
             if int(op.attr(self._op_role_key)) & int(self._op_role.LRSched):
                 continue
+            # skips update ops and vars, as we will process them later.
             if self._is_update_op(op): continue
 
             cur_device_spec = op.attr(self._op_device_key)
@@ -4119,37 +4103,23 @@ class PipelineOptimizer(object):
                     if cur_device_spec in var_devspec[var_name]: continue
                     var_devspec[var_name].append(cur_device_spec)
 
-                    queue_name = var_name + "_blocking_queue"
-                    queue_name = unique_name.generate(queue_name)
-                    queue_var = startup_block.create_var(
-                        name=queue_name,
-                        persistable=True,
-                        type=core.VarDesc.VarType.RAW)
-                    startup_block.append_op(
-                        type='queue_generator',
-                        attrs={
-                            'names': [queue_name],
-                            'capacity': self._num_microbatches
-                        })
                     op_role = op.all_attrs()[self._op_role_key]
                     var = block.vars[var_name]
                     block._insert_op(
                         index=index + extra_index,
-                        type='enqueue',
+                        type='c_send',
                         inputs={'X': var},
                         attrs={
-                            'queue_name': queue_name,
                             self._op_device_key: prev_device_spec,
                             self._op_role_key: op_role
                         })
                     extra_index += 1
                     block._insert_op(
                         index=index + extra_index,
-                        type='dequeue',
+                        type='c_recv',
                         outputs={'Out': [var]},
                         attrs={
                             self._op_device_key: cur_device_spec,
-                            'queue_name': queue_name,
                             self._op_role_key: op_role
                         })
                     extra_index += 1
@@ -4178,7 +4148,9 @@ class PipelineOptimizer(object):
 
     def _accumulate_gradients(self, block):
         """
-        Accumulate the graident generated in microbatch to the one in mini-batch.
+        Accumulate the gradients generated in microbatch to the one in mini-batch.
+        We also scale the loss corresponding to number of micro-batches at
+        the same time.
         """
         for index, op in reversed(list(enumerate(block.ops))):
             offset = index
@@ -4210,12 +4182,10 @@ class PipelineOptimizer(object):
                 for i in range(0, len(op_role_var), 2):
                     grad_name = op_role_var[i + 1]
                     grad_var = block.vars[grad_name]
-                    param_name = op_role_var[i]
-                    param_var = block.vars[param_name]
-                    new_var_name = unique_name.generate(param_name)
-                    new_var_name = self._append_grad_suffix(new_var_name)
-                    new_var = self._create_var(block, grad_var, new_var_name)
-                    self._rename_arg(op, grad_name, new_var_name)
+                    new_grad_var_name = unique_name.generate(grad_name)
+                    new_var = self._create_var(block, grad_var,
+                                               new_grad_var_name)
+                    self._rename_arg(op, grad_name, new_grad_var_name)
                     block._insert_op(
                         index=offset + 1,
                         type='sum',
@@ -4247,7 +4217,6 @@ class PipelineOptimizer(object):
 
     def _get_device_info(self, block):
         for op in block.ops:
-
             if not op._has_kernel(op.type): continue
             op_device = op.attr(self._op_device_key)
             return op_device
@@ -4282,7 +4251,7 @@ class PipelineOptimizer(object):
             for prog in var_info[var_name]:
                 block = prog.block(0)
                 for op in block.ops:
-                    if op.type == "dequeue": continue
+                    if op.type == "c_recv": continue
                     # We have processed lr related vars
                     if op.attr(self._op_role_key) == int(
                             self._op_role.Optimize.LRSched):
@@ -4306,24 +4275,11 @@ class PipelineOptimizer(object):
             for prog in all_progs:
                 if prog == write_prog: continue
 
-                queue_name = var_name + "_blocking_queue"
-                queue_name = unique_name.generate(queue_name)
-                queue_var = startup_prog.block(0).create_var(
-                    name=queue_name,
-                    persistable=True,
-                    type=core.VarDesc.VarType.RAW)
-                startup_prog.block(0).append_op(
-                    type='queue_generator',
-                    attrs={
-                        'names': [queue_name],
-                        'capacity': self._num_microbatches
-                    })
                 write_block._insert_op(
                     index=0,
-                    type='enqueue',
+                    type='c_send',
                     inputs={'X': write_block.var(var_name), },
                     attrs={
-                        'queue_name': queue_name,
                         self._op_device_key: write_device,
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch
@@ -4333,14 +4289,13 @@ class PipelineOptimizer(object):
                 read_device = self._get_device_info(read_block)
                 read_block._insert_op(
                     index=0,
-                    type='dequeue',
+                    type='c_recv',
                     outputs={'Out': [read_block.var(var_name)]},
                     attrs={
                         self._op_device_key: read_device,
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch
                         self._op_role_key: self._op_role.LRSched,
-                        'queue_name': queue_name,
                     })
 
     def minimize(self,
@@ -4365,14 +4320,13 @@ class PipelineOptimizer(object):
 
         device_specs = self._check_validation(main_block)
 
-        # Step3: add enqueue and dequeue ops between section boundaries
+        # Step3: add send and recv ops between section boundaries
         origin_prog = main_block.program.clone(for_test=False)
         origin_main_block = origin_prog.global_block()
-        self._insert_enq_deq_ops_for_boundaries(main_block, origin_main_block,
-                                                startup_program)
+        self._insert_sendrecv_ops_for_boundaries(main_block, origin_main_block)
 
-        # Step4: accumulate gradients during backward
-        # and clear them after update
+        # Step4: clear gradients before each mini-batch and 
+        # accumulate gradients during backward
         self._clear_gradients(main_block)
         self._accumulate_gradients(main_block)
 
@@ -4392,14 +4346,14 @@ class PipelineOptimizer(object):
                 raise ValueError("Unknown device type: %s", dev_spec)
 
         # Step5: split program into sections and add pairs of
-        # enqueue and dequeue ops for data var.
+        # send and recv ops for data var.
         if len(place_list) <= 1:
             raise ValueError("Run on one device, do not use pipeline.")
         program_list = self._split_program(main_program, device_specs)
         for p in program_list:
             self._create_vars(p["program"].block(0), main_program)
-        self._insert_enq_deq_for_data_var(main_block, program_list,
-                                          startup_program, device_specs)
+        self._insert_sendrecv_for_data_var(main_block, program_list,
+                                           startup_program, device_specs)
 
         # Step6: Special Case: process persistable vars that exist in
         # multiple sections
