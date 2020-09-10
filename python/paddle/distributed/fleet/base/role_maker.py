@@ -40,21 +40,7 @@ class Gloo(object):
         FILE = 2
         HTTP = 3
 
-    def __init__(self,
-                 rendezvous,
-                 role,
-                 role_id,
-                 worker_num,
-                 server_num,
-                 need_init_all=False,
-                 **kwargs):
-        self._rendezvous = rendezvous
-        self._role = role
-        self._role_id = role_id
-        self._worker_num = worker_num
-        self._server_num = server_num
-        self._need_init_all = need_init_all
-
+    def __init__(self):
         self._worker_comm = None
         self._server_comm = None
         self._nodes_comm = None
@@ -69,21 +55,58 @@ class Gloo(object):
         self._init_timeout_seconds = 3600
         self._run_timeout_seconds = 9999999
 
+        self._rendezvous = None
+        self._role = None
+        self._iface = None
+
+        self._role_id = -1
+        self._worker_num = -1
+        self._server_num = -1
+        self._need_init_all = False
+
+    def init(self,
+             rendezvous,
+             role,
+             role_id,
+             worker_num,
+             server_num,
+             need_init_all=False,
+             **kwargs):
+
+        self._rendezvous = rendezvous
+        self._role = role
+        self._role_id = role_id
+        self._worker_num = worker_num
+        self._server_num = server_num
+        self._need_init_all = need_init_all
         self._iface = self.__get_default_iface()
 
         if self._rendezvous == Gloo.RENDEZVOUS.HDFS:
-            self._init_dfs(**kwargs)
+            dfs_name = kwargs.get("dfs.name", "")
+            dfs_ugi = kwargs.get("dfs.ugi", "")
+            dfs_path = kwargs.get("dfs.path", "")
+
+            if not dfs_name or not dfs_ugi or not dfs_path:
+                raise ValueError(self._err_type)
+
+            self._init_dfs(dfs_name, dfs_ugi, dfs_path)
         elif self._rendezvous == Gloo.RENDEZVOUS.FILE:
             self._init_fs(**kwargs)
         elif self._rendezvous == Gloo.RENDEZVOUS.HTTP:
-            self._init_http(**kwargs)
+            ip = kwargs.get("http.host", "")
+            port = kwargs.get("http.port", "")
+
+            if not ip or not port:
+                raise ValueError(self._err_type)
+
+            self._init_http(ip, port)
         else:
             raise ValueError(self._err_type)
 
     def _init_fs(self, **kwargs):
         raise ValueError("comming soon")
 
-    def _init_dfs(self, **kwargs):
+    def _init_dfs(self, dfs_name, dfs_ugi, dfs_path):
         def init(rank, nodes, role):
             gloo = fluid.core.Gloo()
             gloo.set_rank(rank)
@@ -94,13 +117,6 @@ class Gloo(object):
                                      self._run_timeout_seconds)
             gloo.set_hdfs_store(os.path.join(dfs_path, role), dfs_name, dfs_ugi)
             return gloo
-
-        dfs_name = kwargs.get("dfs.name", "")
-        dfs_ugi = kwargs.get("dfs.ugi", "")
-        dfs_path = kwargs.get("dfs.path", "")
-
-        if not dfs_name or not dfs_ugi or not dfs_path:
-            raise ValueError(self._err_type)
 
         if self._role == Role.WORKER:
             rank, nodes = self._get_rank_nodes(Role.WORKER)
@@ -116,7 +132,7 @@ class Gloo(object):
             gloo = init(rank, nodes, Role.ALL)
             self._nodes_comm = gloo
 
-    def _init_http(self, **kwargs):
+    def _init_http(self, ip, port):
         def __start_kv_server(http_server_d, size_d):
             from paddle.distributed.fleet.utils import KVServer
             http_server = KVServer(port, size_d)
@@ -129,9 +145,9 @@ class Gloo(object):
 
         def init_kv_server():
             size_d = {
-                "trainer": len(self._worker_num),
-                "pserver": len(self._server_num),
-                "all": len(self._worker_num) + len(self._server_num)
+                "trainer": self._worker_num,
+                "pserver": self._server_num,
+                "all": self._worker_num + self._server_num
             }
 
             _http_server_d = {"running": True}
@@ -154,12 +170,6 @@ class Gloo(object):
             gloo.set_http_store(ip, port, role)
             return gloo
 
-        ip = kwargs.get("http.ip", "")
-        port = kwargs.get("http.port", "")
-
-        if not ip or not port:
-            raise ValueError(self._err_type)
-
         port = int(port)
 
         if self._role == Role.SERVER and self._role_id == 0:
@@ -180,11 +190,14 @@ class Gloo(object):
             self._nodes_comm = gloo
 
     def _get_rank_nodes(self, role):
+        nodes = 0
+        rank = -1
+
         if role == Role.WORKER:
             nodes = self._worker_num
             rank = self._role_id
         elif role == Role.SERVER:
-            nodes = self._server_num()
+            nodes = self._server_num
             rank = self._role_id
         elif role == Role.ALL:
             nodes = self._worker_num + self._server_num
@@ -408,19 +421,11 @@ class RoleMakerBase(object):
             self._role, self._current_id, self._worker_endpoints,
             self._server_endpoints)
 
-    def _all_gather(self, comm_world, input):
-        """
-
-        Args:
-            input(int|float): input value
-
-        Returns:
-            return a list of values
-        """
-        print("warning: RoleMakerBase does not have all gather.")
+    def _all_gather(self, input, comm_world="worker"):
+        print("warning: RoleMakerBase does not have all gather worker.")
         return None
 
-    def _all_reduce(self, comm_world, input, mode="sum"):
+    def _all_reduce(self, input, mode="sum", comm_world="worker"):
         """
         Args:
             input(list/numpy.array): array of one dim
@@ -742,6 +747,44 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._node_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
 
+    def _gloo_init(self):
+        # PADDLE_WITH_GLOO 1: trainer barrier, 2: all barrier
+        use_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
+        if use_gloo not in [1, 2]:
+            return
+
+        # PADDLE_GLOO_RENDEZVOUS 1: HDFS 2: FILE 3: HTTP
+        rendezvous_type = int(os.getenv("PADDLE_GLOO_RENDEZVOUS", "0"))
+        if rendezvous_type not in [1, 2, 3]:
+            raise ValueError(self._gloo._err_type)
+
+        need_init_all = True if use_gloo == 2 else False
+
+        if rendezvous_type == Gloo.RENDEZVOUS.HDFS:
+            dfs_name = os.getenv("PADDLE_GLOO_DFS_NAME", "")
+            dfs_ugi = os.getenv("PADDLE_GLOO_DFS_UGI", "")
+            dfs_path = os.getenv("PADDLE_GLOO_DFS_PATH", "")
+            kwargs = {
+                "dfs.name": dfs_name,
+                "dfs.ugi": dfs_ugi,
+                "dfs.path": dfs_path
+            }
+        elif rendezvous_type == Gloo.RENDEZVOUS.HTTP:
+            ip = os.getenv("PADDLE_GLOO_HTTP_HOST", "")
+            port = os.getenv("PADDLE_GLOO_HTTP_PORT", "")
+            kwargs = {"http.host": ip, "http.port": port}
+        else:
+            raise ValueError("comming soon")
+
+        self._gloo.init(
+            rendezvous=rendezvous_type,
+            role=self._role,
+            role_id=self.role_id(),
+            worker_num=self.worker_num(),
+            server_num=self.server_num(),
+            need_init_all=need_init_all,
+            kwargs=kwargs)
+
     def generate_role(self):
         """
         generate role for role maker
@@ -778,8 +821,6 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
             self._cur_endpoint = self._server_endpoints[self._current_id]
         self._node_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
-
-        self._init_gloo_env()
 
     def _user_defined_collective_env(self):
         self._worker_endpoints = self._kwargs.get("worker_endpoints")
