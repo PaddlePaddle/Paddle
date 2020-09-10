@@ -19,7 +19,6 @@ from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
 from ..layers.layer_function_generator import OpProtoHolder
 from ..layers import common_methods
 from . import to_variable, no_grad
-import paddle
 
 import numpy as np
 import six
@@ -163,26 +162,6 @@ def monkey_patch_math_varbase():
     def _scalar_div_(var, value):
         return _scalar_elementwise_op_(var, 1.0 / value, 0.0)
 
-    # TODO(shenliang03):  currently, it supports divide, floor_divide, remainder
-    # for binary operator by using the api to achieve the type promotion
-    def _binary_method_creator_(op_type, reverse=False):
-        import paddle
-
-        def __impl__(self, other_var):
-            import paddle
-            op = getattr(paddle, op_type)
-            if reverse:
-                return op(other_var, self)
-            else:
-                return op(self, other_var)
-
-        __impl__.__doc__ = """
-
-        See paddle.{}""".format(op_type)
-        __impl__.__name__ = op_type
-
-        return __impl__
-
     # for binary operator such as elementwise, compare
     def _binary_creator_(method_name,
                          op_type,
@@ -281,20 +260,22 @@ def monkey_patch_math_varbase():
         ## a*b == b*a. Do not need to reverse explicitly
         ('__rmul__',
          _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
+        ('__div__', _binary_creator_('__div__', 'elementwise_div', False,
+                                     _scalar_div_)),
+        ('__truediv__', _binary_creator_('__truediv__', 'elementwise_div',
+                                         False, _scalar_div_)),
+        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
+                                      None)),
         ('__rtruediv__', _binary_creator_('rtruediv__', 'elementwise_div', True,
                                           None)),
         ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,
                                      None)),
         ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
                                       None)),
-        # These binary use paddle.optype
-        ('__div__', _binary_method_creator_('divide', False)),
-        ('__truediv__', _binary_method_creator_('divide', False)),
-        ('__rtruediv__', _binary_method_creator_('divide', True)),
-        ('__rdiv__', _binary_method_creator_('divide', True)),
-        ('__floordiv__', _binary_method_creator_('floor_divide', False)),
-        ('__rfloordiv__', _binary_method_creator_('floor_divide', True)),
-        ('__mod__', _binary_method_creator_('remainder', False)),
+        ('__floordiv__', _binary_creator_('__floordiv__',
+                                          'elementwise_floordiv', False, None)),
+        ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
+                                     None)),
         ## for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
