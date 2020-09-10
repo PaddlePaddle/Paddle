@@ -316,6 +316,14 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.conv_workspace_size_limit, 1000)
         strategy._enable_env()
 
+    def test_distributed_strategy_repr(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.recompute = True
+        strategy.recompute_configs = {"checkpoints": ["a1", "a2", "a3"]}
+        strategy.amp = True
+        strategy.localsgd = True
+        print(str(strategy))
+
 
 if __name__ == '__main__':
     unittest.main()

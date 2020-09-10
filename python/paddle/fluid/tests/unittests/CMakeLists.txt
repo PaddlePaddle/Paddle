@@ -47,6 +47,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_dgc_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_private_function)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_executor)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_meta_optimizer_base)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_distributed_strategy)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -440,6 +441,8 @@ if(WITH_DISTRIBUTE)
     # FIXME(seiriosX) will fix this
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_sparse_embedding_ctr")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_a_sync_optimizer_auto")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ctr")
 
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
     py_test_modules(test_transpiler_ops MODULES test_transpiler_ops ENVS ${dist_ENVS})
@@ -459,6 +462,7 @@ if(WITH_DISTRIBUTE)
     	   py_test_modules(test_fleet_pipeline_meta_optimizer MODULES test_fleet_pipeline_meta_optimizer ENVS ${dist_ENVS})
     	   py_test_modules(test_fleet_private_function MODULES test_fleet_private_function ENVS ${dist_ENVS})
 	   py_test_modules(test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS ${dist_ENVS})
+	   py_test_modules(test_fleet_distributed_strategy MODULES test_fleet_distributed_strategy)
 	   py_test_modules(test_fleet_auto MODULES test_fleet_auto ENVS ${dist_ENVS})
         if(NOT WIN32)
             py_test_modules(test_fleet_localsgd_meta_optimizer MODULES test_fleet_localsgd_meta_optimizer ENVS ${dist_ENVS})
@@ -558,7 +562,7 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_parallel_executor_feed_persistable_var
         test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
         test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
-        test_optimizer_in_control_flow test_dataloader_keep_order
+        test_dataloader_keep_order
         test_dataloader_unkeep_order
         test_parallel_executor_fetch_isolated_var
         test_parallel_executor_inference_feed_partial_data

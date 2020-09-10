@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import sys
 import unittest
 
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
@@ -177,8 +178,20 @@ class TestOriginInfoWithDecoratedFunc(TestOriginInfo):
 
     def set_dygraph_info(self):
         self.line_num = 2
-        self.line_index_list = [0, 2]
-        self.dy_rel_lineno_list = [0, 2]
+
+        # NOTE(liym27):
+        #   There are differences in ast_node.lineno between PY3.8+ and PY3.8-.
+        #   If the first gast.FunctionDef has decorator, the lineno of gast.FunctionDef is differs.
+        #       1. < PY3.8
+        #           its lineno equals to the lineno of the first decorator node, which is not right.
+        #       2. >= PY3.8
+        #           its lineno is the actual lineno, which is right.
+        if sys.version_info >= (3, 8):
+            self.line_index_list = [1, 2]
+            self.dy_rel_lineno_list = [1, 2]
+        else:
+            self.line_index_list = [0, 2]
+            self.dy_rel_lineno_list = [0, 2]
         self.dy_abs_col_offset = [0, 4]
         self.dy_func_name = [self.dygraph_func.__name__] * self.line_num
 
@@ -199,8 +212,13 @@ class TestOriginInfoWithDecoratedFunc2(TestOriginInfo):
 
     def set_dygraph_info(self):
         self.line_num = 2
-        self.line_index_list = [0, 3]
-        self.dy_rel_lineno_list = [0, 3]
+
+        if sys.version_info >= (3, 8):
+            self.line_index_list = [2, 3]
+            self.dy_rel_lineno_list = [2, 3]
+        else:
+            self.line_index_list = [0, 3]
+            self.dy_rel_lineno_list = [0, 3]
         self.dy_abs_col_offset = [0, 4]
         self.dy_func_name = [self.dygraph_func.__name__] * self.line_num
 
