@@ -235,9 +235,8 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
         pod = Pod()
         pod.rank = node_rank
         pod.addr = ip
-        cur_node_endpoints = [
-            endpoint for endpoint in trainer_endpoints if ip in endpoint
-        ]
+        cur_node_endpoints = trainer_endpoints[node_rank]
+        # when use paddlecloud, endpoints may > selected_gpus(user_defined)
         assert len(cur_node_endpoints) >= len(
             selected_gpus
         ), "current trainer_endpoints size should be greater equal than selected_gpus size."
