@@ -21,11 +21,13 @@ from paddle.fluid.dygraph.dygraph_to_static.origin_info import Location, OriginI
 
 ERROR_DATA = "Error data about original source code information and traceback."
 
-SIMPLIFY_EOOR_ENV_NAME = "TRANSLATOR_SIMPLIFY_NEW_EOOR"
-DEFAULT_SIMPLIFY_NEW_EOOR = 1
+# A flag to set whether to open the dygraph2static error reporting module
+SIMPLIFY_ERROR_ENV_NAME = "TRANSLATOR_SIMPLIFY_NEW_ERROR"
+DEFAULT_SIMPLIFY_NEW_ERROR = 1
 
-DISABLE_EOOR_ENV_NAME = "TRANSLATOR_DISABLE_NEW_EOOR"
-DEFAULT_DISABLE_NEW_EOOR = 0
+# A flag to set whether to display the simplified error stack
+DISABLE_ERROR_ENV_NAME = "TRANSLATOR_DISABLE_NEW_ERROR"
+DEFAULT_DISABLE_NEW_ERROR = 0
 
 
 def attach_error_data(error, in_runtime=False):
@@ -111,8 +113,8 @@ class ErrorData(object):
         # Simplify error value to improve readability if error is raised in runtime
         if self.in_runtime:
             if int(
-                    os.getenv(SIMPLIFY_EOOR_ENV_NAME,
-                              DEFAULT_SIMPLIFY_NEW_EOOR)):
+                    os.getenv(SIMPLIFY_ERROR_ENV_NAME,
+                              DEFAULT_SIMPLIFY_NEW_ERROR)):
                 self._simplify_error_value()
             message_lines.append(str(self.error_value))
             return '\n'.join(message_lines)
@@ -162,7 +164,9 @@ class ErrorData(object):
         self.error_value = self.error_type(error_value_str)
 
     def raise_new_exception(self):
-        if int(os.getenv(DISABLE_EOOR_ENV_NAME, DEFAULT_DISABLE_NEW_EOOR)):
+
+        # Raises the origin error if disable dygraph2static error module,
+        if int(os.getenv(DISABLE_ERROR_ENV_NAME, DEFAULT_DISABLE_NEW_ERROR)):
             raise
 
         new_exception = self.create_exception()

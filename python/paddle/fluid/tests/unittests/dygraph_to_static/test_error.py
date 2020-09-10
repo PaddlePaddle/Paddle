@@ -116,12 +116,12 @@ class TestErrorInCompileTime(unittest.TestCase):
         self._test_attach_and_raise_new_exception(call_dy2static)
 
     def set_flags(self, disable_error=0, simplify_error=1):
-        os.environ[error.DISABLE_EOOR_ENV_NAME] = str(disable_error)
-        self.disable_error = int(os.getenv(error.DISABLE_EOOR_ENV_NAME, 0))
+        os.environ[error.DISABLE_ERROR_ENV_NAME] = str(disable_error)
+        self.disable_error = int(os.getenv(error.DISABLE_ERROR_ENV_NAME, 0))
         self.assertEqual(self.disable_error, disable_error)
 
-        os.environ[error.SIMPLIFY_EOOR_ENV_NAME] = str(simplify_error)
-        self.simplify_error = int(os.getenv(error.SIMPLIFY_EOOR_ENV_NAME, 1))
+        os.environ[error.SIMPLIFY_ERROR_ENV_NAME] = str(simplify_error)
+        self.simplify_error = int(os.getenv(error.SIMPLIFY_ERROR_ENV_NAME, 1))
         self.assertEqual(self.simplify_error, simplify_error)
 
 
