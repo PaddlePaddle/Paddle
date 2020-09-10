@@ -55,8 +55,7 @@ T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
       return tensor->mutable_data<T>(platform::CUDAPlace(device_));
     }
     default:
-      PADDLE_THROW(platform::errors::Unavailable("Unsupported place: %d",
-                                                 static_cast<int>(place)));
+      PADDLE_THROW("Unsupported place: %d", static_cast<int>(place));
       break;
   }
   return nullptr;
@@ -117,8 +116,7 @@ void ZeroCopyTensor::copy_from_cpu(const T *data) {
     memory::Copy(gpu_place, static_cast<void *>(t_data), platform::CPUPlace(),
                  data, ele_size, dev_ctx->stream());
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Not compiled with CUDA, should not reach here."));
+    PADDLE_THROW("Not compiled with CUDA, should not reach here.");
 #endif
   }
 }
@@ -143,8 +141,7 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
 
     cudaStreamSynchronize(dev_ctx->stream());
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Not compile with CUDA, should not reach here."));
+    PADDLE_THROW("Not compile with CUDA, should not reach here.");
 #endif
   }
 }
