@@ -617,12 +617,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     VLOG(4) << "Conv_grad: use_addto = " << ctx.Attr<bool>("use_addto");
 
     if (input_grad) {
-      // if (!ctx.Attr<bool>("use_addto")) {
-      //   VLOG(4) << input_grad->dims();
-      //   math::SetConstant<platform::CUDADeviceContext, T> set_zero;
-      //   set_zero(dev_ctx, input_grad, static_cast<T>(0));
-      // }
-      // Because beta is zero, it is unnecessary to reset input_grad.
+      // When beta is 0, it is unnecessary to reset input_grad.
+      // When beta is 1, the output cannot be reset since addt strategy used.
       for (int i = 0; i < groups; i++) {
         workspace_handle.RunFunc(
             [&](void* cudnn_workspace_ptr) {
@@ -664,6 +660,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
             ctx, &transformed_input_grad_channel, input_grad);
       }
     }
+
+    // filter_grad do not use inplace addto.
     ScalingParamType<T> beta_filter = 0.0f;
     // ------------------- cudnn conv backward filter ---------------------
     if (filter_grad) {
@@ -1030,8 +1028,13 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     int group_offset_filter = W->numel() / groups;
 
     ScalingParamType<T> alpha = 1.0f;
-    ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
-    VLOG(4) << "Conv_grad_grad: use_addto = " << ctx.Attr<bool>("use_addto");
+    ScalingParamType<T> beta = 0.0f;
+
+    // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
+    // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f :
+    // 0.0f;
+    // VLOG(4) << "Conv_grad_grad: use_addto = " << ctx.Attr<bool>("use_addto");
+
     auto wkspace_handle = dev_ctx.cudnn_workspace_handle();
 
     if (ddO) {

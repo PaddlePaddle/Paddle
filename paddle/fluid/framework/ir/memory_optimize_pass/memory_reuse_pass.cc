@@ -356,7 +356,6 @@ void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
       out_var->Name());
   reused_in_var_names_[op->GetScopeIdx()].insert(in_var->Name());
   reused_out_var_names_[op->GetScopeIdx()].insert(out_var->Name());
-  VLOG(4) << 111;
 }
 
 // 1. Set last living op of in_var to be any last living op of out_var

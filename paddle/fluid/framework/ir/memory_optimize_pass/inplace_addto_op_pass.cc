@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,21 +36,8 @@ class InplaceAddToOpPass : public MemoryReusePass {
   void Run(Graph *graph) const override;
 
  private:
-  // void AddDependencyVar(details::OpHandleBase *depender,
-  //                       details::OpHandleBase *dependee) const {
-  //   // a depends on b, a is depender, b is dependee
-  //   // so, the execution order should be: b before a
-  //   auto *graph = GetMutableGraph();
-  //   // Add a dep_var to resolve write-after-write data hazard between
-  //   // `depender` and `dependee` op.
-  //   auto *dep_var = new
-  //   details::DummyVarHandle(graph->CreateControlDepVar());
-  //   graph->Get<details::GraphDepVars>(details::kGraphDepVars).emplace(dep_var);
-  //   depender->AddInput(dep_var);
-  //   dependee->AddOutput(dep_var);
-  // }
-  // 1. Set last living op of in_var to be any last living op of out_var
-  // 2. Set reference count of in_var to be 1
+  // 1. Add last living op of in_var, add any last living op of out_var
+  // 2. Set reference count of in_var to be 2
   void UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
                              details::VarHandle *in_var,
                              details::VarHandle *out_var) const override {
@@ -125,8 +112,6 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
       }
 
       const std::string &var_name = pair.first;
-      // TODO(zhiqiu): maybe the var_name should be right operand of
-      // elementwise_add?
       auto in_nodes = this->FindNodesByName(var_name, op->Node()->inputs);
       if (in_nodes.size() == 1) {
         candidate_ops[op][var_name] = *in_nodes.begin();
@@ -219,7 +204,7 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
     // step (d): make right_var's generated op use addto
     right_generated_op->GetOp()->SetAttr("use_addto", true);
 
-    // step (e): make elementwise_add skip running
+    // step (e): make grad_add skip running
     op->SetSkipRunning(true);
   }
 }
