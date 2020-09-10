@@ -67,12 +67,6 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
              "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
              "should be int32, int64, float32, float64.");
   }
-  void AddOpAttr() override {
-    AddAttr<bool>("for_grad_accum",
-                  "(bool, default false), Specify if the elementwise_add op is "
-                  "used for gradient accumulation")
-        .SetDefault(false);
-  }
 
   std::string GetOpFuntionality() const override {
     return "Add two tensors element-wise";
@@ -139,11 +133,17 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int64_t>);
 
-REGISTER_OP_VERSION(elementwise_add)
-    .AddCheckpoint(
-        R"ROC(enhance elementwise_add to support gradient accumulation)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "for_grad_accum",
-            "To specify if the elementwise_add op is used for gradient "
-            "accumulation",
-            false));
+// A specialization elementwise_add operator, used in gradient accumulation with
+// inplace addto.
+REGISTER_OPERATOR(
+    grad_add, paddle::operators::ElementwiseOp,
+    paddle::operators::ElementwiseAddOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OP_CPU_KERNEL(
+    grad_add,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>);

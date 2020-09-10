@@ -403,11 +403,9 @@ def _accumulate_gradients_by_add_ops_(var_name, renamed_vars, pending_sum_ops,
         else:
             out_name = var_name
         pending_sum_ops[op_idx].append(
-            _create_op_desc_("elementwise_add", {"X": [x_name],
-                                                 "Y": [y_name]
-                                                 }, {"Out": [out_name]},
-                             {"use_mkldnn": False,
-                              "for_grad_accum": True}))
+            _create_op_desc_("grad_add", {"X": [x_name],
+                                          "Y": [y_name]}, {"Out": [out_name]},
+                             {"use_mkldnn": False}))
     renamed_vars[var_name] = [var_name]
 
 
@@ -418,7 +416,7 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     In these cases, the variable should be the accumulation of all the outputs.
     `sum_op`s are added to implement the accumulate.
     """
-    _MAX_ADD_NUM_ = 8
+    _MAX_ADD_NUM_ = fluid.core.globals()['FLAGS_max_inplace_grad_add']
     #pending_sum_ops = []
     pending_sum_ops = collections.OrderedDict()
     var_rename_count = collections.defaultdict(int)

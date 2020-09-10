@@ -167,7 +167,6 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("Scale_out",
                    "(float, default 1.0f), The quantize scale of output data")
         .SetDefault(1.0f);
-    AddOpAttr();
     AddOpComment();
   }
 

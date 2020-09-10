@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/share_tensor_buffer_op_handle.h"
+
 #include <string>
 #include <unordered_set>
+
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -49,9 +51,10 @@ ComputationOpHandle *GetUniquePendingComputationOpHandle(
 ShareTensorBufferOpHandle::ShareTensorBufferOpHandle(
     ir::Node *node, Scope *scope, size_t scope_idx, const std::string &op_type,
     const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
-    const std::vector<std::string> &out_var_names)
+    const std::vector<std::string> &out_var_names, bool share_dims)
     : OpHandleBase(node),
-      functor_(scope, scope_idx, op_type, in_var_infos, out_var_names) {}
+      functor_(scope, scope_idx, op_type, in_var_infos, out_var_names,
+               share_dims) {}
 
 std::unordered_map<std::string, std::string>
 ShareTensorBufferOpHandle::ReusedVars() const {
@@ -61,6 +64,10 @@ ShareTensorBufferOpHandle::ReusedVars() const {
 void ShareTensorBufferOpHandle::AddReuseVarPair(
     const ir::MemOptVarInfo *in_var_info, const std::string &out_var_name) {
   functor_.AddReuseVarPair(in_var_info, out_var_name);
+}
+
+void ShareTensorBufferOpHandle::SetShareDims(bool share_dims) {
+  functor_.SetShareDims(share_dims);
 }
 
 void ShareTensorBufferOpHandle::InitCUDA() {

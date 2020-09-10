@@ -34,6 +34,58 @@ class InplaceAddToOpPass : public MemoryReusePass {
   std::string ReuseType() const override { return "inplace"; }
 
   void Run(Graph *graph) const override;
+
+ private:
+  // void AddDependencyVar(details::OpHandleBase *depender,
+  //                       details::OpHandleBase *dependee) const {
+  //   // a depends on b, a is depender, b is dependee
+  //   // so, the execution order should be: b before a
+  //   auto *graph = GetMutableGraph();
+  //   // Add a dep_var to resolve write-after-write data hazard between
+  //   // `depender` and `dependee` op.
+  //   auto *dep_var = new
+  //   details::DummyVarHandle(graph->CreateControlDepVar());
+  //   graph->Get<details::GraphDepVars>(details::kGraphDepVars).emplace(dep_var);
+  //   depender->AddInput(dep_var);
+  //   dependee->AddOutput(dep_var);
+  // }
+  // 1. Set last living op of in_var to be any last living op of out_var
+  // 2. Set reference count of in_var to be 1
+  void UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
+                             details::VarHandle *in_var,
+                             details::VarHandle *out_var) const override {
+    size_t scope_idx = op->GetScopeIdx();
+    auto *last_live_ops_of_vars_ =
+        &Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
+    auto *var_infos_ = &(Get<MemOptVarInfoMapList>(kMemOptVarInfoMapList));
+    auto out_var_op_iter =
+        (*last_live_ops_of_vars_)[scope_idx].find(out_var->Name());
+
+    // In Reduce mode, some output variable(gradient of parameter) does not have
+    // last live ops
+    details::ComputationOpHandle *last_live_op_of_in_var = nullptr;
+    if (out_var_op_iter == (*last_live_ops_of_vars_)[scope_idx].end()) {
+      last_live_op_of_in_var = op;
+    } else {
+      PADDLE_ENFORCE_EQ(
+          out_var_op_iter->second.ops().empty(), false,
+          platform::errors::InvalidArgument(
+              "Var(%s)'s last live op should not empty.", out_var->Name()));
+      last_live_op_of_in_var = *(out_var_op_iter->second.ops().begin());
+    }
+
+    auto *last_live_ops_of_in_var =
+        (*last_live_ops_of_vars_)[scope_idx][in_var->Name()].mutable_ops();
+    // last_live_ops_of_in_var->clear();
+    last_live_ops_of_in_var->insert(last_live_op_of_in_var);
+
+    auto in_var_info_iter = (*var_infos_)[scope_idx].find(in_var->Name());
+    PADDLE_ENFORCE_NE(
+        in_var_info_iter, (*var_infos_)[scope_idx].end(),
+        platform::errors::NotFound("Cannot find variable %s.", in_var->Name()));
+
+    in_var_info_iter->second->SetRefCnt(2);  // before inplace, it is 1
+  }
 };
 
 void InplaceAddToOpPass::Run(Graph *graph) const {
@@ -41,6 +93,11 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
 
   bool use_cuda = Get<bool>(kUseCuda);
+
+  // Currently, only perform InplaceAddToOpPass on cuda place
+  if (!use_cuda) {
+    return;
+  }
 
   // Step 1: Build a reverse map of last_live_ops
   // i.e.: op -> vars
@@ -62,13 +119,14 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
           op_desc, platform::errors::NotFound("Op(%s) can not find opdesc.",
                                               op->Name()));
 
-      // only elementwise_add op with for_grad_accum = true should be processed.
-      if (op_type != "elementwise_add" ||
-          op_desc->GetAttrIfExists<bool>("for_grad_accum") == false) {
+      // only grad op should be processed.
+      if (op_type != "grad_add") {
         continue;
       }
 
       const std::string &var_name = pair.first;
+      // TODO(zhiqiu): maybe the var_name should be right operand of
+      // elementwise_add?
       auto in_nodes = this->FindNodesByName(var_name, op->Node()->inputs);
       if (in_nodes.size() == 1) {
         candidate_ops[op][var_name] = *in_nodes.begin();
@@ -77,82 +135,96 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
               << ") that can do inplace add to";
     }
   }
-  return;
 
   // Step 2: Check which vars can be inplaced indeed
   for (auto &op_vars_pair : candidate_ops) {
     auto *op = op_vars_pair.first;
-    auto &vars = op_vars_pair.second;
+
+    // The original gradient accumulation is g = sum(g_0, g_1,..., g_n), and it
+    // could be changed as follws if inplace addto is enabled:
+    // g_sum_0 = g_0
+    // g_sum_1 = grad_add(g_sum_0, g_1)
+    // g_sum_2 = grad_add(g_sum_1, g_2)
+    // ...
+    // g_sum_n = grad_add(g_sum_n-1, g_n)
+
+    // here we will add inplace for each grad_add, for example, for the first
+    // grad_add, g_sum_0 -> g1, g_sum_1 -> g1, and set grad_add as skipped.
 
     const std::string &op_type = op->GetOp()->Type();
-    auto *op_desc = op->Node()->Op();
-
-    auto in_to_outs =
-        OpInfoMap::Instance().Get(op_type).infer_inplace_(use_cuda);
-    for (auto &pair : in_to_outs) {
-      auto &in_param = pair.first;
-      auto &in_args = op_desc->Input(in_param);
-      if (in_args.empty()) {
-        VLOG(4) << "Cannot inplace because Input(" << in_param
-                << ") is empty in " << op_type;
-        continue;
-      }
-
-      auto &in_arg = in_args[0];
-      auto iter = vars.find(in_arg);
-      if (iter == vars.end()) {
-        VLOG(4) << "Cannot inplace maybe because Input(" << in_param
-                << ")=" << in_arg << " is not lastly used in op " << op_type
-                << ", or it occurs multiple times in input or occurs in output";
-        continue;
-      }
-
-      ir::Node *in_node = iter->second;
-
-      auto &out_param = pair.second;
-      auto &out_args = op_desc->Output(out_param);
-
-      if (out_args.empty()) {
-        VLOG(4) << "Cannot inplace because Output(" << out_param
-                << ") is empty in " << op_type;
-        continue;
-      }
-
-      auto &out_arg = out_args[0];
-      auto out_nodes = this->FindNodesByName(out_arg, op->Node()->outputs);
-      if (out_nodes.size() != 1) {
-        VLOG(4) << "Cannot inplace because Output(" << out_param
-                << ")=" << out_arg << " occurs " << out_nodes.size()
-                << " time(s) in output of op " << op_type;
-        continue;
-      }
-
-      auto *out_node = *out_nodes.begin();
-
-      auto &in_var_handle = in_node->Wrapper<details::VarHandleBase>();
-      auto &out_var_handle = out_node->Wrapper<details::VarHandleBase>();
-
-      auto *in_var_handle_ptr =
-          dynamic_cast<details::VarHandle *>(&in_var_handle);
-      auto *out_var_handle_ptr =
-          dynamic_cast<details::VarHandle *>(&out_var_handle);
-
-      if (in_var_handle_ptr == nullptr || out_var_handle_ptr == nullptr) {
-        continue;
-      }
-
-      bool success = this->TryReuseVar(in_var_handle_ptr, out_var_handle_ptr);
-      if (success) {
-        VLOG(4) << "Inplace performed in op " << op_type << ": "
-                << in_var_handle_ptr->Name() << " -> "
-                << out_var_handle_ptr->Name()
-                << ". Debug String is: " << op->GetOp()->DebugString();
-      } else {
-        VLOG(3) << "Inplace failed in op " << op_type << ": "
-                << in_var_handle_ptr->Name() << " -> "
-                << out_var_handle_ptr->Name();
-      }
+    for (auto in : op->Node()->inputs) {
+      auto p = dynamic_cast<details::VarHandle *>(
+          &(in->Wrapper<details::VarHandleBase>()));
+      std::cout << p->Name() << std::endl;
     }
+    PADDLE_ENFORCE_EQ(op->Node()->inputs.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "The size of inputs of %s should be 2, but got %d",
+                          op_type, op->Node()->inputs.size()));
+
+    PADDLE_ENFORCE_EQ(op->Node()->outputs.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "The size of outputs of %s should be 1, but got %d",
+                          op_type, op->Node()->outputs.size()));
+
+    auto *left_var_ptr = dynamic_cast<details::VarHandle *>(
+        &(op->Node()->inputs[0]->Wrapper<details::VarHandleBase>()));
+    auto *right_var_ptr = dynamic_cast<details::VarHandle *>(
+        &(op->Node()->inputs[1]->Wrapper<details::VarHandleBase>()));
+    auto *out_var_ptr = dynamic_cast<details::VarHandle *>(
+        &(op->Node()->outputs[0]->Wrapper<details::VarHandleBase>()));
+
+    if (left_var_ptr == nullptr || right_var_ptr == nullptr ||
+        out_var_ptr == nullptr) {
+      continue;
+    }
+
+    // auto *left_generated_op = dynamic_cast<details::ComputationOpHandle *>(
+    //     left_var_ptr->GeneratedOp());
+
+    auto *right_generated_op = dynamic_cast<details::ComputationOpHandle *>(
+        right_var_ptr->GeneratedOp());
+
+    auto *out_generated_op = dynamic_cast<details::ComputationOpHandle *>(
+        out_var_ptr->GeneratedOp());
+
+    // NOTE(zhiqiu): currently, only conv2d_grad supports addto strategy
+    if (right_generated_op->Name() != "conv2d_grad") {
+      continue;
+    }
+
+    // NOTE(zhiqiu): Normally, if we inplace a->b, we should let a generated
+    // before b. However, in the situation of inplace addto, we do not care
+    // the order, since a+b is equal to b+a. Is there any exception for that?
+
+    // AddDependencyVar(right_generated_op, left_generated_op);
+    // no need, as discussed above.
+
+    // step (a): inplace right_var->left_var of grad_add
+
+    this->AddReuseVar(right_generated_op, left_var_ptr, right_var_ptr);
+    UpdateLastLiveOpOfVar(right_generated_op, left_var_ptr, right_var_ptr);
+    VLOG(4) << "Inplace performed in op " << right_generated_op->GetOp()->Type()
+            << ": " << left_var_ptr->Name() << " -> " << right_var_ptr->Name()
+            << ". Debug String is: "
+            << right_generated_op->GetOp()->DebugString();
+
+    // step (b): inplace out -> right_var of grad_add
+
+    this->AddReuseVar(out_generated_op, right_var_ptr, out_var_ptr, true);
+
+    VLOG(4) << "Inplace performed in op " << op_type << ": "
+            << left_var_ptr->Name() << " -> " << out_var_ptr->Name()
+            << ". Debug String is: " << op->GetOp()->DebugString();
+
+    // step (c): make right_var cannot inplace afterwards. canbe done
+    // aotomatically since CollectReusedVars is called before any reuse.
+
+    // step (d): make right_var's generated op use addto
+    right_generated_op->GetOp()->SetAttr("use_addto", true);
+
+    // step (e): make elementwise_add skip running
+    op->SetSkipRunning(true);
   }
 }
 

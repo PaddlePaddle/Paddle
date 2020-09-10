@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
+
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -44,12 +46,13 @@ static inline Tensor *GetMutableTensorFromVar(Variable *var) {
 ShareTensorBufferFunctor::ShareTensorBufferFunctor(
     Scope *scope, size_t scope_idx, const std::string &op_type,
     const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
-    const std::vector<std::string> &out_var_names)
+    const std::vector<std::string> &out_var_names, bool share_dims)
     : scope_(scope),
       scope_idx_(scope_idx),
       op_type_(op_type),
       in_var_infos_(in_var_infos),
-      out_var_names_(out_var_names) {
+      out_var_names_(out_var_names),
+      share_dims_(share_dims) {
   PADDLE_ENFORCE_EQ(in_var_infos_.size(), out_var_names_.size());
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
     AddReuseVarPair(in_var_infos_[i], out_var_names_[i]);
@@ -114,6 +117,13 @@ void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
       }
     } else {
       out_tensor->ShareBufferWith(in_tensor);
+
+      // NOTE(zhiqiu): In the case of inplace addto, if the operator of
+      // the in_out_vars is skipped during running, we should set the dims of
+      // output as the same as input.
+      if (share_dims_) {
+        out_tensor->Resize(in_tensor.dims());
+      }
 
       VLOG(2) << "Share tensor buffer when running " << op_type_ << " : "
               << in_var_info->Name() << " -> " << out_var_names_[i];

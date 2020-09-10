@@ -110,6 +110,11 @@ class ParallelExecutorPrivate {
    *                                       them.
    */
   inline void SetSkipMemoryReuse(size_t scope_idx, const std::string &name) {
+    if (mem_opt_var_infos_.size() == 0) {
+      VLOG(4) << "The mem_opt_var_infos_ is empty, maybe all memory "
+                 "optimization strategy is disabled";
+      return;
+    }
     auto iter = mem_opt_var_infos_[scope_idx].find(name);
     if (iter != mem_opt_var_infos_[scope_idx].end()) {
       iter->second->SetSkipMemoryReuse(true);
@@ -310,6 +315,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   }
 
   bool need_mem_opt = build_strategy_.enable_inplace_ ||
+                      build_strategy_.enable_addto_ ||
                       build_strategy_.memory_optimize_.get() || is_gc_enabled;
 
   if (!need_mem_opt) return graph;
@@ -322,13 +328,15 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   graph = ref_cnt_pass->Apply(graph);
   VLOG(10) << "ReferenceCountPass Applied";
 
-  auto addto_pass = ir::PassRegistry::Instance().Get("inplace_addto_op_pass");
-  addto_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
-  addto_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-  addto_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
-  VLOG(10) << "Start to apply inplace_addto_op_pass";
-  graph = addto_pass->Apply(graph);
-  VLOG(10) << "inplace_addto_op_pass Applied";
+  if (build_strategy_.enable_addto_) {
+    auto addto_pass = ir::PassRegistry::Instance().Get("inplace_addto_op_pass");
+    addto_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
+    addto_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
+    addto_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    VLOG(10) << "Start to apply inplace_addto_op_pass";
+    graph = addto_pass->Apply(graph);
+    VLOG(10) << "inplace_addto_op_pass Applied";
+  }
 
   if (build_strategy_.enable_inplace_) {
     auto inplace_pass =

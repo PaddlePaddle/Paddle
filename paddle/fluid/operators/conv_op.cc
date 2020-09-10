@@ -305,6 +305,10 @@ void Conv2DOpMaker::Make() {
       .SetDefault(0.0f);
   AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
       .SetDefault(0.0f);
+  AddAttr<bool>("use_addto",
+                "(bool, default false) If use addto logic or not, only used in "
+                "cudnn kernel")
+      .SetDefault(false);
   AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "
                 "whenever convolution output is as an input to residual "
