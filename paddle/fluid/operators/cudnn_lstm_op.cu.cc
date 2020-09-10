@@ -83,8 +83,8 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
                   &reserve_size, state_out);
 
     framework::Tensor workspace_data_;
-    workspace_data_.Resize({static_cast<int64_t>(workspace_size)});
-    workspace_data_.mutable_data<uint8_t>(ctx.GetPlace());
+    workspace_data_.mutable_data<uint8_t>(
+        {static_cast<int64_t>(workspace_size)}, ctx.GetPlace());
 
     auto *reserve_data = reserve->mutable_data<uint8_t>(
         {static_cast<int64_t>(reserve_size)}, ctx.GetPlace());
@@ -112,11 +112,10 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
                 nullptr, nullptr, nullptr, nullptr,
                 workspace_data_.data<uint8_t>(), workspace_size));
 #else
-        PADDLE_ENFORCE_NOT_NULL(
-            nullptr, platform::errors::Unavailable(
-                         "The padded input is supported by "
-                         "cudnnRNNForwardInferenceEx, but it only works when "
-                         "the version of cudnn is larger than 7.2.1"));
+        PADDLE_THROW(platform::errors::Unavailable(
+            "The padded input is supported by "
+            "cudnnRNNForwardInferenceEx, but it only works when "
+            "the version of cudnn is larger than 7.2.1"));
 #endif
       }
     } else {
@@ -233,8 +232,8 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
                   &reserve_size, const_cast<Tensor *>(state_out));
 
     framework::Tensor workspace_data_;
-    workspace_data_.Resize({static_cast<int64_t>(workspace_size)});
-    workspace_data_.mutable_data<uint8_t>(ctx.GetPlace());
+    workspace_data_.mutable_data<uint8_t>(
+        {static_cast<int64_t>(workspace_size)}, ctx.GetPlace());
     const uint8_t *reserve_data = reserve->data<uint8_t>();
 
     if (!has_seq_length) {
@@ -275,12 +274,10 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
           weight_grad->data<T>(), const_cast<uint8_t *>(reserve_data),
           reserve_size));
 #else
-      PADDLE_ENFORCE_NOT_NULL(
-          nullptr,
-          platform::errors::Unavailable(
-              "The padded input of rnn is supported by cudnnRNNBackwardDataEx, "
-              "cudnnRNNBackwardWeightsEx, but it only works when the version "
-              "of cudnn is larger than 7.2.1"));
+      PADDLE_THROW(platform::errors::Unavailable(
+          "The padded input of rnn is supported by cudnnRNNBackwardDataEx, "
+          "cudnnRNNBackwardWeightsEx, but it only works when the version "
+          "of cudnn is larger than 7.2.1"));
 #endif
     }
   }
