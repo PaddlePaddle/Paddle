@@ -76,7 +76,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     PADDLE_THROW("Serialize does not support type: %s",
                  typeid(var->Type()).name());
   }
-
   std::string header;
   request.AppendToString(&header);
   auto buffer = std::unique_ptr<char[]>(new char[1024]);
@@ -101,7 +100,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   }
 #endif
   PADDLE_ENFORCE_NOT_NULL(payload);
-
   e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                             payload->memory_size());
   if (payload->memory_size() >= std::numeric_limits<int>::max()) {
@@ -140,7 +138,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         ::grpc::Slice::STEAL_REF);
     num_slices = 4;
   }
-
   ::grpc::ByteBuffer tmp(&slices[0], num_slices);
   msg->Swap(&tmp);
 }
@@ -153,6 +150,19 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
   operators::distributed::GRPCVariableResponse resp(scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
   *var = resp.GetVar();
+  *trainer_id = resp.GetTrainerId();
+}
+
+void DeserializeRecvFromByteBuffer(const ::grpc::ByteBuffer& msg,
+                                   const platform::DeviceContext& ctx,
+                                   const framework::Scope* scope,
+                                   framework::Variable** var, int* trainer_id) {
+  platform::RecordRPCEvent record_event("deserial");
+  operators::distributed::GRPCVariableResponse resp(scope, &ctx);
+  PADDLE_ENFORCE_EQ(
+      resp.Parse(msg), 0,
+      platform::errors::InvalidArgument("parse bytebuffer to tensor error!"));
+  *var = resp.GetRecvVar();
   *trainer_id = resp.GetTrainerId();
 }
 

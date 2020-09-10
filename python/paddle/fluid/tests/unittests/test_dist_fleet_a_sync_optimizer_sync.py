@@ -16,7 +16,7 @@ import unittest
 import paddle
 import os
 import paddle.distributed.fleet as fleet
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.distributed.fleet.base.role_maker as role_maker
 import time
 
 
@@ -47,7 +47,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = False
-        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

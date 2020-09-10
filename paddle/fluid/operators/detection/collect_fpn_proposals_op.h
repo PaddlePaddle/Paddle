@@ -17,6 +17,7 @@ limitations under the License.*/
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <numeric>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
@@ -65,6 +66,8 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     auto multi_layer_scores =
         context.MultiInput<paddle::framework::LoDTensor>("MultiLevelScores");
+    auto multi_rois_num = context.MultiInput<Tensor>("MultiLevelRoIsNum");
+    int num_size = multi_rois_num.size();
 
     auto* fpn_rois = context.Output<paddle::framework::LoDTensor>("FpnRois");
 
@@ -88,11 +91,21 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     const int num_fpn_level = multi_layer_rois.size();
     std::vector<int> integral_of_all_rois(num_fpn_level + 1, 0);
     for (int i = 0; i < num_fpn_level; ++i) {
-      auto cur_rois_lod = multi_layer_rois[i]->lod().back();
-      integral_of_all_rois[i + 1] =
-          integral_of_all_rois[i] + cur_rois_lod[cur_rois_lod.size() - 1];
+      int all_rois = 0;
+      if (num_size == 0) {
+        auto cur_rois_lod = multi_layer_rois[i]->lod().back();
+        all_rois = cur_rois_lod[cur_rois_lod.size() - 1];
+      } else {
+        const int* cur_rois_num = multi_rois_num[i]->data<int>();
+        all_rois = std::accumulate(
+            cur_rois_num, cur_rois_num + multi_rois_num[i]->numel(), 0);
+      }
+      integral_of_all_rois[i + 1] = integral_of_all_rois[i] + all_rois;
     }
 
+    const int batch_size = (num_size == 0)
+                               ? multi_layer_rois[0]->lod().back().size() - 1
+                               : multi_rois_num[0]->numel();
     // concatenate all fpn rois scores into a list
     // create a vector to store all scores
     std::vector<ScoreWithID<T>> scores_of_all_rois(
@@ -100,11 +113,20 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < num_fpn_level; ++i) {
       const T* cur_level_scores = multi_layer_scores[i]->data<T>();
       int cur_level_num = integral_of_all_rois[i + 1] - integral_of_all_rois[i];
-      auto cur_scores_lod = multi_layer_scores[i]->lod().back();
       int cur_batch_id = 0;
+      int pre_num = 0;
       for (int j = 0; j < cur_level_num; ++j) {
-        if (static_cast<size_t>(j) >= cur_scores_lod[cur_batch_id + 1]) {
-          cur_batch_id++;
+        if (num_size == 0) {
+          auto cur_scores_lod = multi_layer_scores[i]->lod().back();
+          if (static_cast<size_t>(j) >= cur_scores_lod[cur_batch_id + 1]) {
+            cur_batch_id++;
+          }
+        } else {
+          const int* rois_num_data = multi_rois_num[i]->data<int>();
+          if (j >= pre_num + rois_num_data[cur_batch_id]) {
+            pre_num += rois_num_data[cur_batch_id];
+            cur_batch_id++;
+          }
         }
         int cur_index = j + integral_of_all_rois[i];
         scores_of_all_rois[cur_index].score = cur_level_scores[j];
@@ -134,6 +156,9 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     T* fpn_rois_data = fpn_rois->data<T>();
     std::vector<size_t> lod0(1, 0);
     int cur_batch_id = 0;
+    std::vector<int64_t> num_per_batch;
+    int pre_idx = 0;
+    int cur_num = 0;
     for (int i = 0; i < post_nms_topN; ++i) {
       int cur_fpn_level = scores_of_all_rois[i].level;
       int cur_level_index = scores_of_all_rois[i].index;
@@ -144,6 +169,18 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
       if (scores_of_all_rois[i].batch_id != cur_batch_id) {
         cur_batch_id = scores_of_all_rois[i].batch_id;
         lod0.emplace_back(i);
+        cur_num = i - pre_idx;
+        pre_idx = i;
+        num_per_batch.emplace_back(cur_num);
+      }
+    }
+    num_per_batch.emplace_back(post_nms_topN - pre_idx);
+    if (context.HasOutput("RoisNum")) {
+      auto* rois_num = context.Output<Tensor>("RoisNum");
+      int* rois_num_data =
+          rois_num->mutable_data<int>({batch_size}, context.GetPlace());
+      for (int i = 0; i < batch_size; i++) {
+        rois_num_data[i] = num_per_batch[i];
       }
     }
     lod0.emplace_back(post_nms_topN);

@@ -76,6 +76,13 @@ class TensorAddFunctor : public boost::static_visitor<> {
     blas.AXPY(numel_, 1., x_, y_);
   }
 
+  void operator()(const platform::XPUPlace& place) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
+  }
+
 #ifdef PADDLE_WITH_CUDA
   void operator()(const platform::CUDAPlace& place) {
     platform::CUDADeviceContext* ctx =

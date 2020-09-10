@@ -44,8 +44,8 @@ class TestMultiplyAPI(unittest.TestCase):
 
     def __run_dynamic_graph_case(self, x_data, y_data, axis=-1):
         paddle.disable_static()
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
         res = paddle.multiply(x, y, axis=axis)
         return res.numpy()
 
@@ -126,16 +126,30 @@ class TestMultiplyError(unittest.TestCase):
         paddle.disable_static()
         x_data = np.random.randn(200).astype(np.int8)
         y_data = np.random.randn(200).astype(np.int8)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
         self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
 
         # test dynamic computation graph: inputs must be broadcastable
         x_data = np.random.rand(200, 5)
         y_data = np.random.rand(200)
-        x = paddle.to_variable(x_data)
-        y = paddle.to_variable(y_data)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
         self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
+
+        # test dynamic computation graph: inputs must be broadcastable(python)
+        x_data = np.random.rand(200, 5)
+        y_data = np.random.rand(200)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        self.assertRaises(fluid.core.EnforceNotMet, paddle.multiply, x, y)
+
+        # test dynamic computation graph: dtype must be same
+        x_data = np.random.randn(200).astype(np.int64)
+        y_data = np.random.randn(200).astype(np.float64)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        self.assertRaises(TypeError, paddle.multiply, x, y)
 
 
 if __name__ == '__main__':

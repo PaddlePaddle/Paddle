@@ -21,6 +21,7 @@ __all__ = [
     'load', 'data', 'InputSpec'
 ]
 
+from . import nn
 from .input import data  #DEFINE_ALIAS
 from .input import InputSpec  #DEFINE_ALIAS
 from ..fluid.executor import Executor  #DEFINE_ALIAS

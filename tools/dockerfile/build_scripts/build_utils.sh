@@ -89,7 +89,7 @@ function do_cpython_build {
     fi
     # NOTE Make libpython shared library visible to python calls below
     LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/python get-pip.py
-    LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/pip install wheel
+    LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/pip install wheel==0.32.2
     cd /
     ls ${MY_DIR}
     local abi_tag=$(LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/python ${MY_DIR}/python-tag-abi-tag.py)

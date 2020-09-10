@@ -215,6 +215,16 @@ class TestTileError(unittest.TestCase):
             self.assertRaises(ValueError, paddle.tile, x3, repeat_times)
 
 
+class TestTileAPIStatic(unittest.TestCase):
+    def test_api(self):
+        with program_guard(Program(), Program()):
+            repeat_times = [2, 2]
+            x1 = fluid.layers.data(name='x1', shape=[4], dtype="int32")
+            out = paddle.tile(x1, repeat_times)
+            positive_2 = fluid.layers.fill_constant([1], dtype="int32", value=2)
+            out2 = paddle.tile(x1, repeat_times=[positive_2, 2])
+
+
 # Test python API
 class TestTileAPI(unittest.TestCase):
     def test_api(self):

@@ -76,6 +76,13 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx,
                       const size_t& seek, const std::vector<int64_t>& shape);
 
+// store the bool result tensor in out tensor
+void TensorContainsNANV2(const framework::Tensor& tensor,
+                         framework::Tensor* out);
+void TensorContainsInfV2(const framework::Tensor& tensor,
+                         framework::Tensor* out);
+void TensorIsfiniteV2(const framework::Tensor& tensor, framework::Tensor* out);
+
 // convert dlpack's DLTensor to tensor
 void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst);
 
