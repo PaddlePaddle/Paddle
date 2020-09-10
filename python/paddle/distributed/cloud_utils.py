@@ -31,6 +31,9 @@ def get_cloud_cluster(args_node_ips, args_node_ip, args_port, selected_gpus):
     node_rank = os.getenv("PADDLE_TRAINER_ID")
     assert node_rank is not None, "PADDLE_TRAINER_ID should not be None"
 
+    paddle_ports_num = int(os.getenv("TRAINER_PORTS_NUM"))
+    assert paddle_ports_num is not None, "TRAINER_PORTS_NUM should not be None"
+
     node_ips = node_ips.split(",")
     num_nodes = len(node_ips)
     node_rank = int(node_rank)
@@ -55,9 +58,8 @@ paddlecloud environment.".format(args_node_ips, node_ips))
         if num_nodes > 1:
             try:
                 paddle_port = int(os.getenv("PADDLE_PORT", ""))
-                paddle_port_num = int(os.getenv("TRAINER_PORTS_NUM", ""))
 
-                if paddle_port_num >= len(
+                if paddle_ports_num >= len(
                         selected_gpus) and paddle_port != args_port:
                     logger.warning("Use Cloud specified port:{}.".format(
                         paddle_port))
@@ -76,7 +78,12 @@ paddlecloud environment.".format(args_node_ips, node_ips))
         for ip in node_ips:
             trainer_endpoints += ["%s:%d" % (ip, port) for port in ports]
     else:
-        trainer_endpoints = trainer_endpoints.split(",")
+        trainer_endpoints_ori = trainer_endpoints.split(",")
+        trainer_endpoints = []
+        assert num_nodes * paddle_ports_num == len(trainer_endpoints_ori)
+        for i in range(num_nodes):
+            trainer_endpoints.append(trainer_endpoints_ori[
+                i * paddle_ports_num:(i + 1) * paddle_ports_num])
 
     logger.debug("parsed from args: node_ips:{} \
         node_ip:{} node_rank:{} trainer_endpoints:{}"
