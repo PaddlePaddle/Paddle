@@ -68,7 +68,7 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
   std::shared_ptr<paddle::lite_api::PaddlePredictor> p =
       paddle::lite_api::CreatePaddlePredictor(lite_cxx_config);
   engines_[name] = std::move(p);
-  return p.get();
+  return engines_[name].get();
 }
 
 void EngineManager::DeleteAll() {
