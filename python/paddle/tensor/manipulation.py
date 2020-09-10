@@ -1100,6 +1100,8 @@ def tile(x, repeat_times, name=None):
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
+    if in_dygraph_mode():
+        return core.ops.tile(x, 'repeat_times', repeat_times)
     check_type(repeat_times, 'repeat_times', (list, tuple, Variable), 'tile')
     if isinstance(repeat_times, Variable):
         assert len(repeat_times.shape) == 1, (
@@ -1116,8 +1118,6 @@ def tile(x, repeat_times, name=None):
                     type_tuple = (int, long, np.int32, np.int64)
                 assert isinstance(elem, type_tuple), (
                     'Elements in repeat_times must be 1-D Tensors or integers.')
-    if in_dygraph_mode():
-        return core.ops.tile(x, 'repeat_times', repeat_times)
 
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile')
