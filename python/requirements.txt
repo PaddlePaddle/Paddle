@@ -21,3 +21,4 @@ objgraph
 astor
 pathlib
 netifaces
+paddle1to2 ; python_version>="3.5"
