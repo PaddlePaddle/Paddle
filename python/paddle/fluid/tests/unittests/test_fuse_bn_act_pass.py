@@ -25,7 +25,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
             hidden1 = fluid.layers.conv2d(
                 input=x,
                 filter_size=3,
-                num_filters=32,
+                num_filters=16,
                 stride=1,
                 padding=1,
                 act=None,
@@ -43,7 +43,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 bias_attr=bias_attr,
                 act='relu',
                 data_layout='NHWC')
-            hidden3 = fluid.layers.fc(input=hidden2, size=128, act='relu')
+            hidden3 = fluid.layers.fc(input=hidden2, size=32, act='relu')
             hidden4 = fluid.layers.batch_norm(
                 input=hidden3, act='relu', data_layout='NHWC')
             prediction = fluid.layers.fc(input=hidden4, size=10, act='softmax')
@@ -63,7 +63,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         startup_program = fluid.Program()
         x, y, loss = self.build_program(main_program, startup_program, use_cuda)
         exe = fluid.Executor(place)
-        iters = 10
+        iters = 8
         batch_size = 16
         feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
 
