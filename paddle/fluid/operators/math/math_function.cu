@@ -88,9 +88,22 @@ struct RowwiseAdd<platform::CUDADeviceContext, T> {
                   const framework::Tensor& input,
                   const framework::Tensor& vector, framework::Tensor* output) {
     auto in_dims = input.dims();
+    auto out_dims = output->dims();
     auto size = input.numel() / in_dims[0];
-    PADDLE_ENFORCE_EQ(vector.numel(), size);
-    PADDLE_ENFORCE_EQ(output->dims(), in_dims);
+    PADDLE_ENFORCE_EQ(
+        vector.numel(), size,
+        platform::errors::InvalidArgument(
+            "The input vector size"
+            " should be equal to the size of each row of input tensor."
+            " Expected vector size=%d, but received %d",
+            size, vector.numel()));
+    PADDLE_ENFORCE_EQ(
+        out_dims, in_dims,
+        platform::errors::InvalidArgument(
+            "The output tensor shape should"
+            " be same as the input tensor shape. Expected shape: (%d, %d),"
+            " but received (%d, %d)",
+            in_dims[0], in_dims[0], out_dims[0], out_dims[0]));
     int blocks = 512;
     int grids = (input.numel() + blocks - 1) / blocks;
     RowwiseAddKernel<T><<<grids, blocks, 0, context.stream()>>>(
@@ -113,7 +126,12 @@ void ColwiseSum<platform::CUDADeviceContext, double>::operator()(
     framework::Tensor* vector) {
   auto in_dims = input.dims();
   auto size = input.numel() / in_dims[0];
-  PADDLE_ENFORCE_EQ(vector->numel(), size);
+  PADDLE_ENFORCE_EQ(vector->numel(), size,
+                    platform::errors::InvalidArgument(
+                        "The size of input vector"
+                        " should be equal to the size of input tensor column"
+                        " dimension. Expected output size=%d, but received %d",
+                        size, vector->numel()));
   framework::Tensor one;
   one.mutable_data<double>({in_dims[0]}, context.GetPlace());
   SetConstant<platform::CUDADeviceContext, double> set;
@@ -134,7 +152,12 @@ void RowwiseSum<platform::CUDADeviceContext, double>::operator()(
     framework::Tensor* vector) {
   auto in_dims = input.dims();
   auto size = input.numel() / in_dims[0];
-  PADDLE_ENFORCE_EQ(vector->numel(), in_dims[0]);
+  PADDLE_ENFORCE_EQ(vector->numel(), in_dims[0],
+                    platform::errors::InvalidArgument(
+                        "The size of input vector"
+                        " should be equal to the size of input tensor row"
+                        " dimension. Expected output size=%d, but received %d",
+                        in_dims[0], vector->numel()));
   framework::Tensor one;
   one.mutable_data<double>({size}, context.GetPlace());
   SetConstant<platform::CUDADeviceContext, double> set;

@@ -128,9 +128,22 @@ struct RowwiseAdd<platform::CPUDeviceContext, T> {
                   const framework::Tensor& input,
                   const framework::Tensor& vector, framework::Tensor* output) {
     auto in_dims = input.dims();
+    auto out_dims = output->dims();
     auto size = input.numel() / in_dims[0];
-    PADDLE_ENFORCE_EQ(vector.numel(), size);
-    PADDLE_ENFORCE_EQ(output->dims(), in_dims);
+    PADDLE_ENFORCE_EQ(
+        vector.numel(), size,
+        platform::errors::InvalidArgument(
+            "The input vector size"
+            " should be equal to the size of each row of input tensor."
+            " Expected vector size=%d, but received %d",
+            size, vector.numel()));
+    PADDLE_ENFORCE_EQ(
+        out_dims, in_dims,
+        platform::errors::InvalidArgument(
+            "The output tensor shape should"
+            " be same as the input tensor shape. Expected shape: (%d, %d),"
+            " but received (%d, %d)",
+            in_dims[0], in_dims[0], out_dims[0], out_dims[0]));
 
     auto in = framework::EigenMatrix<T>::From(input);
     auto vec = framework::EigenVector<T>::Flatten(vector);
