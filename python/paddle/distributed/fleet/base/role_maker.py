@@ -134,14 +134,14 @@ class Gloo(object):
                 "all": len(self._worker_num) + len(self._server_num)
             }
 
+            _http_server_d = {"running": True}
             # child process for http server
-            self._http_server = Process(
-                target=__start_kv_server, args=(self._http_server_d, size_d))
-            self._http_server.daemon = True
+            _http_server = Process(
+                target=__start_kv_server, args=(_http_server_d, size_d))
+            _http_server.daemon = True
             # set running status to True
-            self._http_server_d["running"] = True
             # start child process
-            self._http_server.start()
+            _http_server.start()
 
         def init(rank, nodes, role):
             gloo = fluid.core.Gloo()
