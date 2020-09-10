@@ -1,9 +1,9 @@
 #!/bin/bash
 VERSION=$(nvcc --version | grep release | grep -oEi "release ([0-9]+)\.([0-9])"| sed "s/release //")
 if [ "$VERSION" == "10.0" ]; then
-  DEB="nccl-repo-ubuntu1604-2.4.7-ga-cuda10.0_1-1_amd64.deb"
+  DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda10.0_1-1_amd64.deb"
 elif [ "$VERSION" == "10.1" ]; then
-  DEB="nccl-repo-ubuntu1604-2.4.7-ga-cuda10.0_1-1_amd64.deb"
+  DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda10.0_1-1_amd64.deb"
 elif [ "$VERSION" == "9.0" ]; then
   DEB="nccl-repo-ubuntu1604-2.3.7-ga-cuda9.0_1-1_amd64.deb"
 else
