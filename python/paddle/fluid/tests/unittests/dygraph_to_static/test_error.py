@@ -170,5 +170,28 @@ class TestErrorInRuntime(TestErrorInCompileTime):
             self.assertIn(m, error_message)
 
 
+@unwrap
+@paddle.jit.to_static()
+def func_decorated_by_other_1():
+    return 1
+
+
+@paddle.jit.to_static()
+@unwrap
+def func_decorated_by_other_2():
+    return 1
+
+
+class TestErrorInOther(unittest.TestCase):
+    def test(self):
+        paddle.disable_static()
+        prog_trans = paddle.jit.ProgramTranslator()
+        with self.assertRaises(NotImplementedError):
+            prog_trans.get_output(func_decorated_by_other_1)
+
+        with self.assertRaises(NotImplementedError):
+            func_decorated_by_other_2()
+
+
 if __name__ == '__main__':
     unittest.main()

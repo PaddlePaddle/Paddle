@@ -336,7 +336,10 @@ class StaticLayer(object):
             if error_data:
                 error_data.raise_new_exception()
             else:
-                raise
+                logging_utils.warn(
+                    "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
+                    " if you can't handle this {} yourself.".format(type(e)))
+                raise e
 
     def _call_dygraph_function(self, *args, **kwargs):
         """
@@ -831,6 +834,9 @@ class ProgramTranslator(object):
             if error_data:
                 error_data.raise_new_exception()
             else:
+                logging_utils.warn(
+                    "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
+                    " if you can't handle this {} yourself.".format(type(e)))
                 raise e
 
     def get_func(self, dygraph_func):
