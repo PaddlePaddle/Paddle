@@ -346,6 +346,13 @@ class TestResnet(unittest.TestCase):
                                                              dygraph_loss))
         self.verify_predict()
 
+    def test_in_static_mode_mkldnn(self):
+        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        try:
+            train(to_static=True)
+        finally:
+            fluid.set_flags({'FLAGS_use_mkldnn': False})
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .plot import Ploter
 from .profiler import ProfilerOptions
 from .profiler import Profiler
 from .profiler import get_profiler
 from .deprecated import deprecated
+
 from . import download
 
-__all__ = ['dump_config', 'Ploter', 'deprecated', 'download']
+__all__ = ['dump_config', 'deprecated', 'download']
 
 #TODO: define new api under this directory
 # __all__ = ['unique_name',

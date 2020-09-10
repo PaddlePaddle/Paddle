@@ -401,9 +401,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
             a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
 
             linear = fluid.dygraph.nn.Linear(10, 10)
-
             a = fluid.dygraph.to_variable(a)
-
             b = linear(a)
 
             loss = fluid.layers.reduce_mean(b)

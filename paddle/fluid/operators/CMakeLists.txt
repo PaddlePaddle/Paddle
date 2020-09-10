@@ -45,7 +45,9 @@ endif()
 SET(OP_HEADER_DEPS xxhash executor)
 
 if (WITH_GPU)
-    SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
+    if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+        SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
+    endif()
 endif()
 
 SET(OP_PREFETCH_DEPS "")

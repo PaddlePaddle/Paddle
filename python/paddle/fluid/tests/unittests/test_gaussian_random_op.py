@@ -239,24 +239,24 @@ class TestGaussianRandomAPI(unittest.TestCase):
     def test_default_dtype(self):
         paddle.disable_static()
 
-        def test_default_fp_16():
+        def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
-            paddle.tensor.random.gaussian_random([2, 3])
+            paddle.tensor.random.gaussian([2, 3])
 
-        self.assertRaises(TypeError, test_default_fp_16)
+        self.assertRaises(TypeError, test_default_fp16)
 
-        def test_default_fp_32():
+        def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
-            out = paddle.tensor.random.gaussian_random([2, 3])
+            out = paddle.tensor.random.gaussian([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP32)
 
-        def test_default_fp_64():
+        def test_default_fp64():
             paddle.framework.set_default_dtype('float64')
-            out = paddle.tensor.random.gaussian_random([2, 3])
+            out = paddle.tensor.random.gaussian([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
-        test_default_fp_64()
-        test_default_fp_32()
+        test_default_fp64()
+        test_default_fp32()
 
         paddle.enable_static()
 
@@ -265,24 +265,24 @@ class TestStandardNormalDtype(unittest.TestCase):
     def test_default_dtype(self):
         paddle.disable_static()
 
-        def test_default_fp_16():
+        def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
             paddle.tensor.random.standard_normal([2, 3])
 
-        self.assertRaises(TypeError, test_default_fp_16)
+        self.assertRaises(TypeError, test_default_fp16)
 
-        def test_default_fp_32():
+        def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
             out = paddle.tensor.random.standard_normal([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP32)
 
-        def test_default_fp_64():
+        def test_default_fp64():
             paddle.framework.set_default_dtype('float64')
             out = paddle.tensor.random.standard_normal([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
-        test_default_fp_64()
-        test_default_fp_32()
+        test_default_fp64()
+        test_default_fp32()
 
         paddle.enable_static()
 

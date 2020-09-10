@@ -73,8 +73,8 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor, paddle\.ComplexTensor.
         dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' , 
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8'. And
-            'complex64' , 'complex128' only for ComplexTensor. Default: None, for float point number, 
-            get type from ``get_default_type``, for other type, infers from ``data`` .
+            'complex64' , 'complex128' only for ComplexTensor. Default: None, infers dtype from ``data`` 
+            except for python float number which gets dtype from ``get_default_type`` .
         place(CPUPlace|CUDAPinnedPlace|CUDAPlace, optional): The place to allocate Tensor. Can be  
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
@@ -188,13 +188,21 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             raise TypeError(
                 "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor|paddle.ComplexTensor".
                 format(type(data)))
+        if not dtype and data.dtype in [
+                'float16', 'float32', 'float64', 'complex64', 'complex128'
+        ]:
+            default_type = paddle.get_default_dtype()
+            if np.iscomplexobj(data):
+                default_type = 'complex64' if default_type in [
+                    'float16', 'float32'
+                ] else 'complex128'
+            data = data.astype(default_type)
+
+    if dtype and convert_dtype(dtype) != data.dtype:
+        data = data.astype(dtype)
 
     if not np.iscomplexobj(data):
-        if dtype:
-            dtype = convert_dtype(dtype)
-        elif data.dtype in ['float16', 'float32', 'float64']:
-            dtype = paddle.framework.get_default_dtype()
-        if dtype and dtype != data.dtype:
+        if dtype and convert_dtype(dtype) != data.dtype:
             data = data.astype(dtype)
         return paddle.Tensor(
             value=data,
@@ -203,14 +211,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             zero_copy=True,
             stop_gradient=stop_gradient)
     else:
-        if dtype:
-            dtype = convert_dtype(dtype)
-        else:
-            dtype = paddle.framework.get_default_dtype()
-            dtype = 'complex64' if dtype in ['float16', 'float32'
-                                             ] else 'complex128'
-        if dtype != data.dtype:
-            data = data.astype(dtype)
         name = unique_name.generate('generated_tensor')
         real_tensor = paddle.Tensor(
             value=data.real,
@@ -243,10 +243,6 @@ def full_like(x, fill_value, dtype=None, name=None):
     
     Returns:
         Tensor: Tensor which is created according to ``x``, ``fill_value`` and ``dtype``.
-    
-    Raises:
-        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None.
     
     Examples:
         .. code-block:: python
@@ -303,11 +299,6 @@ def ones(shape, dtype=None, name=None):
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
 
-    Raises:
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
-            be int32 or int64 when it's a Tensor.
-    
     Examples:
         .. code-block:: python
 
@@ -366,11 +357,10 @@ def ones_like(x, dtype=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
-            x = paddle.to_tensor(np.array([1,2,3], dtype='float32'))
+            x = paddle.to_tensor([1,2,3])
             out1 = paddle.zeros_like(x) # [1., 1., 1.]
             out2 = paddle.zeros_like(x, dtype='int32') # [1, 1, 1]
 
@@ -392,11 +382,6 @@ def zeros(shape, dtype=None, name=None):
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
-    Raises:
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64 and None.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
-            be int32 or int64 when it's a Tensor.
-    
     Examples:
         .. code-block:: python
 
@@ -453,11 +438,10 @@ def zeros_like(x, dtype=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
-            x = paddle.to_tensor(np.array([1,2,3], dtype='float32'))
+            x = paddle.to_tensor([1,2,3])
             out1 = paddle.zeros_like(x) # [0., 0., 0.]
             out2 = paddle.zeros_like(x, dtype='int32') # [0, 0, 0]
 
@@ -482,10 +466,6 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 
     Returns:
         Tensor: An identity Tensor or LoDTensor of shape [num_rows, num_columns].
-    
-    Raises:
-        TypeError: The ``dtype`` must be one of float16, float32, float64, int32 int64 and None.
-        TypeError: The ``num_columns`` must be non-negative int.
 
     Examples:
         .. code-block:: python
@@ -534,11 +514,6 @@ def full(shape, fill_value, dtype=None, name=None):
     Returns:
         Tensor: Tensor which is created according to ``shape``, ``fill_value`` and ``dtype``.
 
-    Raises:
-        TypeError: The ``dtype`` must be one of None, bool, float16, float32, float64, int32 and int64.
-        TypeError: The ``shape`` must be one of Tensor, list and tuple. The data type of ``shape`` must
-            be int32 or int64 when the it's a Tensor
-    
     Examples:
         .. code-block:: python
 
@@ -619,7 +594,6 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         .. code-block:: python
 
         import paddle
-        import numpy as np
 
         paddle.disable_static()
 
@@ -633,7 +607,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         out3 = paddle.arange(4.999, dtype='float32')
         # [0., 1., 2., 3., 4.]
 
-        start_var = paddle.to_tensor(np.array([3]))
+        start_var = paddle.to_tensor([3])
         out4 = paddle.arange(start_var, 7)
         # [3, 4, 5, 6]
              
@@ -725,7 +699,7 @@ def tril(x, diagonal=0, name=None):
 
             paddle.disable_static()
 
-            x = paddle.to_variable(data)
+            x = paddle.to_tensor(data)
             
             tril1 = paddle.tensor.tril(x)
             # array([[ 1,  0,  0,  0],
@@ -797,7 +771,7 @@ def triu(x, diagonal=0, name=None):
             paddle.disable_static()
 
             # example 1, default diagonal
-            x = paddle.to_variable(data)
+            x = paddle.to_tensor(data)
             triu1 = paddle.tensor.triu(x)
             # array([[ 1,  2,  3,  4],
             #        [ 0,  6,  7,  8],
