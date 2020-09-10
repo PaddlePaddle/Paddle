@@ -152,11 +152,7 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
     // grad_add, g_sum_0 -> g1, g_sum_1 -> g1, and set grad_add as skipped.
 
     const std::string &op_type = op->GetOp()->Type();
-    for (auto in : op->Node()->inputs) {
-      auto p = dynamic_cast<details::VarHandle *>(
-          &(in->Wrapper<details::VarHandleBase>()));
-      std::cout << p->Name() << std::endl;
-    }
+
     PADDLE_ENFORCE_EQ(op->Node()->inputs.size(), 2,
                       platform::errors::InvalidArgument(
                           "The size of inputs of %s should be 2, but got %d",
