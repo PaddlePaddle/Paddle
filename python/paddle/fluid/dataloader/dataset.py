@@ -14,9 +14,10 @@
 
 from __future__ import print_function
 
+from .. import framework
 import paddle.dataset.common
 
-__all__ = ["Dataset", "IterableDataset"]
+__all__ = ["Dataset", "IterableDataset", "TensorDataset"]
 
 
 class Dataset(object):
@@ -222,3 +223,55 @@ class IterableDataset(Dataset):
     def __len__(self):
         raise RuntimeError("'{}' should not be called for IterableDataset" \
                 "{}".format('__len__', self.__class__.__name__))
+
+
+class TensorDataset(Dataset):
+    """
+    Dataset defined by a list of tensors.
+
+    Each tensor should be in shape of [N, ...], while N is the sample number,
+    and ecah tensor contains a field of sample, :code:`TensorDataset` retrieve
+    each sample by indexing tensors in the 1st dimension.
+
+    Args:
+        tensors(list of Tensor): tensors with same shape in the 1st dimension.
+
+    Returns:
+        Dataset: a Dataset instance wrapping tensors.
+
+    Examples:
+
+        .. code-block:: python
+        
+            import numpy as np
+            import paddle
+            from paddle.io import TensorDataset
+
+            paddle.disable_static()
+
+            input_np = np.random.random([2, 3, 4]).astype('float32')
+            input = paddle.to_tensor(input_np)
+            label_np = np.random.random([2, 1]).astype('int32')
+            label = paddle.to_tensor(label_np)
+
+            dataset = TensorDataset([input, label])
+
+            for i in range(len(dataset)):
+                input, label = dataset[i]
+                print(input, label)
+
+    """
+
+    def __init__(self, tensors):
+        if not framework.in_dygraph_mode():
+            raise RuntimeError(
+                "TensorDataset con only be used in imperative mode")
+        assert all([tensor.shape[0] == tensors[0].shape[0] for tensor in tensors]), \
+                "tensors not have same shape of the 1st dimension"
+        self.tensors = tensors
+
+    def __getitem__(self, index):
+        return tuple(tensor[index] for tensor in self.tensors)
+
+    def __len__(self):
+        return self.tensors[0].shape[0]

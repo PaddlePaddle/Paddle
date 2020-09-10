@@ -86,6 +86,14 @@ __global__ void LookupTableV2Grad(T *table, const T *output, const int64_t *ids,
 }
 
 template <typename T>
+__global__ void InputTypeCovert(const T *in_ids, const int64_t K,
+                                int64_t *out_ids) {
+  for (int i = 0; i < K; i++) {
+    out_ids[i] = (int64_t)(in_ids[i]);
+  }
+}
+
+template <typename T>
 class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -101,23 +109,37 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
     size_t D = table_t->dims()[1];
     size_t K = ids_t->numel();
 
-    auto *ids = ids_t->data<int64_t>();
-    auto *table = table_t->data<T>();
-    auto *output = output_t->mutable_data<T>(context.GetPlace());
-
     dim3 threads(256, 4);
     dim3 grids(80, 1);
+
+    // copy GPU memory to CPU pinned memory
+    framework::Vector<int64_t> ids;
+    ids.resize(K);
+
+    const int64_t *ids_p = nullptr;
+
+    if (ids_t->type() == framework::proto::VarType::INT32) {
+      InputTypeCovert<
+          int><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+          ids_t->data<int>(), K, ids.MutableData(context.GetPlace()));
+      ids_p = ids.MutableData(context.GetPlace());
+    } else {
+      ids_p = ids_t->data<int64_t>();
+    }
+
+    auto *table = table_t->data<T>();
+    auto *output = output_t->mutable_data<T>(context.GetPlace());
 
     if (padding_idx == -1)
       LookupTableV2<
           T, 256, 4, 80,
           false><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          output, table, ids, N, K, D, padding_idx);
+          output, table, ids_p, N, K, D, padding_idx);
     else
       LookupTableV2<
           T, 256, 4, 80,
           true><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          output, table, ids, N, K, D, padding_idx);
+          output, table, ids_p, N, K, D, padding_idx);
   }
 };
 
@@ -139,16 +161,24 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
 
       auto *ids_data = ids->data<int64_t>();
       int64_t ids_num = ids->numel();
-
+      dim3 threads(128, 8);
+      dim3 grids(8, 1);
       auto stream = dev_ctx.stream();
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> new_rows;
       new_rows.resize(ids_num);
       auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
 
-      // TODO(yuyang18): Strange code here.
-      memory::Copy(gpu_place, new_rows.CUDAMutableData(context.GetPlace()),
-                   gpu_place, ids_data, ids_num * sizeof(int64_t), stream);
+      if (ids->type() == framework::proto::VarType::INT32) {
+        InputTypeCovert<
+            int><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+            ids->data<int>(), ids_num,
+            new_rows.MutableData(context.GetPlace()));
+      } else {
+        memory::Copy(gpu_place, new_rows.CUDAMutableData(context.GetPlace()),
+                     gpu_place, ids_data, ids_num * sizeof(int64_t), stream);
+      }
+
       d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();
@@ -177,17 +207,32 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       int N = d_table_t->dims()[0];
       int D = d_table_t->dims()[1];
       int K = ids_t->numel();
-      const int64_t *ids = ids_t->data<int64_t>();
+
+      dim3 threads(128, 8);
+      dim3 grids(8, 1);
+      // copy GPU memory to CPU pinned memory
+      framework::Vector<int64_t> ids;
+      ids.resize(K);
+
+      const int64_t *ids_p = nullptr;
+
+      if (ids_t->type() == framework::proto::VarType::INT32) {
+        InputTypeCovert<
+            int><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+            ids_t->data<int>(), K, ids.MutableData(context.GetPlace()));
+        ids_p = ids.MutableData(context.GetPlace());
+      } else {
+        ids_p = ids_t->data<int64_t>();
+      }
+
       const T *d_output = d_output_t->data<T>();
       T *d_table = d_table_t->mutable_data<T>(context.GetPlace());
 
       auto t = framework::EigenVector<T>::Flatten(*d_table_t);
       t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
-      dim3 threads(128, 8);
-      dim3 grids(8, 1);
       LookupTableV2Grad<T, 128, 8, 8><<<grids, threads, 0, dev_ctx.stream()>>>(
-          d_table, d_output, ids, N, K, D);
+          d_table, d_output, ids_p, N, K, D);
     }
   }
 };

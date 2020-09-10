@@ -201,6 +201,7 @@ def add_cases(suite):
         ConvTranspose1dTestCase(
             methodName='runTest', data_format="NLC", stride=3,
             output_padding=2))
+    suite.addTest(ConvTranspose1dTestCase(methodName='runTest', padding=[1, 2]))
 
 
 def add_error_cases(suite):
