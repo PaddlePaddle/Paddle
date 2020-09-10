@@ -21,9 +21,6 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 from op_test import OpTest
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.op import Operator
-from paddle.fluid.backward import append_backward
 
 
 class TestMVOp(OpTest):
@@ -89,11 +86,6 @@ class TestMVError(unittest.TestCase):
             data_vec = paddle.static.data(
                 "vec", shape=[100, 2], dtype="float64")
             result_vec = paddle.mv(data_x, data_vec)
-            self.place = paddle.CPUPlace()
-            exe = paddle.static.Executor(self.place)
-            exe.run(feed={"x": self.input_x,
-                          "vec": self.input_vec},
-                    fetch_list=[result_vec])
 
         self.assertRaises(ValueError, test_shape)
 

@@ -928,13 +928,15 @@ def mv(x, vec, name=None):
     Performs a matrix-vector product of the matrix x and the vector vec.
 
     Args:
-        x (Tensor): The input tensor, it's data type is float32, float64.
-        vec (Tensor): The input tensor, it's data type is float32, float64.
+        x (Variable): A tensor with shape :math:`[M, N]` , The data type of the input Tensor x
+            should be one of float32, float64.
+        vec (Variable): A tensor with shape :math:`[N]` , The data type of the input Tensor x
+            should be one of float32, float64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The matrix vector product Tensor.
+        Tensor: The tensor which is producted by x and vec.
 
     Examples:
         .. code-block:: python
@@ -944,7 +946,6 @@ def mv(x, vec, name=None):
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
 
             paddle.disable_static()
             x_data = np.array([[2, 1, 3], [3, 0, 1]]).astype("float64")
@@ -955,7 +956,6 @@ def mv(x, vec, name=None):
             paddle.enable_static()
     """
     if in_dygraph_mode():
-        out = _varbase_creator(dtype=x.dtype)
         out = core.ops.mv(x, vec)
         return out
 

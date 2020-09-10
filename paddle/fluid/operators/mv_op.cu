@@ -33,8 +33,8 @@ __global__ void MVGradCUDAKernel(const int m, const int n, const T *dout,
 // straight-forward to check the following table for when X and Y
 // are both matrices.
 //
-// dX = | dOut Y^T
-// dY = | X^T dOut
+// dX = | dOut Vec^T
+// dVec = | X^T dOut
 template <typename T>
 class MVGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {

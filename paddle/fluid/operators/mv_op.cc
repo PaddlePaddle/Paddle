@@ -94,10 +94,6 @@ class MVOpGrad : public framework::OperatorWithKernel {
     auto x_dims = context->GetInputDim("X");
     auto vec_dims = context->GetInputDim("Vec");
 
-    // auto out_grad_name = framework::GradVarName("Out");
-    // auto dout_dims = context->GetInputDim(out_grad_name);
-    // context->SetInputDim(out_grad_name, )
-
     auto x_grad_name = framework::GradVarName("X");
     auto vec_grad_name = framework::GradVarName("Vec");
 
@@ -116,10 +112,6 @@ class MVOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-// REGISTER_OPERATOR(
-//     mv, ops::MVOp, ops::MVOpMaker,
-//     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-//     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(mv, ops::MVOp, ops::MVOpMaker,
                   ops::MVOpGradMaker<paddle::framework::OpDesc>,
                   ops::MVOpGradMaker<paddle::imperative::OpBase>);

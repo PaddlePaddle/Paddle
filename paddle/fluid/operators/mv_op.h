@@ -56,8 +56,8 @@ class MVKernel : public framework::OpKernel<T> {
 // straight-forward to check the following table for when X and Y
 // are both matrices.
 //
-// dX = | dOut Y^T
-// dY = | X^T dOut
+// dX = | dOut vec^T
+// dVec = | X^T dOut
 template <typename DeviceContext, typename T>
 class MVGradKernel : public framework::OpKernel<T> {
  public:
