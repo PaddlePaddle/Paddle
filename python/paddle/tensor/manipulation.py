@@ -1244,6 +1244,9 @@ def expand(x, shape, name=None):
             out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
     """
+    if in_dygraph_mode():
+        return core.ops.expand_v2(x, 'shape', shape)
+
     if isinstance(shape, Variable):
         assert len(shape.shape) == 1, ('shape must be an 1-D Tensor.')
     else:
@@ -1258,8 +1261,6 @@ def expand(x, shape, name=None):
                     type_tuple = (int, long, np.int32, np.int64)
                 assert isinstance(elem, type_tuple), (
                     'Elements in shape must be 1-D Tensors or integers.')
-    if in_dygraph_mode():
-        return core.ops.expand_v2(x, 'shape', shape)
 
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
