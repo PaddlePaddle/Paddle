@@ -33,12 +33,12 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasOutput("XX"), "Output", "XX", "fusion_gru");
   OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "fusion_gru");
   auto x_dims = ctx->GetInputDim("X");
-  auto x_mat_dims = (x_dims.size() > 2 && x_dims[1] == 1)
+  auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
                         ? framework::flatten_to_2d(x_dims, 1)
                         : x_dims;
 
   auto wx_dims = ctx->GetInputDim("WeightX");
-  auto wx_mat_dims = (wx_dims.size() > 2 && wx_dims[1] == 1)
+  auto wx_mat_dims = (wx_dims.size() == 3 && wx_dims[1] == 1)
                          ? framework::flatten_to_2d(wx_dims, 1)
                          : wx_dims;
 
@@ -229,14 +229,17 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     }
   }
 
-#define INIT_BASE_DEFINES                  \
-  auto* x = ctx.Input<LoDTensor>("X");     \
-  auto* wh = ctx.Input<Tensor>("WeightH"); \
-  auto* xx = ctx.Output<LoDTensor>("XX");  \
-  auto x_lod = x->lod();                   \
-  auto x_dims = x->dims();   /* T x M*/    \
-  auto wh_dims = wh->dims(); /* D x 3D*/   \
-  const int total_T = x_dims[0];           \
+#define INIT_BASE_DEFINES                                     \
+  auto* x = ctx.Input<LoDTensor>("X");                        \
+  auto* wh = ctx.Input<Tensor>("WeightH");                    \
+  auto* xx = ctx.Output<LoDTensor>("XX");                     \
+  auto x_lod = x->lod();                                      \
+  auto x_dims = x->dims(); /* T x M*/                         \
+  auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)    \
+                        ? framework::flatten_to_2d(x_dims, 1) \
+                        : x_dims;                             \
+  auto wh_dims = wh->dims(); /* D x 3D*/                      \
+  const int total_T = x_mat_dims[0];                          \
   const int D3 = wh_dims[1]
 
 #define INIT_OTHER_DEFINES                                                   \
@@ -245,7 +248,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   auto* bias = ctx.Input<Tensor>("Bias");                                    \
   auto* hidden_out = ctx.Output<LoDTensor>("Hidden");                        \
   bool is_reverse = ctx.Attr<bool>("is_reverse");                            \
-  const int M = x_dims[1];                                                   \
+  const int M = x_mat_dims[1];                                               \
   const int D = wh_dims[0];                                                  \
   const int D2 = D * 2;                                                      \
   const jit::gru_attr_t attr(                                                \

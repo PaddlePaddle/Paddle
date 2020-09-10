@@ -365,7 +365,7 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     const auto* bias = ctx.Input<Tensor>("Bias");
     auto* hidden = ctx.Output<LoDTensor>("Hidden");
     auto x_dims = input->dims();
-    auto x_mat_dims = (x_dims.size() > 2 && x_dims[1] == 1)
+    auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
                           ? framework::flatten_to_2d(x_dims, 1)
                           : x_dims;
     // Get attributes
