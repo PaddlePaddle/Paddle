@@ -52,6 +52,8 @@ message DGCConfig {
 message LarsConfig {
   optional float lars_coeff = 1 [ default = 0.001 ];
   optional float lars_weight_decay = 2 [ default = 0.0005 ];
+  optional float epsilon = 3 [ default = 0.0 ];
+  repeated string exclude_from_weight_decay = 4;
 }
 
 message LambConfig {
