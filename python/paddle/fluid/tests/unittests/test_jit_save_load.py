@@ -255,8 +255,11 @@ class TestJitSaveLoad(unittest.TestCase):
         train_layer.eval()
         # construct new model
         new_layer = LinearNet(784, 1)
-        model_dict, _ = fluid.dygraph.load_dygraph(self.model_path)
-        new_layer.set_dict(model_dict)
+        orig_state_dict = new_layer.state_dict()
+        load_state_dict, _ = fluid.dygraph.load_dygraph(self.model_path)
+        for structured_name in orig_state_dict:
+            self.assertTrue(structured_name in load_state_dict)
+        new_layer.set_state_dict(load_state_dict)
         new_layer.eval()
         # inference & compare
         x = fluid.dygraph.to_variable(
