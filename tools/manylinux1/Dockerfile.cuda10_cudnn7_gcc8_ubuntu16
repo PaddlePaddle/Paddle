@@ -29,7 +29,7 @@ RUN apt-get update && \
     xz-utils tk-dev libffi-dev liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev
 
 # gcc8.2
-RUN wget -q https://paddle-docker-tar.bj.bcebos.com/home/users/tianshuo/bce-python-sdk-0.8.27/gcc-8.2.0.tar.xz && \
+RUN wget  -q https://paddle-docker-tar.bj.bcebos.com/home/users/tianshuo/bce-python-sdk-0.8.27/gcc-8.2.0.tar.xz && \
   tar -xvf gcc-8.2.0.tar.xz && \
   cd gcc-8.2.0 && \
   sed -i 's#ftp://gcc.gnu.org/pub/gcc/infrastructure/#https://paddle-ci.gz.bcebos.com/#g' ./contrib/download_prerequisites && \
