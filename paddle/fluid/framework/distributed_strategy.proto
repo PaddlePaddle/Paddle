@@ -38,7 +38,7 @@ message AMPConfig {
 
 message LocalSGDConfig {
   optional int32 k_steps = 1 [ default = 1 ];
-  optional int32 begin_step = 2 [ default = 0 ];
+  optional int32 begin_step = 2 [ default = 1 ];
 }
 
 message GradientMergeConfig {
