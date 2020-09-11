@@ -27,8 +27,6 @@ __all__ = [
     'QuantizedLinear', 'FakeChannelWiseQuantDequantAbsMax'
 ]
 
-LINEAR_QUANT_AXIS = 1
-
 
 class FakeQuantMovingAverage(layers.Layer):
     """
@@ -306,6 +304,8 @@ def _get_fake_quant_type(quant_type, **kwargs):
         call_args["moving_rate"] = kwargs.get("moving_rate", 0.9)
     elif quant_type == 'channel_wise_abs_max':
         call_args["quant_on_weight"] = kwargs.get("quant_on_weight", False)
+        call_args["channel_num"] = kwargs.get("channel_num", None)
+        call_args["quant_axis"] = kwargs.get("quant_axis", 0)
     fake_quant_map = {
         'abs_max': FakeQuantAbsMax,
         'moving_average_abs_max': FakeQuantMovingAverage,
