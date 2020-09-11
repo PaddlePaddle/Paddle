@@ -627,10 +627,13 @@ class KLDivLoss(fluid.dygraph.Layer):
     $$l(x, y) = y * (\log(y) - x)$$
 
     Parameters:
-        reduction (str, optional): Indicate how to average the loss,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-            Default is ``'mean'``.
+        reduction (Tensor): Indicate how to average the loss,
+             the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
+             If `reduction` is ``'mean'``, the reduced mean loss is returned;
+             If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
+             if `reduction` is ``'sum'``, the reduced sum loss is returned;
+             if `reduction` is ``'none'``, no reduction will be apllied.
+             Default is ``'mean'``.
 
     Shape:
 
@@ -654,11 +657,11 @@ class KLDivLoss(fluid.dygraph.Layer):
             x = np.random.uniform(-10, 10, shape).astype('float32')
             target = np.random.uniform(-10, 10, shape).astype('float32')
 
-            # 'batchmean' reduction, loss shape will be [N]
+            # 'batchmean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
             pred_loss = kldiv_criterion(paddle.to_tensor(x),
                                         paddle.to_tensor(target))
-            # shape=[5]
+            # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='mean')
@@ -684,7 +687,7 @@ class KLDivLoss(fluid.dygraph.Layer):
         self.reduction = reduction
 
     def forward(self, input, label):
-        out = paddle.nn.functional.kl_div(input, label, self.reduction)
+        out = F.kl_div(input, label, self.reduction)
         return out
 
 

@@ -169,7 +169,7 @@ class Optimizer(object):
 
                 import paddle
                 paddle.disable_static()
-                emb = paddle.nn.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
 
                 adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
                 state_dict = adam.state_dict()
@@ -199,7 +199,7 @@ class Optimizer(object):
 
                 import paddle
                 paddle.disable_static()
-                emb = paddle.nn.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
 
                 state_dict = emb.state_dict()
                 paddle.framework.save(state_dict, "paddle_dy")
@@ -371,7 +371,7 @@ class Optimizer(object):
                 import paddle
                 # example1: _LRScheduler is not used, return value is all the same
                 paddle.disable_static()
-                emb = paddle.nn.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
                 adam = paddle.optimizer.Adam(0.001, parameters = emb.parameters())
                 lr = adam.get_lr()
                 print(lr) # 0.001

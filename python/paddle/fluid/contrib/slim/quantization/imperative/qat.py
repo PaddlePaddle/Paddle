@@ -192,7 +192,6 @@ class ImperativeQuantAware(object):
         assert len(input_dtype) == len(
             feed), "The length of input_shape should be equal to  feed's."
 
-        prog_trans = dygraph.ProgramTranslator()
         with dygraph.guard():
             model.eval()
             input_vars = []

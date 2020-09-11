@@ -94,6 +94,10 @@ class TestPool1d_API(unittest.TestCase):
             result = ada_max_pool1d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
+            result = paddle.nn.functional.common.interpolate(
+                input, mode="area", size=16)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
     def check_adaptive_avg_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")

@@ -918,6 +918,29 @@ class TestDygraphPtbRnn(unittest.TestCase):
             para_state_dict, opti_state_dict = paddle.load(
                 os.path.join('saved_dy', 'emb_dy.pdopt'))
 
+    def test_no_state_in_input_dict(self):
+        with fluid.dygraph.guard():
+            emb = fluid.dygraph.Embedding([10, 10])
+            state_dict = emb.state_dict()
+            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy'))
+
+            para_state_dict, _ = paddle.load(os.path.join('saved_dy', 'emb_dy'))
+            para_state_dict.pop('weight')
+
+            emb.set_state_dict(para_state_dict)
+
+    def test_state_shape_mismatch(self):
+        with fluid.dygraph.guard():
+            emb = fluid.dygraph.Embedding([10, 10])
+            state_dict = emb.state_dict()
+            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy'))
+
+            para_state_dict, _ = paddle.load(os.path.join('saved_dy', 'emb_dy'))
+            para_state_dict['weight'] = np.expand_dims(
+                para_state_dict['weight'], axis=-1)
+
+            emb.set_state_dict(para_state_dict)
+
 
 if __name__ == '__main__':
     unittest.main()

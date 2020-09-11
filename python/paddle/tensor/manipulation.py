@@ -85,11 +85,6 @@ def concat(x, axis=0, name=None):
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
-    Raises:
-        TypeError: ``x`` must be list or tuple.
-        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32 and int64. 
-        TypeError: The ``axis`` must be int or Tensor. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
-        TypeError: All the Tensors in ``x`` must have the same data type.
 
     Returns:
         Tensor: A Tensor with the same data type as ``x``.
@@ -98,18 +93,14 @@ def concat(x, axis=0, name=None):
         .. code-block:: python
             
             import paddle
-            import numpy as np
             
             paddle.disable_static()  # Now we are in imperative mode
-            in1 = np.array([[1, 2, 3],
-                            [4, 5, 6]])
-            in2 = np.array([[11, 12, 13],
-                            [14, 15, 16]])
-            in3 = np.array([[21, 22],
-                            [23, 24]])
-            x1 = paddle.to_tensor(in1)
-            x2 = paddle.to_tensor(in2)
-            x3 = paddle.to_tensor(in3)
+            x1 = paddle.to_tensor([[1, 2, 3],
+                                   [4, 5, 6]])
+            x2 = paddle.to_tensor([[11, 12, 13],
+                                   [14, 15, 16]])
+            x3 = paddle.to_tensor([[21, 22],
+                                   [23, 24]])
             zero = paddle.full(shape=[1], dtype='int32', fill_value=0)
             # When the axis is negative, the real axis is (axis + Rank(x))
             # As follow, axis is -1, Rank(x) is 2, the real axis is 1
@@ -158,7 +149,7 @@ def flip(x, axis, name=None):
           image_shape=(3, 2, 2)
           x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
           x = x.astype('float32')
-          img = paddle.to_variable(x)
+          img = paddle.to_tensor(x)
           out = paddle.flip(img, [0,1])
 
           print(out) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
@@ -250,7 +241,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3]).reshape(image_shape) / 100.
             x = x.astype('float32')
             
-            img = paddle.to_variable(x)
+            img = paddle.to_tensor(x)
             out = paddle.flatten(img, start_axis=1, stop_axis=2)
             # out shape is [2, 12, 4]
     """
@@ -315,15 +306,13 @@ def roll(x, shifts, axis=None, name=None):
 
     Examples:
         .. code-block:: python
-            import numpy as np
             import paddle
             import paddle.fluid as fluid
 
-            data = np.array([[1.0, 2.0, 3.0],
-                             [4.0, 5.0, 6.0],
-                             [7.0, 8.0, 9.0]])
             paddle.disable_static()
-            x = paddle.to_variable(data)
+            x = paddle.to_tensor([[1.0, 2.0, 3.0],
+                                  [4.0, 5.0, 6.0],
+                                  [7.0, 8.0, 9.0]])
             out_z1 = paddle.roll(x, shifts=1)
             print(out_z1.numpy())
             #[[9. 1. 2.]
@@ -447,8 +436,7 @@ def stack(x, axis=0, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
+            
             paddle.disable_static()
             x1 = paddle.to_tensor([[1.0, 2.0]])
             x2 = paddle.to_tensor([[3.0, 4.0]])
@@ -481,10 +469,7 @@ def split(x, num_or_sections, axis=0, name=None):
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
         list(Tensor): The list of segmented Tensors.
-    Raises:
-        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: ``num_or_sections`` is not int, list or tuple.
-        TypeError: ``axis`` is not int or Tensor. the data type of ``axis`` must be int32 or int64 when it's a Tensor.
+    
     Example:
         .. code-block:: python
             
@@ -632,12 +617,10 @@ def unique(x,
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            x_data = np.array([2, 3, 3, 1, 5, 3])
-            x = paddle.to_tensor(x_data)
+            x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
             unique = paddle.unique(x)
             np_unique = unique.numpy() # [1 2 3 5]
             _, indices, inverse, counts = paddle.unique(x, return_index=True, return_inverse=True, return_counts=True)
@@ -645,8 +628,7 @@ def unique(x,
             np_inverse = inverse.numpy() # [1 2 2 0 3 2]
             np_counts = counts.numpy() # [1 1 3 1]
 
-            x_data = np.array([[2, 1, 3], [3, 0, 1], [2, 1, 3]])
-            x = paddle.to_tensor(x_data)
+            x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3]])
             unique = paddle.unique(x)
             np_unique = unique.numpy() # [0 1 2 3]
 
@@ -764,8 +746,6 @@ def unsqueeze(x, axis, name=None):
             print(out3.shape)  # [1, 1, 1, 5, 10]
             
     """
-    if isinstance(axis, int):
-        axis = [axis]
 
     return layers.unsqueeze(x, axis, name)
 
@@ -806,23 +786,15 @@ def gather(x, index, axis=None, name=None):
     Returns:
         output (Tensor): The output is a tensor with the same rank as ``x``.
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must to be one of float16, float32, float64, int32, int64, uint8.
-        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
-        TypeError: ``axis`` must be a Tensor or int and the data type of ``index`` must be int32 or int64 when it's a Tensor.
-
     Examples:
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            input_1 = np.array([[1,2],[3,4],[5,6]])
-            index_1 = np.array([0,1])
-            input = paddle.to_tensor(input_1)
-            index = paddle.to_tensor(index_1)
+            input = paddle.to_tensor([[1,2],[3,4],[5,6]])
+            index = paddle.to_tensor([0,1])
             output = paddle.gather(input, index, axis=0)
             # expected output: [[1,2],[3,4]]
     """
@@ -958,16 +930,11 @@ def scatter(x, index, updates, overwrite=True, name=None):
         .. code-block:: python
             
             import paddle
-            import numpy as np
             paddle.disable_static()
 
-            x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float32)
-            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
-            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float32)
-            
-            x = paddle.to_tensor(x_data)
-            index = paddle.to_tensor(index_data)
-            updates = paddle.to_tensor(updates_data)
+            x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
+            index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
+            updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
   
             output1 = paddle.scatter(x, index, updates, overwrite=False)
             # [[3., 3.],
@@ -1020,10 +987,7 @@ def chunk(x, chunks, axis=0, name=None):
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
         list(Tensor): The list of segmented Tensors.
-    Raises:
-        TypeError: The data type of ``x`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: ``chunks`` is not int.
-        TypeError: ``axis`` is not int or Tensor. the data type of ``axis`` must be int32 or int64 when it's a Tensor.
+    
     Example:
         .. code-block:: python
             
@@ -1035,7 +999,7 @@ def chunk(x, chunks, axis=0, name=None):
             x_np = np.random.random([3, 9, 5]).astype("int32")
             x = paddle.to_tensor(x_np)
 
-            out0, out1, out22 = paddle.chunk(x, chunks=3, axis=1)
+            out0, out1, out2 = paddle.chunk(x, chunks=3, axis=1)
             # out0.shape [3, 3, 5]
             # out1.shape [3, 3, 5]
             # out2.shape [3, 3, 5]
@@ -1074,11 +1038,9 @@ def tile(x, repeat_times, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
-            np_data = np.array([1, 2, 3]).astype('int32')
-            data = paddle.to_tensor(np_data)
+            data = paddle.to_tensor([1, 2, 3], dtype='int32')
             out = paddle.tile(data, repeat_times=[2, 1])
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
@@ -1087,8 +1049,7 @@ def tile(x, repeat_times, name=None):
             np_out = out.numpy()
             # [[1, 2, 3, 1, 2, 3], [1, 2, 3, 1, 2, 3]]
 
-            np_repeat_times = np.array([2, 1]).astype("int32")
-            repeat_times = paddle.to_tensor(np_repeat_times)
+            repeat_times = paddle.to_tensor([2, 1], dtype='int32')
             out = paddle.tile(data, repeat_times=repeat_times)
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
@@ -1156,15 +1117,12 @@ def expand_as(x, y, name=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             paddle.disable_static()
 
-            np_data_x = np.array([1, 2, 3]).astype('int32')
-            np_data_y = np.array([[1, 2, 3], [4, 5, 6]]).astype('int32')
-            data_x = paddle.to_tensor(np_data_x)
-            data_y = paddle.to_tensor(np_data_y)
+            data_x = paddle.to_tensor([1, 2, 3], 'int32')
+            data_y = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], 'int32')
             out = paddle.expand_as(data_x, data_y)
             np_out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
@@ -1212,12 +1170,10 @@ def expand(x, shape, name=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            np_data = np.array([1, 2, 3]).astype('int32')
-            data = paddle.to_tensor(np_data)
+            data = paddle.to_tensor([1, 2, 3], dtype='int32')
             out = paddle.expand(data, shape=[2, 3])
             out = out.numpy()
             # [[1, 2, 3], [1, 2, 3]]
@@ -1316,11 +1272,6 @@ def reshape(x, shape, name=None):
     Returns:
         Tensor: A reshaped Tensor with the same data type as ``x``.
 
-    Raises:
-        ValueError: If more than one elements of ``shape`` is -1.
-        ValueError: If the element of ``shape`` is 0, the corresponding dimension should be less than or equal to the dimension of ``x``.
-        ValueError: If the elements in ``shape`` is negative except -1.
-
     Examples:
         .. code-block:: python
 
@@ -1407,23 +1358,16 @@ def gather_nd(x, index, name=None):
     Returns:
         output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of float32, float64, int32 and int64.
-        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be one of int32 and int64.
-
     Examples:
 
         .. code-block:: python
             
             import paddle
-            import numpy as np
             
             paddle.disable_static()
-            np_x = np.array([[[1, 2], [3, 4], [5, 6]],
-                             [[7, 8], [9, 10], [11, 12]]])
-            np_index = [[0, 1]]
-            x = paddle.to_tensor(np_x)
-            index = paddle.to_tensor(np_index)
+            x = paddle.to_tensor([[[1, 2], [3, 4], [5, 6]],
+                                  [[7, 8], [9, 10], [11, 12]]])
+            index = paddle.to_tensor([[0, 1]])
             
             output = paddle.gather_nd(x, index) #[[3, 4]]
 
