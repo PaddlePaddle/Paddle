@@ -954,8 +954,11 @@ class RNNMixin(LayerList):
                             "Output": params,
                             "FusedOutput": self._flat_weight
                         },
-                        attrs={"copy_data": True,
-                               "dtype": params[0].dtype})
+                        attrs={
+                            "copy_data": True,
+                            "use_align": False,
+                            "dtype": params[0].dtype
+                        })
 
     def _cudnn_impl(self, inputs, initial_states, sequence_length):
         if not self.time_major:
@@ -976,13 +979,14 @@ class RNNMixin(LayerList):
 
         inputs = {
             'Input': inputs,
-            'W': self._flat_weight,
+            # 'W': self._flat_weight,
+            'WeightList': self.parameters(),
             'InitH': initial_states[0],
             'InitC': initial_states[1],
             'State': dropout_state,
         }
         attrs = {
-            'sequence_length': [],
+            # 'sequence_length': [],
             'dropout_prob': self.dropout,
             'is_bidirec': self.num_directions == 2,
             'input_size': self.input_size,
