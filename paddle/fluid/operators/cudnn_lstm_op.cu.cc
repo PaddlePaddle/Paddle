@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/cudnn_lstm_cache.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
@@ -94,11 +95,11 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     bool is_test = ctx.Attr<bool>("is_test");
     int seed = ctx.Attr<int>("seed");
 
-    std::vector<const Tensor *> SequenceLength;
     bool has_seq_length = ctx.HasInput("SequenceLength");
+    std::vector<int> SequenceLength;
     if (has_seq_length) {
       auto *sequence_length = ctx.Input<Tensor>("SequenceLength");
-      SequenceLength.emplace_back(sequence_length);
+      SequenceLength = operators::GetDataFromTensor<int>(sequence_length);
     }
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -220,11 +221,11 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     int num_layers = ctx.Attr<int>("num_layers");
     int seed = ctx.Attr<int>("seed");
 
-    std::vector<const Tensor *> SequenceLength;
     bool has_seq_length = ctx.HasInput("SequenceLength");
+    std::vector<int> SequenceLength;
     if (has_seq_length) {
       auto *sequence_length = ctx.Input<Tensor>("SequenceLength");
-      SequenceLength.emplace_back(sequence_length);
+      SequenceLength = operators::GetDataFromTensor<int>(sequence_length);
     }
 
     int seq_length = input_dims[0];

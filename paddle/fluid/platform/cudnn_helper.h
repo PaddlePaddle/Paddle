@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
@@ -288,7 +287,7 @@ class ScopedTensorDescriptor {
     return descriptor(CudnnDataType<T>::type, dim, stride);
   }
 
-  inline cudnnTensorDescriptor_t get_desc_() { return desc_; }
+  inline cudnnTensorDescriptor_t desc() { return desc_; }
 
  private:
   cudnnTensorDescriptor_t desc_;
@@ -307,8 +306,7 @@ class ScopedRNNTensorDescriptor {
 
   inline cudnnRNNDataDescriptor_t descriptor(
       const cudnnDataType_t cudnn_type, int max_seq_length, int batch_size,
-      int input_size, bool time_major,
-      const std::vector<const framework::Tensor*>& seq_length) {
+      int input_size, bool time_major, const std::vector<int>& seq_length) {
     static float padding_fill = 0.0f;
     cudnnRNNDataLayout_t layout;
 
@@ -318,11 +316,9 @@ class ScopedRNNTensorDescriptor {
       layout = CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED;
     }
 
-    std::vector<int> vec_seq_length =
-        operators::GetDataFromTensor<int>(seq_length[0]);
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetRNNDataDescriptor(
         desc_, cudnn_type, layout, max_seq_length, batch_size, input_size,
-        vec_seq_length.data(), static_cast<void*>(&padding_fill)));
+        seq_length.data(), static_cast<void*>(&padding_fill)));
 
     return desc_;
   }
@@ -330,12 +326,12 @@ class ScopedRNNTensorDescriptor {
   template <typename T>
   inline cudnnRNNDataDescriptor_t descriptor(
       int max_length, int batch_size, int input_size, bool time_major,
-      const std::vector<const framework::Tensor*>& seq_length) {
+      const std::vector<int>& seq_length) {
     return descriptor(CudnnDataType<T>::type, max_length, batch_size,
                       input_size, time_major, seq_length);
   }
 
-  inline cudnnRNNDataDescriptor_t get_desc_() { return desc_; }
+  inline cudnnRNNDataDescriptor_t desc() { return desc_; }
 
  private:
   cudnnRNNDataDescriptor_t desc_;
@@ -369,7 +365,7 @@ class ScopedDropoutDescriptor {
     }
     return desc_;
   }
-  inline cudnnDropoutDescriptor_t get_desc_() { return desc_; }
+  inline cudnnDropoutDescriptor_t desc() { return desc_; }
 
  private:
   cudnnDropoutDescriptor_t desc_;
@@ -385,7 +381,7 @@ class ScopedRNNDescriptor {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyRNNDescriptor(desc_));
   }
 
-  inline cudnnRNNDescriptor_t get_desc_() { return desc_; }
+  inline cudnnRNNDescriptor_t desc() { return desc_; }
 
  private:
   cudnnRNNDescriptor_t desc_;
@@ -428,7 +424,7 @@ class ScopedFilterDescriptor {
                       kernel, groups);
   }
 
-  inline cudnnFilterDescriptor_t get_desc_() { return desc_; }
+  inline cudnnFilterDescriptor_t desc() { return desc_; }
 
  private:
   cudnnFilterDescriptor_t desc_;
