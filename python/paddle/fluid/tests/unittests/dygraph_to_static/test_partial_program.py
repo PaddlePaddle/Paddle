@@ -155,8 +155,8 @@ class TestWithTrainAndEval(unittest.TestCase):
 class GPT2LMHeadModel(fluid.dygraph.Layer):
     def __init__(self):
         super(GPT2LMHeadModel, self).__init__()
-        self.embedding0 = paddle.nn.Embedding((20, 16))
-        self.embedding1 = paddle.nn.Embedding((20, 32))
+        self.embedding0 = paddle.nn.Embedding(20, 16)
+        self.embedding1 = paddle.nn.Embedding(20, 32)
         self.lm_head_weight = paddle.to_tensor(
             np.random.rand(2, 3).astype('float32'))
 
