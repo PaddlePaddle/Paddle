@@ -381,7 +381,8 @@ def _accumulate_gradients_by_sum_op_(var_name, renamed_vars, pending_sum_ops,
     """
     Use sum op to accumulate_gradients, the gradients are stored in renamed_vars.
     """
-    pending_sum_ops[op_idx] = []
+    if op_idx not in pending_sum_ops.keys():
+        pending_sum_ops[op_idx] = []
     pending_sum_ops[op_idx].append(
         _create_op_desc_("sum", {"X": renamed_vars[var_name]},
                          {"Out": [var_name]}, {"use_mkldnn": False}))
@@ -393,7 +394,8 @@ def _accumulate_gradients_by_add_ops_(var_name, renamed_vars, pending_sum_ops,
     """
     Use several inplace add op to accumulate_gradients, the gradients are stored in renamed_vars.
     """
-    pending_sum_ops[op_idx] = []
+    if op_idx not in pending_sum_ops.keys():
+        pending_sum_ops[op_idx] = []
     out_name = renamed_vars[var_name][0]
     for i in range(1, len(renamed_vars[var_name])):
         x_name = out_name
@@ -497,6 +499,7 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     # sum_op descs are sorted according to their insert position
     for key, value in collections.OrderedDict(
             reversed(list(pending_sum_ops.items()))).items():
+
         # NOTE(zhiqiu): Since reversed, the idx of op_descs to be inserted will remains correct.
         # For example, [0, 1, 2], and we want to insert 'a' at idx 1, 'b' at idx 2, and the expected result is [0, 1, 'a', 2, 'b'].
         # If reversed, we first insert 'b' at idx 2, it becomes [0, 1, 2, 'b'], and then insert 'a' at idx 1, it becomes [0, 1, 'a', 2, 'b'].
