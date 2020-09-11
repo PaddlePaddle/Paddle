@@ -36,22 +36,22 @@ void LSTMInferece(const bool &has_seq_length, const cudnnHandle_t &handle,
     // for inference
     // This interface is used when the input/output is unpadded.
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInference(
-        handle, rnn->rnn_desc_(), seq_length, rnn->x_descs_(), x_data,
-        rnn->init_h_desc_(), init_h_data, rnn->init_c_desc_(), init_c_data,
-        rnn->weight_desc_(), w_data, rnn->y_descs_(), out_data,
-        rnn->last_h_desc_(), last_h_data, rnn->last_c_desc_(), last_c_data,
+        handle, rnn->rnn_desc(), seq_length, rnn->x_descs(), x_data,
+        rnn->init_h_desc(), init_h_data, rnn->init_c_desc(), init_c_data,
+        rnn->weight_desc(), w_data, rnn->y_descs(), out_data,
+        rnn->last_h_desc(), last_h_data, rnn->last_c_desc(), last_c_data,
         workspace_data->data<uint8_t>(), workspace_size));
   } else {
 #if CUDNN_VERSION >= 7201
     // for inference
     // This interface is used when the input/output is padded.
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInferenceEx(
-        handle, rnn->rnn_desc_(), rnn->x_seq_desc_(), x_data,
-        rnn->init_h_desc_(), init_h_data, rnn->init_c_desc_(), init_c_data,
-        rnn->weight_desc_(), w_data, rnn->y_seq_desc_(), out_data,
-        rnn->last_h_desc_(), last_h_data, rnn->last_c_desc_(), last_c_data,
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-        workspace_data->data<uint8_t>(), workspace_size));
+        handle, rnn->rnn_desc(), rnn->x_seq_desc(), x_data, rnn->init_h_desc(),
+        init_h_data, rnn->init_c_desc(), init_c_data, rnn->weight_desc(),
+        w_data, rnn->y_seq_desc(), out_data, rnn->last_h_desc(), last_h_data,
+        rnn->last_c_desc(), last_c_data, nullptr, nullptr, nullptr, nullptr,
+        nullptr, nullptr, nullptr, nullptr, workspace_data->data<uint8_t>(),
+        workspace_size));
 #else
     // CUDNN VERSION has to >=7.2.1
     PADDLE_THROW(platform::errors::Unavailable(
@@ -136,10 +136,10 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
         // for train
         // This interface is used when the input/output is unpadded.
         PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardTraining(
-            handle, rnn.rnn_desc_(), seq_length, rnn.x_descs_(), x_data,
-            rnn.init_h_desc_(), init_h_data, rnn.init_c_desc_(), init_c_data,
-            rnn.weight_desc_(), w_data, rnn.y_descs_(), out_data,
-            rnn.last_h_desc_(), last_h_data, rnn.last_c_desc_(), last_c_data,
+            handle, rnn.rnn_desc(), seq_length, rnn.x_descs(), x_data,
+            rnn.init_h_desc(), init_h_data, rnn.init_c_desc(), init_c_data,
+            rnn.weight_desc(), w_data, rnn.y_descs(), out_data,
+            rnn.last_h_desc(), last_h_data, rnn.last_c_desc(), last_c_data,
             workspace_data_.data<uint8_t>(), workspace_size, reserve_data,
             reserve_size));
       } else {
@@ -148,13 +148,13 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
         // This interface is used when the input/output is padded.
         PADDLE_ENFORCE_CUDA_SUCCESS(
             platform::dynload::cudnnRNNForwardTrainingEx(
-                handle, rnn.rnn_desc_(), rnn.x_seq_desc_(), x_data,
-                rnn.init_h_desc_(), init_h_data, rnn.init_c_desc_(),
-                init_c_data, rnn.weight_desc_(), w_data, rnn.y_seq_desc_(),
-                out_data, rnn.last_h_desc_(), last_h_data, rnn.last_c_desc_(),
-                last_c_data, nullptr, nullptr, nullptr, nullptr, nullptr,
-                nullptr, nullptr, nullptr, workspace_data_.data<uint8_t>(),
-                workspace_size, reserve_data, reserve_size));
+                handle, rnn.rnn_desc(), rnn.x_seq_desc(), x_data,
+                rnn.init_h_desc(), init_h_data, rnn.init_c_desc(), init_c_data,
+                rnn.weight_desc(), w_data, rnn.y_seq_desc(), out_data,
+                rnn.last_h_desc(), last_h_data, rnn.last_c_desc(), last_c_data,
+                nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                nullptr, workspace_data_.data<uint8_t>(), workspace_size,
+                reserve_data, reserve_size));
 #else
         PADDLE_THROW(platform::errors::Unavailable(
             "The padded input is supported by "
@@ -251,18 +251,18 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     if (!has_seq_length) {
       // This interface is used when the input/output is unpadded.
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardData(
-          handle, rnn.rnn_desc_(), seq_length, rnn.y_descs_(), out_data,
-          rnn.y_descs_(), out_grad_data, rnn.last_h_desc_(), last_h_grad_data,
-          rnn.last_c_desc_(), last_c_grad_data, rnn.weight_desc_(), weight_data,
-          rnn.init_h_desc_(), init_h_data, rnn.init_c_desc_(), init_c_data,
-          rnn.x_descs_(), in_grad_data, rnn.init_h_desc_(), init_h_grad_data,
-          rnn.init_c_desc_(), init_c_grad_data, workspace_data_.data<uint8_t>(),
+          handle, rnn.rnn_desc(), seq_length, rnn.y_descs(), out_data,
+          rnn.y_descs(), out_grad_data, rnn.last_h_desc(), last_h_grad_data,
+          rnn.last_c_desc(), last_c_grad_data, rnn.weight_desc(), weight_data,
+          rnn.init_h_desc(), init_h_data, rnn.init_c_desc(), init_c_data,
+          rnn.x_descs(), in_grad_data, rnn.init_h_desc(), init_h_grad_data,
+          rnn.init_c_desc(), init_c_grad_data, workspace_data_.data<uint8_t>(),
           workspace_size, const_cast<uint8_t *>(reserve_data), reserve_size));
 
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardWeights(
-          handle, rnn.rnn_desc_(), seq_length, rnn.x_descs_(), input->data<T>(),
-          rnn.init_h_desc_(), init_h->data<T>(), rnn.y_descs_(), out->data<T>(),
-          workspace_data_.data<uint8_t>(), workspace_size, rnn.weight_desc_(),
+          handle, rnn.rnn_desc(), seq_length, rnn.x_descs(), input->data<T>(),
+          rnn.init_h_desc(), init_h->data<T>(), rnn.y_descs(), out->data<T>(),
+          workspace_data_.data<uint8_t>(), workspace_size, rnn.weight_desc(),
           weight_grad->data<T>(), const_cast<uint8_t *>(reserve_data),
           reserve_size));
     } else {
@@ -270,21 +270,20 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
       // for train
       // This interface is used when the input/output is padded.
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardDataEx(
-          handle, rnn.rnn_desc_(), rnn.y_seq_desc_(), out_data,
-          rnn.y_seq_desc_(), out_grad_data, nullptr, nullptr,
-          rnn.last_h_desc_(), last_h_grad_data, rnn.last_c_desc_(),
-          last_c_grad_data, rnn.weight_desc_(), weight_data, rnn.init_h_desc_(),
-          init_h_data, rnn.init_c_desc_(), init_c_data, rnn.x_seq_desc_(),
-          in_grad_data, rnn.init_h_desc_(), init_h_grad_data,
-          rnn.init_c_desc_(), init_c_grad_data, nullptr, nullptr,
+          handle, rnn.rnn_desc(), rnn.y_seq_desc(), out_data, rnn.y_seq_desc(),
+          out_grad_data, nullptr, nullptr, rnn.last_h_desc(), last_h_grad_data,
+          rnn.last_c_desc(), last_c_grad_data, rnn.weight_desc(), weight_data,
+          rnn.init_h_desc(), init_h_data, rnn.init_c_desc(), init_c_data,
+          rnn.x_seq_desc(), in_grad_data, rnn.init_h_desc(), init_h_grad_data,
+          rnn.init_c_desc(), init_c_grad_data, nullptr, nullptr,
           workspace_data_.data<uint8_t>(), workspace_size,
           const_cast<uint8_t *>(reserve_data), reserve_size));
 
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardWeightsEx(
-          handle, rnn.rnn_desc_(), rnn.x_seq_desc_(), input->data<T>(),
-          rnn.init_h_desc_(), init_h->data<T>(), rnn.y_seq_desc_(),
+          handle, rnn.rnn_desc(), rnn.x_seq_desc(), input->data<T>(),
+          rnn.init_h_desc(), init_h->data<T>(), rnn.y_seq_desc(),
           out->data<T>(), workspace_data_.data<uint8_t>(), workspace_size,
-          rnn.weight_desc_(), weight_grad->data<T>(),
+          rnn.weight_desc(), weight_grad->data<T>(),
           const_cast<uint8_t *>(reserve_data), reserve_size));
 #else
       PADDLE_THROW(platform::errors::Unavailable(

@@ -51,25 +51,25 @@ class ScopedRNNBase {
     std::vector<int> dims_y = {batch_size_, hidden_size_ * numDirections, 1};
     std::vector<int> strides_y = {hidden_size_ * numDirections, 1, 1};
     for (int i = 0; i < seq_length_; ++i) {
-      x_desc_.emplace_back(x_desc.descriptor<T>(dims_x, strides_x));
-      y_desc_.emplace_back(y_desc.descriptor<T>(dims_y, strides_y));
+      x_descs_.emplace_back(x_desc_.descriptor<T>(dims_x, strides_x));
+      y_descs_.emplace_back(y_desc_.descriptor<T>(dims_y, strides_y));
     }
     if (!sequence_length.empty()) {
-      x_seq_desc.descriptor<T>(seq_length_, batch_size_, input_size_, true,
-                               sequence_length);
-      y_seq_desc.descriptor<T>(seq_length_, batch_size_,
-                               hidden_size_ * numDirections, true,
-                               sequence_length);
+      x_seq_desc_.descriptor<T>(seq_length_, batch_size_, input_size_, true,
+                                sequence_length);
+      y_seq_desc_.descriptor<T>(seq_length_, batch_size_,
+                                hidden_size_ * numDirections, true,
+                                sequence_length);
     }
 
     // ------------------- cudnn hx, hy, cx, cy descriptors----------
     std::vector<int> dims_hx = {num_layers_ * numDirections, batch_size_,
                                 hidden_size_};
     std::vector<int> strides_hx = {hidden_size_ * batch_size_, hidden_size_, 1};
-    init_h_desc.descriptor<T>(dims_hx, strides_hx);
-    init_c_desc.descriptor<T>(dims_hx, strides_hx);
-    last_h_desc.descriptor<T>(dims_hx, strides_hx);
-    last_c_desc.descriptor<T>(dims_hx, strides_hx);
+    init_h_desc_.descriptor<T>(dims_hx, strides_hx);
+    init_c_desc_.descriptor<T>(dims_hx, strides_hx);
+    last_h_desc_.descriptor<T>(dims_hx, strides_hx);
+    last_c_desc_.descriptor<T>(dims_hx, strides_hx);
 
     // ------------------- cudnn dropout descriptors ---------------------
     size_t state_size;
@@ -79,32 +79,32 @@ class ScopedRNNBase {
       dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
                                            place);
     }
-    dropout_desc.descriptor(handle, place, initialized_, dropout_prob_,
-                            dropout_state, seed_, state_size);
+    dropout_desc_.descriptor(handle, place, initialized_, dropout_prob_,
+                             dropout_state, seed_, state_size);
 
 // ------------------- cudnn rnn descriptors ---------------------
 #if CUDNN_VERSION >= 6000
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
-        handle, rnn_desc.desc(), hidden_size_, num_layers_, dropout_desc.desc(),
-        CUDNN_LINEAR_INPUT,
+        handle, rnn_desc_.desc(), hidden_size_, num_layers_,
+        dropout_desc_.desc(), CUDNN_LINEAR_INPUT,
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
         CUDNN_RNN_ALGO_STANDARD, cudnn_type));
 #else
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor(
-        rnn_desc.desc(), hidden_size_, num_layers_, dropout_desc.desc(),
+        rnn_desc_.desc(), hidden_size_, num_layers_, dropout_desc_.desc(),
         CUDNN_LINEAR_INPUT,
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
         cudnn_type));
 #endif
     if (!sequence_length.empty()) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNPaddingMode(
-          rnn_desc.desc(), CUDNN_RNN_PADDED_IO_ENABLED));
+          rnn_desc_.desc(), CUDNN_RNN_PADDED_IO_ENABLED));
     }
 
     // ------------------- cudnn weights_size ---------------------
     size_t weights_size_;
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNParamsSize(
-        handle, rnn_desc.desc(), x_desc_[0], &weights_size_, cudnn_type));
+        handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
     PADDLE_ENFORCE_EQ(
         weights_size_, sizeof(T) * weight_numel_,
         platform::errors::InvalidArgument(
@@ -113,26 +113,27 @@ class ScopedRNNBase {
     platform::DataLayout layout = platform::DataLayout::kNCHW;
     int dim_tmp = weights_size_ / sizeof(T);
     std::vector<int> dim_w = {dim_tmp, 1, 1};
-    weight_desc.descriptor<T>(layout, dim_w);
+    weight_desc_.descriptor<T>(layout, dim_w);
     // ------------------- cudnn workspace, reserve size ---------------------
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNWorkspaceSize(
-        handle, rnn_desc.desc(), seq_length_, x_desc_.data(), workspace_size));
+        handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
+        workspace_size));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnGetRNNTrainingReserveSize(
-            handle, rnn_desc.desc(), seq_length_, x_desc_.data(),
+            handle, rnn_desc_.desc(), seq_length_, x_descs_.data(),
             reserve_size));
   }
-  cudnnTensorDescriptor_t* x_descs_() { return x_desc_.data(); }
-  cudnnTensorDescriptor_t* y_descs_() { return y_desc_.data(); }
-  cudnnRNNDataDescriptor_t x_seq_desc_() { return x_seq_desc.desc(); }
-  cudnnRNNDataDescriptor_t y_seq_desc_() { return y_seq_desc.desc(); }
-  cudnnTensorDescriptor_t init_h_desc_() { return init_h_desc.desc(); }
-  cudnnTensorDescriptor_t init_c_desc_() { return init_c_desc.desc(); }
-  cudnnTensorDescriptor_t last_h_desc_() { return last_h_desc.desc(); }
-  cudnnTensorDescriptor_t last_c_desc_() { return last_c_desc.desc(); }
-  cudnnRNNDescriptor_t rnn_desc_() { return rnn_desc.desc(); }
-  cudnnDropoutDescriptor_t dropout_desc_() { return dropout_desc.desc(); }
-  cudnnFilterDescriptor_t weight_desc_() { return weight_desc.desc(); }
+  cudnnTensorDescriptor_t* x_descs() { return x_descs_.data(); }
+  cudnnTensorDescriptor_t* y_descs() { return y_descs_.data(); }
+  cudnnRNNDataDescriptor_t x_seq_desc() { return x_seq_desc_.desc(); }
+  cudnnRNNDataDescriptor_t y_seq_desc() { return y_seq_desc_.desc(); }
+  cudnnTensorDescriptor_t init_h_desc() { return init_h_desc_.desc(); }
+  cudnnTensorDescriptor_t init_c_desc() { return init_c_desc_.desc(); }
+  cudnnTensorDescriptor_t last_h_desc() { return last_h_desc_.desc(); }
+  cudnnTensorDescriptor_t last_c_desc() { return last_c_desc_.desc(); }
+  cudnnRNNDescriptor_t rnn_desc() { return rnn_desc_.desc(); }
+  cudnnDropoutDescriptor_t dropout_desc() { return dropout_desc_.desc(); }
+  cudnnFilterDescriptor_t weight_desc() { return weight_desc_.desc(); }
 
  private:
   int seq_length_;
@@ -145,20 +146,20 @@ class ScopedRNNBase {
   int weight_numel_;
   bool initialized_;
   bool is_bidirec_;
-  std::vector<cudnnTensorDescriptor_t> x_desc_;
-  std::vector<cudnnTensorDescriptor_t> y_desc_;
+  std::vector<cudnnTensorDescriptor_t> x_descs_;
+  std::vector<cudnnTensorDescriptor_t> y_descs_;
 
-  platform::ScopedTensorDescriptor x_desc;
-  platform::ScopedTensorDescriptor y_desc;
-  platform::ScopedRNNTensorDescriptor x_seq_desc;
-  platform::ScopedRNNTensorDescriptor y_seq_desc;
-  platform::ScopedTensorDescriptor init_h_desc;
-  platform::ScopedTensorDescriptor init_c_desc;
-  platform::ScopedTensorDescriptor last_h_desc;
-  platform::ScopedTensorDescriptor last_c_desc;
-  platform::ScopedDropoutDescriptor dropout_desc;
-  platform::ScopedFilterDescriptor weight_desc;
-  platform::ScopedRNNDescriptor rnn_desc;
+  platform::ScopedTensorDescriptor x_desc_;
+  platform::ScopedTensorDescriptor y_desc_;
+  platform::ScopedRNNTensorDescriptor x_seq_desc_;
+  platform::ScopedRNNTensorDescriptor y_seq_desc_;
+  platform::ScopedTensorDescriptor init_h_desc_;
+  platform::ScopedTensorDescriptor init_c_desc_;
+  platform::ScopedTensorDescriptor last_h_desc_;
+  platform::ScopedTensorDescriptor last_c_desc_;
+  platform::ScopedDropoutDescriptor dropout_desc_;
+  platform::ScopedFilterDescriptor weight_desc_;
+  platform::ScopedRNNDescriptor rnn_desc_;
 };
 
 }  // namespace operators
