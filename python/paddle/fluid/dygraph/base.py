@@ -610,10 +610,10 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             uint8, uint16, complex64, complex128}.
         name(str, optional): The default value is None. Normally there is no 
             need for user to set this property. For more information, please 
-            refer to :ref:`api_guide_Name` .
+            refer to :ref:`api_guide_Name` . 
         zero_copy(bool, optional): Whether to share memory with the input numpy 
             array. This parameter only works with CPUPlace and will be set to 
-            True when it is None. Default: None.
+            True when it is None. Default: None. (Note: zero_copy is discarded temporally for some reason.)
         dtype(str, optional): The desired data type of returned ``Variable`` .
             Can be 'bool' , 'float16' , 'float32' , 'float64' , 'int8' , 'int16' , 
             'int32' , 'int64' , 'uint8' . Default: None.

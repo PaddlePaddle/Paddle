@@ -62,8 +62,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     If the ``data`` is already a tensor, and ``dtype`` or ``place`` does't change, no copy 
     will be performed and return origin tensor, otherwise a new tensor will be constructed
-    and returned. Similarly, if the data is an numpy\.ndarray of with the same ``dtype`` 
-    and the current place is cpu, no copy will be performed.
+    and returned. 
 
     The ``ComplexTensor`` is a unique type of paddle. If x is ``ComplexTensor``, then 
     ``x.real`` is the real part, and ``x.imag`` is the imaginary part.
