@@ -67,35 +67,6 @@ class LeNetDygraph(paddle.nn.Layer):
         return x
 
 
-class LeNetDeclarative(fluid.dygraph.Layer):
-    def __init__(self, num_classes=10, classifier_activation=None):
-        super(LeNetDeclarative, self).__init__()
-        self.num_classes = num_classes
-        self.features = Sequential(
-            Conv2d(
-                1, 6, 3, stride=1, padding=1),
-            ReLU(),
-            Pool2D(2, 'max', 2),
-            Conv2d(
-                6, 16, 5, stride=1, padding=0),
-            ReLU(),
-            Pool2D(2, 'max', 2))
-
-        if num_classes > 0:
-            self.fc = Sequential(
-                Linear(400, 120), Linear(120, 84), Linear(84, 10),
-                Softmax())  #Todo: accept any activation
-
-    @declarative
-    def forward(self, inputs):
-        x = self.features(inputs)
-
-        if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
-            x = self.fc(x)
-        return x
-
-
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True, sample_num=None):
         super(MnistDataset, self).__init__(mode=mode)
