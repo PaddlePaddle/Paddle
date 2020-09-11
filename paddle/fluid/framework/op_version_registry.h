@@ -14,13 +14,14 @@ limitations under the License. */
 
 #pragma once
 
+#include <boost/any.hpp>
+
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include <boost/any.hpp>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
 
