@@ -17,6 +17,7 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.core import PassVersionChecker
 
 
 class TransposeFlattenConcatFusePassTest(InferencePassTest):
@@ -44,6 +45,8 @@ class TransposeFlattenConcatFusePassTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
+
+        PassVersionChecker.IsCompatible('transpose_flatten_concat_fuse_pass')
 
 
 if __name__ == "__main__":
