@@ -226,7 +226,7 @@ class FakeChannelWiseQuantDequantAbsMax(layers.Layer):
         self._name = name
         self._channel_num = channel_num
         scale_prefix = "{}.scale".format(
-            name) if name else 'channel_wise_quant_dequant.scale'
+            name) if name else 'quant_dequant.scale'
         self._scale_name = unique_name.generate(scale_prefix)
         if quant_on_weight:
             scale_attr = ParamAttr(
@@ -245,7 +245,7 @@ class FakeChannelWiseQuantDequantAbsMax(layers.Layer):
                      self._quant_axis)
             quant_out = _varbase_creator(
                 type=input.type,
-                name="{}channelwise.quantized.dequantized".format(input.name),
+                name="{}quantized.dequantized".format(input.name),
                 shape=input.shape,
                 dtype=input.dtype,
                 persistable=False)
@@ -293,27 +293,26 @@ class FakeChannelWiseQuantDequantAbsMax(layers.Layer):
         return quant_out
 
 
-def _get_fake_quant_type(quant_type,
-                         name,
-                         moving_rate,
-                         quant_bits,
-                         dtype,
-                         quant_on_weight=False,
-                         channel_num=None,
-                         quant_axis=0):
-
-    if quant_type == 'channel_wise_abs_max':
-        assert channel_num is not None, "You need input channel_num when you using channel_wise_abs_max strategy."
-
-    fake_quant_map = {
-        'abs_max':
-        lambda: FakeQuantAbsMax(name, quant_bits, dtype, quant_on_weight),
-        'moving_average_abs_max':
-        lambda: FakeQuantMovingAverage(name, moving_rate, quant_bits, dtype),
-        'channel_wise_abs_max':
-        lambda: FakeChannelWiseQuantDequantAbsMax(name, channel_num, quant_bits, quant_axis, dtype, quant_on_weight)
+def _get_fake_quant_type(quant_type, **kwargs):
+    call_args = {
+        "name": kwargs.get("name", None),
+        "quant_bits": kwargs.get("quant_bits", 8),
+        "dtype": kwargs.get("dtype", "float32")
     }
-    return fake_quant_map[quant_type]()
+
+    if quant_type == 'abs_max':
+        call_args["quant_on_weight"] = kwargs.get("quant_on_weight", False)
+    elif quant_type == 'moving_average_abs_max':
+        call_args["moving_rate"] = kwargs.get("moving_rate", 0.9)
+    elif quant_type == 'channel_wise_abs_max':
+        call_args["quant_on_weight"] = kwargs.get("quant_on_weight", False)
+    fake_quant_map = {
+        'abs_max': FakeQuantAbsMax,
+        'moving_average_abs_max': FakeQuantMovingAverage,
+        'channel_wise_abs_max': FakeChannelWiseQuantDequantAbsMax
+    }
+
+    return fake_quant_map[quant_type](**call_args)
 
 
 class QuantizedConv2D(layers.Layer):
@@ -343,11 +342,19 @@ class QuantizedConv2D(layers.Layer):
         self.bias = getattr(layer, 'bias')
         # For FakeQuant
         self._fake_quant_weight = _get_fake_quant_type(
-            weight_quantize_type, self.weight.name, moving_rate, weight_bits,
-            self._dtype, True, self.weight.shape[0])
+            weight_quantize_type,
+            name=self.weight.name,
+            moving_rate=moving_rate,
+            quant_bits=weight_bits,
+            dtype=self._dtype,
+            quant_on_weight=True,
+            channel_num=self.weight.shape[0])
         self._fake_quant_input = _get_fake_quant_type(
             activation_quantize_type,
-            layer.full_name(), moving_rate, activation_bits, self._dtype, False)
+            name=layer.full_name(),
+            moving_rate=moving_rate,
+            quant_bits=activation_bits,
+            dtype=self._dtype)
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
@@ -421,13 +428,22 @@ class QuantizedLinear(layers.Layer):
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
         # For FakeQuant
+        self.linear_quant_axis = 1
         self._fake_quant_weight = _get_fake_quant_type(
-            weight_quantize_type, self.weight.name, moving_rate, weight_bits,
-            self._dtype, True, self.weight.shape[LINEAR_QUANT_AXIS],
-            LINEAR_QUANT_AXIS)
+            weight_quantize_type,
+            name=self.weight.name,
+            moving_rate=moving_rate,
+            quant_bits=weight_bits,
+            dtype=self._dtype,
+            quant_on_weight=True,
+            channel_num=self.weight.shape[self.linear_quant_axis],
+            quant_axis=self.linear_quant_axis)
         self._fake_quant_input = _get_fake_quant_type(
             activation_quantize_type,
-            layer.full_name(), moving_rate, activation_bits, self._dtype, False)
+            name=layer.full_name(),
+            moving_rate=moving_rate,
+            quant_bits=activation_bits,
+            dtype=self._dtype)
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
