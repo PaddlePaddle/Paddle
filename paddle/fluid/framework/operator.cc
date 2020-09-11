@@ -930,7 +930,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
   void SetDims(const std::vector<Variable*>& vars,
                const std::vector<DDim>& dims) {
     size_t length = vars.size();
-    PADDLE_ENFORCE_EQ(length, dims.size());
+    PADDLE_ENFORCE_EQ(length, dims.size(),
+                      platform::errors::InvalidArgument(
+                          "The number of input variables do not match the "
+                          "number of input dimensions, the number of variables "
+                          "is %zu, the number of dimensions is %zu.",
+                          length, dims.size()));
     for (size_t i = 0; i < length; ++i) {
       if (vars[i] == nullptr) {
         continue;
