@@ -86,8 +86,8 @@ void PaddingFunctor(int rank, const framework::ExecutionContext& context,
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "PadOp only support"
-          " tensors  with no more than 6 dimensions currently."));
+          "PadOp only support tensors with no more"
+          " than 6 dimensions currently."));
   }
 }
 
@@ -115,8 +115,9 @@ void PaddingGradFunctor(int rank, const framework::ExecutionContext& context,
       PadGradFunction<DeviceContext, T, 6>(context, pads, src, out);
       break;
     default:
-      PADDLE_THROW(
-          "PadOp only support tensors with no more than 6 dimensions.");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "PadOp only support tensors with no more"
+          " than 6 dimensions currently."));
   }
 }
 

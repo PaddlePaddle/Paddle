@@ -137,13 +137,14 @@ struct RowwiseAdd<platform::CPUDeviceContext, T> {
             " should be equal to the size of each row of input tensor."
             " Expected vector size=%d, but received %d",
             size, vector.numel()));
-    PADDLE_ENFORCE_EQ(
-        out_dims, in_dims,
-        platform::errors::InvalidArgument(
-            "The output tensor shape should"
-            " be same as the input tensor shape. Expected shape: (%d, %d),"
-            " but received (%d, %d)",
-            in_dims[0], in_dims[0], out_dims[0], out_dims[0]));
+    const char* in_dims_cstr = in_dims.to_str().c_str();
+    const char* out_dims_cstr = out_dims.to_str().c_str();
+    PADDLE_ENFORCE_EQ(out_dims, in_dims,
+                      platform::errors::InvalidArgument(
+                          "The output tensor shape should be same as the input"
+                          " tensor shape. Expected output tensor shape: %s,"
+                          " but received %s",
+                          in_dims_cstr, out_dims_cstr));
 
     auto in = framework::EigenMatrix<T>::From(input);
     auto vec = framework::EigenVector<T>::Flatten(vector);

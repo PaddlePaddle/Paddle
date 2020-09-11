@@ -97,13 +97,15 @@ struct RowwiseAdd<platform::CUDADeviceContext, T> {
             " should be equal to the size of each row of input tensor."
             " Expected vector size=%d, but received %d",
             size, vector.numel()));
+    const char* in_dims_cstr = in_dims.to_str().c_str();
+    const char* out_dims_cstr = out_dims.to_str().c_str();
     PADDLE_ENFORCE_EQ(
         out_dims, in_dims,
         platform::errors::InvalidArgument(
-            "The output tensor shape should"
-            " be same as the input tensor shape. Expected shape: (%d, %d),"
-            " but received (%d, %d)",
-            in_dims[0], in_dims[0], out_dims[0], out_dims[0]));
+            "The output tensor shape should be same as the input tensor"
+            " shape. Expected output tensor shape: %s,"
+            " but received %s",
+            in_dims_cstr, out_dims_cstr));
     int blocks = 512;
     int grids = (input.numel() + blocks - 1) / blocks;
     RowwiseAddKernel<T><<<grids, blocks, 0, context.stream()>>>(
@@ -130,7 +132,7 @@ void ColwiseSum<platform::CUDADeviceContext, double>::operator()(
                     platform::errors::InvalidArgument(
                         "The size of input vector"
                         " should be equal to the size of input tensor column"
-                        " dimension. Expected output size=%d, but received %d",
+                        " dimension. Expected vector size=%d, but received %d",
                         size, vector->numel()));
   framework::Tensor one;
   one.mutable_data<double>({in_dims[0]}, context.GetPlace());
@@ -156,7 +158,7 @@ void RowwiseSum<platform::CUDADeviceContext, double>::operator()(
                     platform::errors::InvalidArgument(
                         "The size of input vector"
                         " should be equal to the size of input tensor row"
-                        " dimension. Expected output size=%d, but received %d",
+                        " dimension. Expected vector size=%d, but received %d",
                         in_dims[0], vector->numel()));
   framework::Tensor one;
   one.mutable_data<double>({size}, context.GetPlace());
