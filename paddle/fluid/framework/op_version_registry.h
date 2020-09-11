@@ -153,8 +153,8 @@ class OpVersionRegistrar {
   }
   OpVersion& Register(const std::string& op_type) {
     if (op_version_map_.find(op_type) != op_version_map_.end()) {
-      PADDLE_THROW("'%s' is registered in operator version more than once.",
-                   op_type);
+      PADDLE_THROW(platform::errors::AlreadyExists(
+          "'%s' is registered in operator version more than once.", op_type));
     }
     op_version_map_.insert({op_type, OpVersion()});
     return op_version_map_[op_type];

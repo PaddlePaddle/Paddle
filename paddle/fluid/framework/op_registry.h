@@ -55,7 +55,8 @@ template <typename... ARGS>
 struct OperatorRegistrar : public Registrar {
   explicit OperatorRegistrar(const char* op_type) {
     if (OpInfoMap::Instance().Has(op_type)) {
-      PADDLE_THROW("'%s' is registered more than once.", op_type);
+      PADDLE_THROW(platform::errors::AlreadyExists(
+          "Operator '%s' is registered more than once.", op_type));
     }
     static_assert(sizeof...(ARGS) != 0,
                   "OperatorRegistrar should be invoked at least by OpClass");
