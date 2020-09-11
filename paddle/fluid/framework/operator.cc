@@ -1458,8 +1458,8 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
       data_type, dafault_data_type,
       platform::errors::InvalidArgument(
           "The Input Variable(%s) of (%s) Operator used to determine kernel "
-          "data type "
-          "is empty or not LoDTensor or SelectedRows or LoDTensorArray.",
+          "data type is empty or not LoDTensor or SelectedRows or "
+          "LoDTensorArray.",
           name, Type()));
   return data_type;
 }
