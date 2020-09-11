@@ -82,7 +82,7 @@ class TestInplaceAddto(unittest.TestCase):
             np.random.seed(10)
             paddle.manual_seed(10)
             paddle.framework.random._manual_program_seed(10)
-            fluid.set_flags({"FLAGS_cudnn_deterministic": 1})
+            fluid.set_flags({"FLAGS_cudnn_deterministic": True})
             fluid.set_flags({"FLAGS_max_inplace_grad_add": 2})
             loss, main, startup, w = create_program()
 
