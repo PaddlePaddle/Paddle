@@ -652,26 +652,22 @@ void BindImperative(py::module *m_ptr) {
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
-        Returns a new Variable, detached from the current graph.
+        Returns a new Tensor, detached from the current graph.
 
-        Returns:
-             ( :ref:`api_guide_Variable_en` | dtype is same as current Variable): The detached Variable.
-
+        Returns: The detached Tensor.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
+                import paddle
                 import numpy as np
+                paddle.disable_static()
 
                 data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    linear = Linear(32, 64)
-                    data = to_variable(data)
-                    x = linear(data)
-                    y = x.detach()
+                linear = Linear(32, 64)
+                data = paddle.to_tensor(data)
+                x = linear(data)
+                y = x.detach()
 
        )DOC")
       .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
@@ -688,22 +684,22 @@ void BindImperative(py::module *m_ptr) {
         Examples:
              .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
                 import numpy as np
+                paddle.disable_static()
 
                 x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    inputs2 = []
-                    for _ in range(10):
-                         tmp = fluid.dygraph.base.to_variable(x)
-                         tmp.stop_gradient=False
-                         inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    loss2.backward()
-                    print(loss2.gradient())
-                    loss2.clear_gradient()
-                    print("After clear {}".format(loss2.gradient()))
+                inputs2 = []
+                for _ in range(10):
+                    tmp = paddle.to_tensor(x)
+                    tmp.stop_gradient=False
+                    inputs2.append(tmp)
+                ret2 = fluid.layers.sums(inputs2)
+                loss2 = fluid.layers.reduce_sum(ret2)
+                loss2.backward()
+                print(loss2.gradient())
+                loss2.clear_gradient()
+                print("After clear {}".format(loss2.gradient()))
       )DOC")
       .def("_run_backward",
            [](imperative::VarBase &self, const imperative::Tracer &tracer,

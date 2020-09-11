@@ -423,6 +423,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
 
         # 2. Binary operation
         self.assertTrue(
+            np.array_equal(x.divide(y).numpy(), paddle.divide(x, y).numpy()))
+        self.assertTrue(
             np.array_equal(
                 x.matmul(y, True, False).numpy(),
                 paddle.matmul(x, y, True, False).numpy()))
@@ -501,6 +503,11 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(
                 x.logical_and(y).numpy(), paddle.logical_and(x, y).numpy()))
+        a = paddle.to_tensor([[1, 2], [3, 4]])
+        b = paddle.to_tensor([[4, 3], [2, 1]])
+        self.assertTrue(
+            np.array_equal(
+                x.where(a, b).numpy(), paddle.where(x, a, b).numpy()))
 
 
 if __name__ == '__main__':
