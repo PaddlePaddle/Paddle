@@ -1867,6 +1867,7 @@ class Model(object):
         return summary(self.network, _input_size, batch_size, dtype)
 
     def _verify_spec(self, specs, is_input=False):
+        out_specs = []
         if isinstance(specs, dict):
             assert is_input == False
             out_specs = [specs[n] \
