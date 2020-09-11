@@ -76,9 +76,10 @@ class FleetDistRunnerBase(object):
         return role
 
     def build_strategy(self, args):
-        self.strategy = paddle.distributed.fleet.DistributedStrategy()
-        self.strategy.a_sync = False
-        if args.mode == "async":
+        if args.mode == "sync":
+            self.strategy = paddle.distributed.fleet.DistributedStrategy()
+            self.strategy.a_sync = False
+        elif args.mode == "async":
             self.strategy = paddle.distributed.fleet.DistributedStrategy()
             self.strategy.a_sync = True
         elif args.mode == "geo":
@@ -87,6 +88,10 @@ class FleetDistRunnerBase(object):
             self.strategy.a_sync_configs = {
                 "k_steps": args.geo_sgd_need_push_nums
             }
+        elif args.mode == "auto":
+            self.strategy = paddle.distributed.fleet.DistributedStrategy()
+            self.strategy.auto = True
+
         self.dump_param = os.getenv("dump_param", "").split(",")
         self.dump_fields = os.getenv("dump_fields", "").split(",")
         self.dump_fields_path = os.getenv("dump_fields_path", "")
@@ -232,14 +237,17 @@ class TestFleetBase(unittest.TestCase):
         tr0_pipe = open(tempfile.gettempdir() + "/tr0_err.log", "wb+")
         tr1_pipe = open(tempfile.gettempdir() + "/tr1_err.log", "wb+")
 
+        tr0_out = open(tempfile.gettempdir() + "/tr0_stdout.log", "wb+")
+        tr1_out = open(tempfile.gettempdir() + "/tr1_stdout.log", "wb+")
+
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
+            stdout=tr0_out,
             stderr=tr0_pipe,
             env=required_envs)
         tr1_proc = subprocess.Popen(
             tr1_cmd.strip().split(" "),
-            stdout=subprocess.PIPE,
+            stdout=tr1_out,
             stderr=tr1_pipe,
             env=required_envs)
 

@@ -56,6 +56,16 @@ class LinearNet(fluid.dygraph.Layer):
         return self._linear(x)
 
 
+class LinearNetWithInputSpec(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetWithInputSpec, self).__init__()
+        self._linear = Linear(in_size, out_size)
+
+    @declarative(input_spec=[InputSpec(shape=[None, 784], dtype='float32')])
+    def forward(self, x):
+        return self._linear(x)
+
+
 class LinearNetNotDeclarative(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
         super(LinearNetNotDeclarative, self).__init__()
@@ -63,6 +73,23 @@ class LinearNetNotDeclarative(fluid.dygraph.Layer):
 
     def forward(self, x):
         return self._linear(x)
+
+
+class LinerNetWithLabel(paddle.nn.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinerNetWithLabel, self).__init__()
+        self._linear = Linear(in_size, out_size)
+
+    @declarative(input_spec=[
+        InputSpec(
+            shape=[None, 784], dtype='float32', name="image"), InputSpec(
+                shape=[None, 1], dtype='int64', name="label")
+    ])
+    def forward(self, x, label):
+        out = self._linear(x)
+        loss = fluid.layers.cross_entropy(out, label)
+        avg_loss = fluid.layers.mean(loss)
+        return out, avg_loss
 
 
 class LinearNetReturnLoss(fluid.dygraph.Layer):
@@ -76,6 +103,54 @@ class LinearNetReturnLoss(fluid.dygraph.Layer):
         z = self._linear(y)
         loss = fluid.layers.mean(z)
         return z, loss
+
+
+class LinearNetMultiInput(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetMultiInput, self).__init__()
+        self._linear1 = Linear(in_size, out_size)
+        self._linear2 = Linear(in_size, out_size)
+
+    @declarative(input_spec=[
+        InputSpec(
+            [None, 8], dtype='float32'), InputSpec(
+                [None, 8], dtype='float32')
+    ])
+    def forward(self, x, y):
+        x_out = self._linear1(x)
+        y_out = self._linear2(y)
+        loss = fluid.layers.mean(x_out + y_out)
+        return x_out, y_out, loss
+
+
+class MultiLoadingLinearNet(fluid.dygraph.Layer):
+    def __init__(self, size, model_path):
+        super(MultiLoadingLinearNet, self).__init__()
+        self._linear = Linear(size, size)
+        self._load_linear1 = fluid.dygraph.jit.load(model_path)
+        self._load_linear2 = fluid.dygraph.jit.load(model_path)
+
+    @declarative
+    def forward(self, x):
+        tmp1 = self._linear(x)
+        tmp2 = self._load_linear1(tmp1)
+        tmp3 = self._load_linear2(tmp2)
+        y = self._linear(tmp3)
+        return y
+
+
+class LinearNetReturnHidden(fluid.dygraph.Layer):
+    def __init__(self, in_size, out_size):
+        super(LinearNetReturnHidden, self).__init__()
+        self._linear_1 = Linear(in_size, out_size)
+        self._linear_2 = Linear(in_size, out_size)
+
+    @declarative
+    def forward(self, x):
+        y = self._linear_1(x)
+        z = self._linear_2(y)
+        loss = fluid.layers.mean(z)
+        return y, loss
 
 
 def train(layer, input_size=784, label_size=1):
@@ -100,6 +175,27 @@ def train(layer, input_size=784, label_size=1):
         sgd.minimize(avg_loss)
         layer.clear_gradients()
     return [img], layer, avg_loss
+
+
+def train_with_label(layer, input_size=784, label_size=1):
+    # create optimizer
+    sgd = fluid.optimizer.SGDOptimizer(
+        learning_rate=0.01, parameter_list=layer.parameters())
+    # create data loader
+    train_loader = fluid.io.DataLoader.from_generator(capacity=5)
+    train_loader.set_batch_generator(
+        random_batch_reader(input_size, label_size))
+    # train
+    for data in train_loader():
+        img, label = data
+        label.stop_gradient = True
+
+        out, avg_loss = layer(img, label)
+
+        avg_loss.backward()
+        sgd.minimize(avg_loss)
+        layer.clear_gradients()
+    return out
 
 
 class TestJitSaveLoad(unittest.TestCase):
@@ -168,38 +264,11 @@ class TestJitSaveLoad(unittest.TestCase):
         self.assertTrue(
             np.array_equal(train_layer(x).numpy(), new_layer(x).numpy()))
 
-    def test_save_get_program_failed(self):
-        layer = LinearNetNotDeclarative(784, 1)
-        example_inputs, layer, _ = train(layer)
-        with self.assertRaises(RuntimeError):
-            fluid.dygraph.jit.save(
-                layer=layer,
-                model_path=self.model_path,
-                input_spec=example_inputs)
-
     def test_load_dygraph_no_path(self):
         model_path = "model.test_jit_save_load.no_path"
         new_layer = LinearNet(784, 1)
         with self.assertRaises(ValueError):
             model_dict, _ = fluid.dygraph.load_dygraph(model_path)
-
-
-class LinearNetMultiInput(fluid.dygraph.Layer):
-    def __init__(self, in_size, out_size):
-        super(LinearNetMultiInput, self).__init__()
-        self._linear1 = Linear(in_size, out_size)
-        # self._linear2 = Linear(in_size, out_size)
-
-    @declarative(input_spec=[
-        InputSpec(
-            [None, 8], dtype='float32'), InputSpec(
-                [None, 8], dtype='float32')
-    ])
-    def forward(self, x, y):
-        x_out = self._linear1(x)
-        y_out = self._linear1(y)
-        loss = fluid.layers.mean(x_out + y_out)
-        return x_out, y_out, loss
 
 
 class TestSaveLoadWithInputSpec(unittest.TestCase):
@@ -345,22 +414,6 @@ class TestJitSaveLoadConfig(unittest.TestCase):
             np.array_equal(train_layer(x)[0].numpy(), infer_layer(x).numpy()))
 
 
-class MultiLoadingLinearNet(fluid.dygraph.Layer):
-    def __init__(self, size, model_path):
-        super(MultiLoadingLinearNet, self).__init__()
-        self._linear = Linear(size, size)
-        self._load_linear1 = fluid.dygraph.jit.load(model_path)
-        self._load_linear2 = fluid.dygraph.jit.load(model_path)
-
-    @declarative
-    def forward(self, x):
-        tmp1 = self._linear(x)
-        tmp2 = self._load_linear1(tmp1)
-        tmp3 = self._load_linear2(tmp2)
-        y = self._linear(tmp3)
-        return y
-
-
 class TestJitMultipleLoading(unittest.TestCase):
     def setUp(self):
         self.linear_size = 4
@@ -387,20 +440,6 @@ class TestJitMultipleLoading(unittest.TestCase):
         for _, var in state_dict.items():
             self.assertTrue(var.name not in name_set)
             name_set.add(var.name)
-
-
-class LinearNetReturnHidden(fluid.dygraph.Layer):
-    def __init__(self, in_size, out_size):
-        super(LinearNetReturnHidden, self).__init__()
-        self._linear_1 = Linear(in_size, out_size)
-        self._linear_2 = Linear(in_size, out_size)
-
-    @declarative
-    def forward(self, x):
-        y = self._linear_1(x)
-        z = self._linear_2(y)
-        loss = fluid.layers.mean(z)
-        return y, loss
 
 
 class TestJitPruneModelAndLoad(unittest.TestCase):
@@ -459,6 +498,198 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             fluid.dygraph.jit.load(self.model_path)
+
+
+class TestJitSaveMultiCases(unittest.TestCase):
+    def setUp(self):
+        # enable dygraph mode
+        fluid.enable_dygraph()
+        # config seed
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
+
+    def verify_inference_correctness(self, layer, model_path, with_label=False):
+        layer.eval()
+        loaded_layer = paddle.jit.load(model_path)
+        loaded_layer.eval()
+        # inference & compare
+        x = paddle.to_variable(np.random.random((1, 784)).astype('float32'))
+        if with_label:
+            y = paddle.to_variable(np.random.random((1, 1)).astype('int64'))
+            pred, _ = layer(x, y)
+            pred = pred.numpy()
+        else:
+            pred = layer(x).numpy()
+        loaded_pred = loaded_layer(x).numpy()
+        self.assertTrue(
+            np.array_equal(pred, loaded_pred),
+            msg="Result diff when load and inference:\nlayer result:\n{}\n" \
+                "loaded layer result:\n{}".format(pred, loaded_pred))
+
+    def test_no_prune_to_static_after_train(self):
+        layer = LinearNet(784, 1)
+
+        train(layer)
+
+        model_path = "test_no_prune_to_static_after_train"
+        paddle.jit.save(layer, model_path)
+
+        self.verify_inference_correctness(layer, model_path)
+
+    def test_no_prune_to_static_no_train(self):
+        layer = LinearNetWithInputSpec(784, 1)
+
+        model_path = "test_no_prune_to_static_no_train"
+        paddle.jit.save(layer, model_path)
+
+        self.verify_inference_correctness(layer, model_path)
+
+    def test_no_prune_no_to_static_after_train(self):
+        layer = LinearNetNotDeclarative(784, 1)
+
+        train(layer)
+
+        model_path = "test_no_prune_no_to_static_after_train"
+        paddle.jit.save(
+            layer,
+            model_path,
+            input_spec=[InputSpec(
+                shape=[None, 784], dtype='float32')])
+
+        self.verify_inference_correctness(layer, model_path)
+
+    def test_no_prune_no_to_static_after_train_with_examples(self):
+        layer = LinearNetNotDeclarative(784, 1)
+
+        example_inputs, _, _ = train(layer)
+
+        model_path = "test_no_prune_no_to_static_after_train_with_examples"
+        fluid.dygraph.jit.save(
+            layer=layer, model_path=model_path, input_spec=example_inputs)
+
+        self.verify_inference_correctness(layer, model_path)
+
+    def test_no_prune_no_to_static_no_train(self):
+        layer = LinearNetNotDeclarative(784, 1)
+
+        model_path = "test_no_prune_no_to_static_no_train"
+        paddle.jit.save(
+            layer,
+            model_path,
+            input_spec=[InputSpec(
+                shape=[None, 784], dtype='float32')])
+
+        self.verify_inference_correctness(layer, model_path)
+
+    def test_prune_to_static_after_train(self):
+        layer = LinerNetWithLabel(784, 1)
+
+        out = train_with_label(layer)
+
+        model_path = "test_prune_to_static_after_train"
+        configs = paddle.SaveLoadConfig()
+        configs.output_spec = [out]
+        paddle.jit.save(
+            layer,
+            model_path,
+            input_spec=[
+                InputSpec(
+                    shape=[None, 784], dtype='float32', name="image")
+            ],
+            configs=configs)
+
+        self.verify_inference_correctness(layer, model_path, True)
+
+    def test_prune_to_static_no_train(self):
+        layer = LinerNetWithLabel(784, 1)
+
+        model_path = "test_prune_to_static_no_train"
+        configs = paddle.SaveLoadConfig()
+        # TODO: no train, cannot get output_spec var here
+        # now only can use index
+        configs.output_spec = layer.forward.outputs[:1]
+        paddle.jit.save(
+            layer,
+            model_path,
+            input_spec=[
+                InputSpec(
+                    shape=[None, 784], dtype='float32', name="image")
+            ],
+            configs=configs)
+
+        self.verify_inference_correctness(layer, model_path, True)
+
+    def test_no_prune_input_spec_name_warning(self):
+        layer = LinearNetWithInputSpec(784, 1)
+
+        train(layer)
+
+        model_path = "test_no_prune_input_spec_name_warning"
+        paddle.jit.save(
+            layer,
+            model_path,
+            input_spec=[InputSpec(
+                shape=[None, 784], dtype='float32')])
+        paddle.jit.save(
+            layer,
+            model_path,
+            input_spec=[
+                InputSpec(
+                    shape=[None, 784], dtype='float32', name='feed_input')
+            ])
+
+        self.verify_inference_correctness(layer, model_path)
+
+    def test_not_prune_output_spec_name_warning(self):
+        layer = LinearNet(784, 1)
+
+        train(layer)
+
+        model_path = "test_not_prune_output_spec_name_warning"
+        configs = paddle.SaveLoadConfig()
+        out = paddle.to_variable(np.random.random((1, 1)).astype('float'))
+        configs.output_spec = [out]
+        paddle.jit.save(layer, model_path, configs=configs)
+
+        self.verify_inference_correctness(layer, model_path)
+
+    def test_prune_input_spec_name_error(self):
+        layer = LinerNetWithLabel(784, 1)
+
+        model_path = "test_prune_input_spec_name_error"
+        with self.assertRaises(ValueError):
+            paddle.jit.save(
+                layer,
+                model_path,
+                input_spec=[InputSpec(
+                    shape=[None, 784], dtype='float32')])
+        with self.assertRaises(ValueError):
+            paddle.jit.save(
+                layer,
+                model_path,
+                input_spec=[
+                    InputSpec(
+                        shape=[None, 784], dtype='float32', name='feed_input')
+                ])
+
+    def test_prune_output_spec_name_error(self):
+        layer = LinerNetWithLabel(784, 1)
+
+        train_with_label(layer)
+
+        model_path = "test_prune_to_static_after_train"
+        configs = paddle.SaveLoadConfig()
+        out = paddle.to_variable(np.random.random((1, 1)).astype('float'))
+        configs.output_spec = [out]
+        with self.assertRaises(ValueError):
+            paddle.jit.save(
+                layer,
+                model_path,
+                input_spec=[
+                    InputSpec(
+                        shape=[None, 784], dtype='float32', name="image")
+                ],
+                configs=configs)
 
 
 if __name__ == '__main__':

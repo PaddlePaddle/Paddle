@@ -64,7 +64,6 @@ from ..fluid.layers import increment    #DEFINE_ALIAS
 from ..fluid.layers import multiplex    #DEFINE_ALIAS
 from ..fluid.layers import sums    #DEFINE_ALIAS
 from ..fluid import layers
-import paddle
 
 
 __all__ = [
@@ -343,68 +342,8 @@ def divide(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        # rule 1 : avoid numpy.ndarray
-        if isinstance(x, numpy.ndarray) or isinstance(y, numpy.ndarray):
-            raise TypeError("divide(): arguments must be Tensor or scalar, not numpy.ndarray.")
-
-        # rule 2: both the inputs are not Tensor
-        elif not isinstance(x, paddle.Tensor) and not isinstance(y, paddle.Tensor):
-            x = paddle.full(shape=[1], dtype=paddle.get_default_dtype(), fill_value=x)
-            y = paddle.full(shape=[1], dtype=paddle.get_default_dtype(), fill_value=y)
-
-        # rule 3: both the inputs are Tensor
-        elif isinstance(x, paddle.Tensor) and isinstance(y, paddle.Tensor):
-            if y.dtype != x.dtype:
-                raise TypeError("divide(): argument position 1 and argument position 2 must have the same dtype."
-                                "But x is {}, y is {}".format(x.dtype, y.dtype))
-            elif x.dtype in _supported_int_dtype_:
-                x = x.astype(paddle.get_default_dtype())
-                y = y.astype(paddle.get_default_dtype())
-
-        # rule 4: x is Tensor, y is scalar
-        elif isinstance(x, paddle.Tensor) and not isinstance(y, paddle.Tensor):
-            if x.dtype in _supported_int_dtype_:
-                x = x.astype(paddle.get_default_dtype())
-            y = paddle.full(shape=[1], dtype=x.dtype, fill_value=y)
-
-        # rule 5: x is scalar, y is Tensor
-        elif not isinstance(x, paddle.Tensor) and isinstance(y, paddle.Tensor):
-            if y.dtype in _supported_int_dtype_:
-                y = y.astype(paddle.get_default_dtype())
-            x = paddle.full(shape=[1], dtype=y.dtype, fill_value=x)
-
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
-
-    # rule 1 : avoid numpy.ndarray
-    if isinstance(x, numpy.ndarray) or isinstance(y, numpy.ndarray):
-        raise TypeError("divide(): arguments must be Tensor or scalar, not numpy.ndarray.")
-
-    # rule 2: both the inputs are not Tensor
-    elif not isinstance(x, Variable) and not isinstance(y, Variable):
-        x = paddle.fill_constant(shape=[1], dtype=paddle.get_default_dtype(), value=x)
-        y = paddle.fill_constant(shape=[1], dtype=paddle.get_default_dtype(), value=y)
-
-    # rule 3: both the inputs are Tensor
-    elif isinstance(x, Variable) and isinstance(y, Variable):
-        if y.dtype != x.dtype:
-            raise TypeError("divide(): argument position 1 and argument position 2 must have the same dtype."
-                            "But x is {}, y is {}".format(x.dtype, y.dtype))
-        elif x.dtype in _supported_int_dtype_:
-            x = paddle.cast(x, paddle.get_default_dtype())
-            y = paddle.cast(y, paddle.get_default_dtype())
-
-    # rule 4: x is Tensor, y is scalar
-    elif isinstance(x, Variable) and not isinstance(y, Variable):
-        if x.dtype in _supported_int_dtype_:
-            x = paddle.cast(x, paddle.get_default_dtype())
-        y = paddle.fill_constant(shape=[1], dtype=x.dtype, value=y)
-
-    # rule 5: x is scalar, y is Tensor
-    elif not isinstance(x, Variable) and isinstance(y, Variable):
-        if y.dtype in _supported_int_dtype_:
-            y = paddle.cast(y, paddle.get_default_dtype())
-        x = paddle.fill_constant(shape=[1], dtype=y.dtype, value=x)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
@@ -444,54 +383,8 @@ def floor_divide(x, y, name=None):
     op_type = 'elementwise_floordiv'
     axis = -1
     if in_dygraph_mode():
-        # rule 1 : avoid numpy.ndarray
-        if isinstance(x, numpy.ndarray) or isinstance(y, numpy.ndarray):
-            raise TypeError("floor_divide(): arguments must be Tensor or scalar, not numpy.ndarray.")
-
-        # rule 2: both the inputs are not Tensor
-        elif not isinstance(x, paddle.Tensor) and not isinstance(y, paddle.Tensor):
-            x = paddle.full(shape=[1], dtype=paddle.get_default_dtype(), fill_value=x)
-            y = paddle.full(shape=[1], dtype=paddle.get_default_dtype(), fill_value=y)
-
-        # rule 3: both the inputs are Tensor
-        elif isinstance(x, paddle.Tensor) and isinstance(y, paddle.Tensor):
-            if y.dtype != x.dtype:
-                raise TypeError("floor_divide(): argument position 1 and argument position 2 must have the same dtype."
-                                "But x is {}, y is {}".format(x.dtype, y.dtype))
-
-        # rule 4: x is Tensor, y is scalar
-        elif isinstance(x, paddle.Tensor) and not isinstance(y, paddle.Tensor):
-            y = paddle.full(shape=[1], dtype=x.dtype, fill_value=y)
-
-        # rule 5: x is scalar, y is Tensor
-        elif not isinstance(x, paddle.Tensor) and isinstance(y, paddle.Tensor):
-            x = paddle.full(shape=[1], dtype=y.dtype, fill_value=x)
-
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
-
-    # rule 1 : avoid numpy.ndarray
-    if isinstance(x, numpy.ndarray) or isinstance(y, numpy.ndarray):
-        raise TypeError("divide(): arguments must be Tensor or scalar, not numpy.ndarray.")
-
-    # rule 2: both the inputs are not Tensor
-    elif not isinstance(x, Variable) and not isinstance(y, Variable):
-        x = paddle.fill_constant(shape=[1], dtype=paddle.get_default_dtype(), value=x)
-        y = paddle.fill_constant(shape=[1], dtype=paddle.get_default_dtype(), value=y)
-
-    # rule 3: both the inputs are Tensor
-    elif isinstance(x, Variable) and isinstance(y, Variable):
-        if y.dtype != x.dtype:
-            raise TypeError("divide(): argument position 1 and argument position 2 must have the same dtype."
-                            "But x is {}, y is {}".format(x.dtype, y.dtype))
-
-    # rule 4: x is Tensor, y is scalar
-    elif isinstance(x, Variable) and not isinstance(y, Variable):
-        y = paddle.fill_constant(shape=[1], dtype=x.dtype, value=y)
-
-    # rule 5: x is scalar, y is Tensor
-    elif not isinstance(x, Variable) and isinstance(y, Variable):
-        x = paddle.fill_constant(shape=[1], dtype=y.dtype, value=x)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
@@ -531,42 +424,8 @@ def remainder(x, y, name=None):
     op_type = 'elementwise_mod'
     axis = -1
     if in_dygraph_mode():
-        # rule 1 : avoid numpy.ndarray
-        if isinstance(x, numpy.ndarray) or isinstance(y, numpy.ndarray):
-            raise TypeError("remainder(): arguments must be Tensor or scalar, not numpy.ndarray.")
-
-        elif not isinstance(x, paddle.Tensor):
-            raise TypeError("remainder(): arguments position 1 must be Tensor, not {}".format(type(x)))
-
-        # rule 3: both the inputs are Tensor
-        elif isinstance(y, paddle.Tensor):
-            if y.dtype != x.dtype:
-                raise TypeError("remainder(): argument position 1 and argument position 2 must have the same dtype."
-                                "But x is {}, y is {}".format(x.dtype, y.dtype))
-
-        # rule 4: x is Tensor, y is scalar
-        elif not isinstance(y, paddle.Tensor):
-            y = paddle.full(shape=[1], dtype=x.dtype, fill_value=y)
-
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, op_name=op_type)
-
-    # rule 1 : avoid numpy.ndarray
-    if isinstance(x, numpy.ndarray) or isinstance(y, numpy.ndarray):
-        raise TypeError("remainder(): arguments must be Tensor or scalar, not numpy.ndarray.")
-
-    elif not isinstance(x, Variable):
-        raise TypeError("remainder(): arguments position 1 must be Tensor, not {}".format(type(x)))
-
-    # rule 3: both the inputs are Tensor
-    elif isinstance(y, Variable):
-        if y.dtype != x.dtype:
-            raise TypeError("remainder(): argument position 1 and argument position 2 must have the same dtype."
-                            "But x is {}, y is {}".format(x.dtype, y.dtype))
-
-    # rule 4: x is Tensor, y is scalar
-    elif not isinstance(y, paddle.Tensor):
-        y = paddle.fill_constant(shape=[1], dtype=x.dtype, value=y)
 
     return _elementwise_op(LayerHelper(op_type, **locals()))
 
@@ -1194,15 +1053,14 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
         axis = [0]
 
     if in_dygraph_mode():
-        return core.ops.logsumexp(x, 'dim', axis, 'keep_dim', keepdim,
-                                    'reduce_all', reduce_all)
+        return core.ops.logsumexp(x, 'axis', axis, 'keepdim', keepdim, 'reduce_all', reduce_all)
 
     check_variable_and_dtype(x, 'x',
                              ['float32', 'float64'],
                              'logsumexp')
 
     helper = LayerHelper('logsumexp', **locals())
-    attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+    attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all':reduce_all}
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
         type='logsumexp', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
