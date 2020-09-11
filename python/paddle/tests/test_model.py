@@ -543,11 +543,10 @@ class TestModelFunction(unittest.TestCase):
 
     def test_export_deploy_model(self):
         for dynamic in [True, False]:
-            fluid.enable_dygraph() if dynamic else None
-            # paddle.disable_static() if dynamic else None
+            paddle.disable_static() if dynamic else None
             prog_translator = ProgramTranslator()
             prog_translator.enable(False) if not dynamic else None
-            net = LeNetDeclarative()
+            net = LeNet()
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
@@ -556,8 +555,9 @@ class TestModelFunction(unittest.TestCase):
                 os.makedirs(save_dir)
             tensor_img = np.array(
                 np.random.random((1, 1, 28, 28)), dtype=np.float32)
-            ori_results = model.test_batch(tensor_img)
+
             model.save(save_dir, training=False)
+            ori_results = model.test_batch(tensor_img)
             fluid.disable_dygraph() if dynamic else None
 
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
@@ -574,6 +574,7 @@ class TestModelFunction(unittest.TestCase):
                 np.testing.assert_allclose(
                     results, ori_results, rtol=1e-5, atol=1e-7)
                 shutil.rmtree(save_dir)
+            paddle.enable_static()
 
 
 class TestRaiseError(unittest.TestCase):
