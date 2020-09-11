@@ -48,7 +48,7 @@ class MetaOptimizerBase(Optimizer):
         raise NotImplementedError("you should implement disable strategy in {}".
                                   format(type(self).__name__))
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context=None):
         raise NotImplementedError("you should implement enable strategy in {}".
                                   format(type(self).__name__))
 

@@ -6309,7 +6309,7 @@ def unsqueeze(input, axes, name=None):
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
-            axes = [axes.numpy().item(0)]
+            axes = axes.numpy().tolist()
         elif isinstance(axes, (list, tuple)):
             axes = [
                 item.numpy().item(0) if isinstance(item, Variable) else item

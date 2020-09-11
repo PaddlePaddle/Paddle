@@ -32,8 +32,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
     def _can_apply(self):
         if self.role_maker._is_collective:
             return False
-        if self.user_defined_strategy.auto == True:
-            return True
 
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         return True if k_steps >= 0 else False
@@ -134,7 +132,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         return _main, _startup
 
-    def _try_auto_apply_geo(self, program, compiled_config):
+    def _can_apply_geo(self, dist_strategy, program):
         def get_sys_free_mem():
             plat = platform.system()
             if platform.system() == "Darwin":
@@ -163,36 +161,28 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     "%s platform is unsupported is parameter server optimizer" %
                     (platform.system()))
 
-        if self.user_defined_strategy.auto == False:
-            return
-
-        a_sync_configs = self.user_defined_strategy.a_sync_configs
-        if a_sync_configs["k_steps"] >= 0:
-            return
-
-        self.user_defined_strategy.a_sync = True
         if not isinstance(self.inner_opt, fluid.optimizer.SGDOptimizer):
-            # auto async
-            a_sync_configs["k_steps"] = 0
-            self.user_defined_strategy.a_sync_configs = a_sync_configs
-            return
+            return False
 
-        from paddle.fluid.incubate.fleet.parameter_server.ir.vars_metatools import dtype_to_size
         free = get_sys_free_mem()
 
-        param_grad_pairs = compiled_config.origin_sparse_pairs + compiled_config.origin_dense_pairs
-        processed_var_names = set(["@EMPTY@"])
+        from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
 
+        processed_var_names = set(["@EMPTY@"])
         param_memory_size = 0
-        for param_grad_pair in param_grad_pairs:
-            param, grad = param_grad_pair
+        for varname in program.global_block().vars:
+            var = program.global_block().vars[varname]
+            if not var.persistable or var.desc.type(
+            ) != core.VarDesc.VarType.LOD_TENSOR:
+                continue
+            param = vars_metatools.create_var_struct(var)
             param_memory_size += param.m_size
-            processed_var_names.add(param.name)
+            processed_var_names.add(varname)
 
         upper_mem_use = param_memory_size * 5.0
 
         program_tmp_vars = dict()
-        batch_size = 1024
+        eval_batch_size = 1024
         for op in program.global_block().ops:
             for var_name in op.output_arg_names:
                 if var_name in processed_var_names:
@@ -215,23 +205,21 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                         data_count *= (-x)
                     else:
                         data_count *= x
-                program_tmp_vars[var_name] = (data_count, neg_dim_count,
-                                              dtype_to_size[var.dtype])
+                program_tmp_vars[var_name] = (
+                    data_count, neg_dim_count,
+                    vars_metatools.dtype_to_size[var.dtype])
 
         for varname in program_tmp_vars:
             data_count, neg_dim_count, type_size = program_tmp_vars[varname]
             if neg_dim_count == 1:
-                data_count *= batch_size
+                data_count *= eval_batch_size
             var_memory = data_count * type_size
             upper_mem_use += var_memory
 
         if upper_mem_use < free:
-            # auto geo
-            a_sync_configs["k_steps"] = 800
+            return True
         else:
-            # auto async
-            a_sync_configs["k_steps"] = 0
-        self.user_defined_strategy.a_sync_configs = a_sync_configs
+            return False
 
     def minimize_impl(self,
                       loss,
@@ -240,6 +228,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         self.inner_opt.minimize(loss, startup_program, parameter_list,
                                 no_grad_set)
+        strategy = self._get_distributed_strategy()
 
         _origin_main_program = loss.block.program
         _origin_startup_program = startup_program
@@ -247,11 +236,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         compiled_config = public.CompileTimeStrategy(_origin_main_program,
                                                      _origin_startup_program,
-                                                     None, self.role_maker)
-
-        self._try_auto_apply_geo(_origin_main_program, compiled_config)
-
-        strategy = self._get_distributed_strategy()
+                                                     strategy, self.role_maker)
         compiled_config.strategy = strategy
 
         if self.role_maker.is_worker() or self.role_maker._is_heter_worker():
@@ -267,9 +252,24 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return None, None
 
     def _disable_strategy(self, dist_strategy):
-        dist_strategy.a_sync_configs = {}
-        self.user_defined_strategy.a_sync_configs = {}
+        dist_strategy.a_sync = False
+        a_sync_configs = dist_strategy.a_sync_configs
+        a_sync_configs["k_steps"] = -1
+        dist_strategy.a_sync_configs = a_sync_configs
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context):
+        a_sync_configs = dist_strategy.a_sync_configs
+        if a_sync_configs["k_steps"] >= 0:
+            return
+
         dist_strategy.a_sync = True
-        dist_strategy.a_sync_configs = {}
+        a_sync_configs = dist_strategy.a_sync_configs
+
+        is_geo = self._can_apply_geo(dist_strategy,
+                                     context["origin_main_program"])
+
+        if is_geo:
+            a_sync_configs["k_steps"] = 800
+        else:
+            a_sync_configs["k_steps"] = 0
+        dist_strategy.a_sync_configs = a_sync_configs
