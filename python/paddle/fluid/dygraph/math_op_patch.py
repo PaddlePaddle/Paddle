@@ -298,9 +298,10 @@ def monkey_patch_math_varbase():
     else:
         import paddle.tensor
         # Tensor method from module paddle.tensor
-        tensor_methods = paddle.tensor.linalg.__all__ + paddle.tensor.math.__all__ + paddle.tensor.logic.__all__ + paddle.tensor.manipulation.__all__ + paddle.tensor.search.__all__ + paddle.tensor.stat.__all__ + paddle.tensor.attribute.__all__
-        print(len(tensor_methods))
-        print(tensor_methods)
+        tensor_methods = paddle.tensor.linalg.__all__ + \
+            paddle.tensor.math.__all__ + paddle.tensor.logic.__all__ + \
+                paddle.tensor.manipulation.__all__ + paddle.tensor.search.__all__ + \
+                paddle.tensor.stat.__all__ + paddle.tensor.attribute.__all__
         for method_name in tensor_methods:
             if hasattr(core.VarBase, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)
