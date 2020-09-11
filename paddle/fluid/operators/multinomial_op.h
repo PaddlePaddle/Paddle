@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#include <vector>
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -31,8 +33,7 @@ void MultinomialFunctor(T* out_data, const T* in_data,
                         const int64_t num_samples, const bool replacement,
                         const int64_t num_categories,
                         const int64_t num_distributions) {
-  const int64_t C = num_categories;
-  T cumulative_probs[C];
+  std::vector<T> cumulative_probs(num_categories);
 
   std::uniform_real_distribution<T> dist(0, 1);
   auto gen_ptr = framework::DefaultCPUGenerator();
