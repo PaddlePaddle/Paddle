@@ -12,12 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <stdint.h>
 #include <string>
 
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_impl.h"
+#include "paddle/fluid/operators/jit/helper.h"
+#include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
+#include "unsupported/Eigen/CXX11/../../../Eigen/src/Core/util/Constants.h"
+#include "unsupported/Eigen/CXX11/../../../Eigen/src/Core/util/Meta.h"
+#include "unsupported/Eigen/CXX11/src/Tensor/TensorDimensions.h"
 
 namespace paddle {
 namespace operators {

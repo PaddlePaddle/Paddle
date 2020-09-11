@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn/depthwise_conv_mkldnn_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 #define GET_NODE(id, pattern)                                     \
   PADDLE_ENFORCE_NE(subgraph.count(pattern.RetrieveNode(#id)), 0, \

@@ -13,10 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/cudnn_rnn_cache.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/cudnn_desc.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
+
+namespace paddle {
+namespace platform {
+class CUDADeviceContext;
+struct CUDAPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

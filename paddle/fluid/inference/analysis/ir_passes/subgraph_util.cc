@@ -18,7 +18,14 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_util.h"
 #include <algorithm>
-#include <string>
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace inference {

@@ -13,8 +13,28 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
-#include <memory>
+
 #include <string>
+
+#include "paddle/fluid/framework/grad_op_desc_maker.h"
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

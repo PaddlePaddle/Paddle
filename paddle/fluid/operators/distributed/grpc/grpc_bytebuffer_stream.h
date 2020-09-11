@@ -19,15 +19,26 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
+#include <new>
 #include <vector>
 
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "grpc++/grpc++.h"
+#include "grpc/impl/codegen/byte_buffer.h"
+#include "grpc/impl/codegen/byte_buffer_reader.h"
+#include "grpc/impl/codegen/slice.h"
+#include "grpcpp/impl/codegen/core_codegen_interface.h"
+#include "grpcpp/impl/codegen/proto_utils.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
+
+struct grpc_byte_buffer;
 
 namespace grpc {
 // A ZeroCopyInputStream that reads from grpc_byte_buffer
+class ByteBuffer;
+
 class GrpcBufferReader final
     : public ::google::protobuf::io::ZeroCopyInputStream {
   typedef void (CoreCodegenInterface::*OldReaderInitAPI)(

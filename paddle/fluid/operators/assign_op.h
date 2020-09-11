@@ -20,6 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
+namespace framework {
+class LoDTensor;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 class AssignFunctor {
  public:

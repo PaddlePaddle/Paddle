@@ -15,11 +15,18 @@
 #include "paddle/fluid/framework/ir/seqconv_eltadd_relu_fuse_pass.h"
 #include <string>
 #include <unordered_set>
-#include "paddle/fluid/framework/lod_tensor.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Node;
 
 int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
   GraphPatternDetector gpd;

@@ -12,7 +12,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <string>
+
+#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

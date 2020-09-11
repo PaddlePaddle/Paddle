@@ -27,7 +27,16 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 
 namespace paddle {
+namespace platform {
+class DeviceContext;
+class Place;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
+
+class Tensor;
 
 class SelectedRows {
   /*

@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include <map>
-#include <unordered_set>
 
 namespace paddle {
 namespace framework {

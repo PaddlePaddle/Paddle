@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_op_handle.h"
@@ -26,6 +27,17 @@
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
+
+namespace paddle {
+namespace framework {
+class VarDesc;
+namespace details {
+class ComputationOpHandle;
+class ShareTensorBufferOpHandle;
+struct VarHandle;
+}  // namespace details
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -70,6 +82,8 @@ namespace ir {
  * a pass to clean all ShareTensorBufferOpHandles and move sharing to
  * ComputationOpHandle::Run() in the future.
  */
+class Graph;
+
 class MemoryReusePass : public Pass {
  protected:
   void ApplyImpl(Graph *graph) const final;

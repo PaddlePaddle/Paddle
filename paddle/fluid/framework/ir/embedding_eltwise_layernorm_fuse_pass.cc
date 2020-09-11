@@ -13,12 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/embedding_eltwise_layernorm_fuse_pass.h"
-#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

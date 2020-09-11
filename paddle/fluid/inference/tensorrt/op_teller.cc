@@ -15,6 +15,12 @@
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 
 namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 

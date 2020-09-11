@@ -16,8 +16,10 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/math/blas.h"
+
 #include "paddle/fluid/operators/math/im2col.h"
 
 namespace paddle {

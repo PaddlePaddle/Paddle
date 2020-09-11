@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <ThreadPool.h>
+#include <stdint.h>
 #include <atomic>
 #include <deque>
 #include <map>
@@ -25,8 +26,10 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
+#include "glog/logging.h"
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/distributed/communicator_common.h"
@@ -41,6 +44,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
+#include "unsupported/Eigen/CXX11/../../../Eigen/src/Core/util/Constants.h"
+#include "unsupported/Eigen/CXX11/../../../Eigen/src/Core/util/Meta.h"
 
 DECLARE_bool(communicator_is_sgd_optimizer);
 

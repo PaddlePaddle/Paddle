@@ -15,7 +15,22 @@ limitations under the License. */
 #include "paddle/fluid/operators/amp/amp_check_finite_and_scale_op.h"
 
 #include <string>
-#include <vector>
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

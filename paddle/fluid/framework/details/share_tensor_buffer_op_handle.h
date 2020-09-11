@@ -17,13 +17,26 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 
 namespace paddle {
 namespace framework {
+class Scope;
+namespace ir {
+class MemOptVarInfo;
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
+
+class ComputationOpHandle;
 
 class ShareTensorBufferOpHandle : public OpHandleBase {
  public:

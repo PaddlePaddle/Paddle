@@ -12,10 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fused/fusion_transpose_flatten_concat_op.h"
-#include <vector>
+#include <cudnn.h>
+
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/fused/fusion_transpose_flatten_concat_op.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace platform {
+struct CUDAPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

@@ -14,8 +14,16 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
+
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_impl.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "unsupported/Eigen/CXX11/../../../Eigen/src/Core/util/Constants.h"
+#include "unsupported/Eigen/CXX11/../../../Eigen/src/Core/util/Meta.h"
 #include "unsupported/Eigen/CXX11/Tensor"
+#include "unsupported/Eigen/CXX11/src/Tensor/TensorDimensions.h"
 
 namespace paddle {
 namespace framework {

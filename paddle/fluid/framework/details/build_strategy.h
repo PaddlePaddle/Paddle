@@ -19,12 +19,25 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "boost/optional.hpp"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Graph;
+class PassBuilder;
+}  // namespace ir
+}  // namespace framework
+namespace platform {
+class NCCLCommunicator;
+}  // namespace platform
+}  // namespace paddle
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"

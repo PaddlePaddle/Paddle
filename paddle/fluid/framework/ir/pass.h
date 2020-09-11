@@ -21,6 +21,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -29,6 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+class Graph;
 template <typename PassType>
 struct PassRegistrar;
 

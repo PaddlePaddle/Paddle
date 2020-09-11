@@ -12,28 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sys/types.h>
 #include <algorithm>
 #include <memory>
-#include <set>
-#include <string>
-#include <vector>
 
-#include "paddle/fluid/operators/distributed/parameter_recv.h"
-
+#include "glog/logging.h"
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/tensor.h"
-
+#include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/rpc_client.h"
-#include "paddle/fluid/operators/distributed/variable_response.h"
-#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/fluid/operators/distributed/parameter_recv.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+class RPCClient;
 
 using LoDTensor = framework::LoDTensor;
 using LoDTensor = framework::LoDTensor;

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
+
 #include "paddle/fluid/inference/api/paddle_mkldnn_quantizer_config.h"
 
 namespace paddle {

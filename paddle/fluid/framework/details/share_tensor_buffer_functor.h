@@ -19,10 +19,20 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+namespace ir {
+class MemOptVarInfo;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

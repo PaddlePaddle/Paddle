@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/isfinite_op.h"
