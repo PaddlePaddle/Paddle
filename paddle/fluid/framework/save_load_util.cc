@@ -306,7 +306,7 @@ bool SaveTensorToDisk(const std::string& file_name,
       TensorCopySync(*tensor, platform::CPUPlace(), &temp);
       data_ptr = temp.data<void>();
 #else
-      PADDLE_THROW(platform::errors::UUnavailable(
+      PADDLE_THROW(platform::errors::Unavailable(
           "Tensor is in CUDA device, but paddle not compiled with CUDA."));
 #endif
     }
