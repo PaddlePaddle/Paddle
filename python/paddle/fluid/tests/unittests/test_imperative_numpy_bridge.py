@@ -15,12 +15,18 @@
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+import warnings
 
 
 class TestImperativeNumpyBridge(unittest.TestCase):
     def test_tensor_from_numpy(self):
         data_np = np.array([[2, 3, 1]]).astype('float32')
         with fluid.dygraph.guard(fluid.CPUPlace()):
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                var = fluid.dygraph.to_variable(data_np, zero_copy=True)
+                assert "Currently, zero_copy is not supported, and it will be discarded." in str(
+                    w[-1].message)
             # Temporally diable zero_copy
             # var = fluid.dygraph.to_variable(data_np, zero_copy=True)
             # self.assertTrue(np.array_equal(var.numpy(), data_np))
