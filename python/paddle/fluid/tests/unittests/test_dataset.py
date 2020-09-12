@@ -93,12 +93,11 @@ class TestDataset(unittest.TestCase):
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
-            batch_size=32,
-            thread_num=3,
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
+        dataset.update_settings(pipe_command="cat1")
+        dataset.init_distributed_settings(
             parse_ins_id=True,
             parse_content=True,
-            pipe_command="cat",
-            use_var=slots_vars,
             fea_eval=True,
             candidate_size=10000)
         dataset.set_filelist(
@@ -227,12 +226,8 @@ class TestDataset(unittest.TestCase):
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
-            batch_size=32,
-            thread_num=3,
-            pipe_command="cat",
-            use_var=slots_vars,
-            fea_eval=True,
-            candidate_size=1)
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
+        dataset.init_distributed_settings(fea_eval=True, candidate_size=1)
         dataset.set_filelist([
             "test_in_memory_dataset_run_a.txt",
             "test_in_memory_dataset_run_b.txt"
@@ -300,11 +295,8 @@ class TestDataset(unittest.TestCase):
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
-            batch_size=32,
-            thread_num=1,
-            parse_ins_id=True,
-            pipe_command="cat",
-            use_var=slots_vars)
+            batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars)
+        dataset.init_distributed_settings(parse_ins_id=True)
         dataset.set_filelist([
             "test_in_memory_dataset_masterpatch_a.txt",
             "test_in_memory_dataset_masterpatch_b.txt"
@@ -323,7 +315,8 @@ class TestDataset(unittest.TestCase):
             except Exception as e:
                 self.assertTrue(False)
 
-        dataset._set_merge_by_lineid(2)
+        #dataset._set_merge_by_lineid(2)
+        datset.update_settings(merge_size=2)
         dataset.dataset.merge_by_lineid()
 
         os.remove("./test_in_memory_dataset_masterpatch_a.txt")
@@ -367,11 +360,8 @@ class TestDataset(unittest.TestCase):
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
-            batch_size=32,
-            thread_num=1,
-            parse_ins_id=True,
-            pipe_command="cat",
-            use_var=slots_vars)
+            batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars)
+        dataset.init_distributed_settings(parse_ins_id=True)
         dataset.set_filelist([
             "test_in_memory_dataset_masterpatch1_a.txt",
             "test_in_memory_dataset_masterpatch1_b.txt"
@@ -482,6 +472,21 @@ class TestDataset(unittest.TestCase):
         dataset._set_parse_ins_id(False)
         dataset.load_into_memory()
         dataset.dataset.merge_by_lineid()
+        dataset.update_settings(
+            batch_size=1,
+            thread_num=2,
+            input_type=1,
+            pipe_command="cat",
+            use_var=[],
+            fs_name="",
+            fs_ugi="",
+            download_cmd="cat",
+            merge_size=-1,
+            parse_ins_id=False,
+            parse_content=False,
+            fleet_send_batch_size=2,
+            fleet_send_sleep_seconds=2,
+            fea_eval=True)
         fleet_ptr = fluid.core.Fleet()
         fleet_ptr.set_client2client_config(1, 1, 1)
         fleet_ptr.get_cache_threshold(0)

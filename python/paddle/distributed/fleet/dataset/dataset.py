@@ -247,6 +247,66 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
 
+    def init_distributed_settings(self, **kwargs):
+        """
+        should be called only once in user's python scripts to initialize distributed-related setings of dataset instance
+        """
+        merge_size = kwargs.get("merge_size", -1)
+        if merge_size > 0:
+            self._set_merge_by_lineid(merge_size)
+
+        parse_ins_id = kwargs.get("parse_ins_id", False)
+        self._set_parse_ins_id(parse_ins_id)
+
+        parse_content = kwargs.get("parse_content", False)
+        self._set_parse_content(parse_content)
+
+        fleet_send_batch_size = kwargs.get("fleet_send_batch_size", None)
+        if fleet_send_batch_size:
+            self._set_fleet_send_batch_size(fleet_send_batch_size)
+
+        fleet_send_sleep_seconds = kwargs.get("fleet_send_sleep_seconds", None)
+        if fleet_send_sleep_seconds:
+            self._set_fleet_send_sleep_seconds(fleet_send_sleep_seconds)
+
+        fea_eval = kwargs.get("fea_eval", False)
+        if fea_eval:
+            candidate_size = kwargs.get("candidate_size", 10000)
+            self._set_fea_eval(candidate_size, True)
+
+    def update_settings(self, **kwargs):
+        """
+        should be called in user's python scripts to update setings of dataset instance
+        """
+        for key in kwargs:
+            if key == "pipe_command":
+                self._set_pipe_command(kwargs[key])
+            elif key == "batch_size":
+                self._set_batch_size(kwargs[key])
+            elif key == "thread_num":
+                self._set_thread(kwargs[key])
+            elif key == "use_var":
+                self._set_use_var(kwargs[key])
+            elif key == "input_type":
+                self._set_input_type(kwargs[key])
+            elif key == "fs_name" and "fs_ugi" in kwargs:
+                self._set_hdfs_config(kwargs[key], kwargs["fs_ugi"])
+            elif key == "download_cmd":
+                self._set_download_cmd(kwargs[key])
+            elif key == "merge_size" and kwargs.get("merge_size", -1) > 0:
+                self._set_merge_by_lineid(kwargs[key])
+            elif key == "parse_ins_id":
+                self._set_parse_ins_id(kwargs[key])
+            elif key == "parse_content":
+                self._set_parse_content(kwargs[key])
+            elif key == "fleet_send_batch_size":
+                self._set_fleet_send_batch_size(kwargs[key])
+            elif key == "fleet_send_sleep_seconds":
+                self._set_fleet_send_sleep_seconds(kwargs[key])
+            elif key == "fea_eval" and kwargs[key] == True:
+                candidate_size = kwargs.get("candidate_size", 10000)
+                self._set_fea_eval(candidate_size, True)
+
     def init(self, **kwargs):
         """
         should be called only once in user's python scripts to initialize setings of dataset instance
@@ -277,28 +337,6 @@ class InMemoryDataset(DatasetBase):
         if kwargs.get("queue_num", -1) > 0:
             queue_num = kwargs.get("queue_num", -1)
             self._set_queue_num(queue_num)
-        merge_size = kwargs.get("merge_size", -1)
-        if merge_size > 0:
-            self._set_merge_by_lineid(merge_size)
-
-        parse_ins_id = kwargs.get("parse_ins_id", False)
-        self._set_parse_ins_id(parse_ins_id)
-
-        parse_content = kwargs.get("parse_content", False)
-        self._set_parse_content(parse_content)
-
-        fleet_send_batch_size = kwargs.get("fleet_send_batch_size", None)
-        if fleet_send_batch_size:
-            self._set_fleet_send_batch_size(fleet_send_batch_size)
-
-        fleet_send_sleep_seconds = kwargs.get("fleet_send_sleep_seconds", None)
-        if fleet_send_sleep_seconds:
-            self._set_fleet_send_sleep_seconds(fleet_send_sleep_seconds)
-
-        fea_eval = kwargs.get("fea_eval", False)
-        if fea_eval:
-            candidate_size = kwargs.get("candidate_size", 10000)
-            self._set_fea_eval(candidate_size, True)
 
     def _set_feed_type(self, data_feed_type):
         """
