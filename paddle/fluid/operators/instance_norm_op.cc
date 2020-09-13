@@ -181,6 +181,14 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
     auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
     auto *place = dev_ctx.eigen_device();
 
+    Eigen::DSizes<int, 2> shape(NxC, sample_size);
+// Once eigen on Windows is updated, the if branch can be removed.
+#ifndef EIGEN_HAS_INDEX_LIST
+    Eigen::DSizes<int, 2> bcast(1, sample_size);
+    Eigen::DSizes<int, 2> C_shape(C, 1);
+    Eigen::DSizes<int, 2> NxC_shape(NxC, 1);
+    Eigen::DSizes<int, 1> rdims(1);
+#else
     Eigen::IndexList<Eigen::type2index<1>, int> bcast;
     bcast.set(1, sample_size);
     Eigen::IndexList<int, Eigen::type2index<1>> C_shape;
@@ -188,6 +196,7 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
     Eigen::IndexList<int, Eigen::type2index<1>> NxC_shape;
     NxC_shape.set(0, NxC);
     Eigen::IndexList<Eigen::type2index<1>> rdims;
+#endif
 
     math::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
@@ -201,7 +210,6 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
     auto saved_variance_a = framework::EigenVector<T>::Flatten(*saved_variance);
     auto saved_variance_e = saved_variance_a.reshape(NxC_shape);
 
-    Eigen::DSizes<int, 2> shape(NxC, sample_size);
     auto x_e = framework::EigenVector<T>::Flatten(*x);
     auto x_arr = x_e.reshape(shape);
 
@@ -321,6 +329,13 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
     Eigen::DSizes<int, 2> rshape(NxC, sample_size);
     Eigen::DSizes<int, 2> param_shape(N, C);
     Eigen::DSizes<int, 2> shape(NxC, sample_size);
+#ifndef EIGEN_HAS_INDEX_LIST
+    Eigen::DSizes<int, 1> rdims(0);
+    Eigen::DSizes<int, 1> mean_rdims(1);
+    Eigen::DSizes<int, 2> bcast(1, sample_size);
+    Eigen::DSizes<int, 2> C_shape(C, 1);
+    Eigen::DSizes<int, 2> NxC_shape(NxC, 1);
+#else
     Eigen::IndexList<Eigen::type2index<0>> rdims;
     Eigen::IndexList<Eigen::type2index<1>> mean_rdims;
     Eigen::IndexList<Eigen::type2index<1>, int> bcast;
@@ -329,6 +344,7 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
     C_shape.set(0, C);
     Eigen::IndexList<int, Eigen::type2index<1>> NxC_shape;
     NxC_shape.set(0, NxC);
+#endif
 
     math::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
