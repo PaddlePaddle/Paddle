@@ -82,7 +82,8 @@ class TestInplaceAddto(unittest.TestCase):
             np.random.seed(10)
             paddle.manual_seed(10)
             paddle.framework.random._manual_program_seed(10)
-            fluid.set_flags({"FLAGS_cudnn_deterministic": True})
+            if fluid.core.is_compiled_with_cuda():
+                fluid.set_flags({"FLAGS_cudnn_deterministic": True})
             fluid.set_flags({"FLAGS_max_inplace_grad_add": 2})
             loss, main, startup, w = create_program()
 
@@ -100,7 +101,6 @@ class TestInplaceAddto(unittest.TestCase):
                 res = exe.run(compiled,
                               feed={'img': img},
                               fetch_list=[loss.name, w.name])
-                print(res[0], res[1])
             return res
 
         res1, w1 = run_program(True)
