@@ -317,9 +317,8 @@ class TracedGradOp {
     for (auto& var : var_wrappers) {
       // NOTE(liym27):
       //  Emplace back original var_wrapper if its inplace_version is not
-      //  changed.
-      //  Otherwise, it will affect the accuracy of the model results and affect
-      //  double grad.
+      //  changed. Otherwise, it will affect the accuracy of the model results
+      //  and affect double grad.
       if (!var->MutableVar()->IsInitialized() ||
           var->InplaceVersionSnapshot() ==
               var->MutableVar()->CurrentInplaceVersion()) {

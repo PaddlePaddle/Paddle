@@ -122,24 +122,27 @@ inline framework::TensorInplaceVersion& Variable::InplaceVersionCounter() {
     return GetMutable<framework::SelectedRows>()
         ->mutable_value()
         ->InplaceVersionCounter();
-  } else if (IsType<framework::LoDTensorArray>()) {
-    auto tensor_array = GetMutable<framework::LoDTensorArray>();
-    return tensor_array->at(0).InplaceVersionCounter();
   } else {
     // NOTE(liym27): Other types of data are not supported, like Scope.
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Only supports Tensor, LoDTensor, SelectedRows and "
-        "LoDTensorArray to have TensorInplaceVersion."));
+        "Only supports Tensor, LoDTensor, SelectedRows to have "
+        "TensorInplaceVersion, but received type %s.",
+        platform::demangle(framework::ToTypeName(Type()))));
   }
 }
+
 inline uint32_t Variable::CurrentInplaceVersion() {
   try {
     return InplaceVersionCounter().CurrentVersion();
   } catch (platform::EnforceNotMet& exception) {
-    // Don't print exception.what() because it contains too much information,
+    // 1. Don't raise the exception. The exception is raised in
+    // InplaceVersionCounter() when the type is not LoDTensor or SelectedRows,
+    // which is within expectations.
+    // 2. Don't print exception.what() because it contains too much information,
     // including C++ traceback.
-    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows and "
-               "LoDTensorArray to have TensorInplaceVersion.";
+    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
+               "TensorInplaceVersion, but received type "
+            << platform::demangle(framework::ToTypeName(Type()));
     return 0;
   }
 }
@@ -148,8 +151,9 @@ inline void Variable::BumpInplaceVersion() {
   try {
     InplaceVersionCounter().Bump();
   } catch (platform::EnforceNotMet& exception) {
-    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows and "
-               "LoDTensorArray to have TensorInplaceVersion.";
+    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
+               "TensorInplaceVersion, but received type "
+            << platform::demangle(framework::ToTypeName(Type()));
   }
 }
 

@@ -202,6 +202,8 @@ class VarBase {
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
 
+  void BumpInplaceVersion();
+
  private:
   /**
    * NOTE(zengjinle): never remove the const qualifier of `var_` if you are
@@ -237,8 +239,6 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
     const platform::Place& place);
-
-void BumpInplaceVersion(std::shared_ptr<imperative::VarBase> var);
 
 }  // namespace imperative
 }  // namespace paddle

@@ -592,7 +592,7 @@ void BindImperative(py::module *m_ptr) {
              // NOTE(liym27):
              // Increase the version of VarBase self because __setitem__ is an
              // inplace operator for the VarBase self.
-             BumpInplaceVersion(self);
+             self->BumpInplaceVersion();
            })
       .def("__getitem__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
@@ -644,8 +644,9 @@ void BindImperative(py::module *m_ptr) {
            })
       .def("_bump_inplace_version",
            [](std::shared_ptr<imperative::VarBase> &self) {
-             // NOTE(liym27): bump_version is only used for inplace operation
-             BumpInplaceVersion(self);
+             // NOTE(liym27): _bump_inplace_version is only used for inplace
+             // operation
+             self->BumpInplaceVersion();
            },
            R"DOC(
         **Notes**:
