@@ -78,7 +78,7 @@ class Linear(layers.Layer):
     Shape:
         Input: (N, '*', in_features) where '*' means any number of additional dimensions.
         Output: (N, '∗', out_features) where all but the last dimension are the same shape as the input.
-    
+
     Attributes:
         **weight** (Parameter): the learnable weights of this layer.
         **bias** (Parameter or None): the learnable bias of this layer.
