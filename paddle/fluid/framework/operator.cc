@@ -1147,11 +1147,11 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
-  if (kernels_iter == all_op_kernels.end()) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "There are no kernels which are registered in the %s operator.",
-        type_));
-  }
+  PADDLE_ENFORCE_NE(
+      kernels_iter, all_op_kernels.end(),
+      platform::errors::Unavailable(
+          "There are no kernels which are registered in the %s operator.",
+          type_));
 
   OpKernelMap& kernels = kernels_iter->second;
 
@@ -1205,11 +1205,10 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
-  if (kernel_iter == kernels.end()) {
-    PADDLE_THROW(platform::errors::NotFound(
-        "Operator (%s) does not have kernel for %s.", type_,
-        KernelTypeToString(expected_kernel_key)));
-  }
+  PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
+                    platform::errors::NotFound(
+                        "Operator (%s) does not have kernel for %s.", type_,
+                        KernelTypeToString(expected_kernel_key)));
 
   std::lock_guard<std::mutex> lock(cache_update_mutex_);
   if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
