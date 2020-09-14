@@ -167,10 +167,10 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             "The type of 'axis'  must be int or None in argmax, but received %s."
             % (type(axis)))
 
-    if not (isinstance(dtype, str) or isinstance(dtype, np.dtype)):
-        raise TypeError(
-            "the type of 'dtype' in argmax must be str or np.dtype, but received {}".
-            format(type(dtype)))
+    if dtype is None:
+        raise ValueError(
+            "the value of 'dtype' in argmax could not be None, but received None"
+        )
 
     var_dtype = convert_np_dtype_to_dtype_(dtype)
     check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
@@ -245,10 +245,10 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             "The type of 'axis'  must be int or None in argmin, but received %s."
             % (type(axis)))
 
-    if not (isinstance(dtype, str) or isinstance(dtype, np.dtype)):
-        raise TypeError(
-            "the type of 'dtype' in argmin must be str or np.dtype, but received {}".
-            format(dtype(dtype)))
+    if dtype is None:
+        raise ValueError(
+            "the value of 'dtype' in argmin could not be None, but received None"
+        )
 
     var_dtype = convert_np_dtype_to_dtype_(dtype)
     check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')

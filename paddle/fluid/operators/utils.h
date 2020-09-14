@@ -81,5 +81,26 @@ inline std::vector<T> GetDataFromTensorList(
   }
   return vec_new_data;
 }
+
+inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
+  // 1. shape is a Tensor
+  if (ctx.HasInput("ShapeTensor")) {
+    auto* shape_tensor = ctx.Input<framework::LoDTensor>("ShapeTensor");
+    auto vec_shape = GetDataFromTensor<int>(shape_tensor);
+    return framework::make_ddim(vec_shape);
+  }
+
+  // 2. shape is a list/tuple containing Tensor
+  auto shape_tensor_list = ctx.MultiInput<framework::Tensor>("ShapeTensorList");
+  if (shape_tensor_list.size() > 0) {
+    auto vec_shape = GetDataFromTensorList(shape_tensor_list);
+    return framework::make_ddim(vec_shape);
+  }
+
+  // 3. shape is a list/tuple without containing Tensor
+  auto vec_shape = ctx.Attr<std::vector<int64_t>>("shape");
+  return framework::make_ddim(vec_shape);
+}
+
 }  // namespace operators
 }  // namespace paddle

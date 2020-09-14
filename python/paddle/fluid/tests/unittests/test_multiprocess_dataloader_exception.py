@@ -27,6 +27,7 @@ import paddle.fluid.core as core
 from paddle.io import Dataset, IterableDataset, BatchSampler, DataLoader
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dataloader.dataloader_iter import _worker_loop
 
 
 class RandomDataset(Dataset):
@@ -185,9 +186,10 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                 for i in range(10):
                     indices_queue.put([i, i + 10])
                 indices_queue.put(None)
-                loader._worker_loop(
-                    loader._dataset, 0, indices_queue, loader._data_queue,
-                    loader._workers_done_event, _collate_fn, _init_fn, 0, 1)
+                _worker_loop(loader._dataset, 0, indices_queue,
+                             loader._data_queue, loader._workers_done_event,
+                             _collate_fn, _init_fn, 0, 1,
+                             loader._use_shared_memory)
                 self.assertTrue(False)
         except AssertionError:
             pass
@@ -228,9 +230,10 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     indices_queue.put([i, i + 10])
                 indices_queue.put(None)
                 loader._workers_done_event.set()
-                loader._worker_loop(
-                    loader._dataset, 0, indices_queue, loader._data_queue,
-                    loader._workers_done_event, _collate_fn, _init_fn, 0, 1)
+                _worker_loop(loader._dataset, 0, indices_queue,
+                             loader._data_queue, loader._workers_done_event,
+                             _collate_fn, _init_fn, 0, 1,
+                             loader._use_shared_memory)
                 self.assertTrue(True)
         except AssertionError:
             pass

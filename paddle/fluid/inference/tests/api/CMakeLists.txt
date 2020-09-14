@@ -342,9 +342,9 @@ if(WITH_MKLDNN)
   ### Lexcial analysis GRU model
   set(GRU_PATH "${INFERENCE_DEMO_INSTALL_DIR}/gru")
   download_GRU_data("${GRU_PATH}" "GRU_eval_data.tar.gz")
-  download_GRU_data("${GRU_PATH}" "GRU_eval_model.tar.gz")
+  download_GRU_data("${GRU_PATH}" "GRU_eval_model_v2.tar.gz")
   set(GRU_DATA_PATH "${GRU_PATH}/GRU_eval_data.bin")
-  set(GRU_MODEL_PATH "${GRU_PATH}/GRU_eval_model")
+  set(GRU_MODEL_PATH "${GRU_PATH}/GRU_eval_model_v2")
   set(LEXICAL_TEST_APP "test_analyzer_lexical_analysis")
   set(LEXICAL_TEST_APP_SRC "analyzer_lexical_analysis_gru_tester.cc")
 
@@ -363,9 +363,12 @@ if(WITH_MKLDNN)
   inference_analysis_api_test_build(${QUANT_IMG_CLASS_TEST_APP} ${QUANT_IMG_CLASS_TEST_APP_SRC})
 
   # MobileNetV1 FP32 vs. Quant INT8
+  # The FP32 model should already be downloaded for slim Quant unit tests on Linux
   set(QUANT2_MobileNetV1_MODEL_DIR "${QUANT_DATA_DIR}/MobileNetV1_quant2")
   set(QUANT2_INT8_MobileNetV1_MODEL_DIR "${QUANT_DATA_DIR}/MobileNetV1_quant2_int8")
-  download_quant_data(${QUANT2_MobileNetV1_MODEL_DIR} "MobileNet_qat_perf.tar.gz")
+  if(NOT LINUX)
+      download_quant_data(${QUANT2_MobileNetV1_MODEL_DIR} "MobileNet_qat_perf.tar.gz")
+  endif(NOT LINUX)
   download_quant_data(${QUANT2_INT8_MobileNetV1_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
   inference_analysis_api_quant_test_run(test_analyzer_quant_performance_benchmark ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf/float ${QUANT2_INT8_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
 

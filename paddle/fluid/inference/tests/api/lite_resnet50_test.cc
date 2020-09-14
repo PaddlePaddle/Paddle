@@ -27,7 +27,7 @@ TEST(AnalysisPredictor, use_gpu) {
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir + "/model", model_dir + "/params");
-  config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
+  config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32, true);
 
   std::vector<PaddleTensor> inputs;
   auto predictor = CreatePaddlePredictor(config);
