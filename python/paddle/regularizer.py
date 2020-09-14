@@ -118,7 +118,7 @@ class L2Decay(fluid.regularizer.L2Decay):
                 weight_decay=L2Decay(0.0001))
             back = out.backward()
             momentum.step()
-    momentum.clear_grad()
+            momentum.clear_grad()
 
             # Example2: set Regularizer in parameters
             # Set L2 regularization in parameters.
