@@ -81,7 +81,7 @@ class Linear(layers.Layer):
 
     Attributes:
         **weight** (Parameter): the learnable weights of this layer.
-        **bias** (Parameter or None): the learnable bias of this layer.
+        **bias** (Parameter|None): the learnable bias of this layer.
 
     Returns:
         None
