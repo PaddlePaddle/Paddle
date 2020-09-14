@@ -3167,7 +3167,7 @@ def instance_norm(input,
 
     param_shape = [channel_num]
 
-    if param_attr and bias_attr:
+    if param_attr != False and bias_attr != False:
         # create parameter
         scale = helper.create_parameter(
             attr=helper.param_attr,
@@ -3190,7 +3190,7 @@ def instance_norm(input,
     instance_norm_out = helper.create_variable_for_type_inference(dtype)
 
     inputs = {"X": input}
-    if param_attr and bias_attr:
+    if param_attr != False and bias_attr != False:
         inputs["Scale"] = scale
         inputs["Bias"] = bias
 
