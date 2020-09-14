@@ -855,9 +855,9 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
 void* GetDstPtrByDLDataType(DLDataType type, framework::Tensor* dst,
                             const platform::Place& dst_place) {
   // vector types not currently supported
-  PADDLE_ENFORCE_LE(
-      type.lanes, 1,
-      platform::errors::Unimplemented("vector types not supported currently."));
+  PADDLE_ENFORCE_LE(type.lanes, 1,
+                    platform::errors::Unimplemented(
+                        "Vector type is not supported currently."));
 
   switch (type.bits) {
     case 8:

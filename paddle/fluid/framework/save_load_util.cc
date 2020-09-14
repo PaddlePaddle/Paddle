@@ -62,7 +62,7 @@ size_t ReadTensorNumber(std::istream& istre) {
   PADDLE_ENFORCE_EQ(tensor_number_mark, str_read_tensor_number_mark,
                     platform::errors::InvalidArgument(
                         "Tensor number mark does not match, expect mark is "
-                        "[%s], but the mark read from file is [%].",
+                        "[%s], but the mark read from file is [%s].",
                         tensor_number_mark, str_read_tensor_number_mark));
 
   size_t tensor_number = 0;
@@ -84,7 +84,7 @@ std::string ReadTensorName(std::istream& istre) {
   PADDLE_ENFORCE_EQ(tensor_name_mark, str_read_tensor_name_mark,
                     platform::errors::InvalidArgument(
                         "Tensor name mark does not match, expect mark is [%s], "
-                        "but the mark read from file is [%].",
+                        "but the mark read from file is [%s].",
                         tensor_name_mark, str_read_tensor_name_mark));
 
   size_t tensor_name_length = 0;
@@ -252,10 +252,9 @@ bool SaveTensorToDisk(const std::string& file_name,
   MkDirRecursively(DirName(file_name).c_str());
 
   std::ofstream fout(file_name, std::ios::binary);
-  if (!fout) {
-    PADDLE_THROW(
-        platform::errors::Unavailable("File (%s) open failed.", file_name));
-  }
+  PADDLE_ENFORCE_EQ(
+      fout.is_open(), true,
+      platform::errors::Unavailable("File (%s) open failed.", file_name));
 
   // first 256 byte for reserve for fulture upgrade
   char* kReserveBuffer = new char[model_file_reserve_size];
@@ -330,10 +329,9 @@ bool LoadTensorFromDisk(
     std::map<std::string, std::shared_ptr<Tensor>>* map_tensor) {
   std::ifstream fin(file_name, std::ios::binary);
 
-  if (!fin) {
-    PADDLE_THROW(
-        platform::errors::Unavailable("File (%s) open failed.", file_name));
-  }
+  PADDLE_ENFORCE_EQ(
+      fin.is_open(), true,
+      platform::errors::Unavailable("File (%s) open failed.", file_name));
 
   ReadReserveBuffer(fin);
 

@@ -218,8 +218,10 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
     PADDLE_ENFORCE_EQ(
         value_width, value->numel() / value->dims()[0],
         platform::errors::InvalidArgument(
-            "Output tensor should have the same shape with dimensions "
-            "except the dimmensions[0]."));
+            "Output tensor should have the same shape with table "
+            "except the first dimmension, excepted value width not counting "
+            "the first dimension is %d, actual value width is %d.",
+            value_width, value->numel() / value->dims()[0]));
     for (int i = 0; i < ids.numel(); ++i) {
       auto id = ids.data<int64_t>()[i];
       int64_t index = AutoGrownIndex(id, auto_grown, is_test);
