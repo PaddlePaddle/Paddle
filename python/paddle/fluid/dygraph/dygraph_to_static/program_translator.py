@@ -21,6 +21,7 @@ import six
 import textwrap
 import threading
 import warnings
+import weakref
 
 import gast
 from paddle.fluid import framework
@@ -31,8 +32,7 @@ from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import DygraphToStaticAst
-from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
-from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data
+from paddle.fluid.dygraph.dygraph_to_static import error
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import create_and_update_origin_info_map
@@ -245,6 +245,7 @@ class StaticLayer(object):
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
         self._program_cache = ProgramCache()
+        self._descriptor_cache = weakref.WeakKeyDictionary()
         # Note: Hold a reference to ProgramTranslator for switching `enable_declarative`.
         self._program_trans = ProgramTranslator()
 
@@ -271,8 +272,19 @@ class StaticLayer(object):
         of `Net` instance. After decorated by `@paddle.jit.to_static`, it will firstly to call `__get__`
         to parse the class instance correctly instead of the `StaticLayer` instance.
         """
-        self._class_instance = instance
-        return self
+        if instance not in self._descriptor_cache:
+            if instance is None:
+                return self
+            # Note(Aurelius84): To construct new instance of StaticLayer when we
+            # first encouter the bound function of layer and cache it.
+            new_static_layer = self._clone()
+            new_static_layer._class_instance = instance
+            self._descriptor_cache[instance] = new_static_layer
+
+        return self._descriptor_cache[instance]
+
+    def _clone(self):
+        return self.__class__(self._dygraph_function, self._input_spec)
 
     def __call__(self, *args, **kwargs):
         """
@@ -302,6 +314,7 @@ class StaticLayer(object):
 
         # 2. trace ops from dygraph layers and cache the generated program.
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+
         try:
             concrete_program, partial_program_layer = self.get_concrete_program(
                 *args, **kwargs)
@@ -311,27 +324,22 @@ class StaticLayer(object):
                 partial_program_layer.training = self._class_instance.training
 
             # 4. return outputs.
-            return partial_program_layer(args)
+            try:
+                return partial_program_layer(args)
+            except Exception as e:
+                if not hasattr(e, error.ERROR_DATA):
+                    # runtime error
+                    error.attach_error_data(e, in_runtime=True)
+                    raise
         except Exception as e:
-            if not hasattr(e, ERROR_DATA):
-                # runtime error
-                attach_error_data(e, in_runtime=True)
-            error_data = getattr(e, ERROR_DATA, None)
+            error_data = getattr(e, error.ERROR_DATA, None)
             if error_data:
-                new_exception = error_data.create_exception()
-                if six.PY3:
-                    # NOTE(liym27):
-                    # 1. Why `raise new_exception from None`?
-                    #   In Python 3, by default, an new exception is raised with trace information of the caught exception.
-                    #   This only raises new_exception and hides unwanted implementation details from tracebacks of the
-                    #   caught exception.
-                    # 2. Use exec to bypass syntax error checking in Python 2.
-
-                    six.exec_("raise new_exception from None")
-                else:
-                    raise new_exception
+                error_data.raise_new_exception()
             else:
-                raise
+                logging_utils.warn(
+                    "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
+                    " if you can't handle this {} yourself.".format(type(e)))
+                raise e
 
     def _call_dygraph_function(self, *args, **kwargs):
         """
@@ -580,7 +588,7 @@ class ConcreteProgram(object):
                         outputs = static_func(*inputs)
                     except BaseException as e:
                         # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
-                        attach_error_data(e)
+                        error.attach_error_data(e)
                         raise
 
                 if not isinstance(outputs,
@@ -800,28 +808,36 @@ class ProgramTranslator(object):
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable = False. "
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
-
-        function_spec = FunctionSpec(dygraph_func)
-        cache_key = CacheKey.from_func_and_args(function_spec, args, kwargs,
-                                                getattr(dygraph_func,
-                                                        '__self__', None))
-        _, partial_program_layer = self._program_cache[cache_key]
-
-        if args and isinstance(args[0], layers.Layer):
-            # Synchronize self.training attribute.
-            partial_program_layer.training = args[0].training
-            args = args[1:]
         try:
-            return partial_program_layer(args)
+            function_spec = FunctionSpec(dygraph_func)
+            cache_key = CacheKey.from_func_and_args(function_spec, args, kwargs,
+                                                    getattr(dygraph_func,
+                                                            '__self__', None))
+            _, partial_program_layer = self._program_cache[cache_key]
 
+            if args and isinstance(args[0], layers.Layer):
+                # Synchronize self.training attribute.
+                partial_program_layer.training = args[0].training
+                args = args[1:]
+            try:
+                return partial_program_layer(args)
+            except BaseException as e:
+                # NOTE:
+                # 1. If e is raised in compile time, e should have been attached to ERROR_DATA before;
+                # 2. If e raised in runtime, e should be attached to ERROR_DATA here.
+                if not hasattr(e, error.ERROR_DATA):
+                    # runtime error
+                    error.attach_error_data(e, in_runtime=True)
+                raise
         except BaseException as e:
-            # NOTE:
-            # 1. If e is raised in compile time, e should have been attached to ERROR_DATA before;
-            # 2. If e raised in runtime, e should be attached to ERROR_DATA here.
-            if not hasattr(e, ERROR_DATA):
-                # runtime error
-                attach_error_data(e, in_runtime=True)
-            raise
+            error_data = getattr(e, error.ERROR_DATA, None)
+            if error_data:
+                error_data.raise_new_exception()
+            else:
+                logging_utils.warn(
+                    "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
+                    " if you can't handle this {} yourself.".format(type(e)))
+                raise e
 
     def get_func(self, dygraph_func):
         """

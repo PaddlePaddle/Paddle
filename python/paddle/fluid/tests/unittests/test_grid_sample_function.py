@@ -100,7 +100,7 @@ def add_cases(suite):
         GridSampleTestCase(
             methodName='runTest',
             mode='bilinear',
-            padding_mode='reflect',
+            padding_mode='reflection',
             align_corners=True))
     suite.addTest(
         GridSampleTestCase(

@@ -166,6 +166,12 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         raise TypeError(
             "The type of 'axis'  must be int or None in argmax, but received %s."
             % (type(axis)))
+
+    if dtype is None:
+        raise ValueError(
+            "the value of 'dtype' in argmax could not be None, but received None"
+        )
+
     var_dtype = convert_np_dtype_to_dtype_(dtype)
     check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
     flatten = False
@@ -238,6 +244,12 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         raise TypeError(
             "The type of 'axis'  must be int or None in argmin, but received %s."
             % (type(axis)))
+
+    if dtype is None:
+        raise ValueError(
+            "the value of 'dtype' in argmin could not be None, but received None"
+        )
+
     var_dtype = convert_np_dtype_to_dtype_(dtype)
     check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
     flatten = False
@@ -287,10 +299,6 @@ def index_select(x, index, axis=0, name=None):
     Returns:
         Tensor: A Tensor with same data type as ``x``.
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
-        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
-
     Examples:
         .. code-block:: python
             
@@ -670,10 +678,6 @@ def masked_select(x, mask, name=None):
 
     Returns: A 1-D Tensor which is the same data type  as ``x``.
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
-        TypeError: ``mask`` must be a Tensor and the data type of ``mask`` must be bool.
-
     Examples:
 
         .. code-block:: python

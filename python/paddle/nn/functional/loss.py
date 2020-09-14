@@ -780,10 +780,10 @@ def kl_div(input, label, reduction='mean', name=None):
             input = np.random.uniform(-10, 10, shape).astype('float32')
             target = np.random.uniform(-10, 10, shape).astype('float32')
 
-            # 'batchmean' reduction, loss shape will be [N]
+            # 'batchmean' reduction, loss shape will be [1]
             pred_loss = F.kl_div(paddle.to_tensor(input),
                                  paddle.to_tensor(target), reduction='batchmean')
-            # shape=[5]
+            # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
             pred_loss = F.kl_div(paddle.to_tensor(input),
@@ -1009,8 +1009,7 @@ def ctc_loss(log_probs,
     loss_out = fluid.layers.squeeze(loss_out, [-1])
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
-        loss_out = paddle.mean(loss_out / paddle.cast(label_lengths,
-                                                      loss_out.dtype))
+        loss_out = paddle.mean(loss_out / label_lengths)
     elif reduction == 'sum':
         loss_out = paddle.sum(loss_out)
     return loss_out
