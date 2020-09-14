@@ -27,7 +27,7 @@ DEFAULT_VERBOSITY = -1
 DEFAULT_CODE_LEVEL = -1
 
 LOG_TO_STDOUT_ENV_NAME = 'TRANSLATOR_LOG_TO_STDOUT'
-DEFAULT_LOG_TO_STDOUT = 0
+DEFAULT_LOG_TO_STDOUT = False
 
 LOG_AllTransformer = 100
 
@@ -65,6 +65,7 @@ class TranslatorLogger(object):
             fmt='%(asctime)s %(name)s %(levelname)s: %(message)s')
         self._verbosity_level = None
         self._transformed_code_level = None
+        self._need_to_echo_log_to_stdout = None
 
     @property
     def logger(self):
@@ -93,6 +94,22 @@ class TranslatorLogger(object):
     def transformed_code_level(self, level):
         self.check_level(level)
         self._transformed_code_level = level
+
+    @property
+    def need_to_echo_log_to_stdout(self):
+        if self._need_to_echo_log_to_stdout is not None:
+            if self._need_to_echo_log_to_stdout:
+                return True
+        else:
+            if str(os.getenv(LOG_TO_STDOUT_ENV_NAME,
+                             DEFAULT_LOG_TO_STDOUT)).upper() == "TRUE":
+                return True
+        return False
+
+    @need_to_echo_log_to_stdout.setter
+    def need_to_echo_log_to_stdout(self, log_to_stdout):
+        assert isinstance(log_to_stdout, (bool, type(None)))
+        self._need_to_echo_log_to_stdout = log_to_stdout
 
     def check_level(self, level):
         if isinstance(level, (six.integer_types, type(None))):
@@ -145,13 +162,8 @@ class TranslatorLogger(object):
             self.logger.info(msg, *args, **kwargs)
             self._output_to_stdout_if_need('INFO: ' + msg, *args)
 
-    def _need_to_echo_log_to_stdout(self):
-        if int(os.getenv(LOG_TO_STDOUT_ENV_NAME, DEFAULT_LOG_TO_STDOUT)):
-            return True
-        return False
-
     def _output_to_stdout_if_need(self, msg, *args):
-        if self._need_to_echo_log_to_stdout():
+        if self.need_to_echo_log_to_stdout:
             msg = self.logger_name + ' ' + msg
             print(msg % args)
 
@@ -159,7 +171,7 @@ class TranslatorLogger(object):
 _TRANSLATOR_LOGGER = TranslatorLogger()
 
 
-def set_verbosity(level=0):
+def set_verbosity(level=0, log_to_stdout=False):
     """
     Sets the verbosity level of log for dygraph to static graph.
     There are two means to set the logging verbosity:
@@ -186,13 +198,14 @@ def set_verbosity(level=0):
             # The verbosity level is now 3, but it has no effect because it has a lower priority than `set_verbosity`
     """
     _TRANSLATOR_LOGGER.verbosity_level = level
+    _TRANSLATOR_LOGGER.need_to_echo_log_to_stdout = log_to_stdout
 
 
 def get_verbosity():
     return _TRANSLATOR_LOGGER.verbosity_level
 
 
-def set_code_level(level=LOG_AllTransformer):
+def set_code_level(level=LOG_AllTransformer, log_to_stdout=False):
     """
     Sets the level to print code from specific level of Ast Transformer.
     There are two means to set the code level:
@@ -219,6 +232,7 @@ def set_code_level(level=LOG_AllTransformer):
 
     """
     _TRANSLATOR_LOGGER.transformed_code_level = level
+    _TRANSLATOR_LOGGER.need_to_echo_log_to_stdout = log_to_stdout
 
 
 def get_code_level():
