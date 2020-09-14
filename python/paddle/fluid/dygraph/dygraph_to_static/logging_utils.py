@@ -26,6 +26,11 @@ CODE_LEVEL_ENV_NAME = 'TRANSLATOR_CODE_LEVEL'
 DEFAULT_VERBOSITY = -1
 DEFAULT_CODE_LEVEL = -1
 
+LOG_TO_STDOUT_ENV_NAME = 'TRANSLATOR_LOG_TO_STDOUT'
+DEFAULT_LOG_TO_STDOUT = 0
+
+LOG_AllTransformer = 100
+
 
 def synchronized(func):
     def wrapper(*args, **kwargs):
@@ -53,8 +58,11 @@ class TranslatorLogger(object):
             return
 
         self._initialized = True
+        self.logger_name = "Dynamic-to-Static"
         self._logger = log_helper.get_logger(
-            __name__, 1, fmt='%(asctime)s-%(levelname)s: %(message)s')
+            self.logger_name,
+            1,
+            fmt='%(asctime)s %(name)s %(levelname)s: %(message)s')
         self._verbosity_level = None
         self._transformed_code_level = None
 
@@ -110,23 +118,42 @@ class TranslatorLogger(object):
 
     def error(self, msg, *args, **kwargs):
         self.logger.error(msg, *args, **kwargs)
+        self._output_to_stdout_if_need('ERROR: ' + msg, *args)
 
     def warn(self, msg, *args, **kwargs):
-        self.logger.warn(msg, *args, **kwargs)
+        self.logger.warning(msg, *args, **kwargs)
+        self._output_to_stdout_if_need('WARNING: ' + msg, *args)
 
     def log(self, level, msg, *args, **kwargs):
         if self.has_verbosity(level):
-            self.logger.log(level, msg, *args, **kwargs)
+            msg_with_level = '(Level {}) {}'.format(level, msg)
+            self.logger.info(msg_with_level, *args, **kwargs)
+            self._output_to_stdout_if_need('INFO: ' + msg_with_level, *args)
 
     def log_transformed_code(self, level, ast_node, transformer_name, *args,
                              **kwargs):
         if self.has_code_level(level):
             source_code = ast_to_source_code(ast_node)
-            header_msg = "After the level {} ast transformer: '{}', the transformed code:\n"\
-                .format(level, transformer_name)
+            if level == LOG_AllTransformer:
+                header_msg = "After the last level ast transformer: '{}', the transformed code:\n" \
+                    .format(transformer_name)
+            else:
+                header_msg = "After the level {} ast transformer: '{}', the transformed code:\n"\
+                    .format(level, transformer_name)
 
             msg = header_msg + source_code
             self.logger.info(msg, *args, **kwargs)
+            self._output_to_stdout_if_need('INFO: ' + msg, *args)
+
+    def _need_to_echo_log_to_stdout(self):
+        if int(os.getenv(LOG_TO_STDOUT_ENV_NAME, DEFAULT_LOG_TO_STDOUT)):
+            return True
+        return False
+
+    def _output_to_stdout_if_need(self, msg, *args):
+        if self._need_to_echo_log_to_stdout():
+            msg = self.logger_name + ' ' + msg
+            print(msg % args)
 
 
 _TRANSLATOR_LOGGER = TranslatorLogger()
@@ -163,9 +190,6 @@ def set_verbosity(level=0):
 
 def get_verbosity():
     return _TRANSLATOR_LOGGER.verbosity_level
-
-
-LOG_AllTransformer = 100
 
 
 def set_code_level(level=LOG_AllTransformer):
