@@ -559,6 +559,14 @@ class TestRaiseError(unittest.TestCase):
         with self.assertRaises(ValueError):
             model = Model(net, inputs, labels)
 
+    def test_input_without_input_spec(self):
+        for dynamic in [True, False]:
+            paddle.disable_static() if dynamic else None
+            net = MyModel(classifier_activation=None)
+            with self.assertRaises(TypeError):
+                model = Model(net)
+            paddle.enable_static()
+
 
 if __name__ == '__main__':
     unittest.main()

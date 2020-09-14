@@ -799,7 +799,8 @@ class Model(object):
             paddle.nn.Layer.
         inputs (InputSpec|list|dict|None): `inputs`, entry points of network,
             could be a InputSpec instance, or lits of InputSpec instances,
-            or dict ({name: InputSpec}), and it couldn't be None.
+            or dict ({name: InputSpec}), or None. For static graph,
+            inputs must be set. For dynamic graph, it could be None.
         labels (InputSpec|list|None): `labels`, entry points of network,
             could be a InputSpec instnace or lits of InputSpec instances,
             or None. For static graph, if labels is required in loss,
@@ -848,9 +849,10 @@ class Model(object):
         self._optimizer = None
         self._test_dataloader = None
 
-        if not isinstance(inputs, (list, dict, Input)):
-            raise TypeError(
-                "'inputs' must be list or dict, and couldn't be None.")
+        if not in_dygraph_mode():
+            if not isinstance(inputs, (list, dict, Input)):
+                raise TypeError(
+                    "'inputs' must be list or dict in static graph mode")
         self._inputs = self._verify_spec(inputs, True)
         self._labels = self._verify_spec(labels)
 
@@ -1647,6 +1649,10 @@ class Model(object):
                               model_only=False):
         """
         Save inference model can be in static or dynamic mode.
+        It should be noted that before using `save_inference_model`, you should
+        run the model, and the shape you saved is as same as the input of its
+        running. `@paddle.jit.to_static` must be added on `forward` function of
+        your layer in dynamic mode now and these will be optimized later.
 
         Args:
             save_dir (str): The directory path to save the inference model.
@@ -1672,11 +1678,14 @@ class Model(object):
 
             return result_list
 
+        # TODO:
+        # 1. Make it Unnecessary to run model before calling `save_inference_model` for users in dygraph.
+        # 2. Save correct shape of input, now the interface stores the shape that the user sent to 
+        #    the inputs of the model in running.
+        # 3. Make it Unnecessary to add `@paddle.jit.to_static` for users in dynamic mode.
         if fluid.in_dygraph_mode():
             with fluid.framework._dygraph_guard(None):
                 layer = self.network
-                layer.forward = paddle.jit.to_static(
-                    layer.forward, input_spec=self._inputs)
 
                 # 1. input check
                 prog_translator = ProgramTranslator()
@@ -1870,7 +1879,18 @@ class Model(object):
     def _verify_spec(self, specs, is_input=False):
         out_specs = []
 
-        if isinstance(specs, dict):
+        if specs is None:
+            # Note(Aurelius84): If not specific specs of `Input`, using argument names of `forward` function
+            # to generate `Input`. But how can we know the actual shape of each input tensor?
+            if is_input:
+                out_specs = [
+                    Input(
+                        name=n, shape=[None])
+                    for n in extract_args(self.network.forward) if n != 'self'
+                ]
+            else:
+                out_specs = to_list(specs)
+        elif isinstance(specs, dict):
             assert is_input == False
             out_specs = [specs[n] \
                 for n in extract_args(self.network.forward) if n != 'self']
