@@ -31,8 +31,8 @@ from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 #  After discuss with Tian Shuo, now use mock only in PY3, and use it in PY2 after CI installs it.
 if six.PY3:
     from unittest import mock
-else:
-    import mock
+# else:
+#     import mock
 
 
 class TestLoggingUtils(unittest.TestCase):
@@ -100,16 +100,17 @@ class TestLoggingUtils(unittest.TestCase):
         log_msg_1 = "test_log_1"
         log_msg_2 = "test_log_2"
 
-        with mock.patch.object(sys, 'stdout', stream):
-            logging_utils.warn(warn_msg)
-            logging_utils.error(error_msg)
-            self.translator_logger.verbosity_level = 1
-            logging_utils.log(1, log_msg_1)
-            logging_utils.log(2, log_msg_2)
+        if six.PY3:
+            with mock.patch.object(sys, 'stdout', stream):
+                logging_utils.warn(warn_msg)
+                logging_utils.error(error_msg)
+                self.translator_logger.verbosity_level = 1
+                logging_utils.log(1, log_msg_1)
+                logging_utils.log(2, log_msg_2)
 
-        result_msg = '\n'.join(
-            [warn_msg, error_msg, "(Level 1) " + log_msg_1, ""])
-        self.assertEqual(result_msg, stream.getvalue())
+            result_msg = '\n'.join(
+                [warn_msg, error_msg, "(Level 1) " + log_msg_1, ""])
+            self.assertEqual(result_msg, stream.getvalue())
 
     def test_log_transformed_code(self):
         source_code = "x = 3"
@@ -120,16 +121,18 @@ class TestLoggingUtils(unittest.TestCase):
         stdout_handler = logging.StreamHandler(stream)
         log.addHandler(stdout_handler)
 
-        with mock.patch.object(sys, 'stdout', stream):
-            paddle.jit.set_code_level(1)
-            logging_utils.log_transformed_code(1, ast_code,
-                                               "BasicApiTransformer")
+        if six.PY3:
+            with mock.patch.object(sys, 'stdout', stream):
+                paddle.jit.set_code_level(1)
+                logging_utils.log_transformed_code(1, ast_code,
+                                                   "BasicApiTransformer")
 
-            paddle.jit.set_code_level()
-            logging_utils.log_transformed_code(logging_utils.LOG_AllTransformer,
-                                               ast_code, "All Transformers")
+                paddle.jit.set_code_level()
+                logging_utils.log_transformed_code(
+                    logging_utils.LOG_AllTransformer, ast_code,
+                    "All Transformers")
 
-        self.assertIn(source_code, stream.getvalue())
+            self.assertIn(source_code, stream.getvalue())
 
 
 if __name__ == '__main__':
