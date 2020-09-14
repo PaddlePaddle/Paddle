@@ -1689,7 +1689,7 @@ class Model(object):
 
                 # 1. input check
                 prog_translator = ProgramTranslator()
-                if not prog_translator.enable_static:
+                if not prog_translator.enable_to_static:
                     raise RuntimeError(
                         "save_inference_model doesn't work when setting ProgramTranslator.enable to False."
                     )

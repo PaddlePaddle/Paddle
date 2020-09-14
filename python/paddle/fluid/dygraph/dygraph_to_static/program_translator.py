@@ -247,7 +247,7 @@ class StaticLayer(object):
         self._function_spec = FunctionSpec(function, input_spec)
         self._program_cache = ProgramCache()
         self._descriptor_cache = weakref.WeakKeyDictionary()
-        # Note: Hold a reference to ProgramTranslator for switching `enable_static`.
+        # Note: Hold a reference to ProgramTranslator for switching `enable_to_static`.
         self._program_trans = ProgramTranslator()
 
     def __get__(self, instance, owner):
@@ -300,11 +300,11 @@ class StaticLayer(object):
         """
 
         # 1. call dygraph function directly if not enable `declarative`
-        if not self._program_trans.enable_static:
+        if not self._program_trans.enable_to_static:
             logging_utils.warn(
                 "The decorator '@paddle.jit.to_static' does NOT work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. If you would like to get static graph output, please call API "
-                "ProgramTranslator.enable_static(True)")
+                "ProgramTranslator.enable(True)")
             return self._call_dygraph_function(*args, **kwargs)
 
         if not in_dygraph_mode():
@@ -729,15 +729,15 @@ class ProgramTranslator(object):
             return
         self._initialized = True
         self._program_cache = ProgramCache()
-        self.enable_static = True
+        self.enable_to_static = True
 
-    def enable(self, enable_static):
+    def enable(self, enable_to_static):
         """
         Enable or disable the converting from imperative to declarative by
         ProgramTranslator globally.
 
         Args:
-            enable_static (bool): True or False to enable or disable declarative.
+            enable_to_static (bool): True or False to enable or disable declarative.
 
         Returns:
             None.
@@ -766,9 +766,9 @@ class ProgramTranslator(object):
                 print(func(x).numpy()) # [[2. 2.]]
 
         """
-        check_type(enable_static, "enable_static", bool,
+        check_type(enable_to_static, "enable_to_static", bool,
                    "ProgramTranslator.enable")
-        self.enable_static = enable_static
+        self.enable_to_static = enable_to_static
 
     def get_output(self, dygraph_func, *args, **kwargs):
         """
@@ -809,7 +809,7 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
-        if not self.enable_static:
+        if not self.enable_to_static:
             warnings.warn(
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. "
@@ -876,7 +876,7 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
-        if not self.enable_static:
+        if not self.enable_to_static:
             warnings.warn(
                 "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable to False. We will "
                 "just return dygraph output. Please call ProgramTranslator.enable(True) if you would like to get static output."
@@ -930,7 +930,7 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
-        if not self.enable_static:
+        if not self.enable_to_static:
             warnings.warn(
                 "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable to False."
                 "We will just return dygraph output. "

@@ -118,7 +118,7 @@ def _dygraph_to_static_func_(dygraph_func):
     # TODO: remove this decorator after we finalize training API
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
-        if in_dygraph_mode() or not program_translator.enable_static:
+        if in_dygraph_mode() or not program_translator.enable_to_static:
             warnings.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
                 "dygraph mode or set ProgramTranslator.enable to False. "
@@ -775,7 +775,7 @@ def save(layer, model_path, input_spec=None, config=None):
 
     # 1. input check
     prog_translator = ProgramTranslator()
-    if not prog_translator.enable_static:
+    if not prog_translator.enable_to_static:
         raise RuntimeError(
             "The paddle.jit.save doesn't work when setting ProgramTranslator.enable to False."
         )
