@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the regularizer functions 
-# __all__ = ['L1Decay',
-#            'L1DecayRegularizer',
-#            'L2Decay',
-#            'L2DecayRegularizer']
+__all__ = ['L1Decay', 'L2Decay']
+
+from fluid.regularizer import L1Decay, L2Decay
