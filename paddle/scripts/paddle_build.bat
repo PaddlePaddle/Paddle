@@ -53,9 +53,9 @@ if %ERRORLEVEL% NEQ 0 (
 
 rem ------pre install clcache and init config----------
 pip install clcache
+set USE_CLCACHE=1
 set CLCACHE_HARDLINK=1
 set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
-set USE_CLCACHE=1
 clcache.exe -M 21474836480
 
 rem ------initialize common variable------
