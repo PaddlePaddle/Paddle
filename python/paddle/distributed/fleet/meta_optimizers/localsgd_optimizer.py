@@ -290,9 +290,9 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
         minimized = self.inner_opt.minimize(
             loss, startup_program=startup_program)
 
-        init_k_steps = self.user_defined_strategy.localsgd_configs[
+        init_k_steps = self.user_defined_strategy.adaptive_localsgd_configs[
             'init_k_steps']
-        begin_step_value = self.user_defined_strategy.localsgd_configs[
+        begin_step_value = self.user_defined_strategy.adaptive_localsgd_configs[
             'begin_step']
 
         if startup_program is None:
