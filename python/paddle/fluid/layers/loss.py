@@ -541,7 +541,7 @@ def warpctc(input,
          (not including the blank label). When it is a 3-D Tensor, its shape 
          is `[max_logit_length, batch_size, num_classes + 1]`,
          where `max_logit_length` is the longest length of
-         input logit sequence. The data type must be float32.
+         input logit sequence. The data type should be float32 or float64.
        label (Variable): The ground truth of variable-length sequence,
          which must be a 2-D Tensor with LoD information or a 3-D Tensor without
          LoD information, needs to be consistent with the coressponding input. 
@@ -638,7 +638,7 @@ def warpctc(input,
             print(output)
     """
     helper = LayerHelper('warpctc', **locals())
-    check_variable_and_dtype(input, 'input', ['float32'], "warpctc")
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], "warpctc")
     check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
     this_inputs = {'Logits': [input], 'Label': [label]}
     if input_length is not None and label_length is not None:

@@ -17,8 +17,8 @@ INCLUDE(ExternalProject)
 SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
-set(WARPCTC_REPOSITORY  https://github.com/baidu-research/warp-ctc.git)
-set(WARPCTC_TAG         bc29dcfff07ced1c7a19a4ecee48e5ad583cef8e)
+set(WARPCTC_REPOSITORY  https://github.com/lfchener/warp-ctc.git)
+set(WARPCTC_TAG         2b8053b451b3956c5dd10850de8c920a471c0d5e)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
