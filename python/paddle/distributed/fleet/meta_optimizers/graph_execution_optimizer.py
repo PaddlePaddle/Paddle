@@ -48,7 +48,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                  callbacks=None):
         pass
 
-    # should fix the variable 
+    # should fix the variable
     def _setup_nccl_op(self, startup_program, main_program, build_strategy):
         trainer_endpoints = self.role_maker.get_trainer_endpoints()
         trainers = trainer_endpoints
@@ -94,31 +94,31 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         dist_strategy = self.user_defined_strategy
         local_build_strategy = paddle.fluid.BuildStrategy()
         local_build_strategy.enable_sequential_execution = \
-                    dist_strategy.build_strategy.enable_sequential_execution
+            dist_strategy.build_strategy.enable_sequential_execution
         local_build_strategy.fuse_elewise_add_act_ops = \
-                    dist_strategy.build_strategy.fuse_elewise_add_act_ops
+            dist_strategy.build_strategy.fuse_elewise_add_act_ops
         local_build_strategy.fuse_bn_act_ops = \
-                    dist_strategy.build_strategy.fuse_bn_act_ops
+            dist_strategy.build_strategy.fuse_bn_act_ops
         local_build_strategy.enable_auto_fusion = \
-                    dist_strategy.build_strategy.enable_auto_fusion
+            dist_strategy.build_strategy.enable_auto_fusion
         local_build_strategy.fuse_relu_depthwise_conv = \
-                    dist_strategy.build_strategy.fuse_relu_depthwise_conv
+            dist_strategy.build_strategy.fuse_relu_depthwise_conv
         local_build_strategy.fuse_broadcast_ops = \
-                    dist_strategy.build_strategy.fuse_broadcast_ops
+            dist_strategy.build_strategy.fuse_broadcast_ops
         local_build_strategy.fuse_all_optimizer_ops = \
-                    dist_strategy.build_strategy.fuse_all_optimizer_ops
+            dist_strategy.build_strategy.fuse_all_optimizer_ops
         local_build_strategy.enable_inplace = \
-                    dist_strategy.build_strategy.enable_inplace
+            dist_strategy.build_strategy.enable_inplace
         local_build_strategy.use_hierarchical_allreduce = \
-                    dist_strategy.use_hierarchical_allreduce
+            dist_strategy.use_hierarchical_allreduce
         local_build_strategy.hierarchical_allreduce_inter_nranks = \
-                    dist_strategy.hierarchical_allreduce_inter_nranks
+            dist_strategy.hierarchical_allreduce_inter_nranks
         local_build_strategy.sync_batch_norm = \
-                    dist_strategy.sync_batch_norm
+            dist_strategy.sync_batch_norm
         local_build_strategy.fuse_all_reduce_ops = \
-                    dist_strategy.fuse_all_reduce_ops
+            dist_strategy.fuse_all_reduce_ops
         local_build_strategy.nccl_comm_num = \
-                    dist_strategy.nccl_comm_num
+            dist_strategy.nccl_comm_num
 
         if self.user_defined_strategy.recompute == True:
             logging.warn(
@@ -190,7 +190,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         # TODO(guru4elephant): should close all PE related flags here
         return
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context):
         # by default, graph execution strategy is enabled
         return
 

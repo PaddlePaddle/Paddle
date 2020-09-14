@@ -1756,6 +1756,12 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     op_path_dict = dict()
     op_path = _find_op_path_(block, targets, inputs, block_no_grad_set,
                              op_path_dict)
+
+    # find no grad var by op_path
+    no_grad_vars = _find_no_grad_vars(block, op_path, targets,
+                                      block_no_grad_set)
+    block_no_grad_set.update(no_grad_vars)
+
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
     grad_to_var = dict()
     grad_info_map = dict()

@@ -241,6 +241,26 @@ class TileGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+template <typename T>
+class TileDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("tile");
+    op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
+    op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    if (this->HasInput("repeat_times_tensor")) {
+      op->SetInput("repeat_times_tensor", this->Input("repeat_times_tensor"));
+    }
+    if (this->HasInput("RepeatTimes")) {
+      op->SetInput("RepeatTimes", this->Input("RepeatTimes"));
+    }
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(TileGradNoNeedBufVarsInferer, "X");
 
 }  // namespace operators
@@ -251,6 +271,8 @@ REGISTER_OPERATOR(tile, ops::TileOp, ops::TileOpMaker,
                   ops::TileGradOpMaker<paddle::framework::OpDesc>,
                   ops::TileGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(tile_grad, ops::TileGradOp,
+                  ops::TileDoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::TileDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::TileGradNoNeedBufVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     tile, ops::TileKernel<paddle::platform::CPUDeviceContext, float>,
