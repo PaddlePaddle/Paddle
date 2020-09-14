@@ -134,7 +134,7 @@ void ListenAndServOp::RunSyncLoop(
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(num_blocks, 2,
-                    paddle::error::PreconditionNotMet(
+                    platform::errors::PreconditionNotMet(
                         "Invalid number of blocks in server program. Expected "
                         "equal or greater than 2. Recieved %zu",
                         num_blocks));
@@ -221,7 +221,7 @@ void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
       VLOG(3) << "reset sparse var: " << varname;
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     } else {
-      PADDLE_THROW(paddle::errors::PreconditionNotMet(
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
           "The type of sparse var should be SelectedRows"));
     }
   }
@@ -239,7 +239,7 @@ void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
         math::set_constant(*dev_ctx, var->GetMutable<framework::Tensor>(),
                            static_cast<float>(0));
       } else {
-        PADDLE_THROW(paddle::errors::PreconditionNotMet(
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
             "The type of dense var should be in [LoDTensor, Tensor]"));
       }
     }
@@ -260,14 +260,14 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     split(grad_and_id, ':', &pieces);
     VLOG(3) << "after split, key = " << pieces[0] << ", id=" << pieces[1];
     PADDLE_ENFORCE_EQ(pieces.size(), 2,
-                      paddle::errors::PreconditionNotMet(
+                      platform::errors::PreconditionNotMet(
                           "Invalid format of grad_and_id argument. "
                           "Expected \"grad:block_id\". Recieved %s",
                           grad_and_id.c_str()));
     PADDLE_ENFORCE_EQ(out_map->count(pieces[0]), 0,
-                      paddle::errors::AlreadyExists(
+                      platform::errors::AlreadyExists(
                           "The gradient name %s has already existed in out_map",
-                          piece[0].c_str()));
+                          pieces[0].c_str()));
 
     int block_id = std::stoi(pieces[1]);
     (*out_map)[pieces[0]] = block_id;
@@ -279,7 +279,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
-                    paddle::error::PreconditionNotMet(
+                    platform::errors::PreconditionNotMet(
                         "Invalid number of blocks in server program. Expected "
                         "equal or greater than 2. Recieved %zu",
                         num_blocks));
@@ -357,7 +357,7 @@ void ListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
                var->IsType<framework::Tensor>()) {
       dense_vars_.push_back(varname);
     } else {
-      PADDLE_THROW(paddle::errors::PreconditionNotMet(
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
           "The type of received var should be in [SelectedRows, LoDTensor, "
           "Tensor]."));
     }
@@ -467,7 +467,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
             << ", id=" << pieces[1];
     PADDLE_ENFORCE_EQ(
         pieces.size(), 2,
-        paddle::errors::PreconditionNotMet(
+        platform::errors::PreconditionNotMet(
             "Invalid format of prefetch_var_name_and_id argument. "
             "Expected \"xxx:xxx\". Recieved %s",
             prefetch_var_name_and_id.c_str()));
@@ -498,7 +498,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     split(sparse_grad_name_and_param_name, ':', &pieces);
     PADDLE_ENFORCE_EQ(
         pieces.size(), 2,
-        paddle::errors::PreconditionNotMet(
+        platform::errors::PreconditionNotMet(
             "Invalid format of sparse_grad_name_and_param_name argument. "
             "Expected \"xxx:xxx\". Recieved %s",
             sparse_grad_name_and_param_name.c_str()));
