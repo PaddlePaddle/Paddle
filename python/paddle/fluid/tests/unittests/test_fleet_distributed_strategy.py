@@ -81,9 +81,10 @@ class TestStrategyConfig(unittest.TestCase):
 
     def test_localsgd_configs(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
-        configs = {"k_steps": 4}
+        configs = {"k_steps": 4, "begin_step": 120}
         strategy.localsgd_configs = configs
         self.assertEqual(strategy.localsgd_configs["k_steps"], 4)
+        self.assertEqual(strategy.localsgd_configs["begin_step"], 120)
 
     def test_dgc(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -230,7 +231,7 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.a_sync = True
         strategy.localsgd = True
         strategy.dgc = True
-        localsgd_configs = {"k_steps": 5}
+        localsgd_configs = {"k_steps": 5, "begin_step": 1}
         strategy.localsgd_configs = localsgd_configs
         build_strategy = paddle.fluid.BuildStrategy()
         build_strategy.enable_sequential_execution = True

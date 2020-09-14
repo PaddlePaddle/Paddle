@@ -36,7 +36,10 @@ message AMPConfig {
   repeated string custom_black_varnames = 9;
 }
 
-message LocalSGDConfig { optional int32 k_steps = 1 [ default = 4 ]; }
+message LocalSGDConfig {
+  optional int32 k_steps = 1 [ default = 1 ];
+  optional int32 begin_step = 2 [ default = 1 ];
+}
 
 message GradientMergeConfig {
   optional int32 k_steps = 1 [ default = 1 ];

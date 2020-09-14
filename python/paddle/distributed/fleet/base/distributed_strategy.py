@@ -707,11 +707,7 @@ class DistributedStrategy(object):
 
         **Notes**:
             k_steps(int) The local steps for training before parameter synchronization. Default 1.
-
-            If strategy.auto is set True, the local steps will be calculated automatically during training.
-            The algorithm is referenced in this paper: 
-            `Adaptive Communication Strategies to Achieve the Best Error-Runtime Trade-off in Local-Update SGD <https://arxiv.org/pdf/1810.08313.pdf>`_.
-            In this case, k_steps indicates the first local steps which is suggested setting to 1.
+            begin_step(int) The step of begining training by localsgd. Default 1.
 
         Examples:
           .. code-block:: python
@@ -719,7 +715,8 @@ class DistributedStrategy(object):
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.localsgd = True
-            strategy.localsgd_configs = {"k_steps": 4}
+            strategy.localsgd_configs = {"k_steps": 4,
+                                         "begin_step": 30}
         """
 
         return get_msg_dict(self.strategy.localsgd_configs)
