@@ -22,11 +22,9 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 
 class TestFleetLambMetaOptimizer(unittest.TestCase):
     def setUp(self):
-        os.environ["POD_IP"] = "127.0.0.1"
-        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
-        os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-                       "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ["PADDLE_TRAINER_ID"] = "1"
+        os.environ[
+            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.1:36002"
 
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
@@ -97,12 +95,53 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
-        ops_with_bias = [
+        ops_without_wd = [
             op for op in avg_cost.block.ops
             if op.type == 'lamb' and op.attr('op_role_var')[0].endswith('.b_0')
         ]
-        for op in ops_with_bias:
+        for op in ops_without_wd:
             self.assertEqual(op.attr('weight_decay'), 0)
+
+    def test_lamb_apply_with_amp(self):
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        fleet.init(role)
+        input_x = paddle.fluid.layers.data(
+            name="x", shape=[32], dtype='float32')
+        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
+
+        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+        fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+        prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+        cost = paddle.fluid.layers.cross_entropy(
+            input=prediction, label=input_y)
+        avg_cost = paddle.fluid.layers.mean(x=cost)
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.amp = True
+        strategy.amp_configs = {
+            "init_loss_scaling": 32768,
+            "decr_every_n_nan_or_inf": 2,
+            "incr_every_n_steps": 1000,
+            "incr_ratio": 2.0,
+            "use_dynamic_loss_scaling": True,
+            "decr_ratio": 0.5,
+            "custom_white_list": ['softmax'],
+            "custom_black_list": ['tanh'],
+        }
+        strategy.lamb = True
+        strategy.lamb_configs = {
+            'lamb_weight_decay': 0.01,
+            'exclude_from_weight_decay': [],
+        }
+
+        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer.minimize(avg_cost)
+
+        ops = [op.type for op in avg_cost.block.ops]
+        self.assertIn('lamb', ops)
+        self.assertIn('cast', ops)
+        self.assertIn('isfinite', ops)
 
 
 if __name__ == "__main__":

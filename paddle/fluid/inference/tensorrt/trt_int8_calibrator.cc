@@ -83,9 +83,8 @@ bool TRTInt8Calibrator::setBatch(
           engine_name_, it.first));
     }
     const auto& d = dataptr->second;
-    PADDLE_ENFORCE(
-        cudaMemcpy(d.first, it.second, d.second, cudaMemcpyDeviceToDevice),
-        "Fail to cudaMemcpy %s for %s", engine_name_, it.first);
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(d.first, it.second, d.second, cudaMemcpyDeviceToDevice));
   }
 
   data_is_set_ = true;
