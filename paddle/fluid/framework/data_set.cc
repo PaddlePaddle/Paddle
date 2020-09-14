@@ -365,7 +365,8 @@ void DatasetImpl<T>::TDMDump(std::string name, const uint64_t table_id,
 // do sample
 template <typename T>
 void DatasetImpl<T>::TDMSample(const uint16_t sample_slot,
-                               const uint64_t type_slot) {
+                               const uint64_t type_slot,
+                               const uint64_t start_h) {
   VLOG(0) << "DatasetImpl<T>::Sample() begin";
   platform::Timer timeline;
   timeline.Start();
@@ -379,6 +380,7 @@ void DatasetImpl<T>::TDMSample(const uint16_t sample_slot,
       if (!multi_output_channel_[i] || multi_output_channel_[i]->Size() == 0) {
         continue;
       }
+      multi_output_channel_[i]->Close();
       multi_output_channel_[i]->ReadAll(data[i]);
     }
   } else {
@@ -388,17 +390,23 @@ void DatasetImpl<T>::TDMSample(const uint16_t sample_slot,
     input_channel_->ReadAll(data[data.size() - 1]);
   }
 
+  VLOG(1) << "finish read src data, data.size = " << data.size()
+          << "; details: ";
   auto tree_ptr = TreeWrapper::GetInstance();
   auto fleet_ptr = FleetWrapper::GetInstance();
   for (auto i = 0; i < data.size(); i++) {
+    VLOG(1) << "data[" << i << "]: size = " << data[i].size();
     std::vector<T> tmp_results;
-    tree_ptr->sample(sample_slot, type_slot, data[i], &tmp_results);
+    tree_ptr->sample(sample_slot, type_slot, &data[i], &tmp_results, start_h);
+    VLOG(1) << "sample_results(" << sample_slot << ", " << type_slot
+            << ") = " << tmp_results.size();
     sample_results.push_back(tmp_results);
   }
 
   auto output_channel_num = multi_output_channel_.size();
   for (auto i = 0; i < sample_results.size(); i++) {
     auto output_idx = fleet_ptr->LocalRandomEngine()() % output_channel_num;
+    multi_output_channel_[output_idx]->Open();
     multi_output_channel_[output_idx]->Write(std::move(sample_results[i]));
   }
 

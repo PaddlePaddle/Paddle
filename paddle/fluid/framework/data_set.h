@@ -47,8 +47,8 @@ class Dataset {
   virtual ~Dataset() {}
   virtual void InitTDMTree(
       const std::vector<std::pair<std::string, std::string>> config) = 0;
-  virtual void TDMSample(const uint16_t sample_slot,
-                         const uint64_t type_slot) = 0;
+  virtual void TDMSample(const uint16_t sample_slot, const uint64_t type_slot,
+                         const uint64_t start_h) = 0;
   virtual void TDMDump(std::string name, const uint64_t table_id,
                        int fea_value_dim, const std::string tree_path) = 0;
   // set file list
@@ -168,7 +168,8 @@ class DatasetImpl : public Dataset {
 
   virtual void InitTDMTree(
       const std::vector<std::pair<std::string, std::string>> config);
-  virtual void TDMSample(const uint16_t sample_slot, const uint64_t type_slot);
+  virtual void TDMSample(const uint16_t sample_slot, const uint64_t type_slot,
+                         const uint64_t start_h);
   virtual void TDMDump(std::string name, const uint64_t table_id,
                        int fea_value_dim, const std::string tree_path);
 

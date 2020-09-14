@@ -103,15 +103,14 @@ class TreeWrapper {
   }
 
   void sample(const uint16_t sample_slot, const uint64_t type_slot,
-              const std::vector<Record>& src_datas,
-              std::vector<Record>* sample_results) {
+              std::vector<Record>* src_datas,
+              std::vector<Record>* sample_results, const uint64_t start_h) {
     sample_results->clear();
-    auto debug_idx = 0;
-    for (auto& data : src_datas) {
-      if (debug_idx == 0) {
-        VLOG(0) << "src record";
-        data.Print();
-      }
+    for (auto& data : *src_datas) {
+      VLOG(1) << "src record";
+      data.Print();
+      uint64_t start_idx = sample_results->size();
+      VLOG(1) << "before sample, sample_results.size = " << start_idx;
       uint64_t sample_feasign_idx = -1, type_feasign_idx = -1;
       for (uint64_t i = 0; i < data.uint64_feasigns_.size(); i++) {
         if (data.uint64_feasigns_[i].slot() == sample_slot) {
@@ -121,6 +120,8 @@ class TreeWrapper {
           type_feasign_idx = i;
         }
       }
+      VLOG(1) << "sample_feasign_idx: " << sample_feasign_idx
+              << "; type_feasign_idx: " << type_feasign_idx;
       if (sample_feasign_idx > 0) {
         std::vector<std::pair<uint64_t, uint32_t>> trace_ids;
         for (std::unordered_map<std::string, TreePtr>::iterator ite =
@@ -139,18 +140,20 @@ class TreeWrapper {
           Record instance(data);
           instance.uint64_feasigns_[sample_feasign_idx].sign().uint64_feasign_ =
               trace_ids[i].first;
-          if (type_feasign_idx > 0)
-            instance.uint64_feasigns_[type_feasign_idx]
-                .sign()
-                .uint64_feasign_ += trace_ids[i].second * 100;
-          if (debug_idx == 0) {
-            VLOG(0) << "sample results:" << i;
-            instance.Print();
-          }
+          if (type_feasign_idx > 0 && trace_ids[i].second > start_h)
+            instance.uint64_feasigns_[type_feasign_idx].sign().uint64_feasign_ =
+                (instance.uint64_feasigns_[type_feasign_idx]
+                     .sign()
+                     .uint64_feasign_ +
+                 1) *
+                    100 +
+                trace_ids[i].second;
           sample_results->push_back(instance);
         }
       }
-      debug_idx += 1;
+      for (auto i = start_idx; i < sample_results->size(); i++) {
+        sample_results->at(i).Print();
+      }
     }
     return;
   }

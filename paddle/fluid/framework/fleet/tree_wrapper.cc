@@ -12,20 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/tree_wrapper.h"
+#include "paddle/fluid/framework/io/fs.h"
 
 namespace paddle {
 namespace framework {
 
-int Tree::load(std::string path, std::string tree_pipe_command_) {
+std::shared_ptr<TreeWrapper> TreeWrapper::s_instance_(nullptr);
+
+int Tree::load(std::string path) {
   uint64_t linenum = 0;
   size_t idx = 0;
   std::vector<std::string> lines;
@@ -33,10 +38,10 @@ int Tree::load(std::string path, std::string tree_pipe_command_) {
   std::vector<std::string> items;
 
   int err_no;
-  std::shared_ptr<FILE> fp_ = fs_open_read(path, &err_no, tree_pipe_command_);
+  std::shared_ptr<FILE> fp_ = fs_open_read(path, &err_no, "");
   string::LineFileReader reader;
   while (reader.getline(&*(fp_.get()))) {
-    line = std::string(reader.get());
+    auto line = std::string(reader.get());
     strs.clear();
     boost::split(strs, line, boost::is_any_of("\t"));
     if (0 == linenum) {
@@ -132,15 +137,20 @@ int Tree::dump_tree(const uint64_t table_id, int fea_value_dim,
   std::shared_ptr<FILE> fp =
       paddle::framework::fs_open(tree_path, "w", &ret, "");
 
-  std::vector<uint64_t> fea_keys, std::vector<float *> pull_result_ptr;
-
+  std::vector<uint64_t> fea_keys;
+  std::vector<float*> pull_result_ptr;
   fea_keys.reserve(_total_node_num);
   pull_result_ptr.reserve(_total_node_num);
+
   for (size_t i = 0; i != _total_node_num; ++i) {
     _nodes[i].embedding.resize(fea_value_dim);
-    fea_key.push_back(_nodes[i].id);
+    fea_keys.push_back(_nodes[i].id);
     pull_result_ptr.push_back(_nodes[i].embedding.data());
   }
+
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse(
+      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size());
 
   std::string first_line = boost::lexical_cast<std::string>(_total_node_num) +
                            "\t" +
@@ -183,7 +193,7 @@ int Tree::dump_tree(const uint64_t table_id, int fea_value_dim,
 
 bool Tree::trace_back(uint64_t id,
                       std::vector<std::pair<uint64_t, uint32_t>>* ids) {
-  ids.clear();
+  ids->clear();
   std::unordered_map<uint64_t, Node*>::iterator find_it =
       _leaf_node_map.find(id);
   if (find_it == _leaf_node_map.end()) {

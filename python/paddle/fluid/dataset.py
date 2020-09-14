@@ -611,8 +611,8 @@ class InMemoryDataset(DatasetBase):
     def init_tdm_tree(self, configs):
         self.dataset.init_tdm_tree(configs)
 
-    def tdm_sample(self, sample_slot, type_slot):
-        self.dataset.tdm_sample(sample_slot, type_slot)
+    def tdm_sample(self, sample_slot, type_slot, start_h):
+        self.dataset.tdm_sample(sample_slot, type_slot, start_h)
 
     def tdm_dump(self, name, table_id, fea_value_dim, tree_path):
         self.dataset.tdm_dump(name, table_id, fea_value_dim, tree_path)
