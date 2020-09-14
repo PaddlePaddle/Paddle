@@ -17,7 +17,7 @@ from __future__ import print_function
 from .. import core
 from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
 from ..layers.layer_function_generator import OpProtoHolder
-from . import to_variable, no_grad
+from . import no_grad
 
 import numpy as np
 import six
@@ -52,19 +52,14 @@ def monkey_patch_math_varbase():
 
     def astype(self, dtype):
         """
-        **Notes**:
-            **The variable must be a** :ref:`api_fluid_Tensor`
 
-        Cast a variable to a specified data type.
+        Cast a Tensor to a specified data type.
 
         Args:
-
-            self(Variable): The source variable
-
-            dtype: The target data type
+            dtype: The target data type.
 
         Returns:
-            Variable: Variable with new dtype
+            Tensor: a new Tensor with target dtype
 
         Examples:
             In Static Graph Mode:
@@ -84,15 +79,14 @@ def monkey_patch_math_varbase():
 
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
                 import numpy as np
 
                 x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    original_variable = fluid.dygraph.to_variable(x)
-                    print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))
-                    new_variable = original_variable.astype('int64')
-                    print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
+                original_tensor = paddle.to_tensor(x)
+                print("original tensor's dtype is: {}, numpy dtype is {}".format(original_tensor.dtype, original_tensor.numpy().dtype))
+                new_tensor = original_tensor.astype('int64')
+                print("new tensor's dtype is: {}, numpy dtype is {}".format(new_tensor.dtype, new_tensor.numpy().dtype))
 
         """
         if not isinstance(dtype, core.VarDesc.VarType):
