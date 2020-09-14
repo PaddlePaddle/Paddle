@@ -53,9 +53,13 @@ if %ERRORLEVEL% NEQ 0 (
 
 rem ------pre install clcache and init config----------
 pip install clcache
+:: set USE_CLCACHE to enable clcache
 set USE_CLCACHE=1
+:: In some scenarios, CLCACHE_HARDLINK can save one file copy.
 set CLCACHE_HARDLINK=1
+:: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
 set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
+:: set maximum cache size to 20G
 clcache.exe -M 21474836480
 
 rem ------initialize common variable------
