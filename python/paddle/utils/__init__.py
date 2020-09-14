@@ -16,7 +16,7 @@ from .profiler import ProfilerOptions
 from .profiler import Profiler
 from .profiler import get_profiler
 from .deprecated import deprecated
-from .laze_import import try_import
+from .lazy_import import try_import
 
 from . import download
 
