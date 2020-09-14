@@ -11,13 +11,16 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/elementwise/elementwise_floordiv_op.h"
-#include "paddle/fluid/platform/float16.h"
+
+#include "paddle/fluid/operators/empty_op.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    elementwise_floordiv,
-    ops::ElementwiseFloorDivKernel<plat::CUDADeviceContext, int>,
-    ops::ElementwiseFloorDivKernel<plat::CUDADeviceContext, int64_t>);
+    empty, ops::EmptyKernel<plat::CUDADeviceContext, bool>,
+    ops::EmptyKernel<plat::CUDADeviceContext, int>,
+    ops::EmptyKernel<plat::CUDADeviceContext, int64_t>,
+    ops::EmptyKernel<plat::CUDADeviceContext, float>,
+    ops::EmptyKernel<plat::CUDADeviceContext, double>,
+    ops::EmptyKernel<plat::CUDADeviceContext, plat::float16>);
