@@ -126,8 +126,6 @@ class Gloo(object):
             rank, nodes = self._get_rank_nodes(Role.WORKER)
             gloo = init(rank, nodes, "WORKER")
             self._worker_comm = gloo
-            print("rank: {}, nodes: {}, worker: {}".format(rank, nodes,
-                                                           self._worker_comm))
         else:
             rank, nodes = self._get_rank_nodes(Role.SERVER)
             gloo = init(rank, nodes, "SERVER")
@@ -788,8 +786,14 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         else:
             raise ValueError("comming soon")
 
-        print("Gloo init with hdfs: need_init_all: {}, args: {}, prefix: {}".
-              format(need_init_all, kwargs, prefix))
+        if rendezvous_type == Gloo.RENDEZVOUS.HDFS:
+            type = "HDFS"
+        elif rendezvous_type == Gloo.RENDEZVOUS.HTTP:
+            type = "HTTP"
+        else:
+            type = "ERR"
+        print("Gloo init with {}: need_init_all: {}, args: {}".format(
+            type, need_init_all, kwargs))
 
         self._gloo.init(
             rendezvous=rendezvous_type,
