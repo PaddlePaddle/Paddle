@@ -42,9 +42,9 @@ class TestRoleMakerBase(unittest.TestCase):
         self.assertTrue(len(pserver_endpoints) == 0)
 
         print(role.to_string())
-        self.assertTrue(role._all_gather(role._node_type_comm, 1) is None)
-        self.assertTrue(role._all_reduce(role._node_type_comm, 1) is None)
-        role._barrier(role._node_type_comm)
+        self.assertTrue(role._all_gather(1, "worker") is None)
+        self.assertTrue(role._all_reduce(1, "sum", "worker") is None)
+        role._barrier("worker")
 
 
 class TestCloudRoleMaker(unittest.TestCase):
@@ -74,6 +74,7 @@ class TestCloudRoleMaker(unittest.TestCase):
 
         ro = role_maker.PaddleCloudRoleMaker(
             is_collective=False, init_gloo=False)
+
         self.assertTrue(ro.is_worker())
         self.assertFalse(ro.is_server())
         self.assertEqual(ro.worker_num(), 2)
@@ -108,8 +109,9 @@ class TestCloudRoleMaker(unittest.TestCase):
         self.assertEqual(ro.server_num(), 2)
         pserver_endpoints = ro.get_pserver_endpoints()
         self.assertEqual(pserver_endpoints[0], '127.0.0.1:36001')
-        self.assertTrue(ro._all_gather(ro._all_comm, 1) is None)
-        self.assertTrue(ro._all_reduce(ro._all_comm, 1) is None)
+
+        self.assertEqual(ro._all_gather(1, "worker"), 1)
+        self.assertEqual(ro._all_reduce(1, "sum", "worker"), 1)
 
     def test_traing_role(self):
         """Test training role."""

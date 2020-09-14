@@ -506,7 +506,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def _barrier(self, comm_world):
         self._gloo.barrier(comm_world)
 
-    def _all_gather(self, input, comm_world):
+    def _all_gather(self, input, comm_world="worker"):
         return self._gloo.all_gather(input, comm_world)
 
     def _all_reduce(self, input, mode="sum", comm_world="worker"):
