@@ -63,32 +63,16 @@ class UtilBase(object):
         if not self.role_maker._role_is_generated:
             self.role_maker.generate_role()
 
-        _comm_world = None
-        comm_world_upper = comm_world.upper()
-        if comm_world_upper == "WORKER":
-            if not self.role_maker.is_worker():
-                print(
-                    "warning: current role is not worker in collective_func(comm_world=\"worker\")"
-                )
-            _comm_world = self.role_maker._node_type_comm
-        elif comm_world_upper == "SERVER":
-            if not self.role_maker.is_server():
-                print(
-                    "warning: current role is not server in collective_func(comm_world=\"server\")"
-                )
-            _comm_world = self.role_maker._node_type_comm
-        elif comm_world_upper == "ALL":
-            _comm_world = self.role_maker._all_comm
-        else:
+        if comm_world not in ["worker", "server", "all"]:
             raise ValueError(
                 "not support comm_world, please choose one from [worker, server, all]"
             )
 
-        return _comm_world
+        return comm_world
 
     def all_reduce(self, input, mode, comm_world="worker"):
         _comm_world = self.__check_comm_world(comm_world)
-        return self.role_maker._all_reduce(_comm_world, input, mode)
+        return self.role_maker._all_reduce(input, mode, _comm_world)
 
     def barrier(self, comm_world="worker"):
         _comm_world = self.__check_comm_world(comm_world)
@@ -96,7 +80,7 @@ class UtilBase(object):
 
     def all_gather(self, input, comm_world="worker"):
         _comm_world = self.__check_comm_world(comm_world)
-        return self.role_maker._all_gather(_comm_world, input)
+        return self.role_maker._all_gather(input, _comm_world)
 
     def broadcast(self):
         pass

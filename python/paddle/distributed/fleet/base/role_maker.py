@@ -80,6 +80,7 @@ class Gloo(object):
         self._server_num = server_num
         self._need_init_all = need_init_all
         self._iface = self.__get_default_iface()
+        self._prefix = kwargs.get("store.prefix", "")
 
         if self._rendezvous == Gloo.RENDEZVOUS.HDFS:
             dfs_name = kwargs.get("dfs.name", "")
@@ -89,7 +90,7 @@ class Gloo(object):
             if not dfs_name or not dfs_ugi or not dfs_path:
                 raise ValueError(self._err_type)
 
-            self._init_dfs(dfs_name, dfs_ugi, dfs_path)
+            self._init_dfs(dfs_name, dfs_ugi, dfs_path, self._prefix)
         elif self._rendezvous == Gloo.RENDEZVOUS.FILE:
             self._init_fs(**kwargs)
         elif self._rendezvous == Gloo.RENDEZVOUS.HTTP:
@@ -99,19 +100,19 @@ class Gloo(object):
             if not ip or not port:
                 raise ValueError(self._err_type)
 
-            self._init_http(ip, port)
+            self._init_http(ip, port, self._prefix)
         else:
             raise ValueError(self._err_type)
 
     def _init_fs(self, **kwargs):
         raise ValueError("comming soon")
 
-    def _init_dfs(self, dfs_name, dfs_ugi, dfs_path):
+    def _init_dfs(self, dfs_name, dfs_ugi, dfs_path, prefix):
         def init(rank, nodes, role):
             gloo = fluid.core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
-            gloo.set_prefix("")
+            gloo.set_prefix(prefix)
             gloo.set_iface(self._iface)
             gloo.set_timeout_seconds(self._init_timeout_seconds,
                                      self._run_timeout_seconds)
@@ -132,7 +133,7 @@ class Gloo(object):
             gloo = init(rank, nodes, Role.ALL)
             self._nodes_comm = gloo
 
-    def _init_http(self, ip, port):
+    def _init_http(self, ip, port, prefix):
         def __start_kv_server(http_server_d, size_d):
             from paddle.distributed.fleet.utils import KVServer
             http_server = KVServer(port, size_d)
@@ -163,7 +164,7 @@ class Gloo(object):
             gloo = fluid.core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
-            gloo.set_prefix("")
+            gloo.set_prefix(prefix)
             gloo.set_iface(self._iface)
             gloo.set_timeout_seconds(self._init_timeout_seconds,
                                      self._run_timeout_seconds)
@@ -755,6 +756,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
         # PADDLE_GLOO_RENDEZVOUS 1: HDFS 2: FILE 3: HTTP
         rendezvous_type = int(os.getenv("PADDLE_GLOO_RENDEZVOUS", "0"))
+        prefix = int(os.getenv("SYS_JOB_ID", ""))
         if rendezvous_type not in [1, 2, 3]:
             raise ValueError(self._gloo._err_type)
 
@@ -767,14 +769,22 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             kwargs = {
                 "dfs.name": dfs_name,
                 "dfs.ugi": dfs_ugi,
-                "dfs.path": dfs_path
+                "dfs.path": dfs_path,
+                "store.prefix": prefix,
             }
         elif rendezvous_type == Gloo.RENDEZVOUS.HTTP:
             ip = os.getenv("PADDLE_GLOO_HTTP_HOST", "")
             port = os.getenv("PADDLE_GLOO_HTTP_PORT", "")
-            kwargs = {"http.host": ip, "http.port": port}
+            kwargs = {
+                "http.host": ip,
+                "http.port": port,
+                "store.prefix": prefix,
+            }
         else:
             raise ValueError("comming soon")
+
+        print("Gloo init with hdfs: need_init_all: {}, args: {}, prefix: {}".
+              format(need_init_all, kwargs, prefix))
 
         self._gloo.init(
             rendezvous=rendezvous_type,
