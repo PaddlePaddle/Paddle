@@ -41,33 +41,22 @@ class L1Decay(fluid.regularizer.L1Decay):
             # Example1: set Regularizer in optimizer
             import paddle
             from paddle.regularizer import L1Decay
-            from paddle.vision.models import LeNet
+            import numpy as np
             paddle.disable_static()
-            train_dataset = paddle.vision.datasets.MNIST(mode='train')
-            test_dataset = paddle.vision.datasets.MNIST(mode='test')
-            train_loader = paddle.io.DataLoader(train_dataset, places=paddle.CPUPlace(), batch_size=64, shuffle=True)
-            def train():
-                net = LeNet()
-                epochs = 1
-                adam = paddle.optimizer.Momentum(learning_rate=0.01,
-                                             parameters=net.parameters(),
-                                             weight_decay=L1Decay(0.001))
-                for epoch in range(epochs):
-                    for batch_id, data in enumerate(train_loader()):
-                        x_data = data[0]
-                        y_data = data[1]
-                        predicts = net(x_data)
-                        loss = paddle.nn.functional.cross_entropy(predicts, y_data)
-                        # calc loss
-                        acc = paddle.metric.accuracy(predicts, y_data, k=2)
-                        avg_loss = paddle.mean(loss)
-                        avg_acc = paddle.mean(acc)
-                        avg_loss.backward()
-                        if batch_id % 10 == 0:
-                            print("epoch: {}, batch_id: {}, loss is: {}, acc is: {}".format(epoch, batch_id, avg_loss.numpy(), avg_acc.numpy()))
-                        adam.step()
-                        adam.clear_grad()
-            train()
+            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+            linear = paddle.nn.Linear(10, 10)
+            inp = paddle.to_tensor(inp)
+            out = linear(inp)
+            loss = paddle.mean(out)
+            beta1 = paddle.to_tensor([0.9], dtype="float32")
+            beta2 = paddle.to_tensor([0.99], dtype="float32")
+            momentum = paddle.optimizer.Momentum(
+                learning_rate=0.1,
+                parameters=linear.parameters(),
+                weight_decay=L1Decay(0.0001))
+            back = out.backward()
+            momentum.step()
+            momentum.clear_grad()
 
             # Example2: set Regularizer in parameters
             # Set L1 regularization in parameters.
@@ -92,7 +81,7 @@ class L1Decay(fluid.regularizer.L1Decay):
 
 class L2Decay(fluid.regularizer.L2Decay):
     """
-    Implement the L2 Weight Decay Regularization, which encourages the weights to be sparse.
+    Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
     
     It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
     When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
@@ -114,33 +103,22 @@ class L2Decay(fluid.regularizer.L2Decay):
             # Example1: set Regularizer in optimizer
             import paddle
             from paddle.regularizer import L2Decay
-            from paddle.vision.models import LeNet
+            import numpy as np
             paddle.disable_static()
-            train_dataset = paddle.vision.datasets.MNIST(mode='train')
-            test_dataset = paddle.vision.datasets.MNIST(mode='test')
-            train_loader = paddle.io.DataLoader(train_dataset, places=paddle.CPUPlace(), batch_size=64, shuffle=True)
-            def train():
-                net = LeNet()
-                epochs = 1
-                adam = paddle.optimizer.Momentum(learning_rate=0.01,
-                                             parameters=net.parameters(),
-                                             weight_decay=L2Decay(0.001))
-                for epoch in range(epochs):
-                    for batch_id, data in enumerate(train_loader()):
-                        x_data = data[0]
-                        y_data = data[1]
-                        predicts = net(x_data)
-                        loss = paddle.nn.functional.cross_entropy(predicts, y_data)
-                        # calc loss
-                        acc = paddle.metric.accuracy(predicts, y_data, k=2)
-                        avg_loss = paddle.mean(loss)
-                        avg_acc = paddle.mean(acc)
-                        avg_loss.backward()
-                        if batch_id % 10 == 0:
-                            print("epoch: {}, batch_id: {}, loss is: {}, acc is: {}".format(epoch, batch_id, avg_loss.numpy(), avg_acc.numpy()))
-                        adam.step()
-                        adam.clear_grad()
-            train()
+            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+            linear = paddle.nn.Linear(10, 10)
+            inp = paddle.to_tensor(inp)
+            out = linear(inp)
+            loss = paddle.mean(out)
+            beta1 = paddle.to_tensor([0.9], dtype="float32")
+            beta2 = paddle.to_tensor([0.99], dtype="float32")
+            momentum = paddle.optimizer.Momentum(
+                learning_rate=0.1,
+                parameters=linear.parameters(),
+                weight_decay=L2Decay(0.0001))
+            back = out.backward()
+            momentum.step()
+    momentum.clear_grad()
 
             # Example2: set Regularizer in parameters
             # Set L2 regularization in parameters.
