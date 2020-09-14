@@ -56,12 +56,11 @@ class TestLoggingUtils(unittest.TestCase):
         with self.assertRaises(TypeError):
             paddle.jit.set_verbosity(3.3)
 
-    def test_verbosity_with_stdout(self):
-        paddle.jit.set_verbosity(log_to_stdout=None)
+    def test_log_to_stdout(self):
+        logging_utils._TRANSLATOR_LOGGER.need_to_echo_log_to_stdout = None
         self.assertEqual(
             logging_utils._TRANSLATOR_LOGGER.need_to_echo_log_to_stdout, False)
 
-        paddle.jit.set_verbosity(log_to_stdout=None)
         os.environ[logging_utils.LOG_TO_STDOUT_ENV_NAME] = 'True'
         self.assertEqual(
             logging_utils._TRANSLATOR_LOGGER.need_to_echo_log_to_stdout, True)
@@ -70,12 +69,21 @@ class TestLoggingUtils(unittest.TestCase):
         self.assertEqual(
             logging_utils._TRANSLATOR_LOGGER.need_to_echo_log_to_stdout, False)
 
-        # String is not supported
+        os.environ[logging_utils.LOG_TO_STDOUT_ENV_NAME] = 'True'
+        self.assertEqual(
+            logging_utils._TRANSLATOR_LOGGER.need_to_echo_log_to_stdout, False)
+
+        paddle.jit.set_code_level(log_to_stdout=True)
+        self.assertEqual(
+            logging_utils._TRANSLATOR_LOGGER.need_to_echo_code_to_stdout, True)
+
         with self.assertRaises(AssertionError):
             paddle.jit.set_verbosity(log_to_stdout=1)
 
-    def test_code_level(self):
+        with self.assertRaises(AssertionError):
+            paddle.jit.set_code_level(log_to_stdout=1)
 
+    def test_set_code_level(self):
         paddle.jit.set_code_level(None)
         os.environ[logging_utils.CODE_LEVEL_ENV_NAME] = '2'
         self.assertEqual(logging_utils.get_code_level(), 2)
