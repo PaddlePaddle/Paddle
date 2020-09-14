@@ -76,6 +76,7 @@ from .tensor.creation import triu  #DEFINE_ALIAS
 from .tensor.creation import tril  #DEFINE_ALIAS
 from .tensor.creation import meshgrid  #DEFINE_ALIAS
 from .tensor.creation import empty  #DEFINE_ALIAS
+from .tensor.creation import empty_like  #DEFINE_ALIAS
 from .tensor.linalg import matmul  #DEFINE_ALIAS
 from .tensor.linalg import dot  #DEFINE_ALIAS
 # from .tensor.linalg import einsum        #DEFINE_ALIAS
