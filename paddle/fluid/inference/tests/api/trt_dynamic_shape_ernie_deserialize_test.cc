@@ -25,7 +25,7 @@ namespace inference {
 
 int DeleteCache(std::string path) {
   DIR* dir = opendir(path.c_str());
-  CHECK(dir != NULL);
+  if (dir == NULL) return 0;
   struct dirent* ptr;
   while ((ptr = readdir(dir)) != NULL) {
     if (std::strcmp(ptr->d_name, ".") == 0 ||
