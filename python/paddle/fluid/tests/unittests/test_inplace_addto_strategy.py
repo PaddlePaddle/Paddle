@@ -86,8 +86,9 @@ class TestInplaceAddto(unittest.TestCase):
                 fluid.set_flags({"FLAGS_cudnn_deterministic": True})
             fluid.set_flags({"FLAGS_max_inplace_grad_add": 2})
             loss, main, startup, w = create_program()
-
-            exe = fluid.Executor(fluid.CUDAPlace(0))
+            place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+            exe = fluid.Executor(place)
 
             strategy = fluid.BuildStrategy()
             strategy.enable_addto = enable_addto
