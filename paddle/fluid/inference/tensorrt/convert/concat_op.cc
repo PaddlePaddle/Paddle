@@ -36,7 +36,7 @@ class ConcatOpConverter : public OpConverter {
     int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
     PADDLE_ENFORCE_GT(axis, 0, platform::errors::InvalidArgument(
                                    "The axis attr of Concat"
-                                   " op should be large than 0 for trt. "
+                                   " op should be larger than 0 for trt. "
                                    "But received %d.",
                                    axis));
 

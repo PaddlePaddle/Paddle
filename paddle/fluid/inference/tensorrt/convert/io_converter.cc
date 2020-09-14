@@ -41,14 +41,12 @@ class DefaultIOConverter : public EngineIOConverter {
     PADDLE_ENFORCE_LE(
         size, max_size,
         platform::errors::InvalidArgument(
-            "The input Tensor in's memory_size shoule less than or equal to "
+            "The input Tensor in's memory_size shoule be less than or equal to "
             "the input max_size. But in's memory_size = %u, max_size = %u.",
             size, max_size));
     if (is_cpu_place(place)) {
-      PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(out, in.data<float>(), size,
-                                           cudaMemcpyHostToDevice, *stream_),
-                        platform::errors::External(
-                            "cudaMemcpyAsync(cudaMemcpyHostToDevice) error."));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(
+          out, in.data<float>(), size, cudaMemcpyHostToDevice, *stream_));
     } else if (is_gpu_place(place)) {
       PADDLE_ENFORCE_EQ(
           0, cudaMemcpyAsync(out, in.data<float>(), size,
@@ -75,8 +73,9 @@ class DefaultIOConverter : public EngineIOConverter {
     PADDLE_ENFORCE_LE(
         size, max_size,
         platform::errors::InvalidArgument(
-            "The input Tensor out's memory_size shoule less than or equal to "
-            "the input max_size. But out's memory_size = %u, max_size = %u.",
+            "The input Tensor out's memory_size shoule be less than or equal "
+            "to the input max_size. "
+            "But out's memory_size = %u, max_size = %u.",
             size, max_size));
     if (is_cpu_place(place)) {
       PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(out->data<float>(), in, size,

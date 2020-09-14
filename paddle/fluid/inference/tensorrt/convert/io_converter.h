@@ -51,7 +51,7 @@ class EngineIOConverter {
         op_type, "default" /* default_type */);
     PADDLE_ENFORCE_NOT_NULL(
         converter, platform::errors::Unimplemented(
-                       "The %s in not supported yet.", op_type.c_str()));
+                       "The %s in is not supported yet.", op_type.c_str()));
     converter->SetStream(stream);
     (*converter)(in, out, max_size);
   }

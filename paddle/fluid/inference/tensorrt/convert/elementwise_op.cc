@@ -47,13 +47,13 @@ class ElementwiseWeightOpConverter : public OpConverter {
         op_desc.Input("X").size(), 1,
         platform::errors::InvalidArgument(
             "The input op's Input(\"X\").size() "
-            "should equal to 1, but reveceid Input(\"X\").size() = %u.",
+            "should equal to 1, but received Input(\"X\").size() = %u.",
             op_desc.Input("X").size()));
     PADDLE_ENFORCE_EQ(
         op_desc.Input("Y").size(), 1,
         platform::errors::InvalidArgument(
             "The input op's Input(\"Y\").size() "
-            "should equal to 1, but reveceid Input(\"Y\").size() = %u.",
+            "should equal to 1, but received Input(\"Y\").size() = %u.",
             op_desc.Input("Y").size()));  // Y is a weight
     PADDLE_ENFORCE_EQ(
         op_desc.Output("Out").size(), 1,
@@ -197,19 +197,19 @@ class ElementwiseTensorOpConverter : public OpConverter {
         op_desc.Input("X").size(), 1,
         platform::errors::InvalidArgument(
             "The input op's Input(\"X\").size() "
-            "should equal to 1, but reveceid Input(\"X\").size() = %u.",
+            "should equal to 1, but received Input(\"X\").size() = %u.",
             op_desc.Input("X").size()));
     PADDLE_ENFORCE_EQ(
         op_desc.Input("Y").size(), 1,
         platform::errors::InvalidArgument(
             "The input op's Input(\"Y\").size() "
-            "should equal to 1, but reveceid Input(\"Y\").size() = %u.",
+            "should equal to 1, but received Input(\"Y\").size() = %u.",
             op_desc.Input("Y").size()));  // Y is a weight
     PADDLE_ENFORCE_EQ(
         op_desc.Output("Out").size(), 1,
         platform::errors::InvalidArgument(
             "The input op's Output(\"Out\").size() "
-            "should equal to 1, but reveceid Output(\"Out\").size() = %u.",
+            "should equal to 1, but received Output(\"Out\").size() = %u.",
             op_desc.Output("Out").size()));
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
