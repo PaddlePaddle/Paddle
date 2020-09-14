@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.h"
 
