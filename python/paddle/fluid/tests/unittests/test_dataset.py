@@ -316,7 +316,7 @@ class TestDataset(unittest.TestCase):
                 self.assertTrue(False)
 
         #dataset._set_merge_by_lineid(2)
-        datset.update_settings(merge_size=2)
+        dataset.update_settings(merge_size=2)
         dataset.dataset.merge_by_lineid()
 
         os.remove("./test_in_memory_dataset_masterpatch_a.txt")

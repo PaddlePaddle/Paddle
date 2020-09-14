@@ -250,6 +250,37 @@ class InMemoryDataset(DatasetBase):
     def init_distributed_settings(self, **kwargs):
         """
         should be called only once in user's python scripts to initialize distributed-related setings of dataset instance
+        Args:
+            kwargs: Keyword arguments. Currently, we support following keys in **kwargs:
+
+            merge_size(int): ins size to merge, if merge_size > 0, set merge by line id, 
+                             instances of same line id will be merged after shuffle, 
+                             you should parse line id in data generator. default is -1.
+            parse_ins_id(bool): Set if Dataset need to parse ins_id. default is False.
+            parse_content(bool): Set if Dataset need to parse content. default is False.
+            fleet_send_batch_size(int): Set fleet send batch size in one rpc, default is 1024
+            fleet_send_sleep_seconds(int): Set fleet send sleep time, default is 0
+            fea_eval(bool): Set if Dataset need to do feature importance evaluation using slots shuffle.
+                            default is False.
+            candidate_size(int): if fea_eval is set True, set the candidate size used in slots shuffle.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              dataset = paddle.distributed.InMemoryDataset()
+              dataset.init(
+                    batch_size=1,
+                    thread_num=2,
+                    input_type=1,
+                    pipe_command="cat",
+                    use_var=[])
+              dataset.init_distributed_settings(
+                    parse_ins_id=True,
+                    parse_content=True,
+                    fea_eval=True,
+                    candidate_size=10000)
+              
         """
         merge_size = kwargs.get("merge_size", -1)
         if merge_size > 0:
@@ -277,6 +308,50 @@ class InMemoryDataset(DatasetBase):
     def update_settings(self, **kwargs):
         """
         should be called in user's python scripts to update setings of dataset instance
+        Args:
+            kwargs: Keyword arguments. Currently, we support following keys in **kwargs,
+                    including single node settings and advanced distributed related settings:
+
+            batch_size(int): batch size. It will be effective during training. default: 1.
+            thread_num(int): thread num, it is the num of readers. default: 1.
+            use_var(list): list of variables. Variables which you will use. default: [].
+            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut: 0.
+            fs_name(str): fs name. default: "".
+            fs_ugi(str): fs ugi. default: "".
+            pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default: "cat"
+            download_cmd(str): customized download command. default: "cat"
+            data_feed_type(str): data feed type used in c++ code. default: "MultiSlotInMemoryDataFeed".
+            queue_num(int): Dataset output queue num, training threads get data from queues. default:-1, which is set same as thread number in c++.
+
+            merge_size(int): ins size to merge, if merge_size > 0, set merge by line id, 
+                             instances of same line id will be merged after shuffle, 
+                             you should parse line id in data generator. default is -1.
+            parse_ins_id(bool): Set if Dataset need to parse ins_id. default is False.
+            parse_content(bool): Set if Dataset need to parse content. default is False.
+            fleet_send_batch_size(int): Set fleet send batch size in one rpc, default is 1024
+            fleet_send_sleep_seconds(int): Set fleet send sleep time, default is 0
+            fea_eval(bool): Set if Dataset need to do feature importance evaluation using slots shuffle.
+                            default is False.
+            candidate_size(int): if fea_eval is set True, set the candidate size used in slots shuffle.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              dataset = paddle.distributed.InMemoryDataset()
+              dataset.init(
+                    batch_size=1,
+                    thread_num=2,
+                    input_type=1,
+                    pipe_command="cat",
+                    use_var=[])
+              dataset.init_distributed_settings(
+                    parse_ins_id=True,
+                    parse_content=True,
+                    fea_eval=True,
+                    candidate_size=10000)
+              dataset.update_settings(batch_size=2)
+            
         """
         for key in kwargs:
             if key == "pipe_command":
@@ -310,6 +385,62 @@ class InMemoryDataset(DatasetBase):
     def init(self, **kwargs):
         """
         should be called only once in user's python scripts to initialize setings of dataset instance
+        Args:
+            kwargs: Keyword arguments. Currently, we support following keys in **kwargs:
+            
+            batch_size(int): batch size. It will be effective during training. default: 1.
+            thread_num(int): thread num, it is the num of readers. default: 1.
+            use_var(list): list of variables. Variables which you will use. default: [].
+            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut: 0.
+            fs_name(str): fs name. default: "".
+            fs_ugi(str): fs ugi. default: "".
+            pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default: "cat"
+            download_cmd(str): customized download command. default: "cat"
+            data_feed_type(str): data feed type used in c++ code. default: "MultiSlotInMemoryDataFeed".
+            queue_num(int): Dataset output queue num, training threads get data from queues. default:-1, which is set same as thread number in c++.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                with open("test_queue_dataset_run_a.txt", "w") as f:
+                    data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
+                    data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
+                    data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
+                    data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
+                    f.write(data)
+                with open("test_queue_dataset_run_b.txt", "w") as f:
+                    data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
+                    data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
+                    data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
+                    data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
+                    f.write(data)
+
+                slots = ["slot1", "slot2", "slot3", "slot4"]
+                slots_vars = []
+                for slot in slots:
+                    var = fluid.data(
+                        name=slot, shape=[None, 1], dtype="int64", lod_level=1)
+                    slots_vars.append(var)
+
+                dataset = paddle.distributed.InMemoryDataset()
+                dataset.init(
+                    batch_size=1,
+                    thread_num=2,
+                    input_type=1,
+                    pipe_command="cat",
+                    use_var=slots_vars)
+                dataset.set_filelist(
+                    ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
+                dataset.load_into_memory()
+
+                exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
+                ) else fluid.CUDAPlace(0))
+                exe.run(fluid.default_startup_program())
+                exe.train_from_dataset(fluid.default_main_program(),
+                                           dataset)
+                os.remove("./test_queue_dataset_run_a.txt")
+                os.remove("./test_queue_dataset_run_b.txt")
         """
         batch_size = kwargs.get("batch_size", 1)
         thread_num = kwargs.get("thread_num", 1)
@@ -394,7 +525,7 @@ class InMemoryDataset(DatasetBase):
 
     def _set_parse_ins_id(self, parse_ins_id):
         """
-        Set id Dataset need to parse insid
+        Set if Dataset need to parse insid
 
         Args:
             parse_ins_id(bool): if parse ins_id or not
@@ -791,54 +922,6 @@ class QueueDataset(DatasetBase):
         self.dataset.set_data_feed_desc(self._desc())
         self.dataset.create_readers()
 
-    def local_shuffle(self):
-        """
-        Local shuffle data.
-
-        Local shuffle is not supported in QueueDataset
-        NotImplementedError will be raised
-
-        Examples:
-            .. code-block:: python
-
-              import paddle
-              dataset = paddle.distributed.QueueDataset()
-              dataset.local_shuffle()
-
-        Raises:
-            NotImplementedError: QueueDataset does not support local shuffle
-
-        """
-        raise NotImplementedError(
-            "QueueDataset does not support local shuffle, "
-            "please use InMemoryDataset for local_shuffle")
-
-    def global_shuffle(self, fleet=None):
-        """
-        Global shuffle data.
-
-        Global shuffle is not supported in QueueDataset
-        NotImplementedError will be raised
-
-        Args:
-            fleet(Fleet): fleet singleton. Default None.
-
-        Examples:
-            .. code-block:: python
-
-              import paddle
-              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-              dataset = paddle.distributed.QueueDataset()
-              dataset.global_shuffle(fleet)
-
-        Raises:
-            NotImplementedError: QueueDataset does not support global shuffle
-
-        """
-        raise NotImplementedError(
-            "QueueDataset does not support global shuffle, "
-            "please use InMemoryDataset for global_shuffle")
-
 
 class FileInstantDataset(DatasetBase):
     """
@@ -863,24 +946,6 @@ class FileInstantDataset(DatasetBase):
         should be called only once in user's python scripts to initialize setings of dataset instance
         """
         super(FileInstantDataset, self).init(**kwargs)
-
-    def local_shuffle(self):
-        """
-        Local shuffle
-        FileInstantDataset does not support local shuffle
-        """
-        raise NotImplementedError(
-            "FileInstantDataset does not support local shuffle, "
-            "please use InMemoryDataset for local_shuffle")
-
-    def global_shuffle(self, fleet=None):
-        """
-        Global shuffle
-        FileInstantDataset does not support global shuffle
-        """
-        raise NotImplementedError(
-            "FileInstantDataset does not support global shuffle, "
-            "please use InMemoryDataset for global_shuffle")
 
 
 class BoxPSDataset(InMemoryDataset):
