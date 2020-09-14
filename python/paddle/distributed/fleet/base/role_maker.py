@@ -71,7 +71,7 @@ class Gloo(object):
              worker_num,
              server_num,
              need_init_all=False,
-             **kwargs):
+             kwargs=None):
 
         self._rendezvous = rendezvous
         self._role = role
@@ -104,6 +104,8 @@ class Gloo(object):
         else:
             raise ValueError(self._err_type)
 
+        self._is_initialized = True
+
     def _init_fs(self, **kwargs):
         raise ValueError("comming soon")
 
@@ -117,20 +119,23 @@ class Gloo(object):
             gloo.set_timeout_seconds(self._init_timeout_seconds,
                                      self._run_timeout_seconds)
             gloo.set_hdfs_store(os.path.join(dfs_path, role), dfs_name, dfs_ugi)
+            gloo.init()
             return gloo
 
         if self._role == Role.WORKER:
             rank, nodes = self._get_rank_nodes(Role.WORKER)
-            gloo = init(rank, nodes, Role.WORKER)
+            gloo = init(rank, nodes, "WORKER")
             self._worker_comm = gloo
+            print("rank: {}, nodes: {}, worker: {}".format(rank, nodes,
+                                                           self._worker_comm))
         else:
             rank, nodes = self._get_rank_nodes(Role.SERVER)
-            gloo = init(rank, nodes, Role.SERVER)
+            gloo = init(rank, nodes, "SERVER")
             self._server_comm = gloo
 
         if self._need_init_all:
             rank, nodes = self._get_rank_nodes(Role.ALL)
-            gloo = init(rank, nodes, Role.ALL)
+            gloo = init(rank, nodes, "ALL")
             self._nodes_comm = gloo
 
     def _init_http(self, ip, port, prefix):
@@ -756,7 +761,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
         # PADDLE_GLOO_RENDEZVOUS 1: HDFS 2: FILE 3: HTTP
         rendezvous_type = int(os.getenv("PADDLE_GLOO_RENDEZVOUS", "0"))
-        prefix = int(os.getenv("SYS_JOB_ID", ""))
+        prefix = os.getenv("SYS_JOB_ID", "")
         if rendezvous_type not in [1, 2, 3]:
             raise ValueError(self._gloo._err_type)
 
@@ -805,6 +810,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 self._collective_env()
             self._role_is_generated = True
+            self._gloo_init()
 
 
 class UserDefinedRoleMaker(PaddleCloudRoleMaker):
