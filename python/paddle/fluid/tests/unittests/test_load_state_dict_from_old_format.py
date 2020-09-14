@@ -170,16 +170,6 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         orig_param_dict = self.train_and_save_model(True)
 
         load_param_dict, _ = paddle.load(self.save_dirname)
-        print(load_param_dict.keys())
-        self.check_load_state_dict(orig_param_dict, load_param_dict)
-
-    def test_load_state_dict_from_save_params_failed(self):
-        self.save_dirname = "static_mnist.load_state_dict.save_params_failed"
-        self.params_filename = "static_mnist.params"
-        orig_param_dict = self.train_and_save_model(True)
-
-        load_param_dict, _ = paddle.load(self.save_dirname)
-        print(load_param_dict.keys())
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
 
