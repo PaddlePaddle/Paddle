@@ -57,7 +57,7 @@ class AverageAccumulatesKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(min_average_window, max_average_window,
                       platform::errors::InvalidArgument("The min_average_window <= "
                       "max_average_window, min_average_window is %ld, "
-                      "max_average_window is %ld.", min_average_window, max_average_window);
+                      "max_average_window is %ld.", min_average_window, max_average_window));
 
     // Get inputs
     auto* param = ctx.Input<Tensor>("param");
