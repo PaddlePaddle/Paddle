@@ -622,7 +622,7 @@ class VecActivations {
       return vec_identity<T, isa>;
     }
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Except type should be one of sigmod, relu, tanh, identity. But got "
+        "Expected type should be one of sigmod, relu, tanh, identity. But got "
         "not support type: %s.",
         type));
   }
