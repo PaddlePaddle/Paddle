@@ -26,7 +26,10 @@ import collections
 import warnings
 import traceback
 
+from paddle.utils import try_import
 from . import functional as F
+
+cv2 = None
 
 if sys.version_info < (3, 3):
     Sequence = collections.Sequence
@@ -231,6 +234,9 @@ class Resize(object):
             fake_img = transform(fake_img)
             print(fake_img.shape)
     """
+    global cv2
+    if cv2 is None:
+        cv2 = try_import('cv2')
 
     def __init__(self, size, interpolation=cv2.INTER_LINEAR):
         assert isinstance(size, int) or (isinstance(size, Iterable) and
@@ -268,6 +274,9 @@ class RandomResizedCrop(object):
             fake_img = transform(fake_img)
             print(fake_img.shape)
     """
+    global cv2
+    if cv2 is None:
+        cv2 = try_import('cv2')
 
     def __init__(self,
                  output_size,
@@ -345,6 +354,9 @@ class CenterCropResize(object):
             fake_img = transform(fake_img)
             print(fake_img.shape)
     """
+    global cv2
+    if cv2 is None:
+        cv2 = try_import('cv2')
 
     def __init__(self, size, crop_padding=32, interpolation=cv2.INTER_LINEAR):
         if isinstance(size, int):
@@ -657,6 +669,7 @@ class ContrastTransform(object):
             raise ValueError("contrast value should be non-negative")
         self.value = value
 
+    @F.lazy_import_cv2
     def __call__(self, img):
         if self.value == 0:
             return img
@@ -697,6 +710,7 @@ class SaturationTransform(object):
             raise ValueError("saturation value should be non-negative")
         self.value = value
 
+    @F.lazy_import_cv2
     def __call__(self, img):
         if self.value == 0:
             return img
@@ -738,6 +752,7 @@ class HueTransform(object):
             raise ValueError("hue value should be in [0.0, 0.5]")
         self.value = value
 
+    @F.lazy_import_cv2
     def __call__(self, img):
         if self.value == 0:
             return img

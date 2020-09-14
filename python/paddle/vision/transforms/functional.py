@@ -18,9 +18,12 @@ import random
 import math
 import functools
 
-import cv2
 import numbers
 import numpy as np
+
+from paddle.utils import try_import
+
+cv2 = None
 
 if sys.version_info < (3, 3):
     Sequence = collections.Sequence
@@ -30,6 +33,19 @@ else:
     Iterable = collections.abc.Iterable
 
 __all__ = ['flip', 'resize', 'pad', 'rotate', 'to_grayscale']
+
+
+def lazy_import_cv2(func):
+    global cv2
+    if cv2 is None:
+        cv2 = try_import('cv2')
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        ret = func(*args, **kwargs)
+        return ret
+
+    return wrapper
 
 
 def keepdims(func):
@@ -48,6 +64,7 @@ def keepdims(func):
     return wrapper
 
 
+@lazy_import_cv2
 @keepdims
 def flip(image, code):
     """
@@ -80,6 +97,7 @@ def flip(image, code):
     return cv2.flip(image, flipCode=code)
 
 
+@lazy_import_cv2
 @keepdims
 def resize(img, size, interpolation=cv2.INTER_LINEAR):
     """
@@ -122,6 +140,7 @@ def resize(img, size, interpolation=cv2.INTER_LINEAR):
         return cv2.resize(img, size[::-1], interpolation=interpolation)
 
 
+@lazy_import_cv2
 @keepdims
 def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
     """Pads the given CV Image on all sides with speficified padding mode and fill value.
@@ -213,6 +232,7 @@ def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
     return img
 
 
+@lazy_import_cv2
 @keepdims
 def rotate(img,
            angle,
@@ -287,6 +307,7 @@ def rotate(img,
     return dst.astype(dtype)
 
 
+@lazy_import_cv2
 @keepdims
 def to_grayscale(img, num_output_channels=1):
     """Converts image to grayscale version of image.
