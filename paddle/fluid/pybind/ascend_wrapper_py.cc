@@ -412,7 +412,7 @@ void BindAscendGraph(py::module *m) {
              std::vector<float> tar;
              float tmp;
              for (int i = 0; i < len; i++) {
-               tmp = static_cast<float>(float > value[i]);
+               tmp = static_cast<float>(value[i]);
                tar.push_back(tmp);
              }
              return op.SetAttr(name, tar);

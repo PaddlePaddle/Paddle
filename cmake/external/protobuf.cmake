@@ -183,7 +183,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
             "-DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}"
             "-DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}"
-            "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
+	    "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0"
             "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
             "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}"
             "-Dprotobuf_WITH_ZLIB=ON"
@@ -199,7 +199,6 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     ENDIF()
 
     SET(PROTOBUF_REPOSITORY  https://gitee.com/tianjianhe/protobuf.git)
-    # SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
     SET(PROTOBUF_TAG         v3.8.0)
 
     cache_third_party(${TARGET_NAME}
