@@ -140,19 +140,19 @@ class TranslatorLogger(object):
     def error(self, msg, *args, **kwargs):
         self.logger.error(msg, *args, **kwargs)
         if self.need_to_echo_log_to_stdout:
-            self._output_to_stdout_if_need('ERROR: ' + msg, *args)
+            self._output_to_stdout('ERROR: ' + msg, *args)
 
     def warn(self, msg, *args, **kwargs):
         self.logger.warning(msg, *args, **kwargs)
         if self.need_to_echo_log_to_stdout:
-            self._output_to_stdout_if_need('WARNING: ' + msg, *args)
+            self._output_to_stdout('WARNING: ' + msg, *args)
 
     def log(self, level, msg, *args, **kwargs):
         if self.has_verbosity(level):
             msg_with_level = '(Level {}) {}'.format(level, msg)
             self.logger.info(msg_with_level, *args, **kwargs)
             if self.need_to_echo_log_to_stdout:
-                self._output_to_stdout_if_need('INFO: ' + msg_with_level, *args)
+                self._output_to_stdout('INFO: ' + msg_with_level, *args)
 
     def log_transformed_code(self, level, ast_node, transformer_name, *args,
                              **kwargs):
@@ -169,9 +169,9 @@ class TranslatorLogger(object):
             self.logger.info(msg, *args, **kwargs)
 
             if self.need_to_echo_code_to_stdout:
-                self._output_to_stdout_if_need('INFO: ' + msg, *args)
+                self._output_to_stdout('INFO: ' + msg, *args)
 
-    def _output_to_stdout_if_need(self, msg, *args):
+    def _output_to_stdout(self, msg, *args):
         msg = self.logger_name + ' ' + msg
         print(msg % args)
 
