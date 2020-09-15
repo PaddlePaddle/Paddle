@@ -971,23 +971,29 @@ class RNNBase(LayerList):
         if self.could_use_cudnn:
             # layer.parameters() is depth first and ordered
             # for i in layer: for j in direct: w_ih, w_hh, b_ih, b_hh
+            # need to reorganize to cudnn param layout:
+            # all bias following all weights
             params = self.parameters()
             shape = [np.prod(param.shape) for param in params]
+            self._all_weights = [None] * len(params)
+            for i, param in enumerate(params):
+                offset = 0 if i % 4 < 2 else (2 * self.num_layers *
+                                              self.num_directions)
+                layer_idx = i // 4
+                self._all_weights[offset + layer_idx * 2 + i % 2] = param
             # for static-graph, append coalesce_tensor into startup program
             with fluid.program_guard(fluid.default_startup_program(),
                                      fluid.default_startup_program()):
                 with framework.no_grad():
                     # Parameter would be registered into `self._parameters`,
-                    # wrap the parameter `_flat_weight` to avoid and hide it.
-                    self._flat_weight = [
-                        self.create_parameter(
-                            shape=[np.sum(shape)], dtype=params[0].dtype)
-                    ]
+                    # use non-parameter `_flat_weight` to avoid and hide it.
+                    self._flat_weight = self.create_variable(
+                        dtype=params[0].dtype)
                     self._helper.append_op(
                         type="coalesce_tensor",
-                        inputs={"Input": params},
+                        inputs={"Input": self._all_weights},
                         outputs={
-                            "Output": params,
+                            "Output": self._all_weights,
                             "FusedOutput": self._flat_weight
                         },
                         attrs={
@@ -1016,7 +1022,7 @@ class RNNBase(LayerList):
         inputs = {
             'Input': inputs,
             'W': self._flat_weight,
-            # 'WeightList': self.parameters(),
+            # 'WeightList': self._all_weights,
             'InitH': initial_states[0],
             'InitC': initial_states[1],
             'State': dropout_state,
