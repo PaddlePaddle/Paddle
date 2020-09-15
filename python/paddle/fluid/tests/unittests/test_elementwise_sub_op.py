@@ -143,8 +143,8 @@ class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(10, 3, 1, 4).astype(np.float64),
-            'Y': np.random.rand(10, 1, 12, 1).astype(np.float64)
+            'X': np.random.rand(3, 1, 4).astype(np.float64),
+            'Y': np.random.rand(1, 2, 1).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 

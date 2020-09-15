@@ -100,53 +100,37 @@ elementwise_sub_grad(const framework::ExecutionContext& ctx,
                      framework::Tensor* dy);
 #endif
 
-template <typename DeviceContext, typename T>
-class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    ElemwiseGradKernel<T>::Compute(ctx);
-    using Tensor = framework::Tensor;
-
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    int axis = ctx.Attr<int>("axis");
-    // skip out
-    auto* out = dout;
-    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
-      elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
+static bool UseEigenBroadcast(const framework::DDim& x_dims,
+                              const framework::DDim& y_dims) {
+  int bcast_dims_remainder = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    if (x_dims[i] >= y_dims[i]) {
+      bcast_dims_remainder += x_dims[i] % y_dims[i];
     } else {
-      ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
-          ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(),
-          SubGradDY<T>());
+      bcast_dims_remainder += y_dims[i] % x_dims[i];
     }
   }
-};
+  if (bcast_dims_remainder == 0) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
 template <int Rank>
 static void GetBraodcastDims(const framework::DDim& x_dims,
                              const framework::DDim& y_dims,
                              Eigen::DSizes<int, Rank>* x_bcast_dims,
                              Eigen::DSizes<int, Rank>* y_bcast_dims) {
-  int bcast_dims_remainder = 0;
   for (int i = 0; i < x_dims.size(); ++i) {
     if (x_dims[i] >= y_dims[i]) {
       (*x_bcast_dims)[i] = 1;
       (*y_bcast_dims)[i] = x_dims[i] / y_dims[i];
-      bcast_dims_remainder += x_dims[i] % y_dims[i];
     } else {
       (*y_bcast_dims)[i] = 1;
       (*x_bcast_dims)[i] = y_dims[i] / x_dims[i];
-      bcast_dims_remainder += y_dims[i] % x_dims[i];
     }
   }
-  PADDLE_ENFORCE_EQ(bcast_dims_remainder, 0,
-                    platform::errors::PreconditionNotMet(
-                        "The input tensor of Op(dist) could not be broadcast, "
-                        "X's shape is [%s], Y's shape is [%s].",
-                        x_dims, y_dims));
 }
 
 static framework::DDim GetNewDims(const framework::DDim& in_dims, int rank) {
@@ -167,14 +151,12 @@ static framework::DDim GetNewDims(const framework::DDim& in_dims, int rank) {
 template <typename DeviceContext, typename T, int Rank>
 static void ElementwiseSubGradFunction(
     const framework::ExecutionContext& context) {
-  using framework::Tensor;
+  auto dout = context.Input<framework::Tensor>(framework::GradVarName("Out"));
+  auto dx = context.Output<framework::Tensor>(framework::GradVarName("X"));
+  auto dy = context.Output<framework::Tensor>(framework::GradVarName("Y"));
 
-  auto dout = context.Input<Tensor>(framework::GradVarName("Out"));
-  auto dx = context.Output<Tensor>(framework::GradVarName("X"));
-  auto dy = context.Output<Tensor>(framework::GradVarName("Y"));
-
-  auto x_dims = context.Input<Tensor>("X")->dims();
-  auto y_dims = context.Input<Tensor>("Y")->dims();
+  auto x_dims = context.Input<framework::Tensor>("X")->dims();
+  auto y_dims = context.Input<framework::Tensor>("Y")->dims();
   auto out_dims = dout->dims();
 
   auto dout_t = framework::EigenTensor<T, Rank>::From(*dout);
@@ -199,7 +181,15 @@ static void ElementwiseSubGradFunction(
     y_reshape_dims[2 * i + 1] = y_new_dims[i];
     reduce_dims[i] = 2 * i;
   }
+  VLOG(3) << "x_reshape_dims: " << x_reshape_dims;
+  VLOG(3) << "y_reshape_dims: " << y_reshape_dims;
+  VLOG(3) << "reduce_dims: " << reduce_dims;
 
+  framework::Tensor dout_back;
+  dout_back.Resize(dout->dims());
+  dout_back.mutable_data<T>(context.GetPlace());
+  auto dout_back_t = framework::EigenTensor<T, Rank>::From(dout_back);
+  dout_back_t.device(place) = dout_t;
   if (dx) {
     dx->mutable_data<T>(context.GetPlace());
     auto dx_t = framework::EigenTensor<T, Rank>::From(*dx, x_new_dims);
@@ -215,9 +205,9 @@ static void ElementwiseSubGradFunction(
     dy->mutable_data<T>(context.GetPlace());
     auto dy_t = framework::EigenTensor<T, Rank>::From(*dy, y_new_dims);
     if (y_dims == out_dims) {
-      dy_t.device(place) = -dout_t;
+      dy_t.device(place) = -dout_back_t;
     } else {
-      dy_t.device(place) = -dout_t.reshape(y_reshape_dims)
+      dy_t.device(place) = -dout_back_t.reshape(y_reshape_dims)
                                 .sum(reduce_dims)
                                 .reshape(dy_t.dimensions());
     }
@@ -225,33 +215,66 @@ static void ElementwiseSubGradFunction(
 }
 
 template <typename DeviceContext, typename T>
-class ElementwiseSubGradGPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    using framework::Tensor;
-    auto x_rank = context.Input<Tensor>("X")->dims().size();
-    auto y_rank = context.Input<Tensor>("Y")->dims().size();
-    auto rank = std::max(x_rank, y_rank);
+void ElementwiseSubGradEigenFunction(
+    const framework::ExecutionContext& context) {
+  auto x_rank = context.Input<framework::Tensor>("X")->dims().size();
+  auto y_rank = context.Input<framework::Tensor>("Y")->dims().size();
+  auto rank = std::max(x_rank, y_rank);
 
-    switch (rank) {
-      case 1:
-        ElementwiseSubGradFunction<DeviceContext, T, 1>(context);
-        break;
-      case 2:
-        ElementwiseSubGradFunction<DeviceContext, T, 2>(context);
-        break;
-      case 3:
-        ElementwiseSubGradFunction<DeviceContext, T, 3>(context);
-        break;
-      case 4:
-        ElementwiseSubGradFunction<DeviceContext, T, 4>(context);
-        break;
-      case 5:
-        ElementwiseSubGradFunction<DeviceContext, T, 5>(context);
-        break;
-      case 6:
-        ElementwiseSubGradFunction<DeviceContext, T, 6>(context);
-        break;
+  switch (rank) {
+    case 1:
+      ElementwiseSubGradFunction<DeviceContext, T, 1>(context);
+      break;
+    case 2:
+      ElementwiseSubGradFunction<DeviceContext, T, 2>(context);
+      break;
+    case 3:
+      ElementwiseSubGradFunction<DeviceContext, T, 3>(context);
+      break;
+    case 4:
+      ElementwiseSubGradFunction<DeviceContext, T, 4>(context);
+      break;
+    case 5:
+      ElementwiseSubGradFunction<DeviceContext, T, 5>(context);
+      break;
+    case 6:
+      ElementwiseSubGradFunction<DeviceContext, T, 6>(context);
+      break;
+  }
+}
+
+template <typename DeviceContext, typename T>
+class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
+    using Tensor = framework::Tensor;
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    int axis = ctx.Attr<int>("axis");
+
+    auto x_dims = x->dims();
+    auto y_dims = y->dims();
+    auto rank = std::max(x_dims.size(), y_dims.size());
+    framework::DDim x_new_dims = GetNewDims(x_dims, rank);
+    framework::DDim y_new_dims = GetNewDims(y_dims, rank);
+    bool use_eigen = UseEigenBroadcast(x_new_dims, y_new_dims);
+    if (use_eigen) {
+      VLOG(3) << "====ues eigen grad function====";
+      ElementwiseSubGradEigenFunction<DeviceContext, T>(ctx);
+      return;
+    }
+    // skip out
+    auto* out = dout;
+    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
+      elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
+    } else {
+      ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
+          ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(),
+          SubGradDY<T>());
     }
   }
 };
