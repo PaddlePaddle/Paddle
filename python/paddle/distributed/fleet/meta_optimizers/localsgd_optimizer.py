@@ -312,14 +312,14 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
             k_steps = layers.create_global_var(
                 name="k_steps",
                 shape=[1],
-                value=init_k_steps,
+                value=int(init_k_steps),
                 dtype='int64',
                 persistable=True)
 
             begin_step = layers.create_global_var(
                 name="begin_step",
                 shape=[1],
-                value=begin_step_value,
+                value=int(begin_step_value),
                 dtype='int64',
                 persistable=True)
 
@@ -415,7 +415,10 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                         inputs={'X': [param]},
                         outputs={'Out': [snapshot]},
                         attrs={OP_ROLE_KEY: OpRole.Optimize})
+                layers.assign(step, last_step)
 
+            def communicate_avg_loss():
+                communicate()
                 self._generate_avg_loss(main_block, loss, avg_loss)
                 next_local_steps = layers.cast(
                     layers.ceil(
@@ -427,10 +430,9 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 next_local_steps = layers.elementwise_max(next_local_steps,
                                                           self.min_local_steps)
                 layers.assign(next_local_steps, k_steps)
-                layers.assign(step, last_step)
 
             def begin_localsgd():
-                layers.cond(step - last_step == k_steps, communicate)
+                layers.cond(step - last_step == k_steps, communicate_avg_loss)
 
             layers.cond(step > begin_step, begin_localsgd, communicate)
 
