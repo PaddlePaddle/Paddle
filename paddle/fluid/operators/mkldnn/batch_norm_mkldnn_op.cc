@@ -262,9 +262,11 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto *diff_shift = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     PADDLE_ENFORCE_EQ(diff_y->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Input diff_y tensor");
+                      platform::errors::InvalidArgument(
+                          "Wrong layout set for Input diff_y tensor"));
     PADDLE_ENFORCE_NE(diff_y->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Input diff_y tensor");
+                      platform::errors::InvalidArgument(
+                          "Wrong format set for Input diff_y tensor"));
 
     auto src_tz = paddle::framework::vectorize<int64_t>(x->dims());
     auto scale_tz = paddle::framework::vectorize<int64_t>(scale->dims());

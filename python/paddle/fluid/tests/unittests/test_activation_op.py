@@ -128,7 +128,7 @@ class TestLogSigmoid(TestActivation):
 
 
 class TestLogSigmoidAPI(unittest.TestCase):
-    # test paddle.nn.LogSigmoid, paddle.nn.functional.logsigmoid
+    # test paddle.nn.LogSigmoid, paddle.nn.functional.log_sigmoid
     def setUp(self):
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
@@ -137,36 +137,45 @@ class TestLogSigmoidAPI(unittest.TestCase):
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [11, 17])
-            out1 = F.logsigmoid(x)
+            out1 = F.log_sigmoid(x)
             m = paddle.nn.LogSigmoid()
             out2 = m(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
         for r in res:
-            self.assertEqual(np.allclose(out_ref, r), True)
+            self.assertTrue(np.allclose(out_ref, r))
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
-        out1 = F.logsigmoid(x)
+        out1 = F.log_sigmoid(x)
         m = paddle.nn.LogSigmoid()
         out2 = m(x)
         out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
         for r in [out1, out2]:
-            self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+            self.assertTrue(np.allclose(out_ref, r.numpy()))
         paddle.enable_static()
+
+    def test_fluid_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.data('X', [11, 17])
+            out = paddle.fluid.layers.logsigmoid(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
+        self.assertTrue(np.allclose(out_ref, res[0]))
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, F.logsigmoid, 1)
+            self.assertRaises(TypeError, F.log_sigmoid, 1)
             # The input dtype must be float16, float32, float64.
             x_int32 = paddle.data(name='x_int32', shape=[11, 17], dtype='int32')
-            self.assertRaises(TypeError, F.logsigmoid, x_int32)
+            self.assertRaises(TypeError, F.log_sigmoid, x_int32)
             # support the input dtype is float16
             x_fp16 = paddle.data(name='x_fp16', shape=[11, 17], dtype='float16')
-            F.logsigmoid(x_fp16)
+            F.log_sigmoid(x_fp16)
 
 
 class TestTanh(TestActivation, TestParameter):

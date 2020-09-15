@@ -111,12 +111,11 @@ __global__ void KernelPool2DGrad(
     int phstart, phend;
     int pwstart, pwend;
     if (adaptive) {
-      phstart = h_offset * output_height / input_height;
-      phend =
-          min((h_offset + 1) * output_height / input_height + 1, output_height);
-      pwstart = w_offset * output_width / input_width;
-      pwend =
-          min((w_offset + 1) * output_width / input_width + 1, output_width);
+      phstart = AdaptStartIndex(h_offset, output_height, input_height);
+      phend = AdaptEndIndex(h_offset, output_height, input_height);
+
+      pwstart = AdaptStartIndex(w_offset, output_width, input_width);
+      pwend = AdaptEndIndex(w_offset, output_width, input_width);
     } else {
       phstart = (h_offset < ksize_height)
                     ? 0
@@ -159,6 +158,7 @@ __global__ void KernelPool2DGrad(
           pool_size = exclusive ? (hend - hstart) * (wend - wstart)
                                 : ksize_height * ksize_width;
         }
+
         int output_sub_idx = channel_last
                                  ? (ph * output_width + pw) * channels + offsetC
                                  : ph * output_width + pw;
@@ -689,15 +689,14 @@ __global__ void KernelPool3DGrad(
     int phstart, phend;
     int pwstart, pwend;
     if (adaptive) {
-      pdstart = d_offset * output_depth / input_depth;
-      pdend =
-          min((d_offset + 1) * output_depth / input_depth + 1, output_depth);
-      phstart = h_offset * output_height / input_height;
-      phend =
-          min((h_offset + 1) * output_height / input_height + 1, output_height);
-      pwstart = w_offset * output_width / input_width;
-      pwend =
-          min((w_offset + 1) * output_width / input_width + 1, output_width);
+      pdstart = AdaptStartIndex(d_offset, output_depth, input_depth);
+      pdend = AdaptEndIndex(d_offset, output_depth, input_depth);
+
+      phstart = AdaptStartIndex(h_offset, output_height, input_height);
+      phend = AdaptEndIndex(h_offset, output_height, input_height);
+
+      pwstart = AdaptStartIndex(w_offset, output_width, input_width);
+      pwend = AdaptEndIndex(w_offset, output_width, input_width);
     } else {
       pdstart = (d_offset < ksize_depth)
                     ? 0

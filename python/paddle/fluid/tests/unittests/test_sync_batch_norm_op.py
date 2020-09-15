@@ -22,6 +22,7 @@ import unittest
 import numpy as np
 import os
 import six
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler
@@ -209,7 +210,7 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
             return
 
         with program_guard(Program(), Program()):
-            my_sync_batch_norm = fluid.dygraph.SyncBatchNorm(10)
+            my_sync_batch_norm = paddle.nn.SyncBatchNorm(10)
             x1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CUDAPlace(0))
             self.assertRaises(TypeError, my_sync_batch_norm, x1)
@@ -218,6 +219,23 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
             # float16 only can be set on GPU place
             x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
             self.assertRaises(TypeError, my_sync_batch_norm, x2)
+
+
+class TestConvertSyncBatchNorm(unittest.TestCase):
+    def test_convert(self):
+        if not core.is_compiled_with_cuda():
+            return
+
+        with program_guard(Program(), Program()):
+            compare_model = paddle.nn.Sequential(
+                paddle.nn.Conv2d(3, 5, 3), paddle.nn.BatchNorm2d(5))
+            model = paddle.nn.Sequential(
+                paddle.nn.Conv2d(3, 5, 3), paddle.nn.BatchNorm2d(5))
+            model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            for idx, sublayer in enumerate(compare_model.sublayers()):
+                if isinstance(sublayer, paddle.nn.BatchNorm2d):
+                    self.assertEqual(
+                        isinstance(model[idx], paddle.nn.SyncBatchNorm), True)
 
 
 if __name__ == '__main__':

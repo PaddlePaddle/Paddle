@@ -31,6 +31,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("fused_embedding_eltwise_layernorm");
     teller_set.insert("multihead_matmul");
     teller_set.insert("skip_layernorm");
+    teller_set.insert("slice");
 #endif
   }
 
@@ -51,6 +52,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "relu",
                                                   "depthwise_conv2d",
                                                   "softmax",
+                                                  "sigmoid",
                                                   "batch_norm",
                                                   "elementwise_add",
                                                   "leaky_relu",
@@ -87,6 +89,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gelu",
       "layer_norm",
       "scale",
+      "stack",
   };
 };
 
