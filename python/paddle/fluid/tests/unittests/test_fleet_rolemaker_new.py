@@ -200,6 +200,10 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         shutil.rmtree(tmp)
 
     def test_hdfs_gloo(self):
+        if os.getenv("SYSTEM") == "Darwin":
+            print("skip gloo UT on mac")
+            return
+
         tmp = self.mkdir()
         os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
         os.environ["PADDLE_WITH_GLOO"] = "1"
@@ -214,6 +218,10 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         self.clean(tmp)
 
     def test_fs_gloo(self):
+        if os.getenv("SYSTEM") == "Darwin":
+            print("skip gloo UT on mac")
+            return
+
         tmp = self.mkdir()
         os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
         os.environ["PADDLE_WITH_GLOO"] = "1"
