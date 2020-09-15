@@ -54,6 +54,7 @@ class ScopedRNNBase {
       x_descs_.emplace_back(x_desc_.descriptor<T>(dims_x, strides_x));
       y_descs_.emplace_back(y_desc_.descriptor<T>(dims_y, strides_y));
     }
+
 #if CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
       x_seq_desc_.descriptor<T>(seq_length_, batch_size_, input_size_, true,
@@ -63,6 +64,7 @@ class ScopedRNNBase {
                                 sequence_length);
     }
 #endif
+
     // ------------------- cudnn hx, hy, cx, cy descriptors----------
     std::vector<int> dims_hx = {num_layers_ * numDirections, batch_size_,
                                 hidden_size_};
@@ -97,10 +99,13 @@ class ScopedRNNBase {
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
         cudnn_type));
 #endif
+
+#if CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNPaddingMode(
           rnn_desc_.desc(), CUDNN_RNN_PADDED_IO_ENABLED));
     }
+#endif
 
     // ------------------- cudnn weights_size ---------------------
     size_t weights_size_;
