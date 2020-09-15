@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/grid_sampler_op.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
@@ -30,7 +31,7 @@ static __forceinline__ __device__ void atomic_add(T* data, int h, int w, int sH,
                                                   int sW, int H, int W,
                                                   T delta) {
   if (in_bounds(h, w, H, W)) {
-    atomicAdd(data + h * sH + w * sW, delta);
+    platform::CudaAtomicAdd(data + h * sH + w * sW, delta);
   }
 }
 
@@ -267,7 +268,7 @@ class GridSampleOpCUDAKernel : public framework::OpKernel<T> {
     Mode mode;
     if (padding_mode_s == "border") {
       padding_mode = PaddingMode::border;
-    } else if (padding_mode_s == "reflect") {
+    } else if (padding_mode_s == "reflection") {
       padding_mode = PaddingMode::reflect;
     } else {
       padding_mode = PaddingMode::zeros;
@@ -431,7 +432,7 @@ class GridSampleGradOpCUDAKernel : public framework::OpKernel<T> {
     Mode mode;
     if (padding_mode_s == "border") {
       padding_mode = PaddingMode::border;
-    } else if (padding_mode_s == "reflect") {
+    } else if (padding_mode_s == "reflection") {
       padding_mode = PaddingMode::reflect;
     } else {
       padding_mode = PaddingMode::zeros;

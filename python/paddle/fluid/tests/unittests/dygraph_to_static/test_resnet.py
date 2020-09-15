@@ -215,8 +215,8 @@ def train(to_static):
     """
     with fluid.dygraph.guard(place):
         np.random.seed(SEED)
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         train_reader = paddle.batch(
             reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
@@ -345,6 +345,13 @@ class TestResnet(unittest.TestCase):
             msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
                                                              dygraph_loss))
         self.verify_predict()
+
+    def test_in_static_mode_mkldnn(self):
+        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        try:
+            train(to_static=True)
+        finally:
+            fluid.set_flags({'FLAGS_use_mkldnn': False})
 
 
 if __name__ == '__main__':

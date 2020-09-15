@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -61,6 +62,10 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("RpnRois", {-1, 4});
     ctx->SetOutputDim("RpnRoiProbs", {-1, 1});
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("RpnRois", std::max(ctx->GetLoDLevel("Scores"), 1));
+      ctx->SetLoDLevel("RpnRoiProbs", std::max(ctx->GetLoDLevel("Scores"), 1));
+    }
   }
 
  protected:
@@ -347,7 +352,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     lod0.push_back(0);
     anchors.Resize({anchors.numel() / 4, 4});
     variances.Resize({variances.numel() / 4, 4});
-    std::vector<int64_t> tmp_lod;
+    std::vector<int> tmp_num;
 
     int64_t num_proposals = 0;
     for (int64_t i = 0; i < num; ++i) {
@@ -369,16 +374,16 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       AppendProposals(rpn_roi_probs, num_proposals, scores);
       num_proposals += proposals.dims()[0];
       lod0.push_back(num_proposals);
-      tmp_lod.push_back(num_proposals);
+      tmp_num.push_back(proposals.dims()[0]);
     }
-    if (context.HasOutput("RpnRoisLod")) {
-      auto *rpn_rois_lod = context.Output<Tensor>("RpnRoisLod");
-      rpn_rois_lod->mutable_data<int64_t>({num}, context.GetPlace());
-      int64_t *lod_data = rpn_rois_lod->data<int64_t>();
+    if (context.HasOutput("RpnRoisNum")) {
+      auto *rpn_rois_num = context.Output<Tensor>("RpnRoisNum");
+      rpn_rois_num->mutable_data<int>({num}, context.GetPlace());
+      int *num_data = rpn_rois_num->data<int>();
       for (int i = 0; i < num; i++) {
-        lod_data[i] = tmp_lod[i];
+        num_data[i] = tmp_num[i];
       }
-      rpn_rois_lod->Resize({num});
+      rpn_rois_num->Resize({num});
     }
     rpn_rois->set_lod(lod);
     rpn_roi_probs->set_lod(lod);
@@ -433,6 +438,16 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 
     Tensor keep;
     FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, &keep);
+    // Handle the case when there is no keep index left
+    if (keep.numel() == 0) {
+      math::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      bbox_sel.mutable_data<T>({1, 4}, ctx.GetPlace());
+      set_zero(ctx, &bbox_sel, static_cast<T>(0));
+      Tensor scores_filter;
+      scores_filter.mutable_data<T>({1, 1}, ctx.GetPlace());
+      set_zero(ctx, &scores_filter, static_cast<T>(0));
+      return std::make_pair(bbox_sel, scores_filter);
+    }
 
     Tensor scores_filter;
     bbox_sel.mutable_data<T>({keep.numel(), 4}, ctx.GetPlace());
@@ -481,7 +496,8 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor), Output proposals with shape (rois_num, 4).");
     AddOutput("RpnRoiProbs",
               "(LoDTensor) Scores of proposals with shape (rois_num, 1).");
-    AddOutput("RpnRoisLod", "(Tensor), rpn rois's lod info").AsDispensable();
+    AddOutput("RpnRoisNum", "(Tensor), The number of Rpn RoIs in each image")
+        .AsDispensable();
     AddAttr<int>("pre_nms_topN",
                  "Number of top scoring RPN proposals to keep before "
                  "applying NMS.");
@@ -515,3 +531,11 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(generate_proposals, ops::GenerateProposalsKernel<float>,
                        ops::GenerateProposalsKernel<double>);
+REGISTER_OP_VERSION(generate_proposals)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade generate_proposals add a new output [RpnRoisNum])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewOutput(
+            "RpnRoisNum",
+            "The number of Rpn RoIs in each image. RpnRoisNum is "
+            "dispensable."));

@@ -25,7 +25,6 @@ from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
 from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 
@@ -102,7 +101,7 @@ class MNIST(fluid.dygraph.Layer):
                     loc=0.0, scale=scale)),
             act="softmax")
 
-    @declarative
+    @paddle.jit.to_static
     def forward(self, inputs, label=None):
         x = self.inference(inputs)
         if label is not None:
@@ -134,7 +133,7 @@ class TestMNIST(unittest.TestCase):
             drop_last=True)
 
 
-class TestMNISTWithDeclarative(TestMNIST):
+class TestMNISTWithToStatic(TestMNIST):
     """
     Tests model if doesn't change the layers while decorated
     by `dygraph_to_static_output`. In this case, everything should
@@ -147,13 +146,25 @@ class TestMNISTWithDeclarative(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
-    def test_mnist_declarative(self):
+    def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
         self.assertTrue(
             np.allclose(dygraph_loss, static_loss),
             msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
                                                             static_loss))
+
+    def test_mnist_declarative_cpu_vs_mkldnn(self):
+        dygraph_loss_cpu = self.train_dygraph()
+        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        try:
+            dygraph_loss_mkldnn = self.train_dygraph()
+        finally:
+            fluid.set_flags({'FLAGS_use_mkldnn': False})
+        self.assertTrue(
+            np.allclose(dygraph_loss_cpu, dygraph_loss_mkldnn),
+            msg='cpu dygraph is {}\n mkldnn dygraph is \n{}'.format(
+                dygraph_loss_cpu, dygraph_loss_mkldnn))
 
     def train(self, to_static=False):
         prog_trans = ProgramTranslator()

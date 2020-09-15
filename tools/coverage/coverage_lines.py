@@ -33,7 +33,7 @@ def get_lines(info_file):
                 hits += 1
 
     if total == 0:
-        print 'no data found'
+        print('no data found')
         exit()
 
     return hits / total
@@ -47,17 +47,17 @@ if __name__ == '__main__':
     expected = float(sys.argv[2])
 
     if not os.path.isfile(info_file):
-        print 'info file {} is not exists, ignored'.format(info_file)
+        print('info file {} is not exists, ignored'.format(info_file))
         exit()
 
     actual = get_lines(info_file)
     actual = round(actual, 3)
 
     if actual < expected:
-        print 'expected >= {} %, actual {} %, failed'.format(
-            round(expected * 100, 1), round(actual * 100, 1))
+        print('expected >= {} %, actual {} %, failed'.format(
+            round(expected * 100, 1), round(actual * 100, 1)))
 
         exit(1)
 
-    print 'expected >= {} %, actual {} %, passed'.format(
-        round(expected * 100, 1), round(actual * 100, 1))
+    print('expected >= {} %, actual {} %, passed'.format(
+        round(expected * 100, 1), round(actual * 100, 1)))

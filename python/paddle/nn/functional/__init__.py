@@ -39,7 +39,7 @@ from .activation import hard_sigmoid  #DEFINE_ALIAS
 from .activation import hard_swish  #DEFINE_ALIAS
 from .activation import hsigmoid  #DEFINE_ALIAS
 from .activation import leaky_relu  #DEFINE_ALIAS
-from .activation import logsigmoid  #DEFINE_ALIAS
+from .activation import log_sigmoid  #DEFINE_ALIAS
 from .activation import maxout  #DEFINE_ALIAS
 from .activation import prelu  #DEFINE_ALIAS
 from .activation import relu  #DEFINE_ALIAS
@@ -72,9 +72,11 @@ from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
 from .common import assign  #DEFINE_ALIAS
 from .common import interpolate  #DEFINE_ALIAS
+from .common import upsample  #DEFINE_ALIAS
 from .common import bilinear  #DEFINE_ALIAS
 from .conv import conv1d  #DEFINE_ALIAS
 from .conv import conv_transpose1d  #DEFINE_ALIAS
+from .common import linear  #DEFINE_ALIAS
 from .conv import conv2d  #DEFINE_ALIAS
 from .conv import conv_transpose2d  #DEFINE_ALIAS
 from .conv import conv3d  #DEFINE_ALIAS
@@ -160,29 +162,37 @@ from .loss import square_error_cost  #DEFINE_ALIAS
 from .loss import ssd_loss  #DEFINE_ALIAS
 from .loss import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 from .loss import ctc_loss  #DEFINE_ALIAS
-# from .norm import batch_norm        #DEFINE_ALIAS
 # from .norm import data_norm        #DEFINE_ALIAS
 # from .norm import group_norm        #DEFINE_ALIAS
-# from .norm import instance_norm        #DEFINE_ALIAS
 from .norm import l2_normalize  #DEFINE_ALIAS
-# from .norm import layer_norm        #DEFINE_ALIAS
+from .norm import batch_norm  #DEFINE_ALIAS
+from .norm import instance_norm  #DEFINE_ALIAS
+from .norm import layer_norm  #DEFINE_ALIAS
 from .norm import lrn  #DEFINE_ALIAS
 from .norm import normalize  #DEFINE_ALIAS
 # from .norm import spectral_norm        #DEFINE_ALIAS
-from .pooling import max_pool1d  #DEFINE_ALIAS
-from .pooling import avg_pool1d  #DEFINE_ALIAS
-from .pooling import adaptive_max_pool1d  #DEFINE_ALIAS
-from .pooling import adaptive_avg_pool1d  #DEFINE_ALIAS
 from .pooling import pool2d  #DEFINE_ALIAS
 from .pooling import pool3d  #DEFINE_ALIAS
+from .pooling import avg_pool1d  #DEFINE_ALIAS
 from .pooling import adaptive_pool2d  #DEFINE_ALIAS
 from .pooling import adaptive_pool3d  #DEFINE_ALIAS
 from .pooling import avg_pool2d  #DEFINE_ALIAS
-from .pooling import max_pool2d  #DEFINE_ALIAS
 from .pooling import avg_pool3d  #DEFINE_ALIAS
+from .pooling import max_pool1d  #DEFINE_ALIAS
+from .pooling import max_pool2d  #DEFINE_ALIAS
 from .pooling import max_pool3d  #DEFINE_ALIAS
+
+from .pooling import adaptive_pool2d  #DEFINE_ALIAS
+from .pooling import adaptive_pool3d  #DEFINE_ALIAS
+from .pooling import adaptive_max_pool1d  #DEFINE_ALIAS
+from .pooling import adaptive_max_pool2d  #DEFINE_ALIAS
+from .pooling import adaptive_max_pool3d  #DEFINE_ALIAS
+from .pooling import adaptive_avg_pool1d  #DEFINE_ALIAS
 from .pooling import adaptive_avg_pool2d  #DEFINE_ALIAS
 from .pooling import adaptive_avg_pool3d  #DEFINE_ALIAS
+
+from .rnn import rnn  #DEFINE_ALIAS
+from .rnn import birnn  #DEFINE_ALIAS
 # from .rnn import gru_unit        #DEFINE_ALIAS
 # from .rnn import lstm        #DEFINE_ALIAS
 # from .rnn import lstm_unit        #DEFINE_ALIAS
@@ -194,7 +204,7 @@ from .vision import box_clip  #DEFINE_ALIAS
 from .vision import box_coder  #DEFINE_ALIAS
 from .vision import box_decoder_and_assign  #DEFINE_ALIAS
 from .vision import collect_fpn_proposals  #DEFINE_ALIAS
-# from .vision import deformable_conv        #DEFINE_ALIAS
+# from .vision import deformable_conv  #DEFINE_ALIAS
 from .vision import deformable_roi_pooling  #DEFINE_ALIAS
 from .vision import density_prior_box  #DEFINE_ALIAS
 from .vision import detection_output  #DEFINE_ALIAS
@@ -206,7 +216,7 @@ from .vision import generate_proposals  #DEFINE_ALIAS
 from .vision import grid_sample  #DEFINE_ALIAS
 from .vision import image_resize  #DEFINE_ALIAS
 from .vision import image_resize_short  #DEFINE_ALIAS
-# from .vision import multi_box_head        #DEFINE_ALIAS
+# from .vision import multi_box_head  #DEFINE_ALIAS
 from .vision import pixel_shuffle  #DEFINE_ALIAS
 from .vision import prior_box  #DEFINE_ALIAS
 from .vision import prroi_pool  #DEFINE_ALIAS
@@ -224,3 +234,4 @@ from .vision import space_to_depth  #DEFINE_ALIAS
 from .vision import yolo_box  #DEFINE_ALIAS
 from .vision import yolov3_loss  #DEFINE_ALIAS
 from .input import one_hot  #DEFINE_ALIAS
+from .input import embedding  #DEFINE_ALIAS

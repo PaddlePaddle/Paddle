@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -48,6 +49,14 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputsDim("MultiFpnRois", outs_dims);
     ctx->SetOutputDim("RestoreIndex", {-1, 1});
+
+    if (ctx->HasOutputs("MultiLevelRoIsNum")) {
+      std::vector<framework::DDim> outs_num_dims;
+      for (size_t i = 0; i < num_out_rois; ++i) {
+        outs_num_dims.push_back({-1});
+      }
+      ctx->SetOutputsDim("MultiLevelRoIsNum", outs_num_dims);
+    }
     if (!ctx->IsRuntime()) {
       for (size_t i = 0; i < num_out_rois; ++i) {
         ctx->SetLoDLevel("MultiFpnRois", ctx->GetLoDLevel("FpnRois"), i);
@@ -66,12 +75,22 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
 class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("FpnRois", "(LoDTensor) The rois at all levels in shape (-1, 4)");
+    AddInput("FpnRois", "(LoDTensor) The RoIs at all levels in shape (-1, 4)");
+    AddInput("RoisNum",
+             "(Tensor) The number of RoIs in shape (B),"
+             "B is the number of images")
+        .AsDispensable();
     AddOutput("MultiFpnRois", "(LoDTensor) Output with distribute operator")
         .AsDuplicable();
     AddOutput("RestoreIndex",
               "(Tensor) An array of positive number which is "
               "used to restore the order of FpnRois");
+    AddOutput("MultiLevelRoIsNum",
+              "(List of Tensor) The RoIs' number of each image on multiple "
+              "levels. The number on each level has the shape of (B),"
+              "B is the number of images.")
+        .AsDuplicable()
+        .AsDispensable();
     AddAttr<int>("min_level",
                  "The lowest level of FPN layer where the"
                  " proposals come from");
@@ -105,3 +124,14 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(distribute_fpn_proposals,
                        ops::DistributeFpnProposalsOpKernel<float>,
                        ops::DistributeFpnProposalsOpKernel<double>);
+REGISTER_OP_VERSION(distribute_fpn_proposals)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade distribute_fpn_proposals add a new input
+              [RoisNum] and add a new output [MultiLevelRoIsNum].)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput("RoIsNum", "The number of RoIs in each image.")
+            .NewOutput("MultiLevelRoisNum",
+                       "The RoIs' number of each image on multiple "
+                       "levels. The number on each level has the shape of (B),"
+                       "B is the number of images."));

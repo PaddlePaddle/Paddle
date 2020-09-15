@@ -12,12 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/linspace_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename T>
 __global__ void LinspaceKernel(T start, double step, int64_t size, T* out) {
@@ -35,15 +38,27 @@ template <typename T>
 class CUDALinspaceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* start_t = context.Input<framework::Tensor>("Start");
-    auto* stop_t = context.Input<framework::Tensor>("Stop");
+    auto* pre_start = context.Input<framework::Tensor>("Start");
+    auto* pre_stop = context.Input<framework::Tensor>("Stop");
     auto* num_t = context.Input<framework::Tensor>("Num");
     auto* out = context.Output<framework::Tensor>("Out");
+    auto dtype = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("dtype"));
+
+    Tensor start_t;
+    Tensor stop_t;
+    auto start_dtype =
+        framework::OpKernelType(pre_start->type(), context.GetPlace());
+    auto stop_dtype =
+        framework::OpKernelType(pre_stop->type(), context.GetPlace());
+    auto out_dtype = framework::OpKernelType(dtype, context.GetPlace());
+    framework::TransDataType(start_dtype, out_dtype, *pre_start, &start_t);
+    framework::TransDataType(stop_dtype, out_dtype, *pre_stop, &stop_t);
 
     framework::Tensor n;
-    framework::TensorCopy(*start_t, platform::CPUPlace(), &n);
+    framework::TensorCopy(start_t, platform::CPUPlace(), &n);
     T start = n.data<T>()[0];
-    framework::TensorCopy(*stop_t, platform::CPUPlace(), &n);
+    framework::TensorCopy(stop_t, platform::CPUPlace(), &n);
     T stop = n.data<T>()[0];
     framework::TensorCopy(*num_t, platform::CPUPlace(), &n);
     int32_t num = n.data<int32_t>()[0];
