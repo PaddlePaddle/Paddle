@@ -997,9 +997,10 @@ class Fleet(object):
         if paddle.fluid.framework.in_dygraph_mode():
             # imitate target optimizer retrieval
             target_opt = self.user_defined_optimizer
-            context["user_defined_strategy"] = copy.copy(
+            context["user_defined_strategy"] = copy.deepcopy(
                 self.user_defined_strategy)
-            context["valid_strategy"] = copy.copy(self.user_defined_strategy)
+            context["valid_strategy"] = copy.deepcopy(
+                self.user_defined_strategy)
             self._context = context
             return target_opt.minimize(loss)
 
@@ -1023,8 +1024,9 @@ class Fleet(object):
             MetaOptimizerFactory()._get_valid_meta_optimizers(
                 self.user_defined_optimizer)
 
-        context["user_defined_strategy"] = copy.copy(self.user_defined_strategy)
-        copy_user_defined_strategy = copy.copy(self.user_defined_strategy)
+        context["user_defined_strategy"] = copy.deepcopy(
+            self.user_defined_strategy)
+        copy_user_defined_strategy = copy.deepcopy(self.user_defined_strategy)
 
         # trigger the auto-parallel in very strict condition
         # strategy = DistributedStrategy()
