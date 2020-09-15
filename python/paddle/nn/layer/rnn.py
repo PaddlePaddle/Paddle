@@ -986,9 +986,14 @@ class RNNBase(LayerList):
                                      fluid.default_startup_program()):
                 with framework.no_grad():
                     # Parameter would be registered into `self._parameters`,
-                    # use non-parameter `_flat_weight` to avoid and hide it.
-                    self._flat_weight = self.create_variable(
-                        dtype=params[0].dtype)
+                    # use non-parameter `_flat_weight` to avoid and hide it
+                    # after cudnn_rnn_op receives the list of separated weights
+                    # as inputs, then `_flat_weight` should only be used in
+                    # test mode. If hide currently, weights can not be updated.
+                    # TODO(guosheng): maybe better way to handle this, using
+                    # `create_variable` seems breaking backward.
+                    self._flat_weight = self.create_parameter(
+                        shape=[np.sum(shape)], dtype=params[0].dtype)
                     self._helper.append_op(
                         type="coalesce_tensor",
                         inputs={"Input": self._all_weights},
