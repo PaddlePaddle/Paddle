@@ -105,7 +105,9 @@ class TestConv2dBf16Op(TestConv2dOp):
 
     def test_check_output(self):
         self.check_output_with_place(
-            core.CPUPlace(), atol=2, check_dygraph=False)
+            core.CPUPlace(),
+            atol=1e-2 if self.force_fp32_output else 2,
+            check_dygraph=False)
 
     def test_check_grad(self):
         pass
