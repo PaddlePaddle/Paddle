@@ -65,6 +65,10 @@ class TestLoggingUtils(unittest.TestCase):
         self.assertEqual(
             logging_utils._TRANSLATOR_LOGGER.need_to_echo_log_to_stdout, False)
 
+        logging_utils._TRANSLATOR_LOGGER.need_to_echo_node_to_stdout = None
+        self.assertEqual(
+            logging_utils._TRANSLATOR_LOGGER.need_to_echo_code_to_stdout, False)
+
         paddle.jit.set_code_level(also_to_stdout=True)
         self.assertEqual(
             logging_utils._TRANSLATOR_LOGGER.need_to_echo_code_to_stdout, True)
@@ -89,7 +93,25 @@ class TestLoggingUtils(unittest.TestCase):
         with self.assertRaises(TypeError):
             paddle.jit.set_code_level(3.3)
 
-    def test_log(self):
+    def test_log_api(self):
+        # test api for CI Converage
+        logging_utils.set_verbosity(1, True)
+
+        logging_utils.warn("warn")
+        logging_utils.error("error")
+
+        logging_utils.log(1, "log level 1")
+        logging_utils.log(2, "log level 2")
+
+        source_code = "x = 3"
+        ast_code = gast.parse(source_code)
+        logging_utils.set_code_level(1, True)
+        logging_utils.log_transformed_code(1, ast_code, "TestTransformer")
+        logging_utils.set_code_level(logging_utils.LOG_AllTransformer, True)
+        logging_utils.log_transformed_code(logging_utils.LOG_AllTransformer,
+                                           ast_code, "TestTransformer")
+
+    def test_log_message(self):
         stream = io.BytesIO() if six.PY2 else io.StringIO()
         log = self.translator_logger.logger
         stdout_handler = logging.StreamHandler(stream)
@@ -102,9 +124,9 @@ class TestLoggingUtils(unittest.TestCase):
 
         if six.PY3:
             with mock.patch.object(sys, 'stdout', stream):
+                logging_utils.set_verbosity(1, False)
                 logging_utils.warn(warn_msg)
                 logging_utils.error(error_msg)
-                self.translator_logger.verbosity_level = 1
                 logging_utils.log(1, log_msg_1)
                 logging_utils.log(2, log_msg_2)
 
