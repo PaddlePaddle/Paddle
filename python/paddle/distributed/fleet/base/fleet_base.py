@@ -1034,7 +1034,7 @@ class Fleet(object):
         if copy_user_defined_strategy._is_strict_auto():
             # turn on all the strategy for each optimizer
             for opt in distributed_optimizer_list:
-                opt._enable_strategy(copy_user_defined_strategy)
+                opt._enable_strategy(copy_user_defined_strategy, context)
 
         valid_optimizer_list = []
         valid_graph_optimizer_list = []
