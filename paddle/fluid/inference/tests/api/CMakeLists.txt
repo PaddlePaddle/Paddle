@@ -9,6 +9,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 function(download_data install_dir data_file)
+    string(REGEX MATCH "[^/\\]+$" data_file ${data_file})
     if (NOT EXISTS ${install_dir}/${data_file})
         inference_download_and_uncompress(${install_dir} ${INFERENCE_URL} ${data_file})
     endif()
