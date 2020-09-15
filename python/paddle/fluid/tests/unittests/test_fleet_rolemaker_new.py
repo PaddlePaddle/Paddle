@@ -15,6 +15,8 @@
 
 from __future__ import print_function
 import os
+import shutil
+import tempfile
 import unittest
 import paddle.distributed.fleet.base.role_maker as role_maker
 
@@ -72,8 +74,7 @@ class TestCloudRoleMaker(unittest.TestCase):
             print("warning: no netifaces, skip test_tr_rolemaker")
             return
 
-        ro = role_maker.PaddleCloudRoleMaker(
-            is_collective=False, init_gloo=False)
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
 
         self.assertTrue(ro.is_worker())
         self.assertFalse(ro.is_server())
@@ -167,9 +168,62 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
             role=role_maker.Role.WORKER,
             current_id=0,
             worker_num=2)
+
         self.assertIn("127.0.0.1:36001", ro.get_pserver_endpoints())
         self.assertTrue(ro.is_worker())
         self.assertEqual(ro.role_id(), 0)
+
+
+class TestGlooWithCloudRoleMaker(unittest.TestCase):
+    def setUp(self):
+        os.environ["PADDLE_TRAINERS_NUM"] = "1"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["PADDLE_TRAINER_ID"] = "0"
+
+    def case(self, role, comm_world):
+        role._barrier(comm_world)
+
+        gather = role._all_gather(1, comm_world)
+        self.assertEqual(gather[0], 1)
+
+        all_reduce = role._all_reduce(1, "sum", comm_world)
+        self.assertEqual(1, all_reduce)
+
+    def mkdir(self):
+        tmp = tempfile.mkdtemp()
+        return tmp
+
+    def clean(self, tmp):
+        shutil.rmtree(tmp)
+
+    def test_hdfs_gloo(self):
+        tmp = self.mkdir()
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "1"
+        os.environ["PADDLE_GLOO_FS_NAME"] = "NULL"
+        os.environ["PADDLE_GLOO_FS_UGI"] = "NULL"
+        os.environ["PADDLE_GLOO_FS_PATH"] = tmp
+
+        role = role_maker.PaddleCloudRoleMaker()
+        role.generate_role()
+        self.case(role, "worker")
+        self.clean(tmp)
+
+    def test_fs_gloo(self):
+        tmp = self.mkdir()
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "2"
+        os.environ["PADDLE_GLOO_FS_PATH"] = tmp
+
+        role = role_maker.PaddleCloudRoleMaker()
+        role.generate_role()
+        self.case(role, "worker")
+        self.clean(tmp)
 
 
 if __name__ == "__main__":

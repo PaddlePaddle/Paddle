@@ -89,25 +89,54 @@ class Gloo(object):
 
             if not dfs_name or not dfs_ugi or not dfs_path:
                 raise ValueError(self._err_type)
-
             self._init_dfs(dfs_name, dfs_ugi, dfs_path, self._prefix)
+
         elif self._rendezvous == Gloo.RENDEZVOUS.FILE:
-            self._init_fs(**kwargs)
+            fs_path = kwargs.get("dfs.path", "")
+
+            if not fs_path:
+                raise ValueError(self._err_type)
+            self._init_fs(fs_path, self._prefix)
+
         elif self._rendezvous == Gloo.RENDEZVOUS.HTTP:
             ip = kwargs.get("http.host", "")
             port = kwargs.get("http.port", "")
 
             if not ip or not port:
                 raise ValueError(self._err_type)
-
             self._init_http(ip, port, self._prefix)
+
         else:
             raise ValueError(self._err_type)
 
         self._is_initialized = True
 
-    def _init_fs(self, **kwargs):
-        raise ValueError("comming soon")
+    def _init_fs(self, fs_path, prefix):
+        def init(rank, nodes, role):
+            gloo = fluid.core.Gloo()
+            gloo.set_rank(rank)
+            gloo.set_size(nodes)
+            gloo.set_prefix(prefix)
+            gloo.set_iface(self._iface)
+            gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                     self._run_timeout_seconds)
+            gloo.set_hdfs_store(os.path.join(fs_path, role), "", "")
+            gloo.init()
+            return gloo
+
+        if self._role == Role.WORKER:
+            rank, nodes = self._get_rank_nodes(Role.WORKER)
+            gloo = init(rank, nodes, "WORKER")
+            self._worker_comm = gloo
+        else:
+            rank, nodes = self._get_rank_nodes(Role.SERVER)
+            gloo = init(rank, nodes, "SERVER")
+            self._server_comm = gloo
+
+        if self._need_init_all:
+            rank, nodes = self._get_rank_nodes(Role.ALL)
+            gloo = init(rank, nodes, "ALL")
+            self._nodes_comm = gloo
 
     def _init_dfs(self, dfs_name, dfs_ugi, dfs_path, prefix):
         def init(rank, nodes, role):
@@ -760,15 +789,17 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         # PADDLE_GLOO_RENDEZVOUS 1: HDFS 2: FILE 3: HTTP
         rendezvous_type = int(os.getenv("PADDLE_GLOO_RENDEZVOUS", "0"))
         prefix = os.getenv("SYS_JOB_ID", "")
-        if rendezvous_type not in [1, 2, 3]:
+        if rendezvous_type not in [
+                Gloo.RENDEZVOUS.HDFS, Gloo.RENDEZVOUS.HTTP, Gloo.RENDEZVOUS.FILE
+        ]:
             raise ValueError(self._gloo._err_type)
 
         need_init_all = True if use_gloo == 2 else False
 
         if rendezvous_type == Gloo.RENDEZVOUS.HDFS:
-            dfs_name = os.getenv("PADDLE_GLOO_DFS_NAME", "")
-            dfs_ugi = os.getenv("PADDLE_GLOO_DFS_UGI", "")
-            dfs_path = os.getenv("PADDLE_GLOO_DFS_PATH", "")
+            dfs_name = os.getenv("PADDLE_GLOO_FS_NAME", "")
+            dfs_ugi = os.getenv("PADDLE_GLOO_FS_UGI", "")
+            dfs_path = os.getenv("PADDLE_GLOO_FS_PATH", "")
             kwargs = {
                 "dfs.name": dfs_name,
                 "dfs.ugi": dfs_ugi,
@@ -784,14 +815,18 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 "store.prefix": prefix,
             }
         else:
-            raise ValueError("comming soon")
+            dfs_path = os.getenv("PADDLE_GLOO_FS_PATH", "")
+            kwargs = {
+                "dfs.path": dfs_path,
+                "store.prefix": prefix,
+            }
 
         if rendezvous_type == Gloo.RENDEZVOUS.HDFS:
             type = "HDFS"
         elif rendezvous_type == Gloo.RENDEZVOUS.HTTP:
             type = "HTTP"
         else:
-            type = "ERR"
+            type = "FILE"
         print("Gloo init with {}: need_init_all: {}, args: {}".format(
             type, need_init_all, kwargs))
 
