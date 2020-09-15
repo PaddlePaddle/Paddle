@@ -122,7 +122,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
 
         configs = paddle.SaveLoadConfig()
         configs.separate_params = True
-        load_param_dict, _ = paddle.load(self.save_dirname, configs)
+        load_param_dict, _ = fluid.dygraph.load_dygraph(self.save_dirname,
+                                                        configs)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
     def test_load_with_model_filename(self):
@@ -134,7 +135,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         configs = paddle.SaveLoadConfig()
         configs.separate_params = True
         configs.model_filename = self.model_filename
-        load_param_dict, _ = paddle.load(self.save_dirname, configs)
+        load_param_dict, _ = fluid.dygraph.load_dygraph(self.save_dirname,
+                                                        configs)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
     def test_load_with_param_filename(self):
@@ -145,7 +147,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
 
         configs = paddle.SaveLoadConfig()
         configs.params_filename = self.params_filename
-        load_param_dict, _ = paddle.load(self.save_dirname, configs)
+        load_param_dict, _ = fluid.dygraph.load_dygraph(self.save_dirname,
+                                                        configs)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
     def test_load_with_model_and_param_filename(self):
@@ -157,7 +160,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         configs = paddle.SaveLoadConfig()
         configs.params_filename = self.params_filename
         configs.model_filename = self.model_filename
-        load_param_dict, _ = paddle.load(self.save_dirname, configs)
+        load_param_dict, _ = fluid.dygraph.load_dygraph(self.save_dirname,
+                                                        configs)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
 

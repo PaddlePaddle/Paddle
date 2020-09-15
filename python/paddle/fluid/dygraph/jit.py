@@ -603,7 +603,7 @@ class SaveLoadConfig(object):
         By default, it will not be retained in `paddle.load` result. Default: False.
         
         .. note::
-            Only used for ``paddle.load``.
+            Only used for ``paddle.fluid.load_dygraph``.
 
         Examples:
             .. code-block:: python
