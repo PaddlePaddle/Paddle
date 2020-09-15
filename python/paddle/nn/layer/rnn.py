@@ -892,24 +892,25 @@ class BiRNN(Layer):
         return outputs, final_states
 
 
-class RNNMixin(LayerList):
+class RNNBase(LayerList):
     r"""
-    A Mixin class for RNN networks. It provides `forward` method for SimpleRNN,
-    LSTM and GRU.
+    RNNBase class for RNN networks. It provides `forward`, `flatten_parameters`
+    and other common methods for SimpleRNN, LSTM and GRU.
     """
 
-    def _init_util(self,
-                   mode,
-                   input_size,
-                   hidden_size,
-                   num_layers=1,
-                   direction="forward",
-                   dropout=0.,
-                   time_major=False,
-                   weight_ih_attr=None,
-                   weight_hh_attr=None,
-                   bias_ih_attr=None,
-                   bias_hh_attr=None):
+    def __init__(self,
+                 mode,
+                 input_size,
+                 hidden_size,
+                 num_layers=1,
+                 direction="forward",
+                 dropout=0.,
+                 time_major=False,
+                 weight_ih_attr=None,
+                 weight_hh_attr=None,
+                 bias_ih_attr=None,
+                 bias_hh_attr=None):
+        super(RNNBase, self).__init__()
         self.mode = mode
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -919,11 +920,46 @@ class RNNMixin(LayerList):
         self.num_layers = num_layers
         self.state_components = 2 if mode == "LSTM" else 1
 
+        kwargs = {
+            "weight_ih_attr": weight_ih_attr,
+            "weight_hh_attr": weight_hh_attr,
+            "bias_ih_attr": bias_ih_attr,
+            "bias_hh_attr": bias_hh_attr
+        }
+
+        if mode == "LSTM":
+            rnn_cls = LSTMCell
+        elif mode == "GRU":
+            rnn_cls = GRUCell
+        else:
+            rnn_cls = SimpleRNNCell
+            kwargs["activation"] = self.activation
+
+        if direction in ["forward", "backward"]:
+            is_reverse = direction == "backward"
+            cell = rnn_cls(input_size, hidden_size, **kwargs)
+            self.append(RNN(cell, is_reverse, time_major))
+            for i in range(1, num_layers):
+                cell = rnn_cls(hidden_size, hidden_size, **kwargs)
+                self.append(RNN(cell, is_reverse, time_major))
+        elif direction == "bidirectional":
+            cell_fw = rnn_cls(input_size, hidden_size, **kwargs)
+            cell_bw = rnn_cls(input_size, hidden_size, **kwargs)
+            self.append(BiRNN(cell_fw, cell_bw, time_major))
+            for i in range(1, num_layers):
+                cell_fw = rnn_cls(2 * hidden_size, hidden_size, **kwargs)
+                cell_bw = rnn_cls(2 * hidden_size, hidden_size, **kwargs)
+                self.append(BiRNN(cell_fw, cell_bw, time_major))
+        else:
+            raise ValueError(
+                "direction should be forward, backward or bidirectional, "
+                "received direction = {}".format(direction))
+
         self.could_use_cudnn = get_device().startswith(
             "gpu:") and get_cudnn_version()
         self.could_use_cudnn &= direction != "backward"
         self.could_use_cudnn &= len(self.parameters()) == num_layers * 4 * (
-            2 if direction == "bidirect" else 1)
+            2 if direction == "bidirectional" else 1)
         self.could_use_cudnn &= mode == "LSTM"  # currently only support LSTM
         self.flatten_parameters()
 
@@ -979,8 +1015,8 @@ class RNNMixin(LayerList):
 
         inputs = {
             'Input': inputs,
-            # 'W': self._flat_weight,
-            'WeightList': self.parameters(),
+            'W': self._flat_weight,
+            # 'WeightList': self.parameters(),
             'InitH': initial_states[0],
             'InitC': initial_states[1],
             'State': dropout_state,
@@ -1049,18 +1085,8 @@ class RNNMixin(LayerList):
                                      self.state_components)
         return outputs, final_states
 
-    # def __getattribute__(self, name):
-    #     # read interface
-    #     if name == "_parameters":
-    #         # To hide `self._flat_weight`, use `self.__dict__.get('_parameters')`
-    #         # when need actual `self._parameters` like `Layer.__setattr__` doing
-    #         self.__dict__.get('_parameters')
-    #         return None
-    #     else:
-    #         return super(RNNMixin, self).__getattribute__(name)
 
-
-class SimpleRNN(RNNMixin):
+class SimpleRNN(RNNBase):
     r"""
     Multilayer Elman network(SimpleRNN). It takes input sequences and initial 
     states as inputs, and returns the output sequences and the final states.
@@ -1157,53 +1183,20 @@ class SimpleRNN(RNNMixin):
                  bias_ih_attr=None,
                  bias_hh_attr=None,
                  name=None):
-        super(SimpleRNN, self).__init__()
-
-        if direction in ["forward", "backward"]:
-            is_reverse = direction == "backward"
-            cell = SimpleRNNCell(input_size, hidden_size, activation,
-                                 weight_ih_attr, weight_hh_attr, bias_ih_attr,
-                                 bias_hh_attr)
-            self.append(RNN(cell, is_reverse, time_major))
-            for i in range(1, num_layers):
-                cell = SimpleRNNCell(hidden_size, hidden_size, activation,
-                                     weight_ih_attr, weight_hh_attr,
-                                     bias_ih_attr, bias_hh_attr)
-                self.append(RNN(cell, is_reverse, time_major))
-        elif direction == "bidirectional":
-            cell_fw = SimpleRNNCell(input_size, hidden_size, activation,
-                                    weight_ih_attr, weight_hh_attr,
-                                    bias_ih_attr, bias_hh_attr)
-            cell_bw = SimpleRNNCell(input_size, hidden_size, activation,
-                                    weight_ih_attr, weight_hh_attr,
-                                    bias_ih_attr, bias_hh_attr)
-            self.append(BiRNN(cell_fw, cell_bw, time_major))
-            for i in range(1, num_layers):
-                cell_fw = SimpleRNNCell(
-                    2 * hidden_size, hidden_size, activation, weight_ih_attr,
-                    weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                cell_bw = SimpleRNNCell(
-                    2 * hidden_size, hidden_size, activation, weight_ih_attr,
-                    weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                self.append(BiRNN(cell_fw, cell_bw, time_major))
-        else:
-            raise ValueError(
-                "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction))
-
         if activation == "tanh":
             mode = "RNN_TANH"
         elif activation == "relu":
             mode = "RNN_RELU"
         else:
             raise ValueError("Unknown activation '{}'".format(activation))
+        self.activation = activation
         super(SimpleRNN,
-              self)._init_util(mode, input_size, hidden_size, num_layers,
-                               direction, dropout, time_major, weight_ih_attr,
-                               weight_hh_attr, bias_ih_attr, bias_hh_attr)
+              self).__init__(mode, input_size, hidden_size, num_layers,
+                             direction, dropout, time_major, weight_ih_attr,
+                             weight_hh_attr, bias_ih_attr, bias_hh_attr)
 
 
-class LSTM(RNNMixin):
+class LSTM(RNNBase):
     r"""
     Multilayer LSTM. It takes a sequence and an initial state as inputs, and 
     returns the output sequences and the final states.
@@ -1304,41 +1297,13 @@ class LSTM(RNNMixin):
                  bias_ih_attr=None,
                  bias_hh_attr=None,
                  name=None):
-        super(LSTM, self).__init__()
-
-        if direction in ["forward", "backward"]:
-            is_reverse = direction == "backward"
-            cell = LSTMCell(input_size, hidden_size, weight_ih_attr,
-                            weight_hh_attr, bias_ih_attr, bias_hh_attr)
-            self.append(RNN(cell, is_reverse, time_major))
-            for i in range(1, num_layers):
-                cell = LSTMCell(hidden_size, hidden_size, weight_ih_attr,
-                                weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                self.append(RNN(cell, is_reverse, time_major))
-        elif direction == "bidirectional":
-            cell_fw = LSTMCell(input_size, hidden_size, weight_ih_attr,
-                               weight_hh_attr, bias_ih_attr, bias_hh_attr)
-            cell_bw = LSTMCell(input_size, hidden_size, weight_ih_attr,
-                               weight_hh_attr, bias_ih_attr, bias_hh_attr)
-            self.append(BiRNN(cell_fw, cell_bw, time_major))
-            for i in range(1, num_layers):
-                cell_fw = LSTMCell(2 * hidden_size, hidden_size, weight_ih_attr,
-                                   weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                cell_bw = LSTMCell(2 * hidden_size, hidden_size, weight_ih_attr,
-                                   weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                self.append(BiRNN(cell_fw, cell_bw, time_major))
-        else:
-            raise ValueError(
-                "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction))
-
         super(LSTM,
-              self)._init_util("LSTM", input_size, hidden_size, num_layers,
-                               direction, dropout, time_major, weight_ih_attr,
-                               weight_hh_attr, bias_ih_attr, bias_hh_attr)
+              self).__init__("LSTM", input_size, hidden_size, num_layers,
+                             direction, dropout, time_major, weight_ih_attr,
+                             weight_hh_attr, bias_ih_attr, bias_hh_attr)
 
 
-class GRU(RNNMixin):
+class GRU(RNNBase):
     r"""
     Multilayer GRU. It takes input sequencse and initial states as inputs, and 
     returns the output sequences and the final states.
@@ -1436,35 +1401,7 @@ class GRU(RNNMixin):
                  bias_ih_attr=None,
                  bias_hh_attr=None,
                  name=None):
-        super(GRU, self).__init__()
-
-        if direction in ["forward", "backward"]:
-            is_reverse = direction == "backward"
-            cell = GRUCell(input_size, hidden_size, weight_ih_attr,
-                           weight_hh_attr, bias_ih_attr, bias_hh_attr)
-            self.append(RNN(cell, is_reverse, time_major))
-            for i in range(1, num_layers):
-                cell = GRUCell(hidden_size, hidden_size, weight_ih_attr,
-                               weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                self.append(RNN(cell, is_reverse, time_major))
-        elif direction == "bidirectional":
-            cell_fw = GRUCell(input_size, hidden_size, weight_ih_attr,
-                              weight_hh_attr, bias_ih_attr, bias_hh_attr)
-            cell_bw = GRUCell(input_size, hidden_size, weight_ih_attr,
-                              weight_hh_attr, bias_ih_attr, bias_hh_attr)
-            self.append(BiRNN(cell_fw, cell_bw, time_major))
-            for i in range(1, num_layers):
-                cell_fw = GRUCell(2 * hidden_size, hidden_size, weight_ih_attr,
-                                  weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                cell_bw = GRUCell(2 * hidden_size, hidden_size, weight_ih_attr,
-                                  weight_hh_attr, bias_ih_attr, bias_hh_attr)
-                self.append(BiRNN(cell_fw, cell_bw, time_major))
-        else:
-            raise ValueError(
-                "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction))
-
         super(GRU,
-              self)._init_util("GRU", input_size, hidden_size, num_layers,
-                               direction, dropout, time_major, weight_ih_attr,
-                               weight_hh_attr, bias_ih_attr, bias_hh_attr)
+              self).__init__("GRU", input_size, hidden_size, num_layers,
+                             direction, dropout, time_major, weight_ih_attr,
+                             weight_hh_attr, bias_ih_attr, bias_hh_attr)
