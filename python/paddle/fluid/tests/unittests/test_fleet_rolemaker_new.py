@@ -15,6 +15,7 @@
 
 from __future__ import print_function
 import os
+import platform
 import shutil
 import tempfile
 import unittest
@@ -200,8 +201,9 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         shutil.rmtree(tmp)
 
     def test_hdfs_gloo(self):
-        if os.getenv("SYSTEM") == "Darwin":
-            print("skip gloo UT on mac")
+        plats = platform.platform()
+        if 'Darwin' in plats:
+            print("skip gloo UT on MacOS")
             return
 
         tmp = self.mkdir()
@@ -218,8 +220,9 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         self.clean(tmp)
 
     def test_fs_gloo(self):
-        if os.getenv("SYSTEM") == "Darwin":
-            print("skip gloo UT on mac")
+        plats = platform.platform()
+        if 'Darwin' in plats:
+            print("skip gloo UT on MacOS")
             return
 
         tmp = self.mkdir()
