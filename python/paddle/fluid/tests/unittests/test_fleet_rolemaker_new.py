@@ -202,8 +202,8 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
 
     def test_hdfs_gloo(self):
         plats = platform.platform()
-        if 'Darwin' in plats:
-            print("skip gloo UT on MacOS")
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
             return
 
         tmp = self.mkdir()
@@ -221,8 +221,8 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
 
     def test_fs_gloo(self):
         plats = platform.platform()
-        if 'Darwin' in plats:
-            print("skip gloo UT on MacOS")
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
             return
 
         tmp = self.mkdir()
