@@ -41,6 +41,22 @@ class DatasetBase(object):
              fs_name="",
              fs_ugi="",
              download_cmd="cat"):
+        """
+        should be called only once in user's python scripts to initialize setings of dataset instance. 
+        Normally, it is called by InMemoryDataset or QueueDataset.
+
+        Args:
+            batch_size(int): batch size. It will be effective during training. default is 1.
+            thread_num(int): thread num, it is the num of readers. default is 1.
+            use_var(list): list of variables. Variables which you will use. default is [].
+            pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default is "cat"
+            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut is 0.
+            fs_name(str): fs name. default is "".
+            fs_ugi(str): fs ugi. default is "".
+            download_cmd(str): customized download command. default is "cat"
+
+
+        """
         self._set_batch_size(batch_size)
         self._set_thread(thread_num)
         self._set_use_var(use_var)
@@ -312,16 +328,16 @@ class InMemoryDataset(DatasetBase):
             kwargs: Keyword arguments. Currently, we support following keys in **kwargs,
                     including single node settings and advanced distributed related settings:
 
-            batch_size(int): batch size. It will be effective during training. default: 1.
-            thread_num(int): thread num, it is the num of readers. default: 1.
-            use_var(list): list of variables. Variables which you will use. default: [].
-            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut: 0.
-            fs_name(str): fs name. default: "".
-            fs_ugi(str): fs ugi. default: "".
-            pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default: "cat"
-            download_cmd(str): customized download command. default: "cat"
-            data_feed_type(str): data feed type used in c++ code. default: "MultiSlotInMemoryDataFeed".
-            queue_num(int): Dataset output queue num, training threads get data from queues. default:-1, which is set same as thread number in c++.
+            batch_size(int): batch size. It will be effective during training. default is 1.
+            thread_num(int): thread num, it is the num of readers. default is 1.
+            use_var(list): list of variables. Variables which you will use. default is [].
+            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut is 0.
+            fs_name(str): fs name. default is "".
+            fs_ugi(str): fs ugi. default is "".
+            pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default is "cat"
+            download_cmd(str): customized download command. default is "cat"
+            data_feed_type(str): data feed type used in c++ code. default is "MultiSlotInMemoryDataFeed".
+            queue_num(int): Dataset output queue num, training threads get data from queues. default is-1, which is set same as thread number in c++.
 
             merge_size(int): ins size to merge, if merge_size > 0, set merge by line id, 
                              instances of same line id will be merged after shuffle, 
@@ -388,16 +404,16 @@ class InMemoryDataset(DatasetBase):
         Args:
             kwargs: Keyword arguments. Currently, we support following keys in **kwargs:
             
-            batch_size(int): batch size. It will be effective during training. default: 1.
-            thread_num(int): thread num, it is the num of readers. default: 1.
-            use_var(list): list of variables. Variables which you will use. default: [].
-            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut: 0.
-            fs_name(str): fs name. default: "".
-            fs_ugi(str): fs ugi. default: "".
-            pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default: "cat"
-            download_cmd(str): customized download command. default: "cat"
-            data_feed_type(str): data feed type used in c++ code. default: "MultiSlotInMemoryDataFeed".
-            queue_num(int): Dataset output queue num, training threads get data from queues. default:-1, which is set same as thread number in c++.
+            batch_size(int): batch size. It will be effective during training. default is 1.
+            thread_num(int): thread num, it is the num of readers. default is 1.
+            use_var(list): list of variables. Variables which you will use. default is [].
+            input_type(int): the input type of generated input. 0 is for one sample, 1 is for one batch. defalut is 0.
+            fs_name(str): fs name. default is "".
+            fs_ugi(str): fs ugi. default is "".
+            pipe_command(str): pipe command of current dataset. A pipe command is a UNIX pipeline command that can be used only. default is "cat"
+            download_cmd(str): customized download command. default is "cat"
+            data_feed_type(str): data feed type used in c++ code. default is "MultiSlotInMemoryDataFeed".
+            queue_num(int): Dataset output queue num, training threads get data from queues. default is -1, which is set same as thread number in c++.
 
         Examples:
             .. code-block:: python
