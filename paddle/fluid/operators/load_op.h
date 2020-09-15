@@ -58,19 +58,6 @@ class LoadOpKernel : public framework::OpKernel<T> {
           "variable, %s has wrong type",
           out_var_name));
     }
-
-    fin.peek();
-    PADDLE_ENFORCE_EQ(
-        fin.eof(), true,
-        platform::errors::Unavailable(
-            "The loaded file is not read to end, the file you loaded may "
-            "contain multiple Tensors, only part of file data is loaded. Some "
-            "tips:\n"
-            "  1. If you use `paddle.io.load_program_state`, Please pass in "
-            "the parameter file instead of the directory where the parameter "
-            "is located, and pass in `var_list`;\n"
-            "  2. If you use `paddle.load`, please use "
-            "`paddle.io.load_program_state` and pass in `var_list`."));
   }
 
   void LoadLodTensor(std::istream &fin, const platform::Place &place,
