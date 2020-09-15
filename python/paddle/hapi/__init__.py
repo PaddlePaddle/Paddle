@@ -19,10 +19,7 @@ from . import model_summary
 from . import model
 from .model import *
 from .model_summary import summary
-from .dygraph_layer_patch import monkey_patch_layer
 
 logger.setup_logger()
 
 __all__ = ['callbacks'] + model.__all__ + ['summary']
-
-monkey_patch_layer()

@@ -495,9 +495,9 @@ TEST(IndicateVarDataTypeTest, other) {
     EXPECT_TRUE(
         ex_msg.find(
             "The Input Variable(Other) of "
-            "indicate_other_data_type_test Op used to "
+            "(indicate_other_data_type_test) Operator used to "
             "determine kernel data type "
-            "is empty or not LoDTensor or SelectedRows or LoDTensorArray") !=
+            "is empty or not LoDTensor or SelectedRows or LoDTensorArray.") !=
         std::string::npos);
   }
   ASSERT_TRUE(caught);

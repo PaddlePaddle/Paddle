@@ -36,6 +36,7 @@ from . import core
 from . import unique_name
 import paddle.version as fluid_version
 import warnings
+import functools
 
 __all__ = [
     'Program',
@@ -216,7 +217,7 @@ def _dygraph_not_support_(func):
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
         assert in_dygraph_mode(
-        ), "We Only support %s in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative Mode" % func.__name__
+        ), "We Only support %s in dynamic mode, please call 'paddle.disable_static()' to enter dynamic mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -236,6 +237,25 @@ def _fake_interface_only_(func):
             % func.__name__)
 
     return __impl__
+
+
+# NOTE(chenweihang): There is argument name typo (stat_dict, correct name is state_dict) 
+# in fluid api Layer.set_dict, Optimizer.load, in order to correct the argument without 
+# introducing compatibility issues, add this decorator
+# NOTE(chenweihang): not using `wrap_decorator` here is because `wrap_decorator` will
+# move kwargs to args, which doesn't work in this decorate case
+def deprecate_stat_dict(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if 'stat_dict' in kwargs:
+            warnings.warn(
+                "The argument `stat_dict` has deprecated, please change it to `state_dict`.",
+                DeprecationWarning)
+            kwargs['state_dict'] = kwargs['stat_dict']
+            kwargs.pop('stat_dict')
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 dygraph_not_support = wrap_decorator(_dygraph_not_support_)

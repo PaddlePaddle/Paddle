@@ -34,6 +34,9 @@ class AMPOptimizer(MetaOptimizerBase):
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if self.user_defined_strategy.amp:
             return True
         return False
@@ -41,6 +44,17 @@ class AMPOptimizer(MetaOptimizerBase):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.amp = False
         dist_strategy.amp_configs = {}
+
+    def _enable_strategy(self, dist_strategy, context):
+        dist_strategy.amp = True
+        dist_strategy.amp_configs = {
+            "init_loss_scaling": 32768.0,
+            "incr_every_n_steps": 1000,
+            "decr_every_n_nan_or_inf": 2,
+            "incr_ratio": 2.0,
+            "decr_ratio": 8.0,
+            "use_dynamic_loss_scaling": True
+        }
 
     def minimize_impl(self,
                       loss,

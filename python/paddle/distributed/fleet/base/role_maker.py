@@ -232,6 +232,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._node_type_comm = None
         self._all_comm = None
 
+        self._non_distributed = False
+
         if not self._is_collective:
             self._hdfs_name = kwargs.get("hdfs_name", "")
             self._hdfs_ugi = kwargs.get("hdfs_ugi", "")
@@ -373,6 +375,15 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self.generate_role()
         return self._server_endpoints
 
+    def _is_non_distributed(self):
+        """
+        Return True if indispensable environment for fleetrun is not found
+        (use python-run to launch fleet-code directly)
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._non_distributed
+
     def _heter_worker_num(self):
         """
         get heter worker nums
@@ -409,13 +420,22 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         try:
             # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
             # format: string(ip:port,ip:port), eg. 127.0.0.1:6001,127.0.0.1:6002
-            self._server_endpoints = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST",
-                                               "").split(",")
-            assert self._server_endpoints != ""
+            self._server_endpoints = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
             self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                                "").split(",")
-            assert self._server_endpoints != ""
+            if self._server_endpoints is None:
+                # back to non_distributed execution.
+                self._server_endpoints = ""
+                self._trainers_num = 1
+                self._role = Role.WORKER
+                self._current_id = 0
+                self._node_num = 1
+                self._heter_trainers_num = 0
+                self._heter_trainer_endpoints = None
+                self._non_distributed = True
+                return
 
+            self._server_endpoints = self._server_endpoints.split(",")
             trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
             training_role = os.environ["TRAINING_ROLE"]
 
@@ -488,7 +508,11 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         assert (self._training_role == "TRAINER")
         self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
         self._cur_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
-        assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
+        if self._worker_endpoints is None:
+            # back to non_distributed execution.
+            self._worker_endpoints = "127.0.0.1:6170"
+            self._cur_endpoint = self._worker_endpoints
+            self._non_distributed = True
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
         self._node_num = len(
