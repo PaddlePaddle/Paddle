@@ -27,27 +27,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-inline framework::DDim GetShape(const framework::ExecutionContext &ctx,
-                                std::string op_type) {
-  // 1. shape is a Tensor
-  if (ctx.HasInput("ShapeTensor")) {
-    auto *shape_tensor = ctx.Input<framework::LoDTensor>("ShapeTensor");
-    auto vec_shape = GetDataFromTensor<int>(shape_tensor);
-    return framework::make_ddim(vec_shape);
-  }
-
-  // 2. shape is a list/tuple containing Tensor
-  auto shape_tensor_list = ctx.MultiInput<framework::Tensor>("ShapeTensorList");
-  if (shape_tensor_list.size() > 0) {
-    auto vec_shape = GetDataFromTensorList(shape_tensor_list);
-    return framework::make_ddim(vec_shape);
-  }
-
-  // 3. shape is a list/tuple without containing Tensor
-  auto vec_shape = ctx.Attr<std::vector<int64_t>>("shape");
-  return framework::make_ddim(vec_shape);
-}
-
 template <typename T>
 class FillConstantKernel : public framework::OpKernel<T> {
  public:
@@ -93,8 +72,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
       }
       value = tensor_data[0];
     }
-    const std::string op_type = "fill_constant";
-    auto shape = GetShape(ctx, op_type);
+    auto shape = GetShape(ctx);
 
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();

@@ -212,7 +212,16 @@ def declarative(function=None, input_spec=None):
 
     # for usage: `declarative(foo, ...)`
     if function is not None:
-        return decorated(function)
+        if isinstance(function, Layer):
+            if isinstance(function.forward, StaticLayer):
+                class_name = function.__class__.__name__
+                warnings.warn(
+                    "`{}.forward` has already been decorated somewhere. It will be redecorated to replace previous one.".
+                    format(class_name))
+            function.forward = decorated(function.forward)
+            return function
+        else:
+            return decorated(function)
 
     # for usage: `@declarative`
     return decorated

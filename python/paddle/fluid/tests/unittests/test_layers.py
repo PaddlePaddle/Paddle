@@ -2677,13 +2677,6 @@ class TestBook(LayerTest):
             out = layers.sigmoid(input, name='sigmoid')
             return (out)
 
-    def make_logsigmoid(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.logsigmoid(input, name='logsigmoid')
-            return (out)
-
     def make_exp(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):

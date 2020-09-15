@@ -479,11 +479,15 @@ def _load_persistable_vars(model_path,
             var_file_path = os.path.join(model_path, params_filename)
         else:
             var_file_path = os.path.join(model_path, VARIABLE_FILENAME)
-        framework._dygraph_tracer().trace_op(
-            type='load_combine',
-            inputs={},
-            outputs={'Out': load_var_list},
-            attrs={'file_path': var_file_path})
+        if not os.path.exists(var_file_path):
+            if len(extra_var_info) != 0:
+                raise ValueError("The model to be loaded is incomplete.")
+        else:
+            framework._dygraph_tracer().trace_op(
+                type='load_combine',
+                inputs={},
+                outputs={'Out': load_var_list},
+                attrs={'file_path': var_file_path})
 
     return load_var_dict
 

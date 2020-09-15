@@ -621,7 +621,10 @@ class VecActivations {
     } else if (type == "identity" || type == "") {
       return vec_identity<T, isa>;
     }
-    PADDLE_THROW("Not support type: %s", type);
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Expected type should be one of sigmod, relu, tanh, identity. But got "
+        "not support type: %s.",
+        type));
   }
 };
 

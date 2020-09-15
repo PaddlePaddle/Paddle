@@ -34,9 +34,16 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col,
                   const DataLayout data_layout) {
-    PADDLE_ENFORCE_EQ(im.dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(im.dims().size(), 3,
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'im' should be 3. But got "
+                          "the dims of tensor 'im' is [%s].",
+                          im.dims()));
     PADDLE_ENFORCE_EQ(col->dims().size(), 5,
-                      "The dimension of col should be 5.");
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'col' should be 5. But got "
+                          "the dims of tensor 'col' is [%s].",
+                          col->dims()));
 
     if (stride[0] == 1 && stride[1] == 1 && dilation[0] == 1 &&
         dilation[1] == 1) {
@@ -70,9 +77,16 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* im,
                   const DataLayout data_layout) {
-    PADDLE_ENFORCE_EQ(im->dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(im->dims().size(), 3,
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'im' should be 3. But got "
+                          "the dims of tensor 'im' is [%s].",
+                          im->dims()));
     PADDLE_ENFORCE_EQ(col.dims().size(), 5,
-                      "The dimension of col should be 5.");
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'col' should be 5. But got "
+                          "the dims of tensor 'col' is [%s].",
+                          col.dims()));
     int im_channels =
         (data_layout != DataLayout::kNHWC ? im->dims()[0] : im->dims()[2]);
     int im_height =
@@ -88,16 +102,16 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                        ((dilation[0] * (filter_height - 1) + 1))) /
                               stride[0] +
                           1,
-                      col_height,
-                      "Output_height and padding(padding_up, padding_down) are "
-                      "inconsistent.");
+                      col_height, platform::errors::InvalidArgument(
+                                      "Output_height and padding(padding_up, "
+                                      "padding_down) are inconsistent."));
     PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
                        ((dilation[1] * (filter_width - 1) + 1))) /
                               stride[1] +
                           1,
-                      col_width,
-                      "Output_height and padding(padding_up, padding_down) are "
-                      "inconsistent.");
+                      col_width, platform::errors::InvalidArgument(
+                                     "Output_height and padding(padding_up, "
+                                     "padding_down) are inconsistent."));
 
     int channels_col = im_channels * filter_height * filter_width;
 
@@ -154,9 +168,16 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col,
                   const DataLayout data_layout) {
-    PADDLE_ENFORCE_EQ(im.dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(im.dims().size(), 3,
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'im' should be 3. But got "
+                          "the dims of tensor 'im' is [%s].",
+                          im.dims()));
     PADDLE_ENFORCE_EQ(col->dims().size(), 5,
-                      "The dimension of col should be 5.");
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'col' should be 5. But got "
+                          "the dims of tensor 'col' is [%s].",
+                          col->dims()));
     int im_channels = im.dims()[0];
     int im_height = im.dims()[1];
     int im_width = im.dims()[2];
@@ -218,9 +239,16 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* im,
                   const DataLayout data_layout) {
-    PADDLE_ENFORCE_EQ(im->dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(im->dims().size(), 3,
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'im' should be 3. But got "
+                          "the dims of tensor 'im' is [%s].",
+                          im->dims()));
     PADDLE_ENFORCE_EQ(col.dims().size(), 5,
-                      "The dimension of col should be 5.");
+                      platform::errors::InvalidArgument(
+                          "The dimension of tensor 'col' should be 5. But got "
+                          "the dims of tensor 'col' is [%s].",
+                          col.dims()));
     int im_channels = im->dims()[0];
     int im_height = im->dims()[1];
     int im_width = im->dims()[2];
@@ -231,14 +259,14 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
 
     PADDLE_ENFORCE_EQ(
         (im_height + padding[0] + padding[2] - filter_height) / stride[0] + 1,
-        col_height,
-        "Output_height and padding(padding_up, padding_down) are "
-        "inconsistent.");
+        col_height, platform::errors::InvalidArgument(
+                        "Output_height and padding(padding_up, padding_down) "
+                        "are inconsistent."));
     PADDLE_ENFORCE_EQ(
         (im_width + padding[1] + padding[3] - filter_width) / stride[1] + 1,
         col_width,
-        "col_width and padding(padding_left, padding_right) are "
-        "inconsistent.");
+        platform::errors::InvalidArgument("col_width and padding(padding_left, "
+                                          "padding_right) are inconsistent."));
 
     T* im_data = im->data<T>();
     const T* col_data = col.data<T>();
