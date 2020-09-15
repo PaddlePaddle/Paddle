@@ -20,14 +20,49 @@ rem       Paddle CI Task On Windows Platform
 rem =================================================
 
 rem -------clean up environment-----------
-wmic process where name="op_function_generator.exe" call terminate  2>NUL
 set work_dir=%cd%
-mkdir build
+wmic process where name="op_function_generator.exe" call terminate  2>NUL
+
+rem ------initialize common variable------
+if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
+if not defined BRANCH set BRANCH=develop
+if not defined WITH_AVX set WITH_AVX=ON
+if not defined WITH_TESTING set WITH_TESTING=ON
+if not defined WITH_PYTHON set WITH_PYTHON=ON
+if not defined ON_INFER set ON_INFER=ON
+if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
+if not defined WITH_CACHE set WITH_CACHE=ON
+if not defined WITH_TPCACHE set WITH_TPCACHE=ON
+
+rem -------set cache build work directory-----------
+if "%WITH_CACHE%"=="OFF" (
+    rmdir build /s/q
+    goto :mkbuild
+)
+
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+set day_now=%datetime:~6,2%
+set day_before=-1
+set /p day_before=<day.txt
+if %day_now% NEQ %day_before% (
+    echo %day_now% > day.txt
+    type day.txt
+    rmdir build /s/q
+)
+git diff origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
+if %ERRORLEVEL% EQU 0 (
+    rmdir build /s/q
+)
+
+:mkbuild
+if not exist build (
+    mkdir build
+)
 cd /d build
-tree .
+dir .
 dir paddle\fluid\pybind\Release
 
-rem ------initialize the virtual environment------
+rem ------initialize the python environment------
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
 
@@ -51,15 +86,6 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 7
 )
 
-rem ------initialize common variable------
-if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
-if not defined BRANCH set BRANCH=develop
-if not defined WITH_AVX set WITH_AVX=ON
-if not defined WITH_TESTING set WITH_TESTING=ON
-if not defined WITH_PYTHON set WITH_PYTHON=ON
-if not defined ON_INFER set ON_INFER=ON
-if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
-if not defined WITH_TPCACHE set WITH_TPCACHE=ON
 
 rem ------set cache third_party------
 set cache_dir=%work_dir:Paddle=cache%
@@ -407,6 +433,7 @@ taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
 call paddle_winci\Scripts\deactivate.bat 2>NUL
+del %PADDLE_WHL_FILE_WIN%
 taskkill /f /im python.exe  2>NUL
 echo Windows CI run successfully!
 exit /b 0
