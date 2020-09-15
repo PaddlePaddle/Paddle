@@ -199,10 +199,6 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
             "GraphExecutionOptimizer", "LocalSGDOptimizer"
         ]
         self.snapshot_key = '@SNAPSHOT'
-        self.max_local_steps = layers.fill_constant(
-            shape=[1], dtype='int64', value=16)
-        self.min_local_steps = layers.fill_constant(
-            shape=[1], dtype='int64', value=1)
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -425,6 +421,10 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                         layers.sqrt(lr_0 * avg_loss / (global_lr * loss_0) *
                                     float(init_k_steps))),
                     dtype='int64')
+                max_local_steps = layers.fill_constant(
+                    shape=[1], dtype='int64', value=16)
+                min_local_steps = layers.fill_constant(
+                    shape=[1], dtype='int64', value=1)
                 next_local_steps = layers.elementwise_min(next_local_steps,
                                                           self.max_local_steps)
                 next_local_steps = layers.elementwise_max(next_local_steps,
