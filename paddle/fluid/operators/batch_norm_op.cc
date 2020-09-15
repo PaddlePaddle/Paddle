@@ -839,7 +839,6 @@ void BatchNormDoubleGradMaker<T>::Apply(GradOpPtr<T> op) const {
   op->SetInput("SavedMean", this->Input("SavedMean"));
   op->SetInput("SavedVariance", this->Input("SavedVariance"));
   if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
-    op->SetInput("Mean", this->Input("Mean"));
     op->SetInput("Variance", this->Input("Variance"));
   }
   op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
@@ -865,8 +864,6 @@ void BatchNormDoubleGradOp::InferShape(
 
   const bool use_global_stats = ctx->Attrs().Get<bool>("use_global_stats");
   if (use_global_stats) {
-    OP_INOUT_CHECK(ctx->HasInput("Mean"), "Input", "MeanOut",
-                   "BatchNormDoubleGrad");
     OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "VarianceOut",
                    "BatchNormDoubleGrad");
   }
@@ -960,9 +957,7 @@ class BatchNormDoubleGradKernel<platform::CPUDeviceContext, T>
 
     Tensor inv_var_tensor;
     if (use_global_stats) {
-      const auto *running_mean = ctx.Input<Tensor>("Mean");
       const auto *running_variance = ctx.Input<Tensor>("Variance");
-      mean_data = running_mean->data<T>();
       inv_var_tensor.Resize({C});
 
       T *running_inv_var_data = inv_var_tensor.mutable_data<T>(ctx.GetPlace());
