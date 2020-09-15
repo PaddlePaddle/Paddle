@@ -21,13 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/place.h"
 
-namespace paddle {
-namespace framework {
-template <typename T>
-class Vector;
-}  // namespace framework
-}  // namespace paddle
-
 TEST(AssignOp, AssignLoDTensor) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);
