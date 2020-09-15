@@ -21,6 +21,7 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
+import paddle
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
@@ -234,16 +235,16 @@ class TestUniformRandomOpSelectedRows(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
-
+        paddle.manual_seed(10)
         op = Operator(
             "uniform_random",
             Out="X",
-            shape=[4, 784],
+            shape=[1000, 784],
             min=-5.0,
             max=10.0,
             seed=10)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [4, 784])
+        self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
@@ -255,19 +256,19 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
     def check_with_place(self, place):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
-
+        paddle.manual_seed(10)
         op = Operator(
             "uniform_random",
             Out="X",
-            shape=[4, 784],
+            shape=[500, 784],
             min=-5.0,
             max=10.0,
             seed=10,
-            diag_num=4,
+            diag_num=500,
             diag_step=784,
             diag_val=1.0)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [4, 784])
+        self.assertEqual(out.get_tensor().shape(), [500, 784])
         hist, prob = output_hist_diag(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
@@ -276,6 +277,7 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
 
 class TestUniformRandomOpApi(unittest.TestCase):
     def test_api(self):
+        paddle.manual_seed(10)
         x = fluid.layers.data('x', shape=[16], dtype='float32', lod_level=1)
         y = fluid.layers.fc(x,
                             size=16,
@@ -347,12 +349,15 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
 class TestUniformRandomOp_API_seed(unittest.TestCase):
     def test_attr_tensor_API(self):
+        _seed = 10
+        gen = paddle.manual_seed(_seed)
+        gen._is_init_py = False
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             _min = 5
             _max = 10
-            _seed = 10
+
             ret = fluid.layers.nn.uniform_random(
                 [2, 3, 2], min=_min, max=_max, seed=_seed)
             ret_2 = fluid.layers.nn.uniform_random(
@@ -386,8 +391,8 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         shape_tensor = scope.var("Shape").get_tensor()
-        shape_tensor.set(np.array([4, 784]).astype("int64"), place)
-
+        shape_tensor.set(np.array([1000, 784]).astype("int64"), place)
+        paddle.manual_seed(10)
         op = Operator(
             "uniform_random",
             ShapeTensor="Shape",
@@ -396,7 +401,7 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
             max=10.0,
             seed=10)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [4, 784])
+        self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
@@ -418,10 +423,10 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         shape_1 = scope.var("shape1").get_tensor()
-        shape_1.set(np.array([4]).astype("int64"), place)
+        shape_1.set(np.array([1000]).astype("int64"), place)
         shape_2 = scope.var("shape2").get_tensor()
         shape_2.set(np.array([784]).astype("int64"), place)
-
+        paddle.manual_seed(10)
         op = Operator(
             "uniform_random",
             ShapeTensorList=["shape1", "shape2"],
@@ -430,7 +435,7 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
             max=10.0,
             seed=10)
         op.run(scope, place)
-        self.assertEqual(out.get_tensor().shape(), [4, 784])
+        self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
         self.assertTrue(
             np.allclose(
@@ -455,21 +460,21 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
 
             def test_Variable():
                 x1 = fluid.create_lod_tensor(
-                    np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace())
+                    np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace())
                 fluid.layers.uniform_random_batch_size_like(x1)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_shape():
                 x1 = fluid.layers.data(
-                    name='x2', shape=[4, 784], dtype='float32')
+                    name='x2', shape=[100, 784], dtype='float32')
                 fluid.layers.uniform_random_batch_size_like(x1, shape="shape")
 
             self.assertRaises(TypeError, test_shape)
 
             def test_dtype():
                 x2 = fluid.layers.data(
-                    name='x2', shape=[4, 784], dtype='float32')
+                    name='x2', shape=[100, 784], dtype='float32')
                 fluid.layers.uniform_random_batch_size_like(x2, 'int32')
 
             self.assertRaises(TypeError, test_dtype)
@@ -495,20 +500,20 @@ class TestUniformOpError(unittest.TestCase):
 
             def test_Variable():
                 x1 = fluid.create_lod_tensor(
-                    np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace())
+                    np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace())
                 paddle.tensor.random.uniform(x1)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_Variable2():
-                x1 = np.zeros((4, 784))
+                x1 = np.zeros((100, 784))
                 paddle.tensor.random.uniform(x1)
 
             self.assertRaises(TypeError, test_Variable2)
 
             def test_dtype():
                 x2 = fluid.layers.data(
-                    name='x2', shape=[4, 784], dtype='float32')
+                    name='x2', shape=[100, 784], dtype='float32')
                 paddle.tensor.random.uniform(x2, 'int32')
 
             self.assertRaises(TypeError, test_dtype)
@@ -529,6 +534,32 @@ class TestUniformDygraphMode(unittest.TestCase):
             x_np = x.numpy()
             for i in range(10):
                 self.assertTrue((x_np[i] > 0 and x_np[i] < 1.0))
+
+
+class TestUniformDtype(unittest.TestCase):
+    def test_default_dtype(self):
+        paddle.disable_static()
+
+        def test_default_fp16():
+            paddle.framework.set_default_dtype('float16')
+            paddle.tensor.random.uniform([2, 3])
+
+        self.assertRaises(TypeError, test_default_fp16)
+
+        def test_default_fp32():
+            paddle.framework.set_default_dtype('float32')
+            out = paddle.tensor.random.uniform([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP32)
+
+        def test_default_fp64():
+            paddle.framework.set_default_dtype('float64')
+            out = paddle.tensor.random.uniform([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+
+        test_default_fp64()
+        test_default_fp32()
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

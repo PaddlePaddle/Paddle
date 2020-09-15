@@ -76,7 +76,7 @@ static inline void clip(const platform::CPUDeviceContext& ctx,
   if (padding_mode == "border") {
     grid_slice_t.device(place) = grid_slice_t.cwiseMax(static_cast<T>(0))
                                      .cwiseMin(static_cast<T>(max_val));
-  } else if (padding_mode == "reflect") {
+  } else if (padding_mode == "reflection") {
     if (align_corners) {
       auto double_range = static_cast<T>(max_val * 2);
       auto grid_abs = grid_slice_t.abs();
@@ -117,7 +117,7 @@ static inline void clipWithMask(const platform::CPUDeviceContext& ctx,
     auto in_bound = (res == grid_slice_t);
     grid_scale_t.device(place) = grid_scale_t * in_bound.template cast<T>();
     grid_slice_t.device(place) = res;
-  } else if (padding_mode == "reflect") {
+  } else if (padding_mode == "reflection") {
     if (align_corners) {
       auto double_range = static_cast<T>(max_val * 2);
       auto is_neg = (grid_slice_t < static_cast<T>(0));

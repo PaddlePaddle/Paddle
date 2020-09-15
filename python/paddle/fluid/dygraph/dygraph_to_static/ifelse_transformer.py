@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import six
 import copy
 from collections import defaultdict
 
@@ -230,7 +231,7 @@ class NameVisitor(gast.NodeVisitor):
         return False
 
     def _update_name_ids(self, new_name_ids):
-        for name_id, ctxs in new_name_ids.items():
+        for name_id, ctxs in six.iteritems(new_name_ids):
             self.name_ids[name_id] = ctxs + self.name_ids[name_id]
 
 
@@ -250,7 +251,7 @@ def parse_cond_args(var_ids_dict, return_ids=None, ctx=gast.Load):
     """
 
     name_ids = [
-        var_id for var_id, var_ctx in var_ids_dict.items()
+        var_id for var_id, var_ctx in six.iteritems(var_ids_dict)
         if isinstance(var_ctx[0], ctx)
     ]
     if return_ids:
@@ -341,7 +342,7 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
 
     def _vars_with_store(ids_dict):
         vars = []
-        for k, ctxs in ids_dict.items():
+        for k, ctxs in six.iteritems(ids_dict):
             if _is_return_var(ctxs):
                 vars.append(k)
         return vars
@@ -353,7 +354,7 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
 
     def _vars_loaded_before_store(ids_dict):
         new_dict = defaultdict(list)
-        for k, ctxs in ids_dict.items():
+        for k, ctxs in six.iteritems(ids_dict):
             for ctx in ctxs:
                 if isinstance(ctx, gast.Load):
                     new_dict[k].append(ctx)

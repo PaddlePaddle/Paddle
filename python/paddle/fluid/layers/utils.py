@@ -20,6 +20,7 @@ import numpy as np
 from ..framework import Variable
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
+from sys import version_info
 
 
 def convert_to_list(value, n, name, dtype=np.int):
@@ -282,7 +283,7 @@ def _contain_var(list_or_tuple):
     return False
 
 
-def _get_shape_tensor_inputs(inputs, attrs, shape, op_type):
+def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
     from .tensor import fill_constant, cast
 
     def _get_attr_shape(list_shape):
@@ -347,7 +348,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
     return new_list_tensor
 
 
-def _convert_shape_to_list(shape):
+def convert_shape_to_list(shape):
     """
     Convert shape(list, tuple, variable) to list in imperative mode
     """
@@ -358,3 +359,22 @@ def _convert_shape_to_list(shape):
     else:
         shape = list(shape.numpy().astype(int))
     return shape
+
+
+def check_shape(shape):
+    """
+    Check shape type and shape elements type before passing it to fill_constant
+    """
+    if isinstance(shape, Variable):
+        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
+    else:
+        for ele in shape:
+            if not isinstance(ele, Variable):
+                if ele < 0:
+                    raise ValueError(
+                        "All elements in ``shape`` must be positive when it's a list or tuple"
+                    )
+                if not isinstance(ele, six.integer_types):
+                    raise TypeError(
+                        "All elements in ``shape`` must be integers when it's a list or tuple"
+                    )

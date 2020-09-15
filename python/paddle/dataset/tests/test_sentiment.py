@@ -42,9 +42,11 @@ class TestSentimentMethods(unittest.TestCase):
     def test_data_set(self):
         data_set = st.load_sentiment_data()
         last_label = -1
+
         for each in st.test():
             self.assertNotEqual(each[1], last_label)
             last_label = each[1]
+
         self.assertEqual(len(data_set), st.NUM_TOTAL_INSTANCES)
         self.assertEqual(len(list(st.train())), st.NUM_TRAINING_INSTANCES)
         self.assertEqual(
