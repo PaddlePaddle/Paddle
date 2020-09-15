@@ -97,11 +97,37 @@ class UtilBase(object):
             output (numpy.array|None): A numpy array with the same shape as the `input` .
 
         Examples:
-            from paddle.distributed.fleet.base.util_factory import fleet_util
-            # 
-            input = [1, 2]
-            output = fleet_util.all_reduce(input, "sum", "worker")
-            # output = None
+            # Save the following code in `train.py` , and then execute the command `fleetrun --server_num 2 --worker_num 2 train.py` .
+            .. code-block:: python
+                from paddle.distributed.fleet.base.util_factory import fleet_util
+                import paddle.distributed.fleet as fleet
+                from paddle.distributed.fleet import PaddleCloudRoleMaker
+                import sys
+                import numpy as np
+
+                def train():
+                    role = PaddleCloudRoleMaker(
+                        is_collective=False,
+                        init_gloo=True,
+                        path="./tmp_gloo")
+                    fleet.init(role)
+                    fleet_util._set_role_maker(role)
+
+                    if fleet.is_server():
+                        input = [1, 2]
+                        output = fleet_util.all_reduce(input, "sum", "server")
+                        print(output)
+                        # [2, 4]
+                    elif fleet.is_worker():
+                        input = np.array([3, 4])
+                        output = fleet_util.all_reduce(input, "sum", "worker")
+                        print(output)
+                        # [6, 8]
+                    output = fleet_util.all_reduce(input, "sum", "all")
+                    print(output)
+                    # [8, 12]
+                if __name__ == "__main__":
+                    train()
         """
         _comm_world = self.__check_comm_world(comm_world)
         return self.role_maker._all_reduce(_comm_world, input, mode)
@@ -114,8 +140,32 @@ class UtilBase(object):
             collection incudes `worker` , `server` and `all` . The default is `worker` .
 
         Examples:
-            from paddle.distributed.fleet.base.util_factory import fleet_util
-            fleet_util.barrier("worker")
+            # Save the following code in `train.py` , and then execute the command `fleetrun --server_num 2 --worker_num 2 train.py` .
+            .. code-block:: python
+                from paddle.distributed.fleet.base.util_factory import fleet_util
+                import paddle.distributed.fleet as fleet
+                from paddle.distributed.fleet import PaddleCloudRoleMaker
+                import sys
+
+                def train():
+                    role = PaddleCloudRoleMaker(
+                        is_collective=False,
+                        init_gloo=True,
+                        path="./tmp_gloo")
+                    fleet.init(role)
+                    fleet_util._set_role_maker(role)
+
+                    if fleet.is_server():
+                        fleet_util.barrier("server")
+                        print("all server arrive here")
+                    elif fleet.is_worker():
+                        fleet_util.barrier("worker")
+                        print("all server arrive here")
+                    fleet_util.barrier("all")
+                    print("all servers and workers arrive here")
+
+                if __name__ == "__main__":
+                    train()
         """
         _comm_world = self.__check_comm_world(comm_world)
         self.role_maker._barrier(_comm_world)
@@ -124,7 +174,7 @@ class UtilBase(object):
         """
         All gather `input` between specified collection.
         Args:
-            input (list|numpy.array): The input variable to do all_gather between specified collection.
+            input (int|float): The input variable to do all_gather between specified collection.
             comm_world (String, optional): Collection used to execute all_reduce operation. Currently, supported
             collection incudes `worker` , `server` and `all` . The default is `worker` .
 
@@ -132,10 +182,37 @@ class UtilBase(object):
             output (list): A list of gathered values.
 
         Examples:
-            from paddle.distributed.fleet.base.util_factory import fleet_util
-            input = [1, 2]
-            output = fleet_util.all_gather(input, "worker")
-            # output = None
+            # Save the following code in `train.py` , and then execute the command `fleetrun --server_num 2 --worker_num 2 train.py` .
+            .. code-block:: python
+                from paddle.distributed.fleet.base.util_factory import fleet_util
+                import paddle.distributed.fleet as fleet
+                from paddle.distributed.fleet import PaddleCloudRoleMaker
+                import sys
+
+                def train():
+                    role = PaddleCloudRoleMaker(
+                        is_collective=False,
+                        init_gloo=True,
+                        path="./tmp_gloo")
+                    fleet.init(role)
+                    fleet_util._set_role_maker(role)
+
+                    if fleet.is_server():
+                        input = fleet.server_index()
+                        output = fleet_util.all_gather(input, "server")
+                        print(output)
+                        # output = [0, 1]
+                    elif fleet.is_worker():
+                        input = fleet.worker_index()
+                        output = fleet_util.all_gather(input, "worker")
+                        # output = [0, 1]
+                        print(output)
+                    output = fleet_util.all_gather(input, "all")
+                    print(output)
+                    # output = [0, 1, 0, 1]
+
+                if __name__ == "__main__":
+                    train()
         """
         _comm_world = self.__check_comm_world(comm_world)
         return self.role_maker._all_gather(_comm_world, input)
@@ -148,11 +225,13 @@ class UtilBase(object):
 
     def get_file_shard(self, files):
         """
-        split files before distributed training, and return filelist assigned to the current trainer.
-        example 1: files is [a, b, c ,d, e]  and trainer_num = 2, then trainer
-                   0 gets [a, b, c] and trainer 1 gets [d, e].
-        example 2: files is [a, b], and trainer_num = 3, then trainer 0 gets
-                   [a], trainer 1 gets [b],  trainer 2 gets []
+        Split files before distributed training, and return filelist assigned to the current trainer.
+
+        .. code-block:: text
+            example 1: files is [a, b, c ,d, e]  and trainer_num = 2, then trainer
+                    0 gets [a, b, c] and trainer 1 gets [d, e].
+            example 2: files is [a, b], and trainer_num = 3, then trainer 0 gets
+                    [a], trainer 1 gets [b],  trainer 2 gets []
 
         Args:
             files(list): file list need to be read.

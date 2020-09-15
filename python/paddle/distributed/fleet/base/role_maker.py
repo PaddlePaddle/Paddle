@@ -651,6 +651,7 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
     def __init__(self, is_collective=False, init_gloo=False, **kwargs):
         super(UserDefinedRoleMaker, self).__init__(
             is_collective=is_collective, init_gloo=init_gloo, **kwargs)
+        self._init_gloo = init_gloo
 
     def _user_defined_ps_env(self):
         self._server_endpoints = self._kwargs.get("server_endpoints")
