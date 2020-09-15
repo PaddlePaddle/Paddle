@@ -250,3 +250,47 @@ class Adam(Optimizer):
             stop_gradient=True)
 
         return adam_op
+
+    @framework.dygraph_only
+    def step(self):
+        """
+        Execute the optimizer and update parameters once.
+        
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import numpy as np
+                paddle.disable_static()
+                value = np.arange(26).reshape(2, 13).astype("float32")
+                a = paddle.to_tensor(value)
+                linear = paddle.nn.Linear(13, 5)
+                # This can be any optimizer supported by dygraph.
+                adam = paddle.optimizer.Adam(learning_rate = 0.01, 
+                                            parameters = linear.parameters())
+                out = linear(a)
+                out.backward()
+                adam.step()
+                adam.clear_grad()
+        """
+        parameter_list = self._parameter_list
+        self._dtype = None
+        params_grads = []
+        for param in self._parameter_list:
+            if not param.trainable:
+                continue
+            if hasattr(
+                    param, "_is_sparse"
+            ) and param._is_sparse and self.regularization is not None:
+                raise RuntimeError(
+                    "Adam don't support weight_decay with sparse parameters, please set it to None."
+                )
+            if param._grad_ivar() is not None:
+                grad_var = param._grad_ivar()
+                params_grads.append((param, grad_var))
+
+        optimize_ops = self._apply_optimize(
+            loss=None, startup_program=None, params_grads=params_grads)

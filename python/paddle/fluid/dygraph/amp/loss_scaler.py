@@ -210,13 +210,12 @@ class AmpScaler(object):
     def _unscale(self, optimizer):
         if not self._enable:
             return
-        inv_scale = 1.0 / self._scale
         param_grads = [
             param._grad_ivar() for param in optimizer._parameter_list
             if param._grad_ivar() is not None
         ]
-        core.ops.amp_check_finite_and_scale(param_grads, inv_scale, param_grads,
-                                            self._found_inf)
+        core.ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
+                                          self._found_inf)
 
     def _update(self):
         """

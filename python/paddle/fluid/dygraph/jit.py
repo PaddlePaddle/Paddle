@@ -18,6 +18,7 @@ import os
 import pickle
 import warnings
 import functools
+from collections import OrderedDict
 
 import six
 import paddle
@@ -37,7 +38,7 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
     'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
-    'set_verbosity'
+    'set_verbosity', 'save', 'load', 'SaveLoadConfig'
 ]
 
 
@@ -211,7 +212,16 @@ def declarative(function=None, input_spec=None):
 
     # for usage: `declarative(foo, ...)`
     if function is not None:
-        return decorated(function)
+        if isinstance(function, Layer):
+            if isinstance(function.forward, StaticLayer):
+                class_name = function.__class__.__name__
+                warnings.warn(
+                    "`{}.forward` has already been decorated somewhere. It will be redecorated to replace previous one.".
+                    format(class_name))
+            function.forward = decorated(function.forward)
+            return function
+        else:
+            return decorated(function)
 
     # for usage: `@declarative`
     return decorated
@@ -633,6 +643,73 @@ class SaveLoadConfig(object):
         self._keep_name_table = value
 
 
+def _get_input_var_names(inputs, input_spec):
+    name_none_error = "The %s's name is None. " \
+        "When using jit.save, please set InputSepc's name in " \
+        "to_static(input_spec=[]) and jit.save(input_spec=[]) " \
+        "and make sure they are consistent."
+    name_no_exists_error = "The tensor `%s` does not exists. " \
+        "Please make sure the name of InputSpec or example Tensor " \
+        "in input_spec is the same as the name of InputSpec in " \
+        "`to_static` decorated on the Layer.forward method."
+    result_list = []
+    input_var_names = [var.name for var in inputs if isinstance(var, Variable)]
+    if input_spec is None:
+        # no prune
+        result_list = input_var_names
+    elif input_spec is not None and len(input_spec) == len(input_var_names):
+        # no prune
+        result_list = input_var_names
+        # if input spec name not in input_var_names, only raise warning 
+        for spec in input_spec:
+            if spec.name is None:
+                warnings.warn(name_none_error % spec)
+            elif spec.name not in input_var_names:
+                warnings.warn(name_no_exists_error % spec.name)
+            else:
+                # do nothing
+                pass
+    else:
+        # prune
+        for spec in input_spec:
+            if spec.name is None:
+                # name is None, the input_spec only can be InputSpec
+                raise ValueError(name_none_error % spec)
+            elif spec.name not in input_var_names:
+                # the input_spec can be `InputSpec` or `VarBase`
+                raise ValueError(name_no_exists_error % spec.name)
+            else:
+                result_list.append(spec.name)
+
+    return result_list
+
+
+def _get_output_vars(outputs, output_spec):
+    name_no_exists_error = "The tensor `%s` does not exists. " \
+        "Please make sure the name of example Tensor " \
+        "in configs.output_spec is the output tensor of " \
+        "Layer.forward method."
+    result_list = []
+    output_vars_dict = OrderedDict()
+    for var in outputs:
+        if isinstance(var, Variable):
+            output_vars_dict[var.name] = var
+    if output_spec is None:
+        result_list = output_vars_dict.values()
+    elif output_spec is not None and len(output_spec) == len(output_vars_dict):
+        result_list = output_vars_dict.values()
+        for var in output_spec:
+            if var.name not in output_vars_dict:
+                warnings.warn(name_no_exists_error % var.name)
+    else:
+        for var in output_spec:
+            if var.name not in output_vars_dict:
+                raise ValueError(name_no_exists_error % var.name)
+            else:
+                result_list.append(output_vars_dict[var.name])
+    return result_list
+
+
 # NOTE(chenweihang): change jit.save/load argument `configs` to `config`
 def deprecate_save_load_configs(func):
     @functools.wraps(func)
@@ -753,26 +830,6 @@ def save(layer, model_path, input_spec=None, config=None):
             paddle.jit.save(layer, model_path)
     """
 
-    def get_inout_spec(all_vars, target_vars, return_name=False):
-        result_list = []
-        valid_var_dict = {}
-        valid_vars = [var for var in all_vars if isinstance(var, Variable)]
-        for var in valid_vars:
-            valid_var_dict[var.name] = var
-        if target_vars:
-            for i, var in enumerate(target_vars):
-                # check target var whether exists
-                if var.name not in valid_var_dict:
-                    raise RuntimeError(
-                        "The variable to feed/fetch are not exist.")
-                result_list.append(valid_var_dict[var.name])
-        else:
-            result_list = valid_vars
-        if return_name:
-            result_list = [var.name for var in result_list]
-
-        return result_list
-
     # 1. input check
     prog_translator = ProgramTranslator()
     if not prog_translator.enable:
@@ -788,25 +845,58 @@ def save(layer, model_path, input_spec=None, config=None):
     if configs is None:
         configs = SaveLoadConfig()
 
+    # avoid change user given input_spec
+    inner_input_spec = None
     if input_spec is not None:
         if not isinstance(input_spec, list):
             raise TypeError(
                 "The input input_spec should be 'list', but received input_spec's type is %s."
                 % type(input_spec))
+        inner_input_spec = []
         for var in input_spec:
-            if not isinstance(var, (core.VarBase, Variable,
-                                    paddle.static.InputSpec)):
+            if isinstance(var, paddle.static.InputSpec):
+                inner_input_spec.append(var)
+            elif isinstance(var, (core.VarBase, Variable)):
+                inner_input_spec.append(
+                    paddle.static.InputSpec.from_tensor(var))
+            else:
                 raise TypeError(
                     "The element in input_spec list should be 'Variable' or `paddle.static.InputSpec`, but received element's type is %s."
                     % type(var))
 
-    # 2. get program of declarative Layer.forward
-    if not isinstance(layer.forward, StaticLayer):
-        raise RuntimeError(
-            "layer.forward need to be decorated by `@declarative`.")
-    concrete_program = layer.forward.concrete_program
+    # 2. get program from Layer
+    # TODO(chenweihang): add support for other method, not only forward
+    if isinstance(layer.forward, StaticLayer):
+        concrete_program = layer.forward.concrete_program
+    else:
+        # transform in jit.save, if input_spec is incomplete, declarative will throw error
+        static_forward = declarative(layer.forward, input_spec=inner_input_spec)
+        concrete_program = static_forward.concrete_program
+        # the input_spec has been used in declarative, which is equal to 
+        # @declarative with input_spec and jit.save without input_spec,
+        # avoid needless warning
+        inner_input_spec = None
 
-    # NOTE: we maintain the mapping of variable name to
+    # 3. build input & output of save_infernece_model
+    # NOTE(chenweihang): [ Get input variables name ]
+    # There are two cases, whether to prune the inputs or not
+    # - not prune inputs (recommend):
+    #   - the len(input_spec) == len((concrete_program.inputs) - 1
+    #   - here can use concrete_program.inputs directly
+    # - prune inputs:
+    #   - the input_spec length < len((concrete_program.inputs) - 1
+    #   - the input_spec's name should be in concrete_program.inputs
+    input_var_names = _get_input_var_names(concrete_program.inputs,
+                                           inner_input_spec)
+
+    # NOTE(chenweihang): [ Get output variables ]
+    # the rule is like [ Get input variables name ]. For output var, 
+    # we only support VarBase spec, and actually, we only need the 
+    # var name of output, and we don't recommended to use output_spec
+    output_vars = _get_output_vars(concrete_program.outputs,
+                                   configs.output_spec)
+
+    # NOTE(chenweihang): we maintain the mapping of variable name to
     # structured name, the buffer variable (non-persistable)
     # saved to inference program may not need by dygraph Layer, 
     # we only record the state_dict variable's structured name
@@ -814,7 +904,7 @@ def save(layer, model_path, input_spec=None, config=None):
     for structured_name, var in six.iteritems(layer.state_dict()):
         state_names_dict[var.name] = structured_name
 
-    # 3. share parameters from Layer to scope & record var info
+    # 4. share parameters from Layer to scope & record var info
     scope = core.Scope()
     extra_var_info = dict()
     for param_or_buffer in concrete_program.parameters:
@@ -831,10 +921,6 @@ def save(layer, model_path, input_spec=None, config=None):
         if isinstance(param_or_buffer, ParamBase):
             extra_info_dict['trainable'] = param_or_buffer.trainable
         extra_var_info[param_or_buffer.name] = extra_info_dict
-
-    # 4. build input & output spec
-    input_var_names = get_inout_spec(concrete_program.inputs, input_spec, True)
-    output_vars = get_inout_spec(concrete_program.outputs, configs.output_spec)
 
     # 5. save inference model
     from paddle.fluid.io import save_inference_model
@@ -856,7 +942,7 @@ def save(layer, model_path, input_spec=None, config=None):
             export_for_deployment=configs._export_for_deployment,
             program_only=configs._program_only)
 
-        # NOTE: [ Save extra variable info ]
+        # NOTE(chenweihang): [ Save extra variable info ]
         # save_inference_model will lose some important variable information, including:
         #   - Variable name and correspondence (when saved variables as one file)
         #   - Variable.stop_gradient information

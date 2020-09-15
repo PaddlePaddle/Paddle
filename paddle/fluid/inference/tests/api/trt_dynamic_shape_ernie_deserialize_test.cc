@@ -12,14 +12,32 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <dirent.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
 namespace inference {
+
+int DeleteCache(std::string path) {
+  DIR* dir = opendir(path.c_str());
+  if (dir == NULL) return 0;
+  struct dirent* ptr;
+  while ((ptr = readdir(dir)) != NULL) {
+    if (std::strcmp(ptr->d_name, ".") == 0 ||
+        std::strcmp(ptr->d_name, "..") == 0) {
+      continue;
+    } else if (ptr->d_type == 8) {
+      std::string file_rm = path + "/" + ptr->d_name;
+      return remove(file_rm.c_str());
+    }
+  }
+  return 0;
+}
 
 void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   auto predictor = CreatePaddlePredictor(config);
@@ -86,6 +104,11 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
 void trt_ernie(bool with_fp16, std::vector<float> result) {
   AnalysisConfig config;
   std::string model_dir = FLAGS_infer_model;
+  // Delete serialization cache to perform serialization first rather than
+  // deserialization.
+  std::string opt_cache_dir = FLAGS_infer_model + "/_opt_cache";
+  DeleteCache(opt_cache_dir);
+
   SetConfig(&config, model_dir, true /* use_gpu */);
 
   config.SwitchUseFeedFetchOps(false);

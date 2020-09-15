@@ -389,7 +389,7 @@ def avg_pool3d(x,
                stride=None,
                padding=0,
                ceil_mode=False,
-               count_include_pad=False,
+               count_include_pad=True,
                divisor_override=None,
                data_format="NCDHW",
                name=None):

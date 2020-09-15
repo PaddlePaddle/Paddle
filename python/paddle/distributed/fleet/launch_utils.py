@@ -347,12 +347,13 @@ def pretty_print_envs(envs, header=None):
     for k, v in envs.items():
         max_k = max(max_k, len(k))
 
-    h_format = "{{:^{}s}}{}{{:<{}s}}\n".format(max_k, " " * spacing, max_v)
-    l_format = "{{:<{}s}}{{}}{{:<{}s}}\n".format(max_k, max_v)
+    h_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(max_k, " " * spacing,
+                                                          max_v)
+    l_format = "    " + "|{{:>{}s}}{{}}{{:^{}s}}|\n".format(max_k, max_v)
     length = max_k + max_v + spacing
 
-    border = "".join(["="] * length)
-    line = "".join(["-"] * length)
+    border = "    +" + "".join(["="] * length) + "+"
+    line = "    +" + "".join(["-"] * length) + "+"
 
     draws = ""
     draws += border + "\n"
