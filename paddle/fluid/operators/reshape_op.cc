@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/platform/cuda_error.pb.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
