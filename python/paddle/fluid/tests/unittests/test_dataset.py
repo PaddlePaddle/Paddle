@@ -95,7 +95,7 @@ class TestDataset(unittest.TestCase):
         dataset.init(
             batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
         dataset.update_settings(pipe_command="cat1")
-        dataset.init_distributed_settings(
+        dataset._init_distributed_settings(
             parse_ins_id=True,
             parse_content=True,
             fea_eval=True,
@@ -227,7 +227,7 @@ class TestDataset(unittest.TestCase):
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
             batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars)
-        dataset.init_distributed_settings(fea_eval=True, candidate_size=1)
+        dataset._init_distributed_settings(fea_eval=True, candidate_size=1)
         dataset.set_filelist([
             "test_in_memory_dataset_run_a.txt",
             "test_in_memory_dataset_run_b.txt"
@@ -296,7 +296,7 @@ class TestDataset(unittest.TestCase):
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
             batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars)
-        dataset.init_distributed_settings(parse_ins_id=True)
+        dataset._init_distributed_settings(parse_ins_id=True)
         dataset.set_filelist([
             "test_in_memory_dataset_masterpatch_a.txt",
             "test_in_memory_dataset_masterpatch_b.txt"
@@ -361,7 +361,7 @@ class TestDataset(unittest.TestCase):
         dataset = paddle.distributed.InMemoryDataset()
         dataset.init(
             batch_size=32, thread_num=1, pipe_command="cat", use_var=slots_vars)
-        dataset.init_distributed_settings(parse_ins_id=True)
+        dataset._init_distributed_settings(parse_ins_id=True)
         dataset.set_filelist([
             "test_in_memory_dataset_masterpatch1_a.txt",
             "test_in_memory_dataset_masterpatch1_b.txt"

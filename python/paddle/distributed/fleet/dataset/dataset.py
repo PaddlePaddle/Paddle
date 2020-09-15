@@ -263,7 +263,7 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
 
-    def init_distributed_settings(self, **kwargs):
+    def _init_distributed_settings(self, **kwargs):
         """
         should be called only once in user's python scripts to initialize distributed-related setings of dataset instance
         Args:
@@ -291,7 +291,7 @@ class InMemoryDataset(DatasetBase):
                     input_type=1,
                     pipe_command="cat",
                     use_var=[])
-              dataset.init_distributed_settings(
+              dataset._init_distributed_settings(
                     parse_ins_id=True,
                     parse_content=True,
                     fea_eval=True,
@@ -361,7 +361,7 @@ class InMemoryDataset(DatasetBase):
                     input_type=1,
                     pipe_command="cat",
                     use_var=[])
-              dataset.init_distributed_settings(
+              dataset._init_distributed_settings(
                     parse_ins_id=True,
                     parse_content=True,
                     fea_eval=True,
