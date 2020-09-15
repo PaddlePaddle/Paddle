@@ -32,10 +32,7 @@ import functools
 from pathlib import PurePosixPath, Path
 import shutil
 
-__all__ = [
-    'FS', 'LocalFS', 'HDFSClient', 'ExecuteError', 'FSTimeOut',
-    'FSFileExistsError', 'FSFileNotExistsError', 'FSShellCmdAborted'
-]
+__all__ = ['FS', 'LocalFS', 'HDFSClient']
 
 
 class ExecuteError(Exception):
@@ -118,6 +115,20 @@ class FS(object):
 
 class LocalFS(FS):
     def ls_dir(self, fs_path):
+        """
+        List 
+        Args:
+            fs_path(String): Local path.
+
+        Returns:
+            tupe(list, list).
+
+        Examples:
+            from paddle.distributed.fleet.utils import LocalFS
+
+            local_fs = LocalFS()
+            dirs, files = local_fs.ls_dir("./")
+        """
         if not self.is_exist(fs_path):
             return [], []
 
@@ -132,11 +143,39 @@ class LocalFS(FS):
         return dirs, files
 
     def mkdirs(self, fs_path):
+        """
+        List 
+        Args:
+            fs_path(String): Local path.
+
+        Returns:
+            tupe(list, list).
+
+        Examples:
+            from paddle.distributed.fleet.utils import LocalFS
+
+            local_fs = LocalFS()
+            local_fs.mkdirs("test_mkdirs")
+        """
         assert not os.path.isfile(fs_path), "{} is already a file".format(
             fs_path)
         os.system("mkdir -p {}".format(fs_path))
 
     def rename(self, fs_src_path, fs_dst_path):
+        """
+        List 
+        Args:
+            fs_path(String): Local path.
+
+        Returns:
+            tupe(list, list).
+
+        Examples:
+            from paddle.distributed.fleet.utils import LocalFS
+
+            local_fs = LocalFS()
+            local_fs.mkdirs("test_mkdirs")
+        """
         os.rename(fs_src_path, fs_dst_path)
 
     def _rmr(self, fs_path):
@@ -146,6 +185,21 @@ class LocalFS(FS):
         os.remove(fs_path)
 
     def delete(self, fs_path):
+        """
+        List 
+        Args:
+            fs_path(String): Local path.
+
+        Returns:
+            tupe(list, list).
+
+        Examples:
+            from paddle.distributed.fleet.utils import LocalFS
+
+            local_fs = LocalFS()
+            local_fs.mkdirs("test_localFS_mkdirs")
+            local_fs.delete("test_localFS_mkdirs")
+        """
         if not self.is_exist(fs_path):
             return
 
@@ -158,15 +212,71 @@ class LocalFS(FS):
         return False
 
     def is_file(self, fs_path):
+        """
+        List 
+        Args:
+            fs_path(String): Local path.
+
+        Returns:
+            tupe(list, list).
+
+        Examples:
+            from paddle.distributed.fleet.utils import LocalFS
+
+            local_fs = LocalFS()
+            local_fs.is_file("test_localFS_isfile")
+        """
         return os.path.isfile(fs_path)
 
     def is_dir(self, fs_path):
+        """
+        List 
+        Args:
+            fs_path(String): Local path.
+
+        Returns:
+            tupe(list, list).
+
+        Examples:
+            from paddle.distributed.fleet.utils import LocalFS
+
+            local_fs = LocalFS()
+            local_fs.is_dir("test_localFS_isdir")
+        """
         return os.path.isdir(fs_path)
 
     def is_exist(self, fs_path):
+        """
+        List 
+        Args:
+            fs_path(String): Local path.
+
+        Returns:
+            tupe(list, list).
+
+        Examples:
+            from paddle.distributed.fleet.utils import LocalFS
+
+            local_fs = LocalFS()
+            local_fs.is_exist("test_localFS_exist")
+        """
         return os.path.exists(fs_path)
 
     def touch(self, fs_path, exist_ok=True):
+        """
+        List 
+        Args:
+            fs_path(String): Local path.
+
+        Returns:
+            tupe(list, list).
+
+        Examples:
+            from paddle.distributed.fleet.utils import LocalFS
+
+            local_fs = LocalFS()
+            local_fs.touch("test_localFS_touch")
+        """
         if self.is_exist(fs_path):
             if exist_ok:
                 return
@@ -175,6 +285,22 @@ class LocalFS(FS):
         return Path(fs_path).touch(exist_ok=True)
 
     def mv(self, src_path, dst_path, overwrite=False, test_exists=False):
+        """
+        List 
+        Args:
+            fs_path(String): Local path.
+
+        Returns:
+            tupe(list, list).
+
+        Examples:
+            from paddle.distributed.fleet.utils import LocalFS
+
+            local_fs = LocalFS()
+            local_fs.touch("test_localFS_touch")
+            local_fs.mv("test_localFS_touch", "test_localFS_mv")
+            local_fs.delete("test_localFS_mv")
+        """
         if not self.is_exist(src_path):
             raise FSFileNotExistsError
 
@@ -187,8 +313,19 @@ class LocalFS(FS):
         return self.rename(src_path, dst_path)
 
     def list_dirs(self, fs_path):
-        """	
-        list directory under fs_path, and only give the pure name, not include the fs_path	
+        """
+        List directory under fs_path, and only give the pure name, not include the fs_path
+        Args:
+            fs_path(String): Local path.
+
+        Returns:
+            list.
+
+        Examples:
+            from paddle.distributed.fleet.utils import LocalFS
+
+            local_fs = LocalFS()
+            local_fs.list_dirs("./")
         """
         if not self.is_exist(fs_path):
             return []
@@ -237,7 +374,7 @@ def _handle_errors(max_time_out=None):
             while True:
                 try:
                     return f(*args, **kwargs)
-                #important: only ExecuteError need to retry
+                # important: only ExecuteError need to retry
                 except ExecuteError as e:
                     if time.time() - start >= time_out:
                         raise FSTimeOut("args:{} timeout:{}".format(
@@ -256,12 +393,34 @@ def _handle_errors(max_time_out=None):
 
 
 class HDFSClient(FS):
+    """
+    A tool of HDFS 
+
+    Args:
+        hadoop_home (string): hadoop_home 
+        configs (dict): hadoop config, it is a dict, please contain \
+            key "fs.default.name" and "hadoop.job.ugi"
+        Can be a float value
+
+    Examples:
+        hadoop_home = "/home/client/hadoop-client/hadoop/"
+
+        configs = {
+            "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+            "hadoop.job.ugi": "hello,hello123"
+        }
+
+        client = HDFSClient(hadoop_home, configs)
+
+        client.ls_dir("/user/com/train-25")
+    """
+
     def __init__(
             self,
             hadoop_home,
             configs,
-            time_out=5 * 60 * 1000,  #ms
-            sleep_inter=1000):  #ms
+            time_out=5 * 60 * 1000,  # ms
+            sleep_inter=1000):  # ms
         # Raise exception if JAVA_HOME not exists.
         java_home = os.environ["JAVA_HOME"]
 
@@ -365,6 +524,29 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def is_exist(self, fs_path):
+        """
+        whether the remote HDFS path exists.
+
+        Args:
+            fs_path(str): the hdfs file path.
+
+        Returns:
+            bool: True if the path exists, whether it's a file or a directory. 
+            False if the path does not exist.
+
+        Examples:
+            .. code-block:: text
+                from paddle.distributed.fleet.utils import HDFSClient
+
+                hadoop_home = "/your_hadoop-client/hadoop/"
+                configs = {
+                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                    "hadoop.job.ugi": "hello,hello123"
+                }
+
+                client = HDFSClient(hadoop_home, configs)
+                client.is_exist("/user/com/train-25")
+        """
         cmd = "ls {} ".format(fs_path)
         ret, out = self._run_cmd(cmd, redirect_stderr=True)
         if ret != 0:
