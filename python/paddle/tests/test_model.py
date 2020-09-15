@@ -523,6 +523,24 @@ class TestModelFunction(unittest.TestCase):
             model.summary(input_size=[(20)])
             model.summary(input_size=(20), batch_size=2)
 
+    def test_summary_nlp(self):
+        paddle.enable_static()
+        nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
+        paddle.summary(nlp_net, (1, 2))
+
+    def test_summary_error(self):
+        with self.assertRaises(TypeError):
+            nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
+            paddle.summary(nlp_net, (1, '2'))
+
+        with self.assertRaises(ValueError):
+            nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
+            paddle.summary(nlp_net, (-1, -1))
+
+        paddle.disable_static()
+        nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
+        paddle.summary(nlp_net, (1, 2))
+
     def test_export_deploy_model(self):
         for dynamic in [True, False]:
             fluid.enable_dygraph() if dynamic else None

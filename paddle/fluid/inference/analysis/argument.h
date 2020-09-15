@@ -218,6 +218,10 @@ struct Argument {
 
   DECL_ARGUMENT_FIELD(fusion_statis, FusionStatis, fusion_statis_t);
 
+  // Only used in paddle-lite subgraph.
+  DECL_ARGUMENT_FIELD(cpu_math_library_num_threads, CpuMathLibraryNumThreads,
+                      int);
+
  private:
   std::unordered_set<std::string> valid_fields_;
 };

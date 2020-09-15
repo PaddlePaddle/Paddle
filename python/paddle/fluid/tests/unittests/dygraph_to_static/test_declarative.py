@@ -47,8 +47,8 @@ class SimpleNet(Layer):
         return z
 
     @declarative(input_spec=[[InputSpec([None, 10]), InputSpec([None, 10])]])
-    def func_with_list(self, l):
-        x, y, int_val = l
+    def func_with_list(self, l, int_val=1):
+        x, y = l
         z = x + y
         z = z + int_val
         return z
@@ -60,10 +60,7 @@ class SimpleNet(Layer):
     def func_with_dict(self, d):
         x = d['x']
         y = d['y']
-        int_val = d['int_val']
-
         z = x + y
-        z = z + int_val
 
         return z
 
@@ -131,10 +128,10 @@ class TestInputSpec(unittest.TestCase):
             self.assertTrue(len(net.add_func.program_cache) == 1)
 
             # 5. test input with list
-            out = net.func_with_list([x, y, int_val])
+            out = net.func_with_list([x, y], int_val)
 
             # 6. test input with dict
-            out = net.func_with_dict({'x': x, 'y': y, 'int_val': int_val})
+            out = net.func_with_dict({'x': x, 'y': y})
 
             # 7. test input with lits contains dict
             int_np = np.ones([1]).astype('float32')
@@ -293,6 +290,30 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
                 foo_3.concrete_program
 
 
+class TestInputDefaultName(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.net = SimpleNet()
+
+    def assert_default_name(self, func_name, input_names):
+        decorated_func = getattr(self.net, func_name)
+
+        spec_names = [x.name for x in decorated_func.inputs]
+        self.assertListEqual(spec_names, input_names)
+
+    def test_common_input(self):
+        self.assert_default_name('forward', ['x'])
+
+    def test_list_input(self):
+        self.assert_default_name('func_with_list', ['l_0', 'l_1'])
+
+    def test_dict_input(self):
+        self.assert_default_name('func_with_dict', ['x', 'y'])
+
+    def test_nest_input(self):
+        self.assert_default_name('func_with_list_dict', ['dl_0', 'x', 'y'])
+
+
 class TestDeclarativeAPI(unittest.TestCase):
     def test_error(self):
         func = declarative(dyfunc_to_variable)
@@ -309,6 +330,32 @@ class TestDeclarativeAPI(unittest.TestCase):
             # AssertionError: We Only support to_variable in imperative mode,
             #  please use fluid.dygraph.guard() as context to run it in imperative Mode
             func(np.ones(5).astype("int32"))
+
+
+class TestDecorateModelDirectly(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        program_trans.enable(True)
+        self.x = to_variable(np.ones([4, 10]).astype('float32'))
+
+    def test_fake_input(self):
+        net = SimpleNet()
+        net = declarative(net)
+        y = net(self.x)
+        self.assertTrue(len(net.forward.program_cache) == 1)
+
+    def test_input_spec(self):
+        net = SimpleNet()
+        net = declarative(net, input_spec=[InputSpec([None, 8, 10])])
+        self.assertTrue(len(net.forward.inputs) == 1)
+        self.assertTrue(len(net.forward.program_cache) == 1)
+        input_shape = net.forward.inputs[0].shape
+        self.assertListEqual(list(input_shape), [-1, 8, 10])
+
+        # redecorate
+        net = declarative(net, input_spec=[InputSpec([None, 16, 10])])
+        input_shape = net.forward.inputs[0].shape
+        self.assertListEqual(list(input_shape), [-1, 16, 10])
 
 
 if __name__ == '__main__':

@@ -26,6 +26,9 @@ def trilinear_interp_np(input,
                         out_d,
                         out_h,
                         out_w,
+                        scale_d=0,
+                        scale_h=0,
+                        scale_w=0,
                         out_size=None,
                         actual_shape=None,
                         align_corners=True,
@@ -49,17 +52,26 @@ def trilinear_interp_np(input,
         if (align_corners):
             ratio_d = (in_d - 1.0) / (out_d - 1.0)
         else:
-            ratio_d = 1.0 * in_d / out_d
+            if scale_d > 0:
+                ratio_d = 1.0 / scale_d
+            else:
+                ratio_d = 1.0 * in_d / out_d
     if out_h > 1:
         if (align_corners):
             ratio_h = (in_h - 1.0) / (out_h - 1.0)
         else:
-            ratio_h = 1.0 * in_h / out_h
+            if scale_h > 0:
+                ratio_h = 1.0 / scale_h
+            else:
+                ratio_h = 1.0 * in_h / out_h
     if out_w > 1:
         if (align_corners):
             ratio_w = (in_w - 1.0) / (out_w - 1.0)
         else:
-            ratio_w = 1.0 * in_w / out_w
+            if scale_w > 0:
+                ratio_w = 1.0 / scale_w
+            else:
+                ratio_w = 1.0 * in_w / out_w
 
     out = np.zeros((batch_size, channel, out_d, out_h, out_w))
 
@@ -133,6 +145,9 @@ class TestTrilinearInterpOp(OpTest):
         self.op_type = "trilinear_interp_v2"
         input_np = np.random.random(self.input_shape).astype("float32")
 
+        scale_w = 0
+        scale_h = 0
+        scale_d = 0
         if self.data_layout == "NCDHW":
             in_d = self.input_shape[2]
             in_h = self.input_shape[3]
@@ -159,9 +174,10 @@ class TestTrilinearInterpOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = trilinear_interp_np(
-            input_np, out_d, out_h, out_w, self.out_size, self.actual_shape,
-            self.align_corners, self.align_mode, self.data_layout)
+        output_np = trilinear_interp_np(input_np, out_d, out_h, out_w, scale_d,
+                                        scale_h, scale_w, self.out_size,
+                                        self.actual_shape, self.align_corners,
+                                        self.align_mode, self.data_layout)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -359,7 +375,7 @@ class TestTrilinearInterpOpUint8(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = trilinear_interp_np(input_np, out_d, out_h, out_w,
+        output_np = trilinear_interp_np(input_np, out_d, out_h, out_w, 0, 0, 0,
                                         self.out_size, self.actual_shape,
                                         self.align_corners, self.align_mode)
         self.inputs = {'X': input_np}
@@ -482,7 +498,7 @@ class TestTrilinearInterpZero(TestTrilinearInterpOp):
         self.out_d = 60
         self.out_h = 40
         self.out_w = 25
-        self.scale = 0.2
+        self.scale = 0.0
         self.align_corners = False
         self.align_mode = 0
 
@@ -541,7 +557,7 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0], self.scale[0]]
             self.attrs['scale'] = self.scale
-        output_np = trilinear_interp_np(input_np, out_d, out_h, out_w,
+        output_np = trilinear_interp_np(input_np, out_d, out_h, out_w, 0, 0, 0,
                                         self.out_size, self.actual_shape,
                                         self.align_corners, self.align_mode)
         self.outputs = {'Out': output_np}
