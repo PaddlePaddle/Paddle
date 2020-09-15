@@ -20,6 +20,7 @@ import warnings
 import numpy as np
 import random
 import six
+import struct
 import time
 import itertools
 import collections
@@ -167,6 +168,22 @@ def skip_check_grad_ci(reason=None):
     return wrapper
 
 
+def copy_bits_from_float_to_uint16(f):
+    return struct.unpack('<I', struct.pack('<f', f))[0] >> 16
+
+
+def convert_float_to_uint16(float_list):
+    new_output = []
+    for first in float_list:
+        for second in first:
+            for third in second:
+                for fourth in third:
+                    new_output.append(
+                        np.uint16(copy_bits_from_float_to_uint16(fourth)))
+
+    return np.reshape(new_output, float_list.shape).view(np.uint16)
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -276,8 +293,9 @@ class OpTest(unittest.TestCase):
         infer_dtype(inputs, dtype_set)
         dtype_list = [
             np.dtype(np.float64), np.dtype(np.float32), np.dtype(np.float16),
-            np.dtype(np.int64), np.dtype(np.int32), np.dtype(np.int16),
-            np.dtype(np.int8), np.dtype(np.uint8), np.dtype(np.bool)
+            np.dtype(np.int64), np.dtype(np.int32), np.dtype(np.uint16),
+            np.dtype(np.int16), np.dtype(np.int8), np.dtype(np.uint8),
+            np.dtype(np.bool)
         ]
         # check the dtype in dtype_list in order, select the first dtype that in dtype_set
         for dtype in dtype_list:

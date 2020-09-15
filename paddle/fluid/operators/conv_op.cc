@@ -166,7 +166,8 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #endif
 
   if (input_data_type != framework::proto::VarType::INT8 &&
-      input_data_type != framework::proto::VarType::UINT8) {
+      input_data_type != framework::proto::VarType::UINT8 &&
+      input_data_type != framework::proto::VarType::BF16) {
     auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
     PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
                       platform::errors::InvalidArgument(

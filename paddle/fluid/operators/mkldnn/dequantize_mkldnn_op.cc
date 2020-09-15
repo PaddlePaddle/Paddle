@@ -110,4 +110,6 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(dequantize, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::DeQuantOpKernel<uint8_t>, ops::DeQuantOpKernel<int8_t>);
+                   ops::DeQuantOpKernel<uint8_t>, ops::DeQuantOpKernel<int8_t>,
+                   ops::DeQuantOpKernel<paddle::platform::bfloat16>,
+                   ops::DeQuantOpKernel<float>);

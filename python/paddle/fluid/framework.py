@@ -603,7 +603,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
     elif dtype == np.bool:
         return core.VarDesc.VarType.BOOL
     elif dtype == np.uint16:
-        return core.VarDesc.VarType.INT16
+        return core.VarDesc.VarType.BF16
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
     elif dtype == np.int8:
