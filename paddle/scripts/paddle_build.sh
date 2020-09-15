@@ -1124,10 +1124,15 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    if [ "$WITH_GPU" == "ON" ];then
-        parallel_test_base_gpu
+    CASES=`python $PADDLE_ROOT/tools/get_pr_ut.py`
+    if [ "${CASES}" != "" ] && [ ${PRECISION_TEST:-ON} == "ON" ]; then
+		precision_test $CASES
     else
-        parallel_test_base_cpu ${PROC_RUN:-1}
+        if [ "$WITH_GPU" == "ON" ];then
+            parallel_test_base_gpu
+        else
+            parallel_test_base_cpu ${PROC_RUN:-1}
+        fi
     fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
