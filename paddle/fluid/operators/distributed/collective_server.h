@@ -45,8 +45,8 @@ class GetMonomerHandler final : public RequestHandler {
     VLOG(50) << "GetMonomerHandler recv " << var_name;
 
     *outvar = scope->FindVar(var_name);
-    PADDLE_ENFORCE_NE(outvar, nullptr,
-                      platform::errors::NotFound("%s is not found", var_name));
+    PADDLE_ENFORCE_NOT_NULL(
+        outvar, platform::errors::NotFound("%s is not found", var_name));
 
     return true;
   }

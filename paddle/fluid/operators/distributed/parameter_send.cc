@@ -305,7 +305,8 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
       }
     }
   } else {
-    PADDLE_THROW("unsupported var type to send!");
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "unsupported var type: %s to send!", send_var->Type()));
   }
 
   VLOG(4) << "Prepare to send var " << rpc_ctx.var_name;

@@ -65,9 +65,9 @@ bool RequestSendHandler::Handle(const std::string &varname,
     if (distributed_mode_ != DistributedMode::kSync) {
       VLOG(3) << "async process var: " << varname;
       if (varname == BATCH_BARRIER_MESSAGE) {
-        PADDLE_THROW(
+        PADDLE_THROW(platform::errors::InvalidArgument(
             "async mode should not recv BATCH_BARRIER_MESSAGE or "
-            "COMPLETE_MESSAGE");
+            "COMPLETE_MESSAGE"));
       }
       HeartBeatMonitor::GetInstance()->Update(trainer_id, varname, RUNNING);
 
