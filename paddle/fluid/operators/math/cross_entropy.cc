@@ -14,16 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/cross_entropy.h"
 
-#include <stdint.h>
-
-#include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_impl.h"
-#include "unsupported/Eigen/CXX11/../../../Eigen/src/Core/util/Constants.h"
-#include "unsupported/Eigen/CXX11/../../../Eigen/src/Core/util/Meta.h"
-#include "unsupported/Eigen/CXX11/src/Tensor/TensorDimensions.h"
-
 namespace paddle {
 namespace platform {
 class CPUDeviceContext;

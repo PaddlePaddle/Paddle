@@ -12,16 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <stdint.h>
-
-#include "dnnl.hpp"
-#include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/mkldnn/elementwise_mkldnn_op.h"
-#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace framework {

@@ -12,29 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <assert.h>
 #include <unistd.h>
-#include <iosfwd>
 #include <limits>
 #include <memory>
 #include <string>
 
-#include "gflags/gflags_declare.h"
-#include "glog/logging.h"
-#include "grpc/impl/codegen/grpc_types.h"
-#include "grpcpp/impl/codegen/async_unary_call.h"
-#include "grpcpp/impl/codegen/byte_buffer.h"
-#include "grpcpp/impl/codegen/completion_queue.h"
-#include "grpcpp/impl/codegen/server_context.h"
-#include "grpcpp/impl/codegen/status.h"
-#include "grpcpp/impl/server_builder_option.h"
-#include "grpcpp/server_builder.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_server.h"
-#include "paddle/fluid/operators/distributed/grpc/grpc_service.h"
-#include "paddle/fluid/operators/distributed/request_handler.h"
-#include "paddle/fluid/operators/distributed/send_recv.pb.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace grpc {
 class ChannelArguments;
