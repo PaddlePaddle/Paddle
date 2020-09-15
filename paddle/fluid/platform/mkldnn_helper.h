@@ -443,6 +443,13 @@ inline bool HasOpINT8DataType(const paddle::framework::OpDesc* op) {
           op->GetAttrIfExists<bool>("use_quantizer"));
 }
 
+inline bool HasOpBFLOAT16DataType(const paddle::framework::OpDesc* op) {
+  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "bfloat16";
+}
+
+inline bool HasOpFLOAT32DataType(const paddle::framework::OpDesc* op) {
+  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "float32";
+}
 enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
 
 }  // namespace platform
