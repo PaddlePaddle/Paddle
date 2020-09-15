@@ -1026,9 +1026,9 @@ class RNNBase(LayerList):
             'InitH': initial_states[0],
             'InitC': initial_states[1],
             'State': dropout_state,
+            'SequenceLength': sequence_length
         }
         attrs = {
-            # 'sequence_length': [],
             'dropout_prob': self.dropout,
             'is_bidirec': self.num_directions == 2,
             'input_size': self.input_size,

@@ -209,11 +209,11 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     in_grad->mutable_data<T>(input_dims, ctx.GetPlace());
     auto *in_grad_data = in_grad->data<T>();
 
-    init_h_grad->mutable_data<T>(init_h_dims, ctx.GetPlace());
-    auto *init_h_grad_data = init_h_grad->data<T>();
+    if (init_h_grad) init_h_grad->mutable_data<T>(init_h_dims, ctx.GetPlace());
+    auto *init_h_grad_data = init_h_grad ? init_h_grad->data<T>() : nullptr;
 
-    init_c_grad->mutable_data<T>(init_c_dims, ctx.GetPlace());
-    auto *init_c_grad_data = init_c_grad->data<T>();
+    if (init_c_grad) init_c_grad->mutable_data<T>(init_c_dims, ctx.GetPlace());
+    auto *init_c_grad_data = init_c_grad ? init_c_grad->data<T>() : nullptr;
 
     float dropout_prob = ctx.Attr<float>("dropout_prob");
     bool is_bidirec = ctx.Attr<bool>("is_bidirec");
