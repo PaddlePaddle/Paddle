@@ -450,7 +450,7 @@ def interpolate(x,
             for i in range(len(x.shape) - 2):
                 scale_list.append(scale)
             attrs['scale'] = list(map(float, scale_list))
-        elif isinstance(scale, list) or isinstance(scale, float):
+        elif isinstance(scale, list) or isinstance(scale, tuple):
             if len(scale) != len(x.shape) - 2:
                 raise ValueError("scale_shape length should be {} for "
                                  "input {}-D tensor.".format(

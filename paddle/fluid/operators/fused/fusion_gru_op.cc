@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fusion_gru_op.h"
 #include <cstring>  // for memcpy
 #include <string>
+#include <vector>
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc.h"
@@ -205,6 +206,27 @@ void FusionGRUOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<std::string>(
+      "mkldnn_data_type",
+      "(string, default \"float32\"). Data type of mkldnn kernel")
+      .SetDefault("float32")
+      .InEnum({"float32", "int8", "bfloat16"});
+  AddAttr<float>("Scale_data",
+                 "Scale to be used for int8 input/output data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(1.0f);
+  AddAttr<float>("Shift_data",
+                 "Shift to be used for int8 input/output data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(0.0f);
+  AddAttr<std::vector<float>>("Scale_weights",
+                              "Scale_weights to be used for int8 weights data."
+                              "Only used with MKL-DNN INT8.")
+      .SetDefault({1.0f});
+  AddAttr<bool>("force_fp32_output",
+                "(bool, default false) Force INT8 kernel output FP32, only "
+                "used in MKL-DNN INT8")
       .SetDefault(false);
   AddComment(R"DOC(
 The Fusion complete GRU Operator.

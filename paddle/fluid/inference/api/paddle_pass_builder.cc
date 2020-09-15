@@ -231,6 +231,10 @@ void CpuPassStrategy::EnableMkldnnQuantizer() {
 
 void CpuPassStrategy::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
+  if (!use_mkldnn_bfloat16_) {
+    passes_.push_back("cpu_bfloat16_placement_pass");
+    passes_.push_back("cpu_bfloat16_pass");
+  }
   use_mkldnn_bfloat16_ = true;
 #else
   use_mkldnn_bfloat16_ = false;
