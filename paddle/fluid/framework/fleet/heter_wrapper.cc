@@ -123,15 +123,15 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope,
     memcpy(data_ptr, tensor->data<void>(),
            tensor->numel() * SizeOfType(tensor->type()));
   }
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA  // NOLINT
   else {
     memory::Copy(platform::CPUPlace(), data_ptr,
                  BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
                  tensor->data<void>(),
                  tensor->numel() * SizeOfType(tensor->type()), nullptr);
   }
-#endif
-#ifdef PADDLE_WITH_XPU
+#endif  // NOLINT
+#ifdef PADDLE_WITH_XPU  // NOLINT
   else {
     memory::Copy(platform::CPUPlace(), data_ptr,
                  BOOST_GET_CONST(platform::XPUPlace, tensor->place()),

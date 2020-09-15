@@ -770,7 +770,7 @@ void FleetWrapper::PushDenseVarsAsync(
 
     Variable* pin_var = scope.FindVar(t + "pin");
     LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
-    float *pin_g =
+    float* pin_g =
         pin_tensor->mutable_data<float>(tensor->dims(), platform::CPUPlace());
     memory::Copy(platform::CPUPlace(), pin_g,
                  BOOST_GET_CONST(platform::XPUPlace, place), g_data,
