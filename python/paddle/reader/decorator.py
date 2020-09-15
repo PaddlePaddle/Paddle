@@ -42,7 +42,7 @@ import paddle.compat as cpt
 # For more details, please refer to
 # https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
 # https://bugs.python.org/issue33725
-if sys.version_info >= (3, ):
+if sys.version_info >= (3, 8):
     fork_context = multiprocessing.get_context('fork')
 else:
     fork_context = multiprocessing
