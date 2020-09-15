@@ -928,7 +928,7 @@ class TranslatedLayer(layers.Layer):
         program_holder = self._program_holder_dict.get(method_name, None)
         if program_holder is None:
             raise ValueError(
-                "The method `%s` is not exists in loaded TranslatedLayer." %
+                "The method `%s` does not exist in loaded TranslatedLayer." %
                 method_name)
         return program_holder
 
