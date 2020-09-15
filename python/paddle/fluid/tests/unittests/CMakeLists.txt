@@ -102,6 +102,7 @@ if(WIN32)
 endif()
 
 
+LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint1)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
