@@ -16,17 +16,9 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "gtest/gtest_pred_impl.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/operators/distributed/collective_client.h"
 #include "paddle/fluid/operators/distributed/collective_server.h"
-#include "paddle/fluid/operators/distributed/communicator_common.h"
-#include "paddle/fluid/platform/cuda_error.pb.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

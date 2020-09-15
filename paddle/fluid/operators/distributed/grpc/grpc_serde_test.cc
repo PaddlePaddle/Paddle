@@ -12,28 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <stdint.h>
+#include <unistd.h>
 #include <string>
+#include <thread>  // NOLINT
 
-#include "grpcpp/impl/codegen/byte_buffer.h"
-#include "grpcpp/impl/codegen/slice.h"
-#include "gtest/gtest-message.h"
-#include "gtest/gtest-test-part.h"
+#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
-#include "gtest/gtest_pred_impl.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/unroll_array_ops.h"
-#include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_variable_response.h"
-#include "paddle/fluid/operators/distributed/send_recv.pb.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/platform/cuda_error.pb.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
