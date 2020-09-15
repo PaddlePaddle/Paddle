@@ -361,19 +361,19 @@ class RoleMakerBase(object):
         self._heter_trainer_device = "CPU"
         self._is_heter_parameter_server_mode = False
 
-    def is_worker(self):
+    def _is_worker(self):
         """
         return is_worker() of current process
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def is_server(self):
+    def _is_server(self):
         """
         return is_server() of current process
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def is_first_worker(self):
+    def _is_first_worker(self):
         """
         Check whether the node is the first instance of worker.
         Returns:
@@ -382,7 +382,7 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def worker_num(self):
+    def _worker_num(self):
         """
         Get current total worker number.
 
@@ -391,7 +391,7 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def server_num(self):
+    def _server_num(self):
         """
         Get current total server number.
 
@@ -400,7 +400,7 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def worker_index(self):
+    def _worker_index(self):
         """
         Get current worker id.
 
@@ -409,7 +409,7 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def server_index(self):
+    def _server_index(self):
         """
         Get current server id.
 
@@ -418,7 +418,7 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def role_id(self):
+    def _role_id(self):
         """
         Get current id.
 
@@ -427,7 +427,7 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def node_num(self):
+    def _node_num(self):
         """
         Get the training node number
         Returns:
@@ -435,13 +435,13 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def get_trainer_endpoints(self):
+    def _get_trainer_endpoints(self):
         """
         return trainer endpoints
         """
         return self._worker_endpoints
 
-    def get_pserver_endpoints(self):
+    def _get_pserver_endpoints(self):
         """
         return pserver endpoints
         """
@@ -543,90 +543,90 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def _all_reduce(self, input, mode="sum", comm_world="worker"):
         return self._gloo.all_reduce(input, mode, comm_world)
 
-    def is_worker(self):
+    def _is_worker(self):
         """
         whether current process is worker
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._role == Role.WORKER
 
-    def is_server(self):
+    def _is_server(self):
         """
         whether current process is server
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._role == Role.SERVER
 
-    def is_first_worker(self):
+    def _is_first_worker(self):
         """
         whether current process is worker of rank 0
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._role == Role.WORKER and self._current_id == 0
 
-    def worker_index(self):
+    def _worker_index(self):
         """
         get index of current worker
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._current_id
 
-    def server_index(self):
+    def _server_index(self):
         """
         get index of current server
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._current_id
 
-    def role_id(self):
+    def _role_id(self):
         """
         get index of current node
         """
         return self._current_id
 
-    def worker_num(self):
+    def _worker_num(self):
         """
         retrun the current number of worker
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._trainers_num
 
-    def server_num(self):
+    def _server_num(self):
         """
         return the current number of server
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._trainers_num
 
-    def node_num(self):
+    def _node_num(self):
         """
         return the training node number
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._node_num
 
-    def get_trainer_endpoints(self):
+    def _get_trainer_endpoints(self):
         """
         get endpoint of all trainers
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._worker_endpoints
 
-    def get_pserver_endpoints(self):
+    def _get_pserver_endpoints(self):
         """
         get endpoint of all pservers
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._server_endpoints
 
     def _is_non_distributed(self):
@@ -635,7 +635,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         (use python-run to launch fleet-code directly)
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._non_distributed
 
     def _heter_worker_num(self):
@@ -643,7 +643,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         get heter worker nums
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._heter_trainers_num
 
     def _is_heter_worker(self):
@@ -651,7 +651,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         whether current process is heter worker
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._role == Role.HETER_WORKER
 
     def _get_rank(self):
@@ -659,7 +659,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         get current rank in all workers and pservers
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._rank
 
     def _get_size(self):
@@ -667,7 +667,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         get total num of all workers and pservers
         """
         if not self._role_is_generated:
-            self.generate_role()
+            self._generate_role()
         return self._size
 
     def _ps_env(self):
@@ -837,7 +837,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             need_init_all=need_init_all,
             kwargs=kwargs)
 
-    def generate_role(self):
+    def _generate_role(self):
         """
         generate role for role maker
         """
@@ -883,7 +883,7 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
         self._node_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
 
-    def generate_role(self):
+    def _generate_role(self):
         """
         generate role for role maker
         """
