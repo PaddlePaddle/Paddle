@@ -307,7 +307,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.array_equal(x.sigmoid().numpy(), fluid.layers.sigmoid(x).numpy(
             )))
         self.assertTrue(
-            np.array_equal(x.logsigmoid().numpy(),
+            np.array_equal(x.log_sigmoid().numpy(),
                            fluid.layers.logsigmoid(x).numpy()))
         self.assertTrue(np.array_equal(x.exp().numpy(), paddle.exp(x).numpy()))
         self.assertTrue(

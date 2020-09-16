@@ -277,10 +277,10 @@ def monkey_patch_math_varbase():
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
         ('__array_ufunc__', None),
         ('sigmoid', _unary_creator_('sigmoid')),
-        ('logsigmoid', _unary_creator_('logsigmoid')),
+        ('log_sigmoid', _unary_creator_('logsigmoid')),
         ('tanh_shrink', _unary_creator_('tanh_shrink')),
         ('softplus', _unary_creator_('softplus')),
-        ('softsign', _unary_creator_('softsign')),
+        ('softsign', _unary_creator_('softsign'))
     ]
 
     global _already_patch_varbase

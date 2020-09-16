@@ -167,8 +167,9 @@ class API_TestDyUnsqueezeAxisTensor(unittest.TestCase):
         with fluid.dygraph.guard():
             input1 = np.random.random([5, 10]).astype("int32")
             out1 = np.expand_dims(input1, axis=1)
+            out1 = np.expand_dims(out1, axis=2)
             input = fluid.dygraph.to_variable(input1)
-            output = paddle.unsqueeze(input, axis=paddle.to_tensor([1]))
+            output = paddle.unsqueeze(input, axis=paddle.to_tensor([1, 2]))
             out_np = output.numpy()
             self.assertTrue(np.array_equal(out1, out_np))
             self.assertEqual(out1.shape, out_np.shape)
