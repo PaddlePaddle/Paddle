@@ -31,7 +31,7 @@ namespace ir {
 
 class BufferSharedInplaceOpPass : public MemoryReusePass {
  protected:
-  std::string ReuseType() const override { return "inplace addto"; }
+  std::string ReuseType() const override { return "inplace_addto"; }
 
   void Run(Graph *graph) const override;
 };

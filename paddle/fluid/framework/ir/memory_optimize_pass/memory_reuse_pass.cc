@@ -393,8 +393,6 @@ void MemoryReusePass::UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
   in_var_info_iter->second->SetRefCnt(1);
 }
 
-Graph *MemoryReusePass::GetMutableGraph() { return graph_; }
-
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

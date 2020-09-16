@@ -183,7 +183,6 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
               "It's dimension "
               "equals with x");
   }
-  virtual void AddOpAttr() {}
   virtual void AddOpComment() { AddComment(GetCommentExamples()); }
 
   virtual std::string GetOpFuntionality() const { return ""; }

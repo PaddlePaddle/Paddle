@@ -111,8 +111,8 @@ class ParallelExecutorPrivate {
    */
   inline void SetSkipMemoryReuse(size_t scope_idx, const std::string &name) {
     if (mem_opt_var_infos_.size() == 0) {
-      VLOG(4) << "The mem_opt_var_infos_ is empty, maybe all memory "
-                 "optimization strategy is disabled";
+      VLOG(4) << "The mem_opt_var_infos_ is empty, maybe no memory "
+                 "optimization strategy is enabled";
       return;
     }
     auto iter = mem_opt_var_infos_[scope_idx].find(name);
