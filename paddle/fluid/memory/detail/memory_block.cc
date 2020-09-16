@@ -103,6 +103,7 @@ void MemoryBlock::Merge(MetadataCache* cache, MemoryBlock* right_buddy) {
 
   desc->size += rb_desc->total_size;
   desc->total_size += rb_desc->total_size;
+
   desc->UpdateGuards();
 
   cache->Save(right_buddy,
