@@ -174,6 +174,10 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
             if (x->outputs.size() <= 0 || x->inputs.size() <= 0U) {
               return false;
             }
+            if (x->IsVar() && x->Var() && x->Var()->GetShape().size() > 2) {
+              LOG(WARNING) << "repeated fc relu only supports input dims = 2";
+              return false;
+            }
             int fc_idx = FindFCIdx(x);
             if (fc_idx < 0) {
               return false;

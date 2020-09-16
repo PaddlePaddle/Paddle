@@ -34,6 +34,8 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "shufflechannel_pattern";
   FusePassBase::Init(pattern_name, graph);
 
+  LOG(WARNING) << "There is fluid.layers.shuffle_channel API already, you can "
+                  "use it instead of (reshape + transpose +reshape)";
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode("x")
