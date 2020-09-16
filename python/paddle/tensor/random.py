@@ -25,6 +25,7 @@ from ..fluid.io import shuffle  #DEFINE_ALIAS
 
 __all__ = [
     'bernoulli',
+    'multinomial',
     'standard_normal',
     'normal',
     'uniform',
@@ -85,6 +86,47 @@ def bernoulli(x, name=None):
         dtype=x.dtype)  # maybe set out to int32 ? 
     helper.append_op(
         type='bernoulli', inputs={"X": x}, outputs={'Out': out}, attrs={})
+    return out
+
+
+def multinomial(x, num_samples=1, replacement=False, name=None):
+    """
+
+    
+    Examples:
+        .. code-block:: python
+
+        import paddle
+
+        paddle.disable_static()
+
+        x = paddle.rand([2, 3])
+        print(x.numpy())
+        # [[0.11272584 0.3890902  0.7730957 ]
+        # [0.10351662 0.8510418  0.63806665]]
+
+        out = paddle.bernoulli(x)
+        print(out.numpy())
+        # [[0. 0. 1.]
+        # [0. 0. 1.]]
+
+    """
+
+    if in_dygraph_mode():
+        return core.ops.multinomial(x, 'num_samples', num_samples,
+                                    'replacement', replacement)
+
+    check_variable_and_dtype(x, "x", ["float32", "float64"], "multinomial")
+
+    helper = LayerHelper("multinomial", **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=convert_np_dtype_to_dtype_('int64'))
+    helper.append_op(
+        type='multinomial',
+        inputs={"X": x},
+        outputs={'Out': out},
+        attrs={'num_samples': num_samples,
+               'replacement': replacement})
     return out
 
 

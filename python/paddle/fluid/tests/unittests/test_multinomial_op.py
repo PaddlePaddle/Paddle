@@ -102,5 +102,25 @@ class TestReplacementError(unittest.TestCase):
         self.attrs = {"num_samples": 10, "replacement": False}
 """
 
+
+class TestMultinomialApi(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = paddle.rand([4])
+        out = paddle.multinomial(x, num_samples=100000, replacement=True)
+        x_numpy = x.numpy()
+        paddle.enable_static()
+
+        sample_prob = np.unique(
+            out.numpy(), return_counts=True)[1].astype("float32")
+        sample_prob /= sample_prob.sum()
+
+        prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
+        self.assertTrue(
+            np.allclose(
+                sample_prob, prob, rtol=0, atol=0.01),
+            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+
+
 if __name__ == "__main__":
     unittest.main()
