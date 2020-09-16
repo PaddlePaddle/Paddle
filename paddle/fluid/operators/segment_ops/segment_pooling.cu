@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
 #include "paddle/fluid/operators/gather.cu.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/segment_ops/segment_pooling.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_launch_param_config.h"
@@ -20,6 +22,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 template <typename T>
 DEVICE inline void max_functor(const T& x, T* y) {
@@ -307,6 +311,21 @@ void SegmentPoolCUDAGradFunctor(const platform::CUDADeviceContext& ctx,
   }
 }
 
+template <typename T>
+__global__ void SimpleDiv(T* x, const T* y, const int len, const int dim) {
+  for (int i = blockIdx.x; i < len; i += gridDim.x) {
+    __shared__ T y_i;
+    auto base = i * dim;
+    if (threadIdx.x == 0) {
+      y_i = y[i];
+    }
+    __syncthreads();
+    for (int j = threadIdx.x; j < dim; j += blockDim.x) {
+      x[base + j] /= y_i;
+    }
+  }
+}
+
 template <typename T, typename IndexT>
 class SegmentPoolFunctor<platform::CUDADeviceContext, T, IndexT> {
  public:
@@ -316,7 +335,29 @@ class SegmentPoolFunctor<platform::CUDADeviceContext, T, IndexT> {
                   framework::Tensor* index,
                   const std::string pooltype = "SUM") {
     if (pooltype == "MEAN") {
-      PADDLE_THROW(platform::errors::Unimplemented("Not support yet."));
+      // PADDLE_THROW(platform::errors::Unimplemented("Not support yet."));
+      framework::Tensor one, count_sum, all_sum;
+      one.mutable_data<T>({input.dims()[0], 1}, context.GetPlace());
+      count_sum.mutable_data<T>({output->dims()[0], 1}, context.GetPlace());
+
+      math::SetConstant<platform::CUDADeviceContext, T> setconst;
+      setconst(context, &one, static_cast<T>(1));
+      setconst(context, &count_sum, static_cast<T>(1e-12));
+
+      SegmentPoolCUDAFunctor<T, IndexT>(context, one, segments, &count_sum,
+                                        std::string("SUM"));
+      SegmentPoolCUDAFunctor<T, IndexT>(context, input, segments, output,
+                                        std::string("SUM"));
+
+      int len = output->dims()[0];
+      int dim = output->numel() / len;
+
+      auto config = platform::GetGpuLaunchConfig1D(context, len);
+
+      SimpleDiv<T><<<config.block_per_grid.x, config.thread_per_block.x, 0,
+                     context.stream()>>>(output->data<T>(), count_sum.data<T>(),
+                                         len, dim);
+
     } else if (pooltype == "SUM") {
       SegmentPoolCUDAFunctor<T, IndexT>(context, input, segments, output,
                                         pooltype);
@@ -352,7 +393,29 @@ class SegmentPoolGradFunctor<platform::CUDADeviceContext, T, IndexT> {
     }
 
     if (pooltype == "MEAN") {
-      PADDLE_THROW(platform::errors::Unimplemented("Not support yet."));
+      framework::Tensor one, count_sum, mean_grad;
+      one.mutable_data<T>({input.dims()[0], 1}, context.GetPlace());
+      count_sum.mutable_data<T>({output.dims()[0], 1}, context.GetPlace());
+      mean_grad.mutable_data<T>(input.dims(), context.GetPlace());
+
+      math::SetConstant<platform::CUDADeviceContext, T> setconst;
+      setconst(context, &one, static_cast<T>(1));
+      setconst(context, &count_sum, static_cast<T>(1e-12));
+      framework::TensorCopy(out_grad, context.GetPlace(), context, &mean_grad);
+
+      SegmentPoolCUDAFunctor<T, IndexT>(context, one, segments, &count_sum,
+                                        std::string("SUM"));
+
+      int len = output.dims()[0];
+      int dim = output.numel() / len;
+
+      auto config = platform::GetGpuLaunchConfig1D(context, len);
+      SimpleDiv<T><<<config.block_per_grid.x, config.thread_per_block.x, 0,
+                     context.stream()>>>(mean_grad.data<T>(),
+                                         count_sum.data<T>(), len, dim);
+
+      GPUGather<T, IndexT>(context, mean_grad, segments, in_grad);
+
     } else if (pooltype == "SUM") {
       GPUGather<T, IndexT>(context, out_grad, segments, in_grad);
     } else {
