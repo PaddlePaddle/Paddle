@@ -36,9 +36,9 @@ void zero_copy_run() {
   PD_SwitchIrDebug(config, true);
   PD_SetModel(config, prog_file.c_str(), params_file.c_str());
   bool use_feed_fetch = PD_UseFeedFetchOpsEnabled(config);
-  CHECK(!use_feed_fetch) << "NO";
+  EXPECT_FALSE(use_feed_fetch);
   bool specify_input_names = PD_SpecifyInputName(config);
-  CHECK(specify_input_names) << "NO";
+  EXPECT_TRUE(specify_input_names);
 
   const int batch_size = 1;
   const int channels = 3;
@@ -85,13 +85,13 @@ TEST(PD_AnalysisConfig, profile_mkldnn) {
   PD_SwitchIrDebug(config, true);
   PD_EnableMKLDNN(config);
   bool mkldnn_enable = PD_MkldnnEnabled(config);
-  CHECK(mkldnn_enable) << "NO";
+  EXPECT_TRUE(mkldnn_enable);
   PD_EnableMkldnnQuantizer(config);
   bool quantizer_enable = PD_MkldnnQuantizerEnabled(config);
-  CHECK(quantizer_enable) << "NO";
+  EXPECT_TRUE(quantizer_enable);
   PD_EnableMkldnnBfloat16(config);
   bool bfloat16_enable = PD_MkldnnBfloat16Enabled(config);
-  CHECK(bfloat16_enable) << "NO";
+  EXPECT_TRUE(bfloat16_enable);
   PD_SetMkldnnCacheCapacity(config, 0);
   PD_SetModel(config, prog_file.c_str(), params_file.c_str());
   PD_DeleteAnalysisConfig(config);

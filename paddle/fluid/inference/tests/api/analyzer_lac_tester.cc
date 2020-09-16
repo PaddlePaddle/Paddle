@@ -98,7 +98,9 @@ void GetOneBatch(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   input_tensor.name = "word";
   input_tensor.dtype = PaddleDType::INT64;
   TensorAssignData<int64_t>(&input_tensor, {one_batch.data}, one_batch.lod);
-  PADDLE_ENFORCE_EQ(batch_size, static_cast<int>(one_batch.lod.size() - 1));
+  PADDLE_ENFORCE_EQ(
+      batch_size, static_cast<int>(one_batch.lod.size() - 1),
+      paddle::platform::errors::Fatal("The lod size of one batch is invaild."));
   input_slots->assign({input_tensor});
 }
 
@@ -137,12 +139,17 @@ TEST(Analyzer_LAC, profile) {
         24, 25, 25, 25, 38, 30, 31, 14, 15, 44, 24, 25, 25, 25, 25, 25,
         44, 24, 25, 25, 25, 36, 42, 43, 44, 14, 15, 44, 14, 15, 44, 14,
         15, 44, 38, 39, 14, 15, 44, 22, 23, 23, 23, 23, 23, 23, 23};
-    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    PADDLE_ENFORCE_GT(outputs.size(), 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be greater than 0."));
     auto output = outputs.back();
-    PADDLE_ENFORCE_EQ(output.size(), 1UL);
+    PADDLE_ENFORCE_EQ(output.size(), 1UL,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be equal to 1."));
     size_t size = GetSize(output[0]);
     size_t batch1_size = sizeof(lac_ref_data) / sizeof(int64_t);
-    PADDLE_ENFORCE_GE(size, batch1_size);
+    PADDLE_ENFORCE_GE(size, batch1_size, paddle::platform::errors::Fatal(
+                                             "The size of batch is invaild."));
     int64_t *pdata = static_cast<int64_t *>(output[0].data.data());
     for (size_t i = 0; i < batch1_size; ++i) {
       EXPECT_EQ(pdata[i], lac_ref_data[i]);

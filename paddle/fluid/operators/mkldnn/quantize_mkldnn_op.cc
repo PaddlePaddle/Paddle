@@ -48,6 +48,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
 
     bool is_negative = ctx.Attr<bool>("is_negative_input");
+    bool bfloat16 = ctx.Attr<bool>("bfloat16");
     std::string key =
         platform::CreateKey(platform::ThreadIDasStr(), src_tz, scale_data,
                             is_negative, ctx.OutputName("Output"));
@@ -74,7 +75,10 @@ class QuantOpKernel : public framework::OpKernel<T> {
           src_md, engine, to_void_cast<T>(input_data));
 
       std::shared_ptr<mkldnn::memory::desc> dst_md;
-      if (is_negative) {
+      if (bfloat16) {
+        platform::SetDstMemoryQuantized<paddle::platform::bfloat16>(
+            ctx, output, dst_tz, engine, dst_md, dst_memory, out_format);
+      } else if (is_negative) {
         platform::SetDstMemoryQuantized<int8_t>(ctx, output, dst_tz, engine,
                                                 dst_md, dst_memory, out_format);
       } else {
@@ -96,7 +100,11 @@ class QuantOpKernel : public framework::OpKernel<T> {
       dst_memory = std::static_pointer_cast<mkldnn::memory>(
           dev_ctx.GetBlob(key_dst_mem));
       auto place = ctx.GetPlace();
-      if (is_negative) {
+
+      if (bfloat16) {
+        dst_memory->set_data_handle(
+            output->mutable_data<paddle::platform::bfloat16>(place));
+      } else if (is_negative) {
         dst_memory->set_data_handle(output->mutable_data<int8_t>(place));
       } else {
         dst_memory->set_data_handle(output->mutable_data<uint8_t>(place));
