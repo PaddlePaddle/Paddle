@@ -930,6 +930,13 @@ function parallel_test_base_gpu() {
 EOF
 
 set +x
+
+        pip install PyGithub
+        pip3 install PyGithub
+        precison_cases=""
+        if [ ${PRECISION_TEST:-ON} == "ON" ]; then
+            precision_cases=`python $PADDLE_ROOT/tools/get_pr_ut.py`
+        fi
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
         exclusive_tests=''        # cases list which would be run exclusively
@@ -958,6 +965,20 @@ set +x
                 if [[ "$is_nightly" != "" ]] && [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
                     echo $testcase" will only run at night."
                     continue
+                fi
+
+                if [ ${PRECISION_TEST:-ON} == "ON" ] && [[ "$precision_cases" != "" ]]; then
+                    will_test="false"
+                    for case in $precision_cases; do
+                        if [[ $testcase == $case ]]; then
+                            will_test="true"
+                            break
+                        fi
+                    done
+                    if [[ $will_test == "false" ]]; then
+                        echo $testcase" won't run in PRECISION_TEST mode."
+                        continue
+                    fi
                 fi
 
                 if [[ "$is_multicard" == "" ]]; then
@@ -1077,8 +1098,6 @@ set +x
                 done
         fi
 
-
-       
         if [[ "$EXIT_CODE" != "0" ]]; then
             if [[ "$failed_test_lists" == "" ]]; then
                 echo "========================================"
@@ -1095,38 +1114,6 @@ set +x
                 echo "${failed_test_lists_ult}"
                 exit 8;
             fi
-        fi
-set -ex
-    fi
-}
-
-function precision_test() {
-    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
-    cat <<EOF
-    ========================================
-    Running precision unit tests  ...
-    ========================================
-EOF
-
-set +x
-        EXIT_CODE=0
-        testcases=$1
-        if [[ "$testcases" == "" ]]; then
-            return 0
-        fi
-        card_test "$testcases"
-        collect_failed_tests
-        if [ -n "${failed_test_lists}" ];then
-            failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-            echo "========================================"
-            echo "Summary Failed Tests... "
-            echo "========================================"
-            echo "The following tests FAILED: "
-            echo "${failed_test_lists_ult}"
-        fi
-        rm -f $tmp_dir/*
-        if [[ "$EXIT_CODE" != "0" ]]; then
-            exit 8;
         fi
 set -ex
     fi
@@ -1156,17 +1143,10 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    pip install PyGithub
-    pip3 install PyGithub
-    CASES=`python $PADDLE_ROOT/tools/get_pr_ut.py`
-    if [ "${CASES}" != "" ] && [ ${PRECISION_TEST:-ON} == "ON" ]; then
-		precision_test $CASES
+    if [ "$WITH_GPU" == "ON" ];then
+        parallel_test_base_gpu
     else
-        if [ "$WITH_GPU" == "ON" ];then
-            parallel_test_base_gpu
-        else
-            parallel_test_base_cpu ${PROC_RUN:-1}
-        fi
+        parallel_test_base_cpu ${PROC_RUN:-1}
     fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
