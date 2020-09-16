@@ -285,7 +285,7 @@ def monkey_patch_math_varbase():
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
         ('__array_ufunc__', None),
         ('sigmoid', _method_creator_('sigmoid', 'name=None')),
-        ('logsigmoid', _method_creator_('logsigmoid', 'name=None')),
+        ('log_sigmoid', _method_creator_('logsigmoid', 'name=None')),
         ('exp', _method_creator_('exp', 'name=None')),
         ('tanh', _method_creator_('tanh', 'name=None')),
         ('atan', _method_creator_('atan', 'name=None')),

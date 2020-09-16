@@ -342,9 +342,9 @@ if(WITH_MKLDNN)
   ### Lexcial analysis GRU model
   set(GRU_PATH "${INFERENCE_DEMO_INSTALL_DIR}/gru")
   download_GRU_data("${GRU_PATH}" "GRU_eval_data.tar.gz")
-  download_GRU_data("${GRU_PATH}" "GRU_eval_model.tar.gz")
+  download_GRU_data("${GRU_PATH}" "GRU_eval_model_v2.tar.gz")
   set(GRU_DATA_PATH "${GRU_PATH}/GRU_eval_data.bin")
-  set(GRU_MODEL_PATH "${GRU_PATH}/GRU_eval_model")
+  set(GRU_MODEL_PATH "${GRU_PATH}/GRU_eval_model_v2")
   set(LEXICAL_TEST_APP "test_analyzer_lexical_analysis")
   set(LEXICAL_TEST_APP_SRC "analyzer_lexical_analysis_gru_tester.cc")
 
@@ -480,10 +480,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_unserialized.tgz")
     endif()
 
-    # disable test_trt_dynamic_shape_ernie_ser_deser temporary
-    #inference_analysis_test(test_trt_dynamic_shape_ernie_ser_deser SRCS trt_dynamic_shape_ernie_deserialize_test.cc
-    #        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
-    #        ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized)
+    inference_analysis_test(test_trt_dynamic_shape_ernie_ser_deser SRCS trt_dynamic_shape_ernie_deserialize_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized)
 
 endif()
 

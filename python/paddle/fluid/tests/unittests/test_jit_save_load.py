@@ -23,7 +23,7 @@ from paddle.static import InputSpec
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME
+from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME
 
 BATCH_SIZE = 32
 BATCH_NUM = 10
@@ -153,6 +153,24 @@ class LinearNetReturnHidden(fluid.dygraph.Layer):
         return y, loss
 
 
+class EmptyLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(EmptyLayer, self).__init__()
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        return x
+
+
+class NoParamLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(NoParamLayer, self).__init__()
+
+    @paddle.jit.to_static
+    def forward(self, x, y):
+        return x + y
+
+
 def train(layer, input_size=784, label_size=1):
     # create optimizer
     sgd = fluid.optimizer.SGDOptimizer(
@@ -272,6 +290,15 @@ class TestJitSaveLoad(unittest.TestCase):
         new_layer = LinearNet(784, 1)
         with self.assertRaises(ValueError):
             model_dict, _ = fluid.dygraph.load_dygraph(model_path)
+
+    def test_jit_load_model_incomplete(self):
+        model_path = "model.test_jit_save_load.remove_variables"
+        self.train_and_save_model(model_path=model_path)
+        # remove `__variables__`	
+        var_path = os.path.join(model_path, VARIABLE_FILENAME)
+        os.remove(var_path)
+        with self.assertRaises(ValueError):
+            paddle.jit.load(model_path)
 
 
 class TestSaveLoadWithInputSpec(unittest.TestCase):
@@ -693,6 +720,39 @@ class TestJitSaveMultiCases(unittest.TestCase):
                         shape=[None, 784], dtype='float32', name="image")
                 ],
                 configs=configs)
+
+
+class TestJitSaveLoadEmptyLayer(unittest.TestCase):
+    def setUp(self):
+        self.model_path = "model.jit_save_load_empty_layer"
+        # enable dygraph mode
+        paddle.disable_static()
+
+    def test_save_load_empty_layer(self):
+        layer = EmptyLayer()
+        x = paddle.to_variable(np.random.random((10)).astype('float32'))
+        out = layer(x)
+        paddle.jit.save(layer, self.model_path)
+        load_layer = paddle.jit.load(self.model_path)
+        load_out = load_layer(x)
+        self.assertTrue(np.array_equal(out, load_out))
+
+
+class TestJitSaveLoadNoParamLayer(unittest.TestCase):
+    def setUp(self):
+        self.model_path = "model.jit_save_load_no_param_layer"
+        # enable dygraph mode
+        paddle.disable_static()
+
+    def test_save_load_no_param_layer(self):
+        layer = NoParamLayer()
+        x = paddle.to_variable(np.random.random((5)).astype('float32'))
+        y = paddle.to_variable(np.random.random((5)).astype('float32'))
+        out = layer(x, y)
+        paddle.jit.save(layer, self.model_path)
+        load_layer = paddle.jit.load(self.model_path)
+        load_out = load_layer(x, y)
+        self.assertTrue(np.array_equal(out, load_out))
 
 
 if __name__ == '__main__':

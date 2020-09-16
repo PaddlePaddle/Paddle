@@ -53,7 +53,12 @@ class OpConverter {
     OpConverter* it{nullptr};
 
     if (op_desc.Type() == "mul") {
-      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
+      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL,
+                        platform::errors::InvalidArgument(
+                            "The input op mul's Input(\"Y\")."
+                            "size() should equal to 1, but reveceid "
+                            "Input(\"Y\").size() = %u.",
+                            op_desc.Input("Y").size()));
       std::string Y = op_desc.Input("Y")[0];
       if (parameters.count(Y)) {
         it = Registry<OpConverter>::Global().Lookup("fc");
@@ -66,38 +71,51 @@ class OpConverter {
       // static std::unordered_set<std::string> add_weight_op_set {"add", "mul",
       // "sub", "div"};
       static std::unordered_set<std::string> add_weight_op_set{"add", "mul"};
-      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
+      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL,
+                        platform::errors::InvalidArgument(
+                            "The input op's Input(\"Y\")."
+                            "size() should equal to 1, but reveceid "
+                            "Input(\"Y\").size() = %u.",
+                            op_desc.Input("Y").size()));
       int op_type_len = op_desc.Type().size();
       std::string op_type = op_desc.Type().substr(op_type_len - 3, op_type_len);
       std::string Y = op_desc.Input("Y")[0];
       if (parameters.count(Y)) {
-        PADDLE_ENFORCE(add_weight_op_set.count(op_type) > 0,
-                       "Unsupported elementwise type" + op_type);
+        PADDLE_ENFORCE_GT(
+            add_weight_op_set.count(op_type), 0,
+            platform::errors::Unimplemented("Unsupported elementwise type %s",
+                                            op_type.c_str()));
         it = Registry<OpConverter>::Global().Lookup("elementwise_" + op_type +
                                                     "_weight");
-        PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
-                                op_desc.Type());
+        PADDLE_ENFORCE_NOT_NULL(
+            it, platform::errors::Unimplemented(
+                    "no OpConverter for optype [%s]", op_desc.Type()));
       } else {
-        PADDLE_ENFORCE(add_tensor_op_set.count(op_type) > 0,
-                       "Unsupported elementwise type" + op_type);
+        PADDLE_ENFORCE_GT(
+            add_tensor_op_set.count(op_type), 0,
+            platform::errors::Unimplemented("Unsupported elementwise type %s",
+                                            op_type.c_str()));
         it = Registry<OpConverter>::Global().Lookup("elementwise_" + op_type +
                                                     "_tensor");
       }
-      PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
-                              op_desc.Type());
+      PADDLE_ENFORCE_NOT_NULL(
+          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
     }
 
     if (op_desc.Type() == "depthwise_conv2d") {
       it = Registry<OpConverter>::Global().Lookup("conv2d");
-      PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
-                              op_desc.Type());
+      PADDLE_ENFORCE_NOT_NULL(
+          it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
     }
 
     if (!it) {
       it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
     }
-    PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
-                            op_desc.Type());
+    PADDLE_ENFORCE_NOT_NULL(
+        it, platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                            op_desc.Type()));
 
     it->SetEngine(engine);
     (*it)(op, scope, test_mode);
@@ -149,9 +167,13 @@ class OpConverter {
     for (auto& input : inputs) {
       if (parameters.count(input)) continue;
       auto* var = block_desc->FindVar(input);
-      PADDLE_ENFORCE(var, "no variable called %s", input);
-      PADDLE_ENFORCE_EQ(var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
-                        "TensorRT engine only takes LoDTensor as input");
+      PADDLE_ENFORCE_NOT_NULL(
+          var, platform::errors::NotFound("no variable called %s in block.",
+                                          input.c_str()));
+      PADDLE_ENFORCE_EQ(
+          var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
+          platform::errors::InvalidArgument("TensorRT engine only takes "
+                                            "LoDTensor as input"));
       auto var_shape = var->GetShape();
       if (engine->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)

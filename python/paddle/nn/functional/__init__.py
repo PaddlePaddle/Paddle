@@ -39,7 +39,7 @@ from .activation import hard_sigmoid  #DEFINE_ALIAS
 from .activation import hard_swish  #DEFINE_ALIAS
 from .activation import hsigmoid  #DEFINE_ALIAS
 from .activation import leaky_relu  #DEFINE_ALIAS
-from .activation import logsigmoid  #DEFINE_ALIAS
+from .activation import log_sigmoid  #DEFINE_ALIAS
 from .activation import maxout  #DEFINE_ALIAS
 from .activation import prelu  #DEFINE_ALIAS
 from .activation import relu  #DEFINE_ALIAS
