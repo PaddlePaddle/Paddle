@@ -1828,7 +1828,7 @@ class Model(object):
             return logs, outputs
         return logs
 
-    def summary(self, input_size=None, batch_size=None, dtype=None):
+    def summary(self, input_size=None, dtype=None):
         """Prints a string summary of the network.
 
         Args:
@@ -1837,7 +1837,6 @@ class Model(object):
                     one input, input_size can be tuple or InputSpec. if model have multiple 
                     input, input_size must be a list which contain every input's shape. 
                     Default: None.
-            batch_size (int, optional): batch size of input tensor, Default: None.
             dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
 
         Returns:
@@ -1874,7 +1873,7 @@ class Model(object):
             _input_size = input_size
         else:
             _input_size = self._inputs
-        return summary(self.network, _input_size, batch_size, dtype)
+        return summary(self.network, _input_size, dtype)
 
     def _verify_spec(self, specs, is_input=False):
         out_specs = []
