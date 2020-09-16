@@ -19,10 +19,26 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
+
+namespace details {
+template <typename T>
+struct LearningRateType {
+  using Type = T;
+};
+
+template <>
+struct LearningRateType<platform::float16> {
+  using Type = float;
+};
+}  // namespace details
+
+template <typename T>
+using DataType = typename details::LearningRateType<T>::Type;
 
 using framework::Tensor;
 using framework::SelectedRows;
@@ -124,7 +140,7 @@ class CPUDenseMomentumFunctor {
     auto p = framework::EigenVector<T>::Flatten(*param);
     auto v = framework::EigenVector<T>::Flatten(*velocity);
     auto g = framework::EigenVector<T>::Flatten(*grad);
-    const float* lr = learning_rate->data<float>();
+    const auto* lr = learning_rate->data<DataType<T>>();
 
     v_out = v * mu + g;
     if (use_nesterov) {
@@ -147,7 +163,7 @@ class DenseMomentumFunctor<T, UseNesterov> {
   const T* p_;
   const T* g_;
   const T* v_;
-  const float* lr_;
+  const DataType<T>* lr_;
   const T mu_;
   const int64_t num_;
   T* p_out_;
@@ -155,7 +171,7 @@ class DenseMomentumFunctor<T, UseNesterov> {
 
  public:
   DenseMomentumFunctor(const T* p, const T* g, const T* v,
-                       const float* learning_rate, const T mu,
+                       const DataType<T>* learning_rate, const T mu,
                        const int64_t num, T* p_out, T* v_out)
       : p_(p),
         g_(g),
@@ -169,7 +185,7 @@ class DenseMomentumFunctor<T, UseNesterov> {
     // put memory access in register
     const T p = p_[i];
     const T g = g_[i];
-    const float lr = lr_[0];
+    const auto lr = lr_[0];
     const T v = v_[i];
     T v_out = v * mu_ + g;
     T p_out = p - (g + v_out * mu_) * static_cast<T>(lr);
@@ -185,7 +201,7 @@ class DenseMomentumFunctor<T, NoNesterov> {
   const T* p_;
   const T* g_;
   const T* v_;
-  const float* lr_;
+  const DataType<T>* lr_;
   const T mu_;
   const int64_t num_;
   T* p_out_;
@@ -193,7 +209,7 @@ class DenseMomentumFunctor<T, NoNesterov> {
 
  public:
   DenseMomentumFunctor(const T* p, const T* g, const T* v,
-                       const float* learning_rate, const T mu,
+                       const DataType<T>* learning_rate, const T mu,
                        const int64_t num, T* p_out, T* v_out)
       : p_(p),
         g_(g),
@@ -226,7 +242,7 @@ class SparseMomentumFunctor<T, UseNesterov> {
   const T* p_;
   const T* g_;
   const T* v_;
-  const float* lr_;
+  const DataType<T>* lr_;
   const T mu_;
   const int64_t* rows_;
   const int64_t row_numel_;
@@ -235,9 +251,10 @@ class SparseMomentumFunctor<T, UseNesterov> {
   T* v_out_;
 
  public:
-  SparseMomentumFunctor(const T* p, const T* g, const T* v, const float* lr,
-                        const T mu, const int64_t* rows, int64_t row_numel,
-                        int64_t row_height, T* p_out, T* v_out)
+  SparseMomentumFunctor(const T* p, const T* g, const T* v,
+                        const DataType<T>* lr, const T mu, const int64_t* rows,
+                        int64_t row_numel, int64_t row_height, T* p_out,
+                        T* v_out)
       : p_(p),
         g_(g),
         v_(v),
@@ -256,7 +273,7 @@ class SparseMomentumFunctor<T, UseNesterov> {
                        : static_cast<T>(0);
     // put memory access in register
     const T p = p_[i];
-    const float lr = lr_[0];
+    const auto lr = lr_[0];
     const T v = v_[i];
     T v_out = v * mu_ + g;
     T p_out = p - (g + v_out * mu_) * static_cast<T>(lr);
@@ -272,7 +289,7 @@ class SparseMomentumFunctor<T, NoNesterov> {
   const T* p_;
   const T* g_;
   const T* v_;
-  const float* lr_;
+  const DataType<T>* lr_;
   const T mu_;
   const int64_t* rows_;
   const int64_t row_numel_;
@@ -281,9 +298,10 @@ class SparseMomentumFunctor<T, NoNesterov> {
   T* v_out_;
 
  public:
-  SparseMomentumFunctor(const T* p, const T* g, const T* v, const float* lr,
-                        const T mu, const int64_t* rows, int64_t row_numel,
-                        int64_t row_height, T* p_out, T* v_out)
+  SparseMomentumFunctor(const T* p, const T* g, const T* v,
+                        const DataType<T>* lr, const T mu, const int64_t* rows,
+                        int64_t row_numel, int64_t row_height, T* p_out,
+                        T* v_out)
       : p_(p),
         g_(g),
         v_(v),
@@ -342,7 +360,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         if (use_nesterov) {
           DenseMomentumFunctor<T, UseNesterov> functor(
               param->data<T>(), grad->data<T>(), velocity->data<T>(),
-              learning_rate->data<float>(), mu, param->numel(),
+              learning_rate->data<DataType<T>>(), mu, param->numel(),
               param_out->mutable_data<T>(ctx.GetPlace()),
               velocity_out->mutable_data<T>(ctx.GetPlace()));
           for_range(functor);
@@ -350,7 +368,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         } else {
           DenseMomentumFunctor<T, NoNesterov> functor(
               param->data<T>(), grad->data<T>(), velocity->data<T>(),
-              learning_rate->data<float>(), mu, param->numel(),
+              learning_rate->data<DataType<T>>(), mu, param->numel(),
               param_out->mutable_data<T>(ctx.GetPlace()),
               velocity_out->mutable_data<T>(ctx.GetPlace()));
           for_range(functor);
@@ -382,7 +400,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
       if (use_nesterov) {
         SparseMomentumFunctor<T, UseNesterov> functor(
             param->data<T>(), merged_grad->value().data<T>(),
-            velocity->data<T>(), learning_rate->data<float>(), mu, rows,
+            velocity->data<T>(), learning_rate->data<DataType<T>>(), mu, rows,
             row_numel, static_cast<int64_t>(merged_grad->rows().size()),
             param_out->mutable_data<T>(ctx.GetPlace()),
             velocity_out->mutable_data<T>(ctx.GetPlace()));
@@ -391,7 +409,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
       } else {
         SparseMomentumFunctor<T, NoNesterov> functor(
             param->data<T>(), merged_grad->value().data<T>(),
-            velocity->data<T>(), learning_rate->data<float>(), mu, rows,
+            velocity->data<T>(), learning_rate->data<DataType<T>>(), mu, rows,
             row_numel, static_cast<int64_t>(merged_grad->rows().size()),
             param_out->mutable_data<T>(ctx.GetPlace()),
             velocity_out->mutable_data<T>(ctx.GetPlace()));

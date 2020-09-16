@@ -267,48 +267,35 @@ def cast_net_to_fp16(program):
                 op._set_attr('dtype', core.VarDesc.VarType.FP16)
 
 
-def cast_parameters_to_fp16(exe, program):
+def cast_parameters_to_fp16(program):
     global_block = program.global_block()
     all_parameters = global_block.all_parameters()
+    is_bn_params = lambda param: (param.name.find('bn') != -1 and (param.name.endswith('_offset') or param.name.endswith('_mean') or param.name.endswith('_scale') or param.name.endswith('_variance')))
+    all_param_names = {p.name for p in all_parameters if not is_bn_params(p)}
+    ops = global_block.ops
+
     for param in all_parameters:
-        if not (param.name.find('bn') != -1 and
-                (param.name.endswith('_offset') or param.name.endswith('_mean')
-                 or param.name.endswith('_scale') or
-                 param.name.endswith('_variance'))):
-            param_t = global_scope().find_var(param.name).get_tensor()
-            data = np.array(param_t)
-            param_t.set(np.float16(data), exe.place)
+        if param.name in all_param_names:
+            param_var = global_block.var(param.name)
+            if param_var.dtype == core.VarDesc.VarType.FP32:
+                param_var.desc.set_dtype(core.VarDesc.VarType.FP16)
 
-
-# def cast_parameters_to_fp16(program):
-#     global_block = program.global_block()
-#     all_parameters = global_block.all_parameters()
-#     is_bn_params = lambda param: (param.name.find('bn') != -1 and (param.name.endswith('_offset') or param.name.endswith('_mean') or param.name.endswith('_scale') or param.name.endswith('_variance')))
-#     all_param_names = {p.name for p in all_parameters if not is_bn_params(p)}
-#     ops = global_block.ops
-
-#     for param in all_parameters:
-#         if param.name in all_param_names:
-#             param_var = global_block.var(param.name)
-#             if param_var.dtype == core.VarDesc.VarType.FP32:
-#                 param_var.desc.set_dtype(core.VarDesc.VarType.FP16)
-
-#     for op in ops:
-#         target_op = False
-#         for out_name in op.output_names:
-#             for out_var_name in op.output(out_name):
-#                 if out_var_name in all_param_names:
-#                     target_op = True
-#         if target_op:
-#             if op.has_attr('in_dtype') and op.attr(
-#                     'in_dtype') == core.VarDesc.VarType.FP32:
-#                 op._set_attr('in_dtype', core.VarDesc.VarType.FP16)
-#             if op.has_attr('out_dtype') and op.attr(
-#                     'out_dtype') == core.VarDesc.VarType.FP32:
-#                 op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
-#             if op.has_attr('dtype') and op.attr(
-#                     'dtype') == core.VarDesc.VarType.FP32:
-#                 op._set_attr('dtype', core.VarDesc.VarType.FP16)
+    for op in ops:
+        target_op = False
+        for out_name in op.output_names:
+            for out_var_name in op.output(out_name):
+                if out_var_name in all_param_names:
+                    target_op = True
+        if target_op:
+            if op.has_attr('in_dtype') and op.attr(
+                    'in_dtype') == core.VarDesc.VarType.FP32:
+                op._set_attr('in_dtype', core.VarDesc.VarType.FP16)
+            if op.has_attr('out_dtype') and op.attr(
+                    'out_dtype') == core.VarDesc.VarType.FP32:
+                op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
+            if op.has_attr('dtype') and op.attr(
+                    'dtype') == core.VarDesc.VarType.FP32:
+                op._set_attr('dtype', core.VarDesc.VarType.FP16)
 
 
 def rewrite_program(main_prog, amp_lists):
