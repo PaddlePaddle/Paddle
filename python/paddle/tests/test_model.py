@@ -521,17 +521,22 @@ class TestModelFunction(unittest.TestCase):
 
             model.summary(input_size=(20))
             model.summary(input_size=[(20)])
-            model.summary(input_size=(20), batch_size=2)
+            model.summary(input_size=(20), dtype='float32')
 
     def test_summary_nlp(self):
         paddle.enable_static()
-        nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
-        paddle.summary(nlp_net, (1, 2))
+        nlp_net = paddle.nn.GRU(input_size=2,
+                                hidden_size=3,
+                                num_layers=3,
+                                direction="bidirectional")
+        paddle.summary(nlp_net, (1, 1, 2))
+        rnn = paddle.nn.LSTM(16, 32, 2)
+        paddle.summary(rnn, [(-1, 23, 16), ((2, None, 32), (2, -1, 32))])
 
     def test_summary_error(self):
         with self.assertRaises(TypeError):
             nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
-            paddle.summary(nlp_net, (1, '2'))
+            paddle.summary(nlp_net, (1, 1, '2'))
 
         with self.assertRaises(ValueError):
             nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
@@ -539,7 +544,7 @@ class TestModelFunction(unittest.TestCase):
 
         paddle.disable_static()
         nlp_net = paddle.nn.GRU(input_size=2, hidden_size=3, num_layers=3)
-        paddle.summary(nlp_net, (1, 2))
+        paddle.summary(nlp_net, (1, 1, 2))
 
     def test_export_deploy_model(self):
         for dynamic in [True, False]:
