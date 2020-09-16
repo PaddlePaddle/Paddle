@@ -930,9 +930,6 @@ function parallel_test_base_gpu() {
 EOF
 
 set +x
-
-        pip install PyGithub
-        pip3 install PyGithub
         precison_cases=""
         if [ ${PRECISION_TEST:-ON} == "ON" ]; then
             precision_cases=`python $PADDLE_ROOT/tools/get_pr_ut.py`
@@ -966,8 +963,7 @@ set +x
                     echo $testcase" will only run at night."
                     continue
                 fi
-
-                if [ ${PRECISION_TEST:-ON} == "ON" ] && [[ "$precision_cases" != "" ]]; then
+                if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]]; then
                     will_test="false"
                     for case in $precision_cases; do
                         if [[ $testcase == $case ]]; then

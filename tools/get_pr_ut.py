@@ -53,14 +53,11 @@ class PRChecker(object):
         """ Get unit tests in pull request. """
         ut_list = []
         file_ut_map = None
-        cmd = 'wget --no-check-certificate https://paddle-ci.gz.bcebos.com/test/file_ut.json'
+        cmd = 'wget --no-check-certificate https://sys-p0.bj.bcebos.com/prec/file_ut.json'
         os.system(cmd)
         with open('file_ut.json') as jsonfile:
             file_ut_map = json.load(jsonfile)
         for f in self.get_pr_files():
-            #tmp test
-            if f.find('paddle_build.sh') != -1 or f.find('get_pr_ut.py') != -1:
-                continue
             if f not in file_ut_map:
                 return ''
             if f.endswith('.h') or f.endswith('.cu'):
