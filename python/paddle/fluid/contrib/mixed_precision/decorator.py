@@ -17,9 +17,11 @@ from ... import default_startup_program
 from ... import layers
 from ... import unique_name
 from . import fp16_utils
-from .fp16_utils import update_loss_scaling, rewrite_program
+from .fp16_utils import rewrite_program
 from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
+from .amp_nn import check_finite_and_unscale
+from .amp_nn import update_loss_scaling
 
 __all__ = ["decorate"]
 
@@ -67,10 +69,8 @@ class OptimizerWithMixedPrecision(object):
             persistable=True)
         self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
         if self._use_dynamic_loss_scaling:
-            self._incr_every_n_steps = layers.fill_constant(
-                shape=[1], dtype='int32', value=incr_every_n_steps)
-            self._decr_every_n_nan_or_inf = layers.fill_constant(
-                shape=[1], dtype='int32', value=decr_every_n_nan_or_inf)
+            self._incr_every_n_steps = incr_every_n_steps
+            self._decr_every_n_nan_or_inf = decr_every_n_nan_or_inf
             self._incr_ratio = incr_ratio
             self._decr_ratio = decr_ratio
             self._num_good_steps = layers.create_global_var(
@@ -139,49 +139,46 @@ class OptimizerWithMixedPrecision(object):
         # Change the op_role_var attr for some ops, so that gradients
         # transferred across GPUs can be FP16.
         update_role_var_grad(self._train_program, self._params_grads)
-        scaled_params_grads = []
-        for p, g in self._params_grads:
-            with self._train_program._optimized_guard([p, g]):
-                scaled_g = g / self._loss_scaling
-                scaled_params_grads.append([p, scaled_g])
 
-        return scaled_params_grads
+        return self._params_grads
 
-    def apply_gradients(self, scaled_params_grads):
+    def apply_gradients(self, params_grads):
         """
         Check scaled gradients to determine whether to update loss scaling and update 
         parameters by their scaled gradients, 
   
         Args:
-            scaled_params_grads (list): A list of params and scaled grads.
+            params_grads (list): A list of params and scaled grads.
     
         Returns:
             A list of optimize operators.
         """
 
+        grads = [g for _, g in params_grads]
+        with self._train_program._optimized_guard(grads):
+            grads, found_inf = check_finite_and_unscale(
+                grads, self._loss_scaling, name="find_infinite_scale")
+
         if self._use_dynamic_loss_scaling:
+            with self._train_program._optimized_guard(grads):
+                grads = update_loss_scaling(
+                    grads,
+                    found_inf,
+                    self._loss_scaling,
+                    self._num_good_steps,
+                    self._num_bad_steps,
+                    self._incr_every_n_steps,
+                    self._decr_every_n_nan_or_inf,
+                    self._incr_ratio,
+                    self._decr_ratio,
+                    name="update_loss_scaling")
 
-            grads = [layers.reduce_sum(g) for [_, g] in scaled_params_grads]
-            all_grads = layers.concat(grads)
-            all_grads_sum = layers.reduce_sum(all_grads)
-            is_overall_finite = layers.isfinite(all_grads_sum)
-
-            update_loss_scaling(is_overall_finite, self._loss_scaling,
-                                self._num_good_steps, self._num_bad_steps,
-                                self._incr_every_n_steps,
-                                self._decr_every_n_nan_or_inf, self._incr_ratio,
-                                self._decr_ratio)
-
-            # apply_gradient append all ops in global block, thus we shouldn't
-            # apply gradient in the switch branch.
-            with layers.Switch() as switch:
-                with switch.case(is_overall_finite):
-                    pass
-                with switch.default():
-                    for _, g in scaled_params_grads:
-                        layers.assign(layers.zeros_like(g), g)
-
-        optimize_ops = self._optimizer.apply_gradients(scaled_params_grads)
+        params_unscaled_grads = []
+        for pg, new_g in zip(params_grads, grads):
+            params_unscaled_grads.append((pg[0], new_g))
+        # apply_gradient append all ops in global block, thus we shouldn't
+        # apply gradient in the switch branch.
+        optimize_ops = self._optimizer.apply_gradients(params_unscaled_grads)
 
         return optimize_ops
 
