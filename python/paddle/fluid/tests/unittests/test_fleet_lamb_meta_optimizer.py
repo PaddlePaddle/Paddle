@@ -141,7 +141,7 @@ class TestFleetLambMetaOptimizer(unittest.TestCase):
         ops = [op.type for op in avg_cost.block.ops]
         self.assertIn('lamb', ops)
         self.assertIn('cast', ops)
-        self.assertIn('isfinite', ops)
+        self.assertIn('check_finite_and_unscale', ops)
 
 
 if __name__ == "__main__":
