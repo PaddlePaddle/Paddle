@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <array>
 #include <memory>
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/operator_kernel_configs.h"
@@ -88,6 +89,75 @@ std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
   for (auto const& tmp : v) out << tmp << ",";
   out << "]";
   return out;
+}
+
+inline int MaxBackwardFilterAlgos(cudnnHandle_t cudnn_handle) {
+  int max_algos = 0;
+#if CUDNN_VERSION_MIN(7, 0, 1)
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(
+          cudnn_handle, &max_algos));
+#endif
+  return max_algos;
+}
+
+template <typename PerfType, typename AlgoType>
+void AlgoFinalSelect(const std::vector<PerfType>& perf_results,
+                     std::string kernel_name, int32_t algo_preference,
+                     size_t workspace_byte,
+                     cudnnConvolutionBwdFilterAlgo_t* algo,
+                     bool deterministic) {
+  // Determine the fastest acceptable algo that matches the algo_preference (-1
+  // = any),
+  // regardless of mathType.
+
+  VLOG(3) << "=========Full results of algo=========" << kernel_name << ":";
+  for (const auto& result : perf_results) {
+    auto math_type_str = "-";
+    if (result.mathType == CUDNN_TENSOR_OP_MATH) {
+      math_type_str = "+";
+    }
+
+    VLOG(3) << "    algo: " << result.algo << ", TC" << math_type_str
+            << ", time: " << result.time << " ms"
+            << ", wksp = " << result.memory << ", status = " << result.status;
+  }
+
+  for (decltype(perf_results.size()) i = 0; i != perf_results.size(); ++i) {
+    const auto& result = perf_results[i];
+    bool algo_is_tensor_core = false;
+    algo_is_tensor_core = result.mathType == CUDNN_TENSOR_OP_MATH;
+    bool algo_exclusion = 0;
+    if (result.status == CUDNN_STATUS_SUCCESS &&
+        (!deterministic ||
+         result.determinism == cudnnDeterminism_t::CUDNN_DETERMINISTIC) &&
+        (result.memory <= workspace_byte) &&
+        (algo_preference == -1 || algo_preference == result.algo) &&
+        !algo_exclusion) {
+      if ((result.mathType == CUDNN_TENSOR_OP_MATH) &&
+          (i != perf_results.size() - 1)) {
+        const auto& next_result = perf_results[i + 1];
+        if (next_result.status == CUDNN_STATUS_SUCCESS &&
+            next_result.algo == result.algo &&
+            next_result.memory == result.memory &&
+            next_result.mathType != CUDNN_TENSOR_OP_MATH &&
+            next_result.time < 1.01 * result.time) {
+          // Skip over this result- it's not really a Tensor Core algo.
+          // Prefer instead the next equivalent non-Tensor Core algo.
+          continue;
+        }
+      }
+      *algo = result.algo;
+      auto math_type_str = "-";
+      if (result.mathType == CUDNN_TENSOR_OP_MATH) {
+        math_type_str = "+";
+      }
+      VLOG(3) << "    choose algo: " << result.algo << ", TC" << math_type_str
+              << ", time: " << result.time << " ms"
+              << ", wksp = " << result.memory << ", status = " << result.status;
+      return;
+    }
+  }
 }
 
 using framework::ConvSearchCache;
@@ -396,6 +466,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     algo_t algo;
     if (!exhaustive && !deterministic) {
 #if CUDNN_VERSION >= 7001
+      /*
       using perf_t = cudnnConvolutionBwdFilterAlgoPerf_t;
       int perf_count;
       int best_algo_idx = 0;
@@ -411,7 +482,39 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       if (workspace_size > workspace_size_limit) {
         workspace_size = workspace_size_limit;
       }
+
+      auto math_type_str = "-";
+      if ((perf_results.get())[best_algo_idx].mathType ==
+          CUDNN_TENSOR_OP_MATH) {
+        math_type_str = "+";
+      }
+      VLOG(3) << "    algo: " << (perf_results.get())[best_algo_idx].algo
+              << ", TC" << math_type_str
+              << ", time: " << (perf_results.get())[best_algo_idx].time << " ms"
+              << ", wksp = " << (perf_results.get())[best_algo_idx].memory
+              << ", status = " << (perf_results.get())[best_algo_idx].status;
+*/
+      auto max_bwd_filt_algos = MaxBackwardFilterAlgos(args.handle);
+      std::vector<cudnnConvolutionBwdFilterAlgoPerf_t> bwd_filt_results(
+          max_bwd_filt_algos);
+      int actual_bwd_filter_algos = 0;
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnFindConvolutionBackwardFilterAlgorithm(
+              args.handle, args.idesc.desc(), args.odesc.desc(),
+              args.cdesc.desc(), args.wdesc.desc(), bwd_filt_results.size(),
+              &actual_bwd_filter_algos, bwd_filt_results.data()));
+      bwd_filt_results.resize(actual_bwd_filter_algos);
+      AlgoFinalSelect<cudnnConvolutionBwdFilterAlgoPerf_t,
+                      cudnnConvolutionBwdFilterAlgo_t>(
+          bwd_filt_results, "backprop-to-filter", -1, workspace_size_limit,
+          &algo, deterministic);
+      workspace_size = GetWorkspaceSize(args, algo);
+      if (workspace_size > workspace_size_limit) {
+        workspace_size = workspace_size_limit;
+      }
+
 #else
+      VLOG(3) << "=======cudnnGetConvolutionBackwardFilterAlgorithm=====";
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
               args.handle, args.idesc.desc(), args.odesc.desc(),
@@ -420,8 +523,10 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
               workspace_size_limit, &algo));
 #endif
     } else if (deterministic) {
+      VLOG(3) << "======choose deterministic algo======";
       return CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
     } else {
+      VLOG(3) << "========Get cache algo===========";
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
