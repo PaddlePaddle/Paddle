@@ -333,7 +333,7 @@ class LocalFS(FS):
             dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `dst_path` if that exists. Default is False.
             test_exists(bool): Check the existence of `src_path` and `dst_path` . 
-            When `test_exists` is set true, if `src_path` doesn't exist or `dst_path` exists， program will throw an Excetption. 
+            When `test_exists` is set true, if `src_path` doesn't exist or `dst_path` exists, program will throw an Excetption. 
 
         Examples:
             .. code-block:: python
@@ -844,7 +844,7 @@ class HDFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
-            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists， program will throw an Excetption. 
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption. 
 
         Examples:
 
