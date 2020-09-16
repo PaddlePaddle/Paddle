@@ -17,7 +17,6 @@ from __future__ import division
 import math
 import sys
 import random
-import cv2
 
 import numpy as np
 import numbers
@@ -28,8 +27,6 @@ import traceback
 
 from paddle.utils import try_import
 from . import functional as F
-
-cv2 = None
 
 if sys.version_info < (3, 3):
     Sequence = collections.Sequence
@@ -234,11 +231,8 @@ class Resize(object):
             fake_img = transform(fake_img)
             print(fake_img.shape)
     """
-    global cv2
-    if cv2 is None:
-        cv2 = try_import('cv2')
 
-    def __init__(self, size, interpolation=cv2.INTER_LINEAR):
+    def __init__(self, size, interpolation=1):
         assert isinstance(size, int) or (isinstance(size, Iterable) and
                                          len(size) == 2)
         self.size = size
@@ -274,15 +268,12 @@ class RandomResizedCrop(object):
             fake_img = transform(fake_img)
             print(fake_img.shape)
     """
-    global cv2
-    if cv2 is None:
-        cv2 = try_import('cv2')
 
     def __init__(self,
                  output_size,
                  scale=(0.08, 1.0),
                  ratio=(3. / 4, 4. / 3),
-                 interpolation=cv2.INTER_LINEAR):
+                 interpolation=1):
         if isinstance(output_size, int):
             self.output_size = (output_size, output_size)
         else:
@@ -354,11 +345,8 @@ class CenterCropResize(object):
             fake_img = transform(fake_img)
             print(fake_img.shape)
     """
-    global cv2
-    if cv2 is None:
-        cv2 = try_import('cv2')
 
-    def __init__(self, size, crop_padding=32, interpolation=cv2.INTER_LINEAR):
+    def __init__(self, size, crop_padding=32, interpolation=1):
         if isinstance(size, int):
             self.size = (size, size)
         else:
@@ -669,11 +657,11 @@ class ContrastTransform(object):
             raise ValueError("contrast value should be non-negative")
         self.value = value
 
-    @F.lazy_import_cv2
     def __call__(self, img):
         if self.value == 0:
             return img
 
+        cv2 = try_import('cv2')
         dtype = img.dtype
         img = img.astype(np.float32)
         alpha = np.random.uniform(max(0, 1 - self.value), 1 + self.value)
@@ -710,10 +698,11 @@ class SaturationTransform(object):
             raise ValueError("saturation value should be non-negative")
         self.value = value
 
-    @F.lazy_import_cv2
     def __call__(self, img):
         if self.value == 0:
             return img
+
+        cv2 = try_import('cv2')
 
         dtype = img.dtype
         img = img.astype(np.float32)
@@ -752,11 +741,11 @@ class HueTransform(object):
             raise ValueError("hue value should be in [0.0, 0.5]")
         self.value = value
 
-    @F.lazy_import_cv2
     def __call__(self, img):
         if self.value == 0:
             return img
 
+        cv2 = try_import('cv2')
         dtype = img.dtype
         img = img.astype(np.uint8)
         hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV_FULL)
@@ -1076,11 +1065,7 @@ class RandomRotate(object):
             print(fake_img.shape)
     """
 
-    def __init__(self,
-                 degrees,
-                 interpolation=cv2.INTER_LINEAR,
-                 expand=False,
-                 center=None):
+    def __init__(self, degrees, interpolation=1, expand=False, center=None):
         if isinstance(degrees, numbers.Number):
             if degrees < 0:
                 raise ValueError(

@@ -18,13 +18,17 @@ import importlib
 
 def try_import(module_name):
     """Try importing a module, with an informative error message on failure."""
+    install_name = module_name
+    if module_name == 'cv2':
+        install_name = 'opencv-python'
+
     try:
         mod = importlib.import_module(module_name)
         return mod
     except ImportError:
         err_msg = (
-            "Failed importing {name}. This likely means that some paddle modules "
+            "Failed importing {}. This likely means that some paddle modules "
             "requires additional dependencies that have to be "
-            "manually installed (usually with `pip install {name}`). ").format(
-                name=module_name)
+            "manually installed (usually with `pip install {}`). ").format(
+                module_name, install_name)
         raise ImportError(err_msg)

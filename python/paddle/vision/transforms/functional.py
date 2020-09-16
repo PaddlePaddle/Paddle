@@ -23,8 +23,6 @@ import numpy as np
 
 from paddle.utils import try_import
 
-cv2 = None
-
 if sys.version_info < (3, 3):
     Sequence = collections.Sequence
     Iterable = collections.Iterable
@@ -33,19 +31,6 @@ else:
     Iterable = collections.abc.Iterable
 
 __all__ = ['flip', 'resize', 'pad', 'rotate', 'to_grayscale']
-
-
-def lazy_import_cv2(func):
-    global cv2
-    if cv2 is None:
-        cv2 = try_import('cv2')
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        ret = func(*args, **kwargs)
-        return ret
-
-    return wrapper
 
 
 def keepdims(func):
@@ -64,7 +49,6 @@ def keepdims(func):
     return wrapper
 
 
-@lazy_import_cv2
 @keepdims
 def flip(image, code):
     """
@@ -94,12 +78,12 @@ def flip(image, code):
             # flip horizontally
             F.flip(fake_img, 1)
     """
+    cv2 = try_import('cv2')
     return cv2.flip(image, flipCode=code)
 
 
-@lazy_import_cv2
 @keepdims
-def resize(img, size, interpolation=cv2.INTER_LINEAR):
+def resize(img, size, interpolation=1):
     """
     resize the input data to given size
 
@@ -120,7 +104,7 @@ def resize(img, size, interpolation=cv2.INTER_LINEAR):
 
             F.resize(fake_img, (200, 150))
     """
-
+    cv2 = try_import('cv2')
     if isinstance(interpolation, Sequence):
         interpolation = random.choice(interpolation)
 
@@ -140,7 +124,6 @@ def resize(img, size, interpolation=cv2.INTER_LINEAR):
         return cv2.resize(img, size[::-1], interpolation=interpolation)
 
 
-@lazy_import_cv2
 @keepdims
 def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
     """Pads the given CV Image on all sides with speficified padding mode and fill value.
@@ -198,6 +181,8 @@ def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
     assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric'], \
         'Expected padding mode be either constant, edge, reflect or symmetric, but got {}'.format(padding_mode)
 
+    cv2 = try_import('cv2')
+
     PAD_MOD = {
         'constant': cv2.BORDER_CONSTANT,
         'edge': cv2.BORDER_REPLICATE,
@@ -232,20 +217,15 @@ def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
     return img
 
 
-@lazy_import_cv2
 @keepdims
-def rotate(img,
-           angle,
-           interpolation=cv2.INTER_LINEAR,
-           expand=False,
-           center=None):
+def rotate(img, angle, interpolation=1, expand=False, center=None):
     """Rotates the image by angle.
 
     Args:
         img (numpy.ndarray): Image to be rotated.
         angle (float|int): In degrees clockwise order.
         interpolation (int, optional):
-            interpolation: Interpolation method.
+            interpolation: Interpolation method. Default: 1.
         expand (bool|optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.
@@ -270,8 +250,9 @@ def rotate(img,
             fake_img = rotate(fake_img, 10)
             print(fake_img.shape)
     """
-    dtype = img.dtype
+    cv2 = try_import('cv2')
 
+    dtype = img.dtype
     h, w, _ = img.shape
     point = center or (w / 2, h / 2)
     M = cv2.getRotationMatrix2D(point, angle=-angle, scale=1)
@@ -307,7 +288,6 @@ def rotate(img,
     return dst.astype(dtype)
 
 
-@lazy_import_cv2
 @keepdims
 def to_grayscale(img, num_output_channels=1):
     """Converts image to grayscale version of image.
@@ -333,6 +313,7 @@ def to_grayscale(img, num_output_channels=1):
             fake_img = to_grayscale(fake_img)
             print(fake_img.shape)
     """
+    cv2 = try_import('cv2')
 
     if num_output_channels == 1:
         img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
