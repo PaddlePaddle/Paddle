@@ -29,8 +29,7 @@ class TestSimpleRNN(unittest.TestCase):
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction == "bidirectional" else 1
-        self.place = paddle.CPUPlace() if place == "cpu" \
-            else paddle.CUDAPlace(0)
+        self.place = paddle.set_device(place)
 
     def setUp(self):
         paddle.disable_static(self.place)
@@ -103,8 +102,7 @@ class TestGRU(unittest.TestCase):
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction == "bidirectional" else 1
-        self.place = paddle.CPUPlace() if place == "cpu" \
-            else paddle.CUDAPlace(0)
+        self.place = paddle.set_device(place)
 
     def setUp(self):
         paddle.disable_static(self.place)
@@ -183,8 +181,7 @@ class TestLSTM(unittest.TestCase):
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction == "bidirectional" else 1
-        self.place = paddle.CPUPlace() if place == "cpu" \
-            else paddle.CUDAPlace(0)
+        self.place = paddle.set_device(place)
 
     def setUp(self):
         paddle.disable_static(self.place)
