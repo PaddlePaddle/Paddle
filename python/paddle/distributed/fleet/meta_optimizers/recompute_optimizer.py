@@ -38,7 +38,7 @@ class RecomputeOptimizer(MetaOptimizerBase):
             list(user_defined_strategy.recompute_configs["checkpoints"]))
 
     def _can_apply(self):
-        if self.role_maker._is_collective:
+        if not self.role_maker._is_collective:
             return False
 
         if self.user_defined_strategy.recompute == True:

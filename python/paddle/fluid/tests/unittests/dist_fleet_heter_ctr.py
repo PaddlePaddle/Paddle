@@ -183,14 +183,14 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
         print("filelist: {}".format(filelist))
 
         # config dataset
-        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
-        dataset.set_batch_size(batch_size)
-        dataset.set_use_var(self.feeds)
+        dataset = paddle.distributed.QueueDataset()
+        dataset._set_batch_size(batch_size)
+        dataset._set_use_var(self.feeds)
         pipe_command = 'python ctr_dataset_reader.py'
-        dataset.set_pipe_command(pipe_command)
+        dataset._set_pipe_command(pipe_command)
 
         dataset.set_filelist(filelist)
-        dataset.set_thread(thread_num)
+        dataset._set_thread(thread_num)
 
         for epoch_id in range(1):
             pass_start = time.time()
