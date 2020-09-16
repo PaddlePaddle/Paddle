@@ -103,7 +103,8 @@ class UCIHousing(Dataset):
 
     def __getitem__(self, idx):
         data = self.data[idx]
-        return np.array(data[:-1]), np.array(data[-1:])
+        return np.array(data[:-1]).astype('float32'), \
+                np.array(data[-1:]).astype('float32')
 
     def __len__(self):
         return len(self.data)
