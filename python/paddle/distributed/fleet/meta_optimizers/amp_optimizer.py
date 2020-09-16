@@ -24,7 +24,7 @@ class AMPOptimizer(MetaOptimizerBase):
         self.meta_optimizers_white_list = [
             "LarsOptimizer", "LambOptimizer", "RecomputeOptimizer",
             "LocalSGDOptimizer", "GradientMergeOptimizer",
-            "GraphExecutionOptimizer"
+            "GraphExecutionOptimizer", "AdaptiveLocalSGDOptimizer"
         ]
         self.meta_optimizers_black_list = ["DGCOptimizer"]
 
