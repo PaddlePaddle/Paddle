@@ -26,6 +26,14 @@ class TestMultinomialOp(OpTest):
         self.init_data()
         self.inputs = {"X": self.input_np}
 
+    """
+    def init_data(self):
+        # input probability is a vector, and replacement is True
+        self.input_np = np.random.rand(4)
+        self.outputs = {"Out": np.zeros(100000).astype("int64")}
+        self.attrs = {"num_samples": 100000, "replacement": True}
+    """
+
     def init_data(self):
         # input probability is a vector, and replacement is True
         self.input_np = np.random.rand(4)
@@ -45,12 +53,14 @@ class TestMultinomialOp(OpTest):
         # normalize the input to get the probability
         prob = self.input_np / self.input_np.sum(axis=-1, keepdims=True)
         sample_prob = self.sample_output(np.array(outs[0]))
+        print("sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
         self.assertTrue(
             np.allclose(
                 sample_prob, prob, rtol=0, atol=0.01),
             "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
 
 
+"""
 class TestMultinomialOp2(TestMultinomialOp):
     def init_data(self):
         # input probability is a matrix
@@ -82,8 +92,7 @@ class TestMultinomialOp3(TestMultinomialOp):
         self.assertEqual(
             len(unique_out), 100,
             "replacement is False. categories can't be sampled repeatedly")
-
-
+"""
 """
 class TestReplacementError(unittest.TestCase):
     def init_data(self):

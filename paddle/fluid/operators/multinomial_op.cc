@@ -83,8 +83,8 @@ class MultinomialOpKernel<platform::CPUDeviceContext, T>
     const int64_t num_categories = in_dims[in_rank - 1];
     const int64_t num_distributions = in_rank > 1 ? in_dims[in_rank - 2] : 1;
 
-    MultinomialFunctor(out_data, in_data, num_samples, replacement,
-                       num_categories, num_distributions);
+    MultinomialFunctor<T>(out_data, in_data, num_samples, replacement,
+                          num_categories, num_distributions);
   }
 };
 
