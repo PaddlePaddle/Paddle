@@ -16,7 +16,6 @@
 import os
 import json
 from github import Github
-import ut_filter
 
 PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
 
