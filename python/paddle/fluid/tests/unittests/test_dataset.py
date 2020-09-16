@@ -185,20 +185,24 @@ class TestDataset(unittest.TestCase):
             use_var=slots_vars)
         dataset.set_filelist([filename1, filename2])
         dataset.load_into_memory()
+        paddle.enable_static()
+
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
         exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe.run(startup_program)
         if self.use_data_loader:
             data_loader = fluid.io.DataLoader.from_dataset(dataset,
                                                            fluid.cpu_places(),
                                                            self.drop_last)
             for i in range(self.epoch_num):
                 for data in data_loader():
-                    exe.run(fluid.default_main_program(), feed=data)
+                    exe.run(main_program, feed=data)
         else:
             for i in range(self.epoch_num):
                 try:
-                    exe.train_from_dataset(fluid.default_main_program(),
-                                           dataset)
+                    exe.train_from_dataset(fluid.main_program, dataset)
                 except Exception as e:
                     self.assertTrue(False)
 

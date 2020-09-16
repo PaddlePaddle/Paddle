@@ -458,11 +458,16 @@ class InMemoryDataset(DatasetBase):
                     ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
                 dataset.load_into_memory()
 
-                exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
-                ) else fluid.CUDAPlace(0))
-                exe.run(fluid.default_startup_program())
-                exe.train_from_dataset(fluid.default_main_program(),
-                                           dataset)
+                paddle.enable_static()
+                
+                place = paddle.CUDAPlace(0) if paddle.fluid.core.is_compiled_with_cuda() else paddle.CPUPlace()
+                exe = paddle.static.Executor(place)
+                startup_program = paddle.static.Program()
+                main_program = paddle.static.Program()
+                exe.run(startup_program)
+
+                exe.train_from_dataset(main_program, dataset)
+                
                 os.remove("./test_queue_dataset_run_a.txt")
                 os.remove("./test_queue_dataset_run_b.txt")
         """
@@ -789,9 +794,11 @@ class InMemoryDataset(DatasetBase):
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
               dataset.global_shuffle(fleet)
-              exe = fluid.Executor(fluid.CPUPlace())
-              exe.run(fluid.default_startup_program())
-              exe.train_from_dataset(fluid.default_main_program(), dataset)
+              exe = paddle.static.Executor(paddle.CPUPlace())
+              startup_program = paddle.static.Program()
+              main_program = paddle.static.Program()
+              exe.run(startup_program)
+              exe.train_from_dataset(main_program, dataset)
               dataset.release_memory()
 
         """
@@ -924,7 +931,7 @@ class InMemoryDataset(DatasetBase):
 class QueueDataset(DatasetBase):
     """
     :api_attr: Static Graph
-    
+
     QueueDataset, it will process data streamly.
 
     Examples:
