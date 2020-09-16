@@ -608,58 +608,66 @@ class Fleet(object):
     @dygraph_only
     def distributed_model(self, model):
         """
-        Return dygraph distributed data parallel model (Layer)
-        Only work in dygraph mode
+        Return distributed data parallel model (Only work in dygraph mode)
+
+        Args:
+            model (Layer): the user-defind model which inherits Layer.
+
+        Returns:
+            distributed data parallel model which inherits Layer.
 
         Examples:
+
             .. code-block:: python
-            import paddle
-            import paddle.nn as nn
-            from paddle.distributed import fleet
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super(LinearNet, self).__init__()
-                    self._linear1 = nn.Linear(10, 10)
-                    self._linear2 = nn.Linear(10, 1)
+                import paddle
+                import paddle.nn as nn
+                from paddle.distributed import fleet
 
-                def forward(self, x):
-                    return self._linear2(self._linear1(x))
+                class LinearNet(nn.Layer):
+                    def __init__(self):
+                        super(LinearNet, self).__init__()
+                        self._linear1 = nn.Linear(10, 10)
+                        self._linear2 = nn.Linear(10, 1)
 
-            def train():
-                # 1. enable dynamic mode
-                paddle.disable_static()
+                    def forward(self, x):
+                        return self._linear2(self._linear1(x))
 
-                # 2. initialize fleet environment
-                fleet.init(is_collective=True)
+                def train():
+                    # 1. enable dynamic mode
+                    paddle.disable_static()
 
-                # 3. create layer & optimizer
-                layer = LinearNet()
-                loss_fn = nn.MSELoss()
-                adam = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=layer.parameters())
+                    # 2. initialize fleet environment
+                    fleet.init(is_collective=True)
 
-                # 4. get data_parallel model using fleet
-                adam = fleet.distributed_optimizer(adam)
-                dp_layer = fleet.distributed_model(layer)
+                    # 3. create layer & optimizer
+                    layer = LinearNet()
+                    loss_fn = nn.MSELoss()
+                    adam = paddle.optimizer.Adam(
+                        learning_rate=0.001, parameters=layer.parameters())
 
-                # 5. run layer
-                inputs = paddle.randn([10, 10], 'float32')
-                outputs = dp_layer(inputs)
-                labels = paddle.randn([10, 1], 'float32')
-                loss = loss_fn(outputs, labels)
+                    # 4. get data_parallel model using fleet
+                    adam = fleet.distributed_optimizer(adam)
+                    dp_layer = fleet.distributed_model(layer)
 
-                print("loss:", loss.numpy())
+                    # 5. run layer
+                    inputs = paddle.randn([10, 10], 'float32')
+                    outputs = dp_layer(inputs)
+                    labels = paddle.randn([10, 1], 'float32')
+                    loss = loss_fn(outputs, labels)
 
-                loss = dp_layer.scale_loss(loss)
-                loss.backward()
-                dp_layer.apply_collective_grads()
+                    print("loss:", loss.numpy())
 
-                adam.step()
-                adam.clear_grad()
+                    loss = dp_layer.scale_loss(loss)
+                    loss.backward()
+                    dp_layer.apply_collective_grads()
 
-            if __name__ == '__main__':
-                paddle.distributed.spawn(train)
+                    adam.step()
+                    adam.clear_grad()
+
+                if __name__ == '__main__':
+                    paddle.distributed.spawn(train)
+
         """
         assert model is not None
         self.model = paddle.DataParallel(model)
@@ -671,27 +679,31 @@ class Fleet(object):
         Get state dict information from optimizer.
         Only work in dygraph mode
 
+        Args:
+            None
+
         Returns: 
             state_dict(dict) : dict contains all the Tensor used by optimizer
 
         Examples:
             .. code-block:: python
-            import numpy as np
-            import paddle
-            from paddle.distributed import fleet
 
-            paddle.disable_static()
-            fleet.init(is_collective=True)
+                import numpy as np
+                import paddle
+                from paddle.distributed import fleet
 
-            value = np.arange(26).reshape(2, 13).astype("float32")
-            a = paddle.fluid.dygraph.to_variable(value)
+                paddle.disable_static()
+                fleet.init(is_collective=True)
 
-            layer = paddle.nn.Linear(13, 5)
-            adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
+                value = np.arange(26).reshape(2, 13).astype("float32")
+                a = paddle.fluid.dygraph.to_variable(value)
 
-            adam = fleet.distributed_optimizer(adam)
-            dp_layer = fleet.distributed_model(layer)
-            state_dict = adam.state_dict()
+                layer = paddle.nn.Linear(13, 5)
+                adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
+
+                adam = fleet.distributed_optimizer(adam)
+                dp_layer = fleet.distributed_model(layer)
+                state_dict = adam.state_dict()
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.state_dict()
@@ -709,25 +721,26 @@ class Fleet(object):
 
         Examples:
             .. code-block:: python
-            import numpy as np
-            import paddle
-            from paddle.distributed import fleet
 
-            paddle.disable_static()
-            fleet.init(is_collective=True)
+                import numpy as np
+                import paddle
+                from paddle.distributed import fleet
 
-            value = np.arange(26).reshape(2, 13).astype("float32")
-            a = paddle.fluid.dygraph.to_variable(value)
+                paddle.disable_static()
+                fleet.init(is_collective=True)
 
-            layer = paddle.nn.Linear(13, 5)
-            adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
+                value = np.arange(26).reshape(2, 13).astype("float32")
+                a = paddle.fluid.dygraph.to_variable(value)
 
-            adam = fleet.distributed_optimizer(adam)
-            dp_layer = fleet.distributed_model(layer)
-            state_dict = adam.state_dict()
-            paddle.framework.save(state_dict, "paddle_dy")
-            para_state_dict, opti_state_dict = paddle.framework.load( "paddle_dy")
-            adam.set_state_dict(opti_state_dict)
+                layer = paddle.nn.Linear(13, 5)
+                adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
+
+                adam = fleet.distributed_optimizer(adam)
+                dp_layer = fleet.distributed_model(layer)
+                state_dict = adam.state_dict()
+                paddle.framework.save(state_dict, "paddle_dy")
+                para_state_dict, opti_state_dict = paddle.framework.load( "paddle_dy")
+                adam.set_state_dict(opti_state_dict)
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.set_state_dict(state_dict)
@@ -741,37 +754,38 @@ class Fleet(object):
         Args:
             value (float|Tensor): the value of learning rate
 
-        Returns: None 
+        Returns: 
+            None 
 
         Examples:
             .. code-block:: python
-            import numpy as np
-            import paddle
-            from paddle.distributed import fleet
+                import numpy as np
+                import paddle
+                from paddle.distributed import fleet
 
-            paddle.disable_static()
-            fleet.init(is_collective=True)
+                paddle.disable_static()
+                fleet.init(is_collective=True)
 
-            value = np.arange(26).reshape(2, 13).astype("float32")
-            a = paddle.fluid.dygraph.to_variable(value)
+                value = np.arange(26).reshape(2, 13).astype("float32")
+                a = paddle.fluid.dygraph.to_variable(value)
 
-            layer = paddle.nn.Linear(13, 5)
-            adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
+                layer = paddle.nn.Linear(13, 5)
+                adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
 
-            adam = fleet.distributed_optimizer(adam)
-            dp_layer = fleet.distributed_model(layer)
+                adam = fleet.distributed_optimizer(adam)
+                dp_layer = fleet.distributed_model(layer)
 
-            lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
-            for i in range(5):
-                adam.set_lr(lr_list[i])
-                lr = adam.get_lr()
-                print("current lr is {}".format(lr))
-            # Print:
-            #    current lr is 0.2
-            #    current lr is 0.3
-            #    current lr is 0.4
-            #    current lr is 0.5
-            #    current lr is 0.6
+                lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
+                for i in range(5):
+                    adam.set_lr(lr_list[i])
+                    lr = adam.get_lr()
+                    print("current lr is {}".format(lr))
+                # Print:
+                #    current lr is 0.2
+                #    current lr is 0.3
+                #    current lr is 0.4
+                #    current lr is 0.5
+                #    current lr is 0.6
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.set_lr(value)
@@ -781,6 +795,9 @@ class Fleet(object):
         """
         Get current step learning rate.
         Only work in dygraph mode
+
+        Args:
+            None
 
         Returns:
             float: The learning rate of the current step.
@@ -815,58 +832,59 @@ class Fleet(object):
         Execute the optimizer once.
         Only work in dygraph mode
 
-        Returns: None
+        Returns:
+            None
 
         Examples:
             .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
-            from paddle.distributed import fleet
+                import paddle
+                import paddle.nn as nn
+                from paddle.distributed import fleet
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super(LinearNet, self).__init__()
-                    self._linear1 = nn.Linear(10, 10)
-                    self._linear2 = nn.Linear(10, 1)
+                class LinearNet(nn.Layer):
+                    def __init__(self):
+                        super(LinearNet, self).__init__()
+                        self._linear1 = nn.Linear(10, 10)
+                        self._linear2 = nn.Linear(10, 1)
 
-                def forward(self, x):
-                    return self._linear2(self._linear1(x))
+                    def forward(self, x):
+                        return self._linear2(self._linear1(x))
 
-            def train():
-                # 1. enable dynamic mode
-                paddle.disable_static()
+                def train():
+                    # 1. enable dynamic mode
+                    paddle.disable_static()
 
-                # 2. initialize fleet environment
-                fleet.init(is_collective=True)
+                    # 2. initialize fleet environment
+                    fleet.init(is_collective=True)
 
-                # 3. create layer & optimizer
-                layer = LinearNet()
-                loss_fn = nn.MSELoss()
-                adam = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=layer.parameters())
+                    # 3. create layer & optimizer
+                    layer = LinearNet()
+                    loss_fn = nn.MSELoss()
+                    adam = paddle.optimizer.Adam(
+                        learning_rate=0.001, parameters=layer.parameters())
 
-                # 4. get data_parallel model using fleet
-                adam = fleet.distributed_optimizer(adam)
-                dp_layer = fleet.distributed_model(layer)
+                    # 4. get data_parallel model using fleet
+                    adam = fleet.distributed_optimizer(adam)
+                    dp_layer = fleet.distributed_model(layer)
 
-                # 5. run layer
-                inputs = paddle.randn([10, 10], 'float32')
-                outputs = dp_layer(inputs)
-                labels = paddle.randn([10, 1], 'float32')
-                loss = loss_fn(outputs, labels)
+                    # 5. run layer
+                    inputs = paddle.randn([10, 10], 'float32')
+                    outputs = dp_layer(inputs)
+                    labels = paddle.randn([10, 1], 'float32')
+                    loss = loss_fn(outputs, labels)
 
-                print("loss:", loss.numpy())
+                    print("loss:", loss.numpy())
 
-                loss = dp_layer.scale_loss(loss)
-                loss.backward()
-                dp_layer.apply_collective_grads()
+                    loss = dp_layer.scale_loss(loss)
+                    loss.backward()
+                    dp_layer.apply_collective_grads()
 
-                adam.step()
-                adam.clear_grad()
+                    adam.step()
+                    adam.clear_grad()
 
-            if __name__ == '__main__':
-                paddle.distributed.spawn(train)
+                if __name__ == '__main__':
+                    paddle.distributed.spawn(train)
 
         """
         # imitate target optimizer retrieval
@@ -875,61 +893,62 @@ class Fleet(object):
     @dygraph_only
     def clear_grad(self):
         """
-        Execute the optimizer once.
+        Clear the gradients of all optimized parameters for model.
         Only work in dygraph mode
 
-        Returns: None
+        Returns: 
+            None
 
         Examples:
             .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
-            from paddle.distributed import fleet
+                import paddle
+                import paddle.nn as nn
+                from paddle.distributed import fleet
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super(LinearNet, self).__init__()
-                    self._linear1 = nn.Linear(10, 10)
-                    self._linear2 = nn.Linear(10, 1)
+                class LinearNet(nn.Layer):
+                    def __init__(self):
+                        super(LinearNet, self).__init__()
+                        self._linear1 = nn.Linear(10, 10)
+                        self._linear2 = nn.Linear(10, 1)
 
-                def forward(self, x):
-                    return self._linear2(self._linear1(x))
+                    def forward(self, x):
+                        return self._linear2(self._linear1(x))
 
-            def train():
-                # 1. enable dynamic mode
-                paddle.disable_static()
+                def train():
+                    # 1. enable dynamic mode
+                    paddle.disable_static()
 
-                # 2. initialize fleet environment
-                fleet.init(is_collective=True)
+                    # 2. initialize fleet environment
+                    fleet.init(is_collective=True)
 
-                # 3. create layer & optimizer
-                layer = LinearNet()
-                loss_fn = nn.MSELoss()
-                adam = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=layer.parameters())
+                    # 3. create layer & optimizer
+                    layer = LinearNet()
+                    loss_fn = nn.MSELoss()
+                    adam = paddle.optimizer.Adam(
+                        learning_rate=0.001, parameters=layer.parameters())
 
-                # 4. get data_parallel model using fleet
-                adam = fleet.distributed_optimizer(adam)
-                dp_layer = fleet.distributed_model(layer)
+                    # 4. get data_parallel model using fleet
+                    adam = fleet.distributed_optimizer(adam)
+                    dp_layer = fleet.distributed_model(layer)
 
-                # 5. run layer
-                inputs = paddle.randn([10, 10], 'float32')
-                outputs = dp_layer(inputs)
-                labels = paddle.randn([10, 1], 'float32')
-                loss = loss_fn(outputs, labels)
+                    # 5. run layer
+                    inputs = paddle.randn([10, 10], 'float32')
+                    outputs = dp_layer(inputs)
+                    labels = paddle.randn([10, 1], 'float32')
+                    loss = loss_fn(outputs, labels)
 
-                print("loss:", loss.numpy())
+                    print("loss:", loss.numpy())
 
-                loss = dp_layer.scale_loss(loss)
-                loss.backward()
-                dp_layer.apply_collective_grads()
+                    loss = dp_layer.scale_loss(loss)
+                    loss.backward()
+                    dp_layer.apply_collective_grads()
 
-                adam.step()
-                adam.clear_grad()
+                    adam.step()
+                    adam.clear_grad()
 
-            if __name__ == '__main__':
-                paddle.distributed.spawn(train)
+                if __name__ == '__main__':
+                    paddle.distributed.spawn(train)
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.clear_grad()
