@@ -55,6 +55,8 @@ launch a process on each of the given gpu card or cpu machine.
 """
 
 from __future__ import print_function
+
+import shutil
 import sys
 from sys import version
 import subprocess
@@ -206,12 +208,20 @@ def launch_collective(args):
         cluster, pod = get_cluster_from_args(args, gpus)
         logger.debug("get cluster from args:{}".format(cluster))
 
+    global_envs = copy.copy(os.environ.copy())
+    gloo_rendezvous_dir = tempfile.mkdtemp()
+    # add gloo env
+    global_envs["PADDLE_WITH_GLOO"] = "1"
+    global_envs["PADDLE_GLOO_RENDEZVOUS"] = "2"
+    global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+
     procs = start_local_trainers(
         cluster,
         pod,
         training_script=args.training_script,
         training_script_args=args.training_script_args,
-        log_dir=args.log_dir)
+        log_dir=args.log_dir,
+        envs=global_envs)
 
     while True:
         alive = watch_local_trainers(procs, cluster.trainers_nranks())
@@ -222,6 +232,9 @@ def launch_collective(args):
             break
 
         time.sleep(3)
+
+    if os.path.exists(gloo_rendezvous_dir):
+        shutil.rmtree(gloo_rendezvous_dir)
 
 
 def launch_ps(args):

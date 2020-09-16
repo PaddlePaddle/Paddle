@@ -59,28 +59,14 @@ class UtilBase(object):
         ), "fs_client must be the instance of paddle.distributed.fleet.utils.FS"
         self.fs_client = fs_client
 
-    def __check_comm_world(self, comm_world="worker"):
-        if not self.role_maker._role_is_generated:
-            self.role_maker.generate_role()
-
-        if comm_world not in ["worker", "server", "all"]:
-            raise ValueError(
-                "not support comm_world, please choose one from [worker, server, all]"
-            )
-
-        return comm_world
-
-    def all_reduce(self, input, mode, comm_world="worker"):
-        _comm_world = self.__check_comm_world(comm_world)
-        return self.role_maker._all_reduce(input, mode, _comm_world)
+    def all_reduce(self, input, mode="sum", comm_world="worker"):
+        return self.role_maker._all_reduce(input, mode, comm_world)
 
     def barrier(self, comm_world="worker"):
-        _comm_world = self.__check_comm_world(comm_world)
-        self.role_maker._barrier(_comm_world)
+        self.role_maker._barrier(comm_world)
 
     def all_gather(self, input, comm_world="worker"):
-        _comm_world = self.__check_comm_world(comm_world)
-        return self.role_maker._all_gather(input, _comm_world)
+        return self.role_maker._all_gather(input, comm_world)
 
     def broadcast(self):
         pass
