@@ -60,6 +60,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
+#include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -2619,6 +2620,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);
+  BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
 #ifdef PADDLE_WITH_CRYPTO
