@@ -119,7 +119,7 @@ class DatasetBase(object):
 
     def set_filelist(self, filelist):
         """
-        Set file list in current worker.
+        Set file list in current worker. The filelist is indicated by a list of file names (string).
 
         Examples:
             .. code-block:: python
@@ -129,7 +129,7 @@ class DatasetBase(object):
               dataset.set_filelist(['a.txt', 'b.txt'])
 
         Args:
-            filelist(list): file list
+            filelist(list[str]): list of file names of inputs.
         """
         self.dataset.set_filelist(filelist)
         self.filelist = filelist

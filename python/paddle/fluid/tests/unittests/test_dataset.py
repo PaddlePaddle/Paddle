@@ -105,11 +105,15 @@ class TestDataset(unittest.TestCase):
         dataset.load_into_memory()
         dataset.local_shuffle()
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        paddle.enable_static()
+
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        exe.run(startup_program)
         for i in range(2):
             try:
-                exe.train_from_dataset(fluid.default_main_program(), dataset)
+                exe.train_from_dataset(main_program, dataset)
             except ImportError as e:
                 pass
             except Exception as e:
