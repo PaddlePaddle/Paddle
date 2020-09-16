@@ -40,6 +40,8 @@ void QuantOpMaker::Make() {
   AddAttr<std::string>("output_format",
                        "Convert format to NHWC or NCHW during quantization.")
       .SetDefault("NHWC");
+  AddAttr<bool>("bfloat16", "(bool, default false) Convert to bfloat16")
+      .SetDefault(false);
   AddComment(R"DOC(This op will quantize data from FP32 to INT8)DOC");
 }
 
