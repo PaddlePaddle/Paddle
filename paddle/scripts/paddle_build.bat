@@ -51,6 +51,17 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 7
 )
 
+rem ------pre install clcache and init config----------
+pip install clcache
+:: set USE_CLCACHE to enable clcache
+set USE_CLCACHE=1
+:: In some scenarios, CLCACHE_HARDLINK can save one file copy.
+set CLCACHE_HARDLINK=1
+:: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
+set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
+:: set maximum cache size to 20G
+clcache.exe -M 21474836480
+
 rem ------initialize common variable------
 if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
 if not defined BRANCH set BRANCH=develop
@@ -173,7 +184,7 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 echo Build Paddle the %build_times% time:
-msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
+msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 2 (
