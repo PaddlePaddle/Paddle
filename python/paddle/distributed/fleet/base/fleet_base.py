@@ -677,10 +677,7 @@ class Fleet(object):
     def state_dict(self):
         """
         Get state dict information from optimizer.
-        Only work in dygraph mode
-
-        Args:
-            None
+        (Only work in dygraph mode)
 
         Returns: 
             state_dict(dict) : dict contains all the Tensor used by optimizer
@@ -712,12 +709,13 @@ class Fleet(object):
     def set_state_dict(self, state_dict):
         """
         Load optimizer state dict.
-        Only work in dygraph mode
+        (Only work in dygraph mode)
 
         Args: 
             state_dict(dict) : Dict contains all the Tensor needed by optimizer
 
-        Returns: None 
+        Returns:
+            None
 
         Examples:
             .. code-block:: python
@@ -749,7 +747,7 @@ class Fleet(object):
     def set_lr(self, value):
         """
         Set the value of the learning rate manually in the optimizer. 
-        Only work in dygraph mode
+        (Only work in dygraph mode)
 
         Args:
             value (float|Tensor): the value of learning rate
@@ -759,6 +757,7 @@ class Fleet(object):
 
         Examples:
             .. code-block:: python
+
                 import numpy as np
                 import paddle
                 from paddle.distributed import fleet
@@ -794,7 +793,7 @@ class Fleet(object):
     def get_lr(self):
         """
         Get current step learning rate.
-        Only work in dygraph mode
+        (Only work in dygraph mode)
 
         Args:
             None
@@ -804,24 +803,25 @@ class Fleet(object):
 
         Examples:
             .. code-block:: python
-            import numpy as np
-            import paddle
-            from paddle.distributed import fleet
 
-            paddle.disable_static()
-            fleet.init(is_collective=True)
+                import numpy as np
+                import paddle
+                from paddle.distributed import fleet
 
-            value = np.arange(26).reshape(2, 13).astype("float32")
-            a = paddle.fluid.dygraph.to_variable(value)
+                paddle.disable_static()
+                fleet.init(is_collective=True)
 
-            layer = paddle.nn.Linear(13, 5)
-            adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
+                value = np.arange(26).reshape(2, 13).astype("float32")
+                a = paddle.fluid.dygraph.to_variable(value)
 
-            adam = fleet.distributed_optimizer(adam)
-            dp_layer = fleet.distributed_model(layer)
+                layer = paddle.nn.Linear(13, 5)
+                adam = paddle.optimizer.Adam(learning_rate=0.01, parameters=layer.parameters())
 
-            lr = adam.get_lr()
-            print(lr) # 0.01
+                adam = fleet.distributed_optimizer(adam)
+                dp_layer = fleet.distributed_model(layer)
+
+                lr = adam.get_lr()
+                print(lr) # 0.01
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.get_lr()
@@ -830,7 +830,7 @@ class Fleet(object):
     def step(self):
         """
         Execute the optimizer once.
-        Only work in dygraph mode
+        (Only work in dygraph mode)
 
         Returns:
             None
@@ -894,7 +894,7 @@ class Fleet(object):
     def clear_grad(self):
         """
         Clear the gradients of all optimized parameters for model.
-        Only work in dygraph mode
+        (Only work in dygraph mode)
 
         Returns: 
             None
