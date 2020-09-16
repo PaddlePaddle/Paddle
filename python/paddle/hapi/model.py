@@ -1002,11 +1002,7 @@ class Model(object):
         have no variable need to save (like SGD), the fill will not generated).
         This function will silently overwrite existing file at the target location.
 
-        If `training` is set to False, only inference model will be saved. It 
-        should be noted that before using `save`, you should run the model, and 
-        the shape of input you saved is as same as the input of its running.
-        `@paddle.jit.to_static` must be added on `forward` function of your layer 
-        in dynamic mode now and these will be optimized later.
+        If `training` is set to False, only inference model will be saved.
 
         Args:
             path (str): The file prefix to save model. The format is
@@ -1035,8 +1031,6 @@ class Model(object):
                             nn.Linear(200, 10),
                             nn.Softmax())
 
-                    # If save for inference in dygraph, need this
-                    @paddle.jit.to_static
                     def forward(self, x):
                         return self.net(x)
 
@@ -1044,7 +1038,7 @@ class Model(object):
                 device = paddle.set_device('cpu')
                 # if use static graph, do not set
                 paddle.disable_static(device) if dynamic else None
-                # inputs and labels are not required for dynamic graph.
+
                 input = InputSpec([None, 784], 'float32', 'x')
                 label = InputSpec([None, 1], 'int64', 'label')
                 model = paddle.Model(Mnist(), input, label)
