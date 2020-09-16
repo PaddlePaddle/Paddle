@@ -99,7 +99,7 @@ class TestSaveLoad(unittest.TestCase):
         for var_name, value in orig_dict.items():
             self.assertTrue(np.array_equal(value.numpy(), load_dict[var_name]))
 
-    def test_save_load(self):
+    def test_base_save_load(self):
         layer, opt = self.build_and_train_model()
 
         # save
@@ -117,6 +117,25 @@ class TestSaveLoad(unittest.TestCase):
 
         self.check_load_state_dict(layer_state_dict, load_layer_state_dict)
         self.check_load_state_dict(opt_state_dict, load_opt_state_dict)
+
+    def test_save_load_in_static_mode(self):
+        pass
+
+    def test_save_obj_not_dict_error(self):
+        pass
+
+    def test_save_path_format_error(self):
+        pass
+
+    def test_load_path_not_exist_error(self):
+        pass
+
+    def test_load_old_save_path_error(self):
+        pass
+
+    def test_load_not_file_and_dir_error(self):
+        # os.symlink(src, dst)
+        pass
 
 
 if __name__ == '__main__':

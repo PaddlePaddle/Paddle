@@ -603,7 +603,7 @@ class SaveLoadConfig(object):
         By default, it will not be retained in `paddle.load` result. Default: False.
         
         .. note::
-            Only used for ``paddle.fluid.load_dygraph``.
+            Only used for ``paddle.load`` and ``paddle.fluid.load_dygraph``.
 
         Examples:
             .. code-block:: python
@@ -615,11 +615,11 @@ class SaveLoadConfig(object):
                 linear = paddle.nn.Linear(5, 1)
 
                 state_dict = linear.state_dict()
-                paddle.save(state_dict, "paddle_dy")
+                paddle.save(state_dict, "paddle_dy.pdparams")
 
-                configs = paddle.SaveLoadConfig()
-                configs.keep_name_table = True
-                para_state_dict, _ = paddle.load("paddle_dy", configs)
+                config = paddle.SaveLoadConfig()
+                config.keep_name_table = True
+                para_state_dict = paddle.load("paddle_dy.pdparams", config)
 
                 print(para_state_dict)
                 # the name_table is 'StructuredToParameterName@@'

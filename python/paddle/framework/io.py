@@ -223,8 +223,8 @@ def load(path, config=None):
         # if current path is a prefix, and the path.pdparams or path.pdopt
         # is exist, users may want use `paddle.load` load the result of 
         # `fluid.save_dygraph`, we raise error here for users
-        params_file_path = model_prefix + ".pdparams"
-        opti_file_path = model_prefix + ".pdopt"
+        params_file_path = path + ".pdparams"
+        opti_file_path = path + ".pdopt"
         if os.path.exists(params_file_path) or os.path.exists(opti_file_path):
             error_msg += " If you want to load the results saved by `fluid.save_dygraph`, " \
                 "please specify the full file name, not just the file name prefix. For " \

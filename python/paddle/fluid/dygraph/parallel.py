@@ -614,9 +614,9 @@ class DataParallel(layers.Layer):
                 emb = fluid.dygraph.DataParallel(emb, strategy)
 
                 state_dict = emb.state_dict()
-                paddle.save(state_dict, "paddle_dy")
+                paddle.save(state_dict, "paddle_dy.pdparams")
 
-                para_state_dict, _ = paddle.load("paddle_dy")
+                para_state_dict = paddle.load("paddle_dy.pdparams")
 
                 emb.set_state_dict(para_state_dict)
 
