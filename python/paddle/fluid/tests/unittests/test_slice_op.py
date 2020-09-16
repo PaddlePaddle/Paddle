@@ -677,6 +677,121 @@ class TestImperativeCUDAPinnedInput(unittest.TestCase):
                 zero_copy=False)
             sliced = var[:, 10:, :var.shape[1]]
             self.assertEqual(sliced.shape, [2, 70, 80])
+# for xpu
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXpuSliceOp(TestSliceOp):
+    def test_check_output(self):
+        place = core.XPUPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad_normal(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['Input'], 'Out', max_relative_error=0.006)
+
+
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXpuCase1(TestXpuSliceOp):
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.starts = [-3, 0, 2]
+        self.ends = [3, 100, -1]
+        self.axes = [0, 1, 2]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[-3:3, 0:100, 2:-1, :]
+
+
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXpuCase2(TestXpuSliceOp):
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.starts = [-3, 0, 2]
+        self.ends = [3, 100, -1]
+        self.axes = [0, 1, 3]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[-3:3, 0:100, :, 2:-1]
+
+
+# 1.2 with attr(decrease)
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXpuSliceOp_decs_dim(TestSliceOp_decs_dim):
+    def test_check_output(self):
+        place = core.XPUPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad_normal(self):
+        place = core.XPUPlace(0)
+        self.check_grad_with_place(
+            place, ['Input'], 'Out', max_relative_error=0.006)
+
+
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXpuSliceOp_decs_dim_2(TestXpuSliceOp_decs_dim):
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.starts = [1, 0, 2]
+        self.ends = [2, 1, 4]
+        self.axes = [0, 1, 2]
+        self.decrease_axis = [0, 1]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[1, 0, 2:4, :]
+
+
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXpuSliceOp_decs_dim_3(TestXpuSliceOp_decs_dim):
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.starts = [-1, 0, 2]
+        self.ends = [1000000, 1, 4]
+        self.axes = [0, 1, 2]
+        self.decrease_axis = [0, 1]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[-1, 0, 2:4, :]
+
+
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXpuSliceOp_decs_dim_4(TestXpuSliceOp_decs_dim):
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 7]).astype("float64")
+        self.starts = [0, 1, 2, 3]
+        self.ends = [1, 2, 3, 4]
+        self.axes = [0, 1, 2, 3]
+        self.decrease_axis = [0, 1, 2, 3]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[0, 1, 2, 3:4]
+
+
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXpuSliceOp_decs_dim_5(TestXpuSliceOp_decs_dim):
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.starts = [-1]
+        self.ends = [1000000]
+        self.axes = [3]
+        self.decrease_axis = [3]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[:, :, :, -1]
+
+
+@unittest.skipIf(not core.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestXpuSliceOp_decs_dim_6(TestXpuSliceOp_decs_dim):
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
+        self.starts = [0, 1, 2, 3]
+        self.ends = [1, 2, 3, 4]
+        self.axes = [0, 1, 2, 3]
+        self.decrease_axis = [0, 1, 2, 3]
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[0, 1, 2, 3:4]
 
 
 if __name__ == '__main__':
