@@ -116,9 +116,11 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
       tensor = out_var->GetMutable<framework::LoDTensor>();
       if (!new_shape.empty()) tensor->Resize(framework::make_ddim(new_shape));
     } else {
-      PADDLE_THROW(
-          "uniform_random_op's output only"
-          "supports SelectedRows and LoDTensor");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Expected type of Output(out) in uniform_random_op must be Tensor, "
+          "SelectedRows. But got "
+          "unsupport type: %s.",
+          framework::ToTypeName(out_var->Type())));
     }
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
