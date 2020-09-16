@@ -451,6 +451,7 @@ class HDFSClient(FS):
     Examples:
 
         .. code-block:: text
+
             from paddle.distributed.fleet.utils.fs import HDFSClient
             hadoop_home = "/home/client/hadoop-client/hadoop/"
 
@@ -511,6 +512,7 @@ class HDFSClient(FS):
         Examples:
 
             .. code-block:: text
+
                 from paddle.distributed.fleet.utils.fs import HDFSClient
 
                 hadoop_home = "/home/client/hadoop-client/hadoop/"
@@ -543,6 +545,7 @@ class HDFSClient(FS):
         Examples:
 
             .. code-block:: text
+
                 from paddle.distributed.fleet.utils.fs import HDFSClient
 
                 hadoop_home = "/home/client/hadoop-client/hadoop/"
@@ -603,6 +606,7 @@ class HDFSClient(FS):
         Examples:
 
             .. code-block:: text
+
                 from paddle.distributed.fleet.utils.fs import HDFSClient
 
                 hadoop_home = "/home/client/hadoop-client/hadoop/"
@@ -644,6 +648,7 @@ class HDFSClient(FS):
         Examples:
 
             .. code-block:: text
+
                 from paddle.distributed.fleet.utils.fs import HDFSClient
 
                 hadoop_home = "/home/client/hadoop-client/hadoop/"
@@ -675,6 +680,7 @@ class HDFSClient(FS):
         Examples:
 
             .. code-block:: text
+
                 from paddle.distributed.fleet.utils.fs import HDFSClient
 
                 hadoop_home = "/home/client/hadoop-client/hadoop/"
@@ -708,6 +714,7 @@ class HDFSClient(FS):
         Examples:
 
             .. code-block:: text
+
                 from paddle.distributed.fleet.utils.fs import HDFSClient
 
                 hadoop_home = "/home/client/hadoop-client/hadoop/"
@@ -752,6 +759,7 @@ class HDFSClient(FS):
         Examples:
 
             .. code-block:: text
+
                 from paddle.distributed.fleet.utils.fs import HDFSClient
 
                 hadoop_home = "/home/client/hadoop-client/hadoop/"
@@ -795,6 +803,7 @@ class HDFSClient(FS):
         Examples:
 
             .. code-block:: text
+
                 from paddle.distributed.fleet.utils.fs import HDFSClient
 
                 hadoop_home = "/home/client/hadoop-client/hadoop/"
@@ -840,6 +849,7 @@ class HDFSClient(FS):
         Examples:
 
             .. code-block:: text
+
                 from paddle.distributed.fleet.utils.fs import HDFSClient
 
                 hadoop_home = "/home/client/hadoop-client/hadoop/"
@@ -902,6 +912,7 @@ class HDFSClient(FS):
         Examples:
 
             .. code-block:: text
+
                 from paddle.distributed.fleet.utils.fs import HDFSClient
 
                 hadoop_home = "/home/client/hadoop-client/hadoop/"
@@ -932,6 +943,7 @@ class HDFSClient(FS):
         Examples:
 
             .. code-block:: text
+
                 from paddle.distributed.fleet.utils.fs import HDFSClient
 
                 hadoop_home = "/home/client/hadoop-client/hadoop/"
