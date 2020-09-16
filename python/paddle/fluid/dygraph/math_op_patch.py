@@ -140,6 +140,10 @@ def monkey_patch_math_varbase():
     def _ndim_(var):
         return len(var.shape)
 
+    @property
+    def _size_(var):
+        return np.prod(var.shape)
+
     def _scalar_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
 
@@ -209,23 +213,6 @@ def monkey_patch_math_varbase():
         __impl__.__name__ = method_name
         return __impl__
 
-    def _unary_creator_(op_type):
-        def __impl__(self):
-            op = getattr(core.ops, op_type)
-            return op(self)
-
-        comment = OpProtoHolder.instance().get_op_proto(op_type).comment
-
-        __impl__.__doc__ = """
-        {0}
-
-        Returns: 
-            Tensor
-        """.format(op_type)
-        __impl__.__name__ = op_type
-
-        return __impl__
-
     varbase_methods = [
         ('__neg__', _neg_),
         ('__float__', _float_),
@@ -237,7 +224,7 @@ def monkey_patch_math_varbase():
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),
-        ('size', lambda x: x.shape),
+        ('size', _size_),
         ('__add__',
          _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
         ##  a+b == b+a. Do not need to reverse explicitly
@@ -275,12 +262,7 @@ def monkey_patch_math_varbase():
         ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
-        ('__array_ufunc__', None),
-        ('sigmoid', _unary_creator_('sigmoid')),
-        ('log_sigmoid', _unary_creator_('logsigmoid')),
-        ('tanh_shrink', _unary_creator_('tanh_shrink')),
-        ('softplus', _unary_creator_('softplus')),
-        ('softsign', _unary_creator_('softsign'))
+        ('__array_ufunc__', None)
     ]
 
     global _already_patch_varbase

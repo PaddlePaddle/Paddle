@@ -19,6 +19,7 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import six
+import inspect
 
 
 class TestMathOpPatchesVarBase(unittest.TestCase):
@@ -302,21 +303,13 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertEqual(x.dim(), 2)
         self.assertEqual(x.ndimension(), 2)
         self.assertEqual(x.ndim, 2)
-        self.assertEqual(x.size(), [2, 3])
-        self.assertTrue(
-            np.array_equal(x.sigmoid().numpy(), fluid.layers.sigmoid(x).numpy(
-            )))
-        self.assertTrue(
-            np.array_equal(x.log_sigmoid().numpy(),
-                           fluid.layers.logsigmoid(x).numpy()))
+        self.assertEqual(x.size, 6)
+        self.assertEqual(x.numel(), 6)
         self.assertTrue(np.array_equal(x.exp().numpy(), paddle.exp(x).numpy()))
         self.assertTrue(
             np.array_equal(x.tanh().numpy(), paddle.tanh(x).numpy()))
         self.assertTrue(
             np.array_equal(x.atan().numpy(), paddle.atan(x).numpy()))
-        self.assertTrue(
-            np.array_equal(x.tanh_shrink().numpy(),
-                           fluid.layers.tanh_shrink(x).numpy()))
         self.assertTrue(np.array_equal(x.abs().numpy(), paddle.abs(x).numpy()))
         m = x.abs()
         self.assertTrue(
@@ -344,12 +337,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             )))
         self.assertTrue(
             np.array_equal(x.square().numpy(), paddle.square(x).numpy()))
-        self.assertTrue(
-            np.array_equal(x.softplus().numpy(),
-                           fluid.layers.softplus(x).numpy()))
-        self.assertTrue(
-            np.array_equal(x.softsign().numpy(),
-                           fluid.layers.softsign(x).numpy()))
         self.assertTrue(
             np.array_equal(x.rank().numpy(), paddle.rank(x).numpy()))
         self.assertTrue(
@@ -508,6 +495,68 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(
                 x.where(a, b).numpy(), paddle.where(x, a, b).numpy()))
+
+        self.assertTrue(inspect.ismethod(a.dot))
+        self.assertTrue(inspect.ismethod(a.elementwise_add))
+        self.assertTrue(inspect.ismethod(a.elementwise_div))
+        self.assertTrue(inspect.ismethod(a.elementwise_floordiv))
+        self.assertTrue(inspect.ismethod(a.elementwise_mod))
+        self.assertTrue(inspect.ismethod(a.elementwise_sub))
+        self.assertTrue(inspect.ismethod(a.logsumexp))
+        self.assertTrue(inspect.ismethod(a.multiplex))
+        self.assertTrue(inspect.ismethod(a.prod))
+        self.assertTrue(inspect.ismethod(a.reduce_max))
+        self.assertTrue(inspect.ismethod(a.reduce_min))
+        self.assertTrue(inspect.ismethod(a.reduce_prod))
+        self.assertTrue(inspect.ismethod(a.reduce_sum))
+        self.assertTrue(inspect.ismethod(a.scale))
+        self.assertTrue(inspect.ismethod(a.stanh))
+        self.assertTrue(inspect.ismethod(a.sums))
+        self.assertTrue(inspect.ismethod(a.elementwise_sum))
+        self.assertTrue(inspect.ismethod(a.max))
+        self.assertTrue(inspect.ismethod(a.maximum))
+        self.assertTrue(inspect.ismethod(a.min))
+        self.assertTrue(inspect.ismethod(a.minimum))
+        self.assertTrue(inspect.ismethod(a.floor_divide))
+        self.assertTrue(inspect.ismethod(a.remainder))
+        self.assertTrue(inspect.ismethod(a.floor_mod))
+        self.assertTrue(inspect.ismethod(a.multiply))
+        self.assertTrue(inspect.ismethod(a.logsumexp))
+        self.assertTrue(inspect.ismethod(a.inverse))
+        self.assertTrue(inspect.ismethod(a.log1p))
+        self.assertTrue(inspect.ismethod(a.erf))
+        self.assertTrue(inspect.ismethod(a.addcmul))
+        self.assertTrue(inspect.ismethod(a.addmm))
+        self.assertTrue(inspect.ismethod(a.clip))
+        self.assertTrue(inspect.ismethod(a.trace))
+        self.assertTrue(inspect.ismethod(a.kron))
+        self.assertTrue(inspect.ismethod(a.isinf))
+        self.assertTrue(inspect.ismethod(a.isnan))
+        self.assertTrue(inspect.ismethod(a.concat))
+        self.assertTrue(inspect.ismethod(a.broadcast_to))
+        self.assertTrue(inspect.ismethod(a.scatter_nd_add))
+        self.assertTrue(inspect.ismethod(a.scatter_nd))
+        self.assertTrue(inspect.ismethod(a.shard_index))
+        self.assertTrue(inspect.ismethod(a.chunk))
+        self.assertTrue(inspect.ismethod(a.stack))
+        self.assertTrue(inspect.ismethod(a.strided_slice))
+        self.assertTrue(inspect.ismethod(a.unsqueeze))
+        self.assertTrue(inspect.ismethod(a.unstack))
+        self.assertTrue(inspect.ismethod(a.argmax))
+        self.assertTrue(inspect.ismethod(a.argmin))
+        self.assertTrue(inspect.ismethod(a.argsort))
+        self.assertTrue(inspect.ismethod(a.has_inf))
+        self.assertTrue(inspect.ismethod(a.has_nan))
+        self.assertTrue(inspect.ismethod(a.masked_select))
+        self.assertTrue(inspect.ismethod(a.topk))
+        self.assertTrue(inspect.ismethod(a.index_select))
+        self.assertTrue(inspect.ismethod(a.nonzero))
+        self.assertTrue(inspect.ismethod(a.sort))
+        self.assertTrue(inspect.ismethod(a.index_sample))
+        self.assertTrue(inspect.ismethod(a.mean))
+        self.assertTrue(inspect.ismethod(a.reduce_mean))
+        self.assertTrue(inspect.ismethod(a.std))
+        self.assertTrue(inspect.ismethod(a.numel))
 
 
 if __name__ == '__main__':
