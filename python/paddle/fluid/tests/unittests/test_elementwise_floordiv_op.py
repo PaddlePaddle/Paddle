@@ -87,6 +87,16 @@ class TestFloorDivideOp(unittest.TestCase):
             z_expected = np.array([2, 0, 2, 2])
             self.assertEqual((np_z == z_expected).all(), True)
 
+        with fluid.dygraph.guard():
+            np_x = np.array([2]).astype('int64')
+            np_y = np.array([1, 5, 3, 2]).astype('int64')
+            x = paddle.to_tensor(np_x)
+            y = paddle.to_tensor(np_y)
+            z = paddle.floor_divide(x, y)
+            np_z = z.numpy()
+            z_expected = np.array([2, 0, 0, 1])
+            self.assertEqual((np_z == z_expected).all(), True)
+
         with fluid.dygraph.guard(fluid.CPUPlace()):
             # divide by zero 
             np_x = np.array([2, 3, 4])
