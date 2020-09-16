@@ -17,7 +17,6 @@ graphviz
 six
 decorator
 prettytable
-objgraph
 astor
 pathlib
 netifaces
