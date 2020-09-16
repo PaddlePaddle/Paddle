@@ -77,7 +77,7 @@ def summary(net, input_size, dtypes=None):
 
             lenet = LeNet()
 
-            params_info = paddle.summary(lenet, (1, 28, 28))
+            params_info = paddle.summary(lenet, (1, 1, 28, 28))
             print(params_info)
 
     """
