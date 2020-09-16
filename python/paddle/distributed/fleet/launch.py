@@ -58,6 +58,7 @@ from __future__ import print_function
 
 import shutil
 import sys
+import tempfile
 from sys import version
 import subprocess
 import os
@@ -321,6 +322,13 @@ def launch_ps(args):
 
     default_env = os.environ.copy()
     current_env = copy.copy(default_env)
+
+    gloo_rendezvous_dir = tempfile.mkdtemp()
+    # add gloo env
+    current_env["PADDLE_WITH_GLOO"] = "1"
+    current_env["PADDLE_GLOO_RENDEZVOUS"] = "2"
+    current_env["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
     procs = []
@@ -421,6 +429,9 @@ def launch_ps(args):
             log_fns[i].close()
         procs[i].proc.terminate()
     print("all parameter server are killed", file=sys.stderr)
+
+    if os.path.exists(gloo_rendezvous_dir):
+        shutil.rmtree(gloo_rendezvous_dir)
 
 
 def launch():
