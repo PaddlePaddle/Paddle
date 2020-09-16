@@ -220,6 +220,12 @@ def get_cluster_and_pod(args):
 
 def launch(args):
     cluster, pod = get_cluster_and_pod(args)
+    for trainer in pod.trainers:
+        trainer.gloo_prefix = args.prefix
+        trainer.gloo_path = args.path
+        trainer.gloo_iface = args.iface
+        trainer.gloo_fs_name = args.fs_name
+        trainer.gloo_fs_ugi = args.fs_ugi
 
     procs = start_local_trainers(
         cluster,

@@ -109,6 +109,11 @@ def init_parallel_env():
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
     _check_var_exists("PADDLE_TRAINERS_NUM")
     _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
+    _check_var_exists("PADDLE_GLOO_PREFIX")
+    _check_var_exists("PADDLE_GLOO_PATH")
+    _check_var_exists("PADDLE_GLOO_IFACE")
+    _check_var_exists("PADDLE_GLOO_FS_NAME")
+    _check_var_exists("PADDLE_GLOO_FS_UGI")
 
     # 3. init NCCL ParallelStrategy
     strategy = ParallelStrategy()
@@ -128,6 +133,21 @@ def init_parallel_env():
     # here just set correctly place to users
     place = core.CUDAPlace(ParallelEnv().device_id)
     _set_expected_place(place)
+
+    # init gloo context
+    gloo_strategy = core.GlooParallelStrategy()
+    gloo_strategy.rank = ParallelEnv().rank
+    gloo_strategy.rank_num = ParallelEnv().world_size
+    gloo_strategy.prefix = os.environ.get("PADDLE_GLOO_PREFIX")
+    gloo_strategy.iface = os.environ.get("PADDLE_GLOO_IFACE")
+    default_timeout_seconds = 9999999
+    gloo_strategy.init_seconds = default_timeout_seconds
+    gloo_strategy.run_seconds = default_timeout_seconds
+    gloo_strategy.path = os.environ.get("PADDLE_GLOO_PATH")
+    gloo_strategy.fs_name = os.environ.get("PADDLE_GLOO_FS_NAME")
+    gloo_strategy.fs_ugi = os.environ.get("PADDLE_GLOO_FS_UGI")
+    gloo = core.GlooParallelContext(strategy)
+    gloo.init()
 
     # init nccl context
     parallel_helper._set_parallel_ctx(core.NCCLParallelContext(strategy, place))

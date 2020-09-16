@@ -20,6 +20,7 @@ import signal
 import six
 import sys
 import warnings
+import tempfile
 
 from paddle.distributed.launch import get_cluster_and_pod, _print_arguments
 from paddle.distributed.utils import _prepare_trainer_env
@@ -118,6 +119,31 @@ def _get_subprocess_env_list(nprocs, options):
                 raise ValueError("The selected gpu card %s cannot found in "
                                  "CUDA_VISIBLE_DEVICES (%s)." %
                                  (card_id, ",".join(env_devices_list)))
+
+    # set arguments for gloo
+    args.path = options.get('path', None)
+    args.prefix = options.get('prefix', None)
+    args.iface = options.get('iface', None)
+    args.fs_name = options.get('fs_name', None)
+    args.fs_ugi = options.get('fs_name', None)
+    node_num = len(args.cluster_node_ips.split(','))
+    if node_num == 1:
+        if args.path is None:
+            temp_file = tempfile.NameTemporaryFile()
+            args.path = temp_file.name
+        args.prefix = ""
+        # For single machine training, we only the 'lo' interface
+        # and no hdfs path is used.
+        args.iface = "lo"
+        args.fs_name = ""
+        args.fs_ugi = ""
+    else:
+        if not all([args.path, args.iface, args.fs_name, args.fs_ugi]):
+            raise ValueError("For distributed training with more than one "
+                             "machines, you must set all of the 'path', "
+                             "'iface', 'fs_name' and 'fs_ugi' parameters.")
+        if args.prefix is None:
+            args.prefix = ""
 
     # set other arguments
     args.started_port = options.get('started_port', None)
@@ -266,7 +292,18 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             selected_gpus, such as "0,1,2,3". Default: None; 
             (6) print_config (bool): Print current parallel training config. Default: False;
             (7) use_paddlecloud (bool): Whether to use paddlecloud platform to run your 
-            multi-process job. Default: False.
+            multi-process job. Default: False;
+            (8) prefix (string): Path prefix to initialize gloo. Default: None;
+            (9) iface (string): Network interface name used to initialize gloo. For single machine
+            training, you need not to set it; otherwise it is the network interface used to
+            communicate with each other. Default: None;
+            (10) path (string): A file system path used to initialize gloo. For single machine
+            training, you need not to set it; otherwise its a path on hdfs. Default: None;
+            (11) fs_name (string): A file system name used to initialize gloo. For single machine
+            training, you need not to set it; otherwise its the name of the hdfs. Default: None;
+            (12) fs_ugi (string): A file system ugi (name and password) used to initialize gloo.
+            For single machine training, you need not to set it; otherwise its the name of the hdfs.
+            Default: None;
 
     Returns:
         ``MultiprocessContext`` object, it hold the spawned processes.
@@ -366,7 +403,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
         device = get_device()
         if device == 'cpu':
             # TODO: not supports cpu parallel now
-            nprocs = _cpu_num
+            nprocs = _cpu_num()
         else:
             nprocs = core.get_cuda_device_count()
 
