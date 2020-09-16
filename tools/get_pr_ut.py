@@ -53,7 +53,7 @@ class PRChecker(object):
         """ Get unit tests in pull request. """
         ut_list = []
         file_ut_map = None
-        cmd = 'wget --no-check-certificate https://sys-p0.bj.bcebos.com/prec/file_ut.json'
+        cmd = 'wget -q --no-check-certificate https://sys-p0.bj.bcebos.com/prec/file_ut.json'
         os.system(cmd)
         with open('file_ut.json') as jsonfile:
             file_ut_map = json.load(jsonfile)
