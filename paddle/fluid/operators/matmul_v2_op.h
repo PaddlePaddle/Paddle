@@ -79,7 +79,7 @@ static void GetBroadcastFromDims(const int x_ndim, const std::int64_t* x_dims,
     if (x_bd_dims[i] == 0 || y_bd_dims[i] == 0) {
       out_bd_dims[i] = 0;
     } else {
-      out_bd_dims[i] = std::max(x_bd_dims[i], y_bd_dims[i]);
+      out_bd_dims[i] = (std::max)(x_bd_dims[i], y_bd_dims[i]);
     }
   }
 }
@@ -229,7 +229,7 @@ void MatMulFunction(const Tensor* X, const Tensor* Y,
                                                  "Input(X) has error dim."));
   }
   const int N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
-  const int ndim = std::max(x_ndim, y_ndim);
+  const int ndim = (std::max)(x_ndim, y_ndim);
   std::vector<std::int64_t> x_broadcast_dims(ndim);
   std::vector<std::int64_t> y_broadcast_dims(ndim);
   std::vector<std::int64_t> out_broadcast_dims(ndim);
