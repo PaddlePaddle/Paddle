@@ -217,6 +217,7 @@ class FakeChannelWiseQuantDequantAbsMax(layers.Layer):
                  quant_axis=0,
                  dtype='float32',
                  quant_on_weight=False):
+        assert quant_on_weight == True, "Channel_wise only can be used on weight quantization."
         super(FakeChannelWiseQuantDequantAbsMax, self).__init__()
         self._quant_bits = quant_bits
         self._quant_axis = quant_axis
