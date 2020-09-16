@@ -7,7 +7,12 @@ register_operators(EXCLUDES
     fused_fc_elementwise_layernorm_op
     multihead_matmul_op
     fused_embedding_eltwise_layernorm_op
-    fusion_group_op)
+    fusion_group_op
+    fusion_gru_op)
+
+# fusion_gru_op does not have CUDA kernel
+op_library(fusion_gru_op)
+file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(fusion_gru);\n")
 
 if (WITH_GPU)
     # fused_bn_activation_op needs cudnn 7.4.1 above

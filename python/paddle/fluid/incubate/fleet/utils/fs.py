@@ -45,6 +45,10 @@ class FSTimeOut(Exception):
     pass
 
 
+class FSShellCmdAborted(ExecuteError):
+    pass
+
+
 class FS(object):
     @abc.abstractmethod
     def ls_dir(self, fs_path):
@@ -87,7 +91,7 @@ class FS(object):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def mv(self, fs_src_path, fs_dst_path):
+    def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=False):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -96,6 +100,10 @@ class FS(object):
 
     @abc.abstractmethod
     def list_dirs(self, fs_path):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def touch(self, fs_path, exist_ok=True):
         raise NotImplementedError
 
 
@@ -138,12 +146,20 @@ class LocalFS(FS):
     def is_exist(self, fs_path):
         return os.path.exists(fs_path)
 
-    def touch(self, fs_path):
-        return Path(fs_path).touch()
+    def touch(self, fs_path, exist_ok=True):
+        if self.is_exist(fs_path):
+            if exist_ok:
+                return
+            raise FSFileExistsError
 
-    def mv(self, src_path, dst_path):
+        return Path(fs_path).touch(exist_ok=True)
+
+    def mv(self, src_path, dst_path, overwrite=False, test_exists=False):
         if not self.is_exist(src_path):
             raise FSFileNotExistsError
+
+        if overwrite and self.is_exist(dst_path):
+            self.delete(dst_path)
 
         if self.is_exist(dst_path):
             raise FSFileExistsError

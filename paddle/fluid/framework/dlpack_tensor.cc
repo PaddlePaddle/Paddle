@@ -23,6 +23,7 @@ template <typename T>
 static ::DLDataType GetDLDataTypeCode() {
   ::DLDataType dtype;
   if (std::is_same<T, platform::float16>::value ||
+      std::is_same<T, platform::bfloat16>::value ||
       std::is_floating_point<T>::value) {
     dtype.code = kDLFloat;
   } else if (std::is_unsigned<T>::value) {
@@ -68,6 +69,11 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
     ctx.device_type = kDLCPU;
     ctx.device_id = 0;
     return ctx;
+  }
+
+  inline ::DLContext operator()(const platform::XPUPlace &place) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("platform::XPUPlace is not supported"));
   }
 
   inline ::DLContext operator()(const platform::CUDAPlace &place) const {

@@ -24,11 +24,14 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(5130)
     teller_set.insert("relu6");
     teller_set.insert("hard_sigmoid");
+    int8_teller_set.insert("relu6");
+    int8_teller_set.insert("hard_sigmoid");
 #endif
 #if IS_TRT_VERSION_GE(6000)
     teller_set.insert("fused_embedding_eltwise_layernorm");
     teller_set.insert("multihead_matmul");
     teller_set.insert("skip_layernorm");
+    teller_set.insert("slice");
 #endif
   }
 
@@ -49,15 +52,16 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "relu",
                                                   "depthwise_conv2d",
                                                   "softmax",
+                                                  "sigmoid",
                                                   "batch_norm",
                                                   "elementwise_add",
                                                   "leaky_relu",
                                                   "fc",
-                                                  "relu6",
                                                   "concat",
                                                   "scale",
                                                   "elementwise_mul",
-                                                  "conv2d_transpose"};
+                                                  "conv2d_transpose",
+                                                  "hard_swish"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "conv2d",
@@ -85,6 +89,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "gelu",
       "layer_norm",
       "scale",
+      "stack",
   };
 };
 

@@ -24,14 +24,14 @@ namespace operators {
 
 static void MutableMultiTypeData(
     std::vector<paddle::framework::LoDTensor*>* var,
-    const std::vector<std::string>& data_type, const platform::Place& place) {
+    const std::vector<int>& data_type, const platform::Place& place) {
   for (size_t i = 0; i < var->size(); i++) {
-    if (data_type[i] == "float") {
+    if (data_type[i] == framework::proto::VarType::FP32) {
       (*var)[i]->mutable_data<float>(place);
-    } else if (data_type[i] == "double") {
-      (*var)[i]->mutable_data<double>(place);
-    } else if (data_type[i] == "::paddle::platform::float16") {
+    } else if (data_type[i] == framework::proto::VarType::FP16) {
       (*var)[i]->mutable_data<paddle::platform::float16>(place);
+    } else if (data_type[i] == framework::proto::VarType::FP64) {
+      (*var)[i]->mutable_data<double>(place);
     }
   }
 }
@@ -43,15 +43,15 @@ class FusionGroupKernel : public framework::OpKernel<T> {
     auto ins = ctx.MultiInput<framework::LoDTensor>("Inputs");
     auto outs = ctx.MultiOutput<framework::LoDTensor>("Outs");
     int type = ctx.Attr<int>("type");
-    auto outs_type = ctx.Attr<std::vector<std::string>>("outs_data_type");
-    auto inputs_type = ctx.Attr<std::vector<std::string>>("inputs_data_type");
+    const auto& outs_dtype = ctx.Attr<std::vector<int>>("outs_dtype");
+    const auto& inputs_dtype = ctx.Attr<std::vector<int>>("inputs_dtype");
 
     size_t num_ins = ins.size();
     size_t num_outs = outs.size();
 
     auto place = ctx.GetPlace();
 
-    MutableMultiTypeData(&outs, outs_type, place);
+    MutableMultiTypeData(&outs, outs_dtype, place);
 
     std::string func_name = ctx.Attr<std::string>("func_name");
     platform::DeviceCode* dev_code =
@@ -64,22 +64,22 @@ class FusionGroupKernel : public framework::OpKernel<T> {
       args.push_back(&n);
       std::vector<const void*> ptrs(num_ins + num_outs);
       for (size_t i = 0; i < num_ins; ++i) {
-        if (inputs_type[i] == "::paddle::platform::float16") {
+        if (inputs_dtype[i] == framework::proto::VarType::FP16) {
           ptrs[i] = ins[i]->data<paddle::platform::float16>();
-        } else if (inputs_type[i] == "double") {
-          ptrs[i] = ins[i]->data<double>();
-        } else if (inputs_type[i] == "float") {
+        } else if (inputs_dtype[i] == framework::proto::VarType::FP32) {
           ptrs[i] = ins[i]->data<float>();
+        } else if (inputs_dtype[i] == framework::proto::VarType::FP64) {
+          ptrs[i] = ins[i]->data<double>();
         }
         args.push_back(&ptrs[i]);
       }
       for (size_t j = 0; j < num_outs; ++j) {
-        if (outs_type[j] == "::paddle::platform::float16") {
+        if (outs_dtype[j] == framework::proto::VarType::FP16) {
           ptrs[num_ins + j] = outs[j]->data<paddle::platform::float16>();
-        } else if (outs_type[j] == "double") {
-          ptrs[num_ins + j] = outs[j]->data<double>();
-        } else if (outs_type[j] == "float") {
+        } else if (outs_dtype[j] == framework::proto::VarType::FP32) {
           ptrs[num_ins + j] = outs[j]->data<float>();
+        } else if (outs_dtype[j] == framework::proto::VarType::FP64) {
+          ptrs[num_ins + j] = outs[j]->data<double>();
         }
         args.push_back(&ptrs[num_ins + j]);
       }

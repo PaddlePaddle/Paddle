@@ -268,9 +268,9 @@ class TestConcatAPI(unittest.TestCase):
         out_3 = paddle.concat(x=[x_2, x_3], axis=positive_1_int64)
         out_4 = paddle.concat(x=[x_2, x_3], axis=negative_int64)
 
-        exe = paddle.Executor(place=paddle.CPUPlace())
+        exe = paddle.static.Executor(place=paddle.CPUPlace())
         [res_1, res_2, res_3, res_4] = exe.run(
-            paddle.default_main_program(),
+            paddle.static.default_main_program(),
             feed={"x_1": input_2,
                   "x_2": input_2,
                   "x_3": input_3},
@@ -284,14 +284,15 @@ class TestConcatAPI(unittest.TestCase):
         in1 = np.array([[1, 2, 3], [4, 5, 6]])
         in2 = np.array([[11, 12, 13], [14, 15, 16]])
         in3 = np.array([[21, 22], [23, 24]])
-        with paddle.imperative.guard():
-            x1 = paddle.imperative.to_variable(in1)
-            x2 = paddle.imperative.to_variable(in2)
-            x3 = paddle.imperative.to_variable(in3)
-            out1 = fluid.layers.concat(input=[x1, x2, x3], axis=-1)
-            out2 = paddle.concat(x=[x1, x2], axis=0)
-            np_out1 = np.concatenate([in1, in2, in3], axis=-1)
-            np_out2 = np.concatenate([in1, in2], axis=0)
+        paddle.disable_static()
+        x1 = paddle.to_variable(in1)
+        x2 = paddle.to_variable(in2)
+        x3 = paddle.to_variable(in3)
+        out1 = fluid.layers.concat(input=[x1, x2, x3], axis=-1)
+        out2 = paddle.concat(x=[x1, x2], axis=0)
+        np_out1 = np.concatenate([in1, in2, in3], axis=-1)
+        np_out2 = np.concatenate([in1, in2], axis=0)
+        paddle.enable_static()
         self.assertEqual((out1.numpy() == np_out1).all(), True)
         self.assertEqual((out2.numpy() == np_out2).all(), True)
 

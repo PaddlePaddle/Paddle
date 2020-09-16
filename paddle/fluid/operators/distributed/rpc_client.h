@@ -85,6 +85,12 @@ class RPCClient {
       const framework::Scope& scope, const std::string& var_name,
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
+  virtual VarHandlePtr AsyncSendAndRecv(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& send_var_name,
+      const std::string& recv_var_name, const std::string& table_name = "",
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
+
   virtual VarHandlePtr AsyncSendComplete(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 

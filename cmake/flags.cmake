@@ -28,7 +28,15 @@ function(CheckCompilerCXX11Flag)
 endfunction()
 
 CheckCompilerCXX11Flag()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+if (WITH_GPU)
+    if (${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
+       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+    else()
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    endif()
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+endif()
 # safe_set_flag
 #
 # Set a compile flag only if compiler is support
@@ -232,7 +240,9 @@ if(WIN32)
         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
-        string(REGEX REPLACE "(^| )/W[0-9]( |$)" " " ${flag_var} "${${flag_var}}")
-        set(flag_var "${flag_var} /w")
+        string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
+    endforeach(flag_var)
+    foreach(flag_var CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
+        set(${flag_var} "${${flag_var}} /w")
     endforeach(flag_var)
 endif()

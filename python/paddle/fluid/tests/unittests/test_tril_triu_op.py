@@ -63,7 +63,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
         "diagonal: TypeError":
         "diagonal in {} must be a python Int".format(op_type),
         "input: ValueError":
-        "input shape in {} must be at least 2-D".format(op_type),
+        "x shape in {} must be at least 2-D".format(op_type),
     }
 
     class FailureCase(unittest.TestCase):
@@ -71,7 +71,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
             data = fluid.data(shape=Xshape, dtype='float64', name=cls_name)
             with self.assertRaisesRegexp(
                     eval(expected.split(':')[-1]), errmsg[expected]):
-                getattr(tensor, op_type)(input=data, diagonal=diagonal)
+                getattr(tensor, op_type)(x=data, diagonal=diagonal)
 
     class SuccessCase(TrilTriuOpDefaultTest):
         def initTestCase(self):
@@ -141,6 +141,18 @@ class TestTrilTriuOpAPI(unittest.TestCase):
             tril_out, triu_out = tensor.tril(x).numpy(), tensor.triu(x).numpy()
             self.assertTrue(np.allclose(tril_out, np.tril(data)))
             self.assertTrue(np.allclose(triu_out, np.triu(data)))
+
+    def test_fluid_api(self):
+        data = np.random.random([1, 9, 9, 4]).astype('float32')
+        x = fluid.data(shape=[1, 9, -1, 4], dtype='float32', name='x')
+        triu_out = fluid.layers.triu(x)
+
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        triu_out = exe.run(fluid.default_main_program(),
+                           feed={"x": data},
+                           fetch_list=[triu_out])
 
 
 if __name__ == '__main__':

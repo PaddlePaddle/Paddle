@@ -306,12 +306,16 @@ void Pool2dOpMaker::Make() {
   AddAttr<bool>("use_mkldnn",
                 "(bool) Only used in mkldnn kernel. Default False")
       .SetDefault(false);
-  AddAttr<bool>("use_quantizer",
-                "(bool) "
-                "Set to true for operators that should be quantized and use "
-                "int8 kernel. "
-                "Only used on CPU. Default False")
+  AddAttr<bool>(
+      "use_quantizer",
+      "(bool, default false) "
+      "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
       .SetDefault(false);
+  AddAttr<std::string>(
+      "mkldnn_data_type",
+      "(string, default \"float32\"). Data type of mkldnn kernel")
+      .SetDefault("float32")
+      .InEnum({"float32", "int8", "bfloat16"});
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "

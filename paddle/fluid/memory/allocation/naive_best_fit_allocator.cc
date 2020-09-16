@@ -29,6 +29,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu_header.h"
+#endif
 
 DEFINE_bool(init_allocated_mem, false,
             "It is a mistake that the values of the memory allocated by "
@@ -99,6 +102,100 @@ void Free<platform::CPUPlace>(const platform::CPUPlace &place, void *p,
 template <>
 size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
+}
+
+template <>
+void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
+#ifdef PADDLE_WITH_XPU
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  void *p = nullptr;
+  int dev_id = -1;
+  int ret = xpu_current_device(&dev_id);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+  if (dev_id >= 64) {
+    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
+    dev_id -= 64;
+  }
+  ret = xpu_set_device(place.device);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+  ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+  if (FLAGS_init_allocated_mem) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "xpu memory FLAGS_init_allocated_mem is not implemented."));
+  }
+  ret = xpu_set_device(dev_id);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+  VLOG(10) << "  pointer=" << p;
+  return p;
+#else
+  PADDLE_THROW(
+      platform::errors::PermissionDenied("'XPUPlace' is not supported."));
+  return nullptr;
+#endif
+}
+
+template <>
+void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
+                              size_t size) {
+#ifdef PADDLE_WITH_XPU
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  int dev_id = -1;
+  int ret = xpu_current_device(&dev_id);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+  if (dev_id >= 64) {
+    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
+    dev_id -= 64;
+  }
+  ret = xpu_set_device(place.device);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+  xpu_free(p);
+  ret = xpu_set_device(dev_id);
+  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+                    platform::errors::External(
+                        "XPU API return wrong value[%d], please check whether "
+                        "Baidu Kunlun Card is properly installed.",
+                        ret));
+#else
+  PADDLE_THROW(
+      platform::errors::PermissionDenied("'XPUPlace' is not supported."));
+#endif
+}
+
+template <>
+size_t Used<platform::XPUPlace>(const platform::XPUPlace &place) {
+#ifdef PADDLE_WITH_XPU
+  printf("Used func return 0 for XPUPlace\n");
+  return 0;
+#else
+  PADDLE_THROW(
+      platform::errors::PermissionDenied("'XPUPlace' is not supported."));
+#endif
 }
 
 #ifdef PADDLE_WITH_CUDA

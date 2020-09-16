@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/linspace_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -19,41 +20,60 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename T>
-__global__ void LinspaceKernel(T start, T step, int64_t size, T* out) {
-  CUDA_KERNEL_LOOP(index, size) { out[index] = start + step * index; }
+__global__ void LinspaceKernel(T start, double step, int64_t size, T* out) {
+  CUDA_KERNEL_LOOP(index, size) {
+    out[index] = static_cast<T>(start + step * index);
+  }
 }
 
 template <typename T>
 __global__ void LinspaceSpecialKernel(T start, T* out) {
-  out[0] = start;
+  out[0] = static_cast<T>(start);
 }
 
 template <typename T>
 class CUDALinspaceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* start_t = context.Input<framework::Tensor>("Start");
-    auto* stop_t = context.Input<framework::Tensor>("Stop");
+    auto* pre_start = context.Input<framework::Tensor>("Start");
+    auto* pre_stop = context.Input<framework::Tensor>("Stop");
     auto* num_t = context.Input<framework::Tensor>("Num");
     auto* out = context.Output<framework::Tensor>("Out");
+    auto dtype = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("dtype"));
+
+    Tensor start_t;
+    Tensor stop_t;
+    auto start_dtype =
+        framework::OpKernelType(pre_start->type(), context.GetPlace());
+    auto stop_dtype =
+        framework::OpKernelType(pre_stop->type(), context.GetPlace());
+    auto out_dtype = framework::OpKernelType(dtype, context.GetPlace());
+    framework::TransDataType(start_dtype, out_dtype, *pre_start, &start_t);
+    framework::TransDataType(stop_dtype, out_dtype, *pre_stop, &stop_t);
 
     framework::Tensor n;
-    framework::TensorCopy(*start_t, platform::CPUPlace(), &n);
+    framework::TensorCopy(start_t, platform::CPUPlace(), &n);
     T start = n.data<T>()[0];
-    framework::TensorCopy(*stop_t, platform::CPUPlace(), &n);
+    framework::TensorCopy(stop_t, platform::CPUPlace(), &n);
     T stop = n.data<T>()[0];
     framework::TensorCopy(*num_t, platform::CPUPlace(), &n);
     int32_t num = n.data<int32_t>()[0];
 
-    PADDLE_ENFORCE(num > 0, "The num of linspace op should be larger than 0.");
+    PADDLE_ENFORCE_GT(num, 0, platform::errors::InvalidArgument(
+                                  "The num of linspace op should be larger "
+                                  "than 0, but received num is %d",
+                                  num));
 
     out->Resize(framework::make_ddim({num}));
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
-    T step = 0;
+    double step = 0;
     if (num != 1) {
-      step = (stop - start) / (num - 1);
+      step = (static_cast<double>(stop - start)) / (num - 1);
     }
 
     auto stream = context.cuda_device_context().stream();
@@ -68,4 +88,6 @@ class CUDALinspaceKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(linspace, ops::CUDALinspaceKernel<float>,
+                        ops::CUDALinspaceKernel<int32_t>,
+                        ops::CUDALinspaceKernel<int64_t>,
                         ops::CUDALinspaceKernel<double>);

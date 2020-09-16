@@ -10,4 +10,15 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License.
+# limitations under the License.p
+
+# Note: On Windows, import form subdirectories such as dirA()->dirB(), current directory 
+# will still be dirA(), But is should be dirB(). So it will ModulNotFoundError
+# please refer to https://stackoverflow.com/questions/8953844/import-module-from-subfolder
+
+import os
+if os.name == 'nt':
+    import sys
+    dirname, filename = os.path.split(os.path.abspath(__file__))
+    sys.path.insert(0, dirname)
+    print(sys.path)

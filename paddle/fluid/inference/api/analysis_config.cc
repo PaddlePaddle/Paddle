@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -103,8 +102,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
                                   // params_file_ fields.
 
   CP_MEMBER(opt_cache_dir_);
-  prog_file_ = std::move(other.prog_file_);
-  params_file_ = std::move(other.params_file_);
+  CP_MEMBER(prog_file_);
+  CP_MEMBER(params_file_);
 
   CP_MEMBER(use_fc_padding_);
   // GPU related.
@@ -218,9 +217,21 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
   Update();
 }
 
+void AnalysisConfig::EnableMkldnnBfloat16() {
+#ifdef PADDLE_WITH_MKLDNN
+  use_mkldnn_bfloat16_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnBfloat16";
+  use_mkldnn_bfloat16_ = false;
+#endif
+
+  Update();
+}
+
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
-                          "MkldnnQuantizer was not enabled yet.");
+                          platform::errors::PreconditionNotMet(
+                              "MkldnnQuantizer was not enabled yet."));
   return mkldnn_quantizer_config_.get();
 }
 
@@ -331,6 +342,12 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  if (use_mkldnn_bfloat16_) {
+#ifdef PADDLE_WITH_MKLDNN
+    pass_builder()->EnableMkldnnBfloat16();
+#endif
+  }
+
 #ifdef PADDLE_WITH_MKLDNN
   // Do not optimize when mkldnn is on
   if (enable_memory_optim_ && !use_mkldnn_) {
@@ -399,6 +416,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ";";
 
   ss << use_mkldnn_quantizer_;
+  ss << use_mkldnn_bfloat16_;
   ss << model_from_memory_;
 
   ss << with_profile_;
