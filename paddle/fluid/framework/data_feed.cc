@@ -632,8 +632,13 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
               "the data, please check if the data contains unresolvable "
-              "characters.\nplease check this error line: %s",
-              str));
+              "characters.\nplease check this error line: %s, \n Specifically, "
+              "something wrong happened(the length of this slot's feasign is 0)"
+              "when we parse the %d th slots."
+              "Maybe something wrong around this slot",
+              "\nWe detect the feasign number of this slot is %d, "
+              "which is illegal.",
+              str, i, num));
       if (idx != -1) {
         (*instance)[idx].Init(all_slots_type_[i]);
         if ((*instance)[idx].GetType()[0] == 'f') {  // float
@@ -683,8 +688,13 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
               "the data, please check if the data contains unresolvable "
-              "characters.\nplease check this error line: %s.",
-              str));
+              "characters.\nplease check this error line: %s, \n Specifically, "
+              "something wrong happened(the length of this slot's feasign is 0)"
+              "when we parse the %d th slots."
+              "Maybe something wrong around this slot",
+              "\nWe detect the feasign number of this slot is %d, "
+              "which is illegal.",
+              str, i, num));
 
       if (idx != -1) {
         (*instance)[idx].Init(all_slots_type_[i]);
@@ -916,8 +926,13 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
               "the data, please check if the data contains unresolvable "
-              "characters.\nplease check this error line: %s.",
-              str));
+              "characters.\nplease check this error line: %s, \n Specifically, "
+              "something wrong happened(the length of this slot's feasign is 0)"
+              "when we parse the %d th slots."
+              "Maybe something wrong around this slot",
+              "\nWe detect the feasign number of this slot is %d, "
+              "which is illegal.",
+              str, i, num));
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {
@@ -982,8 +997,13 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
               "the data, please check if the data contains unresolvable "
-              "characters.\nplease check this error line: %s.",
-              str));
+              "characters.\nplease check this error line: %s, \n Specifically, "
+              "something wrong happened(the length of this slot's feasign is 0)"
+              "when we parse the %d th slots."
+              "Maybe something wrong around this slot",
+              "\nWe detect the feasign number of this slot is %d, "
+              "which is illegal.",
+              str, i, num));
 
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
