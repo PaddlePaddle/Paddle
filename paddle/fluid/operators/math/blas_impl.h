@@ -905,16 +905,19 @@ void Blas<DeviceContext>::MatMulWithHead(const framework::Tensor &mat_a,
   CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
 
   if (mat_b_split_vertical) {
-    PADDLE_ENFORCE_EQ(dim_b.height_, dim_a.width_ / head_number,
+    PADDLE_ENFORCE_EQ(
+        dim_b.height_, dim_a.width_ / head_number,
         platform::errors::InvalidArgument(
-        "The second input height should be equal than first input width,"
-        "but received second input height %d, first input width %d"
-        , dim_b.height_, dim_a.width_ / head_number);
-    PADDLE_ENFORCE_EQ(dim_a.width_ % head_number, 0,
+            "The second input height should be equal than first input width,"
+            "but received second input height %d, first input width %d",
+            dim_b.height_, dim_a.width_ / head_number));
+    PADDLE_ENFORCE_EQ(
+        dim_a.width_ % head_number, 0,
         platform::errors::InvalidArgument(
-        "The second input width should be some times the head number"
-        "but received second input width %d"
-        ",  head_number %d", dim_b.width_, head_number));
+            "The second input width should be some times the head number"
+            "but received second input width %d"
+            ",  head_number %d",
+            dim_b.width_, head_number));
   }
 
   if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
