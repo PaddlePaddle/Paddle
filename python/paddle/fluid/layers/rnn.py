@@ -2439,29 +2439,43 @@ def lstm(input,
     input_shape = list(input.shape)
     input_size = input_shape[-1]
     weight_size = 0
+    num_dirrection = 2 if is_bidirec == True else 1
+
+    weight_list = []
     for i in range(num_layers):
-        if i == 0:
-            input_weight_size = (input_size * hidden_size) * 4
-        else:
-            if is_bidirec:
-                input_weight_size = (hidden_size * 2 * hidden_size) * 4
+        for j in range(num_dirrection):
+            if i == 0:
+                weight_ih = helper.create_parameter(
+                    attr=helper.param_attr,
+                    shape=[4 * hidden_size, input_size],
+                    dtype=dtype,
+                    default_initializer=default_initializer)
             else:
-                input_weight_size = (hidden_size * hidden_size) * 4
+                weight_ih = helper.create_parameter(
+                    attr=helper.param_attr,
+                    shape=[4 * hidden_size, hidden_size],
+                    dtype=dtype,
+                    default_initializer=default_initializer)
+            weight_list.append(weight_ih)
 
-        hidden_weight_size = (hidden_size * hidden_size) * 4
-
-        if is_bidirec:
-            weight_size += (input_weight_size + hidden_weight_size) * 2
-            weight_size += hidden_size * 8 * 2
-        else:
-            weight_size += input_weight_size + hidden_weight_size
-            weight_size += hidden_size * 8
-
-    weight = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=[weight_size],
-        dtype=dtype,
-        default_initializer=default_initializer)
+            weight_hh = helper.create_parameter(
+                attr=helper.param_attr,
+                shape=[4 * hidden_size, hidden_size],
+                dtype=dtype,
+                default_initializer=default_initializer)
+            weight_list.append(weight_hh)
+            bias_ih = helper.create_parameter(
+                attr=helper.param_attr,
+                shape=[4 * hidden_size],
+                dtype=dtype,
+                default_initializer=default_initializer)
+            weight_list.append(bias_ih)
+            bias_hh = helper.create_parameter(
+                attr=helper.param_attr,
+                shape=[4 * hidden_size],
+                dtype=dtype,
+                default_initializer=default_initializer)
+            weight_list.append(bias_hh)
 
     out = helper.create_variable_for_type_inference(dtype)
     last_h = helper.create_variable_for_type_inference(dtype)
@@ -2478,7 +2492,7 @@ def lstm(input,
             'Input': input,
             'InitH': init_h,
             'InitC': init_c,
-            'W': weight,
+            'WeightList': weight_list,
         },
         outputs={
             'Out': out,

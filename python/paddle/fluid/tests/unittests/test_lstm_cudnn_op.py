@@ -22,10 +22,36 @@ import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import random
+random.seed(1)
 
 SIGMOID_THRESHOLD_MIN = -40.0
 SIGMOID_THRESHOLD_MAX = 13.0
 EXP_MAX_INPUT = 40.0
+
+
+class RandomWeight:
+    def __init__(self):
+        pass
+
+    def updata_weight(self, hidden_size, input_size, dtype):
+        self.hidden_size = hidden_size
+        self.input_size = input_size
+        self.dtype = dtype
+
+        self.weight_ih = np.random.uniform(
+            low=-0.1, high=0.1, size=(4 * self.hidden_size,
+                                      self.input_size)).astype(dtype)
+        self.weight_hh = np.random.uniform(
+            low=-0.1, high=0.1, size=(4 * self.hidden_size,
+                                      self.hidden_size)).astype(dtype)
+        self.bias_ih = np.random.uniform(
+            low=-0.1, high=0.1, size=(4 * self.hidden_size)).astype(dtype)
+        self.bias_hh = np.random.uniform(
+            low=-0.1, high=0.1, size=(4 * self.hidden_size)).astype(dtype)
+
+
+weight = RandomWeight()
 
 
 class LayerMixin(object):
@@ -52,15 +78,13 @@ class LSTMCell(LayerMixin):
         self.dtype = np.float64
         self.parameters = dict()
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = np.ones(
-            (4 * hidden_size, input_size), dtype=self.dtype)
-        self.weight_hh = np.ones((4 * hidden_size,
-                                  hidden_size)).astype(self.dtype)
+        self.weight_ih = weight.weight_ih
+        self.weight_hh = weight.weight_hh
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
         if bias:
-            self.bias_ih = np.ones((4 * hidden_size)).astype(self.dtype)
-            self.bias_hh = np.ones((4 * hidden_size)).astype(self.dtype)
+            self.bias_ih = weight.bias_ih
+            self.bias_hh = weight.bias_hh
             self.parameters['bias_ih'] = self.bias_ih
             self.parameters['bias_hh'] = self.bias_hh
         else:
@@ -354,6 +378,12 @@ class LSTM(RNNMixin):
                  "core is not compiled with CUDA")
 class TestCUDNNLstmOp(OpTest):
     #TODO(GaoWei8): Need to satisfy the result through the new interface
+    def get_weight_names(self):
+        weight_names = []
+        for i in range(4 * self.num_layers):
+            weight_names.append('weight{}'.format(i))
+        return weight_names
+
     def setUp(self):
         self.op_type = "cudnn_lstm"
         self.dtype = np.float64
@@ -365,12 +395,6 @@ class TestCUDNNLstmOp(OpTest):
         input_size = 21
         hidden_size = 21
 
-        input_weight_size = (hidden_size * hidden_size) * 4
-        hidden_weight_size = (hidden_size * hidden_size) * 4
-        weight_size = input_weight_size + hidden_weight_size
-        weight_size += hidden_size * 8
-        weight_size *= self.num_layers
-
         input = np.random.uniform(
             low=-0.1, high=0.1,
             size=(seq_length, batch_size, input_size)).astype(self.dtype)
@@ -379,6 +403,7 @@ class TestCUDNNLstmOp(OpTest):
         input[9][3:][:] = 0
         input[8][4:][:] = 0
 
+        weight.updata_weight(hidden_size, input_size, self.dtype)
         rnn1 = LSTM(
             input_size,
             hidden_size,
@@ -389,7 +414,19 @@ class TestCUDNNLstmOp(OpTest):
         output, (last_hidden, last_cell) = rnn1(
             input, sequence_length=self.sequence_length)
 
-        flat_w = np.ones((weight_size)).astype(self.dtype)
+        flat_w = []
+        for i in range(self.num_layers):
+            if i == 0:
+                weight_ih = weight.weight_ih
+            else:
+                weight_ih = weight.weight_hh
+            weight_hh = weight.weight_hh
+            bias_ih = weight.bias_ih
+            bias_hh = weight.bias_hh
+            flat_w.append(("weight" + str(4 * i), weight_ih))
+            flat_w.append(("weight" + str(4 * i + 1), weight_hh))
+            flat_w.append(("weight" + str(4 * i + 2), bias_ih))
+            flat_w.append(("weight" + str(4 * i + 3), bias_hh))
         init_h = np.zeros((self.num_layers, batch_size,
                            hidden_size)).astype(self.dtype)
         init_c = np.zeros((self.num_layers, batch_size,
@@ -398,7 +435,7 @@ class TestCUDNNLstmOp(OpTest):
 
         self.inputs = {
             'Input': input,
-            'W': flat_w,
+            'WeightList': flat_w,
             'InitH': init_h,
             'InitC': init_c,
             'SequenceLength': self.sequence_length
@@ -428,9 +465,12 @@ class TestCUDNNLstmOp(OpTest):
 
     def test_grad_with_place(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place,
-                                   set(['Input', 'W', 'InitH', 'InitC']),
-                                   ['Out', 'LastH', 'LastC'])
+        var_name_list = self.get_weight_names()
+        for var_name in var_name_list:
+            self.check_grad_with_place(
+                place,
+                set(['Input', var_name, 'InitH', 'InitC']),
+                ['Out', 'LastH', 'LastC'])
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
