@@ -11,30 +11,15 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include <thrust/random.h>
 #include <thrust/transform.h>
-#include <type_traits>
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
-
-namespace details {
-template <typename T>
-struct RandomDistributionType {
-  using Type = T;
-};
-
-template <>
-struct RandomDistributionType<platform::float16> {
-  using Type = float;
-};
-}  // namespace details
 
 template <typename T>
 struct GaussianGenerator {
@@ -49,16 +34,12 @@ struct GaussianGenerator {
       : mean_(mean), std_(std), seed_(seed), offset_(offset) {}
 
   __host__ __device__ T operator()(const unsigned int n) const {
-    using DataType = typename details::RandomDistributionType<T>::Type;
-
     thrust::minstd_rand rng;
     rng.seed(seed_);
-    thrust::normal_distribution<DataType> dist(static_cast<DataType>(mean_),
-                                               static_cast<DataType>(std_));
+    thrust::normal_distribution<T> dist(mean_, std_);
     unsigned int new_n = n + offset_;
     rng.discard(new_n);
-    T out = static_cast<T>(dist(rng));
-    return out;
+    return dist(rng);
   }
 };
 
@@ -141,13 +122,10 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    gaussian_random, paddle::operators::GPUGaussianRandomKernel<float>,
-    paddle::operators::GPUGaussianRandomKernel<double>,
-    paddle::operators::GPUGaussianRandomKernel<paddle::platform::float16>);
+REGISTER_OP_CUDA_KERNEL(gaussian_random,
+                        paddle::operators::GPUGaussianRandomKernel<float>,
+                        paddle::operators::GPUGaussianRandomKernel<double>);
 REGISTER_OP_CUDA_KERNEL(
     gaussian_random_batch_size_like,
     paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<float>,
-    paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<double>,
-    paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<
-        paddle::platform::float16>);
+    paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<double>);

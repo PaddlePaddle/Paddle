@@ -131,10 +131,6 @@ struct PADDLE_ALIGN(2) float16 {
 #endif
   }
 
-  HOSTDEVICE inline float16(int32_t val) : float16(static_cast<float>(val)) {}
-
-  HOSTDEVICE inline float16(uint32_t val) : float16(static_cast<float>(val)) {}
-
   HOSTDEVICE inline explicit float16(bool b) : x(b ? 0x3c00 : 0) {}
 
   template <class T>
