@@ -99,7 +99,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     return;
   }
 #endif
-  PADDLE_ENFORCE_NOT_NULL(payload);
+  PADDLE_ENFORCE_NOT_NULL(payload, platform::errors::InvalidArgument(
+                                       "Not support type: %s", var->Type()));
   e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                             payload->memory_size());
   if (payload->memory_size() >= std::numeric_limits<int>::max()) {
@@ -121,7 +122,10 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     auto* slr = var->GetMutable<framework::SelectedRows>();
     ProtoEncodeHelper e2(static_cast<char*>(buf), 128);
 
-    PADDLE_ENFORCE(VectorElemName(slr->rows()) == typeid(int64_t).name());
+    PADDLE_ENFORCE_EQ(VectorElemName(slr->rows()), typeid(int64_t).name(),
+                      platform::errors::InvalidArgument(
+                          "Got wrong type %s, expect type: int64_t",
+                          VectorElemName(slr->rows())));
     size_t rows_memory_size = slr->rows().size() * sizeof(int64_t);
 
     e2.WriteVarlengthBeginning(VarMsg::kRowsFieldNumber, rows_memory_size);
@@ -148,7 +152,9 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                framework::Variable** var, int* trainer_id) {
   platform::RecordRPCEvent record_event("deserial");
   operators::distributed::GRPCVariableResponse resp(scope, &ctx);
-  PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
+  PADDLE_ENFORCE_EQ(
+      resp.Parse(msg), 0,
+      platform::errors::InvalidArgument("parse bytebuffer to tensor error!"));
   *var = resp.GetVar();
   *trainer_id = resp.GetTrainerId();
 }

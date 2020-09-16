@@ -213,12 +213,12 @@ bool VariableResponse::CopySelectRowsData(
 bool VariableResponse::ProcSerializedField(
     int tag, ::google::protobuf::io::CodedInputStream* input,
     int64_t num_bytes) {
-  PADDLE_ENFORCE_EQ((meta_.type() == sendrecv::SELECTED_ROWS ||
-                     meta_.type() == sendrecv::LOD_TENSOR ||
-                     meta_.type() == sendrecv::NCCL_ID) &&
-                        meta_.varname() != "",
-                    true, platform::errors::PreconditionNotMet(
-                              "meta info should be got first!"));
+  PADDLE_ENFORCE(
+      (meta_.type() == sendrecv::SELECTED_ROWS ||
+       meta_.type() == sendrecv::LOD_TENSOR ||
+       meta_.type() == sendrecv::NCCL_ID) &&
+          meta_.varname() != "",
+      platform::errors::PreconditionNotMet("meta info should be got first!"));
 
   if (meta_.type() == sendrecv::NCCL_ID) {
 #ifdef PADDLE_WITH_CUDA
