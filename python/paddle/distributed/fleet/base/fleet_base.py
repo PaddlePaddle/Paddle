@@ -633,40 +633,37 @@ class Fleet(object):
                     def forward(self, x):
                         return self._linear2(self._linear1(x))
 
-                def train():
-                    # 1. enable dynamic mode
-                    paddle.disable_static()
+                # 1. enable dynamic mode
+                paddle.disable_static()
 
-                    # 2. initialize fleet environment
-                    fleet.init(is_collective=True)
+                # 2. initialize fleet environment
+                fleet.init(is_collective=True)
 
-                    # 3. create layer & optimizer
-                    layer = LinearNet()
-                    loss_fn = nn.MSELoss()
-                    adam = paddle.optimizer.Adam(
-                        learning_rate=0.001, parameters=layer.parameters())
+                # 3. create layer & optimizer
+                layer = LinearNet()
+                loss_fn = nn.MSELoss()
+                adam = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=layer.parameters())
 
-                    # 4. get data_parallel model using fleet
-                    adam = fleet.distributed_optimizer(adam)
-                    dp_layer = fleet.distributed_model(layer)
+                # 4. get data_parallel model using fleet
+                adam = fleet.distributed_optimizer(adam)
+                dp_layer = fleet.distributed_model(layer)
 
-                    # 5. run layer
-                    inputs = paddle.randn([10, 10], 'float32')
-                    outputs = dp_layer(inputs)
-                    labels = paddle.randn([10, 1], 'float32')
-                    loss = loss_fn(outputs, labels)
+                # 5. run layer
+                inputs = paddle.randn([10, 10], 'float32')
+                outputs = dp_layer(inputs)
+                labels = paddle.randn([10, 1], 'float32')
+                loss = loss_fn(outputs, labels)
 
-                    print("loss:", loss.numpy())
+                print("loss:", loss.numpy())
 
-                    loss = dp_layer.scale_loss(loss)
-                    loss.backward()
-                    dp_layer.apply_collective_grads()
+                loss = dp_layer.scale_loss(loss)
+                loss.backward()
+                dp_layer.apply_collective_grads()
 
-                    adam.step()
-                    adam.clear_grad()
+                adam.step()
+                adam.clear_grad()
 
-                if __name__ == '__main__':
-                    paddle.distributed.spawn(train)
 
         """
         assert model is not None
@@ -795,9 +792,6 @@ class Fleet(object):
         Get current step learning rate.
         (Only work in dygraph mode)
 
-        Args:
-            None
-
         Returns:
             float: The learning rate of the current step.
 
@@ -851,40 +845,37 @@ class Fleet(object):
                     def forward(self, x):
                         return self._linear2(self._linear1(x))
 
-                def train():
-                    # 1. enable dynamic mode
-                    paddle.disable_static()
+                # 1. enable dynamic mode
+                paddle.disable_static()
 
-                    # 2. initialize fleet environment
-                    fleet.init(is_collective=True)
+                # 2. initialize fleet environment
+                fleet.init(is_collective=True)
 
-                    # 3. create layer & optimizer
-                    layer = LinearNet()
-                    loss_fn = nn.MSELoss()
-                    adam = paddle.optimizer.Adam(
-                        learning_rate=0.001, parameters=layer.parameters())
+                # 3. create layer & optimizer
+                layer = LinearNet()
+                loss_fn = nn.MSELoss()
+                adam = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=layer.parameters())
 
-                    # 4. get data_parallel model using fleet
-                    adam = fleet.distributed_optimizer(adam)
-                    dp_layer = fleet.distributed_model(layer)
+                # 4. get data_parallel model using fleet
+                adam = fleet.distributed_optimizer(adam)
+                dp_layer = fleet.distributed_model(layer)
 
-                    # 5. run layer
-                    inputs = paddle.randn([10, 10], 'float32')
-                    outputs = dp_layer(inputs)
-                    labels = paddle.randn([10, 1], 'float32')
-                    loss = loss_fn(outputs, labels)
+                # 5. run layer
+                inputs = paddle.randn([10, 10], 'float32')
+                outputs = dp_layer(inputs)
+                labels = paddle.randn([10, 1], 'float32')
+                loss = loss_fn(outputs, labels)
 
-                    print("loss:", loss.numpy())
+                print("loss:", loss.numpy())
 
-                    loss = dp_layer.scale_loss(loss)
-                    loss.backward()
-                    dp_layer.apply_collective_grads()
+                loss = dp_layer.scale_loss(loss)
+                loss.backward()
+                dp_layer.apply_collective_grads()
 
-                    adam.step()
-                    adam.clear_grad()
+                adam.step()
+                adam.clear_grad()
 
-                if __name__ == '__main__':
-                    paddle.distributed.spawn(train)
 
         """
         # imitate target optimizer retrieval
@@ -915,40 +906,37 @@ class Fleet(object):
                     def forward(self, x):
                         return self._linear2(self._linear1(x))
 
-                def train():
-                    # 1. enable dynamic mode
-                    paddle.disable_static()
+                # 1. enable dynamic mode
+                paddle.disable_static()
 
-                    # 2. initialize fleet environment
-                    fleet.init(is_collective=True)
+                # 2. initialize fleet environment
+                fleet.init(is_collective=True)
 
-                    # 3. create layer & optimizer
-                    layer = LinearNet()
-                    loss_fn = nn.MSELoss()
-                    adam = paddle.optimizer.Adam(
-                        learning_rate=0.001, parameters=layer.parameters())
+                # 3. create layer & optimizer
+                layer = LinearNet()
+                loss_fn = nn.MSELoss()
+                adam = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=layer.parameters())
 
-                    # 4. get data_parallel model using fleet
-                    adam = fleet.distributed_optimizer(adam)
-                    dp_layer = fleet.distributed_model(layer)
+                # 4. get data_parallel model using fleet
+                adam = fleet.distributed_optimizer(adam)
+                dp_layer = fleet.distributed_model(layer)
 
-                    # 5. run layer
-                    inputs = paddle.randn([10, 10], 'float32')
-                    outputs = dp_layer(inputs)
-                    labels = paddle.randn([10, 1], 'float32')
-                    loss = loss_fn(outputs, labels)
+                # 5. run layer
+                inputs = paddle.randn([10, 10], 'float32')
+                outputs = dp_layer(inputs)
+                labels = paddle.randn([10, 1], 'float32')
+                loss = loss_fn(outputs, labels)
 
-                    print("loss:", loss.numpy())
+                print("loss:", loss.numpy())
 
-                    loss = dp_layer.scale_loss(loss)
-                    loss.backward()
-                    dp_layer.apply_collective_grads()
+                loss = dp_layer.scale_loss(loss)
+                loss.backward()
+                dp_layer.apply_collective_grads()
 
-                    adam.step()
-                    adam.clear_grad()
+                adam.step()
+                adam.clear_grad()
 
-                if __name__ == '__main__':
-                    paddle.distributed.spawn(train)
         """
         # imitate target optimizer retrieval
         return self.user_defined_optimizer.clear_grad()
