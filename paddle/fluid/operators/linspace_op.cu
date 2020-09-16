@@ -63,7 +63,10 @@ class CUDALinspaceKernel : public framework::OpKernel<T> {
     framework::TensorCopy(*num_t, platform::CPUPlace(), &n);
     int32_t num = n.data<int32_t>()[0];
 
-    PADDLE_ENFORCE(num > 0, "The num of linspace op should be larger than 0.");
+    PADDLE_ENFORCE_GT(num, 0, platform::errors::InvalidArgument(
+                                  "The num of linspace op should be larger "
+                                  "than 0, but received num is %d",
+                                  num));
 
     out->Resize(framework::make_ddim({num}));
     T* out_data = out->mutable_data<T>(context.GetPlace());
