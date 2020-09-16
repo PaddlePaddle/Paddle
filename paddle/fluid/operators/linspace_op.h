@@ -46,7 +46,10 @@ class CPULinspaceKernel : public framework::OpKernel<T> {
 
     T start = start_t.data<T>()[0];
     T stop = stop_t.data<T>()[0];
-    PADDLE_ENFORCE(num > 0, "The num of linspace op should be larger than 0.");
+    PADDLE_ENFORCE_GT(num, 0, platform::errors::InvalidArgument(
+                                  "The num of linspace op should be larger "
+                                  "than 0, but received num is %d",
+                                  num));
 
     out->Resize(framework::make_ddim({num}));
 

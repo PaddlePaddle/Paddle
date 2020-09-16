@@ -35,9 +35,10 @@ class TestDistributeFPNProposalsOp(OpTest):
         }
         output = [('out%d' % i, self.rois_fpn[i])
                   for i in range(len(self.rois_fpn))]
+
         self.outputs = {
             'MultiFpnRois': output,
-            'RestoreIndex': self.rois_idx_restore.reshape(-1, 1)
+            'RestoreIndex': self.rois_idx_restore.reshape(-1, 1),
         }
 
     def init_test_case(self):
@@ -115,6 +116,35 @@ class TestDistributeFPNProposalsOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):
+    def set_data(self):
+        self.init_test_case()
+        self.make_rois()
+        self.rois_fpn, self.rois_idx_restore = self.calc_rois_distribute()
+        self.inputs = {
+            'FpnRois': (self.rois[:, 1:5], self.rois_lod),
+            'RoisNum': np.array(self.rois_lod[0]).astype('int32')
+        }
+        self.attrs = {
+            'max_level': self.roi_max_level,
+            'min_level': self.roi_min_level,
+            'refer_scale': self.canonical_scale,
+            'refer_level': self.canonical_level
+        }
+        output = [('out%d' % i, self.rois_fpn[i])
+                  for i in range(len(self.rois_fpn))]
+        rois_num_per_level = [
+            ('rois_num%d' % i, np.array(self.rois_fpn[i][1][0]).astype('int32'))
+            for i in range(len(self.rois_fpn))
+        ]
+
+        self.outputs = {
+            'MultiFpnRois': output,
+            'RestoreIndex': self.rois_idx_restore.reshape(-1, 1),
+            'MultiLevelRoIsNum': rois_num_per_level
+        }
 
 
 if __name__ == '__main__':

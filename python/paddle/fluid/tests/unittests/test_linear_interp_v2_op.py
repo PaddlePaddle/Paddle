@@ -26,6 +26,7 @@ from paddle.nn.functional import interpolate
 
 def linear_interp_np(input,
                      out_w,
+                     scale_w=0,
                      out_size=None,
                      actual_shape=None,
                      align_corners=True,
@@ -44,7 +45,10 @@ def linear_interp_np(input,
         if (align_corners):
             ratio_w = (in_w - 1.0) / (out_w - 1.0)
         else:
-            ratio_w = 1.0 * in_w / out_w
+            if scale_w > 0:
+                ratio_w = 1.0 / scale_w
+            else:
+                ratio_w = 1.0 * in_w / out_w
 
     out = np.zeros((batch_size, channel, out_w))
 
@@ -81,6 +85,7 @@ class TestLinearInterpOp(OpTest):
         self.op_type = "linear_interp_v2"
         input_np = np.random.random(self.input_shape).astype("float64")
 
+        scale_w = 0
         if self.data_layout == "NCHW":
             in_w = self.input_shape[2]
         else:
@@ -95,7 +100,7 @@ class TestLinearInterpOp(OpTest):
         else:
             out_w = self.out_w
 
-        output_np = linear_interp_np(input_np, out_w, self.out_size,
+        output_np = linear_interp_np(input_np, out_w, self.scale, self.out_size,
                                      self.actual_shape, self.align_corners,
                                      self.align_mode, self.data_layout)
         self.inputs = {'X': input_np}
@@ -195,7 +200,7 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
         else:
             out_w = self.out_w
 
-        output_np = linear_interp_np(input_np, out_w, self.out_size,
+        output_np = linear_interp_np(input_np, out_w, 0, self.out_size,
                                      self.actual_shape, self.align_corners,
                                      self.align_mode, self.data_layout)
 
@@ -309,7 +314,7 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
 
         # dygraph 
         x_data = np.random.random((1, 3, 128)).astype("float32")
-        us_1 = paddle.nn.UpSample(
+        us_1 = paddle.nn.Upsample(
             size=[64, ],
             mode='linear',
             align_mode=1,
@@ -342,7 +347,7 @@ class TestResizeLinearOpUint8(OpTest):
         else:
             out_w = self.out_w
 
-        output_np = linear_interp_np(input_np, out_w, self.out_size,
+        output_np = linear_interp_np(input_np, out_w, 0, self.out_size,
                                      self.actual_shape, self.align_corners,
                                      self.align_mode)
         self.inputs = {'X': input_np}
@@ -410,19 +415,19 @@ class TestLinearInterpOpError(unittest.TestCase):
 
             def input_shape_error():
                 x1 = fluid.data(name="x1", shape=[1], dtype="float32")
-                out1 = paddle.nn.UpSample(
+                out1 = paddle.nn.Upsample(
                     size=[256, ], data_format='NCW', mode='linear')
                 out1_res = out1(x1)
 
             def data_format_error():
                 x2 = fluid.data(name="x2", shape=[1, 3, 128], dtype="float32")
-                out2 = paddle.nn.UpSample(
+                out2 = paddle.nn.Upsample(
                     size=[256, ], data_format='NHWCD', mode='linear')
                 out2_res = out2(x2)
 
             def out_shape_error():
                 x3 = fluid.data(name="x3", shape=[1, 3, 128], dtype="float32")
-                out3 = paddle.nn.UpSample(
+                out3 = paddle.nn.Upsample(
                     size=[
                         256,
                         256,

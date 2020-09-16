@@ -26,6 +26,8 @@ import paddle
 def bilinear_interp_np(input,
                        out_h,
                        out_w,
+                       scale_w=0,
+                       scale_h=0,
                        out_size=None,
                        actual_shape=None,
                        align_corners=True,
@@ -47,12 +49,18 @@ def bilinear_interp_np(input,
         if (align_corners):
             ratio_h = (in_h - 1.0) / (out_h - 1.0)
         else:
-            ratio_h = 1.0 * in_h / out_h
+            if scale_h > 0:
+                ratio_h = 1.0 / scale_h
+            else:
+                ratio_h = 1.0 * in_h / out_h
     if out_w > 1:
         if (align_corners):
             ratio_w = (in_w - 1.0) / (out_w - 1.0)
         else:
-            ratio_w = 1.0 * in_w / out_w
+            if scale_w > 0:
+                ratio_w = 1.0 / scale_w
+            else:
+                ratio_w = 1.0 * in_w / out_w
 
     out = np.zeros((batch_size, channel, out_h, out_w))
 
@@ -110,7 +118,8 @@ class TestBilinearInterpOp(OpTest):
         else:
             in_h = self.input_shape[1]
             in_w = self.input_shape[2]
-
+        scale_h = 0
+        scale_w = 0
         if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
                 if self.scale > 0.:
@@ -126,9 +135,9 @@ class TestBilinearInterpOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = bilinear_interp_np(input_np, out_h, out_w, self.out_size,
-                                       self.actual_shape, self.align_corners,
-                                       self.align_mode, self.data_layout)
+        output_np = bilinear_interp_np(
+            input_np, out_h, out_w, 0, 0, self.out_size, self.actual_shape,
+            self.align_corners, self.align_mode, self.data_layout)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -238,6 +247,17 @@ class TestBilinearInterpCase6(TestBilinearInterpOp):
         self.align_mode = 1
 
 
+class TestBilinearInterpCase7(TestBilinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = [2.0, 0.5]
+        self.align_corners = False
+        self.align_mode = 1
+
+
 class TestBilinearInterpSame(TestBilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -298,9 +318,9 @@ class TestBilinearInterpOpUint8(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = bilinear_interp_np(input_np, out_h, out_w, self.out_size,
-                                       self.actual_shape, self.align_corners,
-                                       self.align_mode)
+        output_np = bilinear_interp_np(input_np, out_h, out_w, 0, 0,
+                                       self.out_size, self.actual_shape,
+                                       self.align_corners, self.align_mode)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -481,8 +501,9 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0]]
             self.attrs['scale'] = self.scale
-        output_np = bilinear_interp_np(input_np, out_h, out_w, self.out_size,
-                                       self.actual_shape, self.align_corners)
+        output_np = bilinear_interp_np(input_np, out_h, out_w, 0, 0,
+                                       self.out_size, self.actual_shape,
+                                       self.align_corners)
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):

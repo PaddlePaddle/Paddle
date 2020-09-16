@@ -165,7 +165,6 @@ class TestPool3d_API(unittest.TestCase):
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
     def check_max_dygraph_ndhwc_results(self, place):
-        print("run ndchw max pool3d")
         with fluid.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
             input = fluid.dygraph.to_variable(
@@ -190,7 +189,6 @@ class TestPool3d_API(unittest.TestCase):
                     np.transpose(result.numpy(), [0, 4, 1, 2, 3]), result_np))
 
     def check_max_dygraph_ceilmode_results(self, place):
-        print("run ceil mode max pool3d")
         with fluid.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32, 32]).astype("float32")
             input = fluid.dygraph.to_variable(input_np)

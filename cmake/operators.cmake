@@ -138,12 +138,17 @@ function(op_library TARGET)
     # And for detail pybind information, please see generated paddle/pybind/pybind.h.
     file(READ ${TARGET}.cc TARGET_CONTENT)
     string(REGEX MATCH "REGISTER_OPERATOR\\(.*REGISTER_OPERATOR\\(" multi_register "${TARGET_CONTENT}")
-    string(REGEX MATCH "REGISTER_OPERATOR\\([a-z0-9_]*," one_register "${multi_register}")
+    # [ \t\r\n]* is used for blank characters
+    string(REGEX MATCH "REGISTER_OPERATOR\\([ \t\r\n]*[a-z0-9_]*," one_register "${multi_register}")
+
     if (one_register STREQUAL "")
         string(REPLACE "_op" "" TARGET "${TARGET}")
     else ()
         string(REPLACE "REGISTER_OPERATOR(" "" TARGET "${one_register}")
         string(REPLACE "," "" TARGET "${TARGET}")
+        # [ \t\r\n]+ is used for blank characters.
+        # Here we use '+' instead of '*' since it is a REPLACE operation.
+        string(REGEX REPLACE "[ \t\r\n]+" "" TARGET "${TARGET}")
     endif()
 
     # pybind USE_NO_KERNEL_OP

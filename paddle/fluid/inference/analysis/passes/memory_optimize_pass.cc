@@ -224,7 +224,9 @@ void UpdateOpDescsByReuse(
 
       // modify the graph
       for (auto input_node : node->inputs) {
-        PADDLE_ENFORCE(input_node->IsVar());
+        PADDLE_ENFORCE_EQ(input_node->IsVar(), true,
+                          platform::errors::PreconditionNotMet(
+                              "The input node should be a variable."));
         std::string input_node_name = input_node->Name();
         if (reuse_table.count(input_node_name) &&
             reuse_table.at(input_node_name) != input_node_name) {
@@ -246,7 +248,9 @@ void UpdateOpDescsByReuse(
 
       // modify the graph
       for (auto out_node : node->outputs) {
-        PADDLE_ENFORCE(out_node->IsVar());
+        PADDLE_ENFORCE_EQ(out_node->IsVar(), true,
+                          platform::errors::PreconditionNotMet(
+                              "The output node should be a variable."));
         std::string out_node_name = out_node->Name();
         if (reuse_table.count(out_node_name) &&
             reuse_table.at(out_node_name) != out_node_name) {
