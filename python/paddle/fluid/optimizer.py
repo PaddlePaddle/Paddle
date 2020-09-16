@@ -3818,6 +3818,24 @@ class PipelineOptimizer(object):
 
         return programs
 
+    def _split_startup_program(self, startup_program, local_rank):
+        block = startup_program.block(0)
+        new_startup_program = Program()
+        for op in block.ops:
+            device = op.attr(self._op_device_key)
+            if device:
+                device_index = int(device.split(":")[1])
+            else:
+                device_index = 0
+            if device_index != local_rank: continue
+            op_role = op.attr(self._op_role_key)
+            op_desc = op.desc
+            ap_op = new_startup_program.block(0).desc.append_op()
+            ap_op.copy_from(op_desc)
+            ap_op._set_attr(self._op_device_key, device)
+        self._create_vars(new_startup_program.block(0), startup_program)
+        return new_startup_program
+
     def _find_post_op(self, ops, cur_op, var_name):
         """
         Find the real post op that has variable named var_name as input.
@@ -3933,6 +3951,7 @@ class PipelineOptimizer(object):
             if op.type == "read":
                 break
         first_dev_spec = devices[0]
+        first_dev_index = int(first_dev_spec.split(':')[1])
         for var_name in data_devices_map.keys():
             for device in data_devices_map[var_name]:
                 if device == first_dev_spec: continue
@@ -3940,13 +3959,15 @@ class PipelineOptimizer(object):
                 assert main_var.is_data
                 if not var_name in first_block.vars:
                     self._create_var(first_block, main_var, var_name)
+                dev_index = int(device.split(':')[1])
                 first_block._insert_op(
                     index=insert_index,
                     type='c_send',
                     inputs={'X': first_block.var(var_name)},
                     attrs={
                         self._op_device_key: first_dev_spec,
-                        self._op_role_key: self._op_role.Forward
+                        self._op_role_key: self._op_role.Forward,
+                        'peer': dev_index
                     })
                 # Get the device that that data on
                 assert device in devices
@@ -3961,8 +3982,10 @@ class PipelineOptimizer(object):
                     type='c_recv',
                     outputs={'Out': [new_var]},
                     attrs={
+                        'out_shape': new_var.shape,
                         self._op_device_key: device,
                         self._op_role_key: self._op_role.Forward,
+                        'peer': first_dev_index
                     })
 
     def _strip_grad_suffix(self, name):
@@ -4105,13 +4128,16 @@ class PipelineOptimizer(object):
 
                     op_role = op.all_attrs()[self._op_role_key]
                     var = block.vars[var_name]
+                    prev_device_index = int(prev_device_spec.split(':')[1])
+                    cur_device_index = int(cur_device_spec.split(':')[1])
                     block._insert_op(
                         index=index + extra_index,
                         type='c_send',
                         inputs={'X': var},
                         attrs={
                             self._op_device_key: prev_device_spec,
-                            self._op_role_key: op_role
+                            self._op_role_key: op_role,
+                            'peer': prev_device_index
                         })
                     extra_index += 1
                     block._insert_op(
@@ -4119,8 +4145,10 @@ class PipelineOptimizer(object):
                         type='c_recv',
                         outputs={'Out': [var]},
                         attrs={
+                            'out_shape': var.shape,
                             self._op_device_key: cur_device_spec,
-                            self._op_role_key: op_role
+                            self._op_role_key: op_role,
+                            'peer': cur_device_index
                         })
                     extra_index += 1
 
@@ -4271,9 +4299,13 @@ class PipelineOptimizer(object):
             write_prog = write_info[var_name]
             write_block = write_prog.block(0)
             write_device = self._get_device_info(write_block)
+            write_dev_index = int(write_device.split(':')[1])
             all_progs = var_info[var_name]
             for prog in all_progs:
                 if prog == write_prog: continue
+                read_block = prog.block(0)
+                read_device = self._get_device_info(read_block)
+                read_dev_index = int(read_device.split(':')[1])
 
                 write_block._insert_op(
                     index=0,
@@ -4283,19 +4315,20 @@ class PipelineOptimizer(object):
                         self._op_device_key: write_device,
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch
-                        self._op_role_key: self._op_role.LRSched
+                        self._op_role_key: self._op_role.LRSched,
+                        'peer': read_dev_index
                     })
-                read_block = prog.block(0)
-                read_device = self._get_device_info(read_block)
                 read_block._insert_op(
                     index=0,
                     type='c_recv',
                     outputs={'Out': [read_block.var(var_name)]},
                     attrs={
+                        'out_shape': read_block.var(var_name).shape,
                         self._op_device_key: read_device,
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch
                         self._op_role_key: self._op_role.LRSched,
+                        'peer': write_dev_index
                     })
 
     def minimize(self,
@@ -4363,12 +4396,25 @@ class PipelineOptimizer(object):
         # Step7: Add sub blocks for section programs
         self._add_sub_blocks(main_block, program_list)
 
+        assert (main_program._pipeline_opt and
+                isinstance(main_program._pipeline_opt, dict) and
+                'local_rank' in main_program._pipeline_opt), \
+                "You must use pipeline with fleet"
+        local_rank = main_program._pipeline_opt['local_rank']
+        # Step8: Split startup program
+        startup_program = self._split_startup_program(
+            startup_program, program_list[local_rank]['program'])
+        with open("startup_prog_%d" % local_rank, 'w') as f:
+            f.writelines(str(startup_program))
+        with open("main_prog_%d" % local_rank, 'w') as f:
+            f.writelines(str(program_list[local_rank]['program']))
+
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
-            "section_program_list": program_list,
-            "place_list": place_list,
-            "place_id_list": place_id_list,
+            "section_program": program_list[local_rank],
+            "place": place_list[local_rank],
+            "place_id": place_id_list[local_rank],
             "sync_steps": -1,
             "num_microbatches": self._num_microbatches,
             "start_cpu_core_id": self._start_cpu_core_id,

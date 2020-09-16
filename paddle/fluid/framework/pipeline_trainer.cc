@@ -34,8 +34,8 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   ParseDumpConfig(trainer_desc);
   // get filelist from trainer_desc here
   // const std::vector<paddle::framework::DataFeed*> readers =
-  // VLOG(3) << "Number of program sections: " << section_num_;
   //    dataset->GetReaders();
+  // VLOG(3) << "Number of program sections: " << section_num_;
   // VLOG(3) << "readers num: " << readers.size();
   // int num_readers = readers.size();
   // PADDLE_ENFORCE_EQ(num_readers, 1,
@@ -108,6 +108,7 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   this_worker->SetPlace(place_);
   this_worker->Initialize(trainer_desc);
   this_worker->SetMicrobatchNum(num_microbatches_);
+  this_worker->SetStartCpuCoreId(start_cpu_core_id_);
 
   // set debug here
   SetDebug(trainer_desc.debug());
@@ -207,7 +208,7 @@ void PipelineTrainer::CopyParameters(int microbatch_id,
     } else if (!var->Persistable() && !is_param_grad) {
       auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
       VLOG(3) << "Create variable " << var->Name() << " microbatch "
-              << ", which pointer is " << ptr;
+              << microbatch_id << ", which pointer is " << ptr;
       InitializeVariable(ptr, var->GetType());
     }
   }
@@ -235,39 +236,40 @@ void PipelineTrainer::CopyParameters(int microbatch_id,
 //   }
 // }
 
-void PipelineTrainer::GetSkipVars(const ProgramDesc& program) {
-  auto& global_block = program.Block(0);
-  for (auto& op : global_block.AllOps()) {
-    if (op->Type() != "c_send") {
-      continue;
-    }
-    auto input_arg_names = op->InputArgumentNames();
-    PADDLE_ENFORCE_EQ(input_arg_names.size(), 1,
-                      platform::errors::InvalidArgument(
-                          "Number of input arguments for c_send op must be 1, "
-                          "but the value given is %d.",
-                          input_arg_names.size()));
-    std::string input_arg_name = input_arg_names[0];
-    if (input_arg_name.rfind("@GRAD") != input_arg_name.size() - 5) {
-      skip_vars_.emplace_back(input_arg_name);
-      VLOG(3) << "add skip var name: " << input_arg_name;
-    }
-  }
-}
+// void PipelineTrainer::GetSkipVars(const ProgramDesc& program) {
+//   auto& global_block = program.Block(0);
+//   for (auto& op : global_block.AllOps()) {
+//     if (op->Type() != "c_send") {
+//       continue;
+//     }
+//     auto input_arg_names = op->InputArgumentNames();
+//     PADDLE_ENFORCE_EQ(input_arg_names.size(), 1,
+//                       platform::errors::InvalidArgument(
+//                           "Number of input arguments for c_send op must be 1,
+//                           "
+//                           "but the value given is %d.",
+//                           input_arg_names.size()));
+//     std::string input_arg_name = input_arg_names[0];
+//     if (input_arg_name.rfind("@GRAD") != input_arg_name.size() - 5) {
+//       skip_vars_.emplace_back(input_arg_name);
+//       VLOG(3) << "add skip var name: " << input_arg_name;
+//     }
+//   }
+// }
 
 void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                      const platform::Place& place) {
   PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
                                            "root_scope_ can not be nullptr"));
-  auto start_cpu_id = trainer_desc_.section_param().start_cpu_core_id();
-  SectionWorker::cpu_id_.store(start_cpu_id);
+  // auto start_cpu_id = trainer_desc_.section_param().start_cpu_core_id();
+  // SectionWorker::cpu_id_.store(start_cpu_id);
   // minibatch_scopes_.resize(section_num_);
   // microbatch_scopes_.resize(section_num_);
   // minibatch_scopes_.resize(1);
   microbatch_scopes_.resize(num_microbatches_);
   // skip_vars_.resize(section_num_);
 
-  VLOG(3) << "Init ScopeQueues and create all scopes";
+  VLOG(3) << "Create minibatch and microbatch scopes...";
   // for (int i = 0; i < section_num_; ++i) {
   minibatch_scope_ = &root_scope_->NewScope();
   std::shared_ptr<framework::ProgramDesc> program;
@@ -282,7 +284,7 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     CopyParameters(j, *program, place_);
   }
   // GetSkipVars(i, *program);
-  GetSkipVars(*program);
+  // GetSkipVars(*program);
   // }
 
   // for (int i = 0; i < section_num_; ++i) {

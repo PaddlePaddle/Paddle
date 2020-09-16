@@ -27,13 +27,20 @@ class CRecvOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
+    VLOG(0) << "here1";
     auto out = ctx.Output<framework::LoDTensor>("Out");
-    int numel = out->numel();
-    ncclDataType_t dtype = platform::ToNCCLDataType(out->type());
+    VLOG(0) << "here2";
+    auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
+    auto out_dims = paddle::framework::make_ddim(out_shape);
 
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+    out->mutable_data<T>(out_dims, place);
+    VLOG(0) << "out_dims:" << out_dims;
+    ncclDataType_t dtype = platform::ToNCCLDataType(out->type());
+    int numel = out->numel();
+    VLOG(0) << "numel:" << numel;
 
     cudaStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -49,9 +56,10 @@ class CRecvOpCUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("The value of peer (%d) you set must "
                                           "be less than comm->nranks (%d).",
                                           peer, comm->nranks()));
+    VLOG(0) << "here3";
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
         out->data<T>(), numel, dtype, peer, comm->comm(), stream));
-    VLOG(3) << "rank " << comm->rank() << " recv "
+    VLOG(0) << "rank " << comm->rank() << " recv "
             << framework::product(out->dims()) << " from " << peer;
 #else
     PADDLE_THROW(

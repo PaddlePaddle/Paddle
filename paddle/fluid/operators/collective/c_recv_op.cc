@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_recv_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -33,14 +34,36 @@ class CRecvOp : public framework::OperatorWithKernel {
         ring_id, 0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for c_send_op must be non-negative.", ring_id));
+    auto out_shape = ctx->Attrs().Get<std::vector<int>>("out_shape");
+    PADDLE_ENFORCE_GE(out_shape.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "The size of the output shape must be greater than 0 "
+                          "but the value given is %d.",
+                          out_shape.size()));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto out = ctx.Output<framework::LoDTensor>("Out");
-    auto dtype = out->type();
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    VLOG(0) << "wow1";
+    std::string dtype = ctx.Attr<std::string>("dtype");
+    framework::proto::VarType::Type type;
+    if (dtype == "fp32") {
+      type = framework::proto::VarType::FP32;
+    } else if (dtype == "fp64") {
+      type = framework::proto::VarType::FP64;
+    } else if (dtype == "fp16") {
+      type = framework::proto::VarType::FP16;
+    } else if (dtype == "int32") {
+      type = framework::proto::VarType::INT32;
+    } else if (dtype == "int64") {
+      type = framework::proto::VarType::INT64;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unknown data type %s for c_recv op.", dtype));
+    }
+    VLOG(0) << "wow2";
+    return framework::OpKernelType(type, ctx.GetPlace());
     // OperatorWithKernel::IndicateVarDataType(ctx, "Out"), ctx.GetPlace());
   }
 };
@@ -52,6 +75,11 @@ class CRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("peer", "(int default 0) rank id for sender.").SetDefault(0);
+    AddAttr<std::string>("dtype",
+                         "(std::string default fp32) data type of tensor.")
+        .SetDefault("fp32");
+    AddAttr<std::vector<int>>("out_shape", "shape of the output tensor.")
+        .SetDefault(std::vector<int>());
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")

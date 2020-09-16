@@ -30,7 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-std::atomic<int> SectionWorker::cpu_id_(0);
+// std::atomic<int> SectionWorker::cpu_id_(0);
 // std::mutex SectionWorker::thread_mutex;
 // std::mutex SectionWorker::cout_mutex;
 // std::condition_variable SectionWorker::thread_condition;
@@ -48,18 +48,20 @@ void SectionWorker::Initialize(const TrainerDesc& desc) {
 }
 
 void SectionWorker::AutoSetCPUAffinity(bool reuse) {
-  int thread_cpu_id = cpu_id_.fetch_add(1);
+  // int thread_cpu_id = cpu_id_.fetch_add(1);
 
   unsigned concurrency_cap = std::thread::hardware_concurrency();
-  unsigned proc = thread_cpu_id;
+  // unsigned proc = thread_cpu_id;
+  unsigned proc = cpu_id_;
 
   if (proc >= concurrency_cap) {
     if (reuse) {
       proc %= concurrency_cap;
     } else {
       LOG(INFO) << "All " << concurrency_cap
-                << " CPUs have been set affinities. Fail to set "
-                << thread_cpu_id << "th thread";
+                << " CPUs have been set affinities. Fail to set " << cpu_id_
+                << "th thread.";
+      // << thread_cpu_id << "th thread";
       return;
     }
   }
@@ -78,7 +80,8 @@ void SectionWorker::AutoSetCPUAffinity(bool reuse) {
       (0 == CPU_ISSET(proc, &mask))) {
     LOG(WARNING) << "Fail to set thread affinity to CPU " << proc;
   }
-  VLOG(3) << "Set " << thread_cpu_id << "th thread affinity to CPU " << proc;
+  // VLOG(3) << "Set " << thread_cpu_id << "th thread affinity to CPU " << proc;
+  VLOG(3) << "Set " << cpu_id_ << "th thread affinity to CPU " << proc;
 }
 
 void SectionWorker::TrainFiles() {
@@ -141,7 +144,8 @@ void SectionWorker::TrainFiles() {
       VLOG(3) << "thread  completed.";
       // VLOG(3) << "called notify all";
       // thread_condition.notify_all();
-      VLOG(0) << "EOF encountered";
+      VLOG(3) << "EOF encountered";
+      // throw platform::EOFException();
       break;
     }
   }
@@ -191,8 +195,8 @@ void SectionWorker::TrainFilesWithProfiler() {
   platform::Timer batch_timer;
   platform::Timer timeline;
 
-  std::vector<double> op_total_time;
   std::vector<std::string> op_name;
+  std::vector<double> op_total_time;
   std::vector<double> op_max_time;
   std::vector<double> op_min_time;
   std::vector<uint64_t> op_count;
@@ -204,6 +208,7 @@ void SectionWorker::TrainFilesWithProfiler() {
   op_min_time.resize(ops_.size());
   for (size_t i = 0; i < op_min_time.size(); ++i) {
     op_min_time[i] = DBL_MAX;
+    op_max_time[i] = 0.0;
   }
   op_count.resize(ops_.size());
 
@@ -235,7 +240,7 @@ void SectionWorker::TrainFilesWithProfiler() {
   struct timeval micro_end;
   // Start a minibatch.
   batch_timer.Start();
-  int real_microbatch_num = 0;
+  // int real_microbatch_num = 0;
   for (int i = 0; i < num_microbatches_; ++i) {
     try {
       int op_idx = 0;
@@ -253,8 +258,9 @@ void SectionWorker::TrainFilesWithProfiler() {
                           op_role == (static_cast<int>(OpRole::kForward) |
                                       static_cast<int>(OpRole::kLoss));
         if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
-          VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
-                  << " for scope " << i;
+          // VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+          //        << " for scope " << i;
+          VLOG(3) << "running an op " << op->Type() << " for scope " << i;
           timeline.Start();
           op->Run(*microbatch_scopes_[i], place_);
           if (gc) {
@@ -365,11 +371,11 @@ void SectionWorker::TrainFilesWithProfiler() {
     }
   }
   dev_ctx_->Wait();
-  if (real_microbatch_num == 0) {
-    batch_timer.Pause();
-    VLOG(0) << "batch time: " << batch_timer.ElapsedUS();
-    return;
-  }
+  // if (real_microbatch_num == 0) {
+  //   batch_timer.Pause();
+  //   VLOG(0) << "batch time: " << batch_timer.ElapsedUS();
+  //   return;
+  // }
   // update pass
   int op_idx = 0;
   gettimeofday(&micro_start, NULL);
