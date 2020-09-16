@@ -83,22 +83,6 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
     ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    if ((N * H * W * D) == 1) {
-      // Only 1 element in normalization dimension,
-      // skip the batch norm calculation, let y = act(x).
-      auto x_v = framework::EigenVector<T>::Flatten(*x);
-      auto z_v = framework::EigenVector<T>::Flatten(*z);
-      auto y_v = framework::EigenVector<T>::Flatten(*y);
-      auto &dev = *dev_ctx.eigen_device();
-      if (act_type == "relu") {
-        y_v.device(dev) = x_v + z_v;
-        ReluFunctor<T>()(dev, y_v, y_v);
-      } else {
-        PADDLE_THROW(
-            platform::errors::Unimplemented("Unsupported activation type"));
-      }
-      return;
-    }
 
     // ------------------- cudnn descriptors ---------------------
     auto handle = dev_ctx.cudnn_handle();
@@ -244,27 +228,6 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
             "The size of scale is equal to the channel of Input(X)."));
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    if ((N * H * W * D) == 1) {
-      if (act_type == "relu") {
-        auto x_v = framework::EigenVector<T>::Flatten(*x);
-        auto z_v = framework::EigenVector<T>::Flatten(*z);
-        auto y_v = framework::EigenVector<T>::Flatten(*y);
-        auto dx_v = framework::EigenVector<T>::Flatten(*d_x);
-        auto dz_v = framework::EigenVector<T>::Flatten(*d_z);
-        auto dy_v = framework::EigenVector<T>::Flatten(*d_y);
-        auto &dev = *dev_ctx.eigen_device();
-        ReluGradFunctor<T>()(dev, x_v, y_v, dy_v, dx_v);
-        dz_v.device(dev) = dx_v;
-      } else {
-        PADDLE_THROW(
-            platform::errors::Unimplemented("Unsupported activation type"));
-      }
-      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
-          functor;
-      functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
-      functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
-      return;
-    }
 
     std::vector<int> dims = {N, C, H, W, D};
     std::vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
