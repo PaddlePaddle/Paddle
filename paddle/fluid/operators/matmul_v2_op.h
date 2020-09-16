@@ -65,7 +65,7 @@ static void GetBroadcastFromDims(const int x_ndim, const std::int64_t* x_dims,
                                  std::int64_t* x_bd_dims,
                                  std::int64_t* y_bd_dims,
                                  std::int64_t* out_bd_dims) {
-  const int ndim = std::max(x_ndim, y_ndim);
+  const int ndim = (std::max)(x_ndim, y_ndim);
   std::fill(x_bd_dims, x_bd_dims + ndim - x_ndim, 1);
   std::fill(y_bd_dims, y_bd_dims + ndim - y_ndim, 1);
   std::copy(x_dims, x_dims + x_ndim, x_bd_dims + ndim - x_ndim);
