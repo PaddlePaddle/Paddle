@@ -13,7 +13,6 @@ scipy ; python_version>"3.5"
 nltk ; python_version>="3.5"
 rarfile
 Pillow
-graphviz
 six
 decorator
 prettytable
