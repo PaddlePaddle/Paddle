@@ -792,7 +792,7 @@ class Model(object):
     switched by `paddle.disable_static()`. The usage is as follows.
     But note, the switching between dynamic and static should be before
     instantiating a Model. The input description, i.e, paddle.static.InputSpec,
-    must be required for static graph.
+    must be required.
 
     Args:
         network (paddle.nn.Layer): The network is an instance of
