@@ -34,7 +34,8 @@ template <typename DeviceContext, typename T, typename IndexT>
 class SegmentPoolGradFunctor {
  public:
   /* max min pool has index*/
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  const framework::Tensor& output,
                   const framework::Tensor& out_grad,
                   const framework::Tensor& segments, framework::Tensor* in_grad,
                   const framework::Tensor* index = nullptr,

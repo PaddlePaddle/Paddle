@@ -29,6 +29,12 @@ class SegmentSumOp : public framework::OperatorWithKernel {
                    "SegmentSum");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SegmentSum");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+
+    // if (ctx->Attrs().Get<std::string>("pooltype") == "MAX") {
+    //  OP_INOUT_CHECK(ctx->HasOutput("MaxIndex"), "Output", "MaxIndex",
+    //                 "SegmentSum");
+    //  ctx->SetOutputDim("MaxIndex", ctx->GetInputDim("X"));
+    //}
   }
 
  protected:
@@ -46,12 +52,17 @@ class SegmentSumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor) The variable-length input of SegmentSumOp");
     AddInput("SegmentIds",
              "(Tensor) The variable-length input of SegmentSumOp");
+    // AddOutput("MaxIndex",
+    //          "(Tensor<int>) This tensor is used for the sequence max-pooling
+    //          "
+    //          "to record the max indexes.")
+    //    .AsIntermediate();
     AddOutput("Out", "(Tensor) The output of SegmentSumOp.");
     AddAttr<std::string>(
         "pooltype",
-        "(string, default 'AVERAGE') the pooling pooltype of SegmentSumOp.")
-        .SetDefault("AVERAGE")
-        .InEnum({"AVERAGE", "SUM", "SQRT", "LAST", "FIRST", "MAX"});
+        "(string, default 'SUM') the pooling pooltype of SegmentSumOp.")
+        .SetDefault("SUM")
+        .InEnum({"SUM", "MEAN", "MIN", "MAX"});
     AddComment(R"DOC(
 Segment Sum Operator.
 
@@ -109,18 +120,16 @@ class SegmentSumGradOpMaker : public framework::SingleGradOpMaker<T> {
     op_desc_ptr->SetType("segment_sum_grad");
     op_desc_ptr->SetInput("X", this->Input("X"));
     op_desc_ptr->SetInput("SegmentIds", this->Input("SegmentIds"));
-    if (BOOST_GET_CONST(std::string, this->GetAttr("pooltype")) == "MAX") {
-      op_desc_ptr->SetInput("MaxIndex", this->Output("MaxIndex"));
-    }
+    op_desc_ptr->SetInput("Out", this->Output("Out"));
+    // if (BOOST_GET_CONST(std::string, this->GetAttr("pooltype")) == "MAX") {
+    //  op_desc_ptr->SetInput("MaxIndex", this->Output("MaxIndex"));
+    //}
     op_desc_ptr->SetInput(framework::GradVarName("Out"),
                           this->OutputGrad("Out"));
     op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op_desc_ptr->SetAttrMap(this->Attrs());
   }
 };
-
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(SegmentSumGradOpNoNeedBufferVarsInferer,
-                                    "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -129,8 +138,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(segment_sum, ops::SegmentSumOp, ops::SegmentSumOpMaker,
                   ops::SegmentSumGradOpMaker<paddle::framework::OpDesc>,
                   ops::SegmentSumGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(segment_sum_grad, ops::SegmentSumGradOp,
-                  ops::SegmentSumGradOpNoNeedBufferVarsInferer);
+REGISTER_OPERATOR(segment_sum_grad, ops::SegmentSumGradOp);
+
 REGISTER_OP_CPU_KERNEL(
     segment_sum,
     ops::SegmentSumKernel<paddle::platform::CPUDeviceContext, float>,
@@ -140,4 +149,3 @@ REGISTER_OP_CPU_KERNEL(
     segment_sum_grad,
     ops::SegmentSumGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SegmentSumGradKernel<paddle::platform::CPUDeviceContext, double>);
-

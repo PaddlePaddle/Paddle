@@ -68,59 +68,21 @@ class SegmentPoolFunctor<platform::CPUDeviceContext, T, IndexT> {
   }
 };
 
-// grad function for max, min operation
-template <typename T>
-class IndexPoolGradFunctor {
- public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& out_grad,
-                  const framework::Tensor& index, framework::Tensor* in_grad) {
-    auto og_dims = out_grad.dims();
-    auto ig_dims = in_grad->dims();
-    auto idx_dims = index.dims();
-    PADDLE_ENFORCE_GT(og_dims.size(), 1,
-                      "The rank of output@Grad shall be greater than 1.");
-    PADDLE_ENFORCE_GT(ig_dims.size(), 1,
-                      "The rank of input@Grad shall be greater than 1.");
-    for (int64_t i = 1; i < og_dims.size(); ++i) {
-      PADDLE_ENFORCE_EQ(
-          og_dims[i], ig_dims[i],
-          "The dimension of input@Grad and output@Grad shall be same.");
-    }
-    PADDLE_ENFORCE_EQ(idx_dims, og_dims,
-                      "The dimension of index and output@Grad shall be same.");
-
-    const T* og_data = out_grad.data<T>();
-    const int* pos_index = index.data<int>();
-    T* ig_data = in_grad->data<T>();
-
-    math::SetConstant<platform::CPUDeviceContext, T> set_zero;
-    set_zero(context, in_grad, static_cast<T>(0.0));
-    int64_t num_seq = og_dims[0];
-    int64_t dim = out_grad.numel() / num_seq;
-    for (int64_t i = 0; i < num_seq; ++i) {
-      for (int64_t j = 0; j < dim; ++j) {
-        int step_id = pos_index[i * dim + j];
-        if (step_id == -1) continue;
-        ig_data[step_id * dim + j] = og_data[i * dim + j];
-      }
-    }
-  }
-};
-
 template <typename T, typename IndexT>
 class SegmentPoolGradFunctor<platform::CPUDeviceContext, T, IndexT> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& input,
+                  const framework::Tensor& output,
                   const framework::Tensor& out_grad,
                   const framework::Tensor& segments, framework::Tensor* in_grad,
                   const framework::Tensor* index = nullptr,
                   const std::string pooltype = "SUM") {
-    if (pooltype == "MAX" || pooltype == "MIN") {
-      IndexPoolGradFunctor<T> index_pool_grad;
-      index_pool_grad(context, out_grad, *index, in_grad);
-      return;
-    }
+    //    if (pooltype == "MAX" || pooltype == "MIN") {
+    //      IndexPoolGradFunctor<T> index_pool_grad;
+    //      index_pool_grad(context, out_grad, *index, in_grad);
+    //      return;
+    //    }
     const IndexT* segment_ids = segments.data<IndexT>();
     auto& place = *context.eigen_device();
     auto curent_id = segment_ids[0];
@@ -144,6 +106,14 @@ class SegmentPoolGradFunctor<platform::CPUDeviceContext, T, IndexT> {
         in_g_e.device(place) = (out_g_e / static_cast<T>(h)).broadcast(bcast);
       } else if (pooltype == "SUM") {
         in_g_e.device(place) = out_g_e.broadcast(bcast);
+      } else if (pooltype == "MAX" || pooltype == "MIN") {
+        Tensor out_t = output.Slice(curent_id, curent_id + 1);
+        Tensor in_t = input.Slice(last_idx, idx);
+        auto in_e = framework::EigenMatrix<T>::From(in_t, {h, w});
+        auto out_e = framework::EigenMatrix<T>::From(out_t, {1, w});
+        in_g_e.device(place) =
+            (in_e == out_e.broadcast(bcast)).template cast<T>() *
+            out_g_e.broadcast(bcast);
       } else {
         PADDLE_THROW(
             "unsupported segment pooling operation, only MEAN, SUM, MAX, MIN "
@@ -156,16 +126,15 @@ class SegmentPoolGradFunctor<platform::CPUDeviceContext, T, IndexT> {
   }
 };
 
-template class SegmentPoolFunctor<platform::CPUDeviceContext, float, int>;
-template class SegmentPoolFunctor<platform::CPUDeviceContext, float, int64_t>;
-template class SegmentPoolFunctor<platform::CPUDeviceContext, double, int>;
-template class SegmentPoolFunctor<platform::CPUDeviceContext, double, int64_t>;
-template class SegmentPoolGradFunctor<platform::CPUDeviceContext, float, int>;
-template class SegmentPoolGradFunctor<platform::CPUDeviceContext, float,
-                                      int64_t>;
-template class SegmentPoolGradFunctor<platform::CPUDeviceContext, double, int>;
-template class SegmentPoolGradFunctor<platform::CPUDeviceContext, double,
-                                      int64_t>;
+using CPU = platform::CPUDeviceContext;
+template class SegmentPoolFunctor<CPU, float, int>;
+template class SegmentPoolFunctor<CPU, float, int64_t>;
+template class SegmentPoolFunctor<CPU, double, int>;
+template class SegmentPoolFunctor<CPU, double, int64_t>;
+template class SegmentPoolGradFunctor<CPU, float, int>;
+template class SegmentPoolGradFunctor<CPU, float, int64_t>;
+template class SegmentPoolGradFunctor<CPU, double, int>;
+template class SegmentPoolGradFunctor<CPU, double, int64_t>;
 
 }  // namespace operators
 }  // namespace paddle
