@@ -49,6 +49,7 @@ import paddle.optimizer
 import paddle.metric
 import paddle.device
 import paddle.incubate.complex as complex
+import paddle.regularizer
 
 # TODO: define alias in tensor and framework directory
 
