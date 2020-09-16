@@ -1156,6 +1156,8 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    pip install PyGithub
+    pip3 install PyGithub
     CASES=`python $PADDLE_ROOT/tools/get_pr_ut.py`
     if [ "${CASES}" != "" ] && [ ${PRECISION_TEST:-ON} == "ON" ]; then
 		precision_test $CASES
