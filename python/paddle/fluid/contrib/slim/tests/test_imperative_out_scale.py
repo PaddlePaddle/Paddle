@@ -249,6 +249,14 @@ class TestImperativeOutSclae(unittest.TestCase):
                     dynamic_out_scale_list.append(
                         layer.__getattr__('out_threshold'))
 
+        paddle.jit.save(
+            layer=lenet,
+            model_path="./dynamic_outscale",
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 1, 28, 28], dtype='float32')
+            ])
+
         # static graph train
         _logger.info(
             "--------------------------static graph qat--------------------------"
@@ -315,8 +323,9 @@ class TestImperativeOutSclae(unittest.TestCase):
 
         save_program = infer_graph.to_program()
         with fluid.scope_guard(scope):
-            fluid.io.save_inference_model("./static_mnist", [infer_img.name],
-                                          [infer_pre], exe, save_program)
+            fluid.io.save_inference_model("./static_outscale",
+                                          [infer_img.name], [infer_pre], exe,
+                                          save_program)
         rtol = 1e-05
         atol = 1e-08
         for i, (loss_d,
