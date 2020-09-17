@@ -18,4 +18,5 @@ decorator
 prettytable
 astor
 pathlib
-netifaces
+netifaces ; platform_system != "Windows"
+netifaces ; python_version>="3.5" and platform_system == "Windows"
