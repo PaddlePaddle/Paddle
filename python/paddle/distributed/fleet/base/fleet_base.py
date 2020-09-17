@@ -383,7 +383,7 @@ class Fleet(object):
         Returns:
             None
         """
-        self._role_maker.barrier_worker()
+        self._role_maker._barrier("worker")
 
     @is_non_distributed_check
     @inited_runtime_handler
