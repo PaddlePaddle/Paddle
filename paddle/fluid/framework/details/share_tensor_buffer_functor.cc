@@ -32,7 +32,7 @@ static inline const Tensor &GetTensorFromVar(const Variable *var) {
     return var->Get<LoDTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor"));
+        "Variable must be type of LoDTensor."));
   }
 }
 
@@ -41,7 +41,7 @@ static inline Tensor *GetMutableTensorFromVar(Variable *var) {
     return var->GetMutable<LoDTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor"));
+        "Variable must be type of LoDTensor."));
   }
 }
 
@@ -58,7 +58,7 @@ ShareTensorBufferFunctor::ShareTensorBufferFunctor(
                     platform::errors::PreconditionNotMet(
                         "The number of input variables and output variables "
                         "should be equal, but got number of input variables is "
-                        "%d and number of output variables is %d",
+                        "%d and number of output variables is %d.",
                         in_var_infos_.size(), out_var_names_.size()));
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
     AddReuseVarPair(in_var_infos_[i], out_var_names_[i]);
@@ -79,35 +79,39 @@ void ShareTensorBufferFunctor::AddReuseVarPair(
   PADDLE_ENFORCE_NOT_NULL(
       in_var_info,
       platform::errors::InvalidArgument(
-          "The input variables to be inplaced should not be NULL"));
+          "The input variables to be inplaced should not be NULL."));
   PADDLE_ENFORCE_NE(in_var_info->Name(), out_var_name,
                     platform::errors::InvalidArgument(
                         "The input variable and output variable to be inplaced "
-                        "cannot have the same name: %s",
+                        "cannot have the same name: %s.",
                         out_var_name));
   in_var_infos_.emplace_back(in_var_info);
   out_var_names_.emplace_back(out_var_name);
 }
 
 void ShareTensorBufferFunctor::CallOnce() {
-  PADDLE_ENFORCE(
-      in_out_vars_.empty(),
-      platform::errors::InvalidArgument("The input-output variable pairs to be "
-                                        "inplaced should be initialized here"));
+  PADDLE_ENFORCE(in_out_vars_.empty(),
+                 platform::errors::InvalidArgument(
+                     "The input-output variable pairs to be "
+                     "inplaced should be initialized here."));
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
     auto *in_var = exec_scope_->FindVar(in_var_infos_[i]->Name());
     auto *out_var = exec_scope_->FindVar(out_var_names_[i]);
     PADDLE_ENFORCE_NOT_NULL(
-        in_var, platform::errors::InvalidArgument(
-                    "The input variable to be inplaced should not be NULL"));
+        in_var, platform::errors::NotFound(
+                    "The input variable(%s)to be inplaced should not be NULL.",
+                    in_var_infos_[i]->Name()));
     PADDLE_ENFORCE_NOT_NULL(
-        out_var, platform::errors::InvalidArgument(
-                     "The output variable to be inplaced should not be NULL"));
+        out_var,
+        platform::errors::NotFound(
+            "The output variable(%s) to be inplaced should not be NULL.",
+            out_var_names_[i]));
     PADDLE_ENFORCE_NE(
         in_var, out_var,
-        platform::errors::InvalidArgument(
+        platform::errors::PreconditionNotMet(
             "The input variable and output variable to be inplaced "
-            "cannot be the same variable"));
+            "cannot be the same variable(%s).",
+            out_var_names_[i]));
     in_out_vars_.emplace_back(in_var, out_var);
   }
 }
@@ -117,14 +121,14 @@ void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
     PADDLE_ENFORCE_NOT_NULL(exec_scope,
                             platform::errors::InvalidArgument(
                                 "The given execution scope should not be NULL "
-                                "if the cached scope is NULL"));
+                                "if the cached scope is NULL."));
     exec_scope_ = exec_scope;
     CallOnce();
   } else {
     PADDLE_ENFORCE_EQ(exec_scope_, exec_scope,
                       platform::errors::InvalidArgument(
                           "The given execution scope and the cached execution "
-                          "scope should be the same"));
+                          "scope should be the same."));
   }
 
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {

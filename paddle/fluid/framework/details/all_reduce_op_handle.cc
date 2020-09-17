@@ -76,7 +76,7 @@ void AllReduceOpHandle::AllReduceImpl(
                     platform::errors::InvalidArgument(
                         "The NoDummyInputSize should be equal "
                         "to the number of places, but got NoDummyInputSize is "
-                        "%d and the number of place is %d",
+                        "%d and the number of place is %d.",
                         in_var_handles.size(), num_places));
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), out_var_handles.size(),
@@ -89,7 +89,7 @@ void AllReduceOpHandle::AllReduceImpl(
       platform::errors::InvalidArgument(
           "The number of local scopes should be equal "
           "to the number of places, but got the number of local scopes is "
-          "%d and the number of place is %d",
+          "%d and the number of place is %d.",
           in_var_handles.size(), num_places));
 
   std::vector<const void *> lod_tensor_data;
@@ -113,7 +113,7 @@ void AllReduceOpHandle::AllReduceImpl(
       PADDLE_ENFORCE_GT(
           numel, 0,
           platform::errors::PreconditionNotMet(
-              "The numel of tensor %s should be > 0, but got numel = %d",
+              "The numel of tensor %s should be > 0, but got numel is %d.",
               in_var_handles[i]->name(), numel));
       dtype = lod_tensor.type();
       is_gpu_place = platform::is_gpu_place(lod_tensor.place());

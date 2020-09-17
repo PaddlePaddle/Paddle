@@ -56,7 +56,7 @@ struct VarHandleBase {
     if (pending_ops_.find(out) == pending_ops_.end()) {
       PADDLE_ENFORCE_NOT_NULL(out,
                               platform::errors::InvalidArgument(
-                                  "The output added to VarHandle %s is nullptr",
+                                  "The output added to VarHandle %s is NULL.",
                                   this->Node()->Name()));
       pending_ops_.insert(out);
       node_->outputs.push_back(node);

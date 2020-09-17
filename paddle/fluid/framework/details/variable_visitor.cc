@@ -26,7 +26,8 @@ static void VisitVariable(Variable* var, Func* func) {
     (*func)(var->GetMutable<SelectedRows>());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "VisitVariable is not supported for type %s", ToTypeName(var->Type())));
+        "VisitVariable is not supported for type %s.",
+        ToTypeName(var->Type())));
   }
 }
 
@@ -38,7 +39,7 @@ static void VisitVariable(const Variable& var, Func* func) {
     (*func)(var.Get<SelectedRows>());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "VisitVariable is not supported for type %s", ToTypeName(var.Type())));
+        "VisitVariable is not supported for type %s.", ToTypeName(var.Type())));
   }
 }
 
@@ -83,7 +84,7 @@ struct ShareDimsAndLoDVisitor {
   template <typename T>
   void operator()(const T&) {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "ShareDimsAndLoD is not supported for type %s", typeid(T).name()));
+        "ShareDimsAndLoD is not supported for type %s.", typeid(T).name()));
   }
 };
 
@@ -139,7 +140,7 @@ struct EnforceShapeAndDTypeEQVisitor {
   template <typename T>
   void operator()(const T&) {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "EnforceShapeAndDTypeEQ is not supported for type %s",
+        "EnforceShapeAndDTypeEQ is not supported for type %s.",
         typeid(T).name()));
   }
 };

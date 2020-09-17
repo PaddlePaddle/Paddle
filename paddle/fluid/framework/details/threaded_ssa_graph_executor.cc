@@ -234,9 +234,11 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
       ready_ops->insert(static_cast<OpHandleBase *>(op));
     }
   }
-  PADDLE_ENFORCE_EQ(local_ready_vars.size(), 0,
-                    platform::errors::PreconditionNotMet(
-                        "The number of ready variables should be 0"));
+  PADDLE_ENFORCE_EQ(
+      local_ready_vars.size(), 0,
+      platform::errors::Fatal(
+          "The number of ready variables should be 0, but got %d.",
+          local_ready_vars.size()));
 }
 
 void ThreadedSSAGraphExecutor::InsertPendingOp(

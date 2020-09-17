@@ -142,8 +142,8 @@ void FetchOpHandle::RunImpl() {
     auto *var = scope->FindVar(var_handle->name());
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        platform::errors::NotFound("Cannot find variable %s in execution scope",
-                                   var_handle->name()));
+        platform::errors::NotFound(
+            "Cannot find variable %s in execution scope.", var_handle->name()));
 
     if (var->IsType<LoDTensor>()) {
       auto &t = var->Get<framework::LoDTensor>();
