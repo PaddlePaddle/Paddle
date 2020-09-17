@@ -203,23 +203,6 @@ class LocalFS(FS):
 """HDFS Utils."""
 
 
-def _handle_errors(f):
-    def handler(*args, **kwargs):
-        start = time.time()
-        while True:
-            try:
-                return f(*args, **kwargs)
-            except ExecuteError as e:
-                o = args[0]
-                time_out = float(o._time_out) / 1000.0
-                inter = float(o._sleep_inter) / 1000.0
-                if time.time() - start >= time_out:
-                    raise FSTimeOut
-                time.sleep(inter)
-
-    return functools.wraps(f)(handler)
-
-
 def _handle_errors(max_time_out=None):
     def decorator(f):
         @functools.wraps(f)
