@@ -358,5 +358,18 @@ class TestDecorateModelDirectly(unittest.TestCase):
         self.assertListEqual(list(input_shape), [-1, 16, 10])
 
 
+class TestErrorWithInitFromImperative(unittest.TestCase):
+    def test_raise_error(self):
+        net = SimpleNet()
+        with self.assertRaises(RuntimeError):
+            net.forward.concrete_program()
+
+        with self.assertRaises(RuntimeError):
+            net.forward.inputs
+
+        with self.assertRaises(RuntimeError):
+            net.forward.outputs
+
+
 if __name__ == '__main__':
     unittest.main()
