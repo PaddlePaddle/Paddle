@@ -94,9 +94,17 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto src_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
     auto dst_cpu_place = BOOST_GET_CONST(platform::CPUPlace, dst_place);
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true);
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx_place), true,
+        platform::errors::PreconditionNotMet(
+            "Context place error, excepted GPUPlace, but actually %s.",
+            ctx_place));
     auto ctx_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx_place);
-    PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place);
+    PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place,
+                      platform::errors::Unavailable(
+                          "Source place and context place do not match, source "
+                          "place is %s, context place is %s.",
+                          src_gpu_place, ctx_gpu_place));
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
@@ -106,9 +114,17 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto src_cpu_place = BOOST_GET_CONST(platform::CPUPlace, src_place);
     auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dst_place);
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true);
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx_place), true,
+        platform::errors::PreconditionNotMet(
+            "Context place error, excepted GPUPlace, but actually %s.",
+            ctx_place));
     auto ctx_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx_place);
-    PADDLE_ENFORCE_EQ(dst_gpu_place, ctx_gpu_place);
+    PADDLE_ENFORCE_EQ(dst_gpu_place, ctx_gpu_place,
+                      platform::errors::Unavailable(
+                          "Destination place and context place do not match, "
+                          "destination place is %s, context place is %s.",
+                          dst_gpu_place, ctx_gpu_place));
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
@@ -164,7 +180,11 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto src_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
     auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dst_place);
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true);
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx_place), true,
+        platform::errors::PreconditionNotMet(
+            "Context place error, excepted GPUPlace, but actually %s.",
+            ctx_place));
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     if (platform::is_same_place(src_place, dst_place)) {
@@ -180,12 +200,14 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
         memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
                      stream);
       } else {
-        PADDLE_THROW("ctx is not belong to dst_gpu_place or src_gpu_place.");
+        PADDLE_THROW(platform::errors::Unavailable(
+            "Context place dose not match the source and destination place."));
       }
     }
   }
   else {  // NOLINT
-    PADDLE_THROW("Copy from %s to %s is not supported.", src_place, dst_place);
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copying from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
 }
@@ -298,7 +320,8 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                  nullptr);
   }
   else {  // NOLINT
-    PADDLE_THROW("Copy from %s to %s is not supported.", src_place, dst_place);
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
 }
@@ -832,7 +855,9 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
 void* GetDstPtrByDLDataType(DLDataType type, framework::Tensor* dst,
                             const platform::Place& dst_place) {
   // vector types not currently supported
-  PADDLE_ENFORCE_LE(type.lanes, 1, "vector types not currently supported");
+  PADDLE_ENFORCE_LE(type.lanes, 1,
+                    platform::errors::Unimplemented(
+                        "Vector type is not supported currently."));
 
   switch (type.bits) {
     case 8:
@@ -840,32 +865,37 @@ void* GetDstPtrByDLDataType(DLDataType type, framework::Tensor* dst,
         return static_cast<void*>(dst->mutable_data<int8_t>(dst_place));
       if (type.code == kDLUInt)
         return static_cast<void*>(dst->mutable_data<uint8_t>(dst_place));
-      PADDLE_THROW("There is no this type.code <%d> when type.bits is <%d>.",
-                   type.code, type.bits);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code, type.bits));
     case 16:
       if (type.code == kDLInt)
         return static_cast<void*>(dst->mutable_data<int16_t>(dst_place));
       if (type.code == kDLFloat)
         return static_cast<void*>(
             dst->mutable_data<paddle::platform::float16>(dst_place));
-      PADDLE_THROW("There is no this type.code <%d> when type.bits is <%d>.",
-                   type.code, type.bits);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code, type.bits));
     case 32:
       if (type.code == kDLInt)
         return static_cast<void*>(dst->mutable_data<int32_t>(dst_place));
       if (type.code == kDLFloat)
         return static_cast<void*>(dst->mutable_data<float>(dst_place));
-      PADDLE_THROW("There is no this type.code <%d> when type.bits is <%d>.",
-                   type.code, type.bits);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code, type.bits));
     case 64:
       if (type.code == kDLInt)
         return static_cast<void*>(dst->mutable_data<int64_t>(dst_place));
       if (type.code == kDLFloat)
         return static_cast<void*>(dst->mutable_data<double>(dst_place));
-      PADDLE_THROW("There is no this type.code <%d> when type.bits is <%d>.",
-                   type.code, type.bits);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code, type.bits));
     default:
-      PADDLE_THROW("Unsupport type.bits %d", type.bits);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported DLDataType.bits %d.", type.bits));
   }
 }
 

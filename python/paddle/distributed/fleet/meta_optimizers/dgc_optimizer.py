@@ -53,6 +53,9 @@ class DGCOptimizer(MetaOptimizerBase):
             name=opt._name)
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if self.user_defined_strategy.dgc:
             if not isinstance(self.inner_opt, Momentum):
                 logging.warn("dgc only works on Momentum optimizer")
@@ -69,7 +72,7 @@ class DGCOptimizer(MetaOptimizerBase):
         dist_strategy.dgc = False
         dist_strategy.dgc_configs = {}
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context):
         dist_strategy.dgc = True
         dist_strategy.dgc_configs = {"rampup_begin_step": 0, "rampup_step": 1}
 
@@ -89,5 +92,5 @@ class DGCOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         optimize_ops, params_grads = \
             self.dgc_opt.minimize(loss, startup_program,
-                                      parameter_list, no_grad_set)
+                                  parameter_list, no_grad_set)
         return optimize_ops, params_grads

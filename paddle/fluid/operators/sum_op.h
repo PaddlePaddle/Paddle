@@ -182,7 +182,11 @@ class SumKernel : public framework::OpKernel<T> {
           auto &in_t = in_vars[i]->Get<framework::SelectedRows>();
           functor(context.template device_context<DeviceContext>(), in_t, out);
         } else {
-          PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Expected type of Input(X) of %d-th must be Tensor, "
+              "SelectedRows. But got "
+              "unsupport type: %s.",
+              framework::ToTypeName(in_vars[i]->Type())));
         }
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
@@ -190,8 +194,11 @@ class SumKernel : public framework::OpKernel<T> {
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
       LodTensorArrayCompute<DeviceContext, T>(context);
     } else {
-      PADDLE_THROW("Unexpected branch, output variable type is %s",
-                   framework::ToTypeName(out_var->Type()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Expected type of Output(out) must be Tensor, SelectedRows, "
+          "LoDTensorArray. But got "
+          "unsupport type: %s.",
+          framework::ToTypeName(out_var->Type())));
     }
   }
 };

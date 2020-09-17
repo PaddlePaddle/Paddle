@@ -134,7 +134,10 @@ void ListenAndServOp::RunSyncLoop(
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(num_blocks, 2,
-                    "server program should have at least 2 blocks");
+                    platform::errors::PreconditionNotMet(
+                        "Invalid number of blocks in server program. Expected "
+                        "equal or greater than 2. Recieved %zu",
+                        num_blocks));
 
   // Prepare all the server block
   std::vector<int> optimize_blocks_list;
@@ -218,7 +221,8 @@ void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
       VLOG(3) << "reset sparse var: " << varname;
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     } else {
-      PADDLE_THROW("The type of sparse var should be SelectedRows");
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "The type of sparse var should be SelectedRows"));
     }
   }
   if (UNLIKELY(reset_all)) {
@@ -235,7 +239,8 @@ void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
         math::set_constant(*dev_ctx, var->GetMutable<framework::Tensor>(),
                            static_cast<float>(0));
       } else {
-        PADDLE_THROW("The type of dense var should be in [LoDTensor, Tensor]");
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "The type of dense var should be in [LoDTensor, Tensor]"));
       }
     }
   }
@@ -254,8 +259,15 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     std::vector<std::string> pieces;
     split(grad_and_id, ':', &pieces);
     VLOG(3) << "after split, key = " << pieces[0] << ", id=" << pieces[1];
-    PADDLE_ENFORCE_EQ(pieces.size(), 2);
-    PADDLE_ENFORCE_EQ(out_map->count(pieces[0]), 0);
+    PADDLE_ENFORCE_EQ(pieces.size(), 2,
+                      platform::errors::PreconditionNotMet(
+                          "Invalid format of grad_and_id argument. "
+                          "Expected \"grad:block_id\". Recieved %s",
+                          grad_and_id.c_str()));
+    PADDLE_ENFORCE_EQ(out_map->count(pieces[0]), 0,
+                      platform::errors::AlreadyExists(
+                          "The gradient name %s has already existed in out_map",
+                          pieces[0].c_str()));
 
     int block_id = std::stoi(pieces[1]);
     (*out_map)[pieces[0]] = block_id;
@@ -267,7 +279,10 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
-                    "server program should have at least 2 blocks");
+                    platform::errors::PreconditionNotMet(
+                        "Invalid number of blocks in server program. Expected "
+                        "equal or greater than 2. Recieved %zu",
+                        num_blocks));
   std::vector<int> block_list;
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
     block_list.push_back(blkid);
@@ -342,9 +357,9 @@ void ListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
                var->IsType<framework::Tensor>()) {
       dense_vars_.push_back(varname);
     } else {
-      PADDLE_THROW(
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
           "The type of received var should be in [SelectedRows, LoDTensor, "
-          "Tensor].");
+          "Tensor]."));
     }
   }
 }
@@ -450,7 +465,12 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     split(prefetch_var_name_and_id, ':', &pieces);
     VLOG(3) << "after split, prefetch_var = " << pieces[0]
             << ", id=" << pieces[1];
-    PADDLE_ENFORCE_EQ(pieces.size(), 2);
+    PADDLE_ENFORCE_EQ(
+        pieces.size(), 2,
+        platform::errors::PreconditionNotMet(
+            "Invalid format of prefetch_var_name_and_id argument. "
+            "Expected \"xxx:xxx\". Recieved %s",
+            prefetch_var_name_and_id.c_str()));
 
     int block_id = std::stoi(pieces[1]);
     prefetch_block_id_list.push_back(block_id);
@@ -476,7 +496,12 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
        sparse_grad_name_to_param_name_str) {
     std::vector<std::string> pieces;
     split(sparse_grad_name_and_param_name, ':', &pieces);
-    PADDLE_ENFORCE_EQ(pieces.size(), 2);
+    PADDLE_ENFORCE_EQ(
+        pieces.size(), 2,
+        platform::errors::PreconditionNotMet(
+            "Invalid format of sparse_grad_name_and_param_name argument. "
+            "Expected \"xxx:xxx\". Recieved %s",
+            sparse_grad_name_and_param_name.c_str()));
     VLOG(3) << "after split, sparse_grad_name = " << pieces[0]
             << ", param_name = " << pieces[1];
     sparse_grad_name_to_param_name[pieces[0]] = pieces[1];

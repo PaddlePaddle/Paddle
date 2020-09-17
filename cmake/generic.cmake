@@ -386,7 +386,7 @@ function(cc_test_run TARGET_NAME)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
     # No unit test should exceed 2 minutes.
     if (APPLE OR WIN32)
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
     else()
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)
     endif()
@@ -748,7 +748,7 @@ function(py_test TARGET_NAME)
     endif()
     
     if (APPLE OR WIN32)
-        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+        set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
     else()
         # No unit test should exceed 2 minutes in Linux.
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 120)

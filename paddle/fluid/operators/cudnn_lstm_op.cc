@@ -51,6 +51,16 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
                           "received InitH's rank is %d.",
                           init_h_dims.size()));
 
+    if (ctx->HasInput("SequenceLength")) {
+      auto seq_dims = ctx->GetInputDim("SequenceLength");
+      PADDLE_ENFORCE_EQ(
+          in_dims[1], seq_dims[0],
+          platform::errors::InvalidArgument(
+              "The size of SequenceLength has to equal the batch_size. But "
+              "received batch_size is %d and the size of SequenceLength is %d.",
+              in_dims[1], seq_dims[0]));
+    }
+
     PADDLE_ENFORCE_EQ(
         in_dims[1], init_h_dims[1],
         platform::errors::InvalidArgument(
@@ -113,6 +123,12 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the learnable hidden-hidden weights."
              " The shape is (N), where N is total weight size of the LSTM. "
              " cudnn concatenate all the weight to one Tensor");
+    AddInput("SequenceLength",
+             "(Tensor) When the input data is padding, "
+             "set this parameter. This parameter represents "
+             "the variable sequence lengths in a batch. "
+             "The size of the vector has to equal the batch_size.")
+        .AsDispensable();
     AddOutput("Reserve",
               "(Tensor, a temporary output Tensor to store the reserve_data "
               "of cudnn kernel.")
@@ -155,13 +171,6 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(0);
-    AddAttr<std::vector<int>>("sequence_length",
-                              "(vector<int>) When the input data is padding, "
-                              "set this parameter. This parameter represents "
-                              "the variable sequence"
-                              "lengths in a batch. The size of the vector has "
-                              "to equal the batch_size.")
-        .SetDefault({});
     AddComment(R"DOC(
 CUDNN LSTM implementation
 
@@ -243,6 +252,9 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("InitH", this->Input("InitH"));
     op->SetInput("InitC", this->Input("InitC"));
     op->SetInput("W", this->Input("W"));
+    if (this->HasInput("SequenceLength")) {
+      op->SetInput("SequenceLength", this->Input("SequenceLength"));
+    }
     op->SetInput("Reserve", this->Output("Reserve"));
     op->SetInput("StateOut", this->Output("StateOut"));
     op->SetInput("Out", this->Output("Out"));

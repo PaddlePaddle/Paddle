@@ -91,7 +91,8 @@ class ThreadPool {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       if (!running_) {
-        PADDLE_THROW("enqueue on stopped ThreadPool");
+        PADDLE_THROW(platform::errors::Unavailable(
+            "Task is enqueued into stopped ThreadPool."));
       }
       tasks_.push(std::move(task));
     }
