@@ -87,7 +87,7 @@ def _parse_args():
 see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/training/cluster_howto.html#permalink-8--nccl2-
 ''')
 
-    #Optional arguments for the launch helper
+    # Optional arguments for the launch helper
     parser.add_argument(
         "--ips",
         type=str,
@@ -115,7 +115,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         default="log",
         help="The path for each process's log.If it's not set, the log will printed to default pipe."
     )
-    #positional
+    # positional
     parser.add_argument(
         "training_script",
         type=str,
@@ -124,7 +124,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "followed by all the arguments for the "
         "training script")
 
-    #rest from the training program
+    # rest from the training program
     parser.add_argument('training_script_args', nargs=REMAINDER)
     return parser.parse_args()
 
@@ -138,7 +138,7 @@ def get_cluster_from_args(args, gpus):
 
     # node_ip = args.node_ip
     assert node_ip in node_ips, "Can't find your local ip {%s} in node_ips: {%s}" \
-                % (node_ip, node_ips)
+        % (node_ip, node_ips)
     node_rank = node_ips.index(node_ip)
 
     logger.debug("parsed from args: node_ips:{} node_ip:{} node_rank:{}".format(
@@ -280,7 +280,7 @@ def launch_ps(args):
         _, current_node_ip = get_host_name_ip()
 
     assert current_node_ip in node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
-                % (current_node_ip, node_ips)
+        % (current_node_ip, node_ips)
     node_rank = node_ips.index(current_node_ip)
     logger.debug(
         "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}, server_ports:{}".
@@ -323,10 +323,12 @@ def launch_ps(args):
     for idx, cur_server in enumerate(pod.servers):
         proc_env = {
             "PADDLE_PSERVERS_IP_PORT_LIST": server_endpoints,
+            "PADDLE_TRAINER_ENDPOINTS": worker_endpoints,
             "PADDLE_PORT": cur_server.endpoint.split(":")[1],
             "TRAINING_ROLE": "PSERVER",
             "PADDLE_TRAINERS_NUM": str(worker_num),
-            "POD_IP": cur_server.endpoint.split(":")[0]
+            "POD_IP": cur_server.endpoint.split(":")[0],
+            "PADDLE_WITH_GLOO": "1"
         }
         current_env.update(proc_env)
 
@@ -365,7 +367,8 @@ def launch_ps(args):
             "PADDLE_TRAINER_ENDPOINTS": worker_endpoints,
             "PADDLE_TRAINERS_NUM": str(worker_num),
             "TRAINING_ROLE": "TRAINER",
-            "PADDLE_TRAINER_ID": str(cur_worker.rank)
+            "PADDLE_TRAINER_ID": str(cur_worker.rank),
+            "PADDLE_WITH_GLOO": "1"
         }
         current_env.update(proc_env)
 
@@ -430,7 +433,11 @@ def launch():
         co_arg for co_arg in collective_args
         if co_arg in " ".join(sys.argv[1:-1])
     ]
-    cuda_device_num = fluid.core.get_cuda_device_count()
+    if fluid.core.is_compiled_with_cuda():
+        cuda_device_num = fluid.core.get_cuda_device_count()
+    else:
+        cuda_device_num = 0
+
     if len(has_ps_args) > 0 or cuda_device_num == 0:
         logger.info(
             "Run parameter-sever cpu mode. pserver arguments:{}, cuda count:{}".
