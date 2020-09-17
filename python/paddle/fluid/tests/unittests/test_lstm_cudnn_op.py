@@ -380,8 +380,10 @@ class TestCUDNNLstmOp(OpTest):
     #TODO(GaoWei8): Need to satisfy the result through the new interface
     def get_weight_names(self):
         weight_names = []
-        for i in range(4 * self.num_layers):
+        for i in range(2 * self.num_layers):
             weight_names.append('weight{}'.format(i))
+        for i in range(2 * self.num_layers):
+            weight_names.append('bias{}'.format(i))
         return weight_names
 
     def setUp(self):
@@ -389,6 +391,7 @@ class TestCUDNNLstmOp(OpTest):
         self.dtype = np.float64
         self.sequence_length = np.array([12, 11, 10, 9, 8], dtype=np.int32)
         self.num_layers = 1
+        self.set_attrs()
 
         seq_length = 12
         batch_size = 5
@@ -421,12 +424,13 @@ class TestCUDNNLstmOp(OpTest):
             else:
                 weight_ih = weight.weight_hh
             weight_hh = weight.weight_hh
+            flat_w.append(("weight" + str(2 * i), weight_ih))
+            flat_w.append(("weight" + str(2 * i + 1), weight_hh))
+        for i in range(self.num_layers):
             bias_ih = weight.bias_ih
             bias_hh = weight.bias_hh
-            flat_w.append(("weight" + str(4 * i), weight_ih))
-            flat_w.append(("weight" + str(4 * i + 1), weight_hh))
-            flat_w.append(("weight" + str(4 * i + 2), bias_ih))
-            flat_w.append(("weight" + str(4 * i + 3), bias_hh))
+            flat_w.append(("bias" + str(2 * i), bias_ih))
+            flat_w.append(("bias" + str(2 * i + 1), bias_hh))
         init_h = np.zeros((self.num_layers, batch_size,
                            hidden_size)).astype(self.dtype)
         init_c = np.zeros((self.num_layers, batch_size,
@@ -445,7 +449,7 @@ class TestCUDNNLstmOp(OpTest):
             'is_bidirec': False,
             'input_size': input_size,
             'hidden_size': hidden_size,
-            'num_layers': 1,
+            'num_layers': self.num_layers,
         }
         self.outputs = {
             'Out': output,
