@@ -67,6 +67,13 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
         self.out = np.floor_divide(self.x, self.y)
 
 
+class TestElementwiseModOpInverse(TestElementwiseModOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, [10]).astype(self.dtype)
+        self.y = np.random.uniform(0, 1000, [10, 10]).astype(self.dtype)
+        self.out = np.floor_divide(self.x, self.y)
+
+
 class TestFloorDivideOp(unittest.TestCase):
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
@@ -85,16 +92,6 @@ class TestFloorDivideOp(unittest.TestCase):
             z = paddle.floor_divide(x, y)
             np_z = z.numpy()
             z_expected = np.array([2, 0, 2, 2])
-            self.assertEqual((np_z == z_expected).all(), True)
-
-        with fluid.dygraph.guard():
-            np_x = np.array([2]).astype('int64')
-            np_y = np.array([1, 5, 3, 2]).astype('int64')
-            x = paddle.to_tensor(np_x)
-            y = paddle.to_tensor(np_y)
-            z = paddle.floor_divide(x, y)
-            np_z = z.numpy()
-            z_expected = np.array([2, 0, 0, 1])
             self.assertEqual((np_z == z_expected).all(), True)
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
