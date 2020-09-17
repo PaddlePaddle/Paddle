@@ -28,7 +28,25 @@ namespace operators {
 using Tensor = framework::Tensor;
 using DataLayout = framework::DataLayout;
 
-// scale shape == mean shape
+// math: dx = scale * ((x - mean) * inv_var / NxHxW * (np.mean(ddx,
+// axis=(n,h,w)) *
+//          np.sum(dy, axis=(n,h,w)) -
+//          np.sum(dy * ddx, axis=(n,h,w)) + 3 * np.mean(dy * (x -
+//          mean),
+//          axis=(n,h,w)) * inv_var.pow(2) *
+//          np.sum(ddx * (x - mean), axis=(n,h,w))) + inv_var.pow(3) /
+//          NxHxW *
+//          np.sum(ddx * (x - mean)) *
+//          (np.mean(dy, axis=(n,h,w)) - dy) + inv_var.pow(3) / NxHxW *
+//          np.sum(dy,
+//          axis=(n,h,w)) * (x - mean) *
+//          (np.mean(ddx, axis=(n,h,w)) - ddx) + ddr * (dy * inv_var -
+//          inv_var
+//          *
+//          np.mean(dy, axis=(n,h,w)) -
+//          inv_var.pow(3) * (x - mean) * np.mean(dy * (x - mean),
+//          axis=(n,h,w))))
+
 template <typename T, int BlockDim, framework::DataLayout layout>
 __global__ void DoubleGradComputeDX(const T *x, const T *mean,
                                     const T *variance, const T *ddx,
@@ -128,6 +146,9 @@ __global__ void DoubleGradComputeDX(const T *x, const T *mean,
   }
 }
 
+// math: ddy = (x - mean) * inv_var * ddscale + ddbias +
+//           scale * inv_var * (ddx - (x - mean) * inv_var.pow(2) *
+//           np.mean(ddx * (x - mean), axis=(n,h,w)))
 template <typename T, int BlockDim, framework::DataLayout layout>
 __global__ void DoubleGradComputeDDY(const T *x, const T *mean,
                                      const T *variance, const T *ddscale,
@@ -203,6 +224,9 @@ __global__ void DoubleGradComputeDDY(const T *x, const T *mean,
   }
 }
 
+// math: dscale = inv_var * (dy - np.mean(dy, axis=(n,h,w) - (x-mean) *
+//            inv_var.pow(2) * np.mean(dy * (x-mean), axis=(n,h,w)))) *
+//            ddx
 template <typename T, int BlockDim, framework::DataLayout layout>
 __global__ void DoubleGradComputeDScale(const T *x, const T *mean,
                                         const T *variance, const T *ddx,
@@ -266,6 +290,7 @@ __global__ void DoubleGradComputeDScale(const T *x, const T *mean,
   }
 }
 
+// math: dscale = np.sum(ddx * dy, axis=(n,h,w)) * inv_var
 template <typename T, int BlockDim, framework::DataLayout layout>
 __global__ void DoubleGradComputeDScaleWithGlobal(
     const T *ddx, const T *variance, const T *dy, const double epsilon,
@@ -300,6 +325,8 @@ __global__ void DoubleGradComputeDScaleWithGlobal(
   }
 }
 
+// math: dx = ddscale * dy * inv_var
+// math: ddy = scale * ddx * inv_var
 template <typename T, framework::DataLayout layout>
 __global__ void DoubleGradComputeDataWithGlobal(
     const T *dy, const T *scale, const T *variance, const double epsilon,
