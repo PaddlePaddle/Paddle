@@ -92,9 +92,11 @@ class TestWeightDecay(unittest.TestCase):
         return param_sum
 
     def check_weight_decay(self, place, model):
+        paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
-        startup_prog.random_seed = 1
+
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
             data = fluid.layers.data(
                 name="words", shape=[1], dtype="int64", lod_level=1)
@@ -113,9 +115,11 @@ class TestWeightDecay(unittest.TestCase):
         return param_sum
 
     def check_weight_decay2(self, place, model):
+        paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
-        startup_prog.random_seed = 1
+
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
             data = fluid.layers.data(
                 name="words", shape=[1], dtype="int64", lod_level=1)

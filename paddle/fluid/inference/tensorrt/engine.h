@@ -83,7 +83,12 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
     } else if (shape.size() == 3UL) {
       return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
     }
-    return nvinfer1::Dims4(shape[0], shape[1], 1, 1);
+    nvinfer1::Dims dims;
+    dims.nbDims = shape.size();
+    for (size_t i = 0; i < shape.size(); i++) {
+      dims.d[i] = shape[i];
+    }
+    return dims;
   }
 }
 }  // NOLINT
@@ -191,8 +196,10 @@ class TensorRTEngine {
   }
 
   nvinfer1::IHostMemory* Serialize() {
-    PADDLE_ENFORCE(infer_engine_ != nullptr,
-                   "You should build engine first and then serialize");
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_engine_,
+        platform::errors::InvalidArgument(
+            "The TensorRT engine must be built first before serialization"));
     ihost_memory_.reset(infer_engine_->serialize());
     return ihost_memory_.get();
   }
@@ -217,8 +224,14 @@ class TensorRTEngine {
           engine_serialized_data.c_str(), engine_serialized_data.size(),
           &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
     }
-    PADDLE_ENFORCE(infer_engine_ != nullptr,
-                   "build cuda engine failed when deserialize engine info.!");
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_engine_,
+        platform::errors::Fatal(
+            "Building TRT cuda engine failed when deserializing engine info. "
+            "Please check:\n1. Your TRT serialization is generated and loaded "
+            "on the same GPU architecture;\n2. The Paddle Inference version of "
+            "generating serialization file and doing inference are "
+            "consistent."));
   }
 
   void SetRuntimeBatch(size_t batch_size);

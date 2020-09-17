@@ -13,9 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/selu_op.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
+
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 
 namespace paddle {
 namespace operators {
@@ -28,11 +31,7 @@ class SeluOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "selu");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "selu");
-
-    ctx->ShareDim("X", /*->*/ "Out");
-    ctx->ShareLoD("X", /*->*/ "Out");
+    return UnaryOpUnchangedInferShape(ctx);
   }
 
  protected:

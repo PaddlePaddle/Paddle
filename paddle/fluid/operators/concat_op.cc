@@ -122,12 +122,16 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
              "It has higher priority than Attr(axis). "
              "The shape of AxisTensor must be [1].")
         .AsDispensable();
-    AddAttr<bool>("use_quantizer",
-                  "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
-                  "int8 kernel. "
-                  "Only used on CPU.")
+    AddAttr<bool>(
+        "use_quantizer",
+        "(bool, default false) "
+        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"});
     AddComment(R"DOC(
 Concat Operator.
 

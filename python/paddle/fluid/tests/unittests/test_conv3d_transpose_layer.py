@@ -33,9 +33,7 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                  stride=1,
                  dilation=1,
                  groups=1,
-                 act=None,
                  no_bias=False,
-                 use_cudnn=True,
                  data_format="NCDHW",
                  dtype="float32"):
         super(Conv3DTransposeTestCase, self).__init__(methodName)
@@ -50,9 +48,7 @@ class Conv3DTransposeTestCase(unittest.TestCase):
         self.stride = stride
         self.dilation = dilation
         self.groups = groups
-        self.act = act
         self.no_bias = no_bias
-        self.use_cudnn = use_cudnn
         self.data_format = data_format
         self.dtype = dtype
 
@@ -104,8 +100,6 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                     groups=self.groups,
                     param_attr=weight_attr,
                     bias_attr=bias_attr,
-                    use_cudnn=self.use_cudnn,
-                    act=self.act,
                     data_format=self.data_format)
         feed_dict = {"input": self.input}
         exe = fluid.Executor(place)
@@ -125,7 +119,7 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                     "weight", self.weight_shape, dtype=self.dtype)
                 b_var = fluid.data(
                     "bias", (self.num_filters, ), dtype=self.dtype)
-                y_var = F.conv3d_transpose(
+                y_var = F.conv_transpose3d(
                     x_var,
                     w_var,
                     None if self.no_bias else b_var,
@@ -134,8 +128,6 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                     stride=self.stride,
                     dilation=self.dilation,
                     groups=self.groups,
-                    act=self.act,
-                    use_cudnn=self.use_cudnn,
                     data_format=self.data_format)
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
@@ -147,23 +139,19 @@ class Conv3DTransposeTestCase(unittest.TestCase):
 
     def paddle_nn_layer(self):
         x_var = dg.to_variable(self.input)
-        conv = nn.Conv3DTranspose(
+        conv = nn.ConvTranspose3d(
             self.num_channels,
             self.num_filters,
             self.filter_size,
-            output_size=self.output_size,
             padding=self.padding,
             stride=self.stride,
             dilation=self.dilation,
             groups=self.groups,
-            act=self.act,
-            use_cudnn=self.use_cudnn,
-            data_format=self.data_format,
-            dtype=self.dtype)
+            data_format=self.data_format)
         conv.weight.set_value(self.weight)
         if not self.no_bias:
             conv.bias.set_value(self.bias)
-        y_var = conv(x_var)
+        y_var = conv(x_var, self.output_size)
         y_np = y_var.numpy()
         return y_np
 
@@ -194,7 +182,7 @@ class Conv3DTransposeErrorTestCase(Conv3DTransposeTestCase):
 
 
 def add_cases(suite):
-    suite.addTest(Conv3DTransposeTestCase(methodName='runTest', act="tanh"))
+    suite.addTest(Conv3DTransposeTestCase(methodName='runTest'))
     suite.addTest(
         Conv3DTransposeTestCase(
             methodName='runTest', stride=[1, 2, 1], dilation=2, no_bias=True))
@@ -240,15 +228,10 @@ def add_cases(suite):
             num_filters=6,
             num_channels=3,
             groups=3,
-            use_cudnn=False,
-            act="sigmoid",
             padding="valid"))
 
 
 def add_error_cases(suite):
-    suite.addTest(
-        Conv3DTransposeErrorTestCase(
-            methodName='runTest', use_cudnn="not_valid"))
     suite.addTest(
         Conv3DTransposeErrorTestCase(
             methodName='runTest', num_channels=5, groups=2))

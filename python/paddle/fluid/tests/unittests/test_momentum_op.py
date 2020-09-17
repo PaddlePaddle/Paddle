@@ -19,6 +19,8 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
 
 
 class TestMomentumOp1(OpTest):
@@ -232,6 +234,49 @@ class TestSparseMomentumOp(unittest.TestCase):
 class TestSparseMomentumOp2(TestSparseMomentumOp):
     def init_kernel(self):
         self.use_nesterov = True
+
+
+class TestMomentumV2(unittest.TestCase):
+    def test_momentum_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        # This can be any optimizer supported by dygraph.
+        adam = paddle.optimizer.Momentum(
+            learning_rate=0.01, momentum=0.9, parameters=linear.parameters())
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+    def test_momentum(self):
+        place = fluid.CPUPlace()
+        main = fluid.Program()
+        with fluid.program_guard(main):
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = fluid.layers.mean(cost)
+
+            rms_optimizer = paddle.optimizer.Momentum(
+                learning_rate=0.1, momentum=0.9)
+            rms_optimizer.minimize(avg_cost)
+
+            fetch_list = [avg_cost]
+            train_reader = paddle.batch(
+                paddle.dataset.uci_housing.train(), batch_size=1)
+            feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            for data in train_reader():
+                exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+
+    def test_raise_error(self):
+        self.assertRaises(
+            ValueError, paddle.optimizer.Momentum, learning_rate=None)
+        self.assertRaises(ValueError, paddle.optimizer.Momentum, momentum=None)
 
 
 if __name__ == "__main__":

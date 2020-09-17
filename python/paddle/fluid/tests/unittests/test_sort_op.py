@@ -78,8 +78,7 @@ class TestSortDygraph(unittest.TestCase):
         paddle.disable_static(self.place)
         var_x = paddle.to_variable(self.input_data)
         out = paddle.sort(var_x)
-        self.assertEqual((np.sort(self.input_data) == out[0].numpy()).all(),
-                         True)
+        self.assertEqual((np.sort(self.input_data) == out.numpy()).all(), True)
         paddle.enable_static()
 
     def test_api_1(self):
@@ -88,5 +87,5 @@ class TestSortDygraph(unittest.TestCase):
         out = paddle.sort(var_x, axis=-1)
         self.assertEqual(
             (np.sort(
-                self.input_data, axis=-1) == out[0].numpy()).all(), True)
+                self.input_data, axis=-1) == out.numpy()).all(), True)
         paddle.enable_static()

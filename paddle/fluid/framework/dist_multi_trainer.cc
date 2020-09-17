@@ -35,7 +35,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   dump_file_num_ = trainer_desc.dump_file_num();
   const std::vector<paddle::framework::DataFeed *> readers =
       dataset->GetReaders();
-
+  RegisterHeterCallback();
   thread_num_ = readers.size();
   workers_.resize(thread_num_);
   for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
@@ -55,6 +55,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
     workers_[i]->SetDumpParamVector(dump_param_);
     workers_[i]->InitRandomDumpConfig(trainer_desc);
     workers_[i]->Initialize(trainer_desc);
+    workers_[i]->SetWorkerNum(thread_num_);
   }
 
   VLOG(3) << "going to initialize pull dense worker";
@@ -62,6 +63,13 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   pull_dense_worker_->Initialize(trainer_desc);
   VLOG(3) << "initialize pull dense worker";
   SetDebug(trainer_desc.debug());
+}
+
+void DistMultiTrainer::RegisterHeterCallback() {
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  fleet_ptr->RegisterHeterCallback([this](int worker, int taskid) {
+    // workers_[worker]->Schedule(taskid);
+  });
 }
 
 void DistMultiTrainer::InitDumpEnv() {
@@ -90,6 +98,9 @@ void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program
     workers_[i]->BindingDataFeedMemory();
+#ifdef PADDLE_WITH_PSLIB
+    workers_[i]->CacheProgram(main_program);
+#endif
   }
   // Scope* -> thread id, it will be used in push_dense op
   for (int i = 0; i < thread_num_; ++i) {
@@ -104,6 +115,11 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   }
   pull_dense_worker_->SetRootScope(root_scope_);
   pull_dense_worker_->Start();
+#ifdef PADDLE_WITH_PSLIB
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->GetXpuOpIndex();
+  }
+#endif
   VLOG(3) << "init other env done.";
 }
 

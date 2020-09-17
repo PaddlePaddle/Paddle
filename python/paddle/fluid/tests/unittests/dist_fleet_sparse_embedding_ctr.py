@@ -152,24 +152,18 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         exe = fluid.Executor(fluid.CPUPlace())
         fleet.init_worker()
-        exe.run(fleet.startup_program)
+        exe.run(fluid.default_startup_program())
 
         batch_size = 4
 
         train_reader = paddle.batch(fake_ctr_reader(), batch_size=batch_size)
         self.reader.decorate_sample_list_generator(train_reader)
 
-        compiled_prog = fluid.compiler.CompiledProgram(
-            fleet.main_program).with_data_parallel(
-                loss_name=self.avg_cost.name,
-                build_strategy=self.strategy.get_build_strategy(),
-                exec_strategy=self.strategy.get_execute_strategy())
-
         for epoch_id in range(1):
             self.reader.start()
             try:
                 while True:
-                    loss_val = exe.run(program=compiled_prog,
+                    loss_val = exe.run(program=fluid.default_main_program(),
                                        fetch_list=[self.avg_cost.name])
                     loss_val = np.mean(loss_val)
                     print("TRAIN ---> pass: {} loss: {}\n".format(epoch_id,

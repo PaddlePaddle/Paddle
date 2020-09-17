@@ -86,6 +86,31 @@ class TestBaseLayer(unittest.TestCase):
             ret = l()
             self.assertTrue(np.allclose(ret.numpy(), 0.8 * np.ones([2, 2])))
 
+    def test_add_parameter_with_error(self):
+        with fluid.dygraph.guard():
+            net = fluid.Layer()
+            param = net.create_parameter(shape=[1])
+
+            with self.assertRaises(TypeError):
+                net.add_parameter(10, param)
+
+            with self.assertRaises(KeyError):
+                net.add_parameter("param.name", param)
+
+            with self.assertRaises(KeyError):
+                net.add_parameter("", param)
+
+            with self.assertRaises(KeyError):
+                net.test_param = 10
+                net.add_parameter("test_param", param)
+
+            with self.assertRaises(TypeError):
+                net.add_parameter("no_param", 10)
+
+            load_param = net.create_parameter(shape=[1])
+            net._loaddict_holder[load_param.name] = load_param
+            net.add_parameter("load_param", load_param)
+
 
 class BufferLayer(fluid.Layer):
     def __init__(self):

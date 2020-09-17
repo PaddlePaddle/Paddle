@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/operator.h"
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
@@ -20,18 +22,21 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu_info.h"
+#endif
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -159,10 +164,23 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     VLOG(4) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
-      PADDLE_THROW("Cannot run operator on place %s", place);
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Cannot run operator on place %s, please recompile paddle or "
+          "reinstall Paddle with CUDA support.",
+          place));
 #else
       auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
       platform::SetDeviceId(dev_id);
+#endif
+    } else if (platform::is_xpu_place(place)) {
+#ifndef PADDLE_WITH_XPU
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Cannot run operator on place %s, please recompile paddle or "
+          "reinstall Paddle with XPU support.",
+          place));
+#else
+      auto dev_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
+      platform::SetXPUDeviceId(dev_id);
 #endif
     }
 
@@ -201,7 +219,7 @@ std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(
       ins.size(), 1UL,
-      platform::errors::AlreadyExists(
+      platform::errors::InvalidArgument(
           "Operator %s's input %s should contain only one variable.", type_,
           name));
   return ins.empty() ? kEmptyVarName : ins[0];
@@ -210,8 +228,10 @@ std::string OperatorBase::Input(const std::string& name) const {
 const std::vector<std::string>& OperatorBase::Inputs(
     const std::string& name) const {
   auto it = inputs_.find(name);
-  PADDLE_ENFORCE(it != inputs_.end(), "Operator %s does not have the input %s.",
-                 type_, name);
+  PADDLE_ENFORCE_NE(
+      it, inputs_.end(),
+      platform::errors::NotFound("Operator %s does not have the input %s.",
+                                 type_, name));
   return it->second;
 }
 
@@ -225,17 +245,21 @@ bool OperatorBase::HasOutputs(const std::string& name) const {
 
 std::string OperatorBase::Output(const std::string& name) const {
   auto& outs = Outputs(name);
-  PADDLE_ENFORCE_LE(outs.size(), 1UL,
-                    "Operator %s's output %s should contain only one variable.",
-                    type_, name);
+  PADDLE_ENFORCE_LE(
+      outs.size(), 1UL,
+      platform::errors::InvalidArgument(
+          "Operator %s's output %s should contain only one variable.", type_,
+          name));
   return outs.empty() ? kEmptyVarName : outs[0];
 }
 
 const std::vector<std::string>& OperatorBase::Outputs(
     const std::string& name) const {
   auto it = outputs_.find(name);
-  PADDLE_ENFORCE(it != outputs_.end(),
-                 "Operator %s does not have an output called %s.", type_, name);
+  PADDLE_ENFORCE_NE(
+      it, outputs_.end(),
+      platform::errors::NotFound(
+          "Operator %s does not have an output called %s.", type_, name));
   return it->second;
 }
 
@@ -378,16 +402,19 @@ void OperatorBase::CheckAllInputOutputSet() const {
 
   for (auto& in : info_->Proto().inputs()) {
     if (!in.dispensable()) {
-      PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
-                     "Operator %s's input, %s, is not set", Type(), in.name());
+      PADDLE_ENFORCE_NE(
+          inputs_.find(in.name()), inputs_.end(),
+          platform::errors::NotFound("Operator %s's input (%s) is not set.",
+                                     Type(), in.name()));
     }
   }
 
   for (auto& out : info_->Proto().outputs()) {
     if (!out.dispensable()) {
-      PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
-                     "Operator %s's output, %s, is not set", Type(),
-                     out.name());
+      PADDLE_ENFORCE_NE(
+          outputs_.find(out.name()), outputs_.end(),
+          platform::errors::NotFound("Operator %s's output (%s) is not set.",
+                                     Type(), out.name()));
     }
   }
 }
@@ -415,8 +442,9 @@ const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var) {
   } else if (var.IsType<SelectedRows>()) {
     return &(var.Get<SelectedRows>().value());
   } else {
-    PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
-                 ToTypeName(var.Type()));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Variable type is %s, expect LoDTensor or SelectedRows.",
+        ToTypeName(var.Type())));
   }
 }
 
@@ -426,8 +454,9 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
   } else if (var->IsType<SelectedRows>()) {
     return var->GetMutable<SelectedRows>()->mutable_value();
   } else {
-    PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
-                 ToTypeName(var->Type()));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Variable type is %s, expect LoDTensor or SelectedRows.",
+        ToTypeName(var->Type())));
   }
 }
 
@@ -449,7 +478,7 @@ const Variable* ExecutionContext::InputVar(const std::string& name) const {
 
   PADDLE_ENFORCE_LE(
       it->second.size(), 1UL,
-      platform::errors::AlreadyExists(
+      platform::errors::InvalidArgument(
           "Operator %s's input %s should contain only one variable.",
           op_.Type(), name));
   return it->second.empty() ? nullptr : it->second[0];
@@ -459,9 +488,11 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
   auto it = ctx_.outputs.find(name);
   if (it == ctx_.outputs.end()) return nullptr;
 
-  PADDLE_ENFORCE_LE(it->second.size(), 1UL,
-                    "Operator %s's output %s should contain only one variable.",
-                    op_.Type(), name);
+  PADDLE_ENFORCE_LE(
+      it->second.size(), 1UL,
+      platform::errors::InvalidArgument(
+          "Operator %s's output %s should contain only one variable.",
+          op_.Type(), name));
   return it->second.empty() ? nullptr : it->second[0];
 }
 
@@ -484,10 +515,11 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
   std::transform(vars.begin(), vars.end(), std::back_inserter(res),
                  [&](const Variable* var) -> const Tensor* {
                    if (var == nullptr) return nullptr;
-                   PADDLE_ENFORCE(
-                       var->IsType<LoDTensor>(),
-                       "should be LoDTensor, but the received type is %s",
-                       ToTypeName(var->Type()));
+                   PADDLE_ENFORCE_EQ(var->IsType<LoDTensor>(), true,
+                                     platform::errors::InvalidArgument(
+                                         "Input variable should be LoDTensor, "
+                                         "but the received type is %s.",
+                                         ToTypeName(var->Type())));
                    return &(var->Get<LoDTensor>());
                  });
   return res;
@@ -545,8 +577,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
     const auto& in = it->second;
     if (in.size() == 0) return false;
-    PADDLE_ENFORCE_EQ(in.size(), 1UL,
-                      "Input %s should not have more than one inputs", name);
+    PADDLE_ENFORCE_EQ(
+        in.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Input %s should not contain more than one inputs.", name));
     return in[0] != nullptr;
   }
 
@@ -561,8 +595,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
     if (out.size() == 0) {
       return false;
     }
-    PADDLE_ENFORCE_EQ(out.size(), 1UL,
-                      "Output %s should not have more than one outputs", name);
+    PADDLE_ENFORCE_EQ(
+        out.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Output %s should not contain more than one outputs.", name));
     return out[0] != nullptr;
   }
 
@@ -604,20 +640,58 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return op_.Outputs(name);
   }
 
+  std::string GetInputNameByIdx(size_t idx) const override {
+    auto& op_proto =
+        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
+    PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
+                      platform::errors::OutOfRange(
+                          "The index should be less than the size of inputs of "
+                          "operator %s, but got index is %d and size is %d",
+                          op_.Type(), idx, op_proto->inputs().size()));
+    return op_proto->inputs()[idx].name();
+  }
+
+  std::string GetOutputNameByIdx(size_t idx) const override {
+    auto& op_proto =
+        paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
+    PADDLE_ENFORCE_LT(
+        idx, op_proto->outputs().size(),
+        platform::errors::OutOfRange(
+            "The index should be less than the size of outputs of "
+            "operator %s, but got index is %d and size is %d",
+            op_.Type(), idx, op_proto->outputs().size()));
+    return op_proto->outputs()[idx].name();
+  }
+
   void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) override {
     auto in_it = ctx_.inputs.find(in);
     auto out_it = ctx_.outputs.find(out);
-    PADDLE_ENFORCE(in_it != ctx_.inputs.end() && in_it->second.size() > i,
-                   "Inputs %s should have %llu argument", in, i);
-    PADDLE_ENFORCE(out_it != ctx_.outputs.end() && out_it->second.size() > j,
-                   "Outputs %s should have %llu argument", out, j);
+    PADDLE_ENFORCE_NE(
+        in_it, ctx_.inputs.end(),
+        platform::errors::NotFound("Input %s does not exist.", in));
+    PADDLE_ENFORCE_NE(
+        out_it, ctx_.outputs.end(),
+        platform::errors::NotFound("Output %s does not exist.", out));
+    PADDLE_ENFORCE_LT(i, in_it->second.size(),
+                      platform::errors::InvalidArgument(
+                          "The index of input dimension is out of range, "
+                          "excepted index less than %zu, but received %zu.",
+                          in_it->second.size(), i));
+    PADDLE_ENFORCE_LT(j, out_it->second.size(),
+                      platform::errors::InvalidArgument(
+                          "The index of output dimension is out of range, "
+                          "excepted index less than %zu, but received %zu.",
+                          out_it->second.size(), j));
 
     Variable* in_var = in_it->second[i];
     Variable* out_var = out_it->second[j];
 
-    PADDLE_ENFORCE(in_var->Type() == out_var->Type(),
-                   "The type of %s and %s is not the same.", in, out);
+    PADDLE_ENFORCE_EQ(
+        in_var->Type(), out_var->Type(),
+        platform::errors::InvalidArgument(
+            "The type of input (%s) and output (%s) are inconsistent.", in,
+            out));
 
     if (in_var->IsType<framework::SelectedRows>()) {
       auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
@@ -630,9 +704,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
       auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
       out_lod_tensor->Resize(in_lod_tensor.dims());
     } else {
-      PADDLE_THROW(
+      PADDLE_THROW(platform::errors::Unimplemented(
           "Currently, the input type of ShareDim only can be LoDTensor "
-          "or SelectedRows.");
+          "or SelectedRows."));
     }
   }
 
@@ -685,16 +759,30 @@ class RuntimeInferShapeContext : public InferShapeContext {
                 size_t j = 0) const override {
     auto in_it = ctx_.inputs.find(in);
     auto out_it = ctx_.outputs.find(out);
-    PADDLE_ENFORCE(in_it != ctx_.inputs.end() && in_it->second.size() > i,
-                   "Inputs %s should have %llu argument", in, i);
-    PADDLE_ENFORCE(out_it != ctx_.outputs.end() && out_it->second.size() > j,
-                   "Outputs %s should have %llu argument", out, j);
+    PADDLE_ENFORCE_NE(
+        in_it, ctx_.inputs.end(),
+        platform::errors::NotFound("Input %s does not exist.", in));
+    PADDLE_ENFORCE_NE(
+        out_it, ctx_.outputs.end(),
+        platform::errors::NotFound("Output %s does not exist.", out));
+    PADDLE_ENFORCE_LT(i, in_it->second.size(),
+                      platform::errors::InvalidArgument(
+                          "The index of input dimension is out of range, "
+                          "excepted index less than %zu, but received %zu.",
+                          in_it->second.size(), i));
+    PADDLE_ENFORCE_LT(j, out_it->second.size(),
+                      platform::errors::InvalidArgument(
+                          "The index of output dimension is out of range, "
+                          "excepted index less than %zu, but received %zu.",
+                          out_it->second.size(), j));
 
     Variable* in_var = in_it->second.at(i);
     if (!in_var->IsType<LoDTensor>()) return;
     Variable* out_var = out_it->second.at(j);
-    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
-                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
+    PADDLE_ENFORCE_EQ(
+        out_var->IsType<LoDTensor>(), true,
+        platform::errors::InvalidArgument(
+            "The %zu-th output of Output(%s) must be LoDTensor.", j, out));
     auto& in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
@@ -721,18 +809,18 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override {
-    PADDLE_THROW(
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
         "GetLoDLevel is only used in compile time. The calculation of "
         "output's actual lod is different among operators so that should be "
-        "set in the runtime kernel.");
+        "set in the runtime kernel."));
   }
 
   void SetLoDLevel(const std::string& out, int32_t lod_level,
                    size_t j = 0) const override {
-    PADDLE_THROW(
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
         "SetLoDLevel is only used in compile time. The calculation of "
         "output's actual lod is different among operators so that should be "
-        "set in the runtime kernel.");
+        "set in the runtime kernel."));
   }
 
   bool IsRuntime() const override { return true; }
@@ -758,9 +846,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   DDim GetInputDim(const std::string& name) const override {
     const std::vector<Variable*>& vars = InputVars(name);
-    PADDLE_ENFORCE_EQ(vars.size(), 1UL,
-                      "Input(%s) should hold one element, but now it holds %d",
-                      name, vars.size());
+    PADDLE_ENFORCE_EQ(
+        vars.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Input(%s) should hold one element, but now it holds %zu elements.",
+            name, vars.size()));
     return this->GetDim(vars[0]);
   }
 
@@ -781,9 +871,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void SetOutputDim(const std::string& name, const DDim& dim) override {
     auto& vars = OutputVars(name);
-    PADDLE_ENFORCE_EQ(vars.size(), 1UL,
-                      "Output(%s) should hold one element, but now it holds %d",
-                      name, vars.size());
+    PADDLE_ENFORCE_EQ(
+        vars.size(), 1UL,
+        platform::errors::InvalidArgument("Output(%s) should hold one element, "
+                                          "but now it holds %zu elements.",
+                                          name, vars.size()));
     SetDim(vars[0], dim);
   }
 
@@ -795,16 +887,17 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
  protected:
   DDim GetDim(Variable* var) const {
-    PADDLE_ENFORCE_NOT_NULL(var);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::InvalidArgument("Input variable is nullptr."));
     if (var->IsType<LoDTensor>()) {
       return var->Get<LoDTensor>().dims();
     } else if (var->IsType<SelectedRows>()) {
       return var->Get<SelectedRows>().GetCompleteDims();
     } else {
-      PADDLE_THROW(
-          "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
-          "type_id is %s.",
-          ToTypeName(var->Type()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Only LoDTensor or SelectedRows support 'GetDim', but input "
+          "Variable's type is %s.",
+          ToTypeName(var->Type())));
     }
   }
 
@@ -817,7 +910,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   std::vector<DDim> GetRepeatedDims(const std::string& name) const override {
-    PADDLE_THROW("Only compile time support this method");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "GetRepeatedDims method only ban be used in compile time."));
   }
 
   void SetDim(Variable* var, const DDim& dim) {
@@ -826,15 +920,22 @@ class RuntimeInferShapeContext : public InferShapeContext {
     } else if (var->IsType<SelectedRows>()) {
       var->GetMutable<SelectedRows>()->set_height(dim[0]);
     } else {
-      PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
-                   ToTypeName(var->Type()));
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Variable type error, expect LoDTensor or SelectedRows, but received "
+          "(%s).",
+          ToTypeName(var->Type())));
     }
   }
 
   void SetDims(const std::vector<Variable*>& vars,
                const std::vector<DDim>& dims) {
     size_t length = vars.size();
-    PADDLE_ENFORCE_EQ(length, dims.size());
+    PADDLE_ENFORCE_EQ(length, dims.size(),
+                      platform::errors::InvalidArgument(
+                          "The number of input variables do not match the "
+                          "number of input dimensions, the number of variables "
+                          "is %zu, the number of dimensions is %zu.",
+                          length, dims.size()));
     for (size_t i = 0; i < length; ++i) {
       if (vars[i] == nullptr) {
         continue;
@@ -845,7 +946,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void SetRepeatedDims(const std::string& name,
                        const std::vector<DDim>& dims) override {
-    PADDLE_THROW("Only compile time support this method");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "SetRepeatedDims method only can be used in compile time."));
   }
 
   std::vector<proto::VarType::Type> GetVarTypes(
@@ -865,16 +967,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
  private:
   const std::vector<Variable*>& InputVars(const std::string& name) const {
     auto it = ctx_.inputs.find(name);
-    PADDLE_ENFORCE(it != ctx_.inputs.end(),
-                   "Operator %s does not have the input %s.", op_.Type(), name);
+    PADDLE_ENFORCE_NE(
+        it, ctx_.inputs.end(),
+        platform::errors::NotFound(
+            "Operator (%s) does not have the input (%s).", op_.Type(), name));
     return it->second;
   }
 
   const std::vector<Variable*>& OutputVars(const std::string& name) const {
     auto it = ctx_.outputs.find(name);
-    PADDLE_ENFORCE(it != ctx_.outputs.end(),
-                   "Operator %s does not have the outputs %s.", op_.Type(),
-                   name);
+    PADDLE_ENFORCE_NE(
+        it, ctx_.outputs.end(),
+        platform::errors::NotFound(
+            "Operator (%s) does not have the outputs (%s).", op_.Type(), name));
     return it->second;
   }
 
@@ -892,10 +997,14 @@ static void CheckTensorNANOrInf(const std::string& op_type,
       tensor.type() != proto::VarType::FP64) {
     return;
   }
-  PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
-                 "Operator %s output Tensor %s contains Inf", op_type, name);
-  PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
-                 "Operator %s output Tensor %s contains NAN", op_type, name);
+  PADDLE_ENFORCE_NE(
+      framework::TensorContainsInf(tensor), true,
+      platform::errors::Fatal("Operator %s output Tensor %s contains Inf.",
+                              op_type, name));
+  PADDLE_ENFORCE_NE(
+      framework::TensorContainsNAN(tensor), true,
+      platform::errors::Fatal("Operator %s output Tensor %s contains NAN.",
+                              op_type, name));
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
@@ -1038,10 +1147,11 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
-  if (kernels_iter == all_op_kernels.end()) {
-    PADDLE_THROW(
-        "There are no kernels which are registered in the %s operator.", type_);
-  }
+  PADDLE_ENFORCE_NE(
+      kernels_iter, all_op_kernels.end(),
+      platform::errors::Unavailable(
+          "There are no kernels which are registered in the %s operator.",
+          type_));
 
   OpKernelMap& kernels = kernels_iter->second;
 
@@ -1085,10 +1195,20 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
-  if (kernel_iter == kernels.end()) {
-    PADDLE_THROW("op %s does not have kernel for %s", type_,
-                 KernelTypeToString(expected_kernel_key));
+#ifdef PADDLE_WITH_XPU
+  if (kernel_iter == kernels.end() &&
+      is_xpu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing XPU kernel: " << type_
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
   }
+#endif
+  PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
+                    platform::errors::NotFound(
+                        "Operator (%s) does not have kernel for %s.", type_,
+                        KernelTypeToString(expected_kernel_key)));
 
   std::lock_guard<std::mutex> lock(cache_update_mutex_);
   if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
@@ -1103,13 +1223,14 @@ void OperatorWithKernel::TransferInplaceVarsBack(
   for (auto& var_name : inplace_vars) {
     VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
     auto* origin_var = scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(origin_var, "The var[%s] should not be nullptr.",
-                            var_name);
+    PADDLE_ENFORCE_NOT_NULL(origin_var,
+                            platform::errors::InvalidArgument(
+                                "The variable[%s] is nullptr.", var_name));
     auto* original_tensor =
         GetMutableLoDTensorOrSelectedRowsValueFromVar(origin_var);
     auto* var = transfer_scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var, "The var[%s] should not be nullptr.",
-                            var_name);
+    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::InvalidArgument(
+                                     "The variable[%s] is nullptr.", var_name));
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
     auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
@@ -1334,9 +1455,11 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   ParseInputDataType(ctx, name, &data_type);
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
-      "The Input Variable(%s) of %s Op used to determine kernel data type "
-      "is empty or not LoDTensor or SelectedRows or LoDTensorArray.",
-      name, Type());
+      platform::errors::InvalidArgument(
+          "The Input Variable(%s) of (%s) Operator used to determine kernel "
+          "data type is empty or not LoDTensor or SelectedRows or "
+          "LoDTensorArray.",
+          name, Type()));
   return data_type;
 }
 

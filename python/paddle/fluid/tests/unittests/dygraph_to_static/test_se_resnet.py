@@ -26,6 +26,8 @@ from paddle.fluid.dygraph import declarative
 from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 
+from predictor_utils import PredictorTools
+
 SEED = 2020
 np.random.seed(SEED)
 
@@ -329,8 +331,8 @@ def train(train_reader, to_static):
     np.random.seed(SEED)
 
     with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
         se_resnext = SeResNeXt()
         optimizer = optimizer_setting(train_parameters, se_resnext.parameters())
 
@@ -434,6 +436,12 @@ def predict_dygraph_jit(data):
         return pred_res.numpy()
 
 
+def predict_analysis_inference(data):
+    output = PredictorTools(MODEL_SAVE_PATH, VARIABLE_FILENAME, [data])
+    out = output()
+    return out
+
+
 class TestSeResnet(unittest.TestCase):
     def setUp(self):
         self.train_reader = paddle.batch(
@@ -447,12 +455,17 @@ class TestSeResnet(unittest.TestCase):
         dy_pre = predict_dygraph(image)
         st_pre = predict_static(image)
         dy_jit_pre = predict_dygraph_jit(image)
+        predictor_pre = predict_analysis_inference(image)
         self.assertTrue(
             np.allclose(dy_pre, st_pre),
             msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
         self.assertTrue(
             np.allclose(dy_jit_pre, st_pre),
             msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(dy_jit_pre, st_pre))
+        self.assertTrue(
+            np.allclose(predictor_pre, st_pre),
+            msg="predictor_pre:\n {}\n, st_pre: \n{}.".format(predictor_pre,
+                                                              st_pre))
 
     def test_check_result(self):
         pred_1, loss_1, acc1_1, acc5_1 = train(

@@ -241,6 +241,15 @@ class TestDistBase(unittest.TestCase):
             need_result = input2
             self.assertTrue(np.allclose(tr0_out, need_result))
             self.assertTrue(np.allclose(tr1_out, need_result))
+        elif col_type == "reduce":
+            need_result = input1 + input2
+            self.assertTrue(np.allclose(tr1_out, need_result))
+        elif col_type == "scatter":
+            need_result = input2
+            need_result1 = need_result[0:need_result.shape[0] // 2]
+            need_result2 = need_result[need_result.shape[0] // 2:]
+            self.assertTrue(np.allclose(tr0_out, need_result1))
+            self.assertTrue(np.allclose(tr1_out, need_result2))
         elif col_type == "allreduce":
             need_result = input1 + input2
             self.assertTrue(

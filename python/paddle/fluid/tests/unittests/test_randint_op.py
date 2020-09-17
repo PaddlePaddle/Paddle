@@ -19,8 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle
 from paddle.fluid import core
-from paddle import Program
-from paddle.static import program_guard
+from paddle.static import program_guard, Program
 
 
 def output_hist(out):
@@ -59,6 +58,11 @@ class TestRandintOpError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.randint, 5, dtype='float32')
             self.assertRaises(ValueError, paddle.randint, 5, 5)
             self.assertRaises(ValueError, paddle.randint, -5)
+            self.assertRaises(TypeError, paddle.randint, 5, shape=['2'])
+            shape_tensor = paddle.static.data('X', [1])
+            self.assertRaises(TypeError, paddle.randint, 5, shape=shape_tensor)
+            self.assertRaises(
+                TypeError, paddle.randint, 5, shape=[shape_tensor])
 
 
 class TestRandintOp_attr_tensorlist(OpTest):
@@ -126,7 +130,7 @@ class TestRandintAPI(unittest.TestCase):
             out4 = paddle.randint(
                 low=-100, high=100, shape=[dim_1, 5, dim_2], dtype='int32')
             # shape is a tensor and dtype is 'float64'
-            var_shape = paddle.nn.data(
+            var_shape = paddle.static.data(
                 name='var_shape', shape=[2], dtype="int64")
             out5 = paddle.randint(
                 low=1, high=1000, shape=var_shape, dtype='int64')

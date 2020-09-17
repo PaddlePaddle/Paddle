@@ -16,8 +16,7 @@ from __future__ import print_function
 
 import paddle
 from paddle.fluid import core
-from paddle import Program
-from paddle.static import program_guard
+from paddle.static import program_guard, Program
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -103,11 +102,11 @@ class TestArangeImperative(unittest.TestCase):
         end = paddle.to_variable(np.array([5], 'float32'))
         step = paddle.to_variable(np.array([1], 'float32'))
         x4 = paddle.arange(start, end, step, 'int64')
+        paddle.enable_static()
 
         expected_data = np.arange(0, 5, 1).astype(np.int64)
         for i in [x1, x2, x3, x4]:
             self.assertEqual((i.numpy() == expected_data).all(), True)
-        paddle.enable_static()
 
 
 if __name__ == "__main__":

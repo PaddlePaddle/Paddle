@@ -15,6 +15,7 @@
 from __future__ import print_function
 import numpy as np
 import logging
+import six
 
 from paddle.fluid import log_helper
 from paddle.fluid import framework, backward, core
@@ -130,8 +131,6 @@ class PartialProgramLayer(layers.Layer):
         self._check_params_all_inited(main_program)
         # 2. Prune the parameters not used anywhere in the program.
         self._prune_unused_params(main_program)
-        # 3. Remove op's python call stack with redundant low-level error messages.
-        main_program = self._remove_op_call_stack(main_program)
 
         return main_program
 
@@ -336,7 +335,7 @@ class PartialProgramLayer(layers.Layer):
             param_and_buffer_names_set.add(var.name)
 
         for block in main_program.blocks:
-            for name, var in block.vars.items():
+            for name, var in six.iteritems(block.vars):
                 if isinstance(var, framework.Parameter):
                     if name not in param_and_buffer_names_set:
                         raise ValueError(

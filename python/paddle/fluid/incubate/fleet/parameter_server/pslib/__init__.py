@@ -23,6 +23,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
+from paddle.fluid.incubate.fleet.base.role_maker import HeterRoleMaker
 
 
 class PSLib(Fleet):
@@ -44,6 +45,9 @@ class PSLib(Fleet):
             role_maker = MPISymetricRoleMaker()
         super(PSLib, self).init(role_maker)
         self._fleet_ptr = fluid.core.Fleet()
+        self._heter_ptr = None
+        if isinstance(role_maker, HeterRoleMaker):
+            self._heter_ptr = fluid.core.Heter()
 
     def _set_client_communication_config(self, request_timeout_ms,
                                          connect_timeout_ms, max_retry):
@@ -77,23 +81,35 @@ class PSLib(Fleet):
                 raise Exception(
                     "You should run DistributedOptimizer.minimize() first")
             # barrier_all for init_server, wait for server starts
+            if isinstance(self._role_maker, HeterRoleMaker):
+                if self._role_maker.is_xpu():
+                    local_endpoint = self._role_maker.get_local_endpoint()
+                    local_endpoint = local_endpoint.split(":")
+                    self._heter_ptr.start_xpu_service(
+                        str(local_endpoint[0]), int(local_endpoint[1]))
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
             # worker_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self._role_maker._get_size(),
                                         self._role_maker.worker_index() * 2)
+            if isinstance(self._role_maker, HeterRoleMaker):
+                if self._role_maker.is_worker():
+                    self._heter_ptr.set_xpu_list(
+                        self._role_maker._xpu_endpoints)
+                    self._heter_ptr.create_client2xpu_connection()
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
-            info = self._fleet_ptr.get_clients_info()
-            all_info = self._role_maker._worker_gather(info[0])
-            self._fleet_ptr.gather_clients(all_info)
-            self._fleet_ptr.set_client2client_config(
-                self._client2client_request_timeout_ms,
-                self._client2client_connect_timeout_ms,
-                self._client2client_max_retry)
-            self._fleet_ptr.create_client2client_connection()
+            if self._role_maker.is_worker():
+                info = self._fleet_ptr.get_clients_info()
+                all_info = self._role_maker._worker_gather(info[0])
+                self._fleet_ptr.gather_clients(all_info)
+                self._fleet_ptr.set_client2client_config(
+                    self._client2client_request_timeout_ms,
+                    self._client2client_connect_timeout_ms,
+                    self._client2client_max_retry)
+                self._fleet_ptr.create_client2client_connection()
             # barrier for init model
             self._role_maker._barrier_worker()
             if self._role_maker.is_first_worker():
@@ -144,10 +160,16 @@ class PSLib(Fleet):
             >>> fleet.init_server("/you/path/to/model", mode = 0)
         """
         mode = kwargs.get("mode", 0)
-        self._role_maker._barrier_worker()
-        if self._role_maker.is_first_worker():
-            self._fleet_ptr.load_model(model_dir, mode)
-        self._role_maker._barrier_worker()
+        if isinstance(self._role_maker, HeterRoleMaker):
+            self._role_maker._barrier_xpu()
+            if self._role_maker.is_first_xpu():
+                self._fleet_ptr.load_model(model_dir, mode)
+            self._role_maker._barrier_xpu()
+        else:
+            self._role_maker._barrier_worker()
+            if self._role_maker.is_first_worker():
+                self._fleet_ptr.load_model(model_dir, mode)
+            self._role_maker._barrier_worker()
 
     def run_server(self):
         """
@@ -185,6 +207,54 @@ class PSLib(Fleet):
             raise Exception(
                 "You should run DistributedOptimizer.minimize() first")
 
+    def end_pass(self, scope):
+        if self._role_maker.worker_index() < self._role_maker.xpu_num():
+            self._heter_ptr.end_pass(scope, self._role_maker.worker_index())
+            self._heter_ptr.stop_xpu_service(self._role_maker.worker_index())
+
+    def train_from_dataset(self,
+                           executor,
+                           program=None,
+                           dataset=None,
+                           scope=None,
+                           thread=0,
+                           debug=False,
+                           fetch_list=None,
+                           fetch_info=None,
+                           print_period=100,
+                           fetch_handler=None):
+        """
+
+        """
+
+        if self._role_maker.is_worker():
+            self._role_maker._barrier_heter()
+        executor.train_from_dataset(program, dataset, scope, thread, debug,
+                                    fetch_list, fetch_info, print_period,
+                                    fetch_handler)
+
+    def start_heter_trainer(self,
+                            executor,
+                            program=None,
+                            scope=None,
+                            debug=False,
+                            fetch_list=None,
+                            fetch_info=None,
+                            print_period=100,
+                            fetch_handler=None):
+        """
+
+        """
+
+        trainer_instance = executor.start_heter_trainer(
+            program, scope, debug, fetch_list, fetch_info, print_period,
+            fetch_handler)
+        if self._role_maker.is_xpu():
+            print("barrier heter")
+            self._role_maker._barrier_heter()
+            print("barrier heter")
+        executor._default_executor.release_trainer(trainer_instance)
+
     def stop_worker(self):
         """
         stop(): will be called after a user finishes his/her training task. Fleet instance will be
@@ -197,6 +267,7 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.stop_server()
+            self._heter_ptr.stop_xpu_service()
         self._role_maker._barrier_worker()
         self._role_maker._barrier_all()
         self._role_maker._finalize()
@@ -275,6 +346,41 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.save_model(dirname, mode)
+        self._role_maker._barrier_worker()
+
+    def save_model_with_whitelist(self,
+                                  executor,
+                                  dirname,
+                                  whitelist_path,
+                                  main_program=None,
+                                  **kwargs):
+        """
+        save whitelist, mode is consistent with fleet.save_persistables,
+        when using fleet, it will save sparse and dense feature
+
+        Args:
+            executor(Executor): fluid executor
+            dirname(str): save path. It can be hdfs/afs path or local path
+            main_program(Program): fluid program, default None
+            kwargs: use define property, current support following
+                mode(int): 0 means save all pserver model,
+                           1 means save delta pserver model (save diff),
+                           2 means save xbox base,
+                           3 means save batch model.
+
+        Example:
+            .. code-block:: python
+
+              fleet.save_persistables(dirname="/you/path/to/model", mode = 0)
+
+        """
+        mode = kwargs.get("mode", 0)
+        table_id = kwargs.get("table_id", 0)
+        self._fleet_ptr.client_flush()
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_model_with_whitelist(table_id, dirname, mode,
+                                                      whitelist_path)
         self._role_maker._barrier_worker()
 
     def save_cache_model(self, executor, dirname, main_program=None, **kwargs):
@@ -407,6 +513,51 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.clear_model()
+        self._role_maker._barrier_worker()
+
+    def load_pslib_whitelist(self, table_id, model_path, **kwargs):
+        """
+        load pslib model for one table with whitelist
+
+        Args:
+            table_id(int): load table id
+            model_path(str): load model path, can be local or hdfs/afs path
+            kwargs(dict): user defined params, currently support following:
+                only for load pslib model for one table:
+                    mode(int): load model mode. 0 is for load whole model, 1 is
+                               for load delta model (load diff), default is 0.
+                only for load params from paddle model:
+                    scope(Scope): Scope object
+                    model_proto_file(str): path of program desc proto binary
+                                           file, can be local or hdfs/afs file
+                    var_names(list): var name list
+                    load_combine(bool): load from a file or split param files
+                                        default False.
+
+        Examples:
+            .. code-block:: python
+
+              # load pslib model for one table
+              fleet.load_one_table(0, "hdfs:/my_fleet_model/20190714/0/")
+              fleet.load_one_table(1, "hdfs:/xx/xxx", mode = 0)
+
+              # load params from paddle model
+              fleet.load_one_table(2, "hdfs:/my_paddle_model/",
+                                   scope = my_scope,
+                                   model_proto_file = "./my_program.bin",
+                                   load_combine = False)
+
+              # below is how to save proto binary file
+              with open("my_program.bin", "wb") as fout:
+                  my_program = fluid.default_main_program()
+                  fout.write(my_program.desc.serialize_to_string())
+
+        """
+        self._role_maker._barrier_worker()
+        mode = kwargs.get("mode", 0)
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.load_table_with_whitelist(table_id, model_path,
+                                                      mode)
         self._role_maker._barrier_worker()
 
     def load_one_table(self, table_id, model_path, **kwargs):

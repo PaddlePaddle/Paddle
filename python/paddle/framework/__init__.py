@@ -14,14 +14,14 @@
 
 # TODO: import framework api under this directory 
 __all__ = [
-    'default_main_program', 'default_startup_program', 'create_global_var',
-    'create_parameter', 'ParamAttr', 'Program', 'Variable', 'CPUPlace',
-    'CUDAPlace', 'CUDAPinnedPlace'
+    'create_global_var', 'create_parameter', 'ParamAttr', 'Variable',
+    'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace', 'get_default_dtype',
+    'set_default_dtype'
 ]
 
 __all__ += [
-    'BackwardStrategy', 'grad', 'LayerList', 'load', 'save', 'prepare_context',
-    'to_variable', 'no_grad', 'ParallelEnv', 'DataParallel', 'jit'
+    'grad', 'LayerList', 'load', 'save', 'SaveLoadConfig', 'to_variable',
+    'no_grad', 'DataParallel'
 ]
 
 __all__ += [
@@ -31,20 +31,32 @@ __all__ += [
 
 from . import random
 from .random import manual_seed
-from ..fluid.framework import default_main_program, default_startup_program, Program, Variable
-from ..fluid.param_attr import ParamAttr
-from ..fluid.layers.tensor import create_global_var, create_parameter
-from ..fluid.core import CPUPlace, CUDAPlace, CUDAPinnedPlace
+from .framework import get_default_dtype
+from .framework import set_default_dtype
 
-from paddle.fluid import core
-from ..fluid.dygraph.base import no_grad, to_variable, grad
-from ..fluid.dygraph.checkpoint import load_dygraph as load
-from ..fluid.dygraph.checkpoint import save_dygraph as save
-from ..fluid.dygraph.parallel import prepare_context, ParallelEnv, DataParallel
+from ..fluid.framework import Variable  #DEFINE_ALIAS
+from ..fluid.framework import ComplexVariable  #DEFINE_ALIAS
+from ..fluid.param_attr import ParamAttr  #DEFINE_ALIAS
+from ..fluid.layers.tensor import create_global_var  #DEFINE_ALIAS
+from ..fluid.layers.tensor import create_parameter  #DEFINE_ALIAS
+from ..fluid.core import CPUPlace  #DEFINE_ALIAS
+from ..fluid.core import CUDAPlace  #DEFINE_ALIAS
+from ..fluid.core import CUDAPinnedPlace  #DEFINE_ALIAS
+from ..fluid.core import VarBase  #DEFINE_ALIAS
 
-from . import jit
+from paddle.fluid import core  #DEFINE_ALIAS
+from ..fluid.dygraph.base import no_grad  #DEFINE_ALIAS
+from ..fluid.dygraph.base import to_variable  #DEFINE_ALIAS
+from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
+from ..fluid.dygraph.checkpoint import load_dygraph as load  #DEFINE_ALIAS
+from ..fluid.dygraph.checkpoint import save_dygraph as save  #DEFINE_ALIAS
+from ..fluid.dygraph.jit import SaveLoadConfig  #DEFINE_ALIAS
+from ..fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS
 
-from ..fluid.dygraph.learning_rate_scheduler import NoamDecay, PiecewiseDecay, NaturalExpDecay, ExponentialDecay, \
-        InverseTimeDecay, PolynomialDecay, CosineDecay
-
-BackwardStrategy = core.BackwardStrategy
+from ..fluid.dygraph.learning_rate_scheduler import NoamDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import PiecewiseDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import NaturalExpDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import ExponentialDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import InverseTimeDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import PolynomialDecay  #DEFINE_ALIAS
+from ..fluid.dygraph.learning_rate_scheduler import CosineDecay  #DEFINE_ALIAS

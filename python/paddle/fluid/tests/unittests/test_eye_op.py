@@ -74,7 +74,7 @@ class TestEyeOp2(OpTest):
 
 class API_TestTensorEye(unittest.TestCase):
     def test_out(self):
-        with paddle.static.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10)
             place = fluid.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -82,7 +82,7 @@ class API_TestTensorEye(unittest.TestCase):
             expected_result = np.eye(10, dtype="float32")
         self.assertEqual((result == expected_result).all(), True)
 
-        with paddle.static.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10, num_columns=7, dtype="float64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -90,7 +90,7 @@ class API_TestTensorEye(unittest.TestCase):
             expected_result = np.eye(10, 7, dtype="float64")
         self.assertEqual((result == expected_result).all(), True)
 
-        with paddle.static.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10, dtype="int64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -101,8 +101,10 @@ class API_TestTensorEye(unittest.TestCase):
         paddle.disable_static()
         out = paddle.eye(10, dtype="int64")
         expected_result = np.eye(10, dtype="int64")
+        paddle.enable_static()
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
+        paddle.disable_static()
         batch_shape = [2]
         out = fluid.layers.eye(10, 10, dtype="int64", batch_shape=batch_shape)
         result = np.eye(10, dtype="int64")
@@ -113,10 +115,12 @@ class API_TestTensorEye(unittest.TestCase):
                 tmp_result.append(result)
             result = tmp_result
             expected_result = np.stack(result, axis=0)
+        paddle.enable_static()
         self.assertEqual(out.numpy().shape == np.array(expected_result).shape,
                          True)
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
+        paddle.disable_static()
         batch_shape = [3, 2]
         out = fluid.layers.eye(10, 10, dtype="int64", batch_shape=batch_shape)
         result = np.eye(10, dtype="int64")
@@ -127,13 +131,14 @@ class API_TestTensorEye(unittest.TestCase):
                 tmp_result.append(result)
             result = tmp_result
             expected_result = np.stack(result, axis=0)
+        paddle.enable_static()
         self.assertEqual(out.numpy().shape == np.array(expected_result).shape,
                          True)
         self.assertEqual((out.numpy() == expected_result).all(), True)
         paddle.enable_static()
 
     def test_errors(self):
-        with paddle.static.program_guard(paddle.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
 
             def test_num_rows_type_check():
                 paddle.eye(-1, dtype="int64")

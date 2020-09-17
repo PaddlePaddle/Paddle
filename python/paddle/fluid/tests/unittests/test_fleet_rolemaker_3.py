@@ -33,7 +33,8 @@ class TestCloudRoleMaker(unittest.TestCase):
     def test_pslib_1(self):
         """Test cases for pslib."""
         import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
         try:
             import netifaces
@@ -50,10 +51,10 @@ class TestCloudRoleMaker(unittest.TestCase):
             init_timeout_seconds=100,
             run_timeout_seconds=100,
             http_ip_port="127.0.0.1:36003")
-        role_maker.generate_role()
+        #role_maker.generate_role()
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        fleet.init(role_maker)
+        #fleet.init(role_maker)
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()

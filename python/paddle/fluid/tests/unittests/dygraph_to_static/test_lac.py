@@ -21,11 +21,14 @@ import unittest
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import VARIABLE_FILENAME
+
+from predictor_utils import PredictorTools
 
 SEED = 2020
 
@@ -446,8 +449,8 @@ def do_train(args, to_static):
     place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
     ) else fluid.CPUPlace()
     with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         reader = get_random_input_data(args.batch_size, args.vocab_size,
                                        args.num_labels)
@@ -536,6 +539,7 @@ class TestLACModel(unittest.TestCase):
             dy_pre = self.predict_dygraph(batch)
             st_pre = self.predict_static(batch)
             dy_jit_pre = self.predict_dygraph_jit(batch)
+            predictor_pre = self.predict_analysis_inference(batch)
             self.assertTrue(
                 np.allclose(dy_pre, st_pre),
                 msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
@@ -543,6 +547,10 @@ class TestLACModel(unittest.TestCase):
                 np.allclose(dy_jit_pre, st_pre),
                 msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(dy_jit_pre,
                                                                st_pre))
+            self.assertTrue(
+                np.allclose(predictor_pre, st_pre),
+                msg="predictor_pre:\n {}\n, st_pre: \n{}.".format(predictor_pre,
+                                                                  st_pre))
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
@@ -590,6 +598,14 @@ class TestLACModel(unittest.TestCase):
             pred_res = model(to_variable(words), to_variable(length))
 
             return pred_res.numpy()
+
+    def predict_analysis_inference(self, batch):
+        words, targets, length = batch
+
+        output = PredictorTools(self.args.model_save_dir, VARIABLE_FILENAME,
+                                [words, length])
+        out = output()
+        return out
 
 
 if __name__ == "__main__":

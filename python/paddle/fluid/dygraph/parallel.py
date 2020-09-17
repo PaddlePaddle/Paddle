@@ -11,21 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 import six
 import numpy as np
+import warnings
 from collections import OrderedDict
-from .. import core
-from . import layers
-from . import parallel_helper
-from .. import framework
-from . import to_variable, no_grad
+
+from paddle.fluid import core
+from paddle.fluid import framework
+from paddle.fluid.dygraph import layers
+from paddle.fluid.dygraph import parallel_helper
+from paddle.fluid.dygraph import to_variable, no_grad
+from paddle.utils import deprecated
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
 ParallelStrategy = core.ParallelStrategy
 
 
+@deprecated(since="2.0.0", update_to="paddle.distributed.init_parallel_env")
 def prepare_context(strategy=None):
     '''
     :api_attr: imperative
@@ -39,17 +44,18 @@ def prepare_context(strategy=None):
     if strategy.nranks < 2:
         return
     assert framework.in_dygraph_mode() is True, \
-        "dygraph.prepare_context should be used with dygrahp mode."
+        "dygraph.prepare_context should be used with dygraph mode."
     place = framework._current_expected_place()
     assert place is not None, \
         "dygraph.prepare_context should be used in fluid.dygraph.guard(place) guard."
-    if isinstance(place, core.CUDAPlace):
-        parallel_helper._set_parallel_ctx(
-            core.NCCLParallelContext(strategy, place))
-    else:
-        # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
-        assert ("Only support CUDAPlace for now.")
-    parallel_helper._init_parallel_ctx()
+    if not parallel_helper._is_parallel_ctx_initialized():
+        if isinstance(place, core.CUDAPlace):
+            parallel_helper._set_parallel_ctx(
+                core.NCCLParallelContext(strategy, place))
+        else:
+            # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
+            assert ("Only support CUDAPlace for now.")
+        parallel_helper._init_parallel_ctx()
     return strategy
 
 
@@ -112,84 +118,84 @@ class ParallelEnv(object):
     """
 
     def __init__(self):
-        self._nranks = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-        self._local_rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-        self._dev_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+        self._rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+        self._world_size = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+        self._device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
 
     @property
-    def nranks(self):
+    def rank(self):
         """
-        The number of trainers, generally refers to the number of GPU cards used in training.
+        Rank of current trainer.
 
-        Its value is equal to the value of the environment variable PADDLE_TRAINERS_NUM. The default value is 1.
-
-        Examples:
-          .. code-block:: python
-
-            # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
-            import paddle.fluid as fluid
-            
-            env = fluid.dygraph.ParallelEnv()
-            print("The nranks is %d" % env.nranks)
-            # The nranks is 4
-        """
-        return self._nranks
-
-    @property
-    def local_rank(self):
-        """
-        The current trainer number.
-
-        Its value is equal to the value of the environment variable PADDLE_TRAINER_ID. The default value is 0.
+        Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ID`` . The default value is 0.
 
         Examples:
           .. code-block:: python
 
             # execute this command in terminal: export PADDLE_TRAINER_ID=0
-            import paddle.fluid as fluid
+            import paddle.distributed as dist
             
-            env = fluid.dygraph.ParallelEnv()
-            print("The local rank is %d" % env.local_rank)
-            # The local rank is 0
+            env = dist.ParallelEnv()
+            print("The rank is %d" % env.rank)
+            # The rank is 0
         """
-        return self._local_rank
+        return self._rank
 
     @property
-    def dev_id(self):
+    def world_size(self):
+        """
+        The number of trainers (number of processes participating in current job).
+
+        Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` . The default value is 1.
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
+            import paddle.distributed as dist
+            
+            env = dist.ParallelEnv()
+            print("The world_size is %d" % env.world_size)
+            # The world_size is 4
+        """
+        return self._world_size
+
+    @property
+    def device_id(self):
         """
         The ID of selected GPU card for parallel training.
 
-        Its value is equal to the value of the environment variable FLAGS_selected_gpus. The default value is 0.
+        Its value is equal to the value of the environment variable ``FLAGS_selected_gpus`` . The default value is 0.
 
         Examples:
           .. code-block:: python
 
             # execute this command in terminal: export FLAGS_selected_gpus=1
-            import paddle.fluid as fluid
+            import paddle.distributed as dist
             
-            env = fluid.dygraph.ParallelEnv()
-            print("The device id are %d" % env.dev_id)
+            env = dist.ParallelEnv()
+            print("The device id are %d" % env.device_id)
             # The device id are 1
         """
-        return self._dev_id
+        return self._device_id
 
     @property
     def current_endpoint(self):
         """
         The endpoint of current trainer, it is in the form of (node IP + port).
 
-        Its value is equal to the value of the environment variable PADDLE_CURRENT_ENDPOINT. The default value is "".
+        Its value is equal to the value of the environment variable ``PADDLE_CURRENT_ENDPOINT`` . The default value is "".
 
         Examples:
           .. code-block:: python
             
             # execute this command in terminal: export PADDLE_CURRENT_ENDPOINT=127.0.0.1:6170
-            import paddle.fluid as fluid
+            import paddle.distributed as dist
             
-            env = fluid.dygraph.ParallelEnv()
+            env = dist.ParallelEnv()
             print("The current endpoint are %s" % env.current_endpoint)
             # The current endpoint are 127.0.0.1:6170
         """
@@ -201,19 +207,24 @@ class ParallelEnv(object):
         The endpoints of all trainer nodes in the task, 
         which are used to broadcast the NCCL ID when NCCL2 is initialized.
 
-        Its value is equal to the value of the environment variable PADDLE_TRAINER_ENDPOINTS. The default value is "".
+        Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ENDPOINTS`` . The default value is "".
 
         Examples:
           .. code-block:: python
 
             # execute this command in terminal: export PADDLE_TRAINER_ENDPOINTS=127.0.0.1:6170,127.0.0.1:6171
-            import paddle.fluid as fluid
+            import paddle.distributed as dist
             
-            env = fluid.dygraph.ParallelEnv()
+            env = dist.ParallelEnv()
             print("The trainer endpoints are %s" % env.trainer_endpoints)
             # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
         """
         return self._trainer_endpoints
+
+    # [aliases] Compatible with old method names
+    local_rank = rank
+    nranks = world_size
+    dev_id = device_id
 
 
 # NOTE: [ Compatible ] Originally this class name is `Env`. The semantics of the old class names
@@ -227,64 +238,98 @@ class DataParallel(layers.Layer):
     Run the dygraph module with data parallelism.
 
     Currently, DataParallel class only supports to run the dynamic graph
-    with multi-process. The usage is:
-    `python -m paddle.distributed.launch --selected_gpus=0,1 dynamic_graph_test.py`.
-    And the content of `dynamic_graph_test.py` is the code of examples.
+    with multi-process. 
+    
+    Now supports two ways to start training:
+
+    1. start by ``paddle.distributed.spawn`` method, for example:
+
+        ``python demo.py`` (spawn need to be called in ``__main__`` method)
+    
+    2. start by ``paddle.distributed.launch`` module, for example:
+    
+        ``python -m paddle.distributed.launch --selected_gpus=0,1 demo.py`` .
+
+    And the content of `demo.py` is the code of examples.
 
     Args:
         layers(Layer): The module that should be executed by data parallel.
-        strategy(ParallelStrategy): The strategy of data parallelism, contains 
-            environment configuration related to parallel execution.
-
+        strategy(ParallelStrategy, optional): (deprecated) The strategy of data parallelism, 
+            contains environment configuration related to parallel execution. Default: None.
+            
     Returns:
         Layer: The data paralleled module.
 
     Examples:
         .. code-block:: python
 
-           import numpy as np
-           import paddle.fluid as fluid
-           import paddle.fluid.dygraph as dygraph
-           from paddle.fluid.optimizer import AdamOptimizer
-           from paddle.fluid.dygraph.nn import Linear
-           from paddle.fluid.dygraph.base import to_variable
+            import paddle
+            import paddle.nn as nn
+            import paddle.optimizer as opt
+            import paddle.distributed as dist
 
-           place = place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-           with fluid.dygraph.guard(place=place):
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear1 = nn.Linear(10, 10)
+                    self._linear2 = nn.Linear(10, 1)
+                    
+                def forward(self, x):
+                    return self._linear2(self._linear1(x))
 
-               # prepare the data parallel context
-               strategy=dygraph.prepare_context()
+            def train():
+                # 1. enable dynamic mode
+                paddle.disable_static()
+                
+                # 2. initialize parallel environment
+                dist.init_parallel_env()
 
-               linear = Linear(1, 10, act="softmax")
-               adam = fluid.optimizer.AdamOptimizer()
+                # 3. create data parallel layer & optimizer
+                layer = LinearNet()
+                dp_layer = paddle.DataParallel(layer)
 
-               # make the module become the data parallelism module
-               linear = dygraph.DataParallel(linear, strategy)
+                loss_fn = nn.MSELoss()
+                adam = opt.Adam(
+                    learning_rate=0.001, parameters=dp_layer.parameters())
 
-               x_data = np.random.random(size=[10, 1]).astype(np.float32)
-               data = to_variable(x_data)
+                # 4. run layer
+                inputs = paddle.randn([10, 10], 'float32')
+                outputs = dp_layer(inputs)
+                labels = paddle.randn([10, 1], 'float32')
+                loss = loss_fn(outputs, labels)
+                
+                loss = dp_layer.scale_loss(loss)
+                loss.backward()
+                dp_layer.apply_collective_grads()
 
-               hidden = linear(data)
-               avg_loss = fluid.layers.mean(hidden)
+                adam.step()
+                adam.clear_grad()
 
-               # scale the loss according to the number of trainers.
-               avg_loss = linear.scale_loss(avg_loss)
-
-               avg_loss.backward()
-
-               # collect the gradients of trainers.
-               linear.apply_collective_grads()
-
-               adam.minimize(avg_loss)
-               linear.clear_gradients()
+            if __name__ == '__main__':
+                # 1. start by ``paddle.distributed.spawn`` (default)
+                dist.spawn(train, nprocs=2)
+                # 2. start by ``paddle.distributed.launch``
+                # train()
     """
 
-    def __init__(self, layers, strategy):
+    def __init__(self, layers, strategy=None):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
         self._layers = layers
-        self._strategy = strategy
+
+        # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
+        # It just stores some environment variables, which can be constructed by 
+        # ParallelEnv. Here it is set as an optional argument.
+        # This parameter is not removed because of compatibility with 1.x writing.
+        if strategy is not None:
+            self._strategy = strategy
+        else:
+            self._strategy = ParallelStrategy()
+            self._strategy.nranks = ParallelEnv().nranks
+            self._strategy.local_rank = ParallelEnv().local_rank
+            self._strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
+            self._strategy.current_endpoint = ParallelEnv().current_endpoint
 
     def forward(self, *inputs, **kwargs):
         return self._layers(*inputs, **kwargs)
@@ -304,33 +349,53 @@ class DataParallel(layers.Layer):
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle.fluid as fluid
-                import paddle.fluid.dygraph as dygraph
-                from paddle.fluid.optimizer import AdamOptimizer
-                from paddle.fluid.dygraph.nn import Linear
-                from paddle.fluid.dygraph.base import to_variable
+                import paddle
+                import paddle.nn as nn
+                import paddle.optimizer as opt
+                import paddle.distributed as dist
 
-                place = place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-                with fluid.dygraph.guard(place=place):
-                    strategy=dygraph.prepare_context()
-                    linear = Linear(1, 10, act="softmax")
-                    adam = fluid.optimizer.AdamOptimizer()
-                    linear = dygraph.DataParallel(linear, strategy)
+                class LinearNet(nn.Layer):
+                    def __init__(self):
+                        super(LinearNet, self).__init__()
+                        self._linear1 = nn.Linear(10, 10)
+                        self._linear2 = nn.Linear(10, 1)
+                        
+                    def forward(self, x):
+                        return self._linear2(self._linear1(x))
 
-                    x_data = np.random.random(size=[10, 1]).astype(np.float32)
-                    data = to_variable(x_data)
-                    hidden = linear(data)
-                    avg_loss = fluid.layers.mean(hidden)
+                def train():
+                    # 1. enable dynamic mode
+                    paddle.disable_static()
+                    
+                    # 2. initialize parallel environment
+                    dist.init_parallel_env()
 
-                    # scale the loss according to the number of trainers.
-                    avg_loss = linear.scale_loss(avg_loss)
+                    # 3. create data parallel layer & optimizer
+                    layer = LinearNet()
+                    dp_layer = paddle.DataParallel(layer)
 
-                    avg_loss.backward()
-                    linear.apply_collective_grads()
+                    loss_fn = nn.MSELoss()
+                    adam = opt.Adam(
+                        learning_rate=0.001, parameters=dp_layer.parameters())
 
-                    adam.minimize(avg_loss)
-                    linear.clear_gradients()
+                    # 4. run layer
+                    inputs = paddle.randn([10, 10], 'float32')
+                    outputs = dp_layer(inputs)
+                    labels = paddle.randn([10, 1], 'float32')
+                    loss = loss_fn(outputs, labels)
+                    
+                    loss = dp_layer.scale_loss(loss)
+                    loss.backward()
+                    dp_layer.apply_collective_grads()
+
+                    adam.step()
+                    adam.clear_grad()
+
+                if __name__ == '__main__':
+                    # 1. start by ``paddle.distributed.spawn`` (default)
+                    dist.spawn(train, nprocs=2)
+                    # 2. start by ``paddle.distributed.launch``
+                    # train()
         """
         if not self._is_data_parallel_mode():
             return loss
@@ -388,32 +453,53 @@ class DataParallel(layers.Layer):
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle.fluid as fluid
-                import paddle.fluid.dygraph as dygraph
-                from paddle.fluid.optimizer import AdamOptimizer
-                from paddle.fluid.dygraph.nn import Linear
-                from paddle.fluid.dygraph.base import to_variable
+                import paddle
+                import paddle.nn as nn
+                import paddle.optimizer as opt
+                import paddle.distributed as dist
 
-                place = place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-                with fluid.dygraph.guard(place=place):
-                    strategy=dygraph.prepare_context()
-                    linear = Linear(1, 10, act="softmax")
-                    adam = fluid.optimizer.AdamOptimizer()
-                    linear = dygraph.DataParallel(linear, strategy)
+                class LinearNet(nn.Layer):
+                    def __init__(self):
+                        super(LinearNet, self).__init__()
+                        self._linear1 = nn.Linear(10, 10)
+                        self._linear2 = nn.Linear(10, 1)
+                        
+                    def forward(self, x):
+                        return self._linear2(self._linear1(x))
 
-                    x_data = np.random.random(size=[10, 1]).astype(np.float32)
-                    data = to_variable(x_data)
-                    hidden = linear(data)
-                    avg_loss = fluid.layers.mean(hidden)
-                    avg_loss = linear.scale_loss(avg_loss)
-                    avg_loss.backward()
+                def train():
+                    # 1. enable dynamic mode
+                    paddle.disable_static()
+                    
+                    # 2. initialize parallel environment
+                    dist.init_parallel_env()
 
-                    # collect the gradients of trainers.
-                    linear.apply_collective_grads()
+                    # 3. create data parallel layer & optimizer
+                    layer = LinearNet()
+                    dp_layer = paddle.DataParallel(layer)
 
-                    adam.minimize(avg_loss)
-                    linear.clear_gradients()
+                    loss_fn = nn.MSELoss()
+                    adam = opt.Adam(
+                        learning_rate=0.001, parameters=dp_layer.parameters())
+
+                    # 4. run layer
+                    inputs = paddle.randn([10, 10], 'float32')
+                    outputs = dp_layer(inputs)
+                    labels = paddle.randn([10, 1], 'float32')
+                    loss = loss_fn(outputs, labels)
+                    
+                    loss = dp_layer.scale_loss(loss)
+                    loss.backward()
+                    dp_layer.apply_collective_grads()
+
+                    adam.step()
+                    adam.clear_grad()
+
+                if __name__ == '__main__':
+                    # 1. start by ``paddle.distributed.spawn`` (default)
+                    dist.spawn(train, nprocs=2)
+                    # 2. start by ``paddle.distributed.launch``
+                    # train()
         """
         if not self._is_data_parallel_mode():
             return
@@ -501,12 +587,13 @@ class DataParallel(layers.Layer):
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix)
 
-    def set_dict(self,
-                 stat_dict,
-                 include_sublayers=True,
-                 use_structured_name=True):
+    @framework.deprecate_stat_dict
+    def set_state_dict(self,
+                       state_dict,
+                       include_sublayers=True,
+                       use_structured_name=True):
         '''
-        Set parameters of self._layers from stat_dict. All the parameters of self._layers will be reset by the tensor in the stat_dict
+        Set parameters of self._layers from state_dict. All the parameters of self._layers will be reset by the tensor in the state_dict
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters
@@ -519,62 +606,27 @@ class DataParallel(layers.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    strategy=fluid.dygraph.prepare_context()
-                    emb = fluid.dygraph.Embedding([10, 10])
-                    emb = fluid.dygraph.DataParallel(emb, strategy)
+                import paddle   
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
-                    
-                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
+                paddle.disable_static()
 
-                    emb.set_dict( para_state_dict )
+                emb = paddle.nn.Embedding([10, 10])
+                emb = fluid.dygraph.DataParallel(emb, strategy)
+
+                state_dict = emb.state_dict()
+                paddle.save(state_dict, "paddle_dy")
+
+                para_state_dict, _ = paddle.load("paddle_dy")
+
+                emb.set_state_dict(para_state_dict)
 
         '''
 
-        self._layers.set_dict(
-            stat_dict,
+        self._layers.set_state_dict(
+            state_dict,
             include_sublayers=include_sublayers,
             use_structured_name=use_structured_name)
 
-    def load_dict(self,
-                  stat_dict,
-                  include_sublayers=True,
-                  use_structured_name=True):
-        '''
-        Set parameters of self._layers from stat_dict. All the parameters of self._layers will be reset by the tensor in the stat_dict
-
-        This api will be Deprecated. Please use set_dict
-
-        Parameters:
-            state_dict(dict) : Dict contains all the parameters
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key.
-                                                  Default: True
-        Returns:
-            None
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    strategy=fluid.dygraph.prepare_context()
-                    emb = fluid.dygraph.Embedding([10, 10])
-                    emb = fluid.dygraph.DataParallel(emb, strategy)
-
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
-                    
-                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
-
-                    emb.load_dict( para_state_dict )
-
-        '''
-
-        self._layers.load_dict(
-            stat_dict,
-            include_sublayers=include_sublayers,
-            use_structured_name=use_structured_name)
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
+    load_dict = set_state_dict

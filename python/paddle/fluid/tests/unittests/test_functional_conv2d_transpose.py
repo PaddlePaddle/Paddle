@@ -37,8 +37,6 @@ class TestFunctionalConv2D(TestCase):
         self.dilation = 1
         self.groups = 1
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NHWC"
 
     def prepare(self):
@@ -90,8 +88,6 @@ class TestFunctionalConv2D(TestCase):
                     param_attr=I.NumpyArrayInitializer(self.weight),
                     bias_attr=False
                     if self.no_bias else I.NumpyArrayInitializer(self.bias),
-                    use_cudnn=self.use_cudnn,
-                    act=self.act,
                     data_format=self.data_format)
         exe = fluid.Executor(self.place)
         exe.run(start)
@@ -115,7 +111,7 @@ class TestFunctionalConv2D(TestCase):
                     "weight", self.weight.shape, dtype=self.dtype)
                 if not self.no_bias:
                     bias = fluid.data("bias", self.bias.shape, dtype=self.dtype)
-                y = F.conv2d_transpose(
+                y = F.conv_transpose2d(
                     x,
                     weight,
                     None if self.no_bias else bias,
@@ -124,9 +120,7 @@ class TestFunctionalConv2D(TestCase):
                     stride=self.stride,
                     dilation=self.dilation,
                     groups=self.groups,
-                    act=self.act,
-                    data_format=self.data_format,
-                    use_cudnn=self.use_cudnn)
+                    data_format=self.data_format)
         exe = fluid.Executor(self.place)
         exe.run(start)
         feed_dict = {"input": self.input, "weight": self.weight}
@@ -140,7 +134,7 @@ class TestFunctionalConv2D(TestCase):
             x = dg.to_variable(self.input)
             weight = dg.to_variable(self.weight)
             bias = None if self.no_bias else dg.to_variable(self.bias)
-            y = F.conv2d_transpose(
+            y = F.conv_transpose2d(
                 x,
                 weight,
                 bias,
@@ -148,10 +142,8 @@ class TestFunctionalConv2D(TestCase):
                 padding=self.padding,
                 stride=self.stride,
                 dilation=self.dilation,
-                act=self.act,
                 groups=self.groups,
-                data_format=self.data_format,
-                use_cudnn=self.use_cudnn)
+                data_format=self.data_format)
             out = y.numpy()
         return out
 
@@ -189,8 +181,6 @@ class TestFunctionalConv2DError(TestCase):
         self.dilation = 1
         self.groups = 1
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NHWC"
 
     def test_exception(self):
@@ -225,7 +215,7 @@ class TestFunctionalConv2DError(TestCase):
                     "weight", self.weight_shape, dtype=self.dtype)
                 if not self.no_bias:
                     bias = fluid.data("bias", self.bias_shape, dtype=self.dtype)
-                y = F.conv2d_transpose(
+                y = F.conv_transpose2d(
                     x,
                     weight,
                     None if self.no_bias else bias,
@@ -234,9 +224,7 @@ class TestFunctionalConv2DError(TestCase):
                     stride=self.stride,
                     dilation=self.dilation,
                     groups=self.groups,
-                    act=self.act,
-                    data_format=self.data_format,
-                    use_cudnn=self.use_cudnn)
+                    data_format=self.data_format)
 
 
 class TestFunctionalConv2DCase2(TestFunctionalConv2D):
@@ -249,8 +237,6 @@ class TestFunctionalConv2DCase2(TestFunctionalConv2D):
         self.dilation = 1
         self.groups = 1
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NHWC"
 
 
@@ -264,8 +250,6 @@ class TestFunctionalConv2DCase3(TestFunctionalConv2D):
         self.dilation = 1
         self.groups = 1
         self.no_bias = True
-        self.act = None
-        self.use_cudnn = True
         self.data_format = "NCHW"
 
 
@@ -279,8 +263,6 @@ class TestFunctionalConv2DCase4(TestFunctionalConv2D):
         self.dilation = 1
         self.groups = 2
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NHWC"
 
 
@@ -294,8 +276,6 @@ class TestFunctionalConv2DCase5(TestFunctionalConv2D):
         self.dilation = 1
         self.groups = 2
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NHWC"
 
 
@@ -309,8 +289,6 @@ class TestFunctionalConv2DCase6(TestFunctionalConv2D):
         self.dilation = (2, 1)
         self.groups = 2
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NHWC"
 
 
@@ -324,8 +302,6 @@ class TestFunctionalConv2DCase7(TestFunctionalConv2D):
         self.dilation = 1
         self.groups = 4
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = False
         self.data_format = "NHWC"
 
 
@@ -340,8 +316,6 @@ class TestFunctionalConv2DCase8(TestFunctionalConv2D):
         self.dilation = 1
         self.groups = 1
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NCHW"
 
 
@@ -355,8 +329,6 @@ class TestFunctionalConv2DCase9(TestFunctionalConv2D):
         self.dilation = 1
         self.groups = 2
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NHWC"
 
 
@@ -370,8 +342,6 @@ class TestFunctionalConv2DCase10(TestFunctionalConv2D):
         self.dilation = 1
         self.groups = 2
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NCHW"
 
 
@@ -385,8 +355,6 @@ class TestFunctionalConv2DCase11(TestFunctionalConv2D):
         self.dilation = 1
         self.groups = 2
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NCHW"
 
 
@@ -400,8 +368,6 @@ class TestFunctionalConv2DCase12(TestFunctionalConv2D):
         self.dilation = 1
         self.groups = 2
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NCHW"
 
 
@@ -415,8 +381,6 @@ class TestFunctionalConv2DErrorCase2(TestFunctionalConv2DError):
         self.dilation = 1
         self.groups = 1
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NHWC"
 
 
@@ -430,8 +394,6 @@ class TestFunctionalConv2DErrorCase3(TestFunctionalConv2DError):
         self.dilation = 1
         self.groups = 1
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NHWC"
 
 
@@ -445,8 +407,6 @@ class TestFunctionalConv2DErrorCase4(TestFunctionalConv2DError):
         self.dilation = 1
         self.groups = 1
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NCHW"
 
 
@@ -460,23 +420,6 @@ class TestFunctionalConv2DErrorCase5(TestFunctionalConv2DError):
         self.dilation = 1
         self.groups = 1
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
-        self.data_format = "NCHW"
-
-
-class TestFunctionalConv2DErrorCase6(TestFunctionalConv2DError):
-    def setUp(self):
-        self.in_channels = 4
-        self.out_channels = 5
-        self.filter_shape = 3
-        self.padding = 0
-        self.stride = 1
-        self.dilation = 1
-        self.groups = 1
-        self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = "not_valid"
         self.data_format = "NCHW"
 
 
@@ -491,8 +434,6 @@ class TestFunctionalConv2DErrorCase7(TestFunctionalConv2DError):
         self.dilation = 1
         self.groups = 1
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NCHW"
 
 
@@ -506,8 +447,6 @@ class TestFunctionalConv2DErrorCase8(TestFunctionalConv2DError):
         self.dilation = 1
         self.groups = 1
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "not_valid"
 
 
@@ -521,8 +460,6 @@ class TestFunctionalConv2DErrorCase9(TestFunctionalConv2DError):
         self.dilation = 1
         self.groups = 2
         self.no_bias = False
-        self.act = "sigmoid"
-        self.use_cudnn = True
         self.data_format = "NCHW"
 
 

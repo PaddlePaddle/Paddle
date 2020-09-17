@@ -26,12 +26,15 @@ from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
 from paddle.fluid.dygraph.io import VARIABLE_FILENAME
 
+from predictor_utils import PredictorTools
+
 SEED = 2020
 IMAGENET1000 = 1281167
 base_lr = 0.001
 momentum_rate = 0.9
 l2_decay = 1e-4
-batch_size = 8
+# NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
+batch_size = 2
 epoch_num = 1
 place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
     else fluid.CPUPlace()
@@ -212,8 +215,8 @@ def train(to_static):
     """
     with fluid.dygraph.guard(place):
         np.random.seed(SEED)
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+        paddle.manual_seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
         train_reader = paddle.batch(
             reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
@@ -306,6 +309,12 @@ def predict_dygraph_jit(data):
         return pred_res.numpy()
 
 
+def predict_analysis_inference(data):
+    output = PredictorTools(MODEL_SAVE_PATH, VARIABLE_FILENAME, [data])
+    out = output()
+    return out
+
+
 class TestResnet(unittest.TestCase):
     def train(self, to_static):
         program_translator.enable(to_static)
@@ -316,12 +325,17 @@ class TestResnet(unittest.TestCase):
         dy_pre = predict_dygraph(image)
         st_pre = predict_static(image)
         dy_jit_pre = predict_dygraph_jit(image)
+        predictor_pre = predict_analysis_inference(image)
         self.assertTrue(
             np.allclose(dy_pre, st_pre),
             msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
         self.assertTrue(
             np.allclose(dy_jit_pre, st_pre),
             msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(dy_jit_pre, st_pre))
+        self.assertTrue(
+            np.allclose(predictor_pre, st_pre),
+            msg="predictor_pre:\n {}\n, st_pre: \n{}.".format(predictor_pre,
+                                                              st_pre))
 
     def test_resnet(self):
         static_loss = self.train(to_static=True)
@@ -331,6 +345,13 @@ class TestResnet(unittest.TestCase):
             msg="static_loss: {} \n dygraph_loss: {}".format(static_loss,
                                                              dygraph_loss))
         self.verify_predict()
+
+    def test_in_static_mode_mkldnn(self):
+        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        try:
+            train(to_static=True)
+        finally:
+            fluid.set_flags({'FLAGS_use_mkldnn': False})
 
 
 if __name__ == '__main__':

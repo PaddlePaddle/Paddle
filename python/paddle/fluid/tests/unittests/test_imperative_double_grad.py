@@ -52,8 +52,7 @@ class TestDygraphDoubleGrad(TestCase):
              retain_graph=None,
              create_graph=False,
              allow_unused=False):
-        backward_strategy = fluid.dygraph.BackwardStrategy()
-        backward_strategy.sort_sum_gradient = self.sort_sum_gradient
+        fluid.set_flags({'FLAGS_sort_sum_gradient': self.sort_sum_gradient})
         return fluid.dygraph.grad(
             outputs=outputs,
             inputs=inputs,
@@ -61,8 +60,7 @@ class TestDygraphDoubleGrad(TestCase):
             no_grad_vars=no_grad_vars,
             retain_graph=retain_graph,
             create_graph=create_graph,
-            allow_unused=allow_unused,
-            backward_strategy=backward_strategy)
+            allow_unused=allow_unused)
 
     @dygraph_guard
     def test_exception(self):
@@ -298,21 +296,23 @@ class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):
 
 class TestDygraphDoubleGradVisitedUniq(TestCase):
     def test_compare(self):
-        value = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+        value = np.random.uniform(-0.5, 0.5, 100).reshape(10, 2,
+                                                          5).astype("float32")
 
         def model_f(input):
-            conv2d = fluid.dygraph.Conv2D(3, 2, 3)
+            linear = fluid.dygraph.Linear(5, 3, bias_attr=False)
             for i in range(10):
                 if i == 0:
-                    out = conv2d(input)
+                    out = linear(input)
                 else:
-                    out = out + conv2d(input)
+                    out = out + linear(input)
             return out
 
-        backward_strategy = fluid.dygraph.BackwardStrategy()
-        backward_strategy.sort_sum_gradient = True
+        fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+
         with fluid.dygraph.guard():
             paddle.manual_seed(123)
+            paddle.framework.random._manual_program_seed(123)
             a = fluid.dygraph.to_variable(value)
             a.stop_gradient = False
 
@@ -321,27 +321,42 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
             dx = fluid.dygraph.grad(
                 outputs=[out],
                 inputs=[a],
-                create_graph=True,
-                retain_graph=True,
+                create_graph=False,
                 only_inputs=True,
-                allow_unused=False,
-                backward_strategy=backward_strategy)
+                allow_unused=False)
 
             grad_1 = dx[0].numpy()
 
         with fluid.dygraph.guard():
             paddle.manual_seed(123)
+            paddle.framework.random._manual_program_seed(123)
             a = fluid.dygraph.to_variable(value)
             a.stop_gradient = False
 
             out = model_f(a)
-            out.backward(backward_strategy)
+            out.backward()
 
             grad_2 = a.gradient()
 
-        self.assertTrue(
-            np.allclose(
-                grad_1, grad_2, rtol=1.e-5, atol=1.e-8, equal_nan=True))
+        self.assertTrue(np.array_equal(grad_1, grad_2))
+
+
+class TestRaiseNoDoubleGradOp(TestCase):
+    def raise_no_grad_op(self):
+        with fluid.dygraph.guard():
+            x = fluid.layers.ones(shape=[2, 3, 2, 2], dtype='float32')
+            x.stop_gradient = False
+            y = paddle.fluid.layers.batch_norm(x)
+
+            dx = fluid.dygraph.grad(
+                outputs=[y], inputs=[x], create_graph=True,
+                retain_graph=True)[0]
+
+            loss = fluid.layers.reduce_mean(dx)
+            loss.backward()
+
+    def test_raise(self):
+        self.assertRaises(fluid.core.EnforceNotMet, self.raise_no_grad_op)
 
 
 if __name__ == '__main__':

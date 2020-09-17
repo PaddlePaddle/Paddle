@@ -9,7 +9,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 function(download_data install_dir data_file)
-    if (NOT EXISTS ${install_dir}/${data_file})
+    string(REGEX MATCH "[^/\\]+$" file_name ${data_file})
+    if (NOT EXISTS ${install_dir}/${file_name})
         inference_download_and_uncompress(${install_dir} ${INFERENCE_URL} ${data_file})
     endif()
 endfunction()
@@ -17,6 +18,12 @@ endfunction()
 function(download_int8_data install_dir data_file)
     if (NOT EXISTS ${install_dir}/${data_file})
         inference_download_and_uncompress(${install_dir} ${INFERENCE_URL}/int8 ${data_file})
+    endif()
+endfunction()
+
+function(download_GRU_data install_dir data_file)
+    if (NOT EXISTS ${install_dir}/${data_file})
+        inference_download_and_uncompress(${install_dir} ${INFERENCE_URL}/gru ${data_file})
     endif()
 endfunction()
 
@@ -97,6 +104,18 @@ function(inference_analysis_api_quant_test_run TARGET_NAME test_binary fp32_mode
              --iterations=2)
 endfunction()
 
+function(inference_analysis_api_lexical_test_run TARGET_NAME test_binary infer_model data_path)
+    inference_analysis_test_run(${TARGET_NAME}
+    COMMAND ${test_binary}
+        ARGS --infer_model=${infer_model}
+             --infer_data=${data_path}
+             --batch_size=50
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
+             --with_accuracy_layer=true
+             --use_analysis=true
+             --iterations=2)
+endfunction()
+
 function(preprocess_data2bin_test_run target py_script_source data_dir output_file)
 	py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/${py_script_source}
 	        ARGS --data_dir=${data_dir}
@@ -107,13 +126,16 @@ endfunction()
 if(NOT APPLE AND WITH_MKLML)
     # RNN1
     set(RNN1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn1")
-    download_model_and_data(${RNN1_INSTALL_DIR} "rnn1%2Fmodel.tar.gz" "rnn1%2Fdata.txt.tar.gz")
+    download_model_and_data(${RNN1_INSTALL_DIR} "rnn1/model.tar.gz" "rnn1/data.txt.tar.gz")
     inference_analysis_api_test(test_analyzer_rnn1 ${RNN1_INSTALL_DIR} analyzer_rnn1_tester.cc)
     
     # seq_pool1
     set(SEQ_POOL1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_pool")
     download_model_and_data(${SEQ_POOL1_INSTALL_DIR} "seq_pool1_model_.tar.gz" "seq_pool1_data.txt.tar.gz")
     inference_analysis_api_test(test_analyzer_seq_pool1 ${SEQ_POOL1_INSTALL_DIR} analyzer_seq_pool1_tester.cc)
+    if(NOT WIN32)
+        set_tests_properties(test_analyzer_seq_pool1 PROPERTIES TIMEOUT 150)
+    endif()
 else()
     # TODO: fix this test on MACOS and OPENBLAS, the reason is that
     # fusion_seqexpand_concat_fc_op is not supported on MACOS and OPENBLAS
@@ -173,6 +195,9 @@ download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz")
 inference_analysis_test(test_analyzer_ernie_large SRCS analyzer_ernie_tester.cc
     EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
     ARGS --infer_model=${ERNIE_INSTALL_DIR}/model --infer_data=${ERNIE_INSTALL_DIR}/data.txt --refer_result=${ERNIE_INSTALL_DIR}/result.txt --ernie_large=true)
+if(NOT WIN32 AND NOT APPLE)
+    set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 150 LABELS "RUN_TYPE=NIGHTLY")
+endif()
 
 # text_classification
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
@@ -186,7 +211,7 @@ inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR} ana
 
 # transformer, the dataset only works on batch_size=8 now
 set(TRANSFORMER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/transformer")
-download_model_and_data(${TRANSFORMER_INSTALL_DIR} "temp%2Ftransformer_model.tar.gz" "temp%2Ftransformer_data.txt.tar.gz")
+download_model_and_data(${TRANSFORMER_INSTALL_DIR} "temp/transformer_model.tar.gz" "temp/transformer_data.txt.tar.gz")
 inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_tester.cc 
   EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
   ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 
@@ -194,8 +219,8 @@ inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_test
 
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
-if (NOT EXISTS ${OCR_INSTALL_DIR})
-    inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
+if (NOT EXISTS ${OCR_INSTALL_DIR}/ocr.tar.gz)
+    inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos/ocr.tar.gz")
 endif()
 inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
 
@@ -210,8 +235,8 @@ set_property(TEST test_analyzer_detect PROPERTY ENVIRONMENT GLOG_vmodule=analysi
 
 # mobilenet with transpose op
 set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
-if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
-    inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
+if (NOT EXISTS ${MOBILENET_INSTALL_DIR}/mobilenet.tar.gz)
+    inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos/mobilenet.tar.gz")
 endif()
 inference_analysis_api_test(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc)
 
@@ -315,6 +340,20 @@ if(WITH_MKLDNN)
   download_int8_data(${INT8_MOBILENET_SSD_MODEL_DIR} "mobilenet_ssd_int8_model.tar.gz" )
   inference_analysis_api_object_dection_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
 
+  ### Lexcial analysis GRU model
+  set(GRU_PATH "${INFERENCE_DEMO_INSTALL_DIR}/gru")
+  download_GRU_data("${GRU_PATH}" "GRU_eval_data.tar.gz")
+  download_GRU_data("${GRU_PATH}" "GRU_eval_model_v2.tar.gz")
+  set(GRU_DATA_PATH "${GRU_PATH}/GRU_eval_data.bin")
+  set(GRU_MODEL_PATH "${GRU_PATH}/GRU_eval_model_v2")
+  set(LEXICAL_TEST_APP "test_analyzer_lexical_analysis")
+  set(LEXICAL_TEST_APP_SRC "analyzer_lexical_analysis_gru_tester.cc")
+
+  # build test binary to be used in subsequent tests
+  inference_analysis_api_test_build(${LEXICAL_TEST_APP} ${LEXICAL_TEST_APP_SRC})
+  # run lexcial analysis test
+  inference_analysis_api_lexical_test_run(test_analyzer_lexical_gru ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH} ${GRU_DATA_PATH})
+
   ### optimized FP32 vs. Quant INT8 tests
   
   set(QUANT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant")
@@ -325,9 +364,12 @@ if(WITH_MKLDNN)
   inference_analysis_api_test_build(${QUANT_IMG_CLASS_TEST_APP} ${QUANT_IMG_CLASS_TEST_APP_SRC})
 
   # MobileNetV1 FP32 vs. Quant INT8
-  # The FP32 model should already be downloaded for slim Quant unit tests
+  # The FP32 model should already be downloaded for slim Quant unit tests on Linux
   set(QUANT2_MobileNetV1_MODEL_DIR "${QUANT_DATA_DIR}/MobileNetV1_quant2")
   set(QUANT2_INT8_MobileNetV1_MODEL_DIR "${QUANT_DATA_DIR}/MobileNetV1_quant2_int8")
+  if(NOT LINUX)
+      download_quant_data(${QUANT2_MobileNetV1_MODEL_DIR} "MobileNet_qat_perf.tar.gz")
+  endif(NOT LINUX)
   download_quant_data(${QUANT2_INT8_MobileNetV1_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
   inference_analysis_api_quant_test_run(test_analyzer_quant_performance_benchmark ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf/float ${QUANT2_INT8_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
 
@@ -360,15 +402,15 @@ inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert
 
 if(WITH_GPU AND TENSORRT_FOUND)
     set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt_models")
-    if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR})
+    if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models.tar.gz)
         inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_inference_test_models.tar.gz")
     endif()
     set(TEST_SPLIT_CONVERTER_MODEL "${TRT_MODEL_INSTALL_DIR}/trt_split_op_converter_test")
-    if (NOT EXISTS ${TEST_SPLIT_CONVERTER_MODEL})
+    if (NOT EXISTS ${TEST_SPLIT_CONVERTER_MODEL}/split_converter.tgz)
         inference_download_and_uncompress(${TEST_SPLIT_CONVERTER_MODEL} ${INFERENCE_URL}/tensorrt_test "split_converter.tgz")
     endif()
     set(TEST_INSTANCE_NORM_MODEL "${TRT_MODEL_INSTALL_DIR}/trt_instance_norm_test")
-    if (NOT EXISTS ${TEST_INSTANCE_NORM_MODEL})
+    if (NOT EXISTS ${TEST_INSTANCE_NORM_MODEL}/instance_norm.tgz)
         inference_download_and_uncompress(${TEST_INSTANCE_NORM_MODEL} ${INFERENCE_URL}/tensorrt_test "instance_norm.tgz")
     endif()
     inference_analysis_test(trt_mobilenet_test SRCS trt_mobilenet_test.cc
@@ -396,16 +438,16 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
      
-    set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant_small_model")
-    if (NOT EXISTS ${TRT_MODEL_QUANT_RESNET_DIR})
-        inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "quant_small_model.tar.gz")
+    set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_quant_model")
+    if (NOT EXISTS ${TRT_MODEL_QUANT_RESNET_DIR}/small_quant_model.tgz)
+        inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "small_quant_model.tgz")
     endif()
     inference_analysis_test(trt_quant_int8_test SRCS trt_quant_int8_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 
     set(TRT_MODEL_QUANT_YOLOV3_DIR "${INFERENCE_DEMO_INSTALL_DIR}/yolov3_r50_quant_aware")
-    if (NOT EXISTS ${TRT_MODEL_QUANT_YOLOV3_DIR})
+    if (NOT EXISTS ${TRT_MODEL_QUANT_YOLOV3_DIR}/yolov3_r50_quant_aware.tgz)
         inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "yolov3_r50_quant_aware.tgz")
     endif()
     inference_analysis_test(trt_quant_int8_yolov3_r50_test SRCS trt_quant_int8_yolov3_r50_test.cc
@@ -413,12 +455,12 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TRT_MODEL_QUANT_YOLOV3_DIR})
 
     set(TEST_TRT_DYNAMIC_MODEL2 "${TRT_MODEL_INSTALL_DIR}/complex_model_dynamic")
-    if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL2})
+    if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL2}/complex_model_dynamic2.tar.gz)
         inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL2} ${INFERENCE_URL}/tensorrt_test "complex_model_dynamic2.tar.gz")
     endif()
 
     set(TEST_TRT_DYNAMIC_MODEL "${TRT_MODEL_INSTALL_DIR}/conv_bn_swish_split_gelu")
-    if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL})
+    if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL}/conv_bn_swish_split_gelu.tar.gz)
         inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL} ${INFERENCE_URL}/tensorrt_test "conv_bn_swish_split_gelu.tar.gz")
     endif()
     inference_analysis_test(trt_dynamic_shape_test SRCS trt_dynamic_shape_test.cc
@@ -426,7 +468,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR})
 
     set(TEST_TRT_ERNIE_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test")
-    if (NOT EXISTS ${TEST_TRT_ERNIE_MODEL})
+    if (NOT EXISTS ${TEST_TRT_ERNIE_MODEL}/ernie_model_4.tar.gz)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4.tar.gz")
     endif()
 
@@ -435,22 +477,13 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4)
 
     set(TEST_TRT_ERNIE_UNSER_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_unserialized/")
-    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_MODEL})
+    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_MODEL}/ernie_model_4_unserialized.tgz)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_unserialized.tgz")
     endif()
 
-    inference_analysis_test(test_trt_dynamic_shape_ernie_serialize SRCS trt_dynamic_shape_ernie_deserialize_test.cc
+    inference_analysis_test(test_trt_dynamic_shape_ernie_ser_deser SRCS trt_dynamic_shape_ernie_deserialize_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized)
-
-    set(TEST_TRT_ERNIE_SER_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_serialized/")
-    if (NOT EXISTS ${TEST_TRT_ERNIE_SER_MODEL})
-        inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_serialized.tgz")
-    endif()
-
-    inference_analysis_test(test_trt_dynamic_shape_ernie_deserialize SRCS trt_dynamic_shape_ernie_deserialize_test.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
-            ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_serialized)
 
 endif()
 
@@ -489,3 +522,9 @@ if(WITH_MKLDNN)
 inference_analysis_test(test_analyzer_capi_ner SRCS analyzer_capi_ner_tester.cc 
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
         ARGS --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
+
+if(WITH_GPU)
+  inference_analysis_test(paddle_infer_api_test SRCS paddle_infer_api_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${RESNET50_MODEL_DIR})
+endif()

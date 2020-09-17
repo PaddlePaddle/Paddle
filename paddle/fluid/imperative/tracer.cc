@@ -16,9 +16,12 @@
 #include <unordered_set>
 #include <utility>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
+
+DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace imperative {
@@ -46,6 +49,9 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward) {
   VLOG(1) << "Trace Op: " << type;
+  if (FLAGS_use_mkldnn) {
+    attrs["use_mkldnn"] = true;
+  }
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
@@ -53,8 +59,14 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     attr_checker->Check(&attrs, true);
   }
 
+  NameVarBaseMap new_ins = ins;
+  if (enable_autocast_) {
+    VLOG(5) << "Auto mixed precision run operator: " << type;
+    new_ins = AutoCastInputs(type, ins);
+  }
+
   try {
-    OpBase::Run(*op, ins, outs, attrs, place);
+    OpBase::Run(*op, new_ins, outs, attrs, place);
   } catch (platform::EnforceNotMet& exception) {
     framework::AppendErrorOpHint(type, &exception);
     throw std::move(exception);
@@ -73,11 +85,11 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 
   if (enable_program_desc_tracing_) {
     VLOG(5) << "Trace op " << type << " into ProgramDesc";
-    program_desc_tracer_->InsertOp(type, ins, outs, attrs);
+    program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
   }
 
-  if (ComputeRequiredGrad(ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, ins, outs, attrs, place);
+  if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
+    CreateGradOpNode(*op, new_ins, outs, attrs, place);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }

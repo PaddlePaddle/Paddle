@@ -36,26 +36,29 @@ extern void* tensorrt_dso_handle;
   struct DynLoad__##__name {                                                  \
     template <typename... Args>                                               \
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {          \
-      using tensorrt_func = decltype(&::__name);                              \
       std::call_once(tensorrt_dso_flag, []() {                                \
         tensorrt_dso_handle = paddle::platform::dynload::GetTensorRtHandle(); \
-        PADDLE_ENFORCE_NOT_NULL(tensorrt_dso_handle,                          \
-                                platform::errors::Unavailable(                \
-                                    "Load tensorrt %s failed", #__name));     \
       });                                                                     \
       static void* p_##__name = dlsym(tensorrt_dso_handle, #__name);          \
-      PADDLE_ENFORCE_NOT_NULL(                                                \
-          p_##__name,                                                         \
-          platform::errors::Unavailable("Load tensorrt %s failed", #__name)); \
+      if (p_##__name == nullptr) {                                            \
+        return nullptr;                                                       \
+      }                                                                       \
+      using tensorrt_func = decltype(&::__name);                              \
       return reinterpret_cast<tensorrt_func>(p_##__name)(args...);            \
     }                                                                         \
   };                                                                          \
   extern DynLoad__##__name __name
 
+#if (NV_TENSORRT_MAJOR >= 6)
 #define TENSORRT_RAND_ROUTINE_EACH(__macro) \
   __macro(createInferBuilder_INTERNAL);     \
   __macro(createInferRuntime_INTERNAL);     \
   __macro(getPluginRegistry);
+#else
+#define TENSORRT_RAND_ROUTINE_EACH(__macro) \
+  __macro(createInferBuilder_INTERNAL);     \
+  __macro(createInferRuntime_INTERNAL);
+#endif
 
 TENSORRT_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP)
 

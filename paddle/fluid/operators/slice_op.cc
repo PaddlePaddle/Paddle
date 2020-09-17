@@ -155,6 +155,10 @@ class SliceOp : public framework::OperatorWithKernel {
           in_tensor.IsInitialized(), true,
           platform::errors::InvalidArgument(
               "The tensor Input (Input) of Slice op is not initialized."));
+      // NOTE: cuda pinned tensor need to copy its data to target place
+      if (platform::is_cuda_pinned_place(in_tensor.place())) {
+        return framework::OpKernelType(in_tensor.type(), ctx.device_context());
+      }
       return framework::OpKernelType(in_tensor.type(), in_tensor.place());
     }
     return framework::OpKernelType(

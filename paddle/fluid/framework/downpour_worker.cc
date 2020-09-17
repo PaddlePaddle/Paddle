@@ -379,7 +379,7 @@ void DownpourWorker::CopyDenseTable() {
       pull_dense_status.resize(0);
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, dest_table,
                                      dense_value_names_[dest_table],
-                                     &pull_dense_status);
+                                     &pull_dense_status, true);
       for (auto& t : pull_dense_status) {
         t.wait();
         auto status = t.get();
