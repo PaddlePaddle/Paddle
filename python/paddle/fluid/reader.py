@@ -85,6 +85,30 @@ def _convert_places(places):
     return ret
 
 
+# NOTE(chenweihang): _reader_process_loop must be top level method to be pickled
+def _reader_process_loop(batch_reader, data_queue):
+    try:
+        # set signal handler
+        core._set_process_signal_handler()
+
+        # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
+        # some shared memory objects may have been applied for but have not yet
+        # been put into the inter-process Queue. This part of the object needs
+        # to be cleaned up when the process ends.
+        CleanupFuncRegistrar.register(_cleanup_mmap)
+
+        for batch in batch_reader():
+            tensor_list = core._convert_to_tensor_list(batch)
+            data_queue.put(tensor_list)
+            core._remove_tensor_list_mmap_fds(tensor_list)
+        data_queue.put(None)
+    except KeyboardInterrupt:
+        # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
+        pass
+    except:
+        six.reraise(*sys.exc_info())
+
+
 class DataLoaderBase(object):
     def __init__(self):
         self._places = None
@@ -811,7 +835,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
             global multiprocess_queue_set
             multiprocess_queue_set.add(self._data_queue)
             self._process = multiprocessing.Process(
-                target=self._reader_process_loop)
+                target=_reader_process_loop,
+                args=(self._batch_reader, self._data_queue))
             self._process.daemon = True
             self._process.start()
 
@@ -866,28 +891,6 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._thread_done_event.set()
         self._blocking_queue.kill()
         logging.error("DataLoader reader thread raised an exception!")
-
-    def _reader_process_loop(self):
-        try:
-            # set signal handler
-            core._set_process_signal_handler()
-
-            # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
-            # some shared memory objects may have been applied for but have not yet
-            # been put into the inter-process Queue. This part of the object needs
-            # to be cleaned up when the process ends.
-            CleanupFuncRegistrar.register(_cleanup_mmap)
-
-            for batch in self._batch_reader():
-                tensor_list = core._convert_to_tensor_list(batch)
-                self._data_queue.put(tensor_list)
-                core._remove_tensor_list_mmap_fds(tensor_list)
-            self._data_queue.put(None)
-        except KeyboardInterrupt:
-            # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
-            pass
-        except:
-            six.reraise(*sys.exc_info())
 
     def _reader_thread_loop_for_multiprocess(self):
         while not self._thread_done_event.is_set():
@@ -1723,13 +1726,13 @@ class DatasetLoader(DataLoaderBase):
             logging.warn('thread_num {} which is set in Dataset is ignored'.
                          format(dataset.thread_num))
 
-        dataset.set_thread(thread_num)
+        dataset._set_thread(thread_num)
 
         if isinstance(dataset, paddle.distributed.fleet.dataset.
                       InMemoryDataset) and dataset.queue_num > thread_num:
             logging.warn("queue_num {} which is set in Dataset is ignored".
                          format(dataset.queue_num))
-            dataset.set_queue_num(thread_num)
+            dataset._set_queue_num(thread_num)
 
         self._dataset = dataset
         use_slots = [

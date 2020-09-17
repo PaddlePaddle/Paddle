@@ -16,12 +16,13 @@ from .profiler import ProfilerOptions
 from .profiler import Profiler
 from .profiler import get_profiler
 from .deprecated import deprecated
+from ..fluid.framework import unique_name
+from ..fluid.framework import load_op_library
+from ..fluid.framework import require_version
 
 from . import download
 
 __all__ = ['dump_config', 'deprecated', 'download']
 
 #TODO: define new api under this directory
-# __all__ = ['unique_name',
-#            'load_op_library',
-#            'require_version']
+__all__ += ['unique_name', 'load_op_library', 'require_version']
