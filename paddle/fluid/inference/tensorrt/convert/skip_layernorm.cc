@@ -54,7 +54,7 @@ class SkipLayerNormOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
 #ifdef USE_NVINFER_PLUGIN
       auto creator = GetPluginRegistry()->getPluginCreator(
-          "CustomSkipLayerNormPluginDynamic", "1");
+          "CustomSkipLayerNormPluginDynamic", "2");
       assert(creator != nullptr);
       int type = static_cast<int>((engine_->WithFp16() == 1)
                                       ? nvinfer1::DataType::kHALF

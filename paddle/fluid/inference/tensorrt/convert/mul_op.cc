@@ -26,33 +26,38 @@ class MulOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid mul op to tensorrt mul layer without bias";
+    /*
+        VLOG(3) << "convert a fluid mul op to tensorrt mul layer without bias";
 
-    framework::OpDesc op_desc(op, nullptr);
-    // Declare inputs
-    auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
-    auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
+        framework::OpDesc op_desc(op, nullptr);
+        // Declare inputs
+        auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
+        auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
 
-    bool transpose_x = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_X"));
-    bool transpose_y = BOOST_GET_CONST(bool, op_desc.GetAttr("transpose_Y"));
+        bool transpose_x = BOOST_GET_CONST(bool,
+    op_desc.GetAttr("transpose_X"));
+        bool transpose_y = BOOST_GET_CONST(bool,
+    op_desc.GetAttr("transpose_Y"));
 
-#ifdef USE_NVINFER_PLUGIN
-    nvinfer1::DataType type = (engine_->WithFp16() == 1)
-                                  ? nvinfer1::DataType::kHALF
-                                  : nvinfer1::DataType::kFLOAT;
-    plugin::ConvertMaskPluginDynamic* plugin =
-        new plugin::ConvertMaskPluginDynamic(type);
-    auto convert_mask_layer = engine_->AddPluginV2(&input1, 1, plugin);
-    engine_->SetITensor("qkv_plugin_mask", convert_mask_layer->getOutput(0));
-#endif
+    #ifdef USE_NVINFER_PLUGIN
+        nvinfer1::DataType type = (engine_->WithFp16() == 1)
+                                      ? nvinfer1::DataType::kHALF
+                                      : nvinfer1::DataType::kFLOAT;
+        plugin::ConvertMaskPluginDynamic* plugin =
+            new plugin::ConvertMaskPluginDynamic(type);
+        auto convert_mask_layer = engine_->AddPluginV2(&input1, 1, plugin);
+        engine_->SetITensor("qkv_plugin_mask",
+    convert_mask_layer->getOutput(0));
+    #endif
 
-    // Both the input1 and input2 do not need transpose.
-    auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1),
-        transpose_x, *const_cast<nvinfer1::ITensor*>(input2), transpose_y);
+        // Both the input1 and input2 do not need transpose.
+        auto* layer = TRT_ENGINE_ADD_LAYER(
+            engine_, MatrixMultiply, *const_cast<nvinfer1::ITensor*>(input1),
+            transpose_x, *const_cast<nvinfer1::ITensor*>(input2), transpose_y);
 
-    auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "matmul", {output_name}, test_mode);
+        auto output_name = op_desc.Output("Out")[0];
+        RreplenishLayerAndOutput(layer, "matmul", {output_name}, test_mode);
+    */
   }
 };
 

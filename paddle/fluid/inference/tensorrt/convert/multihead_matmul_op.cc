@@ -119,17 +119,19 @@ class MultiheadMatMulOpConverter : public OpConverter {
       auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
 
       auto creator = GetPluginRegistry()->getPluginCreator(
-          "CustomQKVToContextPluginDynamic", "1");
+          "CustomQKVToContextPluginDynamic", "2");
       assert(creator != nullptr);
       int type = static_cast<int>((engine_->WithFp16() == 1)
                                       ? nvinfer1::DataType::kHALF
                                       : nvinfer1::DataType::kFLOAT);
       bool has_mask = true;
+      int var_seqlen = 1;
       const std::vector<nvinfer1::PluginField> fields{
           {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
           {"hidden_size", &hidden, nvinfer1::PluginFieldType::kINT32, 1},
           {"num_heads", &head_number, nvinfer1::PluginFieldType::kINT32, 1},
           {"has_mask", &has_mask, nvinfer1::PluginFieldType::kINT32, 1},
+          {"var_seqlen", &var_seqlen, nvinfer1::PluginFieldType::kINT32, 1},
       };
       nvinfer1::PluginFieldCollection* plugin_collection =
           static_cast<nvinfer1::PluginFieldCollection*>(
@@ -144,8 +146,12 @@ class MultiheadMatMulOpConverter : public OpConverter {
       free(plugin_collection);
 
       std::vector<nvinfer1::ITensor*> plugin_inputs;
-      plugin_inputs.push_back(fc_layer->getOutput(0));
-      plugin_inputs.push_back(mask_tensor);
+      plugin_inputs.emplace_back(fc_layer->getOutput(0));
+      plugin_inputs.emplace_back(mask_tensor);
+      plugin_inputs.emplace_back(engine_->GetITensor(
+          "eval_placeholder_2"));  // cu_seqlens, eval_placeholder_2
+      plugin_inputs.emplace_back(engine_->GetITensor(
+          "eval_placeholder_3"));  // max_seqlen, eval_placeholder_3
       auto plugin_layer = engine_->network()->addPluginV2(
           plugin_inputs.data(), plugin_inputs.size(), *plugin);
       layer = plugin_layer;

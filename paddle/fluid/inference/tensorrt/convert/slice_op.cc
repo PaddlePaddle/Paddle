@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.h"
+// #include "paddle/fluid/inference/tensorrt/plugin/slice_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/special_slice_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -30,25 +31,30 @@ class SliceOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
-
-    std::vector<int> axes =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
-    std::vector<int> starts =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
-    std::vector<int> ends =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
+    /*
+        std::vector<int> axes =
+            BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
+        std::vector<int> starts =
+            BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
+        std::vector<int> ends =
+            BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
+    */
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      nvinfer1::Permutation permutation{1, 0, 2, 3, 4};
-      auto trans_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-      trans_layer->setFirstTranspose(permutation);
+      /*
+            nvinfer1::Permutation permutation{1, 0, 2, 3, 4};
+            auto trans_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+            trans_layer->setFirstTranspose(permutation);
+      */
       std::vector<nvinfer1::ITensor*> plugin_inputs;
-      plugin_inputs.emplace_back(trans_layer->getOutput(0));
+      // plugin_inputs.emplace_back(trans_layer->getOutput(0));
+      plugin_inputs.emplace_back(input);
+      plugin_inputs.emplace_back(engine_->GetITensor("eval_placeholder_2"));
 
-      bool ban_fp16 = engine_->disable_trt_plugin_fp16();
-      plugin::SlicePluginDynamic* plugin =
-          new plugin::SlicePluginDynamic(starts, ends, axes, ban_fp16);
+      // bool ban_fp16 = engine_->disable_trt_plugin_fp16();
+      plugin::SpecialSlicePluginDynamic* plugin =
+          new plugin::SpecialSlicePluginDynamic();
       layer = engine_->AddPluginV2(plugin_inputs.data(), plugin_inputs.size(),
                                    plugin);
     } else {
