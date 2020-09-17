@@ -182,9 +182,13 @@ _TRANSLATOR_LOGGER = TranslatorLogger()
 def set_verbosity(level=0, also_to_stdout=False):
     """
     Sets the verbosity level of log for dygraph to static graph. Logs can be output to stdout by setting `also_to_stdout`.
+
     There are two means to set the logging verbosity:
-     1. Call function `set_verbosity`
-     2. Set environment variable `TRANSLATOR_VERBOSITY`
+
+    1. Call function `set_verbosity`
+
+    2. Set environment variable `TRANSLATOR_VERBOSITY`
+
 
     **Note**:
     `set_verbosity` has a higher priority than the environment variable.
@@ -217,9 +221,12 @@ def get_verbosity():
 def set_code_level(level=LOG_AllTransformer, also_to_stdout=False):
     """
     Sets the level to print code from specific level Ast Transformer. Code can be output to stdout by setting `also_to_stdout`.
+
     There are two means to set the code level:
-     1. Call function `set_code_level`
-     2. Set environment variable `TRANSLATOR_CODE_LEVEL`
+
+    1. Call function `set_code_level`
+
+    2. Set environment variable `TRANSLATOR_CODE_LEVEL`
 
 
     **Note**:
