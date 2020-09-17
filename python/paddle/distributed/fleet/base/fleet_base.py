@@ -1127,4 +1127,5 @@ class Fleet(object):
         if self._util is None:
             self._util = UtilFactory()._create_util(context)
 
+        self.user_defined_strategy = copy.deepcopy(copy_user_defined_strategy)
         return optimize_ops, params_grads
