@@ -23,7 +23,6 @@ from .dataset import *
 __all__ = [
     "DistributedStrategy",
     "UtilBase",
-    "DatasetFactory",
     "UserDefinedRoleMaker",
     "PaddleCloudRoleMaker",
     "Fleet",
@@ -50,3 +49,10 @@ distributed_optimizer = fleet.distributed_optimizer
 save_inference_model = fleet.save_inference_model
 save_persistables = fleet.save_persistables
 minimize = fleet.minimize
+distributed_model = fleet.distributed_model
+step = fleet.step
+clear_grad = fleet.clear_grad
+set_lr = fleet.set_lr
+get_lr = fleet.get_lr
+state_dict = fleet.state_dict
+set_state_dict = fleet.set_state_dict

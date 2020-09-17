@@ -249,7 +249,7 @@ def grid_sample(x,
         mode(str, optional): The interpolation method which can be 'bilinear' or 'nearest'.
                          Default: 'bilinear'.
         padding_mode(str, optional) The padding method used when source index
-                   is out of input images. It can be 'zeros', 'reflect' and 'border'.
+                   is out of input images. It can be 'zeros', 'reflection' and 'border'.
                    Default: zeros.
         align_corners(bool, optional): If `align_corners` is true, it will projects
                    -1 and 1 to the centers of the corner pixels. Otherwise, it will
@@ -312,7 +312,7 @@ def grid_sample(x,
     if not isinstance(grid, Variable):
         raise ValueError("The grid should be a Variable")
     _modes = ['bilinear', 'nearest']
-    _padding_modes = ['zeros', 'reflect', 'border']
+    _padding_modes = ['zeros', 'reflection', 'border']
     if mode not in _modes:
         raise ValueError(
             "The mode of grid sample function should be in {}, but got: {}".

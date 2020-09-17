@@ -27,8 +27,6 @@ function(train_test TARGET_NAME)
         endif()
         set_tests_properties(test_train_${TARGET_NAME}${arg}
                 PROPERTIES DEPENDS test_${TARGET_NAME})
-        set_tests_properties(test_train_${TARGET_NAME}${arg}
-                PROPERTIES LABELS "RUN_TYPE=DIST")
         if(NOT WIN32 AND NOT APPLE)
             set_tests_properties(test_train_${TARGET_NAME}${arg}
                     PROPERTIES TIMEOUT 150)

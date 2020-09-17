@@ -299,11 +299,14 @@ class Quant2Int8MkldnnPass(object):
         # Convert int8 range weights to fp32 range weights
         scales = self._weight_scales[output_var_name]
         weight = self._load_param(self._scope, weight_var_name)
-        assert scales.size == 1 or scales.size == len(
-            weight
-        ), "The size of weight scales vector ({}) does not match the number of output channels ({}) in the weights tensor {}.".format(
-            scales.size, len(weight), weight_var_name)
-        w_fp32 = np.divide(np.multiply(weight, self._s8_max).T, scales.T).T
+        if scales.size == 1 or scales.size == weight.shape[0]:
+            w_fp32 = np.divide(np.multiply(weight, self._s8_max).T, scales.T).T
+        elif len(weight.shape) > 1 and scales.size == weight.shape[1]:
+            w_fp32 = np.divide(np.multiply(weight, self._s8_max), scales)
+        else:
+            raise ValueError(
+                "The size of weight scales vector ({}) does not match the dimensions ({}) of the weights tensor {}."
+                .format(scales.size, weight.shape, weight_var_name))
         w_fp32 = w_fp32.reshape(weight.shape).astype(np.float32)
         self._restore_var(weight_var_name, w_fp32)
 

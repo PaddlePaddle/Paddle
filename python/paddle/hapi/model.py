@@ -47,10 +47,10 @@ from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.fluid.executor import scope_guard, Executor
 from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
-
 from paddle.static import InputSpec as Input
 
 from .callbacks import config_callbacks
+from .model_summary import summary
 
 __all__ = ['Model', ]
 
@@ -1680,7 +1680,7 @@ class Model(object):
 
         # TODO:
         # 1. Make it Unnecessary to run model before calling `save_inference_model` for users in dygraph.
-        # 2. Save correct shape of input, now the interface stores the shape that the user sent to 
+        # 2. Save correct shape of input, now the interface stores the shape that the user sent to
         #    the inputs of the model in running.
         # 3. Make it Unnecessary to add `@paddle.jit.to_static` for users in dynamic mode.
         if fluid.in_dygraph_mode():
@@ -1689,9 +1689,9 @@ class Model(object):
 
                 # 1. input check
                 prog_translator = ProgramTranslator()
-                if not prog_translator.enable_declarative:
+                if not prog_translator.enable_to_static:
                     raise RuntimeError(
-                        "save_inference_model doesn't work when setting ProgramTranslator.enable=False."
+                        "save_inference_model doesn't work when setting ProgramTranslator.enable to False."
                     )
                 if not isinstance(layer, Layer):
                     raise TypeError(
@@ -1828,6 +1828,54 @@ class Model(object):
             return logs, outputs
         return logs
 
+    def summary(self, input_size=None, batch_size=None, dtype=None):
+        """Prints a string summary of the network.
+
+        Args:
+            input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. 
+                    if not set, input_size will get from ``self._inputs`` if network only have 
+                    one input, input_size can be tuple or InputSpec. if model have multiple 
+                    input, input_size must be a list which contain every input's shape. 
+                    Default: None.
+            batch_size (int, optional): batch size of input tensor, Default: None.
+            dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
+
+        Returns:
+            Dict: a summary of the network including total params and total trainable params.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              from paddle.static import InputSpec
+
+              dynamic = True
+              device = paddle.set_device('cpu')
+              paddle.disable_static(device) if dynamic else None
+           
+              input = InputSpec([None, 1, 28, 28], 'float32', 'image')
+              label = InputSpec([None, 1], 'int64', 'label')
+           
+              model = paddle.Model(paddle.vision.LeNet(classifier_activation=None),
+                  input, label)
+              optim = paddle.optimizer.Adam(
+                  learning_rate=0.001, parameters=model.parameters())
+              model.prepare(
+                  optim,
+                  paddle.nn.CrossEntropyLoss())
+
+              params_info = model.summary()
+              print(params_info)
+
+        """
+        assert (input_size is not None or self._inputs is not None
+                ), "'input_size' or 'self._input' must be set"
+        if input_size is not None:
+            _input_size = input_size
+        else:
+            _input_size = self._inputs
+        return summary(self.network, _input_size, batch_size, dtype)
+
     def _verify_spec(self, specs, is_input=False):
         out_specs = []
 
@@ -1854,8 +1902,8 @@ class Model(object):
                 assert isinstance(spec, Input)
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}.".
-                        format(i, spec))
+                        "Requires Input[{}].name != None, but receive `None` with {}."
+                        .format(i, spec))
 
         return out_specs
 

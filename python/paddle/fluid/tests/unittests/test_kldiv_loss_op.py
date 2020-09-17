@@ -24,7 +24,10 @@ def kldiv_loss(x, target, reduction):
     loss = np.where(target >= 0, output, np.zeros_like(x))
 
     if reduction == "batchmean":
-        return loss.sum() / x.shape[0]
+        if len(x.shape) > 0:
+            return loss.sum() / x.shape[0]
+        else:
+            return loss.sum()
     if reduction == "mean":
         return loss.mean()
     if reduction == "sum":
@@ -92,6 +95,9 @@ class TestKLDivLossDygraph(unittest.TestCase):
 
     def test_kl_loss_batchmean(self):
         self.run_kl_loss('batchmean')
+
+    def test_kl_loss_batchmean_shape(self):
+        self.run_kl_loss('batchmean', ())
 
     def test_kl_loss_mean(self):
         self.run_kl_loss('mean')

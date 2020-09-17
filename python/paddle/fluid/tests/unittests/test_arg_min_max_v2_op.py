@@ -322,6 +322,20 @@ class TestArgMinMaxOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_argmin_axis_type)
 
+            def test_argmax_dtype_type():
+                data = paddle.static.data(
+                    name="test_argmax", shape=[10], dtype="float32")
+                output = paddle.argmax(x=data, dtype=None)
+
+            self.assertRaises(ValueError, test_argmax_dtype_type)
+
+            def test_argmin_dtype_type():
+                data = paddle.static.data(
+                    name="test_argmin", shape=[10], dtype="float32")
+                output = paddle.argmin(x=data, dtype=None)
+
+            self.assertRaises(ValueError, test_argmin_dtype_type)
+
 
 if __name__ == '__main__':
     unittest.main()

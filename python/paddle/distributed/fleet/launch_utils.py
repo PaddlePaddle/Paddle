@@ -227,18 +227,23 @@ def get_logger(log_level=20, name="root"):
     return logger
 
 
-def get_cluster(node_ips, node_ip, paddle_ports, selected_gpus):
-    assert type(paddle_ports) is list, "paddle_ports must be list"
+def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
+    assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
     cluster = Cluster(hdfs=None)
     trainer_rank = 0
     for node_rank, ip in enumerate(node_ips):
         pod = Pod()
         pod.rank = node_rank
         pod.addr = ip
+        cur_node_endpoints = trainer_endpoints[node_rank]
+        # when use paddlecloud, endpoints may > selected_gpus(user_defined)
+        assert len(cur_node_endpoints) >= len(
+            selected_gpus
+        ), "current trainer_endpoints size should be greater equal than selected_gpus size."
         for i in range(len(selected_gpus)):
             trainer = Trainer()
             trainer.gpus.append(selected_gpus[i])
-            trainer.endpoint = "%s:%d" % (ip, paddle_ports[i])
+            trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
 
@@ -253,7 +258,8 @@ def terminate_local_procs(procs):
     for p in procs:
         if p.proc.poll() is None:
             p.proc.terminate()
-            p.log_fn.close()
+            if p.log_fn:
+                p.log_fn.close()
             logger.debug("terminate process id:{}".format(p.proc.pid))
 
     #wait all process terminiated
@@ -338,6 +344,46 @@ def get_ports(num, offset):
     return ports
 
 
+def pretty_print_envs(envs, header=None):
+    spacing = 2
+    max_k = 40
+    max_v = 45
+
+    for k, v in envs.items():
+        max_k = max(max_k, len(k))
+
+    h_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(max_k, " " * spacing,
+                                                          max_v)
+    l_format = "    " + "|{{:>{}s}}{{}}{{:^{}s}}|\n".format(max_k, max_v)
+    length = max_k + max_v + spacing
+
+    border = "    +" + "".join(["="] * length) + "+"
+    line = "    +" + "".join(["-"] * length) + "+"
+
+    draws = ""
+    draws += border + "\n"
+
+    if header:
+        draws += h_format.format(header[0], header[1])
+    else:
+        draws += h_format.format("fleetrun Distributed Envs", "Value")
+
+    draws += line + "\n"
+
+    for k, v in envs.items():
+        if isinstance(v, str) and len(v) >= max_v:
+            str_v = "... " + v[-41:]
+        else:
+            str_v = v
+
+        draws += l_format.format(k, " " * spacing, str(str_v))
+
+    draws += border
+
+    _str = "\n{}\n".format(draws)
+    return _str
+
+
 class TrainerProc(object):
     def __init__(self):
         self.proc = None
@@ -373,12 +419,16 @@ def start_local_trainers(cluster,
 
         current_env.update(proc_env)
 
-        logger.debug("trainer proc env:{}".format(current_env))
-
         cmd = [sys.executable, "-u", training_script] + training_script_args
 
-        logger.info("start trainer proc:{} env:{}".format(cmd, proc_env))
+        logger.debug("start trainer proc{}  env:{}".format(cmd, current_env))
 
+        if idx == 0:
+            logger.info("Local start {} processes. First process distributed "
+                        "environment info (Only For Debug): {}".format(
+                            len(pod.trainers),
+                            pretty_print_envs(proc_env, ("Distributed Envs",
+                                                         "Value"))))
         fn = None
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))

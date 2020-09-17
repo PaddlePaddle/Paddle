@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from test_pool2d_op import adaptive_start_index, adaptive_end_index, pool2D_forward_naive
+from test_pool2d_op import adaptive_start_index, adaptive_end_index, pool2D_forward_naive, avg_pool2D_forward_naive, max_pool2D_forward_naive
 import unittest
 from op_test import OpTest
 import numpy as np
@@ -68,6 +68,47 @@ class TestPool2d_API(unittest.TestCase):
             result = avg_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
+    def check_avg_dygraph_padding_results(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            result = avg_pool2d(
+                input, kernel_size=2, stride=2, padding=1, ceil_mode=False)
+
+            result_np = avg_pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                strides=[2, 2],
+                paddings=[1, 1],
+                ceil_mode=False,
+                exclusive=False)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+            avg_pool2d_dg = paddle.nn.layer.AvgPool2d(
+                kernel_size=2, stride=2, padding=1, ceil_mode=False)
+            result = avg_pool2d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+    def check_avg_dygraph_ceilmode_results(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            result = avg_pool2d(
+                input, kernel_size=2, stride=2, padding=0, ceil_mode=True)
+
+            result_np = avg_pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                strides=[2, 2],
+                paddings=[0, 0],
+                ceil_mode=True)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+            avg_pool2d_dg = paddle.nn.layer.AvgPool2d(
+                kernel_size=2, stride=2, padding=0, ceil_mode=True)
+            result = avg_pool2d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
     def check_max_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(
@@ -105,6 +146,70 @@ class TestPool2d_API(unittest.TestCase):
 
             max_pool2d_dg = paddle.nn.layer.MaxPool2d(
                 kernel_size=2, stride=2, padding=0)
+            result = max_pool2d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+    def check_max_dygraph_nhwc_results(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(
+                np.transpose(input_np, [0, 2, 3, 1]))
+            result = max_pool2d(
+                input,
+                kernel_size=2,
+                stride=2,
+                padding=0,
+                return_indices=False,
+                data_format="NHWC")
+
+            result_np = pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                strides=[2, 2],
+                paddings=[0, 0],
+                pool_type='max')
+            self.assertTrue(
+                np.allclose(
+                    np.transpose(result.numpy(), [0, 3, 1, 2]), result_np))
+
+    def check_max_dygraph_padding_results(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            result = max_pool2d(
+                input, kernel_size=2, stride=2, padding=1, ceil_mode=False)
+
+            result_np = max_pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                strides=[2, 2],
+                paddings=[1, 1],
+                ceil_mode=False,
+                exclusive=False)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+            max_pool2d_dg = paddle.nn.layer.MaxPool2d(
+                kernel_size=2, stride=2, padding=1, ceil_mode=False)
+            result = max_pool2d_dg(input)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+    def check_max_dygraph_ceilmode_results(self, place):
+        with fluid.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = fluid.dygraph.to_variable(input_np)
+            result = max_pool2d(
+                input, kernel_size=2, stride=2, padding=0, ceil_mode=True)
+
+            result_np = max_pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                strides=[2, 2],
+                paddings=[0, 0],
+                ceil_mode=True)
+            self.assertTrue(np.allclose(result.numpy(), result_np))
+
+            max_pool2d_dg = paddle.nn.layer.MaxPool2d(
+                kernel_size=2, stride=2, padding=0, ceil_mode=True)
             result = max_pool2d_dg(input)
             self.assertTrue(np.allclose(result.numpy(), result_np))
 
@@ -215,6 +320,9 @@ class TestPool2d_API(unittest.TestCase):
             self.check_avg_dygraph_stride_is_none(place)
             self.check_max_dygraph_padding(place)
             self.check_avg_divisor(place)
+            self.check_max_dygraph_padding_results(place)
+            self.check_max_dygraph_ceilmode_results(place)
+            self.check_max_dygraph_nhwc_results(place)
 
 
 class TestPool2dError_API(unittest.TestCase):
@@ -369,6 +477,22 @@ class TestPool2dError_API(unittest.TestCase):
                     data_format='NNNN')
 
         self.assertRaises(ValueError, run8)
+
+        def run9():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(-1, 1,
+                                             [2, 3, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                res_pd = max_pool2d(
+                    input_pd,
+                    kernel_size=2,
+                    stride=2,
+                    padding=0,
+                    ceil_mode=False,
+                    data_format='NHWC',
+                    return_indices=True)
+
+        self.assertRaises(ValueError, run9)
 
 
 if __name__ == '__main__':

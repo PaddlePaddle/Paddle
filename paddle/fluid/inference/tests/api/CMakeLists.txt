@@ -9,7 +9,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 function(download_data install_dir data_file)
-    if (NOT EXISTS ${install_dir}/${data_file})
+    string(REGEX MATCH "[^/\\]+$" file_name ${data_file})
+    if (NOT EXISTS ${install_dir}/${file_name})
         inference_download_and_uncompress(${install_dir} ${INFERENCE_URL} ${data_file})
     endif()
 endfunction()
@@ -125,7 +126,7 @@ endfunction()
 if(NOT APPLE AND WITH_MKLML)
     # RNN1
     set(RNN1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn1")
-    download_model_and_data(${RNN1_INSTALL_DIR} "rnn1%2Fmodel.tar.gz" "rnn1%2Fdata.txt.tar.gz")
+    download_model_and_data(${RNN1_INSTALL_DIR} "rnn1/model.tar.gz" "rnn1/data.txt.tar.gz")
     inference_analysis_api_test(test_analyzer_rnn1 ${RNN1_INSTALL_DIR} analyzer_rnn1_tester.cc)
     
     # seq_pool1
@@ -210,7 +211,7 @@ inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR} ana
 
 # transformer, the dataset only works on batch_size=8 now
 set(TRANSFORMER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/transformer")
-download_model_and_data(${TRANSFORMER_INSTALL_DIR} "temp%2Ftransformer_model.tar.gz" "temp%2Ftransformer_data.txt.tar.gz")
+download_model_and_data(${TRANSFORMER_INSTALL_DIR} "temp/transformer_model.tar.gz" "temp/transformer_data.txt.tar.gz")
 inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_tester.cc 
   EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
   ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 
@@ -219,7 +220,7 @@ inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_test
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
 if (NOT EXISTS ${OCR_INSTALL_DIR}/ocr.tar.gz)
-    inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
+    inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos/ocr.tar.gz")
 endif()
 inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
 
@@ -235,7 +236,7 @@ set_property(TEST test_analyzer_detect PROPERTY ENVIRONMENT GLOG_vmodule=analysi
 # mobilenet with transpose op
 set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
 if (NOT EXISTS ${MOBILENET_INSTALL_DIR}/mobilenet.tar.gz)
-    inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
+    inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos/mobilenet.tar.gz")
 endif()
 inference_analysis_api_test(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc)
 
@@ -342,9 +343,9 @@ if(WITH_MKLDNN)
   ### Lexcial analysis GRU model
   set(GRU_PATH "${INFERENCE_DEMO_INSTALL_DIR}/gru")
   download_GRU_data("${GRU_PATH}" "GRU_eval_data.tar.gz")
-  download_GRU_data("${GRU_PATH}" "GRU_eval_model.tar.gz")
+  download_GRU_data("${GRU_PATH}" "GRU_eval_model_v2.tar.gz")
   set(GRU_DATA_PATH "${GRU_PATH}/GRU_eval_data.bin")
-  set(GRU_MODEL_PATH "${GRU_PATH}/GRU_eval_model")
+  set(GRU_MODEL_PATH "${GRU_PATH}/GRU_eval_model_v2")
   set(LEXICAL_TEST_APP "test_analyzer_lexical_analysis")
   set(LEXICAL_TEST_APP_SRC "analyzer_lexical_analysis_gru_tester.cc")
 
@@ -363,9 +364,12 @@ if(WITH_MKLDNN)
   inference_analysis_api_test_build(${QUANT_IMG_CLASS_TEST_APP} ${QUANT_IMG_CLASS_TEST_APP_SRC})
 
   # MobileNetV1 FP32 vs. Quant INT8
-  # The FP32 model should already be downloaded for slim Quant unit tests
+  # The FP32 model should already be downloaded for slim Quant unit tests on Linux
   set(QUANT2_MobileNetV1_MODEL_DIR "${QUANT_DATA_DIR}/MobileNetV1_quant2")
   set(QUANT2_INT8_MobileNetV1_MODEL_DIR "${QUANT_DATA_DIR}/MobileNetV1_quant2_int8")
+  if(NOT LINUX)
+      download_quant_data(${QUANT2_MobileNetV1_MODEL_DIR} "MobileNet_qat_perf.tar.gz")
+  endif(NOT LINUX)
   download_quant_data(${QUANT2_INT8_MobileNetV1_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
   inference_analysis_api_quant_test_run(test_analyzer_quant_performance_benchmark ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf/float ${QUANT2_INT8_MobileNetV1_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
 

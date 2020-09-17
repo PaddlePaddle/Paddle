@@ -177,20 +177,20 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
         fleet.init_worker()
         exe.run(fluid.default_startup_program())
 
-        thread_num = 1
+        thread_num = int(os.getenv("CPU_NUM", 2))
         batch_size = 128
         filelist = fleet_util.get_file_shard(train_file_list)
         print("filelist: {}".format(filelist))
 
         # config dataset
-        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
-        dataset.set_batch_size(batch_size)
-        dataset.set_use_var(self.feeds)
+        dataset = paddle.distributed.QueueDataset()
+        dataset._set_batch_size(batch_size)
+        dataset._set_use_var(self.feeds)
         pipe_command = 'python ctr_dataset_reader.py'
-        dataset.set_pipe_command(pipe_command)
+        dataset._set_pipe_command(pipe_command)
 
         dataset.set_filelist(filelist)
-        dataset.set_thread(thread_num)
+        dataset._set_thread(thread_num)
 
         for epoch_id in range(1):
             pass_start = time.time()
