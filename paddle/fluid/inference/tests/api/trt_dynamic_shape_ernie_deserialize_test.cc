@@ -1,25 +1,40 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <dirent.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
 namespace inference {
+
+int DeleteCache(std::string path) {
+  DIR* dir = opendir(path.c_str());
+  if (dir == NULL) return 0;
+  struct dirent* ptr;
+  while ((ptr = readdir(dir)) != NULL) {
+    if (std::strcmp(ptr->d_name, ".") == 0 ||
+        std::strcmp(ptr->d_name, "..") == 0) {
+      continue;
+    } else if (ptr->d_type == 8) {
+      std::string file_rm = path + "/" + ptr->d_name;
+      return remove(file_rm.c_str());
+    }
+  }
+  return 0;
+}
 
 void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   auto predictor = CreatePaddlePredictor(config);
@@ -86,6 +101,11 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
 void trt_ernie(bool with_fp16, std::vector<float> result) {
   AnalysisConfig config;
   std::string model_dir = FLAGS_infer_model;
+  // Delete serialization cache to perform serialization first rather than
+  // deserialization.
+  std::string opt_cache_dir = FLAGS_infer_model + "/_opt_cache";
+  DeleteCache(opt_cache_dir);
+
   SetConfig(&config, model_dir, true /* use_gpu */);
 
   config.SwitchUseFeedFetchOps(false);
@@ -122,8 +142,11 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
   config.EnableTensorRtEngine(1 << 30, 1, 5, precision, true, false);
   config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
                                 opt_input_shape);
+  AnalysisConfig* config_deser = new AnalysisConfig(config);
+
   std::vector<float> out_data;
-  run(config, &out_data);
+  run(config, &out_data);         // serialize
+  run(*config_deser, &out_data);  // deserialize
   for (size_t i = 0; i < out_data.size(); i++) {
     EXPECT_NEAR(result[i], out_data[i], 1e-6);
   }

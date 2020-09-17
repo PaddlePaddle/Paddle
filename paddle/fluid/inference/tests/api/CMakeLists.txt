@@ -426,22 +426,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4)
 
     set(TEST_TRT_ERNIE_UNSER_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test/ernie_model_4_unserialized/")
-    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_MODEL})
+    if (NOT EXISTS ${TEST_TRT_ERNIE_UNSER_MODEL}/ernie_model_4_unserialized.tgz)
         inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_unserialized.tgz")
     endif()
 
-    inference_analysis_test(test_trt_dynamic_shape_ernie_serialize SRCS trt_dynamic_shape_ernie_deserialize_test.cc
+    inference_analysis_test(test_trt_dynamic_shape_ernie_ser_deser SRCS trt_dynamic_shape_ernie_deserialize_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized)
 
-    set(TEST_TRT_ERNIE_SER_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_model_4_serialized/")
-    if (NOT EXISTS ${TEST_TRT_ERNIE_SER_MODEL})
-        inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "ernie_model_4_serialized.tgz")
-    endif()
-
-    inference_analysis_test(test_trt_dynamic_shape_ernie_deserialize SRCS trt_dynamic_shape_ernie_deserialize_test.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
-            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/ernie_model_4_serialized)
 
 endif()
 
