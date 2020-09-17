@@ -98,9 +98,9 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
   PADDLE_ENFORCE_EQ(
       local_scopes_.size(), local_exec_scopes_.size(),
       platform::errors::InvalidArgument(
-          "The number of local scopes and the number of local execute scopes "
+          "The number of local scopes and the number of local execution scopes "
           "should be equal, but got number of local scopes is %d and "
-          "number of local execute scopes is %d.",
+          "number of local execution scopes is %d.",
           local_scopes_.size(), local_exec_scopes_.size()));
 
   // set the correct size of thread pool to each device.
