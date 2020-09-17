@@ -31,7 +31,7 @@ namespace ir {
 
 class InplaceAddToOpPass : public MemoryReusePass {
  protected:
-  std::string ReuseType() const override { return "inplace"; }
+  std::string ReuseType() const override { return "inplace_addto"; }
 
   void Run(Graph *graph) const override;
 
@@ -188,7 +188,8 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
     VLOG(4) << "Inplace performed in op " << right_generated_op->GetOp()->Type()
             << ": " << left_var_ptr->Name() << " -> " << right_var_ptr->Name()
             << ". Debug String is: "
-            << right_generated_op->GetOp()->DebugString();
+            << right_generated_op->GetOp()->DebugString()
+            << ". ReuseType: " << ReuseType();
 
     // step (b): inplace out -> right_var of grad_add
 
@@ -196,7 +197,8 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
 
     VLOG(4) << "Inplace performed in op " << op_type << ": "
             << left_var_ptr->Name() << " -> " << out_var_ptr->Name()
-            << ". Debug String is: " << op->GetOp()->DebugString();
+            << ". Debug String is: " << op->GetOp()->DebugString()
+            << ". ReuseType: " << ReuseType();
 
     // step (c): make right_var cannot inplace afterwards. canbe done
     // aotomatically since CollectReusedVars is called before any reuse.

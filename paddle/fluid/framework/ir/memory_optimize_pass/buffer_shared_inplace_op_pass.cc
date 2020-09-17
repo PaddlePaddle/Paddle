@@ -31,7 +31,7 @@ namespace ir {
 
 class BufferSharedInplaceOpPass : public MemoryReusePass {
  protected:
-  std::string ReuseType() const override { return "inplace_addto"; }
+  std::string ReuseType() const override { return "inplace"; }
 
   void Run(Graph *graph) const override;
 };
@@ -142,11 +142,12 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
         VLOG(4) << "Inplace performed in op " << op_type << ": "
                 << in_var_handle_ptr->Name() << " -> "
                 << out_var_handle_ptr->Name()
-                << ". Debug String is: " << op->GetOp()->DebugString();
+                << ". Debug String is: " << op->GetOp()->DebugString()
+                << ". ReuseType: " << ReuseType();
       } else {
         VLOG(3) << "Inplace failed in op " << op_type << ": "
                 << in_var_handle_ptr->Name() << " -> "
-                << out_var_handle_ptr->Name();
+                << out_var_handle_ptr->Name() << ". ReuseType: " << ReuseType();
       }
     }
   }
