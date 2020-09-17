@@ -29,10 +29,13 @@ class TestSimpleRNN(unittest.TestCase):
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction == "bidirectional" else 1
-        self.place = paddle.set_device(place)
+        self.place = place
 
     def setUp(self):
-        paddle.disable_static(self.place)
+        # Since `set_device` is global, set `set_device` in `setUp` rather than
+        # `__init__` to avoid using an error device set by another test case.
+        place = paddle.set_device(self.place)
+        paddle.disable_static(place)
         rnn1 = SimpleRNN(
             16, 32, 2, time_major=self.time_major, direction=self.direction)
         rnn2 = paddle.nn.SimpleRNN(
@@ -102,10 +105,13 @@ class TestGRU(unittest.TestCase):
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction == "bidirectional" else 1
-        self.place = paddle.set_device(place)
+        self.place = place
 
     def setUp(self):
-        paddle.disable_static(self.place)
+        # Since `set_device` is global, set `set_device` in `setUp` rather than
+        # `__init__` to avoid using an error device set by another test case.
+        place = paddle.set_device(self.place)
+        paddle.disable_static(place)
         rnn1 = GRU(16,
                    32,
                    2,
@@ -181,10 +187,13 @@ class TestLSTM(unittest.TestCase):
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction == "bidirectional" else 1
-        self.place = paddle.set_device(place)
+        self.place = place
 
     def setUp(self):
-        paddle.disable_static(self.place)
+        # Since `set_device` is global, set `set_device` in `setUp` rather than
+        # `__init__` to avoid using an error device set by another test case.
+        place = paddle.set_device(self.place)
+        paddle.disable_static(place)
         rnn1 = LSTM(
             16, 32, 2, time_major=self.time_major, direction=self.direction)
         rnn2 = paddle.nn.LSTM(
