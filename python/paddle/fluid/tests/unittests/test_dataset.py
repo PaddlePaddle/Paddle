@@ -202,7 +202,7 @@ class TestDataset(unittest.TestCase):
         else:
             for i in range(self.epoch_num):
                 try:
-                    exe.train_from_dataset(fluid.main_program, dataset)
+                    exe.train_from_dataset(main_program, dataset)
                 except Exception as e:
                     self.assertTrue(False)
 

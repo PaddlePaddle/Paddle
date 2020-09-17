@@ -45,7 +45,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
-                import paddle.fluid.incubate.data_generator as dg
+                from paddle.distributed.fleet.dataset import data_generator as dg
                 class MyData(dg.DataGenerator):
 
                     def generate_sample(self, line):
@@ -71,7 +71,7 @@ class DataGenerator(object):
 
         Example:
             .. code-block:: python
-                import paddle.fluid.incubate.data_generator as dg
+                from paddle.distributed.fleet.dataset import data_generator as dg
                 class MyData(dg.DataGenerator):
 
                     def generate_sample(self, line):
@@ -109,7 +109,7 @@ class DataGenerator(object):
         Example:
         
             .. code-block:: python
-                import paddle.fluid.incubate.data_generator as dg
+                from paddle.distributed.fleet.dataset import data_generator as dg
                 class MyData(dg.DataGenerator):
 
                     def generate_sample(self, line):
@@ -180,7 +180,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
-                import paddle.fluid.incubate.data_generator as dg
+                from paddle.distributed.fleet.dataset import data_generator as dg
                 class MyData(dg.DataGenerator):
 
                     def generate_sample(self, line):
@@ -211,7 +211,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
-                import paddle.fluid.incubate.data_generator as dg
+                from paddle.distributed.fleet.dataset import data_generator as dg
                 class MyData(dg.DataGenerator):
 
                     def generate_sample(self, line):
