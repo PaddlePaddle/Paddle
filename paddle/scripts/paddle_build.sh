@@ -931,7 +931,7 @@ EOF
 
 set +x
         precison_cases=""
-        if [ ${PRECISION_TEST:-ON} == "ON" ]; then
+        if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             precision_cases=`python $PADDLE_ROOT/tools/get_pr_ut.py`
         fi
         EXIT_CODE=0;
