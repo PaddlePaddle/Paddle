@@ -26,7 +26,7 @@ static void VisitVariable(Variable* var, Func* func) {
     (*func)(var->GetMutable<SelectedRows>());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "VisitVariable is not supported for type %s", ToTypeName(var.Type())));
+        "VisitVariable is not supported for type %s", ToTypeName(var->Type())));
   }
 }
 
@@ -38,7 +38,7 @@ static void VisitVariable(const Variable& var, Func* func) {
     (*func)(var.Get<SelectedRows>());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "VisitVariable is not supported for type %s", ToTypeName(var.Type())));
+        "VisitVariable is not supported for type %s", ToTypeName(var->Type())));
   }
 }
 

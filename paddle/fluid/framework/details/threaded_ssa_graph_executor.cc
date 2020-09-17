@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -138,7 +139,10 @@ inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
         }
       }
     }
-    PADDLE_ENFORCE(ready_ops.empty());
+    PADDLE_ENFORCE_EQ(
+        ready_ops.empty(), true,
+        platform::errors::Fatal("After the execution of computation graph, "
+                                "there are unexecuted operators left."));
   }
 
   // Wait FetchOps.
@@ -164,10 +168,8 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     std::unordered_set<VarHandleBase *> *pending_vars,
     FetchResultType *fetch_data, bool return_merged) {
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
-  std::unordered_set<VarHandleBase *> local_ready_vars;
-  std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
-                                                   fetch_tensors.end());
-  for (auto &fetch_var_name : fetch_tensor_set) {
+
+  for (auto &fetch_var_name : fetch_tensors) {
     for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
@@ -216,7 +218,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     op->AddOutput(fetch_dummy);
     fetch_dependencies->emplace(fetch_dummy);
 
-    this->InsertPendingVar(pending_vars, &local_ready_vars, fetch_dummy);
+    this->InsertPendingVar(pending_vars, fetch_dummy);
 
     size_t wait_input_num = 0;
     std::unordered_set<VarHandleBase *> input_set(vars.begin(), vars.end());
@@ -231,7 +233,6 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
       ready_ops->insert(static_cast<OpHandleBase *>(op));
     }
   }
-  PADDLE_ENFORCE_EQ(local_ready_vars.size(), 0);
 }
 
 void ThreadedSSAGraphExecutor::InsertPendingOp(
@@ -242,10 +243,11 @@ void ThreadedSSAGraphExecutor::InsertPendingOp(
 
 void ThreadedSSAGraphExecutor::InsertPendingVar(
     std::unordered_set<VarHandleBase *> *pending_vars,
-    std::unordered_set<VarHandleBase *> *ready_vars, VarHandleBase *var) const {
+    VarHandleBase *var) const {
   pending_vars->insert(var);
   if (var->GeneratedOp() == nullptr) {
-    ready_vars->insert(var);
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "The variable to be fetched has no generated operator."));
   }
 }
 
@@ -277,7 +279,9 @@ void ThreadedSSAGraphExecutor::PrepareOpDeps() {
     }
   }
   op_deps_->num_ops_ = ready_ops.size() + pending_ops.size();
-  PADDLE_ENFORCE_GT(op_deps_->num_ops_, 0, "The graph doesn't have operators.");
+  PADDLE_ENFORCE_GT(
+      op_deps_->num_ops_, 0,
+      platform::errors::InvalidArgument("The graph doesn't have operators."));
 
   for (auto ready_var : ready_vars) {
     pending_vars.erase(ready_var);
