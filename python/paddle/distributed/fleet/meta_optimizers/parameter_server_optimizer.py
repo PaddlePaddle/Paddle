@@ -13,6 +13,10 @@
 
 from paddle import fluid
 from .meta_optimizer_base import MetaOptimizerBase
+from paddle.fluid import core
+import subprocess
+import re
+import platform
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
@@ -28,6 +32,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
     def _can_apply(self):
         if self.role_maker._is_collective:
             return False
+
         k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
         return True if k_steps >= 0 else False
 
@@ -127,6 +132,95 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         return _main, _startup
 
+    def _can_apply_geo(self, dist_strategy, program):
+        def get_sys_free_mem():
+            plat = platform.system()
+            if platform.system() == "Darwin":
+                vm = subprocess.Popen(
+                    ['vm_stat'], stdout=subprocess.PIPE).communicate()[0]
+                # Process vm_stat
+                vmLines = vm.split('\n')
+                sep = re.compile(':[\s]+')
+                vmStats = {}
+                for row in range(1, len(vmLines) - 2):
+                    rowText = vmLines[row].strip()
+                    rowElements = sep.split(rowText)
+                    vmStats[(rowElements[0]
+                             )] = int(rowElements[1].strip('\.')) * 4096
+                return vmStats["Pages free"]
+            elif platform.system() == "Linux":
+                mems = {}
+                with open('/proc/meminfo', 'rb') as f:
+                    for line in f:
+                        fields = line.split()
+                        mems[fields[0]] = int(fields[1]) * 1024
+                free = mems[b'MemFree:']
+                return free
+            else:
+                raise ValueError(
+                    "%s platform is unsupported is parameter server optimizer" %
+                    (platform.system()))
+
+        if not isinstance(self.inner_opt, fluid.optimizer.SGDOptimizer):
+            return False
+
+        free = get_sys_free_mem()
+
+        from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
+
+        processed_var_names = set(["@EMPTY@"])
+        param_memory_size = 0
+        for varname in program.global_block().vars:
+            var = program.global_block().vars[varname]
+            if not var.persistable or var.desc.type(
+            ) != core.VarDesc.VarType.LOD_TENSOR:
+                continue
+            param = vars_metatools.create_var_struct(var)
+            param_memory_size += param.m_size
+            processed_var_names.add(varname)
+
+        upper_mem_use = param_memory_size * 5.0
+
+        program_tmp_vars = dict()
+        eval_batch_size = 1024
+        for op in program.global_block().ops:
+            for var_name in op.output_arg_names:
+                if var_name in processed_var_names:
+                    continue
+                processed_var_names.add(var_name)
+                var = program.global_block().vars[var_name]
+
+                if var.desc.type() != core.VarDesc.VarType.LOD_TENSOR:
+                    continue
+
+                data_count = 1
+                neg_dim_count = 0
+                for x in var.shape:
+                    if x < 0:
+                        if neg_dim_count >= 1:
+                            raise ValueError(
+                                "Var %s has more than one negative dim." %
+                                (var_name))
+                        neg_dim_count += 1
+                        data_count *= (-x)
+                    else:
+                        data_count *= x
+                program_tmp_vars[var_name] = (
+                    data_count, neg_dim_count,
+                    vars_metatools.dtype_to_size[var.dtype])
+
+        for varname in program_tmp_vars:
+            data_count, neg_dim_count, type_size = program_tmp_vars[varname]
+            if neg_dim_count == 1:
+                data_count *= eval_batch_size
+            var_memory = data_count * type_size
+            upper_mem_use += var_memory
+
+        if upper_mem_use < free:
+            return True
+        else:
+            return False
+
     def minimize_impl(self,
                       loss,
                       startup_program=None,
@@ -143,6 +237,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         compiled_config = public.CompileTimeStrategy(_origin_main_program,
                                                      _origin_startup_program,
                                                      strategy, self.role_maker)
+        compiled_config.strategy = strategy
 
         if self.role_maker.is_worker() or self.role_maker._is_heter_worker():
             main_program, startup_program = self._build_trainer_programs(
@@ -157,9 +252,24 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return None, None
 
     def _disable_strategy(self, dist_strategy):
-        dist_strategy.a_sync_configs = {}
-        self.user_defined_strategy.a_sync_configs = {}
+        dist_strategy.a_sync = False
+        a_sync_configs = dist_strategy.a_sync_configs
+        a_sync_configs["k_steps"] = -1
+        dist_strategy.a_sync_configs = a_sync_configs
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context):
+        a_sync_configs = dist_strategy.a_sync_configs
+        if a_sync_configs["k_steps"] >= 0:
+            return
+
         dist_strategy.a_sync = True
-        dist_strategy.a_sync_configs = {}
+        a_sync_configs = dist_strategy.a_sync_configs
+
+        is_geo = self._can_apply_geo(dist_strategy,
+                                     context["origin_main_program"])
+
+        if is_geo:
+            a_sync_configs["k_steps"] = 800
+        else:
+            a_sync_configs["k_steps"] = 0
+        dist_strategy.a_sync_configs = a_sync_configs

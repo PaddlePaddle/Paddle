@@ -111,8 +111,16 @@ class CompareOp : public framework::OperatorWithKernel {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // CompareOp kernel's device type is decided by input tensor place
     bool force_cpu = ctx.Attr<bool>("force_cpu");
-    kt.place_ = force_cpu ? platform::CPUPlace()
-                          : ctx.Input<framework::LoDTensor>("X")->place();
+    if (force_cpu) {
+      kt.place_ = platform::CPUPlace();
+    } else {
+      if (ctx.Input<framework::LoDTensor>("X")->place().type() !=
+          typeid(platform::CUDAPinnedPlace)) {
+        kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+      } else {
+        kt.place_ = ctx.GetPlace();
+      }
+    }
     return kt;
   }
 };

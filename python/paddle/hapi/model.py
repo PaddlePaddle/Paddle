@@ -1680,7 +1680,7 @@ class Model(object):
 
         # TODO:
         # 1. Make it Unnecessary to run model before calling `save_inference_model` for users in dygraph.
-        # 2. Save correct shape of input, now the interface stores the shape that the user sent to 
+        # 2. Save correct shape of input, now the interface stores the shape that the user sent to
         #    the inputs of the model in running.
         # 3. Make it Unnecessary to add `@paddle.jit.to_static` for users in dynamic mode.
         if fluid.in_dygraph_mode():
@@ -1689,9 +1689,9 @@ class Model(object):
 
                 # 1. input check
                 prog_translator = ProgramTranslator()
-                if not prog_translator.enable_declarative:
+                if not prog_translator.enable_to_static:
                     raise RuntimeError(
-                        "save_inference_model doesn't work when setting ProgramTranslator.enable=False."
+                        "save_inference_model doesn't work when setting ProgramTranslator.enable to False."
                     )
                 if not isinstance(layer, Layer):
                     raise TypeError(
@@ -1902,8 +1902,8 @@ class Model(object):
                 assert isinstance(spec, Input)
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}.".
-                        format(i, spec))
+                        "Requires Input[{}].name != None, but receive `None` with {}."
+                        .format(i, spec))
 
         return out_specs
 

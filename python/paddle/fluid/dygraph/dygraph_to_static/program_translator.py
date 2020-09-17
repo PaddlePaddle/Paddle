@@ -32,8 +32,7 @@ from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import DygraphToStaticAst
-from paddle.fluid.dygraph.dygraph_to_static.error import ERROR_DATA
-from paddle.fluid.dygraph.dygraph_to_static.error import attach_error_data
+from paddle.fluid.dygraph.dygraph_to_static import error
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import attach_origin_info
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import create_and_update_origin_info_map
@@ -247,7 +246,7 @@ class StaticLayer(object):
         self._function_spec = FunctionSpec(function, input_spec)
         self._program_cache = ProgramCache()
         self._descriptor_cache = weakref.WeakKeyDictionary()
-        # Note: Hold a reference to ProgramTranslator for switching `enable_declarative`.
+        # Note: Hold a reference to ProgramTranslator for switching `enable_to_static`.
         self._program_trans = ProgramTranslator()
 
     def __get__(self, instance, owner):
@@ -300,21 +299,23 @@ class StaticLayer(object):
         """
 
         # 1. call dygraph function directly if not enable `declarative`
-        if not self._program_trans.enable_declarative:
+        if not self._program_trans.enable_to_static:
             logging_utils.warn(
-                "The decorator '@paddle.jit.to_static' does NOT work when setting ProgramTranslator.enable=False. "
-                "We will just return dygraph output.")
+                "The decorator '@paddle.jit.to_static' does NOT work when setting ProgramTranslator.enable to False. "
+                "We will just return dygraph output. If you would like to get static graph output, please call API "
+                "ProgramTranslator.enable(True)")
             return self._call_dygraph_function(*args, **kwargs)
 
-        if not in_dygraph_mode() and self._program_trans.enable_declarative:
+        if not in_dygraph_mode():
             raise RuntimeError(
                 "Failed to run the callable object {} decorated by '@paddle.jit.to_static', "
-                "because it does NOT in dynamic mode. Please disable the static mode to enter dynamic mode with the "
+                "because it is NOT in dynamic mode. Please disable the static mode to enter dynamic mode with the "
                 "following API: paddle.disable_static().".format(
                     self.dygraph_function))
 
         # 2. trace ops from dygraph layers and cache the generated program.
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+
         try:
             concrete_program, partial_program_layer = self.get_concrete_program(
                 *args, **kwargs)
@@ -324,27 +325,22 @@ class StaticLayer(object):
                 partial_program_layer.training = self._class_instance.training
 
             # 4. return outputs.
-            return partial_program_layer(args)
+            try:
+                return partial_program_layer(args)
+            except Exception as e:
+                if not hasattr(e, error.ERROR_DATA):
+                    # runtime error
+                    error.attach_error_data(e, in_runtime=True)
+                    raise
         except Exception as e:
-            if not hasattr(e, ERROR_DATA):
-                # runtime error
-                attach_error_data(e, in_runtime=True)
-            error_data = getattr(e, ERROR_DATA, None)
+            error_data = getattr(e, error.ERROR_DATA, None)
             if error_data:
-                new_exception = error_data.create_exception()
-                if six.PY3:
-                    # NOTE(liym27):
-                    # 1. Why `raise new_exception from None`?
-                    #   In Python 3, by default, an new exception is raised with trace information of the caught exception.
-                    #   This only raises new_exception and hides unwanted implementation details from tracebacks of the
-                    #   caught exception.
-                    # 2. Use exec to bypass syntax error checking in Python 2.
-
-                    six.exec_("raise new_exception from None")
-                else:
-                    raise new_exception
+                error_data.raise_new_exception()
             else:
-                raise
+                logging_utils.warn(
+                    "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
+                    " if you can't handle this {} yourself.".format(type(e)))
+                raise e
 
     def _call_dygraph_function(self, *args, **kwargs):
         """
@@ -593,7 +589,7 @@ class ConcreteProgram(object):
                         outputs = static_func(*inputs)
                     except BaseException as e:
                         # NOTE: If e is raised in compile time, e should be attached to ERROR_DATA here.
-                        attach_error_data(e)
+                        error.attach_error_data(e)
                         raise
 
                 if not isinstance(outputs,
@@ -728,15 +724,15 @@ class ProgramTranslator(object):
             return
         self._initialized = True
         self._program_cache = ProgramCache()
-        self.enable_declarative = True
+        self.enable_to_static = True
 
-    def enable(self, enable_declarative):
+    def enable(self, enable_to_static):
         """
         Enable or disable the converting from imperative to declarative by
         ProgramTranslator globally.
 
         Args:
-            enable_declarative (bool): True or False to enable or disable declarative.
+            enable_to_static (bool): True or False to enable or disable declarative.
 
         Returns:
             None.
@@ -765,9 +761,9 @@ class ProgramTranslator(object):
                 print(func(x).numpy()) # [[2. 2.]]
 
         """
-        check_type(enable_declarative, "enable_declarative", bool,
+        check_type(enable_to_static, "enable_to_static", bool,
                    "ProgramTranslator.enable")
-        self.enable_declarative = enable_declarative
+        self.enable_to_static = enable_to_static
 
     def get_output(self, dygraph_func, *args, **kwargs):
         """
@@ -808,33 +804,43 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
-        if not self.enable_declarative:
+        if not self.enable_to_static:
             warnings.warn(
-                "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable = False. "
-                "We will just return dygraph output.")
+                "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable to False. "
+                "We will just return dygraph output. "
+                "Please call ProgramTranslator.enable(True) if you would like to get static output."
+            )
             return dygraph_func(*args, **kwargs)
-
-        function_spec = FunctionSpec(dygraph_func)
-        cache_key = CacheKey.from_func_and_args(function_spec, args, kwargs,
-                                                getattr(dygraph_func,
-                                                        '__self__', None))
-        _, partial_program_layer = self._program_cache[cache_key]
-
-        if args and isinstance(args[0], layers.Layer):
-            # Synchronize self.training attribute.
-            partial_program_layer.training = args[0].training
-            args = args[1:]
         try:
-            return partial_program_layer(args)
+            function_spec = FunctionSpec(dygraph_func)
+            cache_key = CacheKey.from_func_and_args(function_spec, args, kwargs,
+                                                    getattr(dygraph_func,
+                                                            '__self__', None))
+            _, partial_program_layer = self._program_cache[cache_key]
 
+            if args and isinstance(args[0], layers.Layer):
+                # Synchronize self.training attribute.
+                partial_program_layer.training = args[0].training
+                args = args[1:]
+            try:
+                return partial_program_layer(args)
+            except BaseException as e:
+                # NOTE:
+                # 1. If e is raised in compile time, e should have been attached to ERROR_DATA before;
+                # 2. If e raised in runtime, e should be attached to ERROR_DATA here.
+                if not hasattr(e, error.ERROR_DATA):
+                    # runtime error
+                    error.attach_error_data(e, in_runtime=True)
+                raise
         except BaseException as e:
-            # NOTE:
-            # 1. If e is raised in compile time, e should have been attached to ERROR_DATA before;
-            # 2. If e raised in runtime, e should be attached to ERROR_DATA here.
-            if not hasattr(e, ERROR_DATA):
-                # runtime error
-                attach_error_data(e, in_runtime=True)
-            raise
+            error_data = getattr(e, error.ERROR_DATA, None)
+            if error_data:
+                error_data.raise_new_exception()
+            else:
+                logging_utils.warn(
+                    "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
+                    " if you can't handle this {} yourself.".format(type(e)))
+                raise e
 
     def get_func(self, dygraph_func):
         """
@@ -873,10 +879,11 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
-        if not self.enable_declarative:
+        if not self.enable_to_static:
             warnings.warn(
-                "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable=False. We will "
-                "just return dygraph output.")
+                "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable to False. We will "
+                "just return dygraph output. Please call ProgramTranslator.enable(True) if you would like to get static output."
+            )
             return dygraph_func
 
         static_func = convert_to_static(dygraph_func)
@@ -926,10 +933,12 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
-        if not self.enable_declarative:
+        if not self.enable_to_static:
             warnings.warn(
-                "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable=False."
-                "We will just return dygraph output.")
+                "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable to False."
+                "We will just return dygraph output. "
+                "Please call ProgramTranslator.enable(True) if you would like to get static output."
+            )
             return dygraph_func(*args, **kwargs)
 
         function_spec = FunctionSpec(dygraph_func)
