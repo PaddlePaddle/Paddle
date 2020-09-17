@@ -214,7 +214,16 @@ class Resize(object):
             smaller edge of the image will be matched to this number.
             i.e, if height > width, then image will be rescaled to
             (size * height / width, size)
-        interpolation (int): Interpolation mode of resize. Default: cv2.INTER_LINEAR.
+        interpolation (int, optional): Interpolation mode of resize. Default: 1.
+            0 : cv2.INTER_NEAREST 
+            1 : cv2.INTER_LINEAR 
+            2 : cv2.INTER_CUBIC 
+            3 : cv2.INTER_AREA 
+            4 : cv2.INTER_LANCZOS4 
+            5 : cv2.INTER_LINEAR_EXACT
+            7 : cv2.INTER_MAX 
+            8 : cv2.WARP_FILL_OUTLIERS 
+            16: cv2.WARP_INVERSE_MAP 
 
     Examples:
     
@@ -252,6 +261,16 @@ class RandomResizedCrop(object):
         output_size (int|list|tuple): Target size of output image, with (height, width) shape.
         scale (list|tuple): Range of size of the origin size cropped. Default: (0.08, 1.0)
         ratio (list|tuple): Range of aspect ratio of the origin aspect ratio cropped. Default: (0.75, 1.33)
+        interpolation (int, optional): Interpolation mode of resize. Default: 1.
+            0 : cv2.INTER_NEAREST 
+            1 : cv2.INTER_LINEAR 
+            2 : cv2.INTER_CUBIC 
+            3 : cv2.INTER_AREA 
+            4 : cv2.INTER_LANCZOS4 
+            5 : cv2.INTER_LINEAR_EXACT
+            7 : cv2.INTER_MAX 
+            8 : cv2.WARP_FILL_OUTLIERS 
+            16: cv2.WARP_INVERSE_MAP 
 
     Examples:
     
@@ -328,7 +347,16 @@ class CenterCropResize(object):
     Args:
         size (int|list|tuple): Target size of output image, with (height, width) shape.
         crop_padding (int): Center crop with the padding. Default: 32.
-        interpolation (int): Interpolation mode of resize. Default: cv2.INTER_LINEAR.
+        interpolation (int, optional): Interpolation mode of resize. Default: 1.
+            0 : cv2.INTER_NEAREST 
+            1 : cv2.INTER_LINEAR 
+            2 : cv2.INTER_CUBIC 
+            3 : cv2.INTER_AREA 
+            4 : cv2.INTER_LANCZOS4 
+            5 : cv2.INTER_LINEAR_EXACT
+            7 : cv2.INTER_MAX 
+            8 : cv2.WARP_FILL_OUTLIERS 
+            16: cv2.WARP_INVERSE_MAP 
 
     Examples:
     
@@ -1040,7 +1068,16 @@ class RandomRotate(object):
         degrees (sequence or float or int): Range of degrees to select from.
             If degrees is a number instead of sequence like (min, max), the range of degrees
             will be (-degrees, +degrees) clockwise order.
-        interpolation (int|optional): Interpolation mode of resize. Default: cv2.INTER_LINEAR.
+        interpolation (int, optional): Interpolation mode of resize. Default: 1.
+            0 : cv2.INTER_NEAREST 
+            1 : cv2.INTER_LINEAR 
+            2 : cv2.INTER_CUBIC 
+            3 : cv2.INTER_AREA 
+            4 : cv2.INTER_LANCZOS4 
+            5 : cv2.INTER_LINEAR_EXACT
+            7 : cv2.INTER_MAX 
+            8 : cv2.WARP_FILL_OUTLIERS 
+            16: cv2.WARP_INVERSE_MAP 
         expand (bool|optional): Optional expansion flag. Default: False.
             If true, expands the output to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.

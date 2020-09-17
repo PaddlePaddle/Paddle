@@ -55,8 +55,8 @@ def flip(image, code):
     Accordding to the code (the type of flip), flip the input image
 
     Args:
-        image: Input image, with (H, W, C) shape
-        code: Code that indicates the type of flip.
+        image (np.ndarray): Input image, with (H, W, C) shape
+        code (int): Code that indicates the type of flip.
             -1 : Flip horizontally and vertically
             0 : Flip vertically
             1 : Flip horizontally
@@ -88,9 +88,18 @@ def resize(img, size, interpolation=1):
     resize the input data to given size
 
     Args:
-        input: Input data, could be image or masks, with (H, W, C) shape
-        size: Target size of input data, with (height, width) shape.
-        interpolation: Interpolation method.
+        input (np.ndarray): Input data, could be image or masks, with (H, W, C) shape
+        size (int|list|tuple): Target size of input data, with (height, width) shape.
+        interpolation (int, optional): Interpolation method.
+            0 : cv2.INTER_NEAREST 
+            1 : cv2.INTER_LINEAR 
+            2 : cv2.INTER_CUBIC 
+            3 : cv2.INTER_AREA 
+            4 : cv2.INTER_LANCZOS4 
+            5 : cv2.INTER_LINEAR_EXACT
+            7 : cv2.INTER_MAX 
+            8 : cv2.WARP_FILL_OUTLIERS 
+            16: cv2.WARP_INVERSE_MAP 
 
     Examples:
         .. code-block:: python
@@ -224,8 +233,16 @@ def rotate(img, angle, interpolation=1, expand=False, center=None):
     Args:
         img (numpy.ndarray): Image to be rotated.
         angle (float|int): In degrees clockwise order.
-        interpolation (int, optional):
-            interpolation: Interpolation method. Default: 1.
+        interpolation (int, optional): Interpolation method. Default: 1.
+            0 : cv2.INTER_NEAREST 
+            1 : cv2.INTER_LINEAR 
+            2 : cv2.INTER_CUBIC 
+            3 : cv2.INTER_AREA 
+            4 : cv2.INTER_LANCZOS4 
+            5 : cv2.INTER_LINEAR_EXACT
+            7 : cv2.INTER_MAX 
+            8 : cv2.WARP_FILL_OUTLIERS 
+            16: cv2.WARP_INVERSE_MAP 
         expand (bool|optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
             If false or omitted, make the output image the same size as the input image.
