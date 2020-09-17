@@ -979,7 +979,7 @@ set +x
 
                 if [[ "$is_multicard" == "" ]]; then
                   # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
-                  read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist")
+                  read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
                 fi
 
                 if [[ "$is_exclusive" != "" ]]; then
