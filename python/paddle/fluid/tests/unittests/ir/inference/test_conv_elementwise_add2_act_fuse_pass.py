@@ -47,7 +47,9 @@ class ConvElementwiseAdd2ActFusePassTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
-        PassVersionChecker.IsCompatible('conv_elementwise_add2_act_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible(
+                'conv_elementwise_add2_act_fuse_pass'))
 
 
 if __name__ == "__main__":
