@@ -121,7 +121,7 @@ function cmake_base() {
             else
                 exit 1
             fi
-        elif [ "$1" == "cp38-cp38m" ]; then
+        elif [ "$1" == "cp38-cp38" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
@@ -188,7 +188,7 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.7.0/include/python3.7m
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.7.0/lib/libpython3.so"
                 pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
-            elif [ "$1" == "cp38-cp38m" ]; then
+            elif [ "$1" == "cp38-cp38" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.8.0/bin/python3.8
@@ -533,7 +533,7 @@ EOF
             pip3.6 uninstall -y paddlepaddle
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 uninstall -y paddlepaddle
-        elif [ "$1" == "cp38-cp38m" ]; then
+        elif [ "$1" == "cp38-cp38" ]; then
             pip3.8 uninstall -y paddlepaddle
         fi
         set -ex
@@ -548,7 +548,7 @@ EOF
             pip3.6 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
-        elif [ "$1" == "cp38-cp38m" ]; then
+        elif [ "$1" == "cp38-cp38" ]; then
             pip3.8 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
         ut_startTime_s=`date +%s`
@@ -626,7 +626,7 @@ function generate_api_spec() {
 
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
-    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ] || [ "$1" == "cp38-cp38m" ]; then
+    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ] || [ "$1" == "cp38-cp38" ]; then
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' $spec_path
         sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
