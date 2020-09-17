@@ -25,12 +25,12 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
-template <typename T>
-bool is_continuous(const std::vector<const Tensor *> &weight_list) {
+template <typename T, typename Type>
+bool is_continuous(const Type &weight_list) {
   bool continuous = true;
   for (size_t i = 0; i < weight_list.size() - 1; ++i) {
-    const T *in_data = weight_list[i]->data<T>();
-    const T *in_after_data = weight_list[i + 1]->data<T>();
+    auto *in_data = weight_list[i]->template data<T>();
+    auto *in_after_data = weight_list[i + 1]->template data<T>();
     auto in_size = weight_list[i]->numel();
     bool temp = in_data + in_size == in_after_data;
     continuous = continuous && temp;
@@ -145,7 +145,8 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     T *last_c_data = last_c->mutable_data<T>(ctx.GetPlace());
 
     auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
-    bool continuous = is_continuous<T>(weight_list);
+    bool continuous =
+        is_continuous<T, std::vector<const Tensor *>>(weight_list);
     int weight_numel = size_sum(weight_list);
 
     auto place = ctx.GetPlace();
@@ -279,16 +280,17 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
     int weight_numel = size_sum(weight_list);
-    bool continuous = is_continuous<T>(weight_list);
+    bool continuous =
+        is_continuous<T, std::vector<const Tensor *>>(weight_list);
 
     auto stream = reinterpret_cast<const platform::CUDADeviceContext &>(
                       ctx.device_context())
                       .stream();
     Tensor weight_whole;
-    weight_whole.mutable_data<T>({weight_numel}, place);
     T *weight_data = nullptr;
 
     if (!continuous) {
+      weight_whole.mutable_data<T>({weight_numel}, place);
       weight_to_tensor<T>(place, stream, weight_list, &weight_whole);
       weight_data = weight_whole.data<T>();
     } else {
@@ -296,19 +298,36 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     }
 
     Tensor weight_grad;
-
+    T *weight_grad_data = nullptr;
     math::SetConstant<paddle::platform::CUDADeviceContext, T> zero;
-    weight_grad.mutable_data<T>({weight_numel}, ctx.GetPlace());
-    zero(dev_ctx, &weight_grad, static_cast<T>(0.0));
+    for (size_t i = 0; i < weight_grad_list.size(); ++i) {
+      weight_grad_list[i]->mutable_data<T>({weight_list[i]->numel()}, place);
+    }
+
+    bool grad_continuous =
+        is_continuous<T, std::vector<Tensor *>>(weight_grad_list);
+    LOG(INFO) << "grad_continuous: " << grad_continuous;
+
+    if (!grad_continuous) {
+      weight_grad.mutable_data<T>({weight_numel}, ctx.GetPlace());
+      zero(dev_ctx, &weight_grad, static_cast<T>(0.0));
+      weight_grad_data = weight_grad.data<T>();
+      LOG(INFO) << "weight_grad_number: " << weight_numel;
+    } else {
+      for (size_t i = 0; i < weight_grad_list.size(); ++i) {
+        zero(dev_ctx, weight_grad_list[i], static_cast<T>(0.0));
+      }
+      weight_grad_data = weight_grad_list[0]->data<T>();
+    }
 
     in_grad->mutable_data<T>(input_dims, ctx.GetPlace());
     auto *in_grad_data = in_grad->data<T>();
 
-    init_h_grad->mutable_data<T>(init_h_dims, ctx.GetPlace());
-    auto *init_h_grad_data = init_h_grad->data<T>();
+    if (init_h_grad) init_h_grad->mutable_data<T>(init_h_dims, ctx.GetPlace());
+    auto *init_h_grad_data = init_h_grad ? init_h_grad->data<T>() : nullptr;
 
-    init_c_grad->mutable_data<T>(init_c_dims, ctx.GetPlace());
-    auto *init_c_grad_data = init_c_grad->data<T>();
+    if (init_c_grad) init_c_grad->mutable_data<T>(init_c_dims, ctx.GetPlace());
+    auto *init_c_grad_data = init_c_grad ? init_c_grad->data<T>() : nullptr;
 
     float dropout_prob = ctx.Attr<float>("dropout_prob");
     bool is_bidirec = ctx.Attr<bool>("is_bidirec");
@@ -357,8 +376,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
           handle, rnn.rnn_desc(), seq_length, rnn.x_descs(), input->data<T>(),
           rnn.init_h_desc(), init_h->data<T>(), rnn.y_descs(), out->data<T>(),
           workspace_data_.data<uint8_t>(), workspace_size, rnn.weight_desc(),
-          weight_grad.data<T>(), const_cast<uint8_t *>(reserve_data),
-          reserve_size));
+          weight_grad_data, const_cast<uint8_t *>(reserve_data), reserve_size));
     } else {
 #if CUDNN_VERSION >= 7201
       // for train
@@ -377,7 +395,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
           handle, rnn.rnn_desc(), rnn.x_seq_desc(), input->data<T>(),
           rnn.init_h_desc(), init_h->data<T>(), rnn.y_seq_desc(),
           out->data<T>(), workspace_data_.data<uint8_t>(), workspace_size,
-          rnn.weight_desc(), weight_grad.data<T>(),
+          rnn.weight_desc(), weight_grad_data,
           const_cast<uint8_t *>(reserve_data), reserve_size));
 #else
       PADDLE_THROW(platform::errors::Unavailable(
@@ -386,8 +404,11 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
           "of cudnn is larger than 7.2.1"));
 #endif
     }
-    weight_to_tensor_list<T>(place, stream, &weight_grad_list, weight_list,
-                             &weight_grad);
+    if (!grad_continuous) {
+      LOG(INFO) << "weight_numel_copy";
+      weight_to_tensor_list<T>(place, stream, &weight_grad_list, weight_list,
+                               &weight_grad);
+    }
   }
 };
 
