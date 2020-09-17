@@ -19,7 +19,7 @@ import tarfile
 import os
 
 import paddle
-import paddle.fluid.incubate.data_generator as data_generator
+from paddle.distributed.fleet.dataset import data_generator as data_generator
 from paddle.fluid.log_helper import get_logger
 
 logger = get_logger(

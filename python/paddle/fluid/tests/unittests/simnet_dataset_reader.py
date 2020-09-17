@@ -21,7 +21,7 @@ import tarfile
 import random
 
 import paddle
-import paddle.fluid.incubate.data_generator as data_generator
+from paddle.distributed.fleet.dataset import data_generator as data_generator
 
 logging.basicConfig()
 logger = logging.getLogger("paddle")
