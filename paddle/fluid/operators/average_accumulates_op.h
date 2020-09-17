@@ -56,8 +56,8 @@ class AverageAccumulatesKernel : public framework::OpKernel<T> {
     int64_t min_average_window = ctx.Attr<int64_t>("min_average_window");
     PADDLE_ENFORCE_LE(min_average_window, max_average_window,
                       platform::errors::InvalidArgument(
-                          "The min_average_window <= "
-                          "max_average_window, min_average_window is %ld, "
+                          "The min_average_window > "
+                          "max_average_window is not right, min_average_window is %ld, "
                           "max_average_window is %ld.",
                           min_average_window, max_average_window));
 
