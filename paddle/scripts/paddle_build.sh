@@ -930,6 +930,10 @@ function parallel_test_base_gpu() {
 EOF
 
 set +x
+        precison_cases=""
+        if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+            precision_cases=`python $PADDLE_ROOT/tools/get_pr_ut.py`
+        fi
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
         exclusive_tests=''        # cases list which would be run exclusively
@@ -958,6 +962,19 @@ set +x
                 if [[ "$is_nightly" != "" ]] && [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
                     echo $testcase" will only run at night."
                     continue
+                fi
+                if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]]; then
+                    will_test="false"
+                    for case in $precision_cases; do
+                        if [[ $testcase == $case ]]; then
+                            will_test="true"
+                            break
+                        fi
+                    done
+                    if [[ $will_test == "false" ]]; then
+                        echo $testcase" won't run in PRECISION_TEST mode."
+                        continue
+                    fi
                 fi
 
                 if [[ "$is_multicard" == "" ]]; then
@@ -1077,8 +1094,6 @@ set +x
                 done
         fi
 
-
-       
         if [[ "$EXIT_CODE" != "0" ]]; then
             if [[ "$failed_test_lists" == "" ]]; then
                 echo "========================================"
