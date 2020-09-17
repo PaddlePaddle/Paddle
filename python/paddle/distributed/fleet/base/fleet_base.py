@@ -592,8 +592,8 @@ class Fleet(object):
 
         if strategy == None:
             strategy = DistributedStrategy()
-        self.user_defined_strategy = strategy
-        self.valid_strategy = None
+
+        self._context = {}
         return self
 
     @dygraph_only
@@ -1059,7 +1059,7 @@ class Fleet(object):
         valid_strategy = self.strategy_compiler._get_valid_strategy(
             copy_user_defined_strategy, can_not_apply_optimizer_list)
 
-        context["valid_strategy"] = valid_strategy
+        context["valid_strategy"] = copy.deepcopy(valid_strategy)
 
         self._context = context
 
