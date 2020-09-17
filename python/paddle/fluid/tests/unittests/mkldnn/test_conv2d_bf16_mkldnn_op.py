@@ -23,8 +23,6 @@ from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, con
 from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2dOp
 
 
-@skip_check_grad_ci(
-    reason="The function 'check_grad' for large inputs is too slow.")
 def conv2d_forward_refer(input, filter, group, conv_param):
     out, in_n, out_h, out_w, out_c = conv2d_forward_naive(input, filter, group,
                                                           conv_param)
@@ -37,6 +35,8 @@ def conv2d_residual_naive(out, residual):
     return out
 
 
+@skip_check_grad_ci(
+    reason="Grad check is meaningless because Grad Op BF16 is not registered")
 class TestConv2dBf16Op(TestConv2dOp):
     def setUp(self):
         self.op_type = "conv2d"
