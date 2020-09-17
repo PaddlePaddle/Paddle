@@ -642,6 +642,7 @@ function generate_api_spec() {
     cd ${PADDLE_ROOT}/build/.check_api_workspace
     virtualenv .${spec_kind}_env
     source .${spec_kind}_env/bin/activate
+
     if [ "$spec_kind" == "DEV" ]; then
         pip install -r /tmp/requirements.txt
     else
