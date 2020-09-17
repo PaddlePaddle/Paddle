@@ -51,7 +51,8 @@ class RepeatedFcReluFusePass3Test(InferencePassTest):
         use_gpu = False
         self.check_output_with_option(use_gpu)
 
-        PassVersionChecker.IsCompatible('repeated_fc_relu_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible('repeated_fc_relu_fuse_pass'))
 
 
 class RepeatedFcReluFusePass9Test(InferencePassTest):
@@ -85,7 +86,8 @@ class RepeatedFcReluFusePass9Test(InferencePassTest):
         use_gpu = False
         self.check_output_with_option(use_gpu)
 
-        PassVersionChecker.IsCompatible('repeated_fc_relu_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible('repeated_fc_relu_fuse_pass'))
 
 
 if __name__ == "__main__":

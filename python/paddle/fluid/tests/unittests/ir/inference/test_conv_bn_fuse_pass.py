@@ -42,7 +42,7 @@ class ConvBnFusePassExplicitPaddingTest(InferencePassTest):
 
     def test_check_output(self):
         self.check_output()
-        PassVersionChecker.IsCompatible('conv_bn_fuse_pass')
+        self.assertTrue(PassVersionChecker.IsCompatible('conv_bn_fuse_pass'))
 
 
 class ConvBnFusePassValidPaddingTest(InferencePassTest):
@@ -67,7 +67,7 @@ class ConvBnFusePassValidPaddingTest(InferencePassTest):
 
     def test_check_output(self):
         self.check_output()
-        PassVersionChecker.IsCompatible('conv_bn_fuse_pass')
+        self.assertTrue(PassVersionChecker.IsCompatible('conv_bn_fuse_pass'))
 
 
 class ConvBnFusePassSamePaddingTest(InferencePassTest):
@@ -92,7 +92,7 @@ class ConvBnFusePassSamePaddingTest(InferencePassTest):
 
     def test_check_output(self):
         self.check_output()
-        PassVersionChecker.IsCompatible('conv_bn_fuse_pass')
+        self.assertTrue(PassVersionChecker.IsCompatible('conv_bn_fuse_pass'))
 
 
 class ConvEltwiseAddBnFuseExplicitPaddingPass(InferencePassTest):
@@ -117,7 +117,8 @@ class ConvEltwiseAddBnFuseExplicitPaddingPass(InferencePassTest):
 
     def test_check_output(self):
         self.check_output()
-        PassVersionChecker.IsCompatible('conv_eltwiseadd_bn_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible('conv_eltwiseadd_bn_fuse_pass'))
 
 
 class ConvEltwiseAddBnFuseValidPaddingPass(InferencePassTest):
@@ -142,7 +143,8 @@ class ConvEltwiseAddBnFuseValidPaddingPass(InferencePassTest):
 
     def test_check_output(self):
         self.check_output()
-        PassVersionChecker.IsCompatible('conv_eltwiseadd_bn_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible('conv_eltwiseadd_bn_fuse_pass'))
 
 
 class ConvEltwiseAddBnFuseSamePaddingPass(InferencePassTest):
@@ -167,7 +169,8 @@ class ConvEltwiseAddBnFuseSamePaddingPass(InferencePassTest):
 
     def test_check_output(self):
         self.check_output()
-        PassVersionChecker.IsCompatible('conv_eltwiseadd_bn_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible('conv_eltwiseadd_bn_fuse_pass'))
 
 
 if __name__ == "__main__":

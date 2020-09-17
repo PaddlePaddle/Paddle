@@ -43,7 +43,8 @@ class ShuffleChannelFuseTRTPassTest(InferencePassTest):
 
         self.check_output()
 
-        PassVersionChecker.IsCompatible('shuffle_channel_detect_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible('shuffle_channel_detect_pass'))
 
 
 if __name__ == "__main__":

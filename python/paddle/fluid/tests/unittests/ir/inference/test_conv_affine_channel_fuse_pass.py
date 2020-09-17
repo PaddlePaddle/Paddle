@@ -48,7 +48,8 @@ class ConvAffineChannelFusePassExplicitPaddingTest(InferencePassTest):
     def test_check_output(self):
         self.check_output()
 
-        PassVersionChecker.IsCompatible('conv_affine_channel_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible('conv_affine_channel_fuse_pass'))
 
 
 class ConvAffineChannelFusePassValidPaddingTest(InferencePassTest):
@@ -79,7 +80,8 @@ class ConvAffineChannelFusePassValidPaddingTest(InferencePassTest):
     def test_check_output(self):
         self.check_output()
 
-        PassVersionChecker.IsCompatible('conv_affine_channel_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible('conv_affine_channel_fuse_pass'))
 
 
 class ConvAffineChannelFusePassSamePaddingTest(InferencePassTest):
@@ -110,7 +112,8 @@ class ConvAffineChannelFusePassSamePaddingTest(InferencePassTest):
     def test_check_output(self):
         self.check_output()
 
-        PassVersionChecker.IsCompatible('conv_affine_channel_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible('conv_affine_channel_fuse_pass'))
 
 
 class ConvEltwiseAddAffineChannelFusePassExplicitPaddingTest(InferencePassTest):
@@ -144,8 +147,9 @@ class ConvEltwiseAddAffineChannelFusePassExplicitPaddingTest(InferencePassTest):
     def test_check_output(self):
         self.check_output()
 
-        PassVersionChecker.IsCompatible(
-            'conv_eltwiseadd_affine_channel_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible(
+                'conv_eltwiseadd_affine_channel_fuse_pass'))
 
 
 class ConvEltwiseAddAffineChannelFusePassValidPaddingTest(InferencePassTest):
@@ -179,8 +183,9 @@ class ConvEltwiseAddAffineChannelFusePassValidPaddingTest(InferencePassTest):
     def test_check_output(self):
         self.check_output()
 
-        PassVersionChecker.IsCompatible(
-            'conv_eltwiseadd_affine_channel_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible(
+                'conv_eltwiseadd_affine_channel_fuse_pass'))
 
 
 class ConvEltwiseAddAffineChannelFusePassSamePaddingTest(InferencePassTest):
@@ -214,8 +219,9 @@ class ConvEltwiseAddAffineChannelFusePassSamePaddingTest(InferencePassTest):
     def test_check_output(self):
         self.check_output()
 
-        PassVersionChecker.IsCompatible(
-            'conv_eltwiseadd_affine_channel_fuse_pass')
+        self.assertTrue(
+            PassVersionChecker.IsCompatible(
+                'conv_eltwiseadd_affine_channel_fuse_pass'))
 
 
 if __name__ == "__main__":
