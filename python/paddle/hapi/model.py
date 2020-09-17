@@ -1674,9 +1674,9 @@ class Model(object):
 
                 # 1. input check
                 prog_translator = ProgramTranslator()
-                if not prog_translator.enable_declarative:
+                if not prog_translator.enable_to_static:
                     raise RuntimeError(
-                        "save_inference_model doesn't work when setting ProgramTranslator.enable=False."
+                        "save_inference_model doesn't work when setting ProgramTranslator.enable to False."
                     )
                 if not isinstance(layer, Layer):
                     raise TypeError(
@@ -1876,8 +1876,8 @@ class Model(object):
                 assert isinstance(spec, Input)
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}.".
-                        format(i, spec))
+                        "Requires Input[{}].name != None, but receive `None` with {}."
+                        .format(i, spec))
 
         return out_specs
 
