@@ -18,9 +18,8 @@ import os
 import six
 import numpy as np
 import collections
-import nltk
-from nltk.corpus import movie_reviews
 import zipfile
+import functools
 from functools import cmp_to_key
 from itertools import chain
 
@@ -34,6 +33,23 @@ MD5 = '155de2b77c6834dd8eea7cbe88e93acb'
 
 NUM_TRAINING_INSTANCES = 1600
 NUM_TOTAL_INSTANCES = 2000
+
+
+def check_nltk_intall(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            import sys
+            import nltk
+            from nltk.corpus import movie_reviews
+            module = sys.modules[__name__]
+            setattr(module, "nltk", nltk)
+            setattr(module, "movie_reviews", movie_reviews)
+        except ImportError as e:
+            raise ImportError(e.message + "\n Please install nltk.")
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 class MovieReviews(Dataset):
@@ -89,6 +105,7 @@ class MovieReviews(Dataset):
         # read dataset into memory
         self._load_sentiment_data()
 
+    @check_nltk_intall
     def _get_word_dict(self):
         """
         Sorted the words by the frequency of words which occur in sample
@@ -108,6 +125,7 @@ class MovieReviews(Dataset):
             words_freq_sorted.append((word[0], index))
         return words_freq_sorted
 
+    @check_nltk_intall
     def _sort_files(self):
         """
         Sorted the sample for cross reading the sample
@@ -121,6 +139,7 @@ class MovieReviews(Dataset):
             chain.from_iterable(list(zip(neg_file_list, pos_file_list))))
         return files_list
 
+    @check_nltk_intall
     def _load_sentiment_data(self):
         """
         Load the data set
@@ -136,6 +155,7 @@ class MovieReviews(Dataset):
                 words_list.append(words_ids[word.lower()])
             self.data.append((words_list, category))
 
+    @check_nltk_intall
     def _download_data_if_not_yet(self):
         """
         Download the data set, if the data set is not download.

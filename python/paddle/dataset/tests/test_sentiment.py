@@ -18,9 +18,7 @@
 from __future__ import print_function
 
 import unittest
-import nltk
 import paddle.dataset.sentiment as st
-from nltk.corpus import movie_reviews
 
 
 class TestSentimentMethods(unittest.TestCase):
@@ -30,6 +28,7 @@ class TestSentimentMethods(unittest.TestCase):
                           ('of', 5), ('to', 6), ("'", 7), ('is', 8), ('in', 9)]
         for idx, each in enumerate(word_dict):
             self.assertEqual(each, test_word_list[idx])
+        import nltk
         self.assertTrue("/root/.cache/paddle/dataset" in nltk.data.path)
 
     def test_sort_files(self):

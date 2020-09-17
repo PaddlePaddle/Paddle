@@ -24,11 +24,10 @@ from __future__ import print_function
 
 import six
 import collections
+import functools
 from itertools import chain
 
 import os
-import nltk
-from nltk.corpus import movie_reviews
 import zipfile
 from functools import cmp_to_key
 
@@ -42,6 +41,24 @@ NUM_TRAINING_INSTANCES = 1600
 NUM_TOTAL_INSTANCES = 2000
 
 
+def check_nltk_intall(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            import sys
+            import nltk
+            from nltk.corpus import movie_reviews
+            module = sys.modules[__name__]
+            setattr(module, "nltk", nltk)
+            setattr(module, "movie_reviews", movie_reviews)
+        except ImportError as e:
+            raise ImportError(e.message + "\n Please install nltk.")
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+@check_nltk_intall
 def download_data_if_not_yet():
     """
     Download the data set, if the data set is not download.
@@ -67,6 +84,7 @@ def download_data_if_not_yet():
         print("Path is " + nltk.data.find('corpora/movie_reviews').path)
 
 
+@check_nltk_intall
 def get_word_dict():
     """
     Sorted the words by the frequency of words which occur in sample
@@ -88,6 +106,7 @@ def get_word_dict():
     return words_freq_sorted
 
 
+@check_nltk_intall
 def sort_files():
     """
     Sorted the sample for cross reading the sample
@@ -102,6 +121,7 @@ def sort_files():
     return files_list
 
 
+@check_nltk_intall
 def load_sentiment_data():
     """
     Load the data set
@@ -120,6 +140,7 @@ def load_sentiment_data():
     return data_set
 
 
+@check_nltk_intall
 def reader_creator(data):
     """
     Reader creator, generate an iterator for data set
@@ -130,6 +151,7 @@ def reader_creator(data):
         yield each[0], each[1]
 
 
+@check_nltk_intall
 def train():
     """
     Default training set reader creator
@@ -138,6 +160,7 @@ def train():
     return reader_creator(data_set[0:NUM_TRAINING_INSTANCES])
 
 
+@check_nltk_intall
 def test():
     """
     Default test set reader creator
@@ -146,5 +169,6 @@ def test():
     return reader_creator(data_set[NUM_TRAINING_INSTANCES:])
 
 
+@check_nltk_intall
 def fetch():
     nltk.download('movie_reviews', download_dir=paddle.dataset.common.DATA_HOME)
