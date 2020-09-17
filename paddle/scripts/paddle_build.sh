@@ -621,6 +621,7 @@ function generate_upstream_develop_api_spec() {
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen $1
     build $2
+    cp ${PADDLE_ROOT}/python/requirements.txt /tmp
 
     git checkout $cur_branch
     generate_api_spec "$1" "DEV"
@@ -641,7 +642,11 @@ function generate_api_spec() {
     cd ${PADDLE_ROOT}/build/.check_api_workspace
     virtualenv .${spec_kind}_env
     source .${spec_kind}_env/bin/activate
-    pip install -r ${PADDLE_ROOT}/python/requirements.txt
+    if [ "$spec_kind" == "DEV" ]; then
+        pip install -r /tmp/requirements.txt
+    else
+        pip install -r ${PADDLE_ROOT}/python/requirements.txt
+    fi
     pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
