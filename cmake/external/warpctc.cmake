@@ -18,7 +18,7 @@ SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
 set(WARPCTC_REPOSITORY  https://github.com/lfchener/warp-ctc.git)
-set(WARPCTC_TAG         2b8053b451b3956c5dd10850de8c920a471c0d5e)
+set(WARPCTC_TAG         1350f398af773d93f3c6ec9b4e6349d33d9e9e89)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)

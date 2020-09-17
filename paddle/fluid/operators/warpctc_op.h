@@ -165,7 +165,8 @@ class WarpCTCFunctor {
                             ctx.device_context())
                             .stream();
 #else
-      PADDLE_THROW("[warpctc init] GPU is not enabled.");
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "[warpctc init] GPU is not enabled."));
 #endif
     } else {
       options_.loc = CTC_CPU;
