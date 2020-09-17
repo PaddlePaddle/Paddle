@@ -361,13 +361,16 @@ class TestDecorateModelDirectly(unittest.TestCase):
 class TestErrorWithInitFromImperative(unittest.TestCase):
     def test_raise_error(self):
         net = SimpleNet()
-        with self.assertRaises(RuntimeError):
-            net.forward.concrete_program()
+        with self.assertRaiseRegexp(RuntimeError,
+                                    "only available in imperative mode"):
+            net.forward.concrete_program
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in imperative mode"):
             net.forward.inputs
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in imperative mode"):
             net.forward.outputs
 
 
