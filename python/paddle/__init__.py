@@ -275,3 +275,9 @@ from .hapi import callbacks
 from .hapi import summary
 import paddle.text
 import paddle.vision
+
+try:
+    disable_static()
+
+except Exception as e:
+    raise e
