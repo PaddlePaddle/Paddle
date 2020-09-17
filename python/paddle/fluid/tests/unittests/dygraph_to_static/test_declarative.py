@@ -358,8 +358,11 @@ class TestDecorateModelDirectly(unittest.TestCase):
         self.assertListEqual(list(input_shape), [-1, 16, 10])
 
 
-class TestErrorWithInitFromImperative(unittest.TestCase):
+class TestErrorWithInitFromStaticMode(unittest.TestCase):
     def test_raise_error(self):
+        # disable imperative
+        paddle.enable_static()
+
         net = SimpleNet()
         with self.assertRaisesRegexp(RuntimeError,
                                      "only available in imperative mode"):
