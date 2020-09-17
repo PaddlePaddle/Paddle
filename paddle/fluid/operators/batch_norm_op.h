@@ -109,7 +109,6 @@ inline void ResizeToChannelLast(const framework::ExecutionContext& context,
                                 Tensor* transformed_input) {
   int dim = input->dims().size() - 2;
   if (dim == 3) {
-    // input
     transformed_input->Resize(input->dims());
 
     auto in_dims_vec = framework::vectorize(input->dims());
@@ -121,7 +120,6 @@ inline void ResizeToChannelLast(const framework::ExecutionContext& context,
     transformed_input->mutable_data<T>(context.GetPlace());
 
   } else if (dim == 2) {
-    // input
     transformed_input->Resize(input->dims());
 
     auto in_dims_vec = framework::vectorize(input->dims());
