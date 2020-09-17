@@ -558,7 +558,7 @@ endif()
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist
         test_parallel_executor_feed_persistable_var
         test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-        test_data_norm_op test_imperative_using_non_zero_gpu
+        test_data_norm_op
         test_dataloader_keep_order
         test_dataloader_unkeep_order
         test_parallel_executor_fetch_isolated_var
