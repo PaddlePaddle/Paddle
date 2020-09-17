@@ -6109,7 +6109,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             data_1 = fluid.data(
               name='data_1', shape=[2, 4, 6], dtype='float32')
             reshaped_1 = fluid.layers.reshape(
-              x=data_1, shape=[-1, 0, 3, 2], inplace=True)
+              x=data_1, shape=[-1, 0, 3, 2])
             # the shape of reshaped_1 is [2,4,3,2].
 
             # example 2:

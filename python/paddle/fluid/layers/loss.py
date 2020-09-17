@@ -1736,7 +1736,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     Beta = 0.25
     batch_size = labels.shape[0]
 
-    labels = nn.reshape(labels, shape=[batch_size, 1], inplace=True)
+    labels = nn.reshape(labels, shape=[batch_size, 1])
     labels = nn.expand(labels, expand_times=[1, batch_size])
 
     labels = equal(labels, nn.transpose(labels, perm=[1, 0])).astype('float32')
