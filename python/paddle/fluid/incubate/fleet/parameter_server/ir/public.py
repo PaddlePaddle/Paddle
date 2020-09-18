@@ -170,16 +170,16 @@ class CompileTimeStrategy(object):
         return trainer.mode == DistributedMode.ASYNC
 
     def get_role_id(self):
-        return self.role_maker.role_id()
+        return self.role_maker._role_id()
 
     def get_trainers(self):
-        return self.role_maker.worker_num()
+        return self.role_maker._worker_num()
 
     def get_ps_endpoint(self):
-        return self.role_maker.get_pserver_endpoints()[self.get_role_id()]
+        return self.role_maker._get_pserver_endpoints()[self.get_role_id()]
 
     def get_ps_endpoints(self):
-        return self.role_maker.get_pserver_endpoints()
+        return self.role_maker._get_pserver_endpoints()
 
     def get_heter_worker_endpoints(self):
         return self.role_maker._get_heter_worker_endpoints()

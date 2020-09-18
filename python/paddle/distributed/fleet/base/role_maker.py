@@ -611,7 +611,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self._generate_role()
-        return self._node_num
+        return self._nodes_num
 
     def _get_trainer_endpoints(self):
         """
@@ -682,7 +682,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 self._trainers_num = 1
                 self._role = Role.WORKER
                 self._current_id = 0
-                self._node_num = 1
+                self._nodes_num = 1
                 self._heter_trainers_num = 0
                 self._heter_trainer_endpoints = None
                 self._non_distributed = True
@@ -757,7 +757,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._trainers_num = trainers_num
         self._role = role
         self._current_id = current_id
-        self._node_num = len(
+        self._nodes_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
         self._heter_trainers_num = heter_trainers_num
         self._heter_trainer_endpoints = heter_trainer_eplist
@@ -776,7 +776,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._non_distributed = True
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
-        self._node_num = len(
+        self._nodes_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
 
     def _gloo_init(self):
@@ -832,9 +832,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._gloo.init(
             rendezvous=rendezvous_type,
             role=self._role,
-            role_id=self.role_id(),
-            worker_num=self.worker_num(),
-            server_num=self.server_num(),
+            role_id=self._role_id(),
+            worker_num=self._worker_num(),
+            server_num=self._server_num(),
             need_init_all=need_init_all,
             kwargs=kwargs)
 
@@ -874,7 +874,7 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
             self._cur_endpoint = self._worker_endpoints[self._current_id]
         elif self._role == Role.SERVER:
             self._cur_endpoint = self._server_endpoints[self._current_id]
-        self._node_num = len(
+        self._nodes_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
 
     def _user_defined_collective_env(self):
@@ -882,7 +882,7 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
         self._current_id = self._kwargs.get("current_id")
         self._trainers_num = len(self._worker_endpoints)
         self._training_role = Role.WORKER
-        self._node_num = len(
+        self._nodes_num = len(
             set([x.split(':')[0] for x in self._worker_endpoints]))
 
     def _generate_role(self):

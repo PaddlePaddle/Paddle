@@ -30,19 +30,19 @@ class TestRoleMakerBase(unittest.TestCase):
 
     def test_rolemaker_base(self):
         role = role_maker.RoleMakerBase()
-        self.assertRaises(Exception, role.is_worker)
-        self.assertRaises(Exception, role.is_server)
-        self.assertRaises(Exception, role.is_first_worker)
-        self.assertRaises(Exception, role.worker_num)
-        self.assertRaises(Exception, role.server_num)
-        self.assertRaises(Exception, role.worker_index)
-        self.assertRaises(Exception, role.server_index)
-        self.assertRaises(Exception, role.role_id)
-        self.assertRaises(Exception, role.node_num)
+        self.assertRaises(Exception, role._is_worker)
+        self.assertRaises(Exception, role._is_server)
+        self.assertRaises(Exception, role._is_first_worker)
+        self.assertRaises(Exception, role._worker_num)
+        self.assertRaises(Exception, role._server_num)
+        self.assertRaises(Exception, role._worker_index)
+        self.assertRaises(Exception, role._server_index)
+        self.assertRaises(Exception, role._role_id)
+        self.assertRaises(Exception, role._node_num)
 
-        trainer_endpoints = role.get_trainer_endpoints()
+        trainer_endpoints = role._get_trainer_endpoints()
         self.assertTrue(len(trainer_endpoints) == 0)
-        pserver_endpoints = role.get_pserver_endpoints()
+        pserver_endpoints = role._get_pserver_endpoints()
         self.assertTrue(len(pserver_endpoints) == 0)
 
         print(role.to_string())
@@ -78,19 +78,19 @@ class TestCloudRoleMaker(unittest.TestCase):
 
         ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
 
-        self.assertTrue(ro.is_worker())
-        self.assertFalse(ro.is_server())
-        self.assertEqual(ro.worker_num(), 2)
-        self.assertTrue(ro.is_first_worker())
-        worker_endpoints = ro.get_trainer_endpoints()
+        self.assertTrue(ro._is_worker())
+        self.assertFalse(ro._is_server())
+        self.assertEqual(ro._worker_num(), 2)
+        self.assertTrue(ro._is_first_worker())
+        worker_endpoints = ro._get_trainer_endpoints()
         self.assertEqual(worker_endpoints[0], '127.0.0.1:36001')
-        self.assertEqual(ro.role_id(), 0)
-        self.assertEqual(ro.node_num(), 2)
+        self.assertEqual(ro._role_id(), 0)
+        self.assertEqual(ro._node_num(), 2)
 
     def test_tr_rolemaker_collective(self):
         ro = role_maker.PaddleCloudRoleMaker(is_collective=True)
-        self.assertEqual(ro.worker_num(), 2)
-        self.assertEqual(ro.node_num(), 2)
+        self.assertEqual(ro._worker_num(), 2)
+        self.assertEqual(ro._node_num(), 2)
 
     def test_ps_rolemaker(self):
         """Test ps rolemaker."""
@@ -106,11 +106,11 @@ class TestCloudRoleMaker(unittest.TestCase):
 
         ro = role_maker.PaddleCloudRoleMaker(
             is_collective=False, init_gloo=False)
-        self.assertEqual(ro.server_index(), 0)
-        self.assertFalse(ro.is_worker())
-        self.assertTrue(ro.is_server())
-        self.assertEqual(ro.server_num(), 2)
-        pserver_endpoints = ro.get_pserver_endpoints()
+        self.assertEqual(ro._server_index(), 0)
+        self.assertFalse(ro._is_worker())
+        self.assertTrue(ro._is_server())
+        self.assertEqual(ro._server_num(), 2)
+        pserver_endpoints = ro._get_pserver_endpoints()
         self.assertEqual(pserver_endpoints[0], '127.0.0.1:36001')
 
         self.assertEqual(ro._all_gather(1, "worker"), 1)
@@ -126,7 +126,7 @@ class TestCloudRoleMaker(unittest.TestCase):
             return
 
         ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
-        self.assertRaises(ValueError, ro.generate_role)
+        self.assertRaises(ValueError, ro._generate_role)
 
 
 class TestUserDefinedRoleMaker(unittest.TestCase):
@@ -151,10 +151,10 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
             role=role_maker.Role.SERVER,
             current_id=0,
             worker_num=2)
-        self.assertEqual(ro.server_num(), 2)
-        ro.generate_role()
-        self.assertTrue(ro.is_server())
-        self.assertEqual(ro.role_id(), 0)
+        self.assertEqual(ro._server_num(), 2)
+        ro._generate_role()
+        self.assertTrue(ro._is_server())
+        self.assertEqual(ro._role_id(), 0)
 
     def test_tr_rolemaker(self):
         try:
@@ -171,9 +171,9 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
             current_id=0,
             worker_num=2)
 
-        self.assertIn("127.0.0.1:36001", ro.get_pserver_endpoints())
-        self.assertTrue(ro.is_worker())
-        self.assertEqual(ro.role_id(), 0)
+        self.assertIn("127.0.0.1:36001", ro._get_pserver_endpoints())
+        self.assertTrue(ro._is_worker())
+        self.assertEqual(ro._role_id(), 0)
 
 
 class TestGlooWithCloudRoleMaker(unittest.TestCase):
@@ -216,7 +216,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         self.case(role, "worker")
         self.clean(tmp)
 
@@ -234,7 +234,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         self.case(role, "worker")
         self.clean(tmp)
 
@@ -256,7 +256,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         self.case(role, "server")
         self.clean(tmp)
 
@@ -280,7 +280,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         self.case(role, "server")
         self.clean(tmp)
 
@@ -302,7 +302,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_HTTP_PORT"] = "30019"
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         import time
         time.sleep(3)
 
@@ -326,7 +326,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         self.case(role, "server")
         self.case(role, "all")
         self.clean(tmp)
@@ -354,7 +354,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         self.case(role, "server")
         self.case(role, "all")
         self.clean(tmp)
@@ -377,7 +377,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_RENDEZVOUS"] = "5"
 
         role = role_maker.PaddleCloudRoleMaker()
-        self.assertRaises(ValueError, role.generate_role)
+        self.assertRaises(ValueError, role._generate_role)
 
     def test_fs_gloo8(self):
         plats = platform.platform()
