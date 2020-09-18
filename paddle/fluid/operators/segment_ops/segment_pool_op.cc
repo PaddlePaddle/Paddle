@@ -31,10 +31,10 @@ class SegmentPoolOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
 
     if (ctx->Attrs().Get<std::string>("pooltype") == "MEAN") {
-      OP_INOUT_CHECK(ctx->HasOutput("SumedIds"), "Output", "MaxIndex",
+      OP_INOUT_CHECK(ctx->HasOutput("SummedIds"), "Output", "SummedIds",
                      "SegmentPool");
       auto length = ctx->GetInputDim("X")[0];
-      ctx->SetOutputDim("MEAN", {length, 1});
+      ctx->SetOutputDim("SummedIds", {length, 1});
     }
   }
 
@@ -53,7 +53,7 @@ class SegmentPoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor) The variable-length input of SegmentPoolOp");
     AddInput("SegmentIds",
              "(Tensor) The variable-length input of SegmentPoolOp");
-    AddOutput("SumedIds",
+    AddOutput("SummedIds",
               "(Tensor) This tensor is used to counts of segment ids for the "
               "backward of the mean pool.")
         .AsIntermediate();

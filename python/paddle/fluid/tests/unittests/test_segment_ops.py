@@ -98,11 +98,9 @@ class TestSegmentOps(OpTest):
         self.outputs = {'Out': result.astype(self.dtype)}
 
     def test_check_output(self):
-        #self.check_output(check_dygraph=False)
         self.check_output()
 
     def test_check_grad(self):
-        #self.check_grad(["X"], "Out", check_dygraph=False)
         self.check_grad(["X"], "Out")
 
 
@@ -142,7 +140,6 @@ class TestSegmentMax(TestSegmentOps):
         self.outputs = {'Out': result.astype(self.dtype)}
 
     def test_check_grad(self):
-        #self.check_grad(["X"], "Out", check_dygraph=False)
         self.check_grad(["X"], "Out", user_defined_grads=[self.gradient])
 
 
@@ -166,7 +163,11 @@ class TestSegmentMean(TestSegmentOps):
         result = self.compute(x, segment_ids)
         self.inputs = {'X': x, 'SegmentIds': segment_ids}
         self.attrs = {'pooltype': "MEAN"}
-        self.outputs = {'Out': result}
+        self.outputs = {
+            'Out': result,
+            'SummedIds': compute_segment_sum(
+                np.ones([len(x), 1]).astype(self.dtype), segment_ids)
+        }
 
 
 if __name__ == '__main__':

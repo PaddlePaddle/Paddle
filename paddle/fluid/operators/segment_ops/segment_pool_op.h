@@ -31,12 +31,13 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
   auto* segment = context.Input<Tensor>("SegmentIds");
   auto* output = context.Output<Tensor>("Out");
   std::string pooltype = context.Attr<std::string>("pooltype");
+  Tensor* summed_ids = nullptr;
 
   int64_t num_indices = segment->numel();
   PADDLE_ENFORCE_EQ(
       num_indices, input->dims()[0],
       platform::errors::InvalidArgument(
-          "segment_ids should be the same size as dimension 0 of input X."));
+          "Segment_ids should be the same size as dimension 0 of input X."));
 
   if (input->numel() == 0 || segment->numel() == 0) {
     return;
@@ -88,13 +89,20 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     math::SetConstant<DeviceContext, T> setconst;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     setconst(dev_ctx, output, static_cast<T>(init_value));
+    // the gpu kernel of mean pool record the counts of segment_ids
+    if (pooltype == "MEAN") {
+      summed_ids = context.Output<Tensor>("SummedIds");
+      summed_ids->Resize({dims[0], 1});
+      summed_ids->mutable_data<T>(context.GetPlace());
+      setconst(dev_ctx, summed_ids, static_cast<T>(1e-12));
+    }
   }
 #endif
 
   SegmentPoolFunctor<DeviceContext, T, IndexT> pool;
-  Tensor* index = nullptr;
+
   pool(context.template device_context<DeviceContext>(), *input, *segment,
-       output, index, pooltype);
+       output, summed_ids, pooltype);
 }
 
 template <typename DeviceContext, typename T>
@@ -126,7 +134,11 @@ class SegmentPoolGradKernel : public framework::OpKernel<T> {
     auto* in_g = context.Output<Tensor>(framework::GradVarName("X"));
     std::string pooltype = context.Attr<std::string>("pooltype");
 
-    const Tensor* index = nullptr;
+    const Tensor* summed_ids = nullptr;
+    if (pooltype == "MEAN") {
+      summed_ids = context.Input<Tensor>("SummedIds");
+    }
+
     in_g->mutable_data<T>(context.GetPlace());
 
     math::SetConstant<DeviceContext, T> set_zero;
@@ -137,11 +149,11 @@ class SegmentPoolGradKernel : public framework::OpKernel<T> {
     if (index_type == framework::proto::VarType::INT32) {
       SegmentPoolGradFunctor<DeviceContext, T, int> pool;
       pool(context.template device_context<DeviceContext>(), *input, *output,
-           *out_g, *segment, in_g, index, pooltype);
+           *out_g, *segment, in_g, summed_ids, pooltype);
     } else if (index_type == framework::proto::VarType::INT64) {
       SegmentPoolGradFunctor<DeviceContext, T, int64_t> pool;
       pool(context.template device_context<DeviceContext>(), *input, *output,
-           *out_g, *segment, in_g, index, pooltype);
+           *out_g, *segment, in_g, summed_ids, pooltype);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported index type, Expected int, int64, but got %s.",

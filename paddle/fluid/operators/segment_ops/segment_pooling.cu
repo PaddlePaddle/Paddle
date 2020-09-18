@@ -95,6 +95,25 @@ __global__ void SortedSegmentMeanCustomKernel(
         min(Index(OuterDimTileSize),
             input_outer_dim_size - input_outer_dim_index_base);
 
+    if (segment_offset == 0) {
+      T sum = T(0);
+      for (Index j = 0; j < actual_stripe_height; j++) {
+        Index current_output_segment_id =
+            segment_ids[input_outer_dim_index_base + j];
+        if (current_output_segment_id > last_output_segment_id) {
+          if (last_output_segment_id == first_segment_id) {
+            platform::CudaAtomicAdd(summed_ids + last_output_segment_id, sum);
+          } else {
+            *(summed_ids + last_output_segment_id) = sum;
+          }
+          sum = T(0);
+        }
+        sum += 1;
+        last_output_segment_id = current_output_segment_id;
+      }
+      platform::CudaAtomicAdd(summed_ids + last_output_segment_id, sum);
+    }
+    __syncthreads();
     T sum = T(0);
     for (Index j = 0; j < actual_stripe_height; j++) {
       Index current_output_segment_id =
@@ -103,31 +122,11 @@ __global__ void SortedSegmentMeanCustomKernel(
         const Index output_index =
             last_output_segment_id * inner_dim_size + segment_offset;
         if (last_output_segment_id == first_segment_id) {
-          platform::CudaAtomicAdd(summed_ids + output_index, sum);
-        } else {
-          *(summed_ids + output_index) = sum;
-        }
-        sum = T(0);
-      }
-      sum += 1;
-      last_output_segment_id = current_output_segment_id;
-    }
-    Index output_index =
-        last_output_segment_id * inner_dim_size + segment_offset;
-    platform::CudaAtomicAdd(summed_ids + output_index, sum);
-    __syncthreads();
-    sum = T(0);
-    for (Index j = 0; j < actual_stripe_height; j++) {
-      Index current_output_segment_id =
-          segment_ids[input_outer_dim_index_base + j];
-      if (current_output_segment_id > last_output_segment_id) {
-        const Index output_index =
-            last_output_segment_id * inner_dim_size + segment_offset;
-        if (last_output_segment_id == first_segment_id) {
           platform::CudaAtomicAdd(output + output_index,
-                                  sum / *(summed_ids + output_index));
+                                  sum / *(summed_ids + last_output_segment_id));
         } else {
-          *(output + output_index) = sum / *(summed_ids + output_index);
+          *(output + output_index) =
+              sum / *(summed_ids + last_output_segment_id);
         }
         sum = T(0);
       }
@@ -135,9 +134,10 @@ __global__ void SortedSegmentMeanCustomKernel(
                    segment_offset];
       last_output_segment_id = current_output_segment_id;
     }
-    output_index = last_output_segment_id * inner_dim_size + segment_offset;
+    const Index output_index =
+        last_output_segment_id * inner_dim_size + segment_offset;
     platform::CudaAtomicAdd(output + output_index,
-                            sum / *(summed_ids + output_index));
+                            sum / *(summed_ids + last_output_segment_id));
   }
 }
 
@@ -250,48 +250,68 @@ class MinPool {
   }
 };
 
+template <class T>
+class DataArrangeHelper {
+ public:
+  const T input_total_size;
+  const T input_outer_dim_size;
+  const T output_rows;
+  T input_inner_dim_size;
+  T total_stripe_count;
+  const T OuterDimTileSize = 8;
+
+  DataArrangeHelper(T a, T b, T c)
+      : input_total_size(a), input_outer_dim_size(b), output_rows(c) {
+    T input_outer_dim_num_stripe =
+        (input_outer_dim_size + OuterDimTileSize - 1) / OuterDimTileSize;
+    input_inner_dim_size = input_total_size / input_outer_dim_size;
+    total_stripe_count = input_inner_dim_size * input_outer_dim_num_stripe;
+  }
+};
+
 template <typename T, typename Index>
 void SegmentPoolCUDAFunctor(const platform::CUDADeviceContext& ctx,
                             const framework::Tensor& input,
                             const framework::Tensor& segment_ids,
                             framework::Tensor* output,
+                            framework::Tensor* summed_ids,
                             const std::string pooltype = "SUM") {
-  const Index input_total_size = input.numel();
-  const Index input_outer_dim_size = segment_ids.dims()[0];
-  const Index output_rows = output->dims()[0];
-  const Index input_inner_dim_size = input_total_size / input_outer_dim_size;
-
   const Index OuterDimTileSize = 8;
-  const Index input_outer_dim_num_stripe =
-      (input_outer_dim_size + OuterDimTileSize - 1) / OuterDimTileSize;
+  auto h = DataArrangeHelper<Index>(input.numel(), segment_ids.dims()[0],
+                                    output->dims()[0]);
+  auto config = platform::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
 
-  const Index total_stripe_count =
-      input_inner_dim_size * input_outer_dim_num_stripe;
-
-  auto config = platform::GetGpuLaunchConfig1D(ctx, total_stripe_count);
-
-  if (pooltype == "SUM") {
+  if (pooltype == "MEAN") {
+    SortedSegmentMeanCustomKernel<T, Index, OuterDimTileSize><<<
+        config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
+        h.input_outer_dim_size, h.input_inner_dim_size, h.output_rows,
+        segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
+        summed_ids->data<T>(), h.total_stripe_count);
+  } else if (pooltype == "SUM") {
     SortedSegmentSumCustomKernel<T, Index, OuterDimTileSize><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        input_outer_dim_size, input_inner_dim_size, output_rows,
+        h.input_outer_dim_size, h.input_inner_dim_size, h.output_rows,
         segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
-        total_stripe_count);
+        h.total_stripe_count);
   } else if (pooltype == "MAX") {
     MaxPool<T> pool;
     SortedSegmentMinMaxCustomKernel<T, Index, OuterDimTileSize, MaxPool<T>><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        input_outer_dim_size, input_inner_dim_size, output_rows,
+        h.input_outer_dim_size, h.input_inner_dim_size, h.output_rows,
         segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
-        total_stripe_count, pool);
+        h.total_stripe_count, pool);
   } else if (pooltype == "MIN") {
     MinPool<T> pool;
     SortedSegmentMinMaxCustomKernel<T, Index, OuterDimTileSize, MinPool<T>><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        input_outer_dim_size, input_inner_dim_size, output_rows,
+        h.input_outer_dim_size, h.input_inner_dim_size, h.output_rows,
         segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
-        total_stripe_count, pool);
+        h.total_stripe_count, pool);
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented("Not support yet."));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "
+        "available, but got %s.",
+        pooltype));
   }
 }
 
@@ -303,28 +323,21 @@ void SegmentPoolCUDAGradFunctor(const platform::CUDADeviceContext& ctx,
                                 const framework::Tensor& out_grad,
                                 framework::Tensor* in_grad,
                                 const std::string pooltype = "SUM") {
-  const Index input_total_size = input.numel();
-  const Index input_outer_dim_size = segment_ids.dims()[0];
-  const Index output_rows = output.dims()[0];
-  const Index input_inner_dim_size = input_total_size / input_outer_dim_size;
-
   const Index OuterDimTileSize = 8;
-  const Index input_outer_dim_num_stripe =
-      (input_outer_dim_size + OuterDimTileSize - 1) / OuterDimTileSize;
-
-  const Index total_stripe_count =
-      input_inner_dim_size * input_outer_dim_num_stripe;
-
-  auto config = platform::GetGpuLaunchConfig1D(ctx, total_stripe_count);
-
+  auto h = DataArrangeHelper<Index>(input.numel(), segment_ids.dims()[0],
+                                    output.dims()[0]);
+  auto config = platform::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
   if (pooltype == "MAX" || pooltype == "MIN") {
     SortedSegmentIndexGradKernel<T, Index, OuterDimTileSize><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        input_outer_dim_size, input_inner_dim_size, output_rows,
+        h.input_outer_dim_size, h.input_inner_dim_size, h.output_rows,
         segment_ids.data<Index>(), input.data<T>(), output.data<T>(),
-        out_grad.data<T>(), in_grad->data<T>(), total_stripe_count);
+        out_grad.data<T>(), in_grad->data<T>(), h.total_stripe_count);
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented("Not support yet."));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Unsupported segment pooling grad operation, Only MAX, MIN "
+        "available, but got %s.",
+        pooltype));
   }
 }
 
@@ -349,41 +362,10 @@ class SegmentPoolFunctor<platform::CUDADeviceContext, T, IndexT> {
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& segments, framework::Tensor* output,
-                  framework::Tensor* index,
+                  framework::Tensor* summed_ids = nullptr,
                   const std::string pooltype = "SUM") {
-    if (pooltype == "MEAN") {
-      // PADDLE_THROW(platform::errors::Unimplemented("Not support yet."));
-      framework::Tensor one, count_sum, all_sum;
-      one.mutable_data<T>({input.dims()[0], 1}, context.GetPlace());
-      count_sum.mutable_data<T>({output->dims()[0], 1}, context.GetPlace());
-      math::SetConstant<platform::CUDADeviceContext, T> setconst;
-      setconst(context, &one, static_cast<T>(1));
-      setconst(context, &count_sum, static_cast<T>(1e-12));
-      SegmentPoolCUDAFunctor<T, IndexT>(context, one, segments, &count_sum,
-                                        std::string("SUM"));
-      SegmentPoolCUDAFunctor<T, IndexT>(context, input, segments, output,
-                                        std::string("SUM"));
-      int len = output->dims()[0];
-      int dim = output->numel() / len;
-      auto config = platform::GetGpuLaunchConfig1D(context, len);
-      SimpleDiv<T><<<config.block_per_grid.x, config.thread_per_block.x, 0,
-                     context.stream()>>>(output->data<T>(), count_sum.data<T>(),
-                                         len, dim);
-    } else if (pooltype == "SUM") {
-      SegmentPoolCUDAFunctor<T, IndexT>(context, input, segments, output,
-                                        pooltype);
-    } else if (pooltype == "MAX") {
-      SegmentPoolCUDAFunctor<T, IndexT>(context, input, segments, output,
-                                        pooltype);
-    } else if (pooltype == "MIN") {
-      SegmentPoolCUDAFunctor<T, IndexT>(context, input, segments, output,
-                                        pooltype);
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "
-          "available, but got %s.",
-          pooltype));
-    }
+    SegmentPoolCUDAFunctor<T, IndexT>(context, input, segments, output,
+                                      summed_ids, pooltype);
   }
 };
 
@@ -395,38 +377,22 @@ class SegmentPoolGradFunctor<platform::CUDADeviceContext, T, IndexT> {
                   const framework::Tensor& output,
                   const framework::Tensor& out_grad,
                   const framework::Tensor& segments, framework::Tensor* in_grad,
-                  const framework::Tensor* index = nullptr,
+                  const framework::Tensor* summed_ids = nullptr,
                   const std::string pooltype = "SUM") {
     if (pooltype == "MAX" || pooltype == "MIN") {
       SegmentPoolCUDAGradFunctor<T, IndexT>(context, input, segments, output,
                                             out_grad, in_grad, pooltype);
-      return;
-    }
-
-    if (pooltype == "MEAN") {
-      framework::Tensor one, count_sum, mean_grad;
-      one.mutable_data<T>({input.dims()[0], 1}, context.GetPlace());
-      count_sum.mutable_data<T>({output.dims()[0], 1}, context.GetPlace());
+    } else if (pooltype == "MEAN") {
+      framework::Tensor mean_grad;
       mean_grad.mutable_data<T>(input.dims(), context.GetPlace());
-
-      math::SetConstant<platform::CUDADeviceContext, T> setconst;
-      setconst(context, &one, static_cast<T>(1));
-      setconst(context, &count_sum, static_cast<T>(1e-12));
       framework::TensorCopy(out_grad, context.GetPlace(), context, &mean_grad);
-
-      SegmentPoolCUDAFunctor<T, IndexT>(context, one, segments, &count_sum,
-                                        std::string("SUM"));
-
       int len = output.dims()[0];
       int dim = output.numel() / len;
-
       auto config = platform::GetGpuLaunchConfig1D(context, len);
       SimpleDiv<T><<<config.block_per_grid.x, config.thread_per_block.x, 0,
                      context.stream()>>>(mean_grad.data<T>(),
-                                         count_sum.data<T>(), len, dim);
-
+                                         summed_ids->data<T>(), len, dim);
       GPUGather<T, IndexT>(context, mean_grad, segments, in_grad);
-
     } else if (pooltype == "SUM") {
       GPUGather<T, IndexT>(context, out_grad, segments, in_grad);
     } else {
