@@ -81,12 +81,12 @@ class TestFleetUtil(unittest.TestCase):
         self.assertEqual(user_id, 10)
 
     def test_fs(self):
-        from paddle.distributed.fleet.utils import LocalFS
+        from paddle.distributed.fleet.utils.fs import LocalFS
         fs = LocalFS()
         dirs, files = fs.ls_dir("test_tmp")
         dirs, files = fs.ls_dir("./")
         self.assertFalse(fs.need_upload_download())
-        fleet_util.set_file_system(fs)
+        fleet_util._set_file_system(fs)
 
     def test_barrier(self):
         try:
