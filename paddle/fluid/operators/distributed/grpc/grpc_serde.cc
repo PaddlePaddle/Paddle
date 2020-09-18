@@ -40,6 +40,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const int trainer_id,
                            const std::string& table_name) {
   platform::RecordRPCEvent record_event("serial");
+  platform::RecordEvent record_event_grpc("SerializeToByteBuffer",
+                                          platform::EventRole::kInnerOp);
   VarMsg request;
   TensorPayload* payload = nullptr;
 
@@ -147,9 +149,14 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const framework::Scope* scope,
                                framework::Variable** var, int* trainer_id) {
   platform::RecordRPCEvent record_event("deserial");
+  platform::RecordEvent record_event_grpc("DeserializeFromByteBuffer",
+                                          platform::EventRole::kInnerOp);
   operators::distributed::GRPCVariableResponse resp(scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
   *var = resp.GetVar();
+  auto place = (*var)->Get<framework::LoDTensor>().place();
+  VLOG(1) << "DeserializeFromByteBuffer Recv var in gpu?"
+          << platform::is_gpu_place(place);
   *trainer_id = resp.GetTrainerId();
 }
 

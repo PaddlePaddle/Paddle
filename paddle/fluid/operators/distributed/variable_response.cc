@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/distributed/variable_response.h"
 #include <vector>
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(rpc_server_profile_path, "./profile_ps",
               "the profile log file path");
@@ -27,6 +28,8 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
                                const platform::DeviceContext& dev_ctx,
                                platform::Place place, void* dest,
                                int64_t size) {
+  platform::RecordEvent record_event("VariableResponse::ReadRaw",
+                                     platform::EventRole::kInnerOp);
   const void* data = NULL;
   int size_to_write = 0;
   int64_t length = size;
@@ -95,6 +98,8 @@ bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
+  platform::RecordEvent record_event("VariableResponse::CopyLodTensorData",
+                                     platform::EventRole::kInnerOp);
   auto server_var = GetVar();
   if (!server_var) {
     LOG(ERROR) << "recved var should not on current server: "
@@ -136,6 +141,9 @@ bool VariableResponse::CopySelectRowsTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
+  platform::RecordEvent record_event(
+      "VariableResponse::CopySelectRowsTensorData",
+      platform::EventRole::kInnerOp);
   auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
   slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
@@ -158,6 +166,8 @@ bool VariableResponse::CopySelectRowsTensorData(
 bool VariableResponse::CopySelectRowsData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, int length) {
+  platform::RecordEvent record_event("VariableResponse::CopySelectRowsData",
+                                     platform::EventRole::kInnerOp);
   auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
   slr->mutable_rows()->clear();
   slr->mutable_rows()->resize(length / sizeof(int64_t));  // int64
@@ -175,6 +185,8 @@ bool VariableResponse::CopySelectRowsData(
 bool VariableResponse::ProcSerializedField(
     int tag, ::google::protobuf::io::CodedInputStream* input,
     int64_t num_bytes) {
+  platform::RecordEvent record_event("VariableResponse::ProcSerializedField",
+                                     platform::EventRole::kInnerOp);
   PADDLE_ENFORCE((meta_.type() == sendrecv::SELECTED_ROWS ||
                   meta_.type() == sendrecv::LOD_TENSOR ||
                   meta_.type() == sendrecv::NCCL_ID) &&

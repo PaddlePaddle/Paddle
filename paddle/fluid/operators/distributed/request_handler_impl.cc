@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/piece.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
@@ -47,7 +48,8 @@ bool RequestSendHandler::Handle(const std::string &varname,
                                 const std::string &out_var_name,
                                 const std::string &table_name) {
   VLOG(4) << "RequestSendHandler:" << varname;
-
+  platform::RecordEvent record_event("RequestSendHandler::Handle",
+                                     platform::EventRole::kInnerOp);
   // Sync
   if (varname == BATCH_BARRIER_MESSAGE) {
     VLOG(3) << "sync: recv BATCH_BARRIER_MESSAGE";
@@ -133,7 +135,8 @@ bool RequestGetHandler::Handle(const std::string &varname,
   VLOG(3) << "RequestGetHandler:" << varname
           << " out_var_name: " << out_var_name << " trainer_id: " << trainer_id
           << " table_name: " << table_name;
-
+  platform::RecordEvent record_event("RequestGetHandler::Handle",
+                                     platform::EventRole::kInnerOp);
   if (distributed_mode_ == DistributedMode::kSync) {
     if (varname == FETCH_BARRIER_MESSAGE) {
       VLOG(3) << "sync: recv fetch barrier message";
@@ -213,7 +216,8 @@ bool RequestGetNoBarrierHandler::Handle(const std::string &varname,
                                         const std::string &table_name) {
   VLOG(4) << "RequestGetNoBarrierHandler:" << varname
           << " out_var_name: " << out_var_name;
-
+  platform::RecordEvent record_event("RequestGetNoBarrierHandler::Handle",
+                                     platform::EventRole::kInnerOp);
   // get var from pserver immediately without barriers
   string::Piece without_barrier_piece(WITHOUT_BARRIER_MESSAGE);
   string::Piece var_name_piece = string::Piece(varname);
@@ -238,7 +242,8 @@ bool RequestPrefetchHandler::Handle(const std::string &varname,
                                     const std::string &out_var_name,
                                     const std::string &table_name) {
   VLOG(4) << "RequestPrefetchHandler " << varname;
-
+  platform::RecordEvent record_event("RequestPrefetchHandler::Handle",
+                                     platform::EventRole::kInnerOp);
   (*outvar)->GetMutable<framework::LoDTensor>();
 
   VLOG(1) << "Prefetch "
@@ -267,7 +272,8 @@ bool RequestCheckpointHandler::Handle(const std::string &varname,
                                       const std::string &out_var_name,
                                       const std::string &table_name) {
   VLOG(4) << "receive save var " << varname << " with path " << out_var_name;
-
+  platform::RecordEvent record_event("RequestCheckpointHandler::Handle",
+                                     platform::EventRole::kInnerOp);
   auto *ins = distributed::LargeScaleKV::GetInstance();
   ins->Get(varname)->Save(out_var_name);
   //  auto checkpoint_op = BuildCheckpointOp(varname, out_var_name);
@@ -285,7 +291,8 @@ bool RequestNotifyHandler::Handle(const std::string &varname,
                                   const std::string &table_name) {
   VLOG(3) << "RequestNotifyHandler: " << varname
           << ", trainer_id: " << trainer_id;
-
+  platform::RecordEvent record_event("RequestNotifyHandler::Handle",
+                                     platform::EventRole::kInnerOp);
   string::Piece decay_piece(STEP_COUNTER);
   string::Piece var_name_piece = string::Piece(varname);
   if (string::Contains(var_name_piece, decay_piece)) {
@@ -335,6 +342,8 @@ bool RequestSendAndRecvHandler::Handle(const std::string &varname,
   VLOG(3) << "SendAndRecvHandle: " << varname
           << " out_var_name: " << out_var_name
           << " , trainer_id:  " << trainer_id;
+  platform::RecordEvent record_event("RequestSendAndRecvHandler::Handle",
+                                     platform::EventRole::kInnerOp);
 
   executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(), Scope);
   *outvar = Scope->FindVar(out_var_name);

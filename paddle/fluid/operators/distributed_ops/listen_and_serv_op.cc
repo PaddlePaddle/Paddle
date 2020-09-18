@@ -275,9 +275,11 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   auto optimize_prepared = executor->Prepare(*program, block_list);
   // execute global block if needed, block id 1 in the program is global
   // block if it's not bind to a grad var for it's update.
+  VLOG(1) << "Listen&Serv AsyncLoop block_list[0] " << block_list[0];
   if (block_list[0] == 1 &&
       grad_to_block_id.find_value(static_cast<int32_t>(1)) ==
           grad_to_block_id.end()) {
+    VLOG(1) << "Listen&Serv AsyncLoop Run global_block ";
     executor->RunPreparedContext(optimize_prepared[0].get(), recv_scope);
   }
   std::unordered_map<std::string,
@@ -288,6 +290,8 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
     auto it = grad_to_block_id.find_value(blkid);
     if (it != grad_to_block_id.end()) {
       grad_to_prepared_ctx[it->first] = optimize_prepared[i];
+      VLOG(1) << "Listen&Serv AsyncLoop grad_to_prepared_ctx [" << it->first
+              << "] = " << i;
     }
   }
 
@@ -353,10 +357,13 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                               const platform::Place &dev_place) const {
   // Mark this as PS that it should decide profiling by listening from trainer.
   platform::SetProfileListener();
+  platform::RecordEvent record_event("ListenAndServOp::RunImpl",
+                                     platform::EventRole::kInnerOp);
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(dev_place);
   framework::Scope &recv_scope = scope.NewScope();
-
+  VLOG(1) << "ListenAndServOp is gpu place? "
+          << platform::is_gpu_place(dev_place);
   int distributed_mode = Attr<int>("distributed_mode");
   bool dc_sgd = Attr<bool>("dc_asgd");
   auto fan_in = Attr<int>("Fanin");

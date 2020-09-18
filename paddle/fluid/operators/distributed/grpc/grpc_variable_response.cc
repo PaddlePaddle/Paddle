@@ -26,6 +26,10 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+static std::mutex grpc_profile_mutex;
+static bool grpc_profile_begin = false;
+static bool grpc_profile_end = false;
+
 enum WireType {
   WIRETYPE_VARINT = 0,
   WIRETYPE_LENGTH_DELIMITED = 2,
@@ -122,6 +126,7 @@ int GRPCVariableResponse::Parse(Source* source) {
 
     switch (tag) {
       case sendrecv::VariableMessage::kVarnameFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kVarnameFieldNumber";
         uint32_t length;
         if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input.ReadVarint32(&length)) {
           return tag;
@@ -136,6 +141,7 @@ int GRPCVariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kTypeFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kTypeFieldNumber";
         uint32_t v;
         if ((wt != WIRETYPE_VARINT) || !input.ReadVarint32(&v)) {
           return tag;
@@ -145,6 +151,7 @@ int GRPCVariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kDataTypeFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kDataTypeFieldNumber";
         uint32_t v = 0;
         if ((wt != WIRETYPE_VARINT) || !input.ReadVarint32(&v)) {
           return tag;
@@ -154,6 +161,7 @@ int GRPCVariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kDimsFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kDimsFieldNumber";
         // not packed
         if (wt == WIRETYPE_VARINT) {
           uint64_t v;
@@ -183,6 +191,7 @@ int GRPCVariableResponse::Parse(Source* source) {
         return tag;
       }
       case sendrecv::VariableMessage::kLodLevelFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kLodLevelFieldNumber";
         uint64_t v = 0;
         if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
           return tag;
@@ -191,6 +200,7 @@ int GRPCVariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kLodFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kLodFieldNumber";
         int length = 0;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
             !ReadVarintSizeAsInt(&input, &length)) {
@@ -220,6 +230,7 @@ int GRPCVariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kSlrHeightFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kSlrHeightFieldNumber";
         uint64_t v = 0;
         if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
           return tag;
@@ -228,6 +239,7 @@ int GRPCVariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kSerializedFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kSerializedFieldNumber";
         int num_bytes = 0;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
             !ReadVarintSizeAsInt(&input, &num_bytes)) {
@@ -241,6 +253,7 @@ int GRPCVariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kRowsFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kRowsFieldNumber";
         PADDLE_ENFORCE((meta_.type() == sendrecv::SELECTED_ROWS ||
                         meta_.type() == sendrecv::LOD_TENSOR) &&
                            meta_.varname() != "",
@@ -258,6 +271,7 @@ int GRPCVariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kOutVarnameFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kOutVarnameFieldNumber";
         uint32_t length;
         if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input.ReadVarint32(&length)) {
           return tag;
@@ -272,28 +286,57 @@ int GRPCVariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kProfileFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kProfileFieldNumber";
         uint64_t profiling = 0;
         if (!input.ReadVarint64(&profiling)) {
           return tag;
         }
         meta_.set_profile(profiling);
+        VLOG(1) << "sendrecv::VariableMessage::kProfileFieldNumber: profiling "
+                << profiling;
         int64_t listener_id = platform::ListenerId();
+        VLOG(1)
+            << "sendrecv::VariableMessage::kProfileFieldNumber: listener_id "
+            << listener_id;
         if (listener_id <= 0) {
           break;
         }
+        VLOG(1) << "sendrecv::VariableMessage::kProfileFieldNumber: "
+                   "platform::IsProfileEnabled() "
+                << platform::IsProfileEnabled();
+        VLOG(1) << "sendrecv::VariableMessage::kProfileFieldNumber: profiling "
+                   "== platform::kEnableProfiler?"
+                << (profiling == platform::kEnableProfiler);
         if (profiling == platform::kEnableProfiler &&
             !platform::IsProfileEnabled()) {
-          platform::EnableProfiler(platform::ProfilerState::kCPU);
+          if (grpc_profile_mutex.try_lock()) {
+            if (!grpc_profile_begin && !grpc_profile_end) {
+              platform::EnableProfiler(platform::ProfilerState::kAll);
+              grpc_profile_begin = true;
+              VLOG(1) << "sendrecv::VariableMessage::kProfileFieldNumber: "
+                         "Profiler Begin";
+              grpc_profile_mutex.unlock();
+            }
+          }
         } else if (profiling == platform::kDisableProfiler &&
                    platform::IsProfileEnabled()) {
-          platform::DisableProfiler(
-              platform::EventSortingKey::kDefault,
-              string::Sprintf("%s_%lld", FLAGS_rpc_server_profile_path,
-                              listener_id));
+          if (grpc_profile_mutex.try_lock()) {
+            if (grpc_profile_begin && !grpc_profile_end) {
+              VLOG(1) << "sendrecv::VariableMessage::kProfileFieldNumber: "
+                         "Profiler End";
+              platform::DisableProfiler(platform::EventSortingKey::kTotal,
+                                        string::Sprintf("./%s_%s_profile.log",
+                                                        getenv("TRAINING_ROLE"),
+                                                        getenv("PADDLE_PORT")));
+              grpc_profile_end = true;
+              grpc_profile_mutex.unlock();
+            }
+          }
         }
         break;
       }
       case sendrecv::VariableMessage::kTrainerIdFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kTrainerIdFieldNumber";
         uint64_t trainer_id = 0;
         if (!input.ReadVarint64(&trainer_id)) {
           return tag;
@@ -302,6 +345,7 @@ int GRPCVariableResponse::Parse(Source* source) {
         break;
       }
       case sendrecv::VariableMessage::kTableNameFieldNumber: {
+        VLOG(1) << "In sendrecv::VariableMessage::kTableNameFieldNumber";
         uint32_t length;
         if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input.ReadVarint32(&length)) {
           return tag;

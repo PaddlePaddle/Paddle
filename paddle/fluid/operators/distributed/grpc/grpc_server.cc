@@ -29,6 +29,12 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+inline double GetCurrentUS() {
+  struct timeval time;
+  gettimeofday(&time, NULL);
+  return 1e+6 * time.tv_sec + time.tv_usec;
+}
+
 enum CallStatus { PROCESS = 0, FINISH };
 
 // reference:
@@ -91,6 +97,8 @@ class RequestSend final : public RequestBase {
                        ::grpc::ServerCompletionQueue* cq,
                        RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    platform::RecordEvent record_event("RequestSend::Init",
+                                       platform::EventRole::kInnerOp);
     request_.reset(new GRPCVariableResponse(
         request_handler->scope(), request_handler->dev_ctx(),
         request_handler->distributed_mode()));
@@ -103,6 +111,7 @@ class RequestSend final : public RequestBase {
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestSend::Process", platform::EventRole::kInnerOp);
     std::string varname = GetReqName();
 
     auto scope = request_->GetMutableLocalScope();
@@ -114,6 +123,7 @@ class RequestSend final : public RequestBase {
     framework::Variable* outvar = nullptr;
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestSend::Process", platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -128,6 +138,8 @@ class RequestGet final : public RequestBase {
                       ::grpc::ServerCompletionQueue* cq,
                       RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    platform::RecordEvent record_event("RequestGet::Init",
+                                       platform::EventRole::kInnerOp);
     auto method_id = static_cast<int>(distributed::GrpcMethod::kGetVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, &request_, &responder_, cq_, cq_,
@@ -139,6 +151,7 @@ class RequestGet final : public RequestBase {
   std::string GetReqName() override { return request_.varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestGet::Process", platform::EventRole::kInnerOp);
     // proc request.
     std::string varname = request_.varname();
     std::string out_varname = request_.out_varname();
@@ -162,6 +175,7 @@ class RequestGet final : public RequestBase {
     }
     VLOG(1) << "after SerializeToByteBuffer";
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestGet::Process", platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -177,6 +191,8 @@ class RequestGetNoBarrier final : public RequestBase {
                                ::grpc::ServerCompletionQueue* cq,
                                RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    platform::RecordEvent record_event("RequestGetNoBarrier::Init",
+                                       platform::EventRole::kInnerOp);
     auto method_id =
         static_cast<int>(distributed::GrpcMethod::kGetVariableNoBarrier);
     service_->RequestAsyncUnary(
@@ -189,6 +205,8 @@ class RequestGetNoBarrier final : public RequestBase {
   std::string GetReqName() override { return request_.varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestGetNoBarrier::Process",
+                        platform::EventRole::kInnerOp);
     // proc request.
     std::string varname = request_.varname();
     std::string out_varname = request_.out_varname();
@@ -208,6 +226,8 @@ class RequestGetNoBarrier final : public RequestBase {
                             &reply_);
     }
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestGetNoBarrier::Process",
+                       platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -225,6 +245,8 @@ class RequestGetMonomerVariable final : public RequestBase {
       : RequestBase(service, cq, request_handler, req_id),
         responder_(&ctx_),
         rpc_server_(rpc_server) {
+    platform::RecordEvent record_event("RequestGetMonomerVariable::Init",
+                                       platform::EventRole::kInnerOp);
     auto method_id =
         static_cast<int>(distributed::GrpcMethod::kGetMonomerVariable);
     service_->RequestAsyncUnary(
@@ -237,6 +259,8 @@ class RequestGetMonomerVariable final : public RequestBase {
   std::string GetReqName() override { return request_.varname(); }
 
   void Process() override {
+    platform::RecordEvent record_event("RequestGetMonomerVariable::Process",
+                                       platform::EventRole::kInnerOp);
     // proc request.
     std::string varname = request_.varname();
 
@@ -272,6 +296,8 @@ class RequestGetMonomerBarrier final : public RequestBase {
       : RequestBase(service, cq, request_handler, req_id),
         responder_(&ctx_),
         rpc_server_(rpc_server) {
+    platform::RecordEvent record_event("RequestGetMonomerBarrier::Init",
+                                       platform::EventRole::kInnerOp);
     auto method_id =
         static_cast<int>(distributed::GrpcMethod::kGetMonomerBarrier);
     service_->RequestAsyncUnary(
@@ -284,6 +310,8 @@ class RequestGetMonomerBarrier final : public RequestBase {
   std::string GetReqName() override { return request_.varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestGetMonomerBarrier::Process",
+                        platform::EventRole::kInnerOp);
     // proc request.
     std::string varname = request_.varname();
     VLOG(4) << "RequestGetMonomerBarrier " << varname;
@@ -299,6 +327,8 @@ class RequestGetMonomerBarrier final : public RequestBase {
                              request_.trainer_id());
 
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestGetMonomerBarrier::Process",
+                       platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -316,6 +346,8 @@ class RequestPrefetch final : public RequestBase {
       : RequestBase(service, cq, request_handler, req_id),
         responder_(&ctx_),
         local_scope_(nullptr) {
+    platform::RecordEvent record_event("RequestPrefetch::Init",
+                                       platform::EventRole::kInnerOp);
     request_.reset(new GRPCVariableResponse(request_handler->scope(),
                                             request_handler->dev_ctx(), true));
     int method_id =
@@ -330,6 +362,8 @@ class RequestPrefetch final : public RequestBase {
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestPrefetch::Process",
+                        platform::EventRole::kInnerOp);
     // prefetch process...
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
@@ -350,6 +384,8 @@ class RequestPrefetch final : public RequestBase {
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestPrefetch::Process",
+                       platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -365,6 +401,8 @@ class RequestCheckpointNotify final : public RequestBase {
                                    ::grpc::ServerCompletionQueue* cq,
                                    RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    platform::RecordEvent record_event("RequestCheckpointNotify::Init",
+                                       platform::EventRole::kInnerOp);
     request_.reset(new GRPCVariableResponse(request_handler->scope(),
                                             request_handler->dev_ctx()));
     int method_id =
@@ -379,6 +417,8 @@ class RequestCheckpointNotify final : public RequestBase {
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestCheckpointNotify::Process",
+                        platform::EventRole::kInnerOp);
     auto scope = request_->GetMutableLocalScope();
 
     std::string checkpoint_notify = request_->Varname();
@@ -391,6 +431,8 @@ class RequestCheckpointNotify final : public RequestBase {
     request_handler_->Handle(checkpoint_notify, scope, nullptr, nullptr,
                              trainer_id, checkpoint_dir);
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestCheckpointNotify::Process",
+                       platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -405,6 +447,8 @@ class RequestNotify final : public RequestBase {
                          ::grpc::ServerCompletionQueue* cq,
                          RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    platform::RecordEvent record_event("RequestNotify::Init",
+                                       platform::EventRole::kInnerOp);
     request_.reset(new GRPCVariableResponse(
         request_handler->scope(), request_handler->dev_ctx(),
         request_handler->distributed_mode()));
@@ -417,6 +461,8 @@ class RequestNotify final : public RequestBase {
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestNotify::Process",
+                        platform::EventRole::kInnerOp);
     std::string varname = GetReqName();
     VLOG(4) << "RequestNotify var_name:" << varname;
 
@@ -426,6 +472,7 @@ class RequestNotify final : public RequestBase {
     framework::Variable* outvar = nullptr;
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestNotify::Process", platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -440,6 +487,8 @@ class RequestSendAndRecv final : public RequestBase {
                               ::grpc::ServerCompletionQueue* cq,
                               RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
+    platform::RecordEvent record_event("RequestSendAndRecv::Init",
+                                       platform::EventRole::kInnerOp);
     request_.reset(new GRPCVariableResponse(
         request_handler->scope(), request_handler->dev_ctx(),
         request_handler->distributed_mode()));
@@ -456,13 +505,17 @@ class RequestSendAndRecv final : public RequestBase {
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestSendAndRecv::Process",
+                        platform::EventRole::kInnerOp);
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
     std::string table_name = request_->TableName();
     int trainer_id = request_->GetTrainerId();
 
-    VLOG(4) << "RequestSendAndRecv, in_var_name: " << in_var_name
-            << " out_var_name: " << out_var_name << " trainer: " << trainer_id;
+    auto before_process = GetCurrentUS();
+    VLOG(1) << "RequestSendAndRecv, in_var_name: " << in_var_name
+            << " out_var_name: " << out_var_name << " Begin at "
+            << std::to_string(before_process);
     auto scope = request_->GetMutableLocalScope();
     auto invar = scope->FindVar(in_var_name);
     framework::Variable* outvar = nullptr;
@@ -471,6 +524,11 @@ class RequestSendAndRecv final : public RequestBase {
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
     Finish(reply_, &responder_);
+    auto after_process = GetCurrentUS();
+    VLOG(1) << "RequestSendAndRecv Begin at " << std::to_string(before_process)
+            << " use time " << after_process - before_process;
+    platform::PopEvent("RequestSendAndRecv::Process",
+                       platform::EventRole::kInnerOp);
   }
 
  protected:
