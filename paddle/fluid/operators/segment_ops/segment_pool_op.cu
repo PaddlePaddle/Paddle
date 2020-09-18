@@ -13,16 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/gather.cu.h"
-#include "paddle/fluid/operators/segment_ops/segment_sum_op.h"
+#include "paddle/fluid/operators/segment_ops/segment_pool_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_launch_param_config.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    segment_sum,
-    ops::SegmentSumKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SegmentSumKernel<paddle::platform::CUDADeviceContext, double>);
+    segment_pool,
+    ops::SegmentPoolKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SegmentPoolKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
-    segment_sum_grad,
-    ops::SegmentSumGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SegmentSumGradKernel<paddle::platform::CUDADeviceContext, double>);
+    segment_pool_grad,
+    ops::SegmentPoolGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SegmentPoolGradKernel<paddle::platform::CUDADeviceContext, double>);

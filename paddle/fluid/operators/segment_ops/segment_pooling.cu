@@ -25,15 +25,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T>
-DEVICE inline void max_functor(const T& x, T* y) {
-  *y = *y > x ? *y : x;
-}
-template <typename T>
-DEVICE inline void min_functor(const T& x, T* y) {
-  *y = *y < x ? *y : x;
-}
-
 template <typename T, typename Index, int OuterDimTileSize>
 __global__ void SortedSegmentSumCustomKernel(const Index input_outer_dim_size,
                                              const Index inner_dim_size,
@@ -88,75 +79,79 @@ __global__ void SortedSegmentSumCustomKernel(const Index input_outer_dim_size,
 }
 
 template <typename T, typename Index, int OuterDimTileSize>
-__global__ void SortedSegmentMaxCustomKernel(
+__global__ void SortedSegmentMeanCustomKernel(
     const Index input_outer_dim_size, const Index inner_dim_size,
     const Index output_outer_dim_size, const Index* segment_ids, const T* input,
-    T* output, const Index total_stripe_count, const bool MAX = false) {
+    T* output, T* summed_ids, const Index total_stripe_count) {
   CUDA_KERNEL_LOOP(stripe_index, total_stripe_count) {
     const Index segment_offset = stripe_index % inner_dim_size;
     const Index input_outer_dim_index_base =
         stripe_index / inner_dim_size * Index(OuterDimTileSize);
 
-    T minmax = static_cast<T>(-FLT_MAX);
     Index first_segment_id = segment_ids[input_outer_dim_index_base];
     Index last_output_segment_id = output_outer_dim_size;
 
     const Index actual_stripe_height =
         min(Index(OuterDimTileSize),
             input_outer_dim_size - input_outer_dim_index_base);
-    // -1 is for the start value when interval_id = 0
-    Index previous_segment_id = -1;
-    if (input_outer_dim_index_base > 0) {
-      previous_segment_id = segment_ids[input_outer_dim_index_base - 1];
-    }
-    for (Index interval_id = previous_segment_id + 1;
-         interval_id < first_segment_id; ++interval_id) {
-      *(output + interval_id * inner_dim_size + segment_offset) = 0;
-    }
 
+    T sum = T(0);
     for (Index j = 0; j < actual_stripe_height; j++) {
       Index current_output_segment_id =
           segment_ids[input_outer_dim_index_base + j];
-
       if (current_output_segment_id > last_output_segment_id) {
         const Index output_index =
             last_output_segment_id * inner_dim_size + segment_offset;
         if (last_output_segment_id == first_segment_id) {
-          platform::CudaAtomicMax(output + output_index, minmax);
+          platform::CudaAtomicAdd(summed_ids + output_index, sum);
         } else {
-          *(output + output_index) = minmax;
+          *(summed_ids + output_index) = sum;
         }
-        // reset the interval value which do not have corresponding ids.
-        for (Index interval_index = 1;
-             interval_index <
-             current_output_segment_id - last_output_segment_id;
-             ++interval_index) {
-          *(output + output_index + interval_index * inner_dim_size) = 0;
-        }
-        minmax = static_cast<T>(-FLT_MAX);
+        sum = T(0);
       }
-      max_functor<T>(input[(input_outer_dim_index_base + j) * inner_dim_size +
-                           segment_offset],
-                     &minmax);
+      sum += 1;
       last_output_segment_id = current_output_segment_id;
     }
-    const Index output_index =
+    Index output_index =
         last_output_segment_id * inner_dim_size + segment_offset;
-    platform::CudaAtomicMax(output + output_index, minmax);
+    platform::CudaAtomicAdd(summed_ids + output_index, sum);
+    __syncthreads();
+    sum = T(0);
+    for (Index j = 0; j < actual_stripe_height; j++) {
+      Index current_output_segment_id =
+          segment_ids[input_outer_dim_index_base + j];
+      if (current_output_segment_id > last_output_segment_id) {
+        const Index output_index =
+            last_output_segment_id * inner_dim_size + segment_offset;
+        if (last_output_segment_id == first_segment_id) {
+          platform::CudaAtomicAdd(output + output_index,
+                                  sum / *(summed_ids + output_index));
+        } else {
+          *(output + output_index) = sum / *(summed_ids + output_index);
+        }
+        sum = T(0);
+      }
+      sum += input[(input_outer_dim_index_base + j) * inner_dim_size +
+                   segment_offset];
+      last_output_segment_id = current_output_segment_id;
+    }
+    output_index = last_output_segment_id * inner_dim_size + segment_offset;
+    platform::CudaAtomicAdd(output + output_index,
+                            sum / *(summed_ids + output_index));
   }
 }
 
-template <typename T, typename Index, int OuterDimTileSize>
-__global__ void SortedSegmentMinCustomKernel(
+template <typename T, typename Index, int OuterDimTileSize, typename Pool>
+__global__ void SortedSegmentMinMaxCustomKernel(
     const Index input_outer_dim_size, const Index inner_dim_size,
     const Index output_outer_dim_size, const Index* segment_ids, const T* input,
-    T* output, const Index total_stripe_count, const bool MAX = false) {
+    T* output, const Index total_stripe_count, Pool pool) {
   CUDA_KERNEL_LOOP(stripe_index, total_stripe_count) {
     const Index segment_offset = stripe_index % inner_dim_size;
     const Index input_outer_dim_index_base =
         stripe_index / inner_dim_size * Index(OuterDimTileSize);
 
-    T minmax = static_cast<T>(FLT_MAX);
+    T minmax = pool.initial();
     Index first_segment_id = segment_ids[input_outer_dim_index_base];
     Index last_output_segment_id = output_outer_dim_size;
 
@@ -181,7 +176,7 @@ __global__ void SortedSegmentMinCustomKernel(
         const Index output_index =
             last_output_segment_id * inner_dim_size + segment_offset;
         if (last_output_segment_id == first_segment_id) {
-          platform::CudaAtomicMin(output + output_index, minmax);
+          pool.atomic(output + output_index, minmax);
         } else {
           *(output + output_index) = minmax;
         }
@@ -192,16 +187,16 @@ __global__ void SortedSegmentMinCustomKernel(
              ++interval_index) {
           *(output + output_index + interval_index * inner_dim_size) = 0;
         }
-        minmax = static_cast<T>(FLT_MAX);
+        minmax = pool.initial();
       }
-      min_functor<T>(input[(input_outer_dim_index_base + j) * inner_dim_size +
-                           segment_offset],
-                     &minmax);
+      pool.compute(input[(input_outer_dim_index_base + j) * inner_dim_size +
+                         segment_offset],
+                   &minmax);
       last_output_segment_id = current_output_segment_id;
     }
     const Index output_index =
         last_output_segment_id * inner_dim_size + segment_offset;
-    platform::CudaAtomicMin(output + output_index, minmax);
+    pool.atomic(output + output_index, minmax);
   }
 }
 
@@ -235,6 +230,26 @@ __global__ void SortedSegmentIndexGradKernel(const Index input_outer_dim_size,
   }
 }
 
+template <class T>
+class MaxPool {
+ public:
+  DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
+  DEVICE inline void compute(const T& x, T* y) { *y = *y > x ? *y : x; }
+  DEVICE inline T atomic(T* address, const T val) {
+    return platform::CudaAtomicMax(address, val);
+  }
+};
+
+template <class T>
+class MinPool {
+ public:
+  DEVICE inline T initial() { return static_cast<T>(FLT_MAX); }
+  DEVICE inline void compute(const T& x, T* y) { *y = *y < x ? *y : x; }
+  DEVICE inline T atomic(T* address, const T val) {
+    return platform::CudaAtomicMin(address, val);
+  }
+};
+
 template <typename T, typename Index>
 void SegmentPoolCUDAFunctor(const platform::CUDADeviceContext& ctx,
                             const framework::Tensor& input,
@@ -262,17 +277,19 @@ void SegmentPoolCUDAFunctor(const platform::CUDADeviceContext& ctx,
         segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
         total_stripe_count);
   } else if (pooltype == "MAX") {
-    SortedSegmentMaxCustomKernel<T, Index, OuterDimTileSize><<<
+    MaxPool<T> pool;
+    SortedSegmentMinMaxCustomKernel<T, Index, OuterDimTileSize, MaxPool<T>><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
         input_outer_dim_size, input_inner_dim_size, output_rows,
         segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
-        total_stripe_count);
+        total_stripe_count, pool);
   } else if (pooltype == "MIN") {
-    SortedSegmentMinCustomKernel<T, Index, OuterDimTileSize><<<
+    MinPool<T> pool;
+    SortedSegmentMinMaxCustomKernel<T, Index, OuterDimTileSize, MinPool<T>><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
         input_outer_dim_size, input_inner_dim_size, output_rows,
         segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
-        total_stripe_count);
+        total_stripe_count, pool);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented("Not support yet."));
   }
@@ -339,25 +356,19 @@ class SegmentPoolFunctor<platform::CUDADeviceContext, T, IndexT> {
       framework::Tensor one, count_sum, all_sum;
       one.mutable_data<T>({input.dims()[0], 1}, context.GetPlace());
       count_sum.mutable_data<T>({output->dims()[0], 1}, context.GetPlace());
-
       math::SetConstant<platform::CUDADeviceContext, T> setconst;
       setconst(context, &one, static_cast<T>(1));
       setconst(context, &count_sum, static_cast<T>(1e-12));
-
       SegmentPoolCUDAFunctor<T, IndexT>(context, one, segments, &count_sum,
                                         std::string("SUM"));
       SegmentPoolCUDAFunctor<T, IndexT>(context, input, segments, output,
                                         std::string("SUM"));
-
       int len = output->dims()[0];
       int dim = output->numel() / len;
-
       auto config = platform::GetGpuLaunchConfig1D(context, len);
-
       SimpleDiv<T><<<config.block_per_grid.x, config.thread_per_block.x, 0,
                      context.stream()>>>(output->data<T>(), count_sum.data<T>(),
                                          len, dim);
-
     } else if (pooltype == "SUM") {
       SegmentPoolCUDAFunctor<T, IndexT>(context, input, segments, output,
                                         pooltype);

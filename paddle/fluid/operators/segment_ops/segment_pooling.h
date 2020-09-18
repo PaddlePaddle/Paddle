@@ -23,22 +23,22 @@ namespace operators {
 template <typename DeviceContext, typename T, typename IndexT>
 class SegmentPoolFunctor {
  public:
-  /* max in pool has index output */
+  /* mean pool has summed_ids output */
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& segments, framework::Tensor* output,
-                  framework::Tensor* index = nullptr,
+                  framework::Tensor* summed_ids = nullptr,
                   const std::string pooltype = "SUM");
 };
 
 template <typename DeviceContext, typename T, typename IndexT>
 class SegmentPoolGradFunctor {
  public:
-  /* max min pool has index*/
+  /* mean pool has summed_ids output */
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& out_grad,
                   const framework::Tensor& segments, framework::Tensor* in_grad,
-                  const framework::Tensor* index = nullptr,
+                  const framework::Tensor* summed_ids = nullptr,
                   const std::string pooltype = "SUM");
 };
 

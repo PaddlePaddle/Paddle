@@ -98,7 +98,7 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
 }
 
 template <typename DeviceContext, typename T>
-class SegmentSumKernel : public framework::OpKernel<T> {
+class SegmentPoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* segment = context.Input<Tensor>("SegmentIds");
@@ -116,7 +116,7 @@ class SegmentSumKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class SegmentSumGradKernel : public framework::OpKernel<T> {
+class SegmentPoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* input = context.Input<Tensor>("X");

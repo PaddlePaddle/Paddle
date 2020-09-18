@@ -19,9 +19,6 @@ import numpy as np
 import sys
 from op_test import OpTest
 
-#, skip_check_grad_ci
-#from test_reorder_lod_tensor import convert_to_offset
-
 
 def compute_segment_sum(x, segment_ids):
     length = segment_ids[-1] + 1
@@ -91,7 +88,7 @@ class TestSegmentOps(OpTest):
         self.dtype = np.float64
         x = self.set_data()
         segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
-        self.op_type = "segment_sum"
+        self.op_type = "segment_pool"
         result = self.compute(x, segment_ids)
         self.inputs = {
             'X': x.astype(self.dtype),
@@ -114,7 +111,7 @@ class TestSegmentSum2(TestSegmentOps):
         self.dtype = np.float32
         x = self.set_data()
         segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
-        self.op_type = "segment_sum"
+        self.op_type = "segment_pool"
         result = self.compute(x, segment_ids)
         self.inputs = {
             'X': x.astype(self.dtype),
@@ -135,7 +132,7 @@ class TestSegmentMax(TestSegmentOps):
         self.dtype = self.get_dtype()
         x = self.set_data()
         segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
-        self.op_type = "segment_sum"
+        self.op_type = "segment_pool"
         result, self.gradient = self.compute(x, segment_ids)
         self.inputs = {
             'X': x.astype(self.dtype),
@@ -154,35 +151,23 @@ class TestSegmentMax2(TestSegmentMax):
         return np.float32
 
 
-#class TestSegmentMean(OpTest):
-#    def set_data(self):
-#        x = np.random.uniform(0.1, 1, [11, 23]).astype('float32')
-#        return x
-#
-#    def set_segment(self, origin_len, reduce_len):
-#        segment = np.zeros(reduce_len, dtype='int64')
-#        segment = np.random.randint(0, reduce_len,  size=[origin_len])
-#        segment = np.sort(segment)
-#        return segment
-#
-#    def compute(self, x, segment_ids):
-#        return compute_segment_mean(x, segment_ids)
-#
-#    def setUp(self):
-#        x = self.set_data()
-#        segment_ids = self.set_segment(len(x), len(x)//5+1)
-#        self.op_type = "segment_mean"
-#        result = self.compute(x, segment_ids)
-#        self.inputs = {'X':x, 'SegmentIds':segment_ids}
-#        self.attrs = {}
-#        self.outputs = {'Out': result}
-#
-#    def test_check_output(self):
-#        self.check_output()
-#
-#    def test_check_grad(self):
-#        self.check_grad(["X"], "Out")
-#
+class TestSegmentMean(TestSegmentOps):
+    def compute(self, x, segment_ids):
+        return compute_segment_mean(x, segment_ids)
+
+    def get_dtype(self):
+        return np.float64
+
+    def setUp(self):
+        self.dtype = self.get_dtype()
+        x = self.set_data()
+        segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
+        self.op_type = "segment_pool"
+        result = self.compute(x, segment_ids)
+        self.inputs = {'X': x, 'SegmentIds': segment_ids}
+        self.attrs = {'pooltype': "MEAN"}
+        self.outputs = {'Out': result}
+
 
 if __name__ == '__main__':
     unittest.main()

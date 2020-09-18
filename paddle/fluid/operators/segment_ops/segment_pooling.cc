@@ -59,7 +59,10 @@ class SegmentPoolFunctor<platform::CPUDeviceContext, T, IndexT> {
       } else if (pooltype == "MIN") {
         out_e.device(place) = in_e.minimum(reduce_dim);
       } else {
-        PADDLE_THROW("unsupported pooling pooltype");
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unsupported segment pooling type, only MEAN, SUM, MAX, MIN "
+            "available, but got %s.",
+            pooltype));
       }
 
       last_idx = idx;
@@ -78,11 +81,6 @@ class SegmentPoolGradFunctor<platform::CPUDeviceContext, T, IndexT> {
                   const framework::Tensor& segments, framework::Tensor* in_grad,
                   const framework::Tensor* index = nullptr,
                   const std::string pooltype = "SUM") {
-    //    if (pooltype == "MAX" || pooltype == "MIN") {
-    //      IndexPoolGradFunctor<T> index_pool_grad;
-    //      index_pool_grad(context, out_grad, *index, in_grad);
-    //      return;
-    //    }
     const IndexT* segment_ids = segments.data<IndexT>();
     auto& place = *context.eigen_device();
     auto curent_id = segment_ids[0];
@@ -99,7 +97,6 @@ class SegmentPoolGradFunctor<platform::CPUDeviceContext, T, IndexT> {
       int64_t h = idx - last_idx;
       auto in_g_e = framework::EigenMatrix<T>::From(in_g_t, {h, w});
       auto out_g_e = framework::EigenMatrix<T>::From(out_g_t, {1, w});
-      // auto out_g_e_v = framework::EigenVector<T>::Flatten(out_g_t);
       Eigen::DSizes<int, 2> bcast(h, 1);
 
       if (pooltype == "MEAN") {
@@ -115,9 +112,10 @@ class SegmentPoolGradFunctor<platform::CPUDeviceContext, T, IndexT> {
             (in_e == out_e.broadcast(bcast)).template cast<T>() *
             out_g_e.broadcast(bcast);
       } else {
-        PADDLE_THROW(
-            "unsupported segment pooling operation, only MEAN, SUM, MAX, MIN "
-            "available.");
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unsupported segment pooling type, only MEAN, SUM, MAX, MIN "
+            "available, but got %s.",
+            pooltype));
       }
 
       last_idx = idx;

@@ -12,29 +12,30 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/segment_ops/segment_sum_op.h"
+#include "paddle/fluid/operators/segment_ops/segment_pool_op.h"
 #include <memory>
 #include <string>
 
 namespace paddle {
 namespace operators {
 
-class SegmentSumOp : public framework::OperatorWithKernel {
+class SegmentPoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SegmentSum");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SegmentPool");
     OP_INOUT_CHECK(ctx->HasInput("SegmentIds"), "Input", "SegmentIds",
-                   "SegmentSum");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SegmentSum");
+                   "SegmentPool");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SegmentPool");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
 
-    // if (ctx->Attrs().Get<std::string>("pooltype") == "MAX") {
-    //  OP_INOUT_CHECK(ctx->HasOutput("MaxIndex"), "Output", "MaxIndex",
-    //                 "SegmentSum");
-    //  ctx->SetOutputDim("MaxIndex", ctx->GetInputDim("X"));
-    //}
+    if (ctx->Attrs().Get<std::string>("pooltype") == "MEAN") {
+      OP_INOUT_CHECK(ctx->HasOutput("SumedIds"), "Output", "MaxIndex",
+                     "SegmentPool");
+      auto length = ctx->GetInputDim("X")[0];
+      ctx->SetOutputDim("MEAN", {length, 1});
+    }
   }
 
  protected:
@@ -46,21 +47,20 @@ class SegmentSumOp : public framework::OperatorWithKernel {
   }
 };
 
-class SegmentSumOpMaker : public framework::OpProtoAndCheckerMaker {
+class SegmentPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor) The variable-length input of SegmentSumOp");
+    AddInput("X", "(Tensor) The variable-length input of SegmentPoolOp");
     AddInput("SegmentIds",
-             "(Tensor) The variable-length input of SegmentSumOp");
-    // AddOutput("MaxIndex",
-    //          "(Tensor<int>) This tensor is used for the sequence max-pooling
-    //          "
-    //          "to record the max indexes.")
-    //    .AsIntermediate();
-    AddOutput("Out", "(Tensor) The output of SegmentSumOp.");
+             "(Tensor) The variable-length input of SegmentPoolOp");
+    AddOutput("SumedIds",
+              "(Tensor) This tensor is used to counts of segment ids for the "
+              "backward of the mean pool.")
+        .AsIntermediate();
+    AddOutput("Out", "(Tensor) The output of SegmentPoolOp.");
     AddAttr<std::string>(
         "pooltype",
-        "(string, default 'SUM') the pooling pooltype of SegmentSumOp.")
+        "(string, default 'SUM') the pooling pooltype of SegmentPoolOp.")
         .SetDefault("SUM")
         .InEnum({"SUM", "MEAN", "MIN", "MAX"});
     AddComment(R"DOC(
@@ -72,14 +72,14 @@ It computes a tensor such that $Out_i = \sum_{j} X_{j}$ where sum is over j such
   }
 };
 
-class SegmentSumGradOp : public framework::OperatorWithKernel {
+class SegmentPoolGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "SegmentSumGrad");
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SegmentSumGrad");
+                   framework::GradVarName("Out"), "SegmentPoolGrad");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SegmentPoolGrad");
     auto og_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
@@ -111,19 +111,19 @@ class SegmentSumGradOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class SegmentSumGradOpMaker : public framework::SingleGradOpMaker<T> {
+class SegmentPoolGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   void Apply(GradOpPtr<T> op_desc_ptr) const override {
-    op_desc_ptr->SetType("segment_sum_grad");
+    op_desc_ptr->SetType("segment_pool_grad");
     op_desc_ptr->SetInput("X", this->Input("X"));
     op_desc_ptr->SetInput("SegmentIds", this->Input("SegmentIds"));
     op_desc_ptr->SetInput("Out", this->Output("Out"));
-    // if (BOOST_GET_CONST(std::string, this->GetAttr("pooltype")) == "MAX") {
-    //  op_desc_ptr->SetInput("MaxIndex", this->Output("MaxIndex"));
-    //}
+    if (BOOST_GET_CONST(std::string, this->GetAttr("pooltype")) == "MEAN") {
+      op_desc_ptr->SetInput("SummedIds", this->Output("SummedIds"));
+    }
     op_desc_ptr->SetInput(framework::GradVarName("Out"),
                           this->OutputGrad("Out"));
     op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
@@ -135,17 +135,17 @@ class SegmentSumGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(segment_sum, ops::SegmentSumOp, ops::SegmentSumOpMaker,
-                  ops::SegmentSumGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SegmentSumGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(segment_sum_grad, ops::SegmentSumGradOp);
+REGISTER_OPERATOR(segment_pool, ops::SegmentPoolOp, ops::SegmentPoolOpMaker,
+                  ops::SegmentPoolGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SegmentPoolGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(segment_pool_grad, ops::SegmentPoolGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    segment_sum,
-    ops::SegmentSumKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SegmentSumKernel<paddle::platform::CPUDeviceContext, double>);
+    segment_pool,
+    ops::SegmentPoolKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SegmentPoolKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
-    segment_sum_grad,
-    ops::SegmentSumGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SegmentSumGradKernel<paddle::platform::CPUDeviceContext, double>);
+    segment_pool_grad,
+    ops::SegmentPoolGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SegmentPoolGradKernel<paddle::platform::CPUDeviceContext, double>);
