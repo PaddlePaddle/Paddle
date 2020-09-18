@@ -307,6 +307,9 @@ def _get_fake_quant_type(quant_type, **kwargs):
         call_args["quant_on_weight"] = kwargs.get("quant_on_weight", False)
         call_args["channel_num"] = kwargs.get("channel_num", None)
         call_args["quant_axis"] = kwargs.get("quant_axis", 0)
+        assert call_args["channel_num"] is not None, (
+            "You need to input channel_num"
+            "when you use channel_wise_abs_max strategy.")
     fake_quant_map = {
         'abs_max': FakeQuantAbsMax,
         'moving_average_abs_max': FakeQuantMovingAverage,
@@ -342,7 +345,6 @@ class QuantizedConv2D(layers.Layer):
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
         # For FakeQuant
-
         self._conv2d_quant_axis = 0
         self._fake_quant_weight = _get_fake_quant_type(
             weight_quantize_type,
