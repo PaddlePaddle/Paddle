@@ -165,7 +165,7 @@ class Gloo(object):
 
     def _init_http(self, ip, port, prefix):
         def __start_kv_server(http_server_d, size_d):
-            from paddle.distributed.fleet.utils import KVServer
+            from paddle.distributed.fleet.utils.http_server import KVServer
             http_server = KVServer(port, size_d)
             http_server.start()
             wait_seconds = 5
@@ -208,16 +208,16 @@ class Gloo(object):
 
         if self._role == Role.WORKER:
             rank, nodes = self._get_rank_nodes(Role.WORKER)
-            gloo = init(rank, nodes, Role.WORKER)
+            gloo = init(rank, nodes, "WORKER")
             self._worker_comm = gloo
         else:
             rank, nodes = self._get_rank_nodes(Role.SERVER)
-            gloo = init(rank, nodes, Role.SERVER)
+            gloo = init(rank, nodes, "SERVER")
             self._server_comm = gloo
 
         if self._need_init_all:
             rank, nodes = self._get_rank_nodes(Role.ALL)
-            gloo = init(rank, nodes, Role.ALL)
+            gloo = init(rank, nodes, "ALL")
             self._nodes_comm = gloo
 
     def _get_rank_nodes(self, role):
@@ -603,7 +603,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self.generate_role()
-        return self._trainers_num
+        return len(self.get_pserver_endpoints())
 
     def node_num(self):
         """

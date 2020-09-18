@@ -146,7 +146,7 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
         ro = role_maker.UserDefinedRoleMaker(
             is_collective=False,
             init_gloo=False,
-            server_endpoints="127.0.0.1:36001,127.0.0.1:36001",
+            server_endpoints=["127.0.0.1:36001", "127.0.0.1:36001"],
             role=role_maker.Role.SERVER,
             current_id=0,
             worker_num=2)
@@ -165,7 +165,7 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
         ro = role_maker.UserDefinedRoleMaker(
             is_collective=False,
             init_gloo=False,
-            server_endpoints="127.0.0.1:36001,127.0.0.1:36001",
+            server_endpoints=["127.0.0.1:36001", "127.0.0.1:36001"],
             role=role_maker.Role.WORKER,
             current_id=0,
             worker_num=2)
@@ -259,6 +259,71 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         self.case(role, "server")
         self.clean(tmp)
 
+    def test_fs_gloo3(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        tmp = self.mkdir()
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "1"
+        os.environ["PADDLE_GLOO_FS_NAME"] = "NULL"
+        os.environ["PADDLE_GLOO_FS_UGI"] = "NULL"
+        os.environ["PADDLE_GLOO_FS_PATH"] = tmp
+
+        role = role_maker.PaddleCloudRoleMaker()
+        role.generate_role()
+        self.case(role, "server")
+        self.clean(tmp)
+
+    def test_fs_gloo4(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "3"
+        os.environ["PADDLE_GLOO_HTTP_HOST"] = "127.0.0.1"
+        os.environ["PADDLE_GLOO_HTTP_PORT"] = "30019"
+
+        role = role_maker.PaddleCloudRoleMaker()
+        role.generate_role()
+        import time
+        time.sleep(3)
+
+
+#    def test_fs_gloo5(self):
+#        plats = platform.platform()
+#        if 'Linux' not in plats:
+#            print("skip gloo UT on MacOS/Win")
+#            return
+#
+#        tmp = self.mkdir()
+#        os.environ["TRAINING_ROLE"] = "TRAINER"
+#        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = ""
+#        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+#        os.environ["PADDLE_WITH_GLOO"] = "2"
+#        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "2"
+#        os.environ["PADDLE_GLOO_FS_PATH"] = tmp
+#
+#        role = role_maker.PaddleCloudRoleMaker()
+#        role.generate_role()
+#        self.case(role, "worker")
+#        self.clean(tmp)
 
 if __name__ == "__main__":
     unittest.main()
