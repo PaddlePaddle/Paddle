@@ -17,6 +17,7 @@
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/mkldnn/conv_elementwise_add_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -265,6 +266,12 @@ TEST(ConvElementwiseAddMKLDNNFusePass, NoFusion) {
   EXPECT_EQ(original_nodes_num, current_nodes_num);
 
   AssertOpsCount(graph, 2, 1);
+}
+
+TEST(ConvElementwiseAddMKLDNNFusePass, pass_op_version_check) {
+  ASSERT_TRUE(
+      paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
+          .IsPassCompatible("conv_elementwise_add_mkldnn_fuse_pass"));
 }
 
 }  // namespace ir

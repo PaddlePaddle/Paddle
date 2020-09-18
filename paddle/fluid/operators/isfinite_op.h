@@ -57,7 +57,11 @@ class OverflowKernel : public framework::OpKernel<T> {
       auto& in = ctx.Input<framework::SelectedRows>("X")->value();
       functor(in, out);
     } else {
-      PADDLE_THROW("Unsupported input type.");
+      PADDLE_ENFORCE_EQ(
+          true, false,
+          platform::errors::InvalidArgument(
+              "The input type mismatch, the type of Input(X) must be Tensor or "
+              "SelectedRows, please check your input."));
     }
   }
 };

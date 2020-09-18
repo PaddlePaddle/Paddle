@@ -637,7 +637,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         return "lo"
 
     def __start_kv_server(self, http_server_d, size_d):
-        from paddle.distributed.fleet.utils import KVServer
+        from paddle.distributed.fleet.utils.http_server import KVServer
         http_server = KVServer(int(self._http_ip_port[1]), size_d)
         http_server.start()
         wait_seconds = 5
@@ -651,6 +651,7 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
     def __init__(self, is_collective=False, init_gloo=False, **kwargs):
         super(UserDefinedRoleMaker, self).__init__(
             is_collective=is_collective, init_gloo=init_gloo, **kwargs)
+        self._init_gloo = init_gloo
 
     def _user_defined_ps_env(self):
         self._server_endpoints = self._kwargs.get("server_endpoints")

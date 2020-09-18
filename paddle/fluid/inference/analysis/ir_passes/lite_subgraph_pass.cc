@@ -244,6 +244,7 @@ void LiteSubgraphPass::SetUpEngine(
   bool enable_int8 = Get<bool>("enable_int8");
   bool use_xpu = Get<bool>("use_xpu");
   int xpu_l3_workspace_size = Get<int>("xpu_l3_workspace_size");
+  int cpu_math_library_num_threads = Get<int>("cpu_math_library_num_threads");
 
   lite_api::TargetType target_type;
   if (use_gpu) {
@@ -263,11 +264,12 @@ void LiteSubgraphPass::SetUpEngine(
       // Notice: The ordering here determines the device where the
       // input tensor of the Lite engine is located, and then affects
       // whether tensor sharing is feasible.
-      paddle::lite::Place({target_type, precision_type}),
-      paddle::lite::Place({target_type, PRECISION(kInt64)}),
-      paddle::lite::Place({target_type, PRECISION(kFloat)}),
-      paddle::lite::Place({TARGET(kHost), PRECISION(kFloat)}),
+      paddle::lite_api::Place({target_type, precision_type}),
+      paddle::lite_api::Place({target_type, PRECISION(kInt64)}),
+      paddle::lite_api::Place({target_type, PRECISION(kFloat)}),
+      paddle::lite_api::Place({TARGET(kHost), PRECISION(kFloat)}),
   };
+  config.cpu_math_library_num_threads = cpu_math_library_num_threads;
   config.xpu_l3_workspace_size = xpu_l3_workspace_size;
   if (dump_model) {
     lite::StrToBinaryFile("./model.bin", config.model);

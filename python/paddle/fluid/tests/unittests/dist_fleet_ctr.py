@@ -208,14 +208,16 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         filelist = train_file_list
 
         # config dataset
-        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
-        dataset.set_batch_size(batch_size)
-        dataset.set_use_var(self.feeds)
+        dataset = paddle.distributed.QueueDataset()
         pipe_command = 'python ctr_dataset_reader.py'
-        dataset.set_pipe_command(pipe_command)
+
+        dataset.init(
+            batch_size=batch_size,
+            use_var=self.feeds,
+            pipe_command=pipe_command,
+            thread_num=thread_num)
 
         dataset.set_filelist(filelist)
-        dataset.set_thread(thread_num)
 
         for epoch_id in range(1):
             pass_start = time.time()

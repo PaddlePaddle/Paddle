@@ -400,7 +400,8 @@ class TestCUDNNLstmOp(OpTest):
             'Input': input,
             'W': flat_w,
             'InitH': init_h,
-            'InitC': init_c
+            'InitC': init_c,
+            'SequenceLength': self.sequence_length
         }
         self.attrs = {
             'dropout_prob': 0.0,
@@ -408,7 +409,6 @@ class TestCUDNNLstmOp(OpTest):
             'input_size': input_size,
             'hidden_size': hidden_size,
             'num_layers': 1,
-            'sequence_length': self.sequence_length.tolist()
         }
         self.outputs = {
             'Out': output,
@@ -436,13 +436,6 @@ class TestCUDNNLstmOp(OpTest):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNLstmOp2(TestCUDNNLstmOp):
-    def set_attrs(self):
-        self.sequence_length = np.array([], dtype=np.int32)
-
-
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestCUDNNLstmOp3(TestCUDNNLstmOp):
     def set_attrs(self):
         self.num_layers = 2
 
