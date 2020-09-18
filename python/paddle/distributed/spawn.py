@@ -125,7 +125,7 @@ def _get_subprocess_env_list(nprocs, options):
     args.prefix = options.get('prefix', None)
     args.iface = options.get('iface', None)
     args.fs_name = options.get('fs_name', None)
-    args.fs_ugi = options.get('fs_name', None)
+    args.fs_ugi = options.get('fs_ugi', None)
     node_num = len(args.cluster_node_ips.split(','))
     if node_num == 1:
         if args.path is None:

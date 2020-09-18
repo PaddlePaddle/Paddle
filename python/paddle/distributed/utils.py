@@ -345,11 +345,11 @@ def _prepare_trainer_env(cluster, trainer):
         "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
         "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
         "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
-        "PADDLE_GLOO_PREFIX": "%s" % trainer.gloo_prefx,
+        "PADDLE_GLOO_PREFIX": "%s" % trainer.gloo_prefix,
         "PADDLE_GLOO_IFACE": "%s" % trainer.gloo_iface,
         "PADDLE_GLOO_PATH": "%s" % trainer.gloo_path,
-        "PADDLE_GLOO_FS_NAME": "%s" % trainer.fs_name,
-        "PADDLE_GLOO_FS_UGI": "%s" % trainer.fs_ugi,
+        "PADDLE_GLOO_FS_NAME": "%s" % trainer.gloo_fs_name,
+        "PADDLE_GLOO_FS_UGI": "%s" % trainer.gloo_fs_ugi,
     }
     return proc_env
 

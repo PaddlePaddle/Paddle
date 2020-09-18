@@ -144,9 +144,11 @@ def init_parallel_env():
     gloo_strategy.init_seconds = default_timeout_seconds
     gloo_strategy.run_seconds = default_timeout_seconds
     gloo_strategy.path = os.environ.get("PADDLE_GLOO_PATH")
+    if not os.path.exists(gloo_strategy.path):
+        os.mkdir(gloo_strategy.path)
     gloo_strategy.fs_name = os.environ.get("PADDLE_GLOO_FS_NAME")
     gloo_strategy.fs_ugi = os.environ.get("PADDLE_GLOO_FS_UGI")
-    gloo = core.GlooParallelContext(strategy)
+    gloo = core.GlooParallelContext(gloo_strategy)
     gloo.init()
 
     # init nccl context

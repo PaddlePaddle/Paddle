@@ -44,6 +44,7 @@ import time
 import six
 import copy
 from argparse import ArgumentParser, REMAINDER
+import tempfile
 
 from paddle.distributed.utils import *
 from paddle.distributed import cloud_utils
@@ -122,6 +123,36 @@ POD_IP (current node ip address, not needed for local training)
         type=str,
         help="The path for each process's log.If it's not set, the log will printed to default pipe."
     )
+
+    parser.add_argument(
+        "--path",
+        type=str,
+        default=None,
+        help="The path used to initialize gloo.")
+
+    parser.add_argument(
+        "--prefix",
+        type=str,
+        default=None,
+        help="The path prefix used to initialize gloo.")
+
+    parser.add_argument(
+        "--iface",
+        type=str,
+        default=None,
+        help="The name of the network interface used to initialize gloo.")
+
+    parser.add_argument(
+        "--fs_name",
+        type=str,
+        default=None,
+        help="The name of the hdfs used to initialize gloo.")
+
+    parser.add_argument(
+        "--fs_ugi",
+        type=str,
+        default=None,
+        help="The ugi of the hdfs used to initialize gloo.")
 
     #positional
     parser.add_argument(
@@ -220,6 +251,18 @@ def get_cluster_and_pod(args):
 
 def launch(args):
     cluster, pod = get_cluster_and_pod(args)
+    if args.prefix is None:
+        args.prefix = ""
+    if args.path is None:
+        temp_file = tempfile.NamedTemporaryFile()
+        args.path = temp_file.name
+    if args.iface is None:
+        args.iface = "lo"
+    if args.fs_name is None:
+        args.fs_name = ""
+    if args.fs_ugi is None:
+        args.fs_ugi = ""
+
     for trainer in pod.trainers:
         trainer.gloo_prefix = args.prefix
         trainer.gloo_path = args.path
