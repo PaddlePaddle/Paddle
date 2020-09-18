@@ -230,6 +230,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                       feed={'i': feed_i,
                             'x': feed_x},
                       fetch_list=[mean.name, i.grad_name])
+
         self.assertTrue(np.allclose(np.asarray(res[0]), data))
         self.assertTrue(
             np.allclose(np.asarray(res[1]), i_grad),
@@ -270,6 +271,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                       feed={'i': feed_i,
                             'x': feed_x},
                       fetch_list=[mean.name, x.grad_name, i.grad_name])
+
         self.assertTrue(np.allclose(np.asarray(res[0]), data))
         self.assertTrue(
             np.allclose(np.asarray(res[1]), x_grad),
