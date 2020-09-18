@@ -259,11 +259,12 @@ class RmspropOpKernel : public framework::OpKernel<T> {
             rho, epsilon, momentum, grad_func));
       }
     } else {
-      PADDLE_ENFORCE_EQ(nullptr, true, platform::errors::PermissionDenied(
-                                           "Unsupported Variable Type of Grad "
-                                           "in RmspropOp. Excepted LodTensor "
-                                           "or SelectedRows, But received [%s]",
-                                           ToTypeName(grad_var->Type())));
+      PADDLE_ENFORCE_EQ(false, true,
+                        platform::errors::PermissionDenied(
+                            "Unsupported Variable Type of Grad "
+                            "in RmspropOp. Excepted LodTensor "
+                            "or SelectedRows, But received [%s]",
+                            paddle::framework::ToTypeName(grad_var->Type())));
     }
   }
 };

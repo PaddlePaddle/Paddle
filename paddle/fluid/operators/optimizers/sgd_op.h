@@ -46,18 +46,18 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
         auto sz = param_out->numel();
         PADDLE_ENFORCE_EQ(param->numel(), sz,
                           platform::errors::InvalidArgument(
-                            "The input tensor Param's numel of SgdOp "
-                            "should be equal with ParamOut's numel. "
-                            "But received Param's "
-                            "numel = [%s], ParamOut's numel = [%s]",
-                            param->numel(), sz)));
+                              "The input tensor Param's numel of SgdOp "
+                              "should be equal with ParamOut's numel. "
+                              "But received Param's "
+                              "numel = [%s], ParamOut's numel = [%s]",
+                              param->numel(), sz));
         PADDLE_ENFORCE_EQ(grad->numel(), sz,
                           platform::errors::InvalidArgument(
-                            "The input tensor Grad's numel of SgdOp "
-                            "should be equal with ParamOut's numel. "
-                            "But received Grad's "
-                            "numel = [%s], ParamOut's numel = [%s]",
-                            grad->numel(), sz)));
+                              "The input tensor Grad's numel of SgdOp "
+                              "should be equal with ParamOut's numel. "
+                              "But received Grad's "
+                              "numel = [%s], ParamOut's numel = [%s]",
+                              grad->numel(), sz));
 
         jit::sgd_attr_t attr(1, sz, 1, sz, 1);
         const T *lr = learning_rate->data<T>();
@@ -123,11 +123,11 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
         sgd(lr, param_data, grad_data, rows_data, out_data, &attr);
       } else {
         PADDLE_ENFORCE_EQ(
-            nullptr, true,
+            false, true,
             platform::errors::PermissionDenied(
                 "Unsupported Variable Type of Grad in SgdOp. Excepted "
                 "LodTensor or SelectedRows, But received [%s]",
-                ToTypeName(grad_var->Type())));
+                paddle::framework::ToTypeName(grad_var->Type())));
       }
     } else if (param_var->IsType<framework::SelectedRows>()) {
       PADDLE_ENFORCE_EQ(grad_var->IsType<framework::SelectedRows>(), true,
@@ -171,11 +171,11 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
       }
     } else {
       PADDLE_ENFORCE_EQ(
-          nullptr, true,
+          false, true,
           platform::errors::PermissionDenied(
               "Unsupported Variable Type of Parameter in SgdOp. Excepted "
               "LodTensor or SelectedRows, But received [%s]",
-              ToTypeName(param_var->Type())));
+              paddle::framework::ToTypeName(param_var->Type())));
     }
   }
 };

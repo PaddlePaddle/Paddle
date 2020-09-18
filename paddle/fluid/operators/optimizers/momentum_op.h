@@ -54,8 +54,8 @@ class MomentumOp : public framework::OperatorWithKernel {
         platform::errors::NotFound(
             "Input(LearningRate) of Momentum should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Param").front() ==
-            framework::proto::VarType::LOD_TENSOR,
+        ctx->GetInputsVarType("Param").front(),
+        framework::proto::VarType::LOD_TENSOR,
         platform::errors::InvalidArgument(
             "The input var's type should be LoDTensor, but the received is %s",
             ctx->GetInputsVarType("Param").front()));
@@ -417,11 +417,12 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         for_range(functor);
       }
     } else {
-      PADDLE_ENFORCE_EQ(nullptr, true, platform::errors::PermissionDenied(
-                                           "Unsupported Variable Type of Grad "
-                                           "in MomentumOp. Excepted LodTensor "
-                                           "or SelectedRows, But received [%s]",
-                                           ToTypeName(grad_var->Type())));
+      PADDLE_ENFORCE_EQ(false, true,
+                        platform::errors::PermissionDenied(
+                            "Unsupported Variable Type of Grad "
+                            "in MomentumOp. Excepted LodTensor "
+                            "or SelectedRows, But received [%s]",
+                            paddle::framework::ToTypeName(grad_var->Type())));
     }
   }
 };
