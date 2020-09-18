@@ -13,17 +13,15 @@
 # limitations under the License.
 
 from __future__ import print_function
-import gast
+
 import collections
-import logging
+import gast
 import inspect
 import six
 import textwrap
 import threading
-import warnings
 import weakref
 
-import gast
 from paddle.fluid import framework
 from paddle.fluid import in_dygraph_mode
 from paddle.fluid.dygraph import layers
@@ -451,7 +449,7 @@ class StaticLayer(object):
                     format(self._function_spec))
         # If more than one programs have been cached, return the recent converted program by default.
         elif cached_program_len > 1:
-            logging.warning(
+            logging_utils.warn(
                 "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".
                 format(self._function_spec, cached_program_len))
 
@@ -632,7 +630,7 @@ class ProgramCache(object):
             # Note: raise warnings if number of traced program is more than `max_tracing_count`
             current_tracing_count = len(self._caches)
             if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
-                logging.warning(
+                logging_utils.warn(
                     "Current traced program number: {} > `max_tracing_count`:{}. Too much cached programs will bring expensive overhead. "
                     "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".
                     format(current_tracing_count, MAX_TRACED_PROGRAM_COUNT))
@@ -804,8 +802,9 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
+
         if not self.enable_to_static:
-            warnings.warn(
+            logging_utils.warn(
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable to False. "
                 "We will just return dygraph output. "
                 "Please call ProgramTranslator.enable(True) if you would like to get static output."
@@ -879,8 +878,9 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
+
         if not self.enable_to_static:
-            warnings.warn(
+            logging_utils.warn(
                 "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable to False. We will "
                 "just return dygraph output. Please call ProgramTranslator.enable(True) if you would like to get static output."
             )
@@ -933,8 +933,9 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
+
         if not self.enable_to_static:
-            warnings.warn(
+            logging_utils.warn(
                 "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable to False."
                 "We will just return dygraph output. "
                 "Please call ProgramTranslator.enable(True) if you would like to get static output."
