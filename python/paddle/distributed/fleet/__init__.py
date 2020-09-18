@@ -23,7 +23,6 @@ from .dataset import *
 __all__ = [
     "DistributedStrategy",
     "UtilBase",
-    "DatasetFactory",
     "UserDefinedRoleMaker",
     "PaddleCloudRoleMaker",
     "Fleet",

@@ -30,8 +30,7 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
     float std = context.Attr<float>("std");
     auto* tensor = context.Output<framework::Tensor>("Out");
 
-    const std::string op_type = "gaussian_random";
-    auto shape = GetShape(context, op_type);
+    auto shape = GetShape(context);
     tensor->Resize(shape);
     T* data = tensor->mutable_data<T>(context.GetPlace());
     int64_t size = tensor->numel();

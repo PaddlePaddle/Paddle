@@ -52,7 +52,10 @@ class AssignFunctor {
 
   template <typename T>
   void operator()(const T &v) const {
-    PADDLE_THROW("Not support type for assign op %s", typeid(T).name());
+    PADDLE_ENFORCE_EQ(
+        true, false,
+        platform::errors::PermissionDenied(
+            "Not support type for assign op with type %s", typeid(T).name()));
   }
 
  private:

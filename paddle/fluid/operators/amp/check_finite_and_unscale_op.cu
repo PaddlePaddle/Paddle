@@ -14,28 +14,31 @@ limitations under the License. */
 
 #include <cuda.h>
 
-#include "paddle/fluid/operators/amp/amp_check_finite_and_scale_op.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void AmpCheckFiniteAndScale(const T* in, const T* scale, int num,
-                                       bool* found_inf, T* out) {
+__global__ void GpuInverse(const T* s, T* o) {
+  *o = Inverse<T>(*s);
+}
+
+template <typename T>
+__global__ void CheckFiniteAndUnscale(const T* in, const T* scale, int num,
+                                      bool* found_inf, T* out) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (idx < num) {
     if (!isfinite(in[idx])) {
-      *found_inf = 1;
+      *found_inf = true;
     }
-    out[idx] = *found_inf ? in[idx] : in[idx] * scale[0];
+    out[idx] = *found_inf ? in[idx] : in[idx] * (*scale);
   }
 }
 
 template <typename T>
-class AmpCheckFiniteAndScaleKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -48,6 +51,12 @@ class AmpCheckFiniteAndScaleKernel<platform::CUDADeviceContext, T>
     bool* found_inf_data = found_inf->mutable_data<bool>(dev_ctx.GetPlace());
     cudaMemset(found_inf_data, false, found_inf->numel() * sizeof(bool));
 
+    framework::Tensor inverse_scale =
+        ctx.AllocateTmpTensor<T, platform::CUDADeviceContext>({1}, dev_ctx);
+    T* inverse_scale_v = inverse_scale.template data<T>();
+
+    GpuInverse<T><<<1, 1, 0, dev_ctx.stream()>>>(scale_data, inverse_scale_v);
+
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];
       auto* out = outs[i];
@@ -55,11 +64,11 @@ class AmpCheckFiniteAndScaleKernel<platform::CUDADeviceContext, T>
       T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
 
       int num = x->numel();
-      int block = 512;
+      int block = 1024;
       int grid = (num + block - 1) / block;
       VLOG(3) << "launch kernel";
-      AmpCheckFiniteAndScale<T><<<grid, block, 0, dev_ctx.stream()>>>(
-          x_data, scale_data, num, found_inf_data, out_data);
+      CheckFiniteAndUnscale<T><<<grid, block, 0, dev_ctx.stream()>>>(
+          x_data, inverse_scale_v, num, found_inf_data, out_data);
       VLOG(3) << "finish kernel";
     }
   }
@@ -68,9 +77,6 @@ class AmpCheckFiniteAndScaleKernel<platform::CUDADeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    amp_check_finite_and_scale,
-    ops::AmpCheckFiniteAndScaleKernel<paddle::platform::CUDADeviceContext,
-                                      float>,
-    ops::AmpCheckFiniteAndScaleKernel<paddle::platform::CUDADeviceContext,
-                                      double>);
+REGISTER_OP_CUDA_KERNEL(check_finite_and_unscale,
+                        ops::CheckFiniteAndUnscaleGpuKernel<float>,
+                        ops::CheckFiniteAndUnscaleGpuKernel<double>);

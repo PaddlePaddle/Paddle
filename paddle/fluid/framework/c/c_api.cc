@@ -49,7 +49,8 @@ std::vector<std::string> PD_GetGradOpDescStrs(
     for (size_t i = 0; i < op_num; ++i) {
       PADDLE_ENFORCE_EQ(
           grad_op_descs[i]->Proto()->SerializePartialToString(&ret[i]), true,
-          "Cannot serialize message.");
+          paddle::platform::errors::Unavailable(
+              "Cannot serialize operator desc message."));
     }
   }
   return ret;

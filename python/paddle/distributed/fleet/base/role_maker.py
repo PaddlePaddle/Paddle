@@ -165,7 +165,7 @@ class Gloo(object):
 
     def _init_http(self, ip, port, prefix):
         def __start_kv_server(http_server_d, size_d):
-            from paddle.distributed.fleet.utils import KVServer
+            from paddle.distributed.fleet.utils.http_server import KVServer
             http_server = KVServer(port, size_d)
             http_server.start()
             wait_seconds = 5
@@ -208,16 +208,16 @@ class Gloo(object):
 
         if self._role == Role.WORKER:
             rank, nodes = self._get_rank_nodes(Role.WORKER)
-            gloo = init(rank, nodes, Role.WORKER)
+            gloo = init(rank, nodes, "WORKER")
             self._worker_comm = gloo
         else:
             rank, nodes = self._get_rank_nodes(Role.SERVER)
-            gloo = init(rank, nodes, Role.SERVER)
+            gloo = init(rank, nodes, "SERVER")
             self._server_comm = gloo
 
         if self._need_init_all:
             rank, nodes = self._get_rank_nodes(Role.ALL)
-            gloo = init(rank, nodes, Role.ALL)
+            gloo = init(rank, nodes, "ALL")
             self._nodes_comm = gloo
 
     def _get_rank_nodes(self, role):
@@ -603,7 +603,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self._generate_role()
-        return self._trainers_num
+        return len(self._get_pserver_endpoints())
 
     def _node_num(self):
         """
@@ -766,6 +766,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
         self._training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         assert (self._training_role == "TRAINER")
+        self._role = Role.WORKER
         self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
         self._cur_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
         if self._worker_endpoints is None:
@@ -854,6 +855,7 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
     def __init__(self, is_collective=False, init_gloo=False, **kwargs):
         super(UserDefinedRoleMaker, self).__init__(
             is_collective=is_collective, init_gloo=init_gloo, **kwargs)
+        self._init_gloo = init_gloo
 
     def _user_defined_ps_env(self):
         self._server_endpoints = self._kwargs.get("server_endpoints")
