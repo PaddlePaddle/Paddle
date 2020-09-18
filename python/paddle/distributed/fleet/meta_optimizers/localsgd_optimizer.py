@@ -26,7 +26,8 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = []
         self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer", "AdaptiveLocalSGDOptimizer"
+            "GraphExecutionOptimizer",
+            "AdaptiveLocalSGDOptimizer",
         ]
         self.snapshot_key = '@SNAPSHOT'
 

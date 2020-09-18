@@ -19,6 +19,7 @@
 #include <memory>
 #include <tuple>
 #include "paddle/fluid/framework/ir/graph_traits.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -341,3 +342,8 @@ void ResidualConnectionMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
 
 REGISTER_PASS(conv_elementwise_add_mkldnn_fuse_pass,
               paddle::framework::ir::ResidualConnectionMKLDNNFusePass);
+REGISTER_PASS_CAPABILITY(conv_elementwise_add_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("conv2d", 0)
+            .EQ("elementwise_add", 0));

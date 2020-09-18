@@ -67,6 +67,7 @@ class ImperativeQuantAware(object):
         Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.fluid.contrib.slim.quantization \
                 import ImperativeQuantAware
             from paddle.vision.models \
@@ -86,13 +87,12 @@ class ImperativeQuantAware(object):
             # ...
             
             # Save quant model for the inference.
-            imperative_qat.save_quantized_model(
-                dirname="./resnet50_qat",
-                model=model,
-                input_shape=[(3, 224, 224)],
-                input_dtype=['float32'],
-                feed=[0],
-                fetch=[0])
+            paddle.jit.save(
+                layer=model,
+                model_path="./resnet50_qat",
+                input_spec=[
+                    paddle.static.InputSpec(
+                    shape=[None, 3, 224, 224], dtype='float32')])
         """
         super(ImperativeQuantAware, self).__init__()
         self._weight_bits = weight_bits
@@ -152,75 +152,6 @@ class ImperativeQuantAware(object):
 
             quant_layer = self._get_quantized_counterpart(layer)
             setattr(obj, target, quant_layer)
-
-    def save_quantized_model(self,
-                             dirname,
-                             model,
-                             input_shape,
-                             input_dtype,
-                             feed,
-                             fetch,
-                             append_batch_size=True):
-        """
-        Save the quantized model for the inference.
-
-        Args:
-            dirname (str): the directory to save the quantized model.
-            model(fluid.dygraph.Layer): the quantized model to be saved.
-            input_shape(list[tuple(int)]): The shape value for each input,
-                e.g. [(3, 224, 224)].
-            input_dtype(list[str]): The dtype value for each input,
-                e.g. ['float32'].
-            feed(list[int]): the indices of the input variables of the
-                imperative functions which will be saved as input variables in
-                inference model.
-            fetch(list[int]): the indices of the returned variable of the
-                imperative functions which will be saved as output variables in
-                inference model.
-            append_batch_size(bool, optional):
-                If true, it prepends an extra axis to the input_shape, meanwhile,
-                the input_shape shouldn't contain the batch size dimension.
-                Otherwise, it just uses the input_shape. Default True.
-        Returns:
-            None
-        """
-        assert isinstance(
-            input_shape, list), "The parameter `input_shape` shoubld be a list."
-        assert isinstance(
-            input_dtype, list), "The parameter `input_dtype` shoubld be a list."
-        assert isinstance(feed, list), "The parameter `feed` shoubld be a list."
-        assert isinstance(fetch,
-                          list), "The parameter `fetch` shoubld be a list."
-        assert len(input_shape) == len(
-            input_dtype
-        ), "The length of input_shape should be equal to  input_dtype's."
-        assert len(input_dtype) == len(
-            feed), "The length of input_shape should be equal to  feed's."
-
-        with dygraph.guard():
-            model.eval()
-            input_vars = []
-            for i, (shape, dtype) in enumerate(zip(input_shape, input_dtype)):
-                if append_batch_size:
-                    shape = [None] + list(shape)
-                # Note(Aurelius84): need a elegant way to name this.
-                in_spec = paddle.static.InputSpec(shape, dtype, 'feed_%d' % i)
-                input_vars.append(in_spec)
-            # use `declarative` to convert dygraph into static program
-            model.forward = dygraph.jit.declarative(
-                model.forward, input_spec=input_vars)
-            outputs = model.forward.concrete_program.outputs
-        input_spec = [input_vars[i] for i in feed]
-        configs = dygraph.jit.SaveLoadConfig()
-        configs.separate_params = True
-        if not isinstance(outputs, (tuple, list)):
-            outputs = [outputs]
-        configs.output_spec = [outputs[i] for i in fetch]
-        dygraph.jit.save(
-            layer=model,
-            model_path=dirname,
-            input_spec=input_spec,
-            configs=configs)
 
     def _get_quantized_counterpart(self, layer):
         quant_layers = tuple(self._quant_layers_map.values())
