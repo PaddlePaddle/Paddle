@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <ThreadPool.h>
+
 #include <atomic>
 #include <deque>
 #include <map>
@@ -25,8 +26,8 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/distributed/communicator_common.h"
@@ -250,6 +251,8 @@ class Communicator {
   std::unordered_map<std::string, std::string> envs;
 };
 
+using SplitedSparseIds = std::vector<std::unordered_set<int64_t>>;
+
 class AsyncCommunicator : public Communicator {
  public:
   AsyncCommunicator() : Communicator() {}
@@ -423,7 +426,7 @@ class GeoCommunicator : public AsyncCommunicator {
 
   void SendByCommunicator(int batches) override;
 
-  void SendSparse(const std::string &varname, int batches);
+  void SendSparse(const std::string &varname, int ep_idx);
 
   void SendDense(const std::string &varname);
 
@@ -431,7 +434,7 @@ class GeoCommunicator : public AsyncCommunicator {
 
   void RecvByCommunicator() override;
 
-  void RecvSparse(const std::string &varname);
+  void RecvSparse(const std::string &varname, int ep_idx);
 
   void RecvDense(const std::string &varname);
 
@@ -454,11 +457,13 @@ class GeoCommunicator : public AsyncCommunicator {
   // parameter on pserver
   std::shared_ptr<Scope> pserver_scope_;
 
-  std::unordered_map<std::string,
-                     std::shared_ptr<BlockingQueue<std::vector<int64_t>>>>
+  std::unordered_map<
+      std::string,
+      std::shared_ptr<BlockingQueue<std::shared_ptr<SplitedSparseIds>>>>
       send_ids_to_queue_;
 
   std::unordered_map<std::string, std::shared_ptr<SparseValue>> old_sparses_;
+  std::vector<SplitedSparseIds> splited_ids_vec_;
 };
 
 }  // namespace distributed
