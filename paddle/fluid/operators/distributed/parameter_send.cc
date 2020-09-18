@@ -98,8 +98,6 @@ template <typename T>
 void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
                                   const framework::Scope &scope, bool sync,
                                   int multi_parts) {
-  platform::RecordEvent record_event("ParameterSend::operator",
-                                     platform::EventRole::kInnerOp);
   if (rpc_ctx.var_name == STEP_COUNTER) {
     SendByNotifyRPC(rpc_ctx, scope);
     return;
@@ -117,8 +115,8 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
   auto *send_var = scope.FindVar(rpc_ctx.var_name);
 
   if (send_var->IsType<framework::LoDTensor>()) {
-    platform::RecordEvent record_event("ParameterSend::LoDTensor",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event_grpc("ParameterSend::LoDTensor",
+                                            platform::EventRole::kInnerOp);
     size_t out_num = rpc_ctx.splited_varnames.size();
     if (out_num > 1) {
       auto &send_tensor = send_var->Get<framework::LoDTensor>();
@@ -167,8 +165,8 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
       }
     }
   } else if (send_var->IsType<framework::SelectedRows>()) {
-    platform::RecordEvent record_event("ParameterSend::SelectedRows",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event_grpc("ParameterSend::SelectedRows",
+                                            platform::EventRole::kInnerOp);
     auto &send_slr = send_var->Get<framework::SelectedRows>();
 
     auto &send_rows = send_slr.rows();

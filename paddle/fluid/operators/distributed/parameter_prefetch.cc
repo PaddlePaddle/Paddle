@@ -195,8 +195,8 @@ void prefetchs(const std::vector<std::string> &id_var_names,
                const std::vector<std::string> &endpoints,
                const framework::ExecutionContext &context,
                const framework::Scope &scope) {
-  platform::RecordEvent record_event("Distributed_lookup_table::prefetchs",
-                                     platform::EventRole::kInnerOp);
+  platform::PushEvent("Distributed_lookup_table::prefetchs",
+                      platform::EventRole::kInnerOp);
   auto vec_dim_1 = 0;
   auto vec_dim_0 = 0;
   framework::Variable *var = scope.FindVar(persistable_var_name);
@@ -304,6 +304,8 @@ void prefetchs(const std::vector<std::string> &id_var_names,
 #endif
     }
   }
+  platform::PopEvent("Distributed_lookup_table::prefetchs",
+                     platform::EventRole::kInnerOp);
 }
 
 };  // namespace distributed

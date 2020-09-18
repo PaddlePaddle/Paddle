@@ -43,8 +43,8 @@ using DDim = framework::DDim;
 template <typename T>
 void RecvSelectedRows(const CommContext &rpc_ctx,
                       const framework::Scope &scope) {
-  platform::RecordEvent record_event("ParameterRecv::RecvSelectedRows",
-                                     platform::EventRole::kInnerOp);
+  platform::RecordEvent record_event_grpc("ParameterRecv::RecvSelectedRows",
+                                          platform::EventRole::kInnerOp);
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto cpu_place = platform::CPUPlace();
   auto &cpu_ctx = *pool.Get(cpu_place);
@@ -114,8 +114,8 @@ void RecvSelectedRows(const CommContext &rpc_ctx,
 
 template <typename T>
 void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
-  platform::RecordEvent record_event("ParameterRecv::RecvLodTensor",
-                                     platform::EventRole::kInnerOp);
+  platform::RecordEvent record_event_grpc("ParameterRecv::RecvLodTensor",
+                                          platform::EventRole::kInnerOp);
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto cpu_place = platform::CPUPlace();
   auto &cpu_ctx = *pool.Get(cpu_place);

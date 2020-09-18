@@ -694,8 +694,16 @@ Event *CurAnnotation() {
   return annotation_stack.back();
 }
 std::string CurAnnotationName() {
-  if (annotation_stack.empty()) return "Unknown";
-  return annotation_stack.back()->name();
+  std::string curr_annotation_name = "Unknown";
+  try {
+    if (annotation_stack.empty()) {
+      return curr_annotation_name;
+    }
+    return annotation_stack.back()->name();
+  } catch (...) {
+    VLOG(1) << "CurAnnotationName Failed";
+  }
+  return curr_annotation_name;
 }
 
 void SetCurBlock(int block_id) { block_id_stack.push_back(block_id); }
