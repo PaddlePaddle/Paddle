@@ -57,34 +57,7 @@ class UtilBase(object):
         ), "fs_client must be the instance of paddle.distributed.fleet.utils.FS"
         self.fs_client = fs_client
 
-    def __check_comm_world(self, comm_world="worker"):
-        if not self.role_maker._role_is_generated:
-            self.role_maker.generate_role()
-
-        _comm_world = None
-        comm_world_upper = comm_world.upper()
-        if comm_world_upper == "WORKER":
-            if not self.role_maker.is_worker():
-                print(
-                    "warning: current role is not worker in collective_func(comm_world=\"worker\")"
-                )
-            _comm_world = self.role_maker._node_type_comm
-        elif comm_world_upper == "SERVER":
-            if not self.role_maker.is_server():
-                print(
-                    "warning: current role is not server in collective_func(comm_world=\"server\")"
-                )
-            _comm_world = self.role_maker._node_type_comm
-        elif comm_world_upper == "ALL":
-            _comm_world = self.role_maker._all_comm
-        else:
-            raise ValueError(
-                "not support comm_world, please choose one from [worker, server, all]"
-            )
-
-        return _comm_world
-
-    def all_reduce(self, input, mode, comm_world="worker"):
+    def all_reduce(self, input, mode="sum", comm_world="worker"):
         """
         All reduce `input` between specified collection. This is a distributed API.
 
@@ -130,8 +103,7 @@ class UtilBase(object):
                 if __name__ == "__main__":
                     train()
         """
-        _comm_world = self.__check_comm_world(comm_world)
-        return self.role_maker._all_reduce(_comm_world, input, mode)
+        return self.role_maker._all_reduce(input, mode, comm_world)
 
     def barrier(self, comm_world="worker"):
         """
@@ -170,8 +142,7 @@ class UtilBase(object):
                 if __name__ == "__main__":
                     train()
         """
-        _comm_world = self.__check_comm_world(comm_world)
-        self.role_maker._barrier(_comm_world)
+        self.role_maker._barrier(comm_world)
 
     def all_gather(self, input, comm_world="worker"):
         """
@@ -219,8 +190,8 @@ class UtilBase(object):
                 if __name__ == "__main__":
                     train()
         """
-        _comm_world = self.__check_comm_world(comm_world)
-        return self.role_maker._all_gather(_comm_world, input)
+
+        return self.role_maker._all_gather(input, comm_world)
 
     def _broadcast(self):
         pass
