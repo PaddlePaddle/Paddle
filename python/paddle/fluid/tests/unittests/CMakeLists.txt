@@ -4,6 +4,7 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FL
 set(dist_ENVS http_proxy="" https_proxy="")
 
 file(GLOB DIST_TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_dist_*.py")
+list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 if(NOT WITH_NCCL)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
 endif()
@@ -102,7 +103,6 @@ if(WIN32)
 endif()
 
 
-LIST(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint1)
 LIST(REMOVE_ITEM TEST_OPS test_auto_checkpoint2)
@@ -463,8 +463,8 @@ if(WITH_DISTRIBUTE)
 	   #py_test_modules(test_fleet_auto MODULES test_fleet_auto ENVS ${dist_ENVS})
         if(NOT WIN32)
             py_test_modules(test_fleet_localsgd_meta_optimizer MODULES test_fleet_localsgd_meta_optimizer ENVS ${dist_ENVS})
-            #py_test_modules(test_fleet_lars_meta_optimizer MODULES test_fleet_lars_meta_optimizer ENVS ${dist_ENVS})
-            #py_test_modules(test_fleet_lamb_meta_optimizer MODULES test_fleet_lamb_meta_optimizer ENVS ${dist_ENVS})
+            py_test_modules(test_fleet_lars_meta_optimizer MODULES test_fleet_lars_meta_optimizer ENVS ${dist_ENVS})
+            py_test_modules(test_fleet_lamb_meta_optimizer MODULES test_fleet_lamb_meta_optimizer ENVS ${dist_ENVS})
         endif(NOT WIN32)
     endif(NOT APPLE)
     if(WITH_DGC)
@@ -558,7 +558,7 @@ endif()
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist
         test_parallel_executor_feed_persistable_var
         test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-        test_data_norm_op test_imperative_using_non_zero_gpu
+        test_data_norm_op
         test_dataloader_keep_order
         test_dataloader_unkeep_order
         test_parallel_executor_fetch_isolated_var
