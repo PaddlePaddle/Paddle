@@ -969,6 +969,7 @@ class Model(object):
               import numpy as np
               import paddle
               import paddle.nn as nn
+              from paddle.static import InputSpec
 
               device = paddle.set_device('cpu') # or 'gpu'
               paddle.disable_static(device)
@@ -1093,6 +1094,7 @@ class Model(object):
             
               import paddle
               import paddle.nn as nn
+              from paddle.static import InputSpec
               
               device = paddle.set_device('cpu')
               paddle.disable_static(device)
@@ -1170,6 +1172,7 @@ class Model(object):
 
               import paddle
               import paddle.nn as nn
+              from paddle.static import InputSpec
 
               paddle.disable_static()
 
