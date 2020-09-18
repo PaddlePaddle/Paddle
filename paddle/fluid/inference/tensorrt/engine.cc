@@ -186,6 +186,7 @@ void TensorRTEngine::FreezeNetwork() {
           Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
     }
     infer_builder_config_->addOptimizationProfile(optim_profile_);
+    infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
     if (WithFp16()) {
       infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
       if (disable_trt_plugin_fp16()) {
