@@ -153,7 +153,7 @@ def get_cluster_from_args(args, gpus):
     else:
         start_port = 6070
         if os.environ.get('FLAGS_START_PORT') is not None:
-            start_port = os.environ.get('FLAGS_START_PORT')
+            start_port = int(os.environ.get('FLAGS_START_PORT'))
 
         free_ports = [x for x in range(start_port, start_port + len(gpus))]
 
