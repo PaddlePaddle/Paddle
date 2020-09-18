@@ -475,7 +475,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         self.case(role, "worker")
         self.clean(tmp)
 
@@ -493,7 +493,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         self.case(role, "worker")
         self.clean(tmp)
 
@@ -515,7 +515,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         self.case(role, "server")
         self.clean(tmp)
 
@@ -539,7 +539,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         self.case(role, "server")
         self.clean(tmp)
 
@@ -561,7 +561,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_HTTP_PORT"] = "30019"
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         import time
         time.sleep(3)
 
@@ -585,7 +585,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         self.case(role, "server")
         self.case(role, "all")
         self.clean(tmp)
@@ -613,7 +613,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_FS_PATH"] = tmp
 
         role = role_maker.PaddleCloudRoleMaker()
-        role.generate_role()
+        role._generate_role()
         self.case(role, "server")
         self.case(role, "all")
         self.clean(tmp)
@@ -636,7 +636,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_RENDEZVOUS"] = "5"
 
         role = role_maker.PaddleCloudRoleMaker()
-        self.assertRaises(ValueError, role.generate_role)
+        self.assertRaises(ValueError, role._generate_role)
 
     def test_fs_gloo8(self):
         plats = platform.platform()
