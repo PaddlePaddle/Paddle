@@ -64,6 +64,7 @@ template <typename DeviceContext, typename T>
 static inline void UpdateUandV(
     Tensor* u, Tensor* v, Tensor* weight, const int power_iters,
     const float eps, const framework::ExecutionContext& ctx) {
+  if (power_iters <= 0) return;
   auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
   auto blas = math::GetBlas<DeviceContext, T>(ctx);
   auto u_t = EigenTensor<T, 2>::From(*u);
@@ -92,8 +93,7 @@ static inline void UpdateUandV(
 template <typename DeviceContext, typename T>
 static inline void CalcMatrixSigmaAndNormWeight(
     Tensor* sigma, const Tensor* u, const Tensor* v,
-    Tensor* weight, const int power_iters,
-    const float eps, const framework::ExecutionContext& ctx) {
+    Tensor* weight, const framework::ExecutionContext& ctx) {
   auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
   auto blas = math::GetBlas<DeviceContext, T>(ctx);
   auto sigma_t = EigenTensor<T, 2>::From(*sigma);
@@ -168,7 +168,7 @@ class SpectralNormKernel : public framework::OpKernel<T> {
         power_iters, eps, ctx);
     CalcMatrixSigmaAndNormWeight<DeviceContext, T>(
         &sigma, &(u_out->Resize({h, 1})), &(v_out->Resize({w, 1})), &weight_mat,
-        power_iters, eps, ctx);
+        ctx);
 
     if (dim != 0) {
       std::vector<int> perm;
@@ -205,8 +205,6 @@ class SpectralNormGradKernel : public framework::OpKernel<T> {
     auto weight_grad = ctx.Output<Tensor>(framework::GradVarName("Weight"));
 
     int dim = ctx.Attr<int>("dim");
-    int power_iters = ctx.Attr<int>("power_iters");
-    float eps = ctx.Attr<float>("eps");
 
     const int h = u_out->dims()[0];
     const int w = v_out->dims()[0];
@@ -251,7 +249,7 @@ class SpectralNormGradKernel : public framework::OpKernel<T> {
 
     CalcMatrixSigmaAndNormWeight<DeviceContext, T>(
         &sigma, &(u_mat.Resize({h, 1})), &(v_mat.Resize({w, 1})), &weight_mat,
-        power_iters, eps, ctx);
+        ctx);
 
     Tensor uv;
     uv.mutable_data<T>({h, w}, ctx.GetPlace());

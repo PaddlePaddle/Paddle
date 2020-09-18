@@ -205,6 +205,8 @@ class SpectralNormGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Weight", this->Input("Weight"));
     op->SetInput("U", this->Input("U"));
     op->SetInput("V", this->Input("V"));
+    op->SetInput("UOut", this->Output("UOut"));
+    op->SetInput("VOut", this->Output("VOut"));
 
     op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
 

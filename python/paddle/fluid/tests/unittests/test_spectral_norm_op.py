@@ -132,6 +132,40 @@ class TestSpectralNormOp2(TestSpectralNormOp):
         self.fix_state = True
 
 
+class TestSpectralNormOpFixState(TestSpectralNormOpNoGrad):
+    def test_check_grad_ignore_uv(self):
+        self.check_grad(
+            ['Weight'],
+            'Out',
+            no_grad_set=set(["U", "V"]), )
+
+    def initTestCase(self):
+        self.weight_shape = (10, 12)
+        self.u_shape = (10, )
+        self.v_shape = (12, )
+        self.dim = 0
+        self.power_iters = 3
+        self.eps = 1e-12
+        self.fix_state = False
+
+
+class TestSpectralNormOpUpdateState(TestSpectralNormOpNoGrad):
+    def test_check_grad_ignore_uv(self):
+        self.check_grad(
+            ['Weight'],
+            'Out',
+            no_grad_set=set(["U", "V"]), )
+
+    def initTestCase(self):
+        self.weight_shape = (10, 12)
+        self.u_shape = (10, )
+        self.v_shape = (12, )
+        self.dim = 0
+        self.power_iters = 3
+        self.eps = 1e-12
+        self.fix_state = True
+
+
 class TestSpectralNormOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
