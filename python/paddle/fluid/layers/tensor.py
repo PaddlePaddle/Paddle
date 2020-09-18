@@ -680,8 +680,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     if not isinstance(value, Variable):
         if dtype in ['int64', 'int32']:
             attrs['str_value'] = str(int(value))
+            attrs['value'] = int(value)
         else:
             attrs['str_value'] = str(float(value))
+            attrs['value'] = float(value)
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
@@ -725,7 +727,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
     attrs['dtype'] = out.dtype
-    attrs['value'] = float(value)
     helper.append_op(
         type='fill_constant',
         inputs=inputs,
