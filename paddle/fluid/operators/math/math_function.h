@@ -26,6 +26,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace math {
+
+template <typename DeviceContext, typename T>
+struct TransposeNormal {
+  // for dims >= 7 situation
+  void operator()(const DeviceContext& context, const framework::Tensor& in,
+                  framework::Tensor* out, const std::vector<int>& axis);
+};
+
 template <typename DeviceContext, typename T, int Rank>
 struct Transpose {
   void operator()(const DeviceContext& context, const framework::Tensor& in,

@@ -12,25 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
-from paddle.fluid.dygraph import to_variable, Embedding, guard
 import numpy as np
+from op_test import OpTest
+import paddle.fluid.core as core
 
 
-class TestImperativeUsingNonZeroGpu(unittest.TestCase):
-    def run_main(self, np_arr, place):
-        with guard(place):
-            var = to_variable(np_arr)
-            self.assertTrue(np.array_equal(np_arr, var.numpy()))
+class TestBroadcastOpCpu(OpTest):
+    def setUp(self):
+        self.op_type = "broadcast"
+        input = np.random.random((100, 2)).astype("float32")
+        np_out = input[:]
+        self.inputs = {"X": input}
+        self.attrs = {"sync_mode": False, "root": 0}
+        self.outputs = {"Out": np_out}
 
-    def test_non_zero_gpu(self):
-        if not fluid.is_compiled_with_cuda():
-            return
+    def test_check_output_cpu(self):
+        try:
+            self.check_output_with_place(place=core.CPUPlace())
+        except:
+            print("do not support cpu test, skip")
 
-        np_arr = np.random.random([11, 13]).astype('float32')
-        self.run_main(np_arr, fluid.CUDAPlace(0))
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

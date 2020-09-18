@@ -1726,13 +1726,13 @@ class DatasetLoader(DataLoaderBase):
             logging.warn('thread_num {} which is set in Dataset is ignored'.
                          format(dataset.thread_num))
 
-        dataset.set_thread(thread_num)
+        dataset._set_thread(thread_num)
 
         if isinstance(dataset, paddle.distributed.fleet.dataset.
                       InMemoryDataset) and dataset.queue_num > thread_num:
             logging.warn("queue_num {} which is set in Dataset is ignored".
                          format(dataset.queue_num))
-            dataset.set_queue_num(thread_num)
+            dataset._set_queue_num(thread_num)
 
         self._dataset = dataset
         use_slots = [

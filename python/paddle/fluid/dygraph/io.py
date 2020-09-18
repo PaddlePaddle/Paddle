@@ -19,6 +19,7 @@ import six
 import pickle
 import numpy as np
 
+import paddle
 from paddle import compat as cpt
 from paddle.fluid import core
 from paddle.fluid import framework
@@ -182,9 +183,9 @@ class _ProgramHolder(object):
         super(_ProgramHolder, self).__init__()
 
         # input, output, persistable var info
-        self._input_names = []
-        self._persistable_names = []
+        self._input_descs = []
         self._output_descs = []
+        self._persistable_names = []
 
         # execution scope
         self._inner_scope = core.Scope()
@@ -207,11 +208,11 @@ class _ProgramHolder(object):
         return self._train_program_desc
 
     @property
-    def input_names(self):
-        return self._input_names
+    def input_descs(self):
+        return self._input_descs
 
     @property
-    def output_decs(self):
+    def output_descs(self):
         return self._output_descs
 
     @property
@@ -233,7 +234,8 @@ class _ProgramHolder(object):
                 ops_to_remove.append(i)
                 feed_var_name = cpt.to_bytes(op.input('X')[0])
                 root_block._remove_var(feed_var_name)
-                self._input_names.append(cpt.to_bytes(op.output('Out')[0]))
+                self._input_descs.append(
+                    root_block.find_var(cpt.to_bytes(op.output('Out')[0])))
             elif op.type() == 'scale' and op.output('Out')[0].startswith(
                     'save_infer_model/scale_'):
                 ops_to_remove.append(i)
@@ -257,7 +259,7 @@ class _ProgramHolder(object):
             root_block._remove_op(op_idx, op_idx + 1)
 
         # 2. Input processing, reverse feed vars
-        self._input_names.reverse()
+        self._input_descs.reverse()
 
         # 3. Output processing, add scale for outputs
         tmp_program = _build_program_by_desc(program_desc)
@@ -738,7 +740,7 @@ class TranslatedLayer(layers.Layer):
                 if isinstance(value, np.ndarray):
                     var = core.VarBase(
                         value=value,
-                        name=program_holder.input_names[i],
+                        name=program_holder.input_descs[i].name(),
                         persistable=False,
                         place=framework._current_expected_place(),
                         zero_copy=True)
@@ -746,7 +748,7 @@ class TranslatedLayer(layers.Layer):
                     var = value
                     # NOTE: we changed var name here, 
                     # but it may be an important name set by user
-                    var.name = program_holder.input_names[i]
+                    var.name = program_holder.input_descs[i].name()
                 input_vars.append(var)
 
             persistable_vars = []
@@ -762,7 +764,7 @@ class TranslatedLayer(layers.Layer):
                         % var_name)
 
             output_vars = []
-            for var_desc in program_holder.output_decs:
+            for var_desc in program_holder.output_descs:
                 var = core.VarBase(var_desc.dtype(),
                                    var_desc.shape(),
                                    var_desc.name(), var_desc.type(), False)
@@ -913,11 +915,7 @@ class TranslatedLayer(layers.Layer):
                 program = translated_layer.program()
         """
         # 1. get program holder
-        program_holder = self._program_holder_dict.get(method_name, None)
-        if program_holder is None:
-            raise ValueError(
-                "The method `%s` is not exists in loaded TranslatedLayer." %
-                method_name)
+        program_holder = self._get_program_holder(method_name)
 
         # 2. get inference program desc
         program_desc = program_holder.infer_program
@@ -925,3 +923,44 @@ class TranslatedLayer(layers.Layer):
         # 3. construct program
         program = _build_program_by_desc(program_desc)
         return program
+
+    def _get_program_holder(self, method_name='forward'):
+        program_holder = self._program_holder_dict.get(method_name, None)
+        if program_holder is None:
+            raise ValueError(
+                "The method `%s` does not exist in loaded TranslatedLayer." %
+                method_name)
+        return program_holder
+
+    def _input_spec(self, method_name='forward'):
+        # 1. get program holder
+        program_holder = self._get_program_holder(method_name)
+
+        # 2. build input spec by input desc
+        input_spec = []
+        for var_desc in program_holder.input_descs:
+            spec = paddle.static.InputSpec(
+                shape=var_desc.shape(),
+                dtype=var_desc.dtype(),
+                name=var_desc.name())
+            input_spec.append(spec)
+
+        return input_spec
+
+    def _output_spec(self, method_name='forward'):
+        # 1. get program holder
+        program_holder = self._get_program_holder(method_name)
+
+        # 2. build output spec by output desc
+        output_spec = []
+        for var_desc in program_holder.output_descs:
+            # NOTE(chenweihang): InputSpec describes a tensor, not just input. 
+            # Maybe the name is not good enough. Here we use InputSpec to 
+            # construct the description of Output tensor
+            spec = paddle.static.InputSpec(
+                shape=var_desc.shape(),
+                dtype=var_desc.dtype(),
+                name=var_desc.name())
+            output_spec.append(spec)
+
+        return output_spec

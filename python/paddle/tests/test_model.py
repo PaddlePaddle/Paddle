@@ -67,35 +67,6 @@ class LeNetDygraph(paddle.nn.Layer):
         return x
 
 
-class LeNetDeclarative(fluid.dygraph.Layer):
-    def __init__(self, num_classes=10, classifier_activation=None):
-        super(LeNetDeclarative, self).__init__()
-        self.num_classes = num_classes
-        self.features = Sequential(
-            Conv2d(
-                1, 6, 3, stride=1, padding=1),
-            ReLU(),
-            Pool2D(2, 'max', 2),
-            Conv2d(
-                6, 16, 5, stride=1, padding=0),
-            ReLU(),
-            Pool2D(2, 'max', 2))
-
-        if num_classes > 0:
-            self.fc = Sequential(
-                Linear(400, 120), Linear(120, 84), Linear(84, 10),
-                Softmax())  #Todo: accept any activation
-
-    @declarative
-    def forward(self, inputs):
-        x = self.features(inputs)
-
-        if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
-            x = self.fc(x)
-        return x
-
-
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True, sample_num=None):
         super(MnistDataset, self).__init__(mode=mode)
@@ -444,7 +415,9 @@ class TestModelFunction(unittest.TestCase):
         # dynamic saving
         device = paddle.set_device('cpu')
         fluid.enable_dygraph(device)
-        model = Model(MyModel(classifier_activation=None))
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+        model = Model(MyModel(classifier_activation=None), inputs, labels)
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
@@ -543,11 +516,10 @@ class TestModelFunction(unittest.TestCase):
 
     def test_export_deploy_model(self):
         for dynamic in [True, False]:
-            fluid.enable_dygraph() if dynamic else None
-            # paddle.disable_static() if dynamic else None
+            paddle.disable_static() if dynamic else None
             prog_translator = ProgramTranslator()
             prog_translator.enable(False) if not dynamic else None
-            net = LeNetDeclarative()
+            net = LeNet()
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
@@ -556,8 +528,9 @@ class TestModelFunction(unittest.TestCase):
                 os.makedirs(save_dir)
             tensor_img = np.array(
                 np.random.random((1, 1, 28, 28)), dtype=np.float32)
-            ori_results = model.test_batch(tensor_img)
+
             model.save(save_dir, training=False)
+            ori_results = model.test_batch(tensor_img)
             fluid.disable_dygraph() if dynamic else None
 
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
@@ -574,6 +547,7 @@ class TestModelFunction(unittest.TestCase):
                 np.testing.assert_allclose(
                     results, ori_results, rtol=1e-5, atol=1e-7)
                 shutil.rmtree(save_dir)
+            paddle.enable_static()
 
 
 class TestRaiseError(unittest.TestCase):
@@ -584,6 +558,14 @@ class TestRaiseError(unittest.TestCase):
         labels = [InputSpec([None, 1], 'int64', 'label')]
         with self.assertRaises(ValueError):
             model = Model(net, inputs, labels)
+
+    def test_input_without_input_spec(self):
+        for dynamic in [True, False]:
+            paddle.disable_static() if dynamic else None
+            net = MyModel(classifier_activation=None)
+            with self.assertRaises(TypeError):
+                model = Model(net)
+            paddle.enable_static()
 
 
 if __name__ == '__main__':

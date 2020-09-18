@@ -21,6 +21,7 @@ from .parallel import get_rank
 from .parallel import get_world_size
 from paddle.fluid.dygraph.parallel import prepare_context  #DEFINE_ALIAS
 from paddle.fluid.dygraph.parallel import ParallelEnv  #DEFINE_ALIAS
+from paddle.distributed.fleet.dataset import *
 
 from . import collective
 from .collective import *
@@ -30,11 +31,8 @@ __all__ = ["spawn"]
 
 # dygraph parallel apis
 __all__ += [
-    "init_parallel_env",
-    "get_rank",
-    "get_world_size",
-    "prepare_context",
-    "ParallelEnv",
+    "init_parallel_env", "get_rank", "get_world_size", "prepare_context",
+    "ParallelEnv", "InMemoryDataset", "QueueDataset"
 ]
 
 # collective apis
