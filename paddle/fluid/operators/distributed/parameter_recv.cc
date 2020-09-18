@@ -24,12 +24,12 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
-
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -43,6 +43,8 @@ using DDim = framework::DDim;
 template <typename T>
 void RecvSelectedRows(const CommContext &rpc_ctx,
                       const framework::Scope &scope) {
+  platform::RecordEvent record_event("ParameterRecv::RecvSelectedRows",
+                                     platform::EventRole::kInnerOp);
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto cpu_place = platform::CPUPlace();
   auto &cpu_ctx = *pool.Get(cpu_place);
@@ -112,6 +114,8 @@ void RecvSelectedRows(const CommContext &rpc_ctx,
 
 template <typename T>
 void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
+  platform::RecordEvent record_event("ParameterRecv::RecvLodTensor",
+                                     platform::EventRole::kInnerOp);
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto cpu_place = platform::CPUPlace();
   auto &cpu_ctx = *pool.Get(cpu_place);

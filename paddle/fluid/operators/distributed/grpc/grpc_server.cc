@@ -103,6 +103,7 @@ class RequestSend final : public RequestBase {
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestSend::Process", platform::EventRole::kInnerOp);
     std::string varname = GetReqName();
 
     auto scope = request_->GetMutableLocalScope();
@@ -114,6 +115,7 @@ class RequestSend final : public RequestBase {
     framework::Variable* outvar = nullptr;
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestSend::Process", platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -139,6 +141,7 @@ class RequestGet final : public RequestBase {
   std::string GetReqName() override { return request_.varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestGet::Process", platform::EventRole::kInnerOp);
     // proc request.
     std::string varname = request_.varname();
     std::string out_varname = request_.out_varname();
@@ -162,6 +165,7 @@ class RequestGet final : public RequestBase {
     }
     VLOG(1) << "after SerializeToByteBuffer";
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestGet::Process", platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -189,6 +193,8 @@ class RequestGetNoBarrier final : public RequestBase {
   std::string GetReqName() override { return request_.varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestGetNoBarrier::Process",
+                        platform::EventRole::kInnerOp);
     // proc request.
     std::string varname = request_.varname();
     std::string out_varname = request_.out_varname();
@@ -208,6 +214,8 @@ class RequestGetNoBarrier final : public RequestBase {
                             &reply_);
     }
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestGetNoBarrier::Process",
+                       platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -237,6 +245,8 @@ class RequestGetMonomerVariable final : public RequestBase {
   std::string GetReqName() override { return request_.varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestGetMonomerVariable::Process",
+                        platform::EventRole::kInnerOp);
     // proc request.
     std::string varname = request_.varname();
 
@@ -254,6 +264,8 @@ class RequestGetMonomerVariable final : public RequestBase {
       SerializeToByteBuffer(varname, outvar, *h.dev_ctx_, &reply_);
     }
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestGetMonomerVariable::Process",
+                       platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -284,6 +296,8 @@ class RequestGetMonomerBarrier final : public RequestBase {
   std::string GetReqName() override { return request_.varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestGetMonomerBarrier::Process",
+                        platform::EventRole::kInnerOp);
     // proc request.
     std::string varname = request_.varname();
     VLOG(4) << "RequestGetMonomerBarrier " << varname;
@@ -299,6 +313,8 @@ class RequestGetMonomerBarrier final : public RequestBase {
                              request_.trainer_id());
 
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestGetMonomerBarrier::Process",
+                       platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -330,6 +346,8 @@ class RequestPrefetch final : public RequestBase {
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestPrefetch::Process",
+                        platform::EventRole::kInnerOp);
     // prefetch process...
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
@@ -350,6 +368,8 @@ class RequestPrefetch final : public RequestBase {
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestPrefetch::Process",
+                       platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -379,6 +399,8 @@ class RequestCheckpointNotify final : public RequestBase {
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestCheckpointNotify::Process",
+                        platform::EventRole::kInnerOp);
     auto scope = request_->GetMutableLocalScope();
 
     std::string checkpoint_notify = request_->Varname();
@@ -391,6 +413,8 @@ class RequestCheckpointNotify final : public RequestBase {
     request_handler_->Handle(checkpoint_notify, scope, nullptr, nullptr,
                              trainer_id, checkpoint_dir);
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestCheckpointNotify::Process",
+                       platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -417,6 +441,8 @@ class RequestNotify final : public RequestBase {
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestNotify::Process",
+                        platform::EventRole::kInnerOp);
     std::string varname = GetReqName();
     VLOG(4) << "RequestNotify var_name:" << varname;
 
@@ -426,6 +452,7 @@ class RequestNotify final : public RequestBase {
     framework::Variable* outvar = nullptr;
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestNotify::Process", platform::EventRole::kInnerOp);
   }
 
  protected:
@@ -456,6 +483,8 @@ class RequestSendAndRecv final : public RequestBase {
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
+    platform::PushEvent("RequestSendAndRecv::Process",
+                        platform::EventRole::kInnerOp);
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
     std::string table_name = request_->TableName();
@@ -471,6 +500,8 @@ class RequestSendAndRecv final : public RequestBase {
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
     Finish(reply_, &responder_);
+    platform::PopEvent("RequestSendAndRecv::Process",
+                       platform::EventRole::kInnerOp);
   }
 
  protected:

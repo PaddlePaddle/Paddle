@@ -26,11 +26,11 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
-
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -195,6 +195,8 @@ void prefetchs(const std::vector<std::string> &id_var_names,
                const std::vector<std::string> &endpoints,
                const framework::ExecutionContext &context,
                const framework::Scope &scope) {
+  platform::RecordEvent record_event("Distributed_lookup_table::prefetchs",
+                                     platform::EventRole::kInnerOp);
   auto vec_dim_1 = 0;
   auto vec_dim_0 = 0;
   framework::Variable *var = scope.FindVar(persistable_var_name);

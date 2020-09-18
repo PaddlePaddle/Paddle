@@ -26,6 +26,10 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+static std::mutex grpc_profile_mutex;
+static bool grpc_profile_begin = false;
+static bool grpc_profile_end = false;
+
 enum WireType {
   WIRETYPE_VARINT = 0,
   WIRETYPE_LENGTH_DELIMITED = 2,
@@ -283,13 +287,25 @@ int GRPCVariableResponse::Parse(Source* source) {
         }
         if (profiling == platform::kEnableProfiler &&
             !platform::IsProfileEnabled()) {
-          platform::EnableProfiler(platform::ProfilerState::kCPU);
+          if (grpc_profile_mutex.try_lock()) {
+            if (!grpc_profile_begin && !grpc_profile_end) {
+              platform::EnableProfiler(platform::ProfilerState::kAll);
+              grpc_profile_begin = true;
+              grpc_profile_mutex.unlock();
+            }
+          }
         } else if (profiling == platform::kDisableProfiler &&
                    platform::IsProfileEnabled()) {
-          platform::DisableProfiler(
-              platform::EventSortingKey::kDefault,
-              string::Sprintf("%s_%lld", FLAGS_rpc_server_profile_path,
-                              listener_id));
+          if (grpc_profile_mutex.try_lock()) {
+            if (grpc_profile_begin && !grpc_profile_end) {
+              platform::DisableProfiler(platform::EventSortingKey::kTotal,
+                                        string::Sprintf("./%s_%s_profile.log",
+                                                        getenv("TRAINING_ROLE"),
+                                                        getenv("PADDLE_PORT")));
+              grpc_profile_end = true;
+              grpc_profile_mutex.unlock();
+            }
+          }
         }
         break;
       }
