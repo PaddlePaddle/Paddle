@@ -278,55 +278,6 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             np.allclose(np.asarray(res[2]), i_grad),
             msg=" \nres = \n{} \n\n ans = \n{}".format(res[2], i_grad))
 
-    def test_nested_with_reuse_variables(self):
-        def external_cond(i, x):
-            return layers.less_than(i, three)
-
-        def external_body(i, x):
-            def internel_cond(i, x):
-                return i < 2
-
-            def internel_body(i, x):
-                x = x * i
-                i = i + 1
-                return i, x
-
-            i, x = layers.while_loop(internel_cond, internel_body, [i, x])
-            x = x * i
-            layers.increment(i)
-            return i, x
-
-        main_program = Program()
-        startup_program = Program()
-        with fluid.program_guard(main_program, startup_program):
-            x = fluid.data(name='x', shape=[1], dtype='float32')
-            x.stop_gradient = False
-            i = fluid.data(name='i', shape=[1], dtype='float32')
-            i.stop_gradient = False
-            three = layers.fill_constant(shape=[1], dtype='float32', value=3)
-
-            out = layers.while_loop(external_cond, external_body, [i, x])
-            mean = layers.mean(x)
-            append_backward(mean)
-
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-
-        feed_x = np.ones(1).astype('float32')
-        feed_i = np.ones(1).astype('float32')
-        x_data = np.asarray([2]).astype('float32')
-        x_grad = np.asarray([2]).astype('float32')
-        i_grad = np.asarray([3]).astype('float32')
-
-        res = exe.run(main_program,
-                      feed={'x': feed_x,
-                            'i': feed_i},
-                      fetch_list=[x, x.grad_name, i.grad_name])
-        self.assertTrue(np.allclose(np.asarray(res[0]), x_data))
-        self.assertTrue(np.allclose(np.asarray(res[1]), x_grad))
-        self.assertTrue(np.allclose(np.asarray(res[2]), i_grad))
-
 
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
     def test_nested_net_with_backward_and_lodtensor(self):

@@ -114,8 +114,7 @@ class WhileOp : public framework::OperatorBase {
           if (no_copy_var_names.find(input_var_name) ==
               no_copy_var_names.end()) {
             std::string input_var_rename = input_var_name + kSuffix;
-            framework::Variable *input_var =
-                current_scope.FindVar(input_var_name);
+            framework::Variable *input_var = scope.FindVar(input_var_name);
             if (input_var->IsType<framework::LoDTensor>()) {
               rename_vars.push_back(input_var_rename);
               auto input_var_tensor = input_var->Get<LoDTensor>();
