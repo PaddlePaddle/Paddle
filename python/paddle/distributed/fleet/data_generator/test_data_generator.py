@@ -10,10 +10,11 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-from paddle.distributed.fleet.dataset import data_generator as dg
+import paddle
+import paddle.distributed.fleet as fleet
 
 
-class SyntheticData(dg.MultiSlotDataGenerator):
+class SyntheticData(fleet.MultiSlotDataGenerator):
     def generate_sample(self, line):
         def data_iter():
             for i in range(10000):
@@ -22,15 +23,17 @@ class SyntheticData(dg.MultiSlotDataGenerator):
         return data_iter
 
 
-class SyntheticStringData(dg.MultiSlotStringDataGenerator):
+class SyntheticStringData(fleet.MultiSlotStringDataGenerator):
     def generate_sample(self, line):
         def data_iter():
             for i in range(10000):
-                yield ("words", ["1", "2", "3", "4"], ("label", ["0"]))
+                yield [("words", ["1", "2", "3", "4"]), ("label", ["0"])]
+
+        return data_iter
 
 
 sd = SyntheticData()
 sd.run_from_memory()
 
 sd2 = SyntheticStringData()
-sd.run_from_memory()
+sd2.run_from_memory()

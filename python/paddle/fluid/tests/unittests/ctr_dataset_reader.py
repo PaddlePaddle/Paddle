@@ -22,7 +22,8 @@ import random
 import warnings
 
 import paddle
-from paddle.distributed.fleet.dataset import data_generator as data_generator
+import paddle.distributed.fleet as fleet
+
 logging.basicConfig()
 logger = logging.getLogger("paddle")
 logger.setLevel(logging.INFO)
@@ -83,7 +84,7 @@ class CtrReader(object):
         return reader
 
 
-class DatasetCtrReader(data_generator.MultiSlotDataGenerator):
+class DatasetCtrReader(fleet.MultiSlotDataGenerator):
     def generate_sample(self, line):
         def get_rand(low=0.0, high=1.0):
             return random.random()
