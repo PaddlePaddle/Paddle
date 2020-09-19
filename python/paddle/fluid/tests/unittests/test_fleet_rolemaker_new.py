@@ -15,7 +15,11 @@
 
 from __future__ import print_function
 import os
+import platform
+import shutil
+import tempfile
 import unittest
+import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
 
 
@@ -42,9 +46,9 @@ class TestRoleMakerBase(unittest.TestCase):
         self.assertTrue(len(pserver_endpoints) == 0)
 
         print(role.to_string())
-        self.assertTrue(role._all_gather(role._node_type_comm, 1) is None)
-        self.assertTrue(role._all_reduce(role._node_type_comm, 1) is None)
-        role._barrier(role._node_type_comm)
+        self.assertTrue(role._all_gather(1, "worker") is None)
+        self.assertTrue(role._all_reduce(1, "sum", "worker") is None)
+        role._barrier("worker")
 
 
 class TestCloudRoleMaker(unittest.TestCase):
@@ -72,8 +76,8 @@ class TestCloudRoleMaker(unittest.TestCase):
             print("warning: no netifaces, skip test_tr_rolemaker")
             return
 
-        ro = role_maker.PaddleCloudRoleMaker(
-            is_collective=False, init_gloo=False)
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
+
         self.assertTrue(ro.is_worker())
         self.assertFalse(ro.is_server())
         self.assertEqual(ro.worker_num(), 2)
@@ -108,8 +112,9 @@ class TestCloudRoleMaker(unittest.TestCase):
         self.assertEqual(ro.server_num(), 2)
         pserver_endpoints = ro.get_pserver_endpoints()
         self.assertEqual(pserver_endpoints[0], '127.0.0.1:36001')
-        self.assertTrue(ro._all_gather(ro._all_comm, 1) is None)
-        self.assertTrue(ro._all_reduce(ro._all_comm, 1) is None)
+
+        self.assertEqual(ro._all_gather(1, "worker"), 1)
+        self.assertEqual(ro._all_reduce(1, "sum", "worker"), 1)
 
     def test_traing_role(self):
         """Test training role."""
@@ -142,7 +147,7 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
         ro = role_maker.UserDefinedRoleMaker(
             is_collective=False,
             init_gloo=False,
-            server_endpoints="127.0.0.1:36001,127.0.0.1:36001",
+            server_endpoints=["127.0.0.1:36001", "127.0.0.1:36001"],
             role=role_maker.Role.SERVER,
             current_id=0,
             worker_num=2)
@@ -161,13 +166,273 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
         ro = role_maker.UserDefinedRoleMaker(
             is_collective=False,
             init_gloo=False,
-            server_endpoints="127.0.0.1:36001,127.0.0.1:36001",
+            server_endpoints=["127.0.0.1:36001", "127.0.0.1:36001"],
             role=role_maker.Role.WORKER,
             current_id=0,
             worker_num=2)
+
         self.assertIn("127.0.0.1:36001", ro.get_pserver_endpoints())
         self.assertTrue(ro.is_worker())
         self.assertEqual(ro.role_id(), 0)
+
+
+class TestGlooWithCloudRoleMaker(unittest.TestCase):
+    def setUp(self):
+        os.environ["PADDLE_TRAINERS_NUM"] = "1"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_TRAINER_ID"] = "0"
+
+    def case(self, role, comm_world):
+        role._barrier(comm_world)
+
+        gather = role._all_gather(1, comm_world)
+        self.assertEqual(gather[0], 1)
+
+        all_reduce = role._all_reduce(1, "sum", comm_world)
+        self.assertEqual(1, all_reduce)
+
+    def mkdir(self):
+        tmp = tempfile.mkdtemp()
+        return tmp
+
+    def clean(self, tmp):
+        shutil.rmtree(tmp)
+
+    def test_hdfs_gloo(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        tmp = self.mkdir()
+        os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "1"
+        os.environ["PADDLE_GLOO_FS_NAME"] = "NULL"
+        os.environ["PADDLE_GLOO_FS_UGI"] = "NULL"
+        os.environ["PADDLE_GLOO_FS_PATH"] = tmp
+
+        role = role_maker.PaddleCloudRoleMaker()
+        role.generate_role()
+        self.case(role, "worker")
+        self.clean(tmp)
+
+    def test_fs_gloo(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        tmp = self.mkdir()
+        os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "2"
+        os.environ["PADDLE_GLOO_FS_PATH"] = tmp
+
+        role = role_maker.PaddleCloudRoleMaker()
+        role.generate_role()
+        self.case(role, "worker")
+        self.clean(tmp)
+
+    def test_fs_gloo2(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        tmp = self.mkdir()
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "2"
+        os.environ["PADDLE_GLOO_FS_PATH"] = tmp
+
+        role = role_maker.PaddleCloudRoleMaker()
+        role.generate_role()
+        self.case(role, "server")
+        self.clean(tmp)
+
+    def test_fs_gloo3(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        tmp = self.mkdir()
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "1"
+        os.environ["PADDLE_GLOO_FS_NAME"] = "NULL"
+        os.environ["PADDLE_GLOO_FS_UGI"] = "NULL"
+        os.environ["PADDLE_GLOO_FS_PATH"] = tmp
+
+        role = role_maker.PaddleCloudRoleMaker()
+        role.generate_role()
+        self.case(role, "server")
+        self.clean(tmp)
+
+    def test_fs_gloo4(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "3"
+        os.environ["PADDLE_GLOO_HTTP_HOST"] = "127.0.0.1"
+        os.environ["PADDLE_GLOO_HTTP_PORT"] = "30019"
+
+        role = role_maker.PaddleCloudRoleMaker()
+        role.generate_role()
+        import time
+        time.sleep(3)
+
+    def test_fs_gloo5(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        tmp = self.mkdir()
+
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["PADDLE_TRAINERS_NUM"] = "0"
+
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "2"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "2"
+        os.environ["PADDLE_GLOO_FS_PATH"] = tmp
+
+        role = role_maker.PaddleCloudRoleMaker()
+        role.generate_role()
+        self.case(role, "server")
+        self.case(role, "all")
+        self.clean(tmp)
+
+    def test_fs_gloo6(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        tmp = self.mkdir()
+
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["PADDLE_TRAINERS_NUM"] = "0"
+
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+
+        os.environ["PADDLE_WITH_GLOO"] = "2"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "1"
+        os.environ["PADDLE_GLOO_FS_NAME"] = "NULL"
+        os.environ["PADDLE_GLOO_FS_UGI"] = "NULL"
+        os.environ["PADDLE_GLOO_FS_PATH"] = tmp
+
+        role = role_maker.PaddleCloudRoleMaker()
+        role.generate_role()
+        self.case(role, "server")
+        self.case(role, "all")
+        self.clean(tmp)
+
+    def test_fs_gloo7(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["PADDLE_TRAINERS_NUM"] = "0"
+
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "5"
+
+        role = role_maker.PaddleCloudRoleMaker()
+        self.assertRaises(ValueError, role.generate_role)
+
+    def test_fs_gloo8(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        tmp = self.mkdir()
+
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["PADDLE_TRAINERS_NUM"] = "0"
+
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+
+        os.environ["PADDLE_WITH_GLOO"] = "2"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "1"
+        os.environ["PADDLE_GLOO_FS_NAME"] = "NULL"
+        os.environ["PADDLE_GLOO_FS_UGI"] = "NULL"
+        os.environ["PADDLE_GLOO_FS_PATH"] = tmp
+
+        def net():
+            x = paddle.fluid.layers.data(name='x', shape=[13], dtype='float32')
+            y_predict = paddle.fluid.layers.fc(input=x, size=1, act=None)
+            y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
+            cost = paddle.fluid.layers.square_error_cost(
+                input=y_predict, label=y)
+            avg_cost = paddle.fluid.layers.mean(cost)
+            return avg_cost
+
+        from paddle.distributed import fleet
+
+        role = role_maker.PaddleCloudRoleMaker()
+        fleet.init(role)
+        avg_cost = net()
+
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.a_sync = False
+
+        optimizer = paddle.optimizer.SGD(0.01)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(avg_cost)
+
+        comm_world = "server"
+        fleet.util().barrier(comm_world)
+
+        gather = fleet.util().all_gather(1, comm_world)
+        self.assertEqual(gather[0], 1)
+
+        all_reduce = fleet.util().all_reduce(1, "sum", comm_world)
+        self.assertEqual(1, all_reduce)
+
+        self.clean(tmp)
 
 
 if __name__ == "__main__":

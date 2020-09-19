@@ -180,6 +180,8 @@ class Fleet(object):
                 raise ValueError(
                     "`role_maker` should be subclass of `RoleMakerBase`, but got {}".
                     format(type(role_maker)))
+        self._role_maker.generate_role()
+
         self.strategy_compiler = StrategyCompiler()
         if paddle.fluid.framework.in_dygraph_mode():
             if parallel_helper._is_parallel_ctx_initialized():
@@ -187,7 +189,6 @@ class Fleet(object):
                     "The dygraph parallel environment has been initialized.")
             else:
                 paddle.distributed.init_parallel_env()
-        return None
 
     def is_first_worker(self):
         """
@@ -275,13 +276,10 @@ class Fleet(object):
                 fleet.worker_endpoints()
 
         """
-        '''
         if to_string:
             return ",".join(self._role_maker.get_trainer_endpoints())
         else:
             return self._role_maker.get_trainer_endpoints()
-        '''
-        return ["127.0.0.1:1001", "127.0.0.1:1002"]
 
     def server_num(self):
         """
@@ -355,7 +353,9 @@ class Fleet(object):
         return self._role_maker.is_server(
         ) or self._role_maker._is_heter_worker()
 
-    @property
+    def set_util(self, util):
+        self._util = util
+
     def util(self):
         """
         Utility functions that can be used under certain runtime
@@ -376,16 +376,6 @@ class Fleet(object):
         """
         return self._util
 
-    @util.setter
-    def util(self, util):
-        """
-        Set Utility functions for userd-defined runtime
-
-        Returns:
-            None
-        """
-        self._util = util
-
     def barrier_worker(self):
         """
         barrier all workers
@@ -393,7 +383,7 @@ class Fleet(object):
         Returns:
             None
         """
-        self._role_maker.barrier_worker()
+        self._role_maker._barrier("worker")
 
     @is_non_distributed_check
     @inited_runtime_handler
