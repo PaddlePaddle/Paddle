@@ -568,6 +568,12 @@ def heter_cloud_env_set(args):
         environs["PADDLE_HETER_TRAINER_DEVICE"] = args.heter_worker_device
         environs["PADDLE_HETER_TRAINER_PORT"] = heter_port
 
+    # hard code for benchmark
+    environs["PADDLE_HETER_TRAINER_IP_PORT_LIST"] = paddle_pserver_endpoints
+    environs["PADDLE_PSERVERS_IP_PORT_LIST"] = paddle_trainer_endpoints
+    environs["PADDLE_TRAINER_ENDPOINTS"] = get_user_define_endpoints(
+        paddle_trainer_endpoints, 1)
+
     for k, v in environs.items():
         os.environ[k] = str(v)
     logger.info("Set heter parameter server env: {}".format(
