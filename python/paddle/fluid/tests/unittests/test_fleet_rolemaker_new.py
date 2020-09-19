@@ -638,6 +638,63 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         role = role_maker.PaddleCloudRoleMaker()
         self.assertRaises(ValueError, role._generate_role)
 
+    def test_hdfs_gloo_v2(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "1"
+        os.environ["PADDLE_GLOO_FS_NAME"] = ""
+        os.environ["PADDLE_GLOO_FS_UGI"] = ""
+        os.environ["PADDLE_GLOO_FS_PATH"] = ""
+
+        role = role_maker.PaddleCloudRoleMaker()
+        self.assertRaises(ValueError, role._generate_role)
+
+    def test_fs_gloo_v2(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["PADDLE_TRAINERS_NUM"] = "0"
+
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "2"
+        os.environ["PADDLE_GLOO_FS_PATH"] = ""
+
+        role = role_maker.PaddleCloudRoleMaker()
+        self.assertRaises(ValueError, role._generate_role)
+
+    def test_http_gloo_v2(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip gloo UT on MacOS/Win")
+            return
+
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+
+        os.environ["SYS_JOB_ID"] = "gloo_for_cluster"
+        os.environ["PADDLE_WITH_GLOO"] = "1"
+        os.environ["PADDLE_GLOO_RENDEZVOUS"] = "3"
+        os.environ["PADDLE_GLOO_HTTP_HOST"] = ""
+        os.environ["PADDLE_GLOO_HTTP_PORT"] = ""
+
+        role = role_maker.PaddleCloudRoleMaker()
+        self.assertRaises(ValueError, role._generate_role)
+
     def test_fs_gloo8(self):
         plats = platform.platform()
         if 'Linux' not in plats:
