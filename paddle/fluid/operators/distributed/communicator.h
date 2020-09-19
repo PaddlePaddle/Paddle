@@ -444,19 +444,6 @@ class GeoCommunicator : public AsyncCommunicator {
 
   void InitDense(const std::string varname);
 
-  const std::string VarToDeltaVar(const std::string var_name) {
-    std::string delta_name = var_name;
-    const std::string send_name = delta_name.append(".delta");
-    return send_name;
-  }
-
-  const std::string DeltaVarToVar(const std::string var_name) {
-    std::string origin_name = var_name;
-    origin_name.erase(origin_name.find(".delta"), 6);
-    const std::string param_name = origin_name;
-    return param_name;
-  }
-
  private:
   int trainers_;
   std::string sparse_attrs_;
@@ -476,7 +463,8 @@ class GeoCommunicator : public AsyncCommunicator {
       send_ids_to_queue_;
 
   std::unordered_map<std::string, std::shared_ptr<SparseValue>> old_sparses_;
-  std::vector<SplitedSparseIds> splited_ids_vec_;
+  std::unordered_map<std::string, std::vector<SplitedSparseIds>>
+      splited_ids_vec_;
 };
 
 }  // namespace distributed
