@@ -25,57 +25,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, typename Index, int DimTileSize>
-__global__ void SortedSegmentSumCustomKernel(const Index input_length_size,
-                                             const Index inner_dim_size,
-                                             const Index output_length_size,
-                                             const Index* segment_ids,
-                                             const T* input, T* output,
-                                             const Index total_stripe_count) {
-  CUDA_KERNEL_LOOP(stripe_index, total_stripe_count) {
-    const Index segment_offset = stripe_index % inner_dim_size;
-    const Index dim_index_base =
-        stripe_index / inner_dim_size * Index(DimTileSize);
-
-    T sum = T(0);
-    Index first_segment_id = segment_ids[dim_index_base];
-    Index last_segment_id = output_length_size;
-
-    const Index actual_height =
-        min(Index(DimTileSize), input_length_size - dim_index_base);
-
-    for (Index j = 0; j < actual_height; j++) {
-      Index current_segment_id = segment_ids[dim_index_base + j];
-      // Decide whether to write result to global memory.
-      // Result is only written to global memory if we move
-      // to another segment. Otherwise we can keep accumulating
-      // locally.
-      if (current_segment_id > last_segment_id) {
-        const Index output_index =
-            last_segment_id * inner_dim_size + segment_offset;
-        // decide whether to write result to global memory using atomic
-        // operations
-        if (last_segment_id == first_segment_id) {
-          platform::CudaAtomicAdd(output + output_index, sum);
-        } else {
-          *(output + output_index) = sum;
-        }
-        sum = T(0);
-      }
-      sum += input[(dim_index_base + j) * inner_dim_size + segment_offset];
-      // sum += __ldg(input + (dim_index_base + j) * inner_dim_size
-      // +segment_offset);
-      last_segment_id = current_segment_id;
-    }
-    // For the last result in a strip, always write using atomic operations
-    // due to possible race conditions with threads computing
-    // the following strip.
-    const Index output_index =
-        last_segment_id * inner_dim_size + segment_offset;
-    platform::CudaAtomicAdd(output + output_index, sum);
-  }
-}
-
 template <typename T, typename Index, typename Helper>
 __global__ void SortedSegmentMeanCustomKernel(const Index* segment_ids,
                                               const T* input, T* output,
