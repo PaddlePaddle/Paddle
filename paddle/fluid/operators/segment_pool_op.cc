@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/segment_ops/segment_pool_op.h"
+#include "paddle/fluid/operators/segment_pool_op.h"
 #include <memory>
 #include <string>
 

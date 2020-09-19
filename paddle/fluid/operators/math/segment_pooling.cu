@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/segment_ops/segment_pooling.h"
+#include "paddle/fluid/operators/math/segment_pooling.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_launch_param_config.h"
 #include "paddle/fluid/platform/macros.h"
@@ -44,6 +44,7 @@ __global__ void SortedSegmentSumCustomKernel(const Index input_outer_dim_size,
     const Index actual_stripe_height =
         min(Index(OuterDimTileSize),
             input_outer_dim_size - input_outer_dim_index_base);
+
     for (Index j = 0; j < actual_stripe_height; j++) {
       Index current_output_segment_id =
           segment_ids[input_outer_dim_index_base + j];
@@ -78,22 +79,18 @@ __global__ void SortedSegmentSumCustomKernel(const Index input_outer_dim_size,
   }
 }
 
-template <typename T, typename Index, int OuterDimTileSize>
-__global__ void SortedSegmentMeanCustomKernel(
-    const Index input_outer_dim_size, const Index inner_dim_size,
-    const Index output_outer_dim_size, const Index* segment_ids, const T* input,
-    T* output, T* summed_ids, const Index total_stripe_count) {
-  CUDA_KERNEL_LOOP(stripe_index, total_stripe_count) {
-    const Index segment_offset = stripe_index % inner_dim_size;
-    const Index input_outer_dim_index_base =
-        stripe_index / inner_dim_size * Index(OuterDimTileSize);
+template <typename T, typename Index, typename Helper>
+__global__ void SortedSegmentMeanCustomKernel(const Index* segment_ids,
+                                              const T* input, T* output,
+                                              T* summed_ids, Helper h) {
+  CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
+    Index segment_offset, input_outer_dim_index_base, actual_stripe_height;
+    Index inner_dim_size = h.inner_dim_size;
+    h.calculate(stripe_index, segment_offset, input_outer_dim_index_base,
+                actual_stripe_height);
 
     Index first_segment_id = segment_ids[input_outer_dim_index_base];
-    Index last_output_segment_id = output_outer_dim_size;
-
-    const Index actual_stripe_height =
-        min(Index(OuterDimTileSize),
-            input_outer_dim_size - input_outer_dim_index_base);
+    Index last_output_segment_id = h.output_outer_dim_size;
 
     if (segment_offset == 0) {
       T sum = T(0);
@@ -141,23 +138,18 @@ __global__ void SortedSegmentMeanCustomKernel(
   }
 }
 
-template <typename T, typename Index, int OuterDimTileSize, typename Pool>
-__global__ void SortedSegmentMinMaxCustomKernel(
-    const Index input_outer_dim_size, const Index inner_dim_size,
-    const Index output_outer_dim_size, const Index* segment_ids, const T* input,
-    T* output, const Index total_stripe_count, Pool pool) {
-  CUDA_KERNEL_LOOP(stripe_index, total_stripe_count) {
-    const Index segment_offset = stripe_index % inner_dim_size;
-    const Index input_outer_dim_index_base =
-        stripe_index / inner_dim_size * Index(OuterDimTileSize);
+template <typename T, typename Index, typename Helper, typename Pool>
+__global__ void SortedSegmentOpsKernel(const Index* segment_ids, const T* input,
+                                       T* output, Helper h, Pool pool) {
+  CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
+    Index segment_offset, input_outer_dim_index_base, actual_stripe_height;
+    Index inner_dim_size = h.inner_dim_size;
+    h.calculate(stripe_index, segment_offset, input_outer_dim_index_base,
+                actual_stripe_height);
 
     T minmax = pool.initial();
     Index first_segment_id = segment_ids[input_outer_dim_index_base];
-    Index last_output_segment_id = output_outer_dim_size;
-
-    const Index actual_stripe_height =
-        min(Index(OuterDimTileSize),
-            input_outer_dim_size - input_outer_dim_index_base);
+    Index last_output_segment_id = h.output_outer_dim_size;
     // -1 is for the start value when interval_id = 0
     Index previous_segment_id = -1;
     if (input_outer_dim_index_base > 0) {
@@ -200,29 +192,23 @@ __global__ void SortedSegmentMinMaxCustomKernel(
   }
 }
 
-template <typename T, typename Index, int OuterDimTileSize>
-__global__ void SortedSegmentIndexGradKernel(const Index input_outer_dim_size,
-                                             const Index inner_dim_size,
-                                             const Index output_outer_dim_size,
-                                             const Index* segment_ids,
+template <typename T, typename Index, typename Helper>
+__global__ void SortedSegmentIndexGradKernel(const Index* segment_ids,
                                              const T* input, const T* output,
                                              const T* out_grad, T* in_grad,
-                                             const Index total_stripe_count) {
-  CUDA_KERNEL_LOOP(stripe_index, total_stripe_count) {
-    const Index segment_offset = stripe_index % inner_dim_size;
-    const Index input_outer_dim_index_base =
-        stripe_index / inner_dim_size * Index(OuterDimTileSize);
+                                             Helper h) {
+  CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
+    Index segment_offset, input_outer_dim_index_base, actual_stripe_height;
+    h.calculate(stripe_index, segment_offset, input_outer_dim_index_base,
+                actual_stripe_height);
 
-    const Index actual_stripe_height =
-        min(Index(OuterDimTileSize),
-            input_outer_dim_size - input_outer_dim_index_base);
     for (Index j = 0; j < actual_stripe_height; j++) {
       Index current_output_segment_id =
           segment_ids[input_outer_dim_index_base + j];
       Index input_index =
-          (input_outer_dim_index_base + j) * inner_dim_size + segment_offset;
+          (input_outer_dim_index_base + j) * h.inner_dim_size + segment_offset;
       Index output_index =
-          current_output_segment_id * inner_dim_size + segment_offset;
+          current_output_segment_id * h.inner_dim_size + segment_offset;
       if (input[input_index] == output[output_index]) {
         in_grad[input_index] = out_grad[output_index];
       }
@@ -251,21 +237,41 @@ class MinPool {
 };
 
 template <class T>
+class SumPool {
+ public:
+  DEVICE inline T initial() { return static_cast<T>(0); }
+  DEVICE inline void compute(const T& x, T* y) { *y = *y + x; }
+  DEVICE inline T atomic(T* address, const T val) {
+    return platform::CudaAtomicAdd(address, val);
+  }
+};
+
+template <class T>
 class DataArrangeHelper {
  public:
   const T input_total_size;
   const T input_outer_dim_size;
-  const T output_rows;
-  T input_inner_dim_size;
+  const T output_outer_dim_size;
+  T inner_dim_size;
   T total_stripe_count;
   const T OuterDimTileSize = 8;
 
   DataArrangeHelper(T a, T b, T c)
-      : input_total_size(a), input_outer_dim_size(b), output_rows(c) {
+      : input_total_size(a), input_outer_dim_size(b), output_outer_dim_size(c) {
     T input_outer_dim_num_stripe =
         (input_outer_dim_size + OuterDimTileSize - 1) / OuterDimTileSize;
-    input_inner_dim_size = input_total_size / input_outer_dim_size;
-    total_stripe_count = input_inner_dim_size * input_outer_dim_num_stripe;
+    inner_dim_size = input_total_size / input_outer_dim_size;
+    total_stripe_count = inner_dim_size * input_outer_dim_num_stripe;
+  }
+
+  DEVICE inline void calculate(T stripe_index, T& segment_offset,
+                               T& input_outer_dim_index_base,
+                               T& actual_stripe_height) {
+    segment_offset = stripe_index % inner_dim_size;
+    input_outer_dim_index_base =
+        stripe_index / inner_dim_size * OuterDimTileSize;
+    actual_stripe_height = min(
+        OuterDimTileSize, input_outer_dim_size - input_outer_dim_index_base);
   }
 };
 
@@ -276,37 +282,29 @@ void SegmentPoolCUDAFunctor(const platform::CUDADeviceContext& ctx,
                             framework::Tensor* output,
                             framework::Tensor* summed_ids,
                             const std::string pooltype = "SUM") {
-  const Index OuterDimTileSize = 8;
   auto h = DataArrangeHelper<Index>(input.numel(), segment_ids.dims()[0],
                                     output->dims()[0]);
   auto config = platform::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
-
   if (pooltype == "MEAN") {
-    SortedSegmentMeanCustomKernel<T, Index, OuterDimTileSize><<<
+    SortedSegmentMeanCustomKernel<T, Index, DataArrangeHelper<Index>><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        h.input_outer_dim_size, h.input_inner_dim_size, h.output_rows,
         segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
-        summed_ids->data<T>(), h.total_stripe_count);
+        summed_ids->data<T>(), h);
   } else if (pooltype == "SUM") {
-    SortedSegmentSumCustomKernel<T, Index, OuterDimTileSize><<<
+    SumPool<T> pool;
+    SortedSegmentOpsKernel<T, Index, DataArrangeHelper<Index>, SumPool<T>><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        h.input_outer_dim_size, h.input_inner_dim_size, h.output_rows,
-        segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
-        h.total_stripe_count);
+        segment_ids.data<Index>(), input.data<T>(), output->data<T>(), h, pool);
   } else if (pooltype == "MAX") {
     MaxPool<T> pool;
-    SortedSegmentMinMaxCustomKernel<T, Index, OuterDimTileSize, MaxPool<T>><<<
+    SortedSegmentOpsKernel<T, Index, DataArrangeHelper<Index>, MaxPool<T>><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        h.input_outer_dim_size, h.input_inner_dim_size, h.output_rows,
-        segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
-        h.total_stripe_count, pool);
+        segment_ids.data<Index>(), input.data<T>(), output->data<T>(), h, pool);
   } else if (pooltype == "MIN") {
     MinPool<T> pool;
-    SortedSegmentMinMaxCustomKernel<T, Index, OuterDimTileSize, MinPool<T>><<<
+    SortedSegmentOpsKernel<T, Index, DataArrangeHelper<Index>, MinPool<T>><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        h.input_outer_dim_size, h.input_inner_dim_size, h.output_rows,
-        segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
-        h.total_stripe_count, pool);
+        segment_ids.data<Index>(), input.data<T>(), output->data<T>(), h, pool);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "
@@ -328,11 +326,10 @@ void SegmentPoolCUDAGradFunctor(const platform::CUDADeviceContext& ctx,
                                     output.dims()[0]);
   auto config = platform::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
   if (pooltype == "MAX" || pooltype == "MIN") {
-    SortedSegmentIndexGradKernel<T, Index, OuterDimTileSize><<<
+    SortedSegmentIndexGradKernel<T, Index, DataArrangeHelper<Index>><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        h.input_outer_dim_size, h.input_inner_dim_size, h.output_rows,
         segment_ids.data<Index>(), input.data<T>(), output.data<T>(),
-        out_grad.data<T>(), in_grad->data<T>(), h.total_stripe_count);
+        out_grad.data<T>(), in_grad->data<T>(), h);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unsupported segment pooling grad operation, Only MAX, MIN "

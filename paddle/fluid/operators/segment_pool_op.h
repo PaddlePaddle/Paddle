@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/segment_ops/segment_pooling.h"
+#include "paddle/fluid/operators/math/segment_pooling.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -51,7 +51,7 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     PADDLE_ENFORCE_GT(
         dims[0], 0,
         platform::errors::InvalidArgument(
-            "segment ids must be >= 0, but got last id %d", dims[0]));
+            "Segment ids must be >= 0, but got last id %d", dims[0]));
     output->Resize({dims});
     output->mutable_data<T>(context.GetPlace());
     math::SetConstant<DeviceContext, T> set_zero;
@@ -75,7 +75,7 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     PADDLE_ENFORCE_GT(
         length_host, 0,
         platform::errors::InvalidArgument(
-            "segment ids must be >= 0, but got last id %d", length_data[0]));
+            "Segment ids must be >= 0, but got last id %d", length_data[0]));
     auto dims = input->dims();
     dims[0] = static_cast<int64_t>(length_host);
     output->Resize({dims});
@@ -140,7 +140,6 @@ class SegmentPoolGradKernel : public framework::OpKernel<T> {
     }
 
     in_g->mutable_data<T>(context.GetPlace());
-
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, in_g, static_cast<T>(0));
