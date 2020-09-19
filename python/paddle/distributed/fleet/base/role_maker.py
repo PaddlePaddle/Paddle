@@ -587,6 +587,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         get index of current node
         """
+        if not self._role_is_generated:
+            self._generate_role()
         return self._current_id
 
     def _worker_num(self):
@@ -653,22 +655,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             self._generate_role()
         return self._role == Role.HETER_WORKER
-
-    def _get_rank(self):
-        """
-        get current rank in all workers and pservers
-        """
-        if not self._role_is_generated:
-            self._generate_role()
-        return self._rank
-
-    def _get_size(self):
-        """
-        get total num of all workers and pservers
-        """
-        if not self._role_is_generated:
-            self._generate_role()
-        return self._size
 
     def _ps_env(self):
         try:

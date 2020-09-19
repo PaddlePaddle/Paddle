@@ -77,19 +77,31 @@ class TestCloudRoleMaker(unittest.TestCase):
             return
 
         ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
-
         self.assertTrue(ro._is_worker())
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
         self.assertFalse(ro._is_server())
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
         self.assertEqual(ro._worker_num(), 2)
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
         self.assertTrue(ro._is_first_worker())
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
         worker_endpoints = ro._get_trainer_endpoints()
         self.assertEqual(worker_endpoints[0], '127.0.0.1:36001')
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
         self.assertEqual(ro._role_id(), 0)
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
         self.assertEqual(ro._node_num(), 2)
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
+        self.assertFalse(ro._is_non_distributed())
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
+        self.assertEqual(ro._heter_worker_num(), 0)
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
+        self.assertFalse(ro._is_heter_worker())
 
     def test_tr_rolemaker_collective(self):
         ro = role_maker.PaddleCloudRoleMaker(is_collective=True)
         self.assertEqual(ro._worker_num(), 2)
+        ro = role_maker.PaddleCloudRoleMaker(is_collective=True)
         self.assertEqual(ro._node_num(), 2)
 
     def test_ps_rolemaker(self):
