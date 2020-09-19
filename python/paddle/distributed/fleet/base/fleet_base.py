@@ -970,14 +970,11 @@ class Fleet(object):
                 # for more examples, please reference https://github.com/PaddlePaddle/FleetX
 
         """
-        context = {}
+        context["user_defined_strategy"] = copy.deepcopy(
+            self._user_defined_strategy)
         if paddle.fluid.framework.in_dygraph_mode():
             # imitate target optimizer retrieval
             target_opt = self.user_defined_optimizer
-            context["user_defined_strategy"] = copy.deepcopy(
-                self._user_defined_strategy)
-            context["valid_strategy"] = copy.deepcopy(
-                self._user_defined_strategy)
             self._context = context
             return target_opt.minimize(loss)
 
