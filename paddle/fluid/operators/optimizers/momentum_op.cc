@@ -61,6 +61,11 @@ void MomentumOpMaker::Make() {
                 "(bool, default false) "
                 "Use Nesterov Momentum")
       .SetDefault(false);
+  AddAttr<std::string>("regularization_method",
+                       "(string) regularization_method")
+      .SetDefault("");
+  AddAttr<float>("regularization_coeff", "(float) regularization_coeff")
+      .SetDefault(1.0);
   AddComment(R"DOC(
 Momentum Optimizer.
 

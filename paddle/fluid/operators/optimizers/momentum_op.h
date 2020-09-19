@@ -29,6 +29,12 @@ using framework::SelectedRows;
 struct NoNesterov;
 struct UseNesterov;
 
+enum class RegularizationFlag {
+  kNONE = 0,
+  kL1DECAY = 1,  // do not need support right now
+  kL2DECAY = 2,
+};
+
 class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;
@@ -119,6 +125,8 @@ class CPUDenseMomentumFunctor {
   const Tensor* learning_rate;
   const T mu;
   const T use_nesterov;
+  const RegularizationFlag regularization_flag;
+  const T regularization_coeff;
   Tensor* param_out;
   Tensor* velocity_out;
 
@@ -126,13 +134,17 @@ class CPUDenseMomentumFunctor {
   CPUDenseMomentumFunctor(const Tensor* param, const Tensor* grad,
                           const Tensor* velocity, const Tensor* learning_rate,
                           const T mu, const bool use_nesterov,
-                          Tensor* param_out, Tensor* velocity_out)
+                          const RegularizationFlag regularization_flag,
+                          const T regularization_coeff, Tensor* param_out,
+                          Tensor* velocity_out)
       : param(param),
         grad(grad),
         velocity(velocity),
         learning_rate(learning_rate),
         mu(mu),
         use_nesterov(use_nesterov),
+        regularization_flag(regularization_flag),
+        regularization_coeff(regularization_coeff),
         param_out(param_out),
         velocity_out(velocity_out) {}
 
@@ -145,11 +157,20 @@ class CPUDenseMomentumFunctor {
     auto g = framework::EigenVector<T>::Flatten(*grad);
     auto* lr = learning_rate->data<T>();
 
-    v_out = v * mu + g;
-    if (use_nesterov) {
-      p_out = p - (g + v_out * mu) * lr[0];
+    if (regularization_flag == RegularizationFlag::kL2DECAY) {
+      v_out = v * mu + p * regularization_coeff + g;
+      if (use_nesterov) {
+        p_out = p - (p * regularization_coeff + g + v_out * mu) * lr[0];
+      } else {
+        p_out = p - lr[0] * v_out;
+      }
     } else {
-      p_out = p - lr[0] * v_out;
+      v_out = v * mu + g;
+      if (use_nesterov) {
+        p_out = p - (g + v_out * mu) * lr[0];
+      } else {
+        p_out = p - lr[0] * v_out;
+      }
     }
   }
 };
@@ -171,11 +192,14 @@ class DenseMomentumFunctor<T, UseNesterov> {
   const int64_t num_;
   T* p_out_;
   T* v_out_;
+  const RegularizationFlag regularization_flag;
+  const T regularization_coeff;
 
  public:
   DenseMomentumFunctor(const T* p, const T* g, const T* v,
                        const T* learning_rate, const T mu, const int64_t num,
-                       T* p_out, T* v_out)
+                       const RegularizationFlag regularization_flag,
+                       const T regularization_coeff, T* p_out, T* v_out)
       : p_(p),
         g_(g),
         v_(v),
@@ -183,13 +207,20 @@ class DenseMomentumFunctor<T, UseNesterov> {
         mu_(mu),
         num_(num),
         p_out_(p_out),
-        v_out_(v_out) {}
+        v_out_(v_out),
+        regularization_flag(regularization_flag),
+        regularization_coeff(regularization_coeff) {}
   inline HOSTDEVICE void operator()(size_t i) const {
     // put memory access in register
     const T p = p_[i];
-    const T g = g_[i];
+    T g = g_[i];
     const T lr = lr_[0];
     const T v = v_[i];
+
+    g = regularization_flag == RegularizationFlag::kL2DECAY
+            ? g + regularization_coeff * p
+            : g;
+
     T v_out = v * mu_ + g;
     T p_out = p - (g + v_out * mu_) * lr;
     // write reigster to memory
@@ -209,11 +240,14 @@ class DenseMomentumFunctor<T, NoNesterov> {
   const int64_t num_;
   T* p_out_;
   T* v_out_;
+  const RegularizationFlag regularization_flag;
+  const T regularization_coeff;
 
  public:
   DenseMomentumFunctor(const T* p, const T* g, const T* v,
                        const T* learning_rate, const T mu, const int64_t num,
-                       T* p_out, T* v_out)
+                       const RegularizationFlag regularization_flag,
+                       const T regularization_coeff, T* p_out, T* v_out)
       : p_(p),
         g_(g),
         v_(v),
@@ -221,13 +255,20 @@ class DenseMomentumFunctor<T, NoNesterov> {
         mu_(mu),
         num_(num),
         p_out_(p_out),
-        v_out_(v_out) {}
+        v_out_(v_out),
+        regularization_flag(regularization_flag),
+        regularization_coeff(regularization_coeff) {}
   inline HOSTDEVICE void operator()(size_t i) const {
     // put memory access in register
     const T p = p_[i];
-    const T g = g_[i];
+    T g = g_[i];
     const T lr = lr_[0];
     const T v = v_[i];
+
+    g = regularization_flag == RegularizationFlag::kL2DECAY
+            ? g + regularization_coeff * p
+            : g;
+
     T v_out = v * mu_ + g;
     T p_out = p - lr * v_out;
     // write reigster to memory
@@ -252,11 +293,15 @@ class SparseMomentumFunctor<T, UseNesterov> {
   const int64_t row_height_;
   T* p_out_;
   T* v_out_;
+  const RegularizationFlag regularization_flag;
+  const T regularization_coeff;
 
  public:
   SparseMomentumFunctor(const T* p, const T* g, const T* v, const T* lr,
                         const T mu, const int64_t* rows, int64_t row_numel,
-                        int64_t row_height, T* p_out, T* v_out)
+                        int64_t row_height,
+                        const RegularizationFlag regularization_flag,
+                        const T regularization_coeff, T* p_out, T* v_out)
       : p_(p),
         g_(g),
         v_(v),
@@ -266,7 +311,9 @@ class SparseMomentumFunctor<T, UseNesterov> {
         row_numel_(row_numel),
         row_height_(row_height),
         p_out_(p_out),
-        v_out_(v_out) {}
+        v_out_(v_out),
+        regularization_flag(regularization_flag),
+        regularization_coeff(regularization_coeff) {}
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
@@ -277,6 +324,11 @@ class SparseMomentumFunctor<T, UseNesterov> {
     const T p = p_[i];
     const T lr = lr_[0];
     const T v = v_[i];
+
+    g = regularization_flag == RegularizationFlag::kL2DECAY
+            ? g + regularization_coeff * p
+            : g;
+
     T v_out = v * mu_ + g;
     T p_out = p - (g + v_out * mu_) * lr;
     // write reigster to memory
@@ -298,11 +350,15 @@ class SparseMomentumFunctor<T, NoNesterov> {
   const int64_t row_height_;
   T* p_out_;
   T* v_out_;
+  const RegularizationFlag regularization_flag;
+  const T regularization_coeff;
 
  public:
   SparseMomentumFunctor(const T* p, const T* g, const T* v, const T* lr,
                         const T mu, const int64_t* rows, int64_t row_numel,
-                        int64_t row_height, T* p_out, T* v_out)
+                        int64_t row_height,
+                        const RegularizationFlag regularization_flag,
+                        const T regularization_coeff, T* p_out, T* v_out)
       : p_(p),
         g_(g),
         v_(v),
@@ -312,7 +368,9 @@ class SparseMomentumFunctor<T, NoNesterov> {
         row_numel_(row_numel),
         row_height_(row_height),
         p_out_(p_out),
-        v_out_(v_out) {}
+        v_out_(v_out),
+        regularization_flag(regularization_flag),
+        regularization_coeff(regularization_coeff) {}
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto row_idx =
@@ -323,6 +381,11 @@ class SparseMomentumFunctor<T, NoNesterov> {
     const T p = p_[i];
     const T lr = lr_[0];
     const T v = v_[i];
+
+    g = regularization_flag == RegularizationFlag::kL2DECAY
+            ? g + regularization_coeff * p
+            : g;
+
     T v_out = v * mu_ + g;
     T p_out = p - v_out * lr;
     // write reigster to memory
@@ -335,6 +398,16 @@ template <typename DeviceContext, typename T>
 class MomentumOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    std::string regularization_method =
+        ctx.Attr<std::string>("regularization_method");
+    T regularization_coeff =
+        static_cast<T>(ctx.Attr<float>("regularization_coeff"));
+    RegularizationFlag regularization_flag{
+        RegularizationFlag::kNONE};  // disable regularization
+    if (regularization_method == "l2_decay") {
+      regularization_flag = RegularizationFlag::kL2DECAY;
+    }
+
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
 
@@ -343,6 +416,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     auto param_out = ctx.Output<framework::Tensor>("ParamOut");
     auto* velocity = ctx.Input<framework::Tensor>("Velocity");
     auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
+
     param_out->mutable_data<T>(ctx.GetPlace());
     velocity_out->mutable_data<T>(ctx.GetPlace());
 
@@ -350,9 +424,9 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto grad = ctx.Input<framework::Tensor>("Grad");
       if (platform::is_cpu_place(ctx.GetPlace())) {
-        CPUDenseMomentumFunctor<T> functor(param, grad, velocity, learning_rate,
-                                           mu, use_nesterov, param_out,
-                                           velocity_out);
+        CPUDenseMomentumFunctor<T> functor(
+            param, grad, velocity, learning_rate, mu, use_nesterov,
+            regularization_flag, regularization_coeff, param_out, velocity_out);
         functor();
       } else if (platform::is_gpu_place(ctx.GetPlace())) {
         platform::ForRange<DeviceContext> for_range(
@@ -361,16 +435,16 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         if (use_nesterov) {
           DenseMomentumFunctor<T, UseNesterov> functor(
               param->data<T>(), grad->data<T>(), velocity->data<T>(),
-              learning_rate->data<T>(), mu, param->numel(),
-              param_out->mutable_data<T>(ctx.GetPlace()),
+              learning_rate->data<T>(), mu, param->numel(), regularization_flag,
+              regularization_coeff, param_out->mutable_data<T>(ctx.GetPlace()),
               velocity_out->mutable_data<T>(ctx.GetPlace()));
           for_range(functor);
 
         } else {
           DenseMomentumFunctor<T, NoNesterov> functor(
               param->data<T>(), grad->data<T>(), velocity->data<T>(),
-              learning_rate->data<T>(), mu, param->numel(),
-              param_out->mutable_data<T>(ctx.GetPlace()),
+              learning_rate->data<T>(), mu, param->numel(), regularization_flag,
+              regularization_coeff, param_out->mutable_data<T>(ctx.GetPlace()),
               velocity_out->mutable_data<T>(ctx.GetPlace()));
           for_range(functor);
         }
@@ -403,6 +477,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
             param->data<T>(), merged_grad->value().data<T>(),
             velocity->data<T>(), learning_rate->data<T>(), mu, rows, row_numel,
             static_cast<int64_t>(merged_grad->rows().size()),
+            regularization_flag, regularization_coeff,
             param_out->mutable_data<T>(ctx.GetPlace()),
             velocity_out->mutable_data<T>(ctx.GetPlace()));
         for_range(functor);
@@ -412,6 +487,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
             param->data<T>(), merged_grad->value().data<T>(),
             velocity->data<T>(), learning_rate->data<T>(), mu, rows, row_numel,
             static_cast<int64_t>(merged_grad->rows().size()),
+            regularization_flag, regularization_coeff,
             param_out->mutable_data<T>(ctx.GetPlace()),
             velocity_out->mutable_data<T>(ctx.GetPlace()));
         for_range(functor);

@@ -141,6 +141,7 @@ class TestLarsMomentumOp(OpTest):
         self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
 
     def test_check_output(self):
+        paddle.enable_static()
         self.check_output()
 
 
@@ -251,6 +252,8 @@ class TestMomentumV2(unittest.TestCase):
         adam.clear_gradients()
 
     def test_momentum(self):
+        paddle.enable_static()
+
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
@@ -277,6 +280,225 @@ class TestMomentumV2(unittest.TestCase):
         self.assertRaises(
             ValueError, paddle.optimizer.Momentum, learning_rate=None)
         self.assertRaises(ValueError, paddle.optimizer.Momentum, momentum=None)
+
+
+class TestMomentumOpWithDecay(OpTest):
+    def setUp(self):
+        self.op_type = "momentum"
+        self.dtype = np.float32
+        self.use_nesterov = True
+        self.regularization_method = 'l2_decay'
+        self.regularization_coeff = 0.9
+        self.init_config()
+
+        param = np.random.random((123, 321)).astype(self.dtype)
+        grad = np.random.random((123, 321)).astype(self.dtype)
+        velocity = np.zeros((123, 321)).astype(self.dtype)
+        learning_rate = np.array([0.001]).astype(self.dtype)
+        mu = 0.0001
+        use_nesterov = self.use_nesterov
+        regularization_method = self.regularization_method
+        regularization_coeff = self.regularization_coeff
+
+        self.inputs = {
+            'Param': param,
+            'Grad': grad,
+            'Velocity': velocity,
+            'LearningRate': learning_rate
+        }
+
+        self.attrs = {
+            'mu': mu,
+            'use_nesterov': use_nesterov,
+            'regularization_method': regularization_method,
+            'regularization_coeff': regularization_coeff
+        }
+
+        param_decay = regularization_coeff * param
+        grad_new = grad + param_decay
+        grad = grad_new
+
+        velocity_out = mu * velocity + grad
+        if use_nesterov:
+            param_out = param - grad * learning_rate - \
+                        velocity_out * mu * learning_rate
+        else:
+            param_out = param - learning_rate * velocity_out
+
+        self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
+
+    def init_config(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestMomentumOpWithDecayFP16(TestMomentumOpWithDecay):
+    def init_config(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        paddle.enable_static()
+        self.check_output(atol=1e-3)
+
+
+class TestMomentumOpWithDecay2(TestMomentumOpWithDecay):
+    def init_config(self):
+        self.use_nesterov = False
+
+
+class TestSparseMomentumOpWithDecay(unittest.TestCase):
+    def setUp(self):
+        self.use_nesterov = False
+
+    def check_with_place(self, place):
+        self.init_kernel()
+        scope = core.Scope()
+        # create and initialize Grad Variable
+        height = 10
+        rows = [0, 4, 7]
+        row_numel = 12
+        mu = 1.0
+        use_nesterov = self.use_nesterov
+        regularization_method = 'l2_decay'
+        regularization_coeff = 0.9
+
+        # create and initialize Param Variable
+        param = scope.var('Param').get_tensor()
+        param_array = np.full((height, row_numel), 5.0).astype("float32")
+        param.set(param_array, place)
+        param_out = scope.var("ParamOut").get_tensor()
+        param_out_array = np.full((height, row_numel), 0.0).astype("float32")
+        param_out.set(param_out_array, place)
+
+        grad_selected_rows = scope.var('Grad').get_selected_rows()
+        grad_selected_rows.set_height(height)
+        grad_selected_rows.set_rows(rows)
+        grad_np_array = np.ones((len(rows), row_numel)).astype("float32")
+        grad_np_array[0, 0] = 2.0
+        grad_np_array[2, 8] = 4.0
+        grad_tensor = grad_selected_rows.get_tensor()
+        grad_tensor.set(grad_np_array, place)
+
+        velocity = scope.var('Velocity').get_tensor()
+        velocity_np_array = np.ones((height, row_numel)).astype("float32")
+        velocity.set(velocity_np_array, place)
+        velocity_out = scope.var('VelocityOut').get_tensor()
+        velocity_out_np_array = np.full((height, row_numel),
+                                        0.0).astype("float32")
+        velocity_out.set(velocity_out_np_array, place)
+
+        # create and initialize LeraningRate Variable
+        lr = scope.var('LearningRate').get_tensor()
+        lr_array = np.full((1), 2.0).astype("float32")
+        lr.set(lr_array, place)
+
+        # create and run operator
+        op = Operator(
+            "momentum",
+            Param='Param',
+            Grad='Grad',
+            Velocity='Velocity',
+            ParamOut='ParamOut',
+            VelocityOut='VelocityOut',
+            LearningRate='LearningRate',
+            mu=mu,
+            use_nesterov=use_nesterov,
+            regularization_method=regularization_method,
+            regularization_coeff=regularization_coeff)
+        op.run(scope, place)
+
+        # get and compare result
+        param_out_np_array = np.array(param_out)
+        velocity_out_np_array = np.array(velocity_out)
+
+        # TODO(dzh): add a more suitable general numpy interface
+        # for sparse update.
+        _grad_np_array = np.full((height, row_numel), 0.0).astype("float32")
+        for i in range(len(rows)):
+            _grad_np_array[rows[i]] = grad_np_array[i]
+
+        _param = param_array
+
+        _param_decay = regularization_coeff * _param
+        _grad_np_array_new = _grad_np_array + _param_decay
+        _grad_np_array = _grad_np_array_new
+
+        _velocity_out = mu * velocity_np_array + _grad_np_array
+        if use_nesterov:
+            _param_out = _param - (_grad_np_array + _velocity_out * mu
+                                   ) * lr_array
+        else:
+            _param_out = _param - lr_array * _velocity_out
+        self.assertTrue((_velocity_out == velocity_out_np_array).all())
+        self.assertTrue((_param_out == param_out_np_array).all())
+
+    def init_kernel(self):
+        pass
+
+    def test_sparse_momentum(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        for place in places:
+            self.check_with_place(place)
+
+
+class TestSparseMomentumOpWithDecay2(TestSparseMomentumOpWithDecay):
+    def init_kernel(self):
+        self.use_nesterov = True
+
+
+class TestMomentumOpWithDecayAPI(unittest.TestCase):
+    def _test_momentum_dygraph_common(self, regularization):
+        paddle.disable_static()
+        inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+        linear = paddle.nn.Linear(10, 10)
+        inp = paddle.to_tensor(inp)
+        out = linear(inp)
+        loss = paddle.mean(out)
+        # This can be any optimizer supported by dygraph.
+        adam = paddle.fluid.contrib.optimizer.Momentum(
+            learning_rate=0.01,
+            momentum=0.9,
+            parameter_list=linear.parameters(),
+            regularization=regularization)
+        adam.minimize(loss)
+
+    def test_momentum_dygraph_1(self):
+        self._test_momentum_dygraph_common(
+            regularization=paddle.fluid.regularizer.L2Decay(
+                regularization_coeff=0.1))
+
+    def test_momentum_dygraph_2(self):
+        self._test_momentum_dygraph_common(
+            regularization=paddle.fluid.regularizer.L1Decay(
+                regularization_coeff=0.1))
+
+    def test_momentum_static(self):
+        paddle.enable_static()
+        place = fluid.CPUPlace()
+        main = fluid.Program()
+        with fluid.program_guard(main):
+            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = fluid.layers.mean(cost)
+
+            rms_optimizer = paddle.fluid.contrib.optimizer.Momentum(
+                learning_rate=0.1, momentum=0.9)
+            rms_optimizer.minimize(avg_cost)
+
+            fetch_list = [avg_cost]
+            train_reader = paddle.batch(
+                paddle.dataset.uci_housing.train(), batch_size=1)
+            feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            for data in train_reader():
+                exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
 
 if __name__ == "__main__":
