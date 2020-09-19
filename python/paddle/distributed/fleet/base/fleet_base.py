@@ -991,6 +991,7 @@ class Fleet(object):
                 # for more examples, please reference https://github.com/PaddlePaddle/FleetX
 
         """
+        context = {}
         context["user_defined_strategy"] = copy.deepcopy(
             self._user_defined_strategy)
         if paddle.fluid.framework.in_dygraph_mode():
