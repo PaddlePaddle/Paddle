@@ -94,8 +94,10 @@ class TestLookupTableFuseOp(unittest.TestCase):
 
         training_program = fluid.Program()
 
-        scope.var('Beta1Pow').get_tensor().set([0], place)
-        scope.var('Beta2Pow').get_tensor().set([0], place)
+        scope.var('Beta1Pow').get_tensor().set(
+            np.array([0]).astype("float32"), place)
+        scope.var('Beta2Pow').get_tensor().set(
+            np.array([0]).astype("float32"), place)
 
         rows = [0, 1, 2, 3, 4, 5, 6]
         row_numel = 8
