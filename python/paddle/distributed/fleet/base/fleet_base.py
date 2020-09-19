@@ -593,6 +593,7 @@ class Fleet(object):
         if strategy == None:
             strategy = DistributedStrategy()
 
+        self._user_defined_strategy = copy.deepcopy(strategy)
         self._context = {}
         return self
 
@@ -995,9 +996,9 @@ class Fleet(object):
             # imitate target optimizer retrieval
             target_opt = self.user_defined_optimizer
             context["user_defined_strategy"] = copy.deepcopy(
-                self.user_defined_strategy)
+                self._user_defined_strategy)
             context["valid_strategy"] = copy.deepcopy(
-                self.user_defined_strategy)
+                self._user_defined_strategy)
             self._context = context
             return target_opt.minimize(loss)
 
@@ -1022,8 +1023,8 @@ class Fleet(object):
                 self.user_defined_optimizer)
 
         context["user_defined_strategy"] = copy.deepcopy(
-            self.user_defined_strategy)
-        copy_user_defined_strategy = copy.deepcopy(self.user_defined_strategy)
+            self._user_defined_strategy)
+        copy_user_defined_strategy = copy.deepcopy(self._user_defined_strategy)
 
         # trigger the auto-parallel in very strict condition
         # strategy = DistributedStrategy()
