@@ -184,6 +184,7 @@ packages = [
     'paddle.distributed.fleet.meta_optimizers',
     'paddle.distributed.fleet.runtime',
     'paddle.distributed.fleet.dataset',
+    'paddle.distributed.fleet.data_generator',
     'paddle.distributed.fleet.metrics',
     'paddle.distributed.fleet.proto',
     'paddle.distributed.fleet.utils',
