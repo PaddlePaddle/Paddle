@@ -26,9 +26,9 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T, typename Index, typename Helper>
-__global__ void SortedSegmentMeanCustomKernel(const Index* segment_ids,
-                                              const T* input, T* output,
-                                              T* summed_ids, Helper h) {
+__global__ void SegmentMeanCustomKernel(const Index* segment_ids,
+                                        const T* input, T* output,
+                                        T* summed_ids, Helper h) {
   CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
     Index segment_offset, dim_index_base, actual_height;
     Index inner_dim_size = h.inner_dim_size;
@@ -80,8 +80,8 @@ __global__ void SortedSegmentMeanCustomKernel(const Index* segment_ids,
 }
 
 template <typename T, typename Index, typename Helper, typename Pool>
-__global__ void SortedSegmentOpsKernel(const Index* segment_ids, const T* input,
-                                       T* output, Helper h, Pool pool) {
+__global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
+                                 T* output, Helper h, Pool pool) {
   CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
     Index segment_offset, dim_index_base, actual_height;
     Index inner_dim_size = h.inner_dim_size;
@@ -131,10 +131,9 @@ __global__ void SortedSegmentOpsKernel(const Index* segment_ids, const T* input,
 }
 
 template <typename T, typename Index, typename Helper>
-__global__ void SortedSegmentIndexGradKernel(const Index* segment_ids,
-                                             const T* input, const T* output,
-                                             const T* out_grad, T* in_grad,
-                                             Helper h) {
+__global__ void SegmentIndexGradKernel(const Index* segment_ids, const T* input,
+                                       const T* output, const T* out_grad,
+                                       T* in_grad, Helper h) {
   CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
     Index segment_offset, dim_index_base, actual_height;
     h.calculate(stripe_index, segment_offset, dim_index_base, actual_height);
@@ -183,7 +182,7 @@ class SumPool {
 };
 
 template <class T>
-class DataArrangeHelper {
+class ArrangeHelper {
  public:
   const T input_total_size;
   const T input_length_size;
@@ -192,7 +191,7 @@ class DataArrangeHelper {
   T total_stripe_count;
   const T DimTileSize = 8;
 
-  DataArrangeHelper(T a, T b, T c)
+  ArrangeHelper(T a, T b, T c)
       : input_total_size(a), input_length_size(b), output_length_size(c) {
     T input_outer_dim_num_stripe =
         (input_length_size + DimTileSize - 1) / DimTileSize;
@@ -214,37 +213,7 @@ void SegmentPoolCUDAFunctor(const platform::CUDADeviceContext& ctx,
                             const framework::Tensor& segment_ids,
                             framework::Tensor* output,
                             framework::Tensor* summed_ids,
-                            const std::string pooltype = "SUM") {
-  auto h = DataArrangeHelper<Index>(input.numel(), segment_ids.dims()[0],
-                                    output->dims()[0]);
-  auto config = platform::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
-  if (pooltype == "MEAN") {
-    SortedSegmentMeanCustomKernel<T, Index, DataArrangeHelper<Index>><<<
-        config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
-        summed_ids->data<T>(), h);
-  } else if (pooltype == "SUM") {
-    SumPool<T> pool;
-    SortedSegmentOpsKernel<T, Index, DataArrangeHelper<Index>, SumPool<T>><<<
-        config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        segment_ids.data<Index>(), input.data<T>(), output->data<T>(), h, pool);
-  } else if (pooltype == "MAX") {
-    MaxPool<T> pool;
-    SortedSegmentOpsKernel<T, Index, DataArrangeHelper<Index>, MaxPool<T>><<<
-        config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        segment_ids.data<Index>(), input.data<T>(), output->data<T>(), h, pool);
-  } else if (pooltype == "MIN") {
-    MinPool<T> pool;
-    SortedSegmentOpsKernel<T, Index, DataArrangeHelper<Index>, MinPool<T>><<<
-        config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
-        segment_ids.data<Index>(), input.data<T>(), output->data<T>(), h, pool);
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "
-        "available, but got %s.",
-        pooltype));
-  }
-}
+                            const std::string pooltype = "SUM") {}
 
 template <typename T, typename Index>
 void SegmentPoolCUDAGradFunctor(const platform::CUDADeviceContext& ctx,
@@ -254,11 +223,11 @@ void SegmentPoolCUDAGradFunctor(const platform::CUDADeviceContext& ctx,
                                 const framework::Tensor& out_grad,
                                 framework::Tensor* in_grad,
                                 const std::string pooltype = "SUM") {
-  auto h = DataArrangeHelper<Index>(input.numel(), segment_ids.dims()[0],
-                                    output.dims()[0]);
+  auto h = ArrangeHelper<Index>(input.numel(), segment_ids.dims()[0],
+                                output.dims()[0]);
   auto config = platform::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
   if (pooltype == "MAX" || pooltype == "MIN") {
-    SortedSegmentIndexGradKernel<T, Index, DataArrangeHelper<Index>><<<
+    SegmentIndexGradKernel<T, Index, ArrangeHelper<Index>><<<
         config.block_per_grid.x, config.thread_per_block.x, 0, ctx.stream()>>>(
         segment_ids.data<Index>(), input.data<T>(), output.data<T>(),
         out_grad.data<T>(), in_grad->data<T>(), h);
@@ -293,55 +262,94 @@ class SegmentPoolFunctor<platform::CUDADeviceContext, T, IndexT> {
                   const framework::Tensor& segments, framework::Tensor* output,
                   framework::Tensor* summed_ids = nullptr,
                   const std::string pooltype = "SUM") {
-    SegmentPoolCUDAFunctor<T, IndexT>(context, input, segments, output,
-                                      summed_ids, pooltype);
-  }
-};
-
-template <typename T, typename IndexT>
-class SegmentPoolGradFunctor<platform::CUDADeviceContext, T, IndexT> {
- public:
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& output,
-                  const framework::Tensor& out_grad,
-                  const framework::Tensor& segments, framework::Tensor* in_grad,
-                  const framework::Tensor* summed_ids = nullptr,
-                  const std::string pooltype = "SUM") {
-    if (pooltype == "MAX" || pooltype == "MIN") {
-      SegmentPoolCUDAGradFunctor<T, IndexT>(context, input, segments, output,
-                                            out_grad, in_grad, pooltype);
-    } else if (pooltype == "MEAN") {
-      framework::Tensor mean_grad;
-      mean_grad.mutable_data<T>(input.dims(), context.GetPlace());
-      framework::TensorCopy(out_grad, context.GetPlace(), context, &mean_grad);
-      int len = output.dims()[0];
-      int dim = output.numel() / len;
-      auto config = platform::GetGpuLaunchConfig1D(context, len);
-      SimpleDiv<T><<<config.block_per_grid.x, config.thread_per_block.x, 0,
-                     context.stream()>>>(mean_grad.data<T>(),
-                                         summed_ids->data<T>(), len, dim);
-      GPUGather<T, IndexT>(context, mean_grad, segments, in_grad);
+    auto h = ArrangeHelper<Index>(input.numel(), segment_ids.dims()[0],
+                                  output->dims()[0]);
+    auto config = platform::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
+    if (pooltype == "MEAN") {
+      SegmentMeanCustomKernel<
+          T, Index,
+          ArrangeHelper<Index>><<<config.block_per_grid.x,
+                                  config.thread_per_block.x, 0, ctx.stream()>>>(
+          segment_ids.data<Index>(), input.data<T>(), output->data<T>(),
+          summed_ids->data<T>(), h);
     } else if (pooltype == "SUM") {
-      GPUGather<T, IndexT>(context, out_grad, segments, in_grad);
+      SumPool<T> pool;
+      SegmentOpsKernel<
+          T, Index, ArrangeHelper<Index>,
+          SumPool<T>><<<config.block_per_grid.x, config.thread_per_block.x, 0,
+                        ctx.stream()>>>(segment_ids.data<Index>(),
+                                        input.data<T>(), output->data<T>(), h,
+                                        pool);
+    } else if (pooltype == "MAX") {
+      MaxPool<T> pool;
+      SegmentOpsKernel<
+          T, Index, ArrangeHelper<Index>,
+          MaxPool<T>><<<config.block_per_grid.x, config.thread_per_block.x, 0,
+                        ctx.stream()>>>(segment_ids.data<Index>(),
+                                        input.data<T>(), output->data<T>(), h,
+                                        pool);
+    } else if (pooltype == "MIN") {
+      MinPool<T> pool;
+      SegmentOpsKernel<
+          T, Index, ArrangeHelper<Index>,
+          MinPool<T>><<<config.block_per_grid.x, config.thread_per_block.x, 0,
+                        ctx.stream()>>>(segment_ids.data<Index>(),
+                                        input.data<T>(), output->data<T>(), h,
+                                        pool);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "
           "available, but got %s.",
           pooltype));
     }
-  }
-};
+  };
 
-using CUDA = paddle::platform::CUDADeviceContext;
-template class SegmentPoolFunctor<CUDA, float, int>;
-template class SegmentPoolFunctor<CUDA, float, int64_t>;
-template class SegmentPoolFunctor<CUDA, double, int>;
-template class SegmentPoolFunctor<CUDA, double, int64_t>;
-template class SegmentPoolGradFunctor<CUDA, float, int>;
-template class SegmentPoolGradFunctor<CUDA, float, int64_t>;
-template class SegmentPoolGradFunctor<CUDA, double, int>;
-template class SegmentPoolGradFunctor<CUDA, double, int64_t>;
+  template <typename T, typename IndexT>
+  class SegmentPoolGradFunctor<platform::CUDADeviceContext, T, IndexT> {
+   public:
+    void operator()(const platform::CUDADeviceContext& context,
+                    const framework::Tensor& input,
+                    const framework::Tensor& output,
+                    const framework::Tensor& out_grad,
+                    const framework::Tensor& segments,
+                    framework::Tensor* in_grad,
+                    const framework::Tensor* summed_ids = nullptr,
+                    const std::string pooltype = "SUM") {
+      if (pooltype == "MAX" || pooltype == "MIN") {
+        SegmentPoolCUDAGradFunctor<T, IndexT>(context, input, segments, output,
+                                              out_grad, in_grad, pooltype);
+      } else if (pooltype == "MEAN") {
+        framework::Tensor mean_grad;
+        mean_grad.mutable_data<T>(input.dims(), context.GetPlace());
+        framework::TensorCopy(out_grad, context.GetPlace(), context,
+                              &mean_grad);
+        int len = output.dims()[0];
+        int dim = output.numel() / len;
+        auto config = platform::GetGpuLaunchConfig1D(context, len);
+        SimpleDiv<T><<<config.block_per_grid.x, config.thread_per_block.x, 0,
+                       context.stream()>>>(mean_grad.data<T>(),
+                                           summed_ids->data<T>(), len, dim);
+        GPUGather<T, IndexT>(context, mean_grad, segments, in_grad);
+      } else if (pooltype == "SUM") {
+        GPUGather<T, IndexT>(context, out_grad, segments, in_grad);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "
+            "available, but got %s.",
+            pooltype));
+      }
+    }
+  };
+
+  using CUDA = paddle::platform::CUDADeviceContext;
+  template class SegmentPoolFunctor<CUDA, float, int>;
+  template class SegmentPoolFunctor<CUDA, float, int64_t>;
+  template class SegmentPoolFunctor<CUDA, double, int>;
+  template class SegmentPoolFunctor<CUDA, double, int64_t>;
+  template class SegmentPoolGradFunctor<CUDA, float, int>;
+  template class SegmentPoolGradFunctor<CUDA, float, int64_t>;
+  template class SegmentPoolGradFunctor<CUDA, double, int>;
+  template class SegmentPoolGradFunctor<CUDA, double, int64_t>;
 
 }  // namespace operators
 }  // namespace paddle
