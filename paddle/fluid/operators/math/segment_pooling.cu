@@ -25,56 +25,53 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, typename Index, int OuterDimTileSize>
-__global__ void SortedSegmentSumCustomKernel(const Index input_outer_dim_size,
+template <typename T, typename Index, int DimTileSize>
+__global__ void SortedSegmentSumCustomKernel(const Index input_length_size,
                                              const Index inner_dim_size,
-                                             const Index output_outer_dim_size,
+                                             const Index output_length_size,
                                              const Index* segment_ids,
                                              const T* input, T* output,
                                              const Index total_stripe_count) {
   CUDA_KERNEL_LOOP(stripe_index, total_stripe_count) {
     const Index segment_offset = stripe_index % inner_dim_size;
-    const Index input_outer_dim_index_base =
-        stripe_index / inner_dim_size * Index(OuterDimTileSize);
+    const Index dim_index_base =
+        stripe_index / inner_dim_size * Index(DimTileSize);
 
     T sum = T(0);
-    Index first_segment_id = segment_ids[input_outer_dim_index_base];
-    Index last_output_segment_id = output_outer_dim_size;
+    Index first_segment_id = segment_ids[dim_index_base];
+    Index last_segment_id = output_length_size;
 
-    const Index actual_stripe_height =
-        min(Index(OuterDimTileSize),
-            input_outer_dim_size - input_outer_dim_index_base);
+    const Index actual_height =
+        min(Index(DimTileSize), input_length_size - dim_index_base);
 
-    for (Index j = 0; j < actual_stripe_height; j++) {
-      Index current_output_segment_id =
-          segment_ids[input_outer_dim_index_base + j];
+    for (Index j = 0; j < actual_height; j++) {
+      Index current_segment_id = segment_ids[dim_index_base + j];
       // Decide whether to write result to global memory.
       // Result is only written to global memory if we move
       // to another segment. Otherwise we can keep accumulating
       // locally.
-      if (current_output_segment_id > last_output_segment_id) {
+      if (current_segment_id > last_segment_id) {
         const Index output_index =
-            last_output_segment_id * inner_dim_size + segment_offset;
+            last_segment_id * inner_dim_size + segment_offset;
         // decide whether to write result to global memory using atomic
         // operations
-        if (last_output_segment_id == first_segment_id) {
+        if (last_segment_id == first_segment_id) {
           platform::CudaAtomicAdd(output + output_index, sum);
         } else {
           *(output + output_index) = sum;
         }
         sum = T(0);
       }
-      sum += input[(input_outer_dim_index_base + j) * inner_dim_size +
-                   segment_offset];
-      // sum += __ldg(input + (input_outer_dim_index_base + j) * inner_dim_size
+      sum += input[(dim_index_base + j) * inner_dim_size + segment_offset];
+      // sum += __ldg(input + (dim_index_base + j) * inner_dim_size
       // +segment_offset);
-      last_output_segment_id = current_output_segment_id;
+      last_segment_id = current_segment_id;
     }
     // For the last result in a strip, always write using atomic operations
     // due to possible race conditions with threads computing
     // the following strip.
     const Index output_index =
-        last_output_segment_id * inner_dim_size + segment_offset;
+        last_segment_id * inner_dim_size + segment_offset;
     platform::CudaAtomicAdd(output + output_index, sum);
   }
 }
@@ -84,57 +81,52 @@ __global__ void SortedSegmentMeanCustomKernel(const Index* segment_ids,
                                               const T* input, T* output,
                                               T* summed_ids, Helper h) {
   CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
-    Index segment_offset, input_outer_dim_index_base, actual_stripe_height;
+    Index segment_offset, dim_index_base, actual_height;
     Index inner_dim_size = h.inner_dim_size;
-    h.calculate(stripe_index, segment_offset, input_outer_dim_index_base,
-                actual_stripe_height);
+    h.calculate(stripe_index, segment_offset, dim_index_base, actual_height);
 
-    Index first_segment_id = segment_ids[input_outer_dim_index_base];
-    Index last_output_segment_id = h.output_outer_dim_size;
+    Index first_segment_id = segment_ids[dim_index_base];
+    Index last_segment_id = h.output_length_size;
 
     if (segment_offset == 0) {
       T sum = T(0);
-      for (Index j = 0; j < actual_stripe_height; j++) {
-        Index current_output_segment_id =
-            segment_ids[input_outer_dim_index_base + j];
-        if (current_output_segment_id > last_output_segment_id) {
-          if (last_output_segment_id == first_segment_id) {
-            platform::CudaAtomicAdd(summed_ids + last_output_segment_id, sum);
+      for (Index j = 0; j < actual_height; j++) {
+        Index current_segment_id = segment_ids[dim_index_base + j];
+        if (current_segment_id > last_segment_id) {
+          if (last_segment_id == first_segment_id) {
+            platform::CudaAtomicAdd(summed_ids + last_segment_id, sum);
           } else {
-            *(summed_ids + last_output_segment_id) = sum;
+            *(summed_ids + last_segment_id) = sum;
           }
           sum = T(0);
         }
         sum += 1;
-        last_output_segment_id = current_output_segment_id;
+        last_segment_id = current_segment_id;
       }
-      platform::CudaAtomicAdd(summed_ids + last_output_segment_id, sum);
+      platform::CudaAtomicAdd(summed_ids + last_segment_id, sum);
     }
     __syncthreads();
     T sum = T(0);
-    for (Index j = 0; j < actual_stripe_height; j++) {
-      Index current_output_segment_id =
-          segment_ids[input_outer_dim_index_base + j];
-      if (current_output_segment_id > last_output_segment_id) {
+    for (Index j = 0; j < actual_height; j++) {
+      Index current_segment_id = segment_ids[dim_index_base + j];
+      if (current_segment_id > last_segment_id) {
         const Index output_index =
-            last_output_segment_id * inner_dim_size + segment_offset;
-        if (last_output_segment_id == first_segment_id) {
+            last_segment_id * inner_dim_size + segment_offset;
+        if (last_segment_id == first_segment_id) {
           platform::CudaAtomicAdd(output + output_index,
-                                  sum / *(summed_ids + last_output_segment_id));
+                                  sum / *(summed_ids + last_segment_id));
         } else {
-          *(output + output_index) =
-              sum / *(summed_ids + last_output_segment_id);
+          *(output + output_index) = sum / *(summed_ids + last_segment_id);
         }
         sum = T(0);
       }
-      sum += input[(input_outer_dim_index_base + j) * inner_dim_size +
-                   segment_offset];
-      last_output_segment_id = current_output_segment_id;
+      sum += input[(dim_index_base + j) * inner_dim_size + segment_offset];
+      last_segment_id = current_segment_id;
     }
     const Index output_index =
-        last_output_segment_id * inner_dim_size + segment_offset;
+        last_segment_id * inner_dim_size + segment_offset;
     platform::CudaAtomicAdd(output + output_index,
-                            sum / *(summed_ids + last_output_segment_id));
+                            sum / *(summed_ids + last_segment_id));
   }
 }
 
@@ -142,52 +134,49 @@ template <typename T, typename Index, typename Helper, typename Pool>
 __global__ void SortedSegmentOpsKernel(const Index* segment_ids, const T* input,
                                        T* output, Helper h, Pool pool) {
   CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
-    Index segment_offset, input_outer_dim_index_base, actual_stripe_height;
+    Index segment_offset, dim_index_base, actual_height;
     Index inner_dim_size = h.inner_dim_size;
-    h.calculate(stripe_index, segment_offset, input_outer_dim_index_base,
-                actual_stripe_height);
+    h.calculate(stripe_index, segment_offset, dim_index_base, actual_height);
 
     T minmax = pool.initial();
-    Index first_segment_id = segment_ids[input_outer_dim_index_base];
-    Index last_output_segment_id = h.output_outer_dim_size;
+    Index first_segment_id = segment_ids[dim_index_base];
+    Index last_segment_id = h.output_length_size;
     // -1 is for the start value when interval_id = 0
     Index previous_segment_id = -1;
-    if (input_outer_dim_index_base > 0) {
-      previous_segment_id = segment_ids[input_outer_dim_index_base - 1];
+    if (dim_index_base > 0) {
+      previous_segment_id = segment_ids[dim_index_base - 1];
     }
     for (Index interval_id = previous_segment_id + 1;
          interval_id < first_segment_id; ++interval_id) {
       *(output + interval_id * inner_dim_size + segment_offset) = 0;
     }
 
-    for (Index j = 0; j < actual_stripe_height; j++) {
-      Index current_output_segment_id =
-          segment_ids[input_outer_dim_index_base + j];
+    for (Index j = 0; j < actual_height; j++) {
+      Index current_segment_id = segment_ids[dim_index_base + j];
 
-      if (current_output_segment_id > last_output_segment_id) {
+      if (current_segment_id > last_segment_id) {
         const Index output_index =
-            last_output_segment_id * inner_dim_size + segment_offset;
-        if (last_output_segment_id == first_segment_id) {
+            last_segment_id * inner_dim_size + segment_offset;
+        if (last_segment_id == first_segment_id) {
           pool.atomic(output + output_index, minmax);
         } else {
           *(output + output_index) = minmax;
         }
         // reset the interval value which do not have corresponding ids.
         for (Index interval_index = 1;
-             interval_index <
-             current_output_segment_id - last_output_segment_id;
+             interval_index < current_segment_id - last_segment_id;
              ++interval_index) {
           *(output + output_index + interval_index * inner_dim_size) = 0;
         }
         minmax = pool.initial();
       }
-      pool.compute(input[(input_outer_dim_index_base + j) * inner_dim_size +
-                         segment_offset],
-                   &minmax);
-      last_output_segment_id = current_output_segment_id;
+      pool.compute(
+          input[(dim_index_base + j) * inner_dim_size + segment_offset],
+          &minmax);
+      last_segment_id = current_segment_id;
     }
     const Index output_index =
-        last_output_segment_id * inner_dim_size + segment_offset;
+        last_segment_id * inner_dim_size + segment_offset;
     pool.atomic(output + output_index, minmax);
   }
 }
@@ -198,17 +187,15 @@ __global__ void SortedSegmentIndexGradKernel(const Index* segment_ids,
                                              const T* out_grad, T* in_grad,
                                              Helper h) {
   CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
-    Index segment_offset, input_outer_dim_index_base, actual_stripe_height;
-    h.calculate(stripe_index, segment_offset, input_outer_dim_index_base,
-                actual_stripe_height);
+    Index segment_offset, dim_index_base, actual_height;
+    h.calculate(stripe_index, segment_offset, dim_index_base, actual_height);
 
-    for (Index j = 0; j < actual_stripe_height; j++) {
-      Index current_output_segment_id =
-          segment_ids[input_outer_dim_index_base + j];
+    for (Index j = 0; j < actual_height; j++) {
+      Index current_segment_id = segment_ids[dim_index_base + j];
       Index input_index =
-          (input_outer_dim_index_base + j) * h.inner_dim_size + segment_offset;
+          (dim_index_base + j) * h.inner_dim_size + segment_offset;
       Index output_index =
-          current_output_segment_id * h.inner_dim_size + segment_offset;
+          current_segment_id * h.inner_dim_size + segment_offset;
       if (input[input_index] == output[output_index]) {
         in_grad[input_index] = out_grad[output_index];
       }
@@ -250,28 +237,25 @@ template <class T>
 class DataArrangeHelper {
  public:
   const T input_total_size;
-  const T input_outer_dim_size;
-  const T output_outer_dim_size;
+  const T input_length_size;
+  const T output_length_size;
   T inner_dim_size;
   T total_stripe_count;
-  const T OuterDimTileSize = 8;
+  const T DimTileSize = 8;
 
   DataArrangeHelper(T a, T b, T c)
-      : input_total_size(a), input_outer_dim_size(b), output_outer_dim_size(c) {
+      : input_total_size(a), input_length_size(b), output_length_size(c) {
     T input_outer_dim_num_stripe =
-        (input_outer_dim_size + OuterDimTileSize - 1) / OuterDimTileSize;
-    inner_dim_size = input_total_size / input_outer_dim_size;
+        (input_length_size + DimTileSize - 1) / DimTileSize;
+    inner_dim_size = input_total_size / input_length_size;
     total_stripe_count = inner_dim_size * input_outer_dim_num_stripe;
   }
 
   DEVICE inline void calculate(T stripe_index, T& segment_offset,
-                               T& input_outer_dim_index_base,
-                               T& actual_stripe_height) {
+                               T& dim_index_base, T& actual_height) {
     segment_offset = stripe_index % inner_dim_size;
-    input_outer_dim_index_base =
-        stripe_index / inner_dim_size * OuterDimTileSize;
-    actual_stripe_height = min(
-        OuterDimTileSize, input_outer_dim_size - input_outer_dim_index_base);
+    dim_index_base = stripe_index / inner_dim_size * DimTileSize;
+    actual_height = min(DimTileSize, input_length_size - dim_index_base);
   }
 };
 
@@ -321,7 +305,6 @@ void SegmentPoolCUDAGradFunctor(const platform::CUDADeviceContext& ctx,
                                 const framework::Tensor& out_grad,
                                 framework::Tensor* in_grad,
                                 const std::string pooltype = "SUM") {
-  const Index OuterDimTileSize = 8;
   auto h = DataArrangeHelper<Index>(input.numel(), segment_ids.dims()[0],
                                     output.dims()[0]);
   auto config = platform::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
