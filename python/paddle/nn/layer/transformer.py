@@ -25,12 +25,13 @@ __all__ = [
 import copy
 import collections
 
-from ...fluid import layers
-from ...fluid.param_attr import ParamAttr
-from ...fluid.dygraph import Layer, Linear, Dropout, LayerNorm, LayerList
+from .common import Linear, Dropout
+from .norm import LayerNorm
 from .. import functional as F
-from ...fluid.layers import utils
-from ...fluid.layers.utils import map_structure
+from ... import tensor
+from ...fluid import layers
+from ...fluid.dygraph import Layer, LayerList
+from ...fluid.param_attr import ParamAttr
 
 
 def _convert_param_attr_to_list(param_attr, n):
@@ -52,7 +53,22 @@ def _convert_param_attr_to_list(param_attr, n):
     if isinstance(param_attr, (list, tuple)):
         assert len(param_attr) == n, (
             "length of param_attr should be %d when it is a list/tuple" % n)
-        param_attrs = [ParamAttr._to_attr(attr) for attr in param_attr]
+        param_attrs = []
+        for attr in param_attr:
+            if isinstance(attr, bool):
+                if attr:
+                    param_attrs.append(ParamAttr._to_attr(None))
+                else:
+                    param_attrs.append(False)
+            else:
+                param_attrs.append(ParamAttr._to_attr(attr))
+        # param_attrs = [ParamAttr._to_attr(attr) for attr in param_attr]
+    elif isinstance(param_attr, bool):
+        param_attrs = []
+        if param_attr:
+            param_attrs = [ParamAttr._to_attr(None) for i in range(n)]
+        else:
+            param_attrs = [False] * n
     else:
         param_attrs = []
         attr = ParamAttr._to_attr(param_attr)
@@ -103,7 +119,7 @@ class MultiHeadAttention(Layer):
             # self attention mask: [batch_size, num_heads, query_len, query_len]
             attn_mask = paddle.rand((2, 2, 4, 4))
             multi_head_attn = paddle.MultiHeadAttention(128, 2)
-            output = multi_head_attn(query, attn_mask=attn_mask)  # [2, 4, 128]
+            output = multi_head_attn(query, None, None, attn_mask=attn_mask)  # [2, 4, 128]
     """
 
     Cache = collections.namedtuple("Cache", ["k", "v"])
@@ -176,8 +192,8 @@ class MultiHeadAttention(Layer):
                 and their data types are same as inputs.
         """
         q = self.q_proj(query)
-        q = layers.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
-        q = layers.transpose(x=q, perm=[0, 2, 1, 3])
+        q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
+        q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
 
         if isinstance(cache, self.StaticCache):
             # for encoder-decoder attention in inference and has cached
@@ -187,8 +203,8 @@ class MultiHeadAttention(Layer):
 
         if isinstance(cache, self.Cache):
             # for decoder self-attention in inference
-            k = layers.concat([cache.k, k], axis=2)
-            v = layers.concat([cache.v, v], axis=2)
+            k = tensor.concat([cache.k, k], axis=2)
+            v = tensor.concat([cache.v, v], axis=2)
             cache = self.Cache(k, v)
 
         return (q, k, v) if cache is None else (q, k, v, cache)
@@ -219,10 +235,10 @@ class MultiHeadAttention(Layer):
         """
         k = self.k_proj(key)
         v = self.v_proj(value)
-        k = layers.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
-        k = layers.transpose(x=k, perm=[0, 2, 1, 3])
-        v = layers.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
-        v = layers.transpose(x=v, perm=[0, 2, 1, 3])
+        k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
+        k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
+        v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
+        v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
         return k, v
 
     def gen_cache(self, key, value=None, type=Cache):
@@ -352,24 +368,25 @@ class MultiHeadAttention(Layer):
             q, k, v, cache = self._prepare_qkv(query, key, value, cache)
 
         # scale dot product attention
+        # TODO(guosheng): use tensor.matmul, however it doesn't support `alpha`
         product = layers.matmul(
             x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
         if attn_mask is not None:
             # TODO(guosheng): support bool mask
             product = product + attn_mask
-        weights = layers.softmax(product)
+        weights = F.softmax(product)
         if self.dropout:
-            weights = layers.dropout(
+            weights = F.dropout(
                 weights,
-                dropout_prob=self.dropout,
-                dropout_implementation="upscale_in_train",
-                is_test=False)
+                self.dropout,
+                training=self.training,
+                mode="upscale_in_train")
 
-        out = layers.matmul(weights, v)
+        out = tensor.matmul(weights, v)
 
         # combine heads
-        out = layers.transpose(out, perm=[0, 2, 1, 3])
-        out = layers.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+        out = tensor.transpose(out, perm=[0, 2, 1, 3])
+        out = tensor.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
 
         # project to output
         out = self.out_proj(out)
@@ -415,7 +432,7 @@ class TransformerEncoderLayer(Layer):
             Otherwise, MHA and FFN both use it as `weight_attr` to create parameters.
             Default: None, which means the default weight parameter property is used.
             See usage for details in :code:`ParamAttr` . 
-        bias_attr (ParamAttr|tuple, optional): To specify the bias parameter property.
+        bias_attr (ParamAttr|tuple|bool, optional): To specify the bias parameter property.
             If it is a tuple, `bias_attr[0]` would be used as `bias_attr` for
             MHA, and `bias_attr[1]` would be used as `bias_attr` for linear in FFN.
             Otherwise, MHA and FFN both use it as `bias_attr` to create parameters.
@@ -429,7 +446,7 @@ class TransformerEncoderLayer(Layer):
         .. code-block:: python
 
             import paddle
-            from paddle import TransformerEncoderLayer
+            from paddle.nn import TransformerEncoderLayer
 
             # encoder input: [batch_size, src_len, d_model]
             enc_input = paddle.rand((2, 4, 128))
@@ -470,17 +487,14 @@ class TransformerEncoderLayer(Layer):
             bias_attr=bias_attrs[0])
         self.linear1 = Linear(
             d_model, dim_feedforward, weight_attrs[1], bias_attr=bias_attrs[1])
-        self.dropout = Dropout(
-            act_dropout, dropout_implementation="upscale_in_train")
+        self.dropout = Dropout(act_dropout, mode="upscale_in_train")
         self.linear2 = Linear(
             dim_feedforward, d_model, weight_attrs[1], bias_attr=bias_attrs[1])
         self.norm1 = LayerNorm(d_model)
         self.norm2 = LayerNorm(d_model)
-        self.dropout1 = Dropout(
-            dropout, dropout_implementation="upscale_in_train")
-        self.dropout2 = Dropout(
-            dropout, dropout_implementation="upscale_in_train")
-        self.activation = getattr(layers, activation)
+        self.dropout1 = Dropout(dropout, mode="upscale_in_train")
+        self.dropout2 = Dropout(dropout, mode="upscale_in_train")
+        self.activation = getattr(F, activation)
 
     def forward(self, src, src_mask=None):
         """
@@ -539,7 +553,7 @@ class TransformerEncoder(Layer):
         .. code-block:: python
 
             import paddle
-            from paddle import TransformerEncoderLayer, TransformerEncoder
+            from paddle.nn import TransformerEncoderLayer, TransformerEncoder
 
             # encoder input: [batch_size, src_len, d_model]
             enc_input = paddle.rand((2, 4, 128))
@@ -643,7 +657,7 @@ class TransformerDecoderLayer(Layer):
         .. code-block:: python
 
             import paddle
-            from paddle import TransformerDecoderLayer
+            from paddle.nn import TransformerDecoderLayer
 
             # decoder input: [batch_size, tgt_len, d_model]
             dec_input = paddle.rand((2, 4, 128))
@@ -697,20 +711,16 @@ class TransformerDecoderLayer(Layer):
             bias_attr=bias_attrs[1])
         self.linear1 = Linear(
             d_model, dim_feedforward, weight_attrs[2], bias_attr=bias_attrs[2])
-        self.dropout = Dropout(
-            act_dropout, dropout_implementation="upscale_in_train")
+        self.dropout = Dropout(act_dropout, mode="upscale_in_train")
         self.linear2 = Linear(
             dim_feedforward, d_model, weight_attrs[2], bias_attr=bias_attrs[2])
         self.norm1 = LayerNorm(d_model)
         self.norm2 = LayerNorm(d_model)
         self.norm3 = LayerNorm(d_model)
-        self.dropout1 = Dropout(
-            dropout, dropout_implementation="upscale_in_train")
-        self.dropout2 = Dropout(
-            dropout, dropout_implementation="upscale_in_train")
-        self.dropout3 = Dropout(
-            dropout, dropout_implementation="upscale_in_train")
-        self.activation = getattr(layers, activation)
+        self.dropout1 = Dropout(dropout, mode="upscale_in_train")
+        self.dropout2 = Dropout(dropout, mode="upscale_in_train")
+        self.dropout3 = Dropout(dropout, mode="upscale_in_train")
+        self.activation = getattr(F, activation)
 
     def forward(self, tgt, memory, tgt_mask=None, memory_mask=None, cache=None):
         """
@@ -834,7 +844,7 @@ class TransformerDecoder(Layer):
         .. code-block:: python
 
             import paddle
-            from paddle import TransformerDecoderLayer, TransformerDecoder
+            from paddle.nn import TransformerDecoderLayer, TransformerDecoder
 
             # decoder input: [batch_size, tgt_len, d_model]
             dec_input = paddle.rand((2, 4, 128))
@@ -991,22 +1001,31 @@ class Transformer(Layer):
             Otherwise, no pre-process and post-precess includes dropout, residual
             connection, layer normalization. Default False
         weight_attr(ParamAttr|tuple, optional): To specify the weight parameter property.
-            If it is a tuple, `weight_attr[0]` would be used as `weight_attr` for
-            self attention, `weight_attr[1]` would be used as `weight_attr` for
-            cross attention, and `weight_attr[2]` would be used as `weight_attr`
-            for linear in FFN. Otherwise, the three sub-layers all uses it as
-            `weight_attr` to create parameters. Default: None, which means the
-            default weight parameter property is used. See usage for details
+            If it is a tuple, the length of `weight_attr` could be 1, 2 or 3. If it is 3, 
+            `weight_attr[0]` would be used as `weight_attr` for self attention, `weight_attr[1]` 
+            would be used as `weight_attr` for cross attention of `TransformerDecoder`, 
+            and `weight_attr[2]` would be used as `weight_attr` for linear in FFN. 
+            If it is 2, `weight_attr[0]` would be used as `weight_attr` both for self attention 
+            and cross attntion and `weight_attr[1]` would be used as `weight_attr` for 
+            linear in FFN. If it is 1, `weight_attr[0]` would be used as `weight_attr` 
+            for self attention, cross attention and linear in FFN. Otherwise, 
+            the three sub-layers all uses it as `weight_attr` to create parameters. 
+            Default: None, which means the default weight parameter property is used. 
+            See usage for details
             in :code:`ParamAttr` . 
         bias_attr (ParamAttr|tuple, optional): To specify the bias parameter property.
-            If it is a tuple, `bias_attr[0]` would be used as `bias_attr` for
-            self attention, `bias_attr[1]` would be used as `bias_attr` for
-            cross attention, and `bias_attr[2]` would be used as `bias_attr`
-            for linear in FFN. Otherwise, the three sub-layers all uses it as
-            `bias_attr` to create parameters. The `False` value means the
-            corresponding layer would not have trainable bias parameter. See
-            usage for details in :code:`ParamAttr` . Default: None,which means
-            the default bias parameter property is used.
+            If it is a tuple, the length of `bias_attr` could be 1, 2 or 3. If it is 3, 
+            `bias_attr[0]` would be used as `bias_attr` for self attention, `bias_attr[1]` 
+            would be used as `bias_attr` for cross attention of `TransformerDecoder`, 
+            and `bias_attr[2]` would be used as `bias_attr` for linear in FFN. 
+            If it is 2, `bias_attr[0]` would be used as `bias_attr` both for self attention 
+            and cross attntion and `bias_attr[1]` would be used as `bias_attr` for 
+            linear in FFN. If it is 1, `bias_attr[0]` would be used as `bias_attr` 
+            for self attention, cross attention and linear in FFN. Otherwise, 
+            the three sub-layers all uses it as `bias_attr` to create parameters. 
+            The `False` value means the corresponding layer would not have trainable 
+            bias parameter. See usage for details in :code:`ParamAttr` . 
+            Default: None,which means the default bias parameter property is used.
         custom_encoder (Layer): If custom encoder is provided, use it as the encoder.
             Default None
         custom_decoder (Layer): If custom decoder is provided, use it as the decoder.
@@ -1017,7 +1036,7 @@ class Transformer(Layer):
         .. code-block:: python
 
             import paddle
-            from paddle import Transformer
+            from paddle.nn import Transformer
 
             # src: [batch_size, tgt_len, d_model]
             enc_input = paddle.rand((2, 4, 128))
@@ -1054,13 +1073,51 @@ class Transformer(Layer):
                  custom_decoder=None):
         super(Transformer, self).__init__()
 
+        if isinstance(bias_attr, (list, tuple)):
+            if len(bias_attr) == 1:
+                encoder_bias_attr = [bias_attr[0]] * 2
+                decoder_bias_attr = [bias_attr[0]] * 3
+            elif len(bias_attr) == 2:
+                encoder_bias_attr = bias_attr
+                decoder_bias_attr = [bias_attr[0], bias_attr[0], bias_attr[-1]]
+            elif len(bias_attr) == 3:
+                encoder_bias_attr = [bias_attr[0], bias_attr[-1]]
+                decoder_bias_attr = bias_attr
+            else:
+                assert False, (
+                    "length of bias_attr should be 1 or 2 or 3 when it is a list/tuple"
+                )
+        else:
+            encoder_bias_attr = bias_attr
+            decoder_bias_attr = bias_attr
+
+        if isinstance(weight_attr, (list, tuple)):
+            if len(weight_attr) == 1:
+                encoder_weight_attr = [weight_attr[0]] * 2
+                decoder_weight_attr = [weight_attr[0]] * 3
+            elif len(weight_attr) == 2:
+                encoder_weight_attr = weight_attr
+                decoder_weight_attr = [
+                    weight_attr[0], weight_attr[0], weight_attr[-1]
+                ]
+            elif len(weight_attr) == 3:
+                encoder_weight_attr = [weight_attr[0], weight_attr[-1]]
+                decoder_weight_attr = weight_attr
+            else:
+                assert False, (
+                    "length of weight_attr should be 1 or 2 or 3 when it is a list/tuple"
+                )
+        else:
+            encoder_weight_attr = weight_attr
+            decoder_weight_attr = weight_attr
+
         if custom_encoder is not None:
             self.encoder = custom_encoder
         else:
             encoder_layer = TransformerEncoderLayer(
                 d_model, nhead, dim_feedforward, dropout, activation,
-                attn_dropout, act_dropout, normalize_before, weight_attr,
-                bias_attr)
+                attn_dropout, act_dropout, normalize_before,
+                encoder_weight_attr, encoder_bias_attr)
             encoder_norm = LayerNorm(d_model)
             self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers,
                                               encoder_norm)
@@ -1070,8 +1127,8 @@ class Transformer(Layer):
         else:
             decoder_layer = TransformerDecoderLayer(
                 d_model, nhead, dim_feedforward, dropout, activation,
-                attn_dropout, act_dropout, normalize_before, weight_attr,
-                bias_attr)
+                attn_dropout, act_dropout, normalize_before,
+                decoder_weight_attr, decoder_bias_attr)
             decoder_norm = LayerNorm(d_model)
             self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers,
                                               decoder_norm)

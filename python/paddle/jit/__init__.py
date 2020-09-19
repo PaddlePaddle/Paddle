@@ -14,7 +14,6 @@
 
 from ..fluid.dygraph.jit import save  #DEFINE_ALIAS
 from ..fluid.dygraph.jit import load  #DEFINE_ALIAS
-from ..fluid.dygraph.jit import SaveLoadConfig  #DEFINE_ALIAS
 from ..fluid.dygraph.jit import TracedLayer  #DEFINE_ALIAS
 from ..fluid.dygraph.jit import set_code_level  #DEFINE_ALIAS
 from ..fluid.dygraph.jit import set_verbosity  #DEFINE_ALIAS
@@ -23,6 +22,6 @@ from ..fluid.dygraph import ProgramTranslator  #DEFINE_ALIAS
 from ..fluid.dygraph.io import TranslatedLayer  #DEFINE_ALIAS
 
 __all__ = [
-    'save', 'load', 'SaveLoadConfig', 'TracedLayer', 'to_static',
-    'ProgramTranslator', 'TranslatedLayer', 'set_code_level', 'set_verbosity'
+    'save', 'load', 'TracedLayer', 'to_static', 'ProgramTranslator',
+    'TranslatedLayer', 'set_code_level', 'set_verbosity'
 ]

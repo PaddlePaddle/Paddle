@@ -121,6 +121,18 @@ function cmake_base() {
             else
                 exit 1
             fi
+        elif [ "$1" == "cp38-cp38" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib"
+                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
         fi
         # delete `gym` to avoid modifying requirements.txt in *.whl
         sed -i .bak "/^gym$/d" ${PADDLE_ROOT}/python/requirements.txt
@@ -176,6 +188,13 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.7.0/include/python3.7m
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.7.0/lib/libpython3.so"
                 pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp38-cp38" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.8.0/bin/python3.8
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.8.0/include/python3.8
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.8.0/lib/libpython3.so"
+                pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
            fi
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
@@ -273,7 +292,7 @@ function cmake_gen() {
 function abort(){
     echo "Your change doesn't follow PaddlePaddle's code style." 1>&2
     echo "Please use pre-commit to check what is wrong." 1>&2
-    exit 1
+    exit 4
 }
 
 function check_style() {
@@ -296,14 +315,14 @@ function check_style() {
     commit_files=on
     for file_name in `git diff --numstat upstream/$BRANCH |awk '{print $NF}'`;do
         if ! pre-commit run --files $file_name ; then
-            git diff
             commit_files=off
         fi
     done 
     
     if [ $commit_files == 'off' ];then
         echo "code format error"
-        exit 1
+        git diff 2>&1
+        exit 4
     fi
     trap : 0
 }
@@ -514,6 +533,8 @@ EOF
             pip3.6 uninstall -y paddlepaddle
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 uninstall -y paddlepaddle
+        elif [ "$1" == "cp38-cp38" ]; then
+            pip3.8 uninstall -y paddlepaddle
         fi
         set -ex
 
@@ -527,9 +548,53 @@ EOF
             pip3.6 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+        elif [ "$1" == "cp38-cp38" ]; then
+            pip3.8 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
+        tmpfile_rand=`date +%s%N`
+        tmpfile=$tmp_dir/$tmpfile_rand
+        set +e
         ut_startTime_s=`date +%s`
-        ctest --output-on-failure -j $2;mactest_error=$?
+        ctest --output-on-failure -j $2 | tee $tmpfile
+        failed_test_lists=''
+        collect_failed_tests
+        set +x
+        mactest_error=0
+        retry_unittests_record=''
+        retry_time=3
+        exec_times=0
+        exec_time_array=('first' 'second' 'third')
+        if [ -n "$failed_test_lists" ];then
+            mactest_error=1
+            while ( [ $exec_times -lt $retry_time ] && [ -n "${failed_test_lists}" ] )
+                do
+                    retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                    failed_test_lists_ult=`echo "${failed_test_lists}"`
+                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                    echo "========================================="
+                    echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                    echo "========================================="
+                    echo "The following unittest will be re-run:"
+                    echo "${retry_unittests}"
+                    echo "========================================="
+
+                    retry_unittests_regular=''
+                    for line in ${retry_unittests[@]} ;
+                        do
+                            if [[ "$retry_unittests_regular" == "" ]];then
+                                retry_unittests_regular="^$line$"
+                            else
+                                retry_unittests_regular="$retry_unittests_regular|^$line$"
+                            fi
+                        done
+                    rm -f $tmp_dir/*
+                    failed_test_lists=''
+                    ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                    collect_failed_tests
+                    exec_times=$[$exec_times+1]
+                done
+        fi
+        #mactest_error=$?
         ut_endTime_s=`date +%s`
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
@@ -537,7 +602,21 @@ EOF
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
         if [ "$mactest_error" != 0 ];then
-            exit 8;
+            if [[ "$failed_test_lists" == "" ]]; then
+                echo "========================================"
+                echo "There are failed tests, which have been successful after re-run:"
+                echo "========================================"
+                echo "The following tests have been re-ran:"
+                echo "${retry_unittests_record}"
+            else
+                failed_test_lists_ult=`echo "${failed_test_lists}"`
+                echo "========================================"
+                echo "Summary Failed Tests... "
+                echo "========================================"
+                echo "The following tests FAILED: "
+                echo "${failed_test_lists_ult}"
+                exit 8;
+            fi
         fi
     fi
 }
@@ -561,9 +640,11 @@ function fetch_upstream_develop_if_not_exist() {
 function generate_upstream_develop_api_spec() {
     fetch_upstream_develop_if_not_exist
     cur_branch=`git branch | grep \* | cut -d ' ' -f2`
+    git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen $1
     build $2
+    cp ${PADDLE_ROOT}/python/requirements.txt /tmp
 
     git checkout $cur_branch
     generate_api_spec "$1" "DEV"
@@ -584,7 +665,12 @@ function generate_api_spec() {
     cd ${PADDLE_ROOT}/build/.check_api_workspace
     virtualenv .${spec_kind}_env
     source .${spec_kind}_env/bin/activate
-    pip install -r ${PADDLE_ROOT}/python/requirements.txt
+
+    if [ "$spec_kind" == "DEV" ]; then
+        pip install -r /tmp/requirements.txt
+    else
+        pip install -r ${PADDLE_ROOT}/python/requirements.txt
+    fi
     pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
@@ -603,7 +689,7 @@ function generate_api_spec() {
 
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
-    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then 
+    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ] || [ "$1" == "cp38-cp38" ]; then
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' $spec_path
         sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
@@ -873,6 +959,10 @@ function parallel_test_base_gpu() {
 EOF
 
 set +x
+        precison_cases=""
+        if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+            precision_cases=`python $PADDLE_ROOT/tools/get_pr_ut.py`
+        fi
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
         exclusive_tests=''        # cases list which would be run exclusively
@@ -902,10 +992,23 @@ set +x
                     echo $testcase" will only run at night."
                     continue
                 fi
+                if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]]; then
+                    will_test="false"
+                    for case in $precision_cases; do
+                        if [[ $testcase == $case ]]; then
+                            will_test="true"
+                            break
+                        fi
+                    done
+                    if [[ $will_test == "false" ]]; then
+                        echo $testcase" won't run in PRECISION_TEST mode."
+                        continue
+                    fi
+                fi
 
                 if [[ "$is_multicard" == "" ]]; then
                   # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
-                  read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist")
+                  read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
                 fi
 
                 if [[ "$is_exclusive" != "" ]]; then
@@ -959,7 +1062,7 @@ set +x
                     
                     retry_unittests_record="$retry_unittests_record$failed_test_lists"
                     failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
-                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(\w+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                    read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                     echo "========================================="
                     echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                     echo "========================================="
@@ -1020,8 +1123,6 @@ set +x
                 done
         fi
 
-
-       
         if [[ "$EXIT_CODE" != "0" ]]; then
             if [[ "$failed_test_lists" == "" ]]; then
                 echo "========================================"
@@ -1166,21 +1267,25 @@ EOF
     ref_paddle35=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp35-cp35m-linux_x86_64.whl
     ref_paddle36=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp36-cp36m-linux_x86_64.whl
     ref_paddle37=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp37-cp37m-linux_x86_64.whl
+    ref_paddle38=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp38-cp38-linux_x86_64.whl
 
     ref_paddle2_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp27-cp27mu-linux_x86_64.whl
     ref_paddle35_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp35-cp35m-linux_x86_64.whl
     ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp36-cp36m-linux_x86_64.whl
     ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp37-cp37m-linux_x86_64.whl
+    ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}-cp38-cp38-linux_x86_64.whl
 
     if [[ ${PADDLE_BRANCH} != "0.0.0" && ${WITH_MKL} == "ON" && ${WITH_GPU} == "ON" ]]; then
         ref_paddle2=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp27-cp27mu-linux_x86_64.whl
         ref_paddle35=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp35-cp35m-linux_x86_64.whl
         ref_paddle36=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp36-cp36m-linux_x86_64.whl
         ref_paddle37=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp37-cp37m-linux_x86_64.whl
+        ref_paddle38=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp38-cp38-linux_x86_64.whl
         ref_paddle2_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp27-cp27mu-linux_x86_64.whl
         ref_paddle35_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp35-cp35m-linux_x86_64.whl
         ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp36-cp36m-linux_x86_64.whl
         ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp37-cp37m-linux_x86_64.whl
+        ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_BRANCH}.post${ref_CUDA_MAJOR}${CUDNN_MAJOR}-cp38-cp38-linux_x86_64.whl
     fi
 
     #ref_paddle2_mv1=""
@@ -1289,6 +1394,22 @@ EOF
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
+    RUN apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
+        libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+        xz-utils tk-dev libffi-dev liblzma-dev
+    RUN wget -q https://www.python.org/ftp/python/3.8.0/Python-3.8.0.tgz && \
+        tar -xzf Python-3.8.0.tgz && cd Python-3.8.0 && \
+        CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+        make -j8 > /dev/null && make altinstall > /dev/null && cd ../ && rm Python-3.8.0.tgz
+    RUN apt-get install -y libgtk2.0-dev dmidecode python3-tk && ldconfig && \
+        pip3.8 install opencv-python && wget ${ref_web}/${ref_paddle38} && pip3.8 install ${ref_paddle38_whl}; apt-get install -f -y && \
+        apt-get clean -y && \
+        rm -f ${ref_paddle38} && \
+        ldconfig
+EOF
+    cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
+    # run paddle version to install python packages first
+    RUN apt-get update && ${NCCL_DEPS}
     RUN apt-get install -y wget python-pip python-opencv libgtk2.0-dev dmidecode python-tk && easy_install -U pip && \
         wget ${ref_web}/${ref_paddle2} && pip install ${ref_paddle2_whl}; apt-get install -f -y && \
         apt-get clean -y && \
@@ -1390,9 +1511,39 @@ function example() {
     cd ${PADDLE_ROOT}/tools
     python sampcd_processor.py cpu;example_error=$?
     if [ "$example_error" != "0" ];then
-      echo "Code instance execution failed"
+      echo "Code instance execution failed" >&2
       exit 5
     fi
+}
+
+function summary_check_problems() {
+    set +x
+    local check_style_code=$1
+    local example_code=$2
+    local check_style_info=$3
+    local example_info=$4
+    if [ $check_style_code -ne 0 -o $example_code -ne 0 ];then
+      echo "========================================"
+      echo "summary problems:"
+      if [ $check_style_code -ne 0 -a $example_code -ne 0 ];then
+        echo "There are 2 errors: Code format error and Example code error."
+      else
+        [ $check_style_code -ne 0 ] && echo "There is 1 error: Code format error."
+        [ $example_code -ne 0 ] && echo "There is 1 error: Example code error."
+      fi
+      echo "========================================"
+      if [ $check_style_code -ne 0 ];then
+        echo "*****Code format error***** Please fix it according to the diff information:"
+        echo "$check_style_info" | grep "code format error" -A $(echo "$check_style_info" | wc -l)
+      fi
+      if [ $example_code -ne 0 ];then
+        echo "*****Example code error***** Please fix the error listed in the information:"
+        echo "$example_info" | grep "API check -- Example Code" -A $(echo "$example_info" | wc -l)
+      fi
+      [ $check_style_code -ne 0 ] && exit $check_style_code
+      [ $example_code -ne 0 ] && exit $example_code
+    fi
+    set -x
 }
 
 function main() {
@@ -1401,18 +1552,24 @@ function main() {
     init
     if [ "$CMD" != "assert_file_approvals" ];then
       python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
     case $CMD in
       build_only)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_and_check)
-        check_style
+        set +e
+        check_style_info=$(check_style)
+        check_style_code=$?
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
-        example
+        set +e
+        example_info=$(example)
+        example_code=$?
+        summary_check_problems $check_style_code $example_code "$check_style_info" "$example_info"
         assert_api_spec_approvals
         ;;
       build)

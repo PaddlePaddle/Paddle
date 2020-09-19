@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
-from paddle.static import InputSpec
-import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator, Layer, jit
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram
-
 import unittest
+
+import paddle
+import paddle.fluid as fluid
+from paddle.static import InputSpec
+from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator, Layer, jit
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ConcreteProgram, StaticLayer
+
+from test_basic_api_transformation import dyfunc_to_variable
 
 program_trans = ProgramTranslator()
 
@@ -45,8 +47,8 @@ class SimpleNet(Layer):
         return z
 
     @declarative(input_spec=[[InputSpec([None, 10]), InputSpec([None, 10])]])
-    def func_with_list(self, l):
-        x, y, int_val = l
+    def func_with_list(self, l, int_val=1):
+        x, y = l
         z = x + y
         z = z + int_val
         return z
@@ -58,10 +60,7 @@ class SimpleNet(Layer):
     def func_with_dict(self, d):
         x = d['x']
         y = d['y']
-        int_val = d['int_val']
-
         z = x + y
-        z = z + int_val
 
         return z
 
@@ -80,6 +79,23 @@ class SimpleNet(Layer):
         z = z + bias
 
         return z
+
+
+class TestStaticLayerInstance(unittest.TestCase):
+    def test_instance_same_class(self):
+        with fluid.dygraph.guard(fluid.CPUPlace()):
+            net_1 = SimpleNet()
+            net_2 = SimpleNet()
+
+            self.assertTrue(isinstance(net_1.forward, StaticLayer))
+            self.assertTrue(isinstance(net_2.forward, StaticLayer))
+            self.assertNotEqual(net_1.forward, net_2.forward)
+
+            # convert layer into static progam of net_1
+            net_1.forward.concrete_program
+            self.assertTrue(len(net_1.forward.program_cache) == 1)
+            # check no conversion applid with net_2
+            self.assertTrue(len(net_2.forward.program_cache) == 0)
 
 
 class TestInputSpec(unittest.TestCase):
@@ -112,10 +128,10 @@ class TestInputSpec(unittest.TestCase):
             self.assertTrue(len(net.add_func.program_cache) == 1)
 
             # 5. test input with list
-            out = net.func_with_list([x, y, int_val])
+            out = net.func_with_list([x, y], int_val)
 
             # 6. test input with dict
-            out = net.func_with_dict({'x': x, 'y': y, 'int_val': int_val})
+            out = net.func_with_dict({'x': x, 'y': y})
 
             # 7. test input with lits contains dict
             int_np = np.ones([1]).astype('float32')
@@ -181,6 +197,9 @@ def foo_func(a, b, c=1, d=2):
 
 
 class TestDifferentInputSpecCacheProgram(unittest.TestCase):
+    def setUp(self):
+        program_trans.enable(True)
+
     def test_with_different_input(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             x_data = np.ones([16, 10]).astype('float32')
@@ -219,7 +238,6 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
         # 1. specific InputSpec for `x`/`y`
         concrete_program_1 = foo.get_concrete_program(
             InputSpec([None, 10]), InputSpec([10]))
-        print(concrete_program_1)
         self.assertTrue(len(foo.program_cache) == 1)
 
         # 2. specific `c`/`d` explicitly with same default value
@@ -270,6 +288,74 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             foo_3 = paddle.jit.to_static(foo_func)
             with self.assertRaises(ValueError):
                 foo_3.concrete_program
+
+
+class TestInputDefaultName(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.net = SimpleNet()
+
+    def assert_default_name(self, func_name, input_names):
+        decorated_func = getattr(self.net, func_name)
+
+        spec_names = [x.name for x in decorated_func.inputs]
+        self.assertListEqual(spec_names, input_names)
+
+    def test_common_input(self):
+        self.assert_default_name('forward', ['x'])
+
+    def test_list_input(self):
+        self.assert_default_name('func_with_list', ['l_0', 'l_1'])
+
+    def test_dict_input(self):
+        self.assert_default_name('func_with_dict', ['x', 'y'])
+
+    def test_nest_input(self):
+        self.assert_default_name('func_with_list_dict', ['dl_0', 'x', 'y'])
+
+
+class TestDeclarativeAPI(unittest.TestCase):
+    def test_error(self):
+        func = declarative(dyfunc_to_variable)
+
+        paddle.enable_static()
+
+        # Failed to run the callable object decorated by '@paddle.jit.to_static'
+        # if it does NOT in dynamic mode.
+        with self.assertRaises(RuntimeError):
+            func(np.ones(5).astype("int32"))
+
+        program_trans.enable(False)
+        with self.assertRaises(AssertionError):
+            # AssertionError: We Only support to_variable in imperative mode,
+            #  please use fluid.dygraph.guard() as context to run it in imperative Mode
+            func(np.ones(5).astype("int32"))
+
+
+class TestDecorateModelDirectly(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        program_trans.enable(True)
+        self.x = to_variable(np.ones([4, 10]).astype('float32'))
+
+    def test_fake_input(self):
+        net = SimpleNet()
+        net = declarative(net)
+        y = net(self.x)
+        self.assertTrue(len(net.forward.program_cache) == 1)
+
+    def test_input_spec(self):
+        net = SimpleNet()
+        net = declarative(net, input_spec=[InputSpec([None, 8, 10])])
+        self.assertTrue(len(net.forward.inputs) == 1)
+        self.assertTrue(len(net.forward.program_cache) == 1)
+        input_shape = net.forward.inputs[0].shape
+        self.assertListEqual(list(input_shape), [-1, 8, 10])
+
+        # redecorate
+        net = declarative(net, input_spec=[InputSpec([None, 16, 10])])
+        input_shape = net.forward.inputs[0].shape
+        self.assertListEqual(list(input_shape), [-1, 16, 10])
 
 
 if __name__ == '__main__':

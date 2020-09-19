@@ -184,6 +184,7 @@ void BindVarDsec(pybind11::module *m) {
       .value("FP16", pd::proto::VarType::FP16)
       .value("FP32", pd::proto::VarType::FP32)
       .value("FP64", pd::proto::VarType::FP64)
+      .value("BF16", pd::proto::VarType::BF16)
       .value("LOD_TENSOR", pd::proto::VarType::LOD_TENSOR)
       .value("SELECTED_ROWS", pd::proto::VarType::SELECTED_ROWS)
       .value("FEED_MINIBATCH", pd::proto::VarType::FEED_MINIBATCH)

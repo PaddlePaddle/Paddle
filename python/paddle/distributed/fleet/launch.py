@@ -55,7 +55,10 @@ launch a process on each of the given gpu card or cpu machine.
 """
 
 from __future__ import print_function
+
+import shutil
 import sys
+import tempfile
 from sys import version
 import subprocess
 import os
@@ -87,7 +90,7 @@ def _parse_args():
 see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/training/cluster_howto.html#permalink-8--nccl2-
 ''')
 
-    #Optional arguments for the launch helper
+    # Optional arguments for the launch helper
     parser.add_argument(
         "--ips",
         type=str,
@@ -115,7 +118,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         default="log",
         help="The path for each process's log.If it's not set, the log will printed to default pipe."
     )
-    #positional
+    # positional
     parser.add_argument(
         "training_script",
         type=str,
@@ -124,7 +127,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "followed by all the arguments for the "
         "training script")
 
-    #rest from the training program
+    # rest from the training program
     parser.add_argument('training_script_args', nargs=REMAINDER)
     return parser.parse_args()
 
@@ -138,7 +141,7 @@ def get_cluster_from_args(args, gpus):
 
     # node_ip = args.node_ip
     assert node_ip in node_ips, "Can't find your local ip {%s} in node_ips: {%s}" \
-                % (node_ip, node_ips)
+        % (node_ip, node_ips)
     node_rank = node_ips.index(node_ip)
 
     logger.debug("parsed from args: node_ips:{} node_ip:{} node_rank:{}".format(
@@ -157,17 +160,20 @@ def get_cluster_from_args(args, gpus):
 
         free_ports = [x for x in range(start_port, start_port + len(gpus))]
 
-    return get_cluster(node_ips, node_ip, free_ports, gpus)
+    trainer_endpoints = []
+    for ip in node_ips:
+        trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
+    return get_cluster(node_ips, node_ip, trainer_endpoints, gpus)
 
 
 def get_gpus(gpus):
     if gpus is None:
         gpus_num = fluid.core.get_cuda_device_count()
-        gpus = [str(x) for x in range(0, gpus_num)]
+        res_gpus = [str(x) for x in range(0, gpus_num)]
     else:
         cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
         if cuda_visible_devices is None or cuda_visible_devices == "":
-            gpus = [x.strip() for x in gpus.split(',')]
+            res_gpus = [x.strip() for x in gpus.split(',')]
         else:
             # change gpus into relative values
             # e.g. CUDA_VISIBLE_DEVICES=4,5,6,7; args.gpus=4,5,6,7;
@@ -177,12 +183,16 @@ def get_gpus(gpus):
                 assert x in cuda_visible_devices_list, "Can't find "\
                 "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
                 % (x, cuda_visible_devices)
-            gpus = [
+            res_gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in gpus.split(',')
             ]
+            logger.info("Change selected_gpus into reletive values. --ips:{} "
+                        "will change into relative_ips:{} according to your "
+                        "CUDA_VISIBLE_DEVICES:{}".format(
+                            gpus, res_gpus, cuda_visible_devices_list))
 
-    return gpus
+    return res_gpus
 
 
 def launch_collective(args):
@@ -200,27 +210,39 @@ def launch_collective(args):
         start_port = os.environ.get('FLAGS_START_PORT')
     if cloud_utils.use_paddlecloud() and trainers_num != 1:
         cluster, pod = cloud_utils.get_cloud_cluster(args.ips, gpus, start_port)
-        logger.info("get cluster from cloud:{}".format(cluster))
+        logger.debug("get cluster from cloud:{}".format(cluster))
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
         cluster, pod = get_cluster_from_args(args, gpus)
-        logger.info("get cluster from args:{}".format(cluster))
+        logger.debug("get cluster from args:{}".format(cluster))
+
+    global_envs = copy.copy(os.environ.copy())
+    gloo_rendezvous_dir = tempfile.mkdtemp()
+    # add gloo env
+    global_envs["PADDLE_WITH_GLOO"] = "1"
+    global_envs["PADDLE_GLOO_RENDEZVOUS"] = "2"
+    global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
 
     procs = start_local_trainers(
         cluster,
         pod,
         training_script=args.training_script,
         training_script_args=args.training_script_args,
-        log_dir=args.log_dir)
+        log_dir=args.log_dir,
+        envs=global_envs)
 
     while True:
         alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
         if not alive:
-            logger.info("Local procs complete, POD info:{}".format(pod))
+            logger.info("Local processes completed.")
+            logger.debug("POD info:{}".format(pod))
             break
 
         time.sleep(3)
+
+    if os.path.exists(gloo_rendezvous_dir):
+        shutil.rmtree(gloo_rendezvous_dir)
 
 
 def launch_ps(args):
@@ -272,7 +294,7 @@ def launch_ps(args):
         _, current_node_ip = get_host_name_ip()
 
     assert current_node_ip in node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
-                % (current_node_ip, node_ips)
+        % (current_node_ip, node_ips)
     node_rank = node_ips.index(current_node_ip)
     logger.debug(
         "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}, server_ports:{}".
@@ -307,23 +329,40 @@ def launch_ps(args):
 
     default_env = os.environ.copy()
     current_env = copy.copy(default_env)
+
+    gloo_rendezvous_dir = tempfile.mkdtemp()
+    # add gloo env
+    current_env["PADDLE_WITH_GLOO"] = "1"
+    current_env["PADDLE_GLOO_RENDEZVOUS"] = "2"
+    current_env["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
     procs = []
     cmds = []
     log_fns = []
     for idx, cur_server in enumerate(pod.servers):
-        current_env.update({
+        proc_env = {
             "PADDLE_PSERVERS_IP_PORT_LIST": server_endpoints,
+            "PADDLE_TRAINER_ENDPOINTS": worker_endpoints,
             "PADDLE_PORT": cur_server.endpoint.split(":")[1],
             "TRAINING_ROLE": "PSERVER",
             "PADDLE_TRAINERS_NUM": str(worker_num),
-            "POD_IP": cur_server.endpoint.split(":")[0]
-        })
+            "POD_IP": cur_server.endpoint.split(":")[0],
+            "PADDLE_WITH_GLOO": "1"
+        }
+        current_env.update(proc_env)
 
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
         cmds.append(cmd)
+
+        if idx == 0:
+            logger.info(
+                "Local server start {} processes. First process distributed "
+                "environment info (Only For Debug): {}".format(
+                    len(pod.servers),
+                    pretty_print_envs(proc_env, ("Distributed Envs", "Value"))))
 
         if args.log_dir is not None:
             os.system("mkdir -p {}".format(args.log_dir))
@@ -338,21 +377,33 @@ def launch_ps(args):
         tp.rank = cur_server.rank
         tp.local_rank = idx
         tp.log_fn = fn
-        tp.log_offset = 0 if fn else None
+        tp.log_offset = fn.tell() if fn else None
         tp.cmd = cmd
 
         procs.append(tp)
 
     for idx, cur_worker in enumerate(pod.workers):
-        current_env.update({
+        proc_env = {
             "PADDLE_PSERVERS_IP_PORT_LIST": server_endpoints,
+            "PADDLE_TRAINER_ENDPOINTS": worker_endpoints,
             "PADDLE_TRAINERS_NUM": str(worker_num),
             "TRAINING_ROLE": "TRAINER",
-            "PADDLE_TRAINER_ID": str(cur_worker.rank)
-        })
+            "PADDLE_TRAINER_ID": str(cur_worker.rank),
+            "PADDLE_WITH_GLOO": "1"
+        }
+        current_env.update(proc_env)
+
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
         cmds.append(cmd)
+
+        if idx == 0:
+            logger.info(
+                "Local worker start {} processes. First process distributed "
+                "environment info (Only For Debug): {}".format(
+                    len(pod.workers),
+                    pretty_print_envs(proc_env, ("Distributed Envs", "Value"))))
+
         if args.log_dir is not None:
             os.system("mkdir -p {}".format(args.log_dir))
             fn = open("%s/workerlog.%d" % (args.log_dir, idx), "w")
@@ -366,11 +417,14 @@ def launch_ps(args):
         tp.rank = cur_worker.rank
         tp.local_rank = idx
         tp.log_fn = fn
-        tp.log_offset = 0 if fn else None
+        tp.log_offset = fn.tell() if fn else None
         tp.cmd = cmd
 
         procs.append(tp)
 
+    logger.info(
+        "Please check servers and workers logs in {}/workerlog.* and {}/serverlog.*".
+        format(args.log_dir, args.log_dir))
     # only wait worker to finish here
     for i, proc in enumerate(procs):
         if i < len(pod.servers):
@@ -386,6 +440,9 @@ def launch_ps(args):
         procs[i].proc.terminate()
     print("all parameter server are killed", file=sys.stderr)
 
+    if os.path.exists(gloo_rendezvous_dir):
+        shutil.rmtree(gloo_rendezvous_dir)
+
 
 def launch():
     args = _parse_args()
@@ -400,19 +457,23 @@ def launch():
         co_arg for co_arg in collective_args
         if co_arg in " ".join(sys.argv[1:-1])
     ]
-    cuda_device_num = fluid.core.get_cuda_device_count()
+    if fluid.core.is_compiled_with_cuda():
+        cuda_device_num = fluid.core.get_cuda_device_count()
+    else:
+        cuda_device_num = 0
+
     if len(has_ps_args) > 0 or cuda_device_num == 0:
         logger.info(
-            "Run parameter-sever cpu mode. pserver args:{}, cuda count:{}".
+            "Run parameter-sever cpu mode. pserver arguments:{}, cuda count:{}".
             format(has_ps_args, cuda_device_num))
         launch_ps(args)
     elif len(has_collective_args) > 0:
-        logger.info("Run collective gpu mode. gpu args:{}, cuda count:{}".
+        logger.info("Run collective gpu mode. gpu arguments:{}, cuda count:{}".
                     format(has_collective_args, cuda_device_num))
         launch_collective(args)
     else:
         logger.warning(
-            "Not found distinct args. Default use gpu collective mode")
+            "Not found distinct arguments. Default use gpu collective mode")
         launch_collective(args)
 
 

@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -101,6 +102,29 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [7, 11]
+        eps = 0.05
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+        y = layers.reduce_sum(x, dim=0)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 class TestMulDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
@@ -133,6 +157,30 @@ class TestReshapeDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         x_shape = [3, 12]
+        expand_times = [4, 9]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', x_shape, False, dtype)
+        x.persistable = True
+        out = layers.expand(x, expand_times)
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], out, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestExpandDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [3, 12]
         new_shape = [4, 9]
         eps = 0.005
         dtype = np.float64
@@ -140,6 +188,54 @@ class TestReshapeDoubleGradCheck(unittest.TestCase):
         x = layers.data('x', x_shape, False, dtype)
         x.persistable = True
         out = layers.reshape(x, new_shape)
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], out, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestTileDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [3, 12]
+        repeat_times = [4, 9]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', x_shape, False, dtype)
+        x.persistable = True
+        out = paddle.tile(x, repeat_times)
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], out, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestExpandV2DoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [1, 12]
+        new_shape = [4, 12]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', x_shape, False, dtype)
+        x.persistable = True
+        out = paddle.expand(x, new_shape)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
 
         gradient_checker.double_grad_check(

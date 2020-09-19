@@ -39,7 +39,7 @@ from .activation import hard_sigmoid  #DEFINE_ALIAS
 from .activation import hard_swish  #DEFINE_ALIAS
 from .activation import hsigmoid  #DEFINE_ALIAS
 from .activation import leaky_relu  #DEFINE_ALIAS
-from .activation import logsigmoid  #DEFINE_ALIAS
+from .activation import log_sigmoid  #DEFINE_ALIAS
 from .activation import maxout  #DEFINE_ALIAS
 from .activation import prelu  #DEFINE_ALIAS
 from .activation import relu  #DEFINE_ALIAS
@@ -72,6 +72,7 @@ from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
 from .common import assign  #DEFINE_ALIAS
 from .common import interpolate  #DEFINE_ALIAS
+from .common import upsample  #DEFINE_ALIAS
 from .common import bilinear  #DEFINE_ALIAS
 from .conv import conv1d  #DEFINE_ALIAS
 from .conv import conv_transpose1d  #DEFINE_ALIAS
@@ -233,3 +234,4 @@ from .vision import space_to_depth  #DEFINE_ALIAS
 from .vision import yolo_box  #DEFINE_ALIAS
 from .vision import yolov3_loss  #DEFINE_ALIAS
 from .input import one_hot  #DEFINE_ALIAS
+from .input import embedding  #DEFINE_ALIAS

@@ -196,8 +196,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         fleet.stop_worker()
 
     def do_dataset_training(self, fleet):
-        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
-        )
+        train_file_list = ctr_dataset_reader.prepare_fake_data()
 
         exe = fluid.Executor(fluid.CPUPlace())
 
@@ -206,19 +205,19 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         thread_num = 2
         batch_size = 128
-        filelist = []
-        for _ in range(thread_num):
-            filelist.append(train_file_path)
+        filelist = train_file_list
 
         # config dataset
-        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
-        dataset.set_batch_size(batch_size)
-        dataset.set_use_var(self.feeds)
+        dataset = paddle.distributed.QueueDataset()
         pipe_command = 'python ctr_dataset_reader.py'
-        dataset.set_pipe_command(pipe_command)
+
+        dataset.init(
+            batch_size=batch_size,
+            use_var=self.feeds,
+            pipe_command=pipe_command,
+            thread_num=thread_num)
 
         dataset.set_filelist(filelist)
-        dataset.set_thread(thread_num)
 
         for epoch_id in range(1):
             pass_start = time.time()

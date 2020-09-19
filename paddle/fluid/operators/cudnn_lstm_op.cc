@@ -37,41 +37,52 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("LastC"), "Output", "LastC", "CudnnLSTM");
 
     auto in_dims = ctx->GetInputDim("Input");
-    auto init_dims = ctx->GetInputDim("InitH");
+    auto init_h_dims = ctx->GetInputDim("InitH");
+    auto init_c_dims = ctx->GetInputDim("InitC");
+
     PADDLE_ENFORCE_EQ(in_dims.size(), 3,
                       platform::errors::InvalidArgument(
                           "The rank of Input in CudnnLSTM  must be 3. But "
                           "received Input's rank is %d.",
                           in_dims.size()));
-    PADDLE_ENFORCE_EQ(init_dims.size(), 3,
+    PADDLE_ENFORCE_EQ(init_h_dims.size(), 3,
                       platform::errors::InvalidArgument(
                           "The rank of InitH in CudnnLSTM  must be 3. But "
                           "received InitH's rank is %d.",
-                          init_dims.size()));
+                          init_h_dims.size()));
 
-    PADDLE_ENFORCE_EQ(in_dims[1], init_dims[1],
+    if (ctx->HasInput("SequenceLength")) {
+      auto seq_dims = ctx->GetInputDim("SequenceLength");
+      PADDLE_ENFORCE_EQ(
+          in_dims[1], seq_dims[0],
+          platform::errors::InvalidArgument(
+              "The size of SequenceLength has to equal the batch_size. But "
+              "received batch_size is %d and the size of SequenceLength is %d.",
+              in_dims[1], seq_dims[0]));
+    }
+
+    PADDLE_ENFORCE_EQ(
+        in_dims[1], init_h_dims[1],
+        platform::errors::InvalidArgument(
+            "The in_dims[1] (Input dims) and init_h_dims[1] (InitH "
+            "dims) should be equal. But "
+            "received in_dims[1] is %d and init_h_dims[1] is %d.",
+            in_dims[1], init_h_dims[1]));
+
+    PADDLE_ENFORCE_EQ(init_c_dims, init_h_dims,
                       platform::errors::InvalidArgument(
-                          "The in_dims[1] (Input dims) and init_dims[1] (InitH "
-                          "dims) should be equal. But "
-                          "received in_dims[1] is %d and init_dims[1] is %d.",
-                          in_dims[1], init_dims[1]));
-    PADDLE_ENFORCE_EQ(in_dims[2], init_dims[2],
-                      platform::errors::InvalidArgument(
-                          "The in_dims[2] (Input dims) and init_dims[2] (InitH "
-                          "dims) should be equal. But "
-                          "received in_dims[2] is %d and init_dims[2] is %d.",
-                          in_dims[2], init_dims[2]));
+                          "The InitC dims and InitH "
+                          "dims should be equal. But "
+                          "received init_c_dims is %d and init_h_dims is %d.",
+                          init_c_dims, init_h_dims));
 
     auto out_dims = in_dims;
     auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
     bool is_bidirec = ctx->Attrs().Get<bool>("is_bidirec");
     out_dims[2] = is_bidirec ? hidden_size * 2 : hidden_size;
-
-    auto last_dims = init_dims;
-    last_dims[0] = is_bidirec ? last_dims[0] * 2 : last_dims[0];
     ctx->SetOutputDim("Out", out_dims);
-    ctx->SetOutputDim("LastH", last_dims);
-    ctx->SetOutputDim("LastC", last_dims);
+    ctx->SetOutputDim("LastH", init_c_dims);
+    ctx->SetOutputDim("LastC", init_h_dims);
   }
 
  protected:
@@ -95,7 +106,7 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         "different batch)"
         "batch_size is the instance number of this batch"
         "input_size is the hidden size of the input."
-        "input_hidden_size and the hidden_size in the next may not be same");
+        "input_size and the hidden_size in the next may not be same");
     AddInput("InitH",
              "(Tensor) the initial hidden state of the LSTM"
              "input. This is a tensor with shape (num_layers x batch_size x "
@@ -112,6 +123,12 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the learnable hidden-hidden weights."
              " The shape is (N), where N is total weight size of the LSTM. "
              " cudnn concatenate all the weight to one Tensor");
+    AddInput("SequenceLength",
+             "(Tensor) When the input data is padding, "
+             "set this parameter. This parameter represents "
+             "the variable sequence lengths in a batch. "
+             "The size of the vector has to equal the batch_size.")
+        .AsDispensable();
     AddOutput("Reserve",
               "(Tensor, a temporary output Tensor to store the reserve_data "
               "of cudnn kernel.")
@@ -235,6 +252,9 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("InitH", this->Input("InitH"));
     op->SetInput("InitC", this->Input("InitC"));
     op->SetInput("W", this->Input("W"));
+    if (this->HasInput("SequenceLength")) {
+      op->SetInput("SequenceLength", this->Input("SequenceLength"));
+    }
     op->SetInput("Reserve", this->Output("Reserve"));
     op->SetInput("StateOut", this->Output("StateOut"));
     op->SetInput("Out", this->Output("Out"));

@@ -1,0 +1,4 @@
+PyGithub
+coverage
+pycrypto
+mock
