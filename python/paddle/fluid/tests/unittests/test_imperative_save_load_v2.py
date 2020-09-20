@@ -285,7 +285,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 else:
                     self.base_opti[k] = v
 
-            fluid.save_dygraph(self.opti_dict, "./test_dy_v2")
+            paddle.save(self.opti_dict, "./test_dy_v2.pdopt")
 
             self.state_dict = ptb_model.state_dict()
 
@@ -294,7 +294,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 np_t = v.numpy()
                 self.model_base[k] = np_t
 
-            paddle.save(self.state_dict, "./test_dy_v2")
+            paddle.save(self.state_dict, "./test_dy_v2.pdparams")
 
     def testLoadAndSetVarBase(self):
         self.setUp()

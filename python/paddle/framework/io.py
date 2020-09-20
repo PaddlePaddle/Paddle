@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -219,7 +219,7 @@ def load(path, config=None):
     '''
     # 1. input check
     if not os.path.exists(path):
-        error_msg = "The path (%s) does not exist."
+        error_msg = "The path `%s` does not exist."
         # if current path is a prefix, and the path.pdparams or path.pdopt
         # is exist, users may want use `paddle.load` load the result of 
         # `fluid.save_dygraph`, we raise error here for users
@@ -245,7 +245,6 @@ def load(path, config=None):
 
         if not config.keep_name_table and "StructuredToParameterName@@" in load_result:
             del load_result["StructuredToParameterName@@"]
-
     elif os.path.isdir(path):
         # we think path is directory means compatible with loading 
         # store results of static mode related save APIs
