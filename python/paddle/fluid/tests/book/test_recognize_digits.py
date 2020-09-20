@@ -272,4 +272,6 @@ def inject_all_tests():
 inject_all_tests()
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

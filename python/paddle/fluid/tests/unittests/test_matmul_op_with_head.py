@@ -291,4 +291,6 @@ for dim in (2, 3):
             inject_test_multiple_head2(dim, dim, transose_x, transose_y, 4)
 
 if __name__ == "__main__":
+    import paddle
+    paddle.disable_static()
     unittest.main()

@@ -20,4 +20,6 @@ fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 from test_conditional_block import *
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

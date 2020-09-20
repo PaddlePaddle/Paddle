@@ -73,4 +73,6 @@ class TestNetWithDtype(unittest.TestCase):
 #         self.dtype = "float16"
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

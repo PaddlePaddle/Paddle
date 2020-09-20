@@ -70,4 +70,6 @@ def dpsgd_step(inputs, attributes):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.disable_static()
     unittest.main()

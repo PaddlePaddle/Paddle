@@ -187,4 +187,6 @@ class TestDistGloo_2x2(TestFleetBase):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.disable_static()
     unittest.main()

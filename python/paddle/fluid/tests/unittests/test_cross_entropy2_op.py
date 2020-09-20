@@ -92,4 +92,6 @@ class CrossEntropy2OpTest4(CrossEntropy2OpTestBase):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

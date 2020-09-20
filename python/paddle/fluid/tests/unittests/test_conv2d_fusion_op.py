@@ -367,4 +367,6 @@ create_test_padding_VALID_class(TestWithGroup_AsyPadding)
 create_test_padding_VALID_class(TestWithInput1x1Filter1x1_AsyPadding)
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

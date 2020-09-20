@@ -147,4 +147,6 @@ class SlicePluginTRTTest4(InferencePassTest):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.disable_static()
     unittest.main()

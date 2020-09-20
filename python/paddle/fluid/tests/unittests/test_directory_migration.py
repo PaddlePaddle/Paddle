@@ -177,4 +177,6 @@ if count != {len_old_directory}:
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

@@ -131,4 +131,6 @@ class TestAllcloseError(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.disable_static()
     unittest.main()

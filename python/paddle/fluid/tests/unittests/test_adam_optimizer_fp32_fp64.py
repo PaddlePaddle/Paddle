@@ -63,4 +63,6 @@ class AdamFp64Test(AdamFp32Test):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

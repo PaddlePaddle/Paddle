@@ -344,4 +344,6 @@ for _use_cuda_ in (False, True):
             is_sparse=_is_sparse_, use_cuda=_use_cuda_, decorator=_decorator_)
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

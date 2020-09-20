@@ -472,4 +472,6 @@ class TestConv3dDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.disable_static()
     unittest.main()

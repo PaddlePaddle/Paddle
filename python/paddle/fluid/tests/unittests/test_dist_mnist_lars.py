@@ -27,4 +27,6 @@ class TestDistMnist2x2Lars(TestDistBase):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.disable_static()
     unittest.main()

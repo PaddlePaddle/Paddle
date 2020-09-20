@@ -215,4 +215,6 @@ class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

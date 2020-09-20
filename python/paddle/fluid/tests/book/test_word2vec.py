@@ -277,4 +277,6 @@ for use_cuda in (False, True):
             inject_test_method(use_cuda, is_sparse, is_parallel)
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

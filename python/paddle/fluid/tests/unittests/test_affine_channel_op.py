@@ -150,4 +150,6 @@ class TestAffineChannel2D(TestAffineChannelOp):
 #        self.layout = 'NHWC'
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

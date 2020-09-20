@@ -368,4 +368,6 @@ class TestConv2dOp_Valid_INT_MKLDNN(TestConv2dOp_AsyPadding_INT_MKLDNN):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

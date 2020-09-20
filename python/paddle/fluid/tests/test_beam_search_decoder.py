@@ -264,4 +264,6 @@ for _use_cuda_ in (False, True):
     inject_test_decode(use_cuda=_use_cuda_, decorator=_decorator_)
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

@@ -85,4 +85,6 @@ class TestSequenceSliceOpSeqlen0Case2(TestSequenceSliceOp):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

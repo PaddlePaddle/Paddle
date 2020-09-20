@@ -159,4 +159,6 @@ class TestMKLDNNMulOpS8U8WithFlatten(TestMKLDNNMulOpS8S8WithFlatten):
 
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

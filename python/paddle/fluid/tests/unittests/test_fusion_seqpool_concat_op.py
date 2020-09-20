@@ -115,4 +115,6 @@ create_test_avg_sqrt_class(TestFusionSeqPoolConcatOpCase3)
 create_test_avg_sqrt_class(TestFusionSeqPoolConcatOpCase4)
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

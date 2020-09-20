@@ -437,4 +437,6 @@ class TestLstmOpError(unittest.TestCase):
 #         self.use_peepholes = False
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

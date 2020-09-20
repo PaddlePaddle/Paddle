@@ -122,4 +122,6 @@ create_test_s8_u8_class(TestCase1Max)
 create_test_s8_u8_class(TestCase2Max)
 
 if __name__ == '__main__':
+    import paddle
+    paddle.disable_static()
     unittest.main()

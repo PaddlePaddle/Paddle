@@ -282,4 +282,6 @@ class TestYolov3LossWithScaleXY(TestYolov3LossOp):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.disable_static()
     unittest.main()

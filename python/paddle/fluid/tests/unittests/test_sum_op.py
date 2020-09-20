@@ -316,4 +316,6 @@ create_test_sum_fp16_class(TestSelectedRowsSumOp)
 create_test_sum_fp16_class(TestLoDTensorAndSelectedRowsOp)
 
 if __name__ == "__main__":
+    import paddle
+    paddle.disable_static()
     unittest.main()
