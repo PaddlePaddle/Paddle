@@ -26,6 +26,7 @@ from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticLayer, unwrap_decorators
 from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
@@ -119,8 +120,8 @@ def _dygraph_to_static_func_(dygraph_func):
     # TODO: remove this decorator after we finalize training API
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
-        if in_dygraph_mode() or not program_translator.enable_declarative:
-            warnings.warn(
+        if in_dygraph_mode() or not program_translator.enable_to_static:
+            logging_utils.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
                 "dygraph mode or set ProgramTranslator.enable to False. "
                 "We will just return dygraph output.")
@@ -215,7 +216,7 @@ def declarative(function=None, input_spec=None):
         if isinstance(function, Layer):
             if isinstance(function.forward, StaticLayer):
                 class_name = function.__class__.__name__
-                warnings.warn(
+                logging_utils.warn(
                     "`{}.forward` has already been decorated somewhere. It will be redecorated to replace previous one.".
                     format(class_name))
             function.forward = decorated(function.forward)
@@ -832,9 +833,9 @@ def save(layer, model_path, input_spec=None, config=None):
 
     # 1. input check
     prog_translator = ProgramTranslator()
-    if not prog_translator.enable:
+    if not prog_translator.enable_to_static:
         raise RuntimeError(
-            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable=False."
+            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable to False."
         )
     if not isinstance(layer, Layer):
         raise TypeError(
