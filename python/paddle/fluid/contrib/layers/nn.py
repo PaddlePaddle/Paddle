@@ -1744,7 +1744,6 @@ def fused_bn_add_act(x,
                              'fused_bn_add_act')
     check_variable_and_dtype(y, 'input', ['float16', 'float32', 'float64'],
                              'fused_bn_add_act')
-    x_dtype = helper.input_dtype("x")
     bn_param_dtype = core.VarDesc.VarType.FP32
 
     x_shape = x.shape
@@ -1796,8 +1795,6 @@ def fused_bn_add_act(x,
         "Z": y,
         "Scale": scale,
         "Bias": bias,
-        "Mean": mean,
-        "Variance": variance
     }
     attrs = {"epsilon": epsilon, 'momentum': momentum}
 

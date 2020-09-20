@@ -31,10 +31,6 @@ void FusedBatchNormAddActOp::InferShape(
                  "FusedBatchNormAddActOp");
   OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias",
                  "FusedBatchNormAddActOp");
-  OP_INOUT_CHECK(ctx->HasInput("Mean"), "Input", "Mean",
-                 "FusedBatchNormAddActOp");
-  OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "Variance",
-                 "FusedBatchNormAddActOp");
 
   // check output
   OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "FusedBatchNormAddActOp");
@@ -46,15 +42,6 @@ void FusedBatchNormAddActOp::InferShape(
                  "FusedBatchNormAddActOp");
   OP_INOUT_CHECK(ctx->HasOutput("SavedVariance"), "Output", "SavedVariance",
                  "FusedBatchNormAddActOp");
-
-  // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
-  PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
-                    platform::errors::PreconditionNotMet(
-                        "Mean and MeanOut should share the same memory"));
-  PADDLE_ENFORCE_EQ(
-      ctx->Inputs("Variance")[0], ctx->Outputs("VarianceOut")[0],
-      platform::errors::PreconditionNotMet(
-          "Variance and VarianceOut should share the same memory"));
 
   const auto x_dims = ctx->GetInputDim("X");
   const auto z_dims = ctx->GetInputDim("Z");
@@ -129,24 +116,15 @@ framework::OpKernelType FusedBatchNormAddActOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
-  // and var tensors should both be float. (For float or float16 input tensor)
-  // or double (For double input tensor).
+  // and var tensors should be float when input tensor's dtype is float16.
   auto bn_param_type = framework::proto::VarType::FP32;
-  if (input_data_type == framework::proto::VarType::FP64) {
-    bn_param_type = framework::proto::VarType::FP64;
-  }
+
   PADDLE_ENFORCE_EQ(
       bn_param_type, ctx.Input<Tensor>("Scale")->type(),
       platform::errors::InvalidArgument("Scale input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type, ctx.Input<Tensor>("Bias")->type(),
       platform::errors::InvalidArgument("Bias input should be of float type"));
-  PADDLE_ENFORCE_EQ(
-      bn_param_type, ctx.Input<Tensor>("Mean")->type(),
-      platform::errors::InvalidArgument("Mean input should be of float type"));
-  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Variance")->type(),
-                    platform::errors::InvalidArgument(
-                        "Variance input should be of float type"));
 
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
@@ -171,12 +149,6 @@ void FusedBatchNormAddActOpMaker::Make() {
   AddInput("Bias",
            "Bias is a 1-dimensional tensor of size C "
            "that is applied to the output");
-  AddInput("Mean",
-           "The global mean (for training) or "
-           "estimated mean (for testing)");
-  AddInput("Variance",
-           "The global variance (for training) "
-           "or estimated Variance (for testing)");
   AddOutput("Y", "result after normalization");
   AddOutput("MeanOut",
             "Share memory with Mean. "

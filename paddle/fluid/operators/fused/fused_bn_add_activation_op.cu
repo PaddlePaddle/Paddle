@@ -62,9 +62,6 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
 
-    // Run training mode.
-    // obtain running mean and running inv var, and see if we need to
-    // initialize them.
     auto *mean_out = ctx.Output<Tensor>("MeanOut");
     auto *variance_out = ctx.Output<Tensor>("VarianceOut");
     mean_out->mutable_data<BatchNormParamType<float>>(ctx.GetPlace());
