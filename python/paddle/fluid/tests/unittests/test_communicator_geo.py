@@ -131,7 +131,7 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid as fluid
+import paddle.fluid as flui
 
 from paddle.fluid.communicator import Communicator
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
@@ -140,6 +140,7 @@ import paddle.distributed.fleet as fleet
 
 from test_communicator_geo import TestCommunicatorGeoEnd2End
 
+paddle.enable_static()
 
 class RunServer(TestCommunicatorGeoEnd2End):
     def runTest(self):

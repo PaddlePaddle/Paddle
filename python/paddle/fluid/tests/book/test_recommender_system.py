@@ -314,6 +314,7 @@ def infer(use_cuda, save_dirname=None):
 
 
 def main(use_cuda):
+    paddle.enable_static()
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
