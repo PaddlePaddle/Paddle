@@ -166,16 +166,19 @@ class ZeroOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
         super(ZeroOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
+        self._main_program = None
+        self._startup_program = None
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
-        # device_id(int) -> param_name(set)
-        self._device2params = {}
+        # params and fp16 params is for broadcast
+        self._params = set([])
+        self._fp16_params = set([])
+        self._broadcast_vars = set([])
         # param_name(str) -> device_id(int)
         self._param2device = {}
         # varname(str) -> param(Variable)
-        self._varname2param = {}
-        # varname(str) -> grad(Variable)
-        self._varname2grad = {}
+        # self._varname2param = {}
+        self._paramname2param = {}
         # reduced grads to param name
         self._reduced_grads_to_param = {}
         # self._nrings(int) is for nccl communicate
@@ -213,10 +216,10 @@ class ZeroOptimizer(MetaOptimizerBase):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.zero = False
 
-    def _split_params(self, params_grads):
+    def _split_params(self, params):
         total_param_mem = 0.0
         param2mem = []
-        for param, _ in params_grads:
+        for param in params:
             mem = self._get_var_size(param)
             total_param_mem += mem
             param2mem.append((param.name, mem))
@@ -224,26 +227,28 @@ class ZeroOptimizer(MetaOptimizerBase):
         # print("total_param_mem: ", total_param_mem)
         device_num = self.role_maker.worker_num()
         # print("device_num: ", device_num)
-        self._device2params = {x: [] for x in range(device_num)}
+        device2params = {x: [] for x in range(device_num)}
         device_idx = 0
         mem_accu = 0.0
         for param_name, mem in param2mem:
             if mem_accu > total_param_mem * 1.0 * (device_idx + 1) / device_num:
                 device_idx += 1
-            self._device2params[device_idx].append(param_name)
+            device2params[device_idx].append(param_name)
             self._param2device[param_name] = device_idx
             mem_accu += mem
+        # for debug
+        print(device2params)
         return
 
     def _is_opti_var(self, var_name):
-        if var_name in self._varname2param:
+        if var_name in self._params:
             return True
         for suffix in [
                 "_moment1_0", "_moment2_0", "_beta1_pow_acc_0",
                 "_beta2_pow_acc_0"
         ]:
             base_name = re.sub(suffix, '', var_name)
-            if base_name in self._varname2param:
+            if base_name in self._params:
                 return True
         return False
 
@@ -310,7 +315,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                     broadcast_var_name = unique_name.generate(input_name +
                                                               "@BroadCast")
                 sub_prog._param2broadcast[input_name] = broadcast_var_name
-                sub_prog._param_mem += self._get_var_size(self._varname2param[
+                sub_prog._param_mem += self._get_var_size(self._paramname2param[
                     input_name])
 
             # find reduce vars
@@ -514,8 +519,8 @@ class ZeroOptimizer(MetaOptimizerBase):
             if param_name != broadcast_name:
                 block.create_var(
                     name=broadcast_name,
-                    shape=self._varname2param[param_name].shape,
-                    dtype=self._varname2param[param_name].dtype,
+                    shape=self._paramname2param[param_name].shape,
+                    dtype=self._paramname2param[param_name].dtype,
                     persistable=False)
 
         comm_dep_vars = [v for k, v in sub_prog._param2broadcast.items()]
@@ -595,6 +600,31 @@ class ZeroOptimizer(MetaOptimizerBase):
             block._remove_var(var_name)
         block._sync_with_cpp()
 
+    def _set_up(self, params_grads):
+        # TODO(mapingshuo) fix get_trainer_endpoints
+        print("work idx: ", self.role_maker.worker_index())
+        endpoints = self.role_maker.get_trainer_endpoints()
+        current_endpoint = endpoints[self.role_maker.worker_index()]
+        collective_helper = CollectiveHelper(self.role_maker, self._nrings)
+        for ring_id in range(self._nrings):
+            collective_helper._init_communicator(
+                self._startup_program, current_endpoint, endpoints,
+                self.role_maker.worker_index(), ring_id, '6174')
+        startup_block = self._startup_program.global_block()
+        startup_block._sync_with_cpp()
+
+        # step 1.2 split params
+        self._params = set([x[0].name for x in params_grads])
+        self.fp16_params, self._broadcast_vars = self.find_broadcast_params(
+            self._params)
+        self._paramname2param = {x[0].name: x[0] for x in params_grads}
+        self._split_params([x[0] for x in params_grads])
+
+        # find fp16 params
+
+    def find_broadcast_params(self, params):
+        return set([]), params
+
     def minimize_impl(self,
                       loss,
                       startup_program=None,
@@ -621,44 +651,34 @@ class ZeroOptimizer(MetaOptimizerBase):
             startup_program = default_startup_program()
         main_block = loss.block
         startup_block = startup_program.global_block()
+        self._main_program = main_block.program
+        self._startup_program = startup_program
 
-        # step1: initialize nccl
-        # TODO(mapingshuo) fix get_trainer_endpoints
-        print("work idx: ", self.role_maker.worker_index())
-        endpoints = self.role_maker.get_trainer_endpoints()
-        current_endpoint = endpoints[self.role_maker.worker_index()]
-        collective_helper = CollectiveHelper(self.role_maker, self._nrings)
-        for ring_id in range(self._nrings):
-            collective_helper._init_communicator(
-                startup_program, current_endpoint, endpoints,
-                self.role_maker.worker_index(), ring_id, '6174')
-        startup_block._sync_with_cpp()
+        # step1: set_up
+        self._set_up(params_grads)
 
-        # split params
-        self._varname2param = {x[0].name: x[0] for x in params_grads}
-        self._varname2grad = {x[1].name: x[1] for x in params_grads}
-        self._split_params(params_grads)
-        print(self._device2params)
-
-        # step2: add broadcast and reduce ops
-        print("insert broadcast and allreduce")
+        # step2: split_program
         self._split_program(main_block)
+
+        # step3: add broadcast and reduce ops
+        print("insert broadcast and allreduce")
         inserted_op_num = 0
         for idx, subprog in enumerate(self._sub_progs):
             print("subprog_{}: ({}-{})".format(idx, subprog._start_idx,
                                                subprog._end_idx))
+            print("_allreduce_vars: ", subprog._allreduce_vars)
             inserted_op_num += self._add_broadcast_allreduce(
                 main_block, subprog, inserted_op_num)
 
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
 
-        # step3: insert reduce_sum for grad
+        # step4: insert reduce_sum for grad
         self._insert_scale_loss_grad_ops(
             main_block, scale=1.0 / self.role_maker.worker_num())
         main_block._sync_with_cpp()
 
-        # step4: remove unneeded ops and vars from block
+        # step5: remove unneeded ops and vars from block
         print("main_block remove ops and vars")
         self._prune_main_program(main_block)
         print("startup_block remove ops and vars")
