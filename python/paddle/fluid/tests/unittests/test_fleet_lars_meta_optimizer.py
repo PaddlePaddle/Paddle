@@ -150,5 +150,5 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
 
 if __name__ == "__main__":
     import paddle
-    paddle.disable_static()
+    paddle.enable_static()
     unittest.main()
