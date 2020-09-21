@@ -365,15 +365,15 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
 
         net = SimpleNet()
         with self.assertRaisesRegexp(RuntimeError,
-                                     "only available in imperative mode"):
+                                     "only available in dynamic mode"):
             net.forward.concrete_program
 
         with self.assertRaisesRegexp(RuntimeError,
-                                     "only available in imperative mode"):
+                                     "only available in dynamic mode"):
             net.forward.inputs
 
         with self.assertRaisesRegexp(RuntimeError,
-                                     "only available in imperative mode"):
+                                     "only available in dynamic mode"):
             net.forward.outputs
 
 
