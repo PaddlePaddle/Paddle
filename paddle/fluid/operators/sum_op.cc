@@ -186,10 +186,17 @@ class SumOp : public framework::OperatorWithKernel {
           }
         }
       }
-      PADDLE_THROW("Cannot find the input data type by all input data");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Expected each tensor in Input(x) in sum op has be initialized, but "
+          "some tensor in Input(x) is not be initialized, please check your "
+          "code.",
+          framework::ToTypeName(x_vars[0]->Type())));
     }
-    PADDLE_THROW("Unexpected branch. Input type is %s",
-                 framework::ToTypeName(x_vars[0]->Type()));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Expected type of Input(X) must be Tensor,  SelectedRows or "
+        "LodTensorArray. But got "
+        "unsupport type: %s.",
+        framework::ToTypeName(x_vars[0]->Type())));
   }
 };
 

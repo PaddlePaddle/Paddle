@@ -50,7 +50,10 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     }
     return vec_new_data;
   } else {
-    PADDLE_THROW("The dtype of shape tensor must be int32 or int64.");
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Expected dtype of ShapeTensor must be int32, int64. But got "
+        "unsupport dtype: %s.",
+        paddle::framework::DataTypeToString(new_data_tensor->type())));
   }
 }
 
@@ -84,7 +87,11 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
         vec_new_shape.push_back(*tensor->data<int64_t>());
       }
     } else {
-      PADDLE_THROW("The dtype of shape tensor must be int32 or int64.");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Expected dtype of ShapeTensorList of %d-th must be int32, int64. "
+          "But got "
+          "unsupport dtype: %s.",
+          i, paddle::framework::DataTypeToString(tensor->type())));
     }
   }
 

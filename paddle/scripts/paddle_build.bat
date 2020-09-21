@@ -26,6 +26,8 @@ wmic process where name="op_function_generator.exe" call terminate  2>NUL
 rem ------initialize common variable------
 if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
 if not defined BRANCH set BRANCH=develop
+if not defined WITH_MKL set WITH_MKL=ON
+if not defined WITH_GPU set WITH_GPU=OFF
 if not defined WITH_AVX set WITH_AVX=ON
 if not defined WITH_TESTING set WITH_TESTING=ON
 if not defined WITH_PYTHON set WITH_PYTHON=ON
@@ -73,7 +75,7 @@ rem %PYTHON_EXECUTABLE% -m pip install virtualenv
 rem %PYTHON_EXECUTABLE% -m virtualenv paddle_winci
 rem call paddle_winci\Scripts\activate.bat
 
-rem ------pre install requirement----------
+rem ------pre install python requirement----------
 where python
 where pip
 pip install --upgrade pip --user
@@ -86,6 +88,16 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 7
 )
 
+rem ------pre install clcache and init config----------
+pip install clcache
+:: set USE_CLCACHE to enable clcache
+set USE_CLCACHE=1
+:: In some scenarios, CLCACHE_HARDLINK can save one file copy.
+set CLCACHE_HARDLINK=1
+:: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
+set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
+:: set maximum cache size to 20G
+clcache.exe -M 21474836480
 
 rem ------set cache third_party------
 set cache_dir=%work_dir:Paddle=cache%
@@ -199,7 +211,7 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 echo Build Paddle the %build_times% time:
-msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
+msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 2 (

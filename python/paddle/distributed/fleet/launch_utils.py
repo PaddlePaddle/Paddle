@@ -227,18 +227,23 @@ def get_logger(log_level=20, name="root"):
     return logger
 
 
-def get_cluster(node_ips, node_ip, paddle_ports, selected_gpus):
-    assert type(paddle_ports) is list, "paddle_ports must be list"
+def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
+    assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
     cluster = Cluster(hdfs=None)
     trainer_rank = 0
     for node_rank, ip in enumerate(node_ips):
         pod = Pod()
         pod.rank = node_rank
         pod.addr = ip
+        cur_node_endpoints = trainer_endpoints[node_rank]
+        # when use paddlecloud, endpoints may > selected_gpus(user_defined)
+        assert len(cur_node_endpoints) >= len(
+            selected_gpus
+        ), "current trainer_endpoints size should be greater equal than selected_gpus size."
         for i in range(len(selected_gpus)):
             trainer = Trainer()
             trainer.gpus.append(selected_gpus[i])
-            trainer.endpoint = "%s:%d" % (ip, paddle_ports[i])
+            trainer.endpoint = "%s" % (cur_node_endpoints[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
 
@@ -393,8 +398,14 @@ def start_local_trainers(cluster,
                          pod,
                          training_script,
                          training_script_args,
-                         log_dir=None):
-    current_env = copy.copy(os.environ.copy())
+                         log_dir=None,
+                         envs=None):
+
+    if envs is None:
+        current_env = copy.copy(os.environ.copy())
+    else:
+        current_env = copy.copy(envs)
+
     #paddle broadcast ncclUniqueId use socket, and
     #proxy maybe make trainers unreachable, so delete them.
     #if we set them to "", grpc will log error message "bad uri"
@@ -424,10 +435,6 @@ def start_local_trainers(cluster,
                             len(pod.trainers),
                             pretty_print_envs(proc_env, ("Distributed Envs",
                                                          "Value"))))
-            logger.info(
-                "More details for debug about commands and environments are written in {}/run.sh".
-                format(log_dir))
-
         fn = None
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))

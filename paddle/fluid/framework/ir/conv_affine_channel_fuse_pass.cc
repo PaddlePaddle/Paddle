@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -225,3 +226,14 @@ REGISTER_PASS(conv_affine_channel_fuse_pass,
               paddle::framework::ir::ConvAffineChannelFusePass);
 REGISTER_PASS(conv_eltwiseadd_affine_channel_fuse_pass,
               paddle::framework::ir::ConvEltwiseAddAffineChannelFusePass);
+REGISTER_PASS_CAPABILITY(conv_affine_channel_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("conv2d", 0)
+            .EQ("affine_channel", 0));
+REGISTER_PASS_CAPABILITY(conv_eltwiseadd_affine_channel_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("conv2d", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("affine_channel", 0));

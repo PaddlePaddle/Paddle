@@ -123,7 +123,9 @@ void RenameAndGetOutputs(
   auto add_block_var = [&](const std::string &graph_arg,
                            const std::string &block_arg) {
     auto arg_var_node = graph_var_map.find(graph_arg);
-    PADDLE_ENFORCE(arg_var_node != graph_var_map.end());
+    PADDLE_ENFORCE_NE(arg_var_node, graph_var_map.end(),
+                      platform::errors::InvalidArgument(
+                          "Can not find %s in graph_var_map", graph_arg));
     auto *var_t = block_desc->Var(block_arg);
     var_t->SetShape(arg_var_node->second->Var()->GetShape());
     var_t->SetDataType(arg_var_node->second->Var()->GetDataType());
@@ -133,7 +135,10 @@ void RenameAndGetOutputs(
     framework::proto::OpDesc *op = block_desc->Op(index)->Proto();
     framework::OpDesc op_desc(*op, nullptr);
     auto correspond_node = subgraph_nodes[index];
-    PADDLE_ENFORCE_EQ(correspond_node->Name(), op->type());
+    PADDLE_ENFORCE_EQ(correspond_node->Name(), op->type(),
+                      platform::errors::PreconditionNotMet(
+                          "We should get %s, but get %s", op->type(),
+                          correspond_node->Name()));
 
     std::unordered_map<std::string, size_t> var2id;
     std::unordered_map<std::string, framework::ir::Node *> in_vars;
