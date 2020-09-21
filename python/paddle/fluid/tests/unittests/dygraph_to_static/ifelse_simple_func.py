@@ -77,8 +77,8 @@ def dyfunc_with_if_else3(x):
         n = x + 3
         return q, x, y, z
     q, x, y, z = fluid.layers.cond(fluid.layers.mean(x)[0] < 5, lambda :
-        fluid.dygraph.dygraph_to_static.convert_call(true_fn_0)(q, x, y),
-        lambda : fluid.dygraph.dygraph_to_static.convert_call(false_fn_0)(q,
+        paddle.jit.dygraph_to_static.convert_call(true_fn_0)(q, x, y),
+        lambda : paddle.jit.dygraph_to_static.convert_call(false_fn_0)(q,
         x, y))
     """
     y = x + 1

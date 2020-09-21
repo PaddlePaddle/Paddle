@@ -11,17 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import print_function
 
-from . import convert_operators
+from ...fluid.dygraph.dygraph_to_static.convert_call_func import convert_call  #DEFINE_ALIAS
 
-from . import convert_call_func
-from .convert_call_func import *
-
-from . import variable_trans_func
-from .variable_trans_func import *
-
-__all__ = []
-__all__ += convert_call_func.__all__
-__all__ += variable_trans_func.__all__
+__all__ = ['convert_call']

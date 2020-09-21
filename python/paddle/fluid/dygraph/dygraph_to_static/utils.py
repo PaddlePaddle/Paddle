@@ -427,7 +427,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
             os.remove(filepath)
 
     source = ast_to_source_code(ast_root)
-    import_fluid = "import paddle.fluid as fluid\n"
+    import_fluid = "import paddle\nimport paddle.fluid as fluid\n"
     source = import_fluid + source
 
     if six.PY2:

@@ -24,3 +24,10 @@ from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_print  
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_var_dtype  #DEFINE_ALIAS
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_var_shape  #DEFINE_ALIAS
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_while_loop  #DEFINE_ALIAS
+
+__all__ = [
+    'cast_bool_if_necessary', 'convert_assert', 'convert_ifelse', 'convert_len',
+    'convert_logical_and', 'convert_logical_not', 'convert_logical_or',
+    'convert_logical_print', 'convert_var_dtype', 'convert_var_shape',
+    'convert_while_loop'
+]
