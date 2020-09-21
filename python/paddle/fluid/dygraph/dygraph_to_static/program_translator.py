@@ -371,14 +371,6 @@ class StaticLayer(object):
         Returns:
             Traced ConcreteProgram and executable translated Layer.
         """
-        # 1. verify the instance is initialized in imperative mode.
-        if isinstance(self._class_instance, layers.Layer):
-            if not self._class_instance._init_in_dynamic_mode:
-                raise RuntimeError(
-                    " `paddle.jit.to_static` is only available in dynamic mode. Please call `paddle.disable_static()` before "
-                    "initializing your Layer class `{}` . Because parameters of Layer class should be initialized firstly "
-                    "in dynamic mode while applying transformation.".format(
-                        self._class_instance))
 
         # 2. unify args/kwargs and replace Tensor with InputSpec
         if len(args) != len(self._function_spec.args_name):
@@ -532,6 +524,19 @@ def _switch_declarative_mode_guard_(is_declarative=True):
     _in_declarative_mode_ = original_val
 
 
+def _verify_init_in_dynamic_mode(class_instance):
+    """
+    Verifies the instance is initialized in dynamic mode.
+    """
+    if isinstance(selfclass_instance, layers.Layer):
+        if not class_instance._init_in_dynamic_mode:
+            raise RuntimeError(
+                " `paddle.jit.to_static` is only available in dynamic mode. Please call `paddle.disable_static()` before "
+                "initializing your Layer class `{}` . Because parameters of Layer class should be initialized firstly "
+                "in dynamic mode while applying transformation.".format(
+                    class_instance))
+
+
 class ConcreteProgram(object):
 
     __slots__ = [
@@ -564,6 +569,9 @@ class ConcreteProgram(object):
             func_spec(FunctionSpec): A FunctionSpec instance for decorated function.
             input_spec(list[InputSpec]): 
         """
+        # verify the instance is initialized in imperative mode.
+        _verify_init_in_dynamic_mode(class_instance)
+
         # Transforms dygraph function into static function and caches it.
         dygraph_function = func_spec.dygraph_function
         static_func = convert_to_static(dygraph_function)
