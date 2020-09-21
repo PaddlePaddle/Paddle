@@ -22,9 +22,13 @@ class AMPOptimizer(MetaOptimizerBase):
         self.amp_opt = None
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = [
-            "LarsOptimizer", "LambOptimizer", "RecomputeOptimizer",
-            "LocalSGDOptimizer", "GradientMergeOptimizer",
-            "GraphExecutionOptimizer"
+            "LarsOptimizer",
+            "LambOptimizer",
+            "RecomputeOptimizer",
+            "LocalSGDOptimizer",
+            "GradientMergeOptimizer",
+            "GraphExecutionOptimizer",
+            "AdaptiveLocalSGDOptimizer",
         ]
         self.meta_optimizers_black_list = ["DGCOptimizer"]
 
@@ -34,6 +38,9 @@ class AMPOptimizer(MetaOptimizerBase):
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
 
     def _can_apply(self):
+        if not self.role_maker._is_collective:
+            return False
+
         if self.user_defined_strategy.amp:
             return True
         return False
@@ -42,7 +49,7 @@ class AMPOptimizer(MetaOptimizerBase):
         dist_strategy.amp = False
         dist_strategy.amp_configs = {}
 
-    def _enable_strategy(self, dist_strategy):
+    def _enable_strategy(self, dist_strategy, context):
         dist_strategy.amp = True
         dist_strategy.amp_configs = {
             "init_loss_scaling": 32768.0,

@@ -15,8 +15,9 @@
 // .part used to speed up nvcc compile
 #include "paddle/fluid/operators/reduce_ops/logsumexp_op.h"
 
+namespace ops = paddle::operators;
+
 REGISTER_OP_CUDA_KERNEL(
-    logsumexp_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
-                                          float, ops::LogsumexpGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,
-                          ops::LogsumexpGradFunctor>);
+    logsumexp_grad,
+    ops::LogsumexpGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LogsumexpGradKernel<paddle::platform::CUDADeviceContext, double>);
