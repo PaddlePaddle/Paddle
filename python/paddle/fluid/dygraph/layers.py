@@ -91,7 +91,7 @@ class Layer(core.Layer):
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
-        self._init_from_imperative_mode = framework.in_dygraph_mode()
+        self._init_in_dynamic_mode = framework.in_dygraph_mode()
 
         self._parameters = collections.OrderedDict()
         # Buffers the variable (not parameter) created in layer
