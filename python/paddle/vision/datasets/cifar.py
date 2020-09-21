@@ -139,6 +139,7 @@ class Cifar10(Dataset):
 
     def __getitem__(self, idx):
         image, label = self.data[idx]
+        image = np.reshape(image, [3, 32, 32])
         if self.transform is not None:
             image = self.transform(image)
         return image, label

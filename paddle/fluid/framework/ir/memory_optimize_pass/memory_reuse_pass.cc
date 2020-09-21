@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
+
 #include <functional>
 #include <map>
 #include <string>
@@ -73,6 +74,7 @@ bool MemoryReusePass::TryReuseVar(details::VarHandle *in_var,
           out_var->Name()));
   if (IsVarPairReusable(*in_var, *out_var)) {
     AddReuseVar(op, in_var, out_var);
+    UpdateLastLiveOpOfVar(op, in_var, out_var);
     return true;
   } else {
     return false;
@@ -324,7 +326,8 @@ bool MemoryReusePass::IsVarPairReusable(
 
 void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
                                   details::VarHandle *in_var,
-                                  details::VarHandle *out_var) const {
+                                  details::VarHandle *out_var,
+                                  bool share_dims) const {
   PADDLE_ENFORCE_GT(
       (*var_infos_)[op->GetScopeIdx()].count(in_var->Name()), 0,
       platform::errors::NotFound("Var(%s) does not in mem opt var infos.",
@@ -344,13 +347,15 @@ void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
     share_buffer_op->AddInput(in_var);
   }
 
+  if (share_dims) {
+    share_buffer_op->SetShareDims(true);
+  }
+
   share_buffer_op->AddReuseVarPair(
       (*var_infos_)[op->GetScopeIdx()].at(in_var->Name()).get(),
       out_var->Name());
   reused_in_var_names_[op->GetScopeIdx()].insert(in_var->Name());
   reused_out_var_names_[op->GetScopeIdx()].insert(out_var->Name());
-
-  UpdateLastLiveOpOfVar(op, in_var, out_var);
 }
 
 // 1. Set last living op of in_var to be any last living op of out_var

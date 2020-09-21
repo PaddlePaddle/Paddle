@@ -14,9 +14,9 @@
 
 import os
 import sys
-import cv2
 
 from paddle.io import Dataset
+from paddle.utils import try_import
 
 __all__ = ["DatasetFolder", "ImageFolder"]
 
@@ -191,6 +191,7 @@ IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif',
 
 
 def cv2_loader(path):
+    cv2 = try_import('cv2')
     return cv2.imread(path)
 
 

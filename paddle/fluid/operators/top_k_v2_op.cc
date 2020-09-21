@@ -32,7 +32,6 @@ class TopkV2Op : public framework::OperatorWithKernel {
 
     auto input_dims = ctx->GetInputDim("X");
     const int& dim_size = input_dims.size();
-    const int k = static_cast<int>(ctx->Attrs().Get<int>("k"));
     int axis = static_cast<int>(ctx->Attrs().Get<int>("axis"));
     PADDLE_ENFORCE_EQ((axis < dim_size) && (axis >= (-1 * dim_size)), true,
                       "the axis of topk"
@@ -41,8 +40,18 @@ class TopkV2Op : public framework::OperatorWithKernel {
 
     if (axis < 0) axis += dim_size;
 
-    PADDLE_ENFORCE_GE(
-        k, 1, "the attribute of k in the topk must >= 1, but received %d .", k);
+    int k;
+    auto k_is_tensor = ctx->HasInput("K");
+    if (k_is_tensor) {
+      k = -1;
+    } else {
+      k = static_cast<int>(ctx->Attrs().Get<int>("k"));
+      PADDLE_ENFORCE_EQ(k >= 1, true,
+                        "the attribute of k in the topk must >= 1 or be a "
+                        "Tensor, but received %d .",
+                        k);
+    }
+
     PADDLE_ENFORCE_GE(input_dims.size(), 1,
                       "input of topk must have >= 1d shape");
 
