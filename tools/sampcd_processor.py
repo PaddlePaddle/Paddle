@@ -555,10 +555,16 @@ def get_wlist():
     with open("wlist.json", 'r') as load_f:
         load_dict = json.load(load_f)
         for key in load_dict:
-            if key == 'wlist_file':
-                wlist_file = wlist_file + load_dict[key]
+            if key == 'wlist_dir':
+                for item in load_dict[key]:
+                    wlist_file.append(item["name"])
+            elif key == "wlist_api":
+                for item in load_dict[key]:
+                    wlist.append(item["name"])
             else:
                 wlist = wlist + load_dict[key]
+    print(wlist_file)
+    print(wlist)
     return wlist, wlist_file
 
 
