@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # make package for paddle fluid shared and static library
-set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_install_dir" CACHE STRING
+set(PADDLE_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_install_dir" CACHE STRING
   "A path setting paddle shared and static libraries")
 
 set(PADDLE_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_install_dir" CACHE STRING
@@ -209,7 +209,7 @@ copy(inference_lib_dist
 set(fluid_lib_deps inference_lib_dist)
 add_custom_target(fluid_lib_dist ALL DEPENDS ${fluid_lib_deps})
 
-set(dst_dir "${FLUID_INSTALL_DIR}/paddle/fluid")
+set(dst_dir "${PADDLE_INSTALL_DIR}/paddle/fluid")
 set(module "inference")
 if(WIN32 AND NOT WITH_STATIC_LIB)
         copy(fluid_lib_dist
@@ -273,22 +273,22 @@ copy(fluid_lib_dist
         DSTS ${dst_dir}/${module}
         )
 
-set(dst_dir "${FLUID_INSTALL_DIR}/third_party/eigen3")
+set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/eigen3")
 copy(inference_lib_dist
         SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
         DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported)
 
-set(dst_dir "${FLUID_INSTALL_DIR}/third_party/boost")
+set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/boost")
 copy(inference_lib_dist
         SRCS ${BOOST_INCLUDE_DIR}/boost
         DSTS ${dst_dir})
 
-set(dst_dir "${FLUID_INSTALL_DIR}/third_party/dlpack")
+set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/dlpack")
 copy(inference_lib_dist
         SRCS ${DLPACK_INCLUDE_DIR}/dlpack
         DSTS ${dst_dir})
 
-set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
+set(dst_dir "${PADDLE_INSTALL_DIR}/third_party/install/zlib")
 copy(inference_lib_dist
         SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
         DSTS ${dst_dir} ${dst_dir}/lib)
@@ -297,7 +297,7 @@ copy(inference_lib_dist
 # CMakeCache Info
 copy(fluid_lib_dist
         SRCS ${PADDLE_INFERENCE_INSTALL_DIR}/third_party ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
-        DSTS ${FLUID_INSTALL_DIR} ${FLUID_INSTALL_DIR}
+        DSTS ${PADDLE_INSTALL_DIR} ${PADDLE_INSTALL_DIR}
         )
 
 # paddle fluid version
@@ -323,6 +323,6 @@ function(version version_file)
     endif()
     
 endfunction()
-version(${FLUID_INSTALL_DIR}/version.txt)
+version(${PADDLE_INSTALL_DIR}/version.txt)
 version(${PADDLE_INFERENCE_INSTALL_DIR}/version.txt)
 version(${PADDLE_INFERENCE_C_INSTALL_DIR}/version.txt)

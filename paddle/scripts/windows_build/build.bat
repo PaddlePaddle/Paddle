@@ -119,7 +119,7 @@ echo PACKAGE INFERENCE LIBRARY
 
 mkdir inference_dist
 %PYTHON_DIR%\python.exe -c "import shutil;shutil.make_archive('inference_dist/paddle_inference_install_dir', 'zip', root_dir='paddle_inference_install_dir')"
-%PYTHON_DIR%\python.exe -c "import shutil;shutil.make_archive('inference_dist/fluid_install_dir', 'zip', root_dir='fluid_install_dir')"
+%PYTHON_DIR%\python.exe -c "import shutil;shutil.make_archive('inference_dist/paddle_install_dir', 'zip', root_dir='paddle_install_dir')"
 
 echo BUILD INFERENCE LIBRARY COMPLETE
 goto :END

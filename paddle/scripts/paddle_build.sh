@@ -1456,7 +1456,7 @@ function tar_fluid_lib() {
     ========================================
 EOF
     cd ${PADDLE_ROOT}/build
-    cp -r fluid_install_dir fluid
+    cp -r paddle_install_dir fluid
     tar -czf fluid.tgz fluid
     cp -r paddle_inference_install_dir paddle_inference
     tar -czf paddle_inference.tgz paddle_inference
