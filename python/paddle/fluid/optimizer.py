@@ -3983,6 +3983,7 @@ class PipelineOptimizer(object):
                     outputs={'Out': [new_var]},
                     attrs={
                         'out_shape': new_var.shape,
+                        'dtype': new_var.dtype,
                         self._op_device_key: device,
                         self._op_role_key: self._op_role.Forward,
                         'peer': first_dev_index
@@ -4137,7 +4138,7 @@ class PipelineOptimizer(object):
                         attrs={
                             self._op_device_key: prev_device_spec,
                             self._op_role_key: op_role,
-                            'peer': prev_device_index
+                            'peer': cur_device_index
                         })
                     extra_index += 1
                     block._insert_op(
@@ -4146,9 +4147,10 @@ class PipelineOptimizer(object):
                         outputs={'Out': [var]},
                         attrs={
                             'out_shape': var.shape,
+                            'dtype': var.dtype,
                             self._op_device_key: cur_device_spec,
                             self._op_role_key: op_role,
-                            'peer': cur_device_index
+                            'peer': prev_device_index
                         })
                     extra_index += 1
 
@@ -4324,6 +4326,7 @@ class PipelineOptimizer(object):
                     outputs={'Out': [read_block.var(var_name)]},
                     attrs={
                         'out_shape': read_block.var(var_name).shape,
+                        'dtype': read_block.var(var_name).dtype,
                         self._op_device_key: read_device,
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch

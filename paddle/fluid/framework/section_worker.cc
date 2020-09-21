@@ -138,7 +138,7 @@ void SectionWorker::TrainFiles() {
           }
         }
       }
-    } catch (platform::EOFException&) {
+    } catch (platform::EOFException& e) {
       // std::unique_lock<std::mutex> lk(thread_mutex);
       // threads_completed = true;
       VLOG(3) << "thread  completed.";
@@ -146,6 +146,8 @@ void SectionWorker::TrainFiles() {
       // thread_condition.notify_all();
       VLOG(3) << "EOF encountered";
       // throw platform::EOFException();
+      // throw e;
+      PADDLE_THROW_EOF();
       break;
     }
   }
@@ -303,7 +305,7 @@ void SectionWorker::TrainFilesWithProfiler() {
                   << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]"
                   << std::endl;
       }
-    } catch (platform::EOFException&) {
+    } catch (platform::EOFException& e) {
       VLOG(3) << "thread  completed.";
       VLOG(0) << "EOF encountered";
       VLOG(0) << "============timeline============";
@@ -313,6 +315,7 @@ void SectionWorker::TrainFilesWithProfiler() {
                 << ", mean_time: " << op_total_time[i] / op_count[i];
       }
       VLOG(0) << "================================";
+      throw e;
       break;
     }
   }

@@ -40,23 +40,24 @@ class CRecvOp : public framework::OperatorWithKernel {
                           "The size of the output shape must be greater than 0 "
                           "but the value given is %d.",
                           out_shape.size()));
+    ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     VLOG(0) << "wow1";
-    std::string dtype = ctx.Attr<std::string>("dtype");
+    int dtype = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type;
-    if (dtype == "fp32") {
+    if (dtype == framework::proto::VarType::FP32) {
       type = framework::proto::VarType::FP32;
-    } else if (dtype == "fp64") {
+    } else if (dtype == framework::proto::VarType::FP64) {
       type = framework::proto::VarType::FP64;
-    } else if (dtype == "fp16") {
+    } else if (dtype == framework::proto::VarType::FP16) {
       type = framework::proto::VarType::FP16;
-    } else if (dtype == "int32") {
+    } else if (dtype == framework::proto::VarType::INT32) {
       type = framework::proto::VarType::INT32;
-    } else if (dtype == "int64") {
+    } else if (dtype == framework::proto::VarType::INT64) {
       type = framework::proto::VarType::INT64;
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -75,9 +76,9 @@ class CRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("peer", "(int default 0) rank id for sender.").SetDefault(0);
-    AddAttr<std::string>("dtype",
-                         "(std::string default fp32) data type of tensor.")
-        .SetDefault("fp32");
+    AddAttr<int>("dtype",
+                 "(std::string default 5(float32)) data type of tensor.")
+        .SetDefault(5);
     AddAttr<std::vector<int>>("out_shape", "shape of the output tensor.")
         .SetDefault(std::vector<int>());
     AddAttr<bool>(
