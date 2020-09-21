@@ -504,12 +504,12 @@ void GeoCommunicator::MainThread() {
   }
 
   while (running_) {
-    int meet = Meet();
+    // int meet = Meet();
 
     VLOG(1) << "async_meet: " << meet;
 
     //  SendGlobalStep(meet);
-    SendByCommunicator(meet);
+    SendByCommunicator(0);
   }
   VLOG(1) << "geo-communicator stopped, send thread exit";
 }
