@@ -47,6 +47,8 @@ class SubProgram(object):
         self._sync_reduce_var_names = []
         # param name to broadcast name
         self._param2broadcast = {}
+        # cast op pairs, fp16 name (str) -> fp32 name (str)
+        self._cast_ops = {}
         # parameter mems
         self._param_mem = 0.0
 
@@ -182,7 +184,7 @@ class ZeroOptimizer(MetaOptimizerBase):
         # reduced grads to param name
         self._reduced_grads_to_param = {}
         # self._nrings(int) is for nccl communicate
-        self._nrings = 1
+        self._nrings = 3
         # self._sub_progs
         self._sub_progs = []
         self._fuse_broadcast_num = 20
@@ -349,6 +351,14 @@ class ZeroOptimizer(MetaOptimizerBase):
                         assert (
                             reduced_grad not in self._reduced_grads_to_param)
                         self._reduced_grads_to_param[reduced_grad] = param
+
+            # find cast op
+            if self._is_fp16_cast_op(block, op):
+                fp32_param = op.desc.input_arg_names()[0]
+                fp16_param = op.desc.output_arg_names()[0]
+                if self._param2device[
+                        fp32_param] == self.role_maker.worker_index():
+                    sub_prog._cast_ops[fp16_param] = fp32_param
 
         if sub_prog._param_mem > 0:
             sub_prog._start_idx = 0
@@ -558,8 +568,6 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         comm_dep_vars = [v for k, v in sub_prog._param2broadcast.items()]
         for i in range(self._nrings):
-            print("insert c_sync_comm_stream id: ",
-                  offset + sub_prog._start_idx)
             block._insert_op(
                 offset + sub_prog._start_idx,
                 type='c_sync_comm_stream',
@@ -598,19 +606,7 @@ class ZeroOptimizer(MetaOptimizerBase):
             inserted_op_num += 1
 
         for param_name, broadcast_name in sub_prog._param2broadcast.items():
-            if param_name == broadcast_name:
-                if param_name in self._fp16_params:
-                    block._insert_op(
-                        offset + sub_prog._start_idx,
-                        type="cast",
-                        inputs={"X": self._fp16_to_params[param_name]},
-                        outputs={"Out": param_name},
-                        attrs={
-                            "in_dtype": core.VarDesc.VarType.FP32,
-                            "out_dtype": core.VarDesc.VarType.FP16
-                        })
-                    inserted_op_num += 1
-            else:
+            if param_name != broadcast_name:
                 broadcast_var = block.var(broadcast_name)
                 block._insert_op(
                     offset + sub_prog._start_idx,
@@ -622,6 +618,19 @@ class ZeroOptimizer(MetaOptimizerBase):
                         "value": 0.0,
                     })
                 inserted_op_num += 1
+
+        for fp16_name, fp32_name in sub_prog._cast_ops.items():
+            block._insert_op(
+                offset + sub_prog._start_idx,
+                type="cast",
+                inputs={"X": fp32_name},
+                outputs={"Out": fp16_name},
+                attrs={
+                    "in_dtype": core.VarDesc.VarType.FP32,
+                    "out_dtype": core.VarDesc.VarType.FP16
+                })
+            inserted_op_num += 1
+
         block._sync_with_cpp()
         return inserted_op_num
 
@@ -703,7 +712,6 @@ class ZeroOptimizer(MetaOptimizerBase):
                       startup_program=None,
                       parameter_list=None,
                       no_grad_set=None):
-        self._nrings = 3
 
         ckpts = list(self.user_defined_strategy.recompute_configs[
             "checkpoints"])
@@ -735,17 +743,13 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         # step3: add broadcast and reduce ops
         print("insert broadcast and allreduce")
-        inserted_op_num = 0
         for idx, subprog in reversed(list(enumerate(self._sub_progs))):
             print("subprog_{}: ({}-{})".format(idx, subprog._start_idx,
                                                subprog._end_idx))
-            print("inserted_op_num: ", inserted_op_num)
             if self._fp16_params:
                 # need to remove fp16 cast ops
-                self._remove_cast_op(main_block, subprog, inserted_op_num)
-            print("inserted_op_num: ", inserted_op_num)
-            print("_allreduce_vars: ", subprog._allreduce_vars)
-            self._add_broadcast_allreduce(main_block, subprog, inserted_op_num)
+                self._remove_cast_op(main_block, subprog, 0)
+            self._add_broadcast_allreduce(main_block, subprog, 0)
 
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
