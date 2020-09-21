@@ -89,7 +89,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 _startup = heter_worker.delete_startup_useless_ops_var_pass(
                     _startup, _main, compiled_config)
         else:
-            _main = worker.append_send_ops_pass(_main, compiled_config)
+            _main = worker.append_send_ops_pass(_main, compiled_config, True)
             _startup = _startup
 
         return _main, _startup

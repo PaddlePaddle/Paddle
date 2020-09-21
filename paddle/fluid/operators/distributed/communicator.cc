@@ -428,10 +428,6 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
       if (!send_ctx.is_sparse) {
         continue;
       }
-
-      send_ids_to_queue_[varname] =
-          std::make_shared<BlockingQueue<std::shared_ptr<SplitedSparseIds>>>(
-              send_queue_size_);
     }
   }
   send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
@@ -440,6 +436,9 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     VLOG(0) << "nothing need to be received, will not start recv_thread";
   } else {
     recv_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
+    need_push_queue_ =
+        std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(
+            send_queue_size_);
   }
 
   delta_scope_.reset(new Scope());
@@ -454,49 +453,46 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const framework::Scope &scope) {
   waiting_ = false;
 
-  PADDLE_ENFORCE_EQ(
-      var_tables.size(), 1,
-      platform::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
+  // PADDLE_ENFORCE_EQ(
+  //     var_tables.size(), 1,
+  //     platform::errors::InvalidArgument("var_tables.size() == 1 is
+  //     permitted"));
 
-  auto table_name = var_tables[0];
+  std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
+  for (size_t i = 0; i < var_tables.size(); i++) {
+    auto table_name = var_tables[i];
+    if (table_name == STEP_COUNTER) {
+      auto &queue = send_varname_to_queue_.at(table_name);
 
-  if (table_name == STEP_COUNTER) {
-    auto &queue = send_varname_to_queue_.at(table_name);
-
-    auto tmp_var = std::make_shared<Variable>();
-    auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
-    tensor->Resize(framework::make_ddim({1}));
-    auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
-    out_d[0] = 1;
-    VLOG(3) << "send to " << table_name << " with queue size " << queue->Size();
-    queue->Push(tmp_var);
-  } else {
-    auto &queue = send_ids_to_queue_.at(table_name);
-    PADDLE_ENFORCE_EQ(var_names.size(), 1,
-                      platform::errors::InvalidArgument(
-                          "var_names.size() == 1 is permitted"));
-
-    auto *var = scope.FindVar(var_names[0]);
-
-    PADDLE_ENFORCE_EQ(
-        var->IsInitialized(), true,
-        platform::errors::InvalidArgument("grad var should be inited"));
-
-    if (!var->IsType<framework::SelectedRows>()) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Only LodTensor can be send in GeoCommunicator::Send"));
+      auto tmp_var = std::make_shared<Variable>();
+      auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
+      tensor->Resize(framework::make_ddim({1}));
+      auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
+      out_d[0] = 1;
+      VLOG(3) << "send to " << table_name << " with queue size "
+              << queue->Size();
+      queue->Push(tmp_var);
+    } else {
+      auto splited_var_nums =
+          recv_varname_to_ctx_[table_name].splited_varnames.size();
+      if (ids_table->find(table_name) == ids_table->end()) {
+        // create empty set for new sparse var
+        ids_table->insert(
+            std::pair<std::string, std::vector<std::unordered_set<int64_t>>>(
+                table_name,
+                std::vector<std::unordered_set<int64_t>>{splited_var_nums}));
+      }
+      auto *var = scope.FindVar(var_names[i]);
+      auto &rows = var->Get<framework::SelectedRows>().rows();
+      // split rows index into output sparse vars
+      for (size_t i = 0; i < rows.size(); ++i) {
+        auto ep_idx = rows[i] % splited_var_nums;
+        ids_table->at(table_name)[ep_idx].insert(rows[i]);
+      }
     }
-
-    auto pserver_num = send_varname_to_ctx_.at(table_name).epmap.size();
-    auto ids = std::make_shared<SplitedSparseIds>(pserver_num);
-    auto &rows = var->Get<framework::SelectedRows>().rows();
-    // split rows index into output sparse vars
-    for (size_t i = 0; i < rows.size(); ++i) {
-      auto ep_idx = rows[i] % pserver_num;
-      ids->at(ep_idx).insert(rows[i]);
-    }
-    queue->Push(ids);
   }
+  need_push_queue_->Push(ids_table);
+  VLOG(1) << "run send_op finish.";
 }
 
 void GeoCommunicator::MainThread() {
@@ -507,17 +503,12 @@ void GeoCommunicator::MainThread() {
     VLOG(3) << "wait for running";
   }
 
-  for (auto &iter : send_varname_to_ctx_) {
-    splited_ids_vec_.insert(
-        std::pair<std::string, std::vector<SplitedSparseIds>>{
-            iter.first, std::vector<SplitedSparseIds>()});
-  }
   while (running_) {
     int meet = Meet();
 
     VLOG(1) << "async_meet: " << meet;
 
-    SendGlobalStep(meet);
+    //  SendGlobalStep(meet);
     SendByCommunicator(meet);
   }
   VLOG(1) << "geo-communicator stopped, send thread exit";
@@ -527,55 +518,72 @@ void GeoCommunicator::SendByCommunicator(int batches) {
   std::vector<std::future<void>> tasks;
   tasks.reserve(send_varname_to_ctx_.size());
 
-  for (auto &iter : send_varname_to_ctx_) {
-    VLOG(1) << "debug " << iter.first;
-    auto &var_name = iter.first;
-    auto &send_ctx = iter.second;
-    int pserver_num = static_cast<int>(send_ctx.epmap.size());
-
-    if (send_ctx.is_sparse) {
-      if (var_name == STEP_COUNTER) {
-        continue;
+  size_t wait_times = 0;
+  while (ids_send_vec_.size() < static_cast<size_t>(max_merge_var_num_)) {
+    VLOG(1) << "ids_send_vec_ Size: " << ids_send_vec_.size();
+    if (need_push_queue_->Size() > 0) {
+      wait_times = 0;
+      ids_send_vec_.push_back(*(need_push_queue_->Pop()));
+      VLOG(1) << "ids_send_vec_ pushed";
+    } else if (need_push_queue_->Size() == 0) {
+      VLOG(1) << "wait_times -> " << wait_times;
+      if (wait_times >= static_cast<size_t>(send_wait_times_)) {
+        break;
       }
-      auto &ids_queue = send_ids_to_queue_.at(var_name);
-
-      splited_ids_vec_[var_name].clear();
-      for (int i = 0; i < batches; ++i) {
-        splited_ids_vec_[var_name].push_back(*(ids_queue->Pop()));
-      }
-
-      for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
-        auto send_recv_task = [this, ep_idx, &var_name] {
-          if (var_name == STEP_COUNTER) {
-            return;
-          }
-          SendSparse(var_name, ep_idx);
-          RecvSparse(var_name, ep_idx);
-        };
-        tasks.emplace_back(
-            send_threadpool_->enqueue(std::move(send_recv_task)));
-        //      tasks[tasks.size() - 1].wait();
-      }
-    } else {
-      auto send_recv_task = [this, &var_name, &send_ctx] {
-        if (var_name == STEP_COUNTER) {
-          return;
-        }
-        VLOG(1) << "send dense " << var_name << " begin";
-        SendDense(var_name);
-        VLOG(1) << "send dense " << var_name << " done";
-        VLOG(1) << "recv dense " << var_name << " begin";
-        RecvDense(var_name);
-        VLOG(1) << "recv dense " << var_name << " done";
-      };
-      tasks.emplace_back(send_threadpool_->enqueue(std::move(send_recv_task)));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      wait_times++;
+      continue;
     }
   }
 
-  for (auto &task : tasks) {
-    task.wait();
+  if (ids_send_vec_.size() >= static_cast<size_t>(max_merge_var_num_)) {
+    for (auto &iter : send_varname_to_ctx_) {
+      VLOG(1) << "debug " << iter.first;
+      auto &var_name = iter.first;
+      auto &send_ctx = iter.second;
+      int pserver_num = static_cast<int>(send_ctx.epmap.size());
+
+      if (send_ctx.is_sparse) {
+        if (var_name == STEP_COUNTER) {
+          continue;
+        }
+
+        for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
+          auto send_recv_task = [this, ep_idx, &var_name] {
+            if (var_name == STEP_COUNTER) {
+              return;
+            }
+            SendSparse(var_name, ep_idx);
+            RecvSparse(var_name, ep_idx);
+          };
+          tasks.emplace_back(
+              send_threadpool_->enqueue(std::move(send_recv_task)));
+          //      tasks[tasks.size() - 1].wait();
+        }
+      } else {
+        auto send_recv_task = [this, &var_name, &send_ctx] {
+          if (var_name == STEP_COUNTER) {
+            return;
+          }
+          VLOG(1) << "send dense " << var_name << " begin";
+          SendDense(var_name);
+          VLOG(1) << "send dense " << var_name << " done";
+          VLOG(1) << "recv dense " << var_name << " begin";
+          RecvDense(var_name);
+          VLOG(1) << "recv dense " << var_name << " done";
+        };
+        tasks.emplace_back(
+            send_threadpool_->enqueue(std::move(send_recv_task)));
+      }
+    }
+
+    for (auto &task : tasks) {
+      task.wait();
+    }
+
+    ids_send_vec_.clear();
+    VLOG(1) << "Finish SendByCommunicator";
   }
-  VLOG(1) << "Finish SendByCommunicator";
 }
 
 void GeoCommunicator::SendSparse(const std::string &varname, int ep_idx) {
@@ -588,12 +596,11 @@ void GeoCommunicator::SendSparse(const std::string &varname, int ep_idx) {
   auto endpoint = rpc_ctx.epmap[ep_idx];
   auto pserver_num = rpc_ctx.epmap.size();
 
-  int batches = static_cast<int>(splited_ids_vec_[varname].size());
-  for (int i = 0; i < batches; ++i) {
-    std::copy(splited_ids_vec_[varname][i].at(ep_idx).begin(),
-              splited_ids_vec_[varname][i].at(ep_idx).end(),
+  for (auto ids_map : ids_send_vec_) {
+    std::copy(ids_map[varname][ep_idx].begin(), ids_map[varname][ep_idx].end(),
               back_inserter(ids));
   }
+  VLOG(1) << "ids_vector_size: " << ids.size();
 
   auto size = ids.size();
 

@@ -780,7 +780,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
             _startup = worker.delet_extra_optimizes_pass(_startup,
                                                          compiled_config)
         else:
-            _main = worker.append_send_ops_pass(_main, compiled_config)
+            _main = worker.append_send_ops_pass(_main, compiled_config, True)
             _startup = _startup
 
         return _main, _startup

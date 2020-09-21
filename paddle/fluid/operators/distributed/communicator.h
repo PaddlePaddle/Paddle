@@ -251,8 +251,8 @@ class Communicator {
   std::unordered_map<std::string, std::string> envs;
 };
 
-using SplitedSparseIds = std::vector<std::unordered_set<int64_t>>;
-
+using SparseIdsMap =
+    std::unordered_map<std::string, std::vector<std::unordered_set<int64_t>>>;
 class AsyncCommunicator : public Communicator {
  public:
   AsyncCommunicator() : Communicator() {}
@@ -457,14 +457,10 @@ class GeoCommunicator : public AsyncCommunicator {
   // parameter on pserver
   std::shared_ptr<Scope> pserver_scope_;
 
-  std::unordered_map<
-      std::string,
-      std::shared_ptr<BlockingQueue<std::shared_ptr<SplitedSparseIds>>>>
-      send_ids_to_queue_;
-
   std::unordered_map<std::string, std::shared_ptr<SparseValue>> old_sparses_;
-  std::unordered_map<std::string, std::vector<SplitedSparseIds>>
-      splited_ids_vec_;
+  std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>>
+      need_push_queue_;
+  std::vector<SparseIdsMap> ids_send_vec_;
 };
 
 }  // namespace distributed
