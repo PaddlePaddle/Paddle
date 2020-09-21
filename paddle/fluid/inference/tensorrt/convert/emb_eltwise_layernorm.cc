@@ -80,10 +80,10 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
 
     if (engine_->with_dynamic_shape()) {
-      plugin::DynamicPluginTensorRT* plugin = nullptr;
-      plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
+      auto use_fp16 = engine_->WithFp16();
+      auto plugin = new plugin::EmbEltwiseLayernormPluginDynamic(
           input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
-          eps);
+          eps, use_fp16);
       layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
