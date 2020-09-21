@@ -48,7 +48,7 @@ class SeqconvEltaddReluFusePassTest(InferencePassTest):
     def test_check_output(self):
         self.check_output()
         self.assertTrue(
-            PassVersionChecker.IsCompatible('fusion_seqconv_eltadd_relu'))
+            PassVersionChecker.IsCompatible('seqconv_eltadd_relu_fuse_pass'))
 
 
 class SeqconvEltaddReluFusePassTestPaddingStartPositive(InferencePassTest):
@@ -78,7 +78,7 @@ class SeqconvEltaddReluFusePassTestPaddingStartPositive(InferencePassTest):
     def test_check_output(self):
         self.check_output()
         self.assertTrue(
-            PassVersionChecker.IsCompatible('fusion_seqconv_eltadd_relu'))
+            PassVersionChecker.IsCompatible('seqconv_eltadd_relu_fuse_pass'))
 
 
 class SeqconvEltaddReluFusePassTestPaddingStartNegative(InferencePassTest):
@@ -106,7 +106,7 @@ class SeqconvEltaddReluFusePassTestPaddingStartNegative(InferencePassTest):
     def test_check_output(self):
         self.check_output()
         self.assertTrue(
-            PassVersionChecker.IsCompatible('fusion_seqconv_eltadd_relu'))
+            PassVersionChecker.IsCompatible('seqconv_eltadd_relu_fuse_pass'))
 
 
 class SeqconvEltaddReluFusePassTestPaddingStartNone(InferencePassTest):
@@ -133,7 +133,7 @@ class SeqconvEltaddReluFusePassTestPaddingStartNone(InferencePassTest):
     def test_check_output(self):
         self.check_output()
         self.assertTrue(
-            PassVersionChecker.IsCompatible('fusion_seqconv_eltadd_relu'))
+            PassVersionChecker.IsCompatible('seqconv_eltadd_relu_fuse_pass'))
 
 
 if __name__ == "__main__":
