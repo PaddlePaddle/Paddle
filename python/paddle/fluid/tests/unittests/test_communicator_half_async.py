@@ -120,6 +120,7 @@ from test_communicator_half_async import TestCommunicatorHalfAsyncEnd2End
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
+paddle.enable_static()
 
 class RunServer(TestCommunicatorHalfAsyncEnd2End):
     def runTest(self):

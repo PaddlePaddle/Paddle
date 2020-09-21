@@ -38,6 +38,7 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
+        paddle.enable_static()
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):

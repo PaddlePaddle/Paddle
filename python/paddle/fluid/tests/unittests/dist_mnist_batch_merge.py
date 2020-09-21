@@ -77,4 +77,5 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     runtime_main(TestDistMnist2x2)

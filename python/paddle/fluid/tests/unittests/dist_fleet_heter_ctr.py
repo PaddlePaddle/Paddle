@@ -217,4 +217,5 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     runtime_main(TestHeterPsCTR2x2)

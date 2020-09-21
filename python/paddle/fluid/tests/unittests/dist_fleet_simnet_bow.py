@@ -248,4 +248,5 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     runtime_main(TestDistSimnetBow2x2)

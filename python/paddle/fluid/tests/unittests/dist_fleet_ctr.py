@@ -243,4 +243,5 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     runtime_main(TestDistCTR2x2)
