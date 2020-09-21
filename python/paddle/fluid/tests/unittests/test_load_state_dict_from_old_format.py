@@ -124,7 +124,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.params_filename = None
         orig_param_dict = self.train_and_save_model()
 
-        load_param_dict, _ = paddle.load(self.save_dirname)
+        load_param_dict, _ = fluid.dygraph.load_dygraph(self.save_dirname)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
     def test_load_with_model_filename(self):
@@ -170,7 +170,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         self.params_filename = None
         orig_param_dict = self.train_and_save_model(True)
 
-        load_param_dict, _ = paddle.load(self.save_dirname)
+        load_param_dict, _ = fluid.dygraph.load_dygraph(self.save_dirname)
         self.check_load_state_dict(orig_param_dict, load_param_dict)
 
 

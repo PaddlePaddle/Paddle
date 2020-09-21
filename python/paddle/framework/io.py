@@ -120,7 +120,7 @@ def save(obj, path):
     Save an object to the specified path.
     
     .. note::
-        Now only supports save state_dict of Layer or Optimizer.
+        Now only supports save ``state_dict`` of Layer or Optimizer.
     
     Args:
         obj(object) : The object to be saved.
@@ -177,12 +177,13 @@ def load(path, config=None):
     Load an object can be used in paddle from specified path.
 
     .. note::
-        Now only supports load state_dict of Layer or Optimizer.
+        Now only supports load ``state_dict`` of Layer or Optimizer.
 
     .. note::
-        ``paddle.load`` supports loading state_dict from several paddle1.x save APIs in 
-        static mode. Due to some historical reasons, if you load ``state_dict`` from the 
-        saved result of ``paddle.io.save_inference_model/paddle.io.save_params/paddle.io.save_persistables`` , 
+        ``paddle.load`` supports loading ``state_dict`` from the result of several 
+        paddle1.x save APIs in static mode. But due to some historical reasons, 
+        if you load ``state_dict`` from the saved result of 
+        ``paddle.io.save_inference_model/paddle.io.save_params/paddle.io.save_persistables`` , 
         the structured variable name will cannot be restored. You need to set the argument 
         ``use_structured_name=False`` when using ``Layer.set_state_dict`` later.
 
