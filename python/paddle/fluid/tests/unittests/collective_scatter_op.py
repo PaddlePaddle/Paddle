@@ -38,6 +38,7 @@ from test_collective_base import TestCollectiveRunnerBase, runtime_main
 
 class TestCollectiveScatter(TestCollectiveRunnerBase):
     def __init__(self):
+        paddle.enable_static()
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program):

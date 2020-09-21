@@ -53,4 +53,6 @@ class TestDistSimnetASync2x2(TestFleetBase):
 
 
 if __name__ == "__main__":
+    import paddle
+    paddle.enable_static()
     unittest.main()

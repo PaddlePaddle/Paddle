@@ -50,4 +50,5 @@ class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     runtime_main(TestCollectiveAllgatherAPI, "allgather")

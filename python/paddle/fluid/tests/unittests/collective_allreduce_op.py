@@ -65,4 +65,5 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     runtime_main(TestCollectiveAllreduce, "allreduce", 0)

@@ -149,4 +149,5 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     runtime_main(TestDistGpuPsCTR2x2)
