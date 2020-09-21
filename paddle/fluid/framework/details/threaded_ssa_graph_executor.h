@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <ThreadPool.h>  // ThreadPool in thrird party
+
 #include <deque>
 #include <functional>
 #include <list>
@@ -23,8 +25,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
-#include <ThreadPool.h>  // ThreadPool in thrird party
 
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
