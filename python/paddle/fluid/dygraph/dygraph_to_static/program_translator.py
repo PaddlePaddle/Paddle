@@ -375,8 +375,10 @@ class StaticLayer(object):
         if isinstance(self._class_instance, layers.Layer):
             if not self._class_instance._init_in_dynamic_mode:
                 raise RuntimeError(
-                    " `paddle.jit.to_static` is only available in dynamic mode. Please call `paddle.disable_static()` before initializing your Layer class `{}` . Because parameters of Layer class should be initialized firstly in dynamic mode while applying transformation.".
-                    format(self._class_instance))
+                    " `paddle.jit.to_static` is only available in dynamic mode. Please call `paddle.disable_static()` before "
+                    "initializing your Layer class `{}` . Because parameters of Layer class should be initialized firstly "
+                    "in dynamic mode while applying transformation.".format(
+                        self._class_instance))
 
         # 2. unify args/kwargs and replace Tensor with InputSpec
         if len(args) != len(self._function_spec.args_name):
