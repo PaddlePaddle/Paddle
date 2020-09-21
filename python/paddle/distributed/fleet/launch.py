@@ -480,7 +480,7 @@ def launch_ps_heter(args, use_paddlecloud):
         if role == "TRAINER":
             # acutal do heter-trainer
             heter_tp, heter_cmd, heter_fn = start_heter_trainer(
-                args, current_idx, current_env)
+                args, current_idx, current_env, use_paddlecloud)
             procs.append(heter_tp)
             cmds.append(heter_cmd)
             log_fns.append(heter_fn)
@@ -503,8 +503,8 @@ def launch_ps_heter(args, use_paddlecloud):
 
         elif role == "PSERVER":
             # acutaly do Trainer and Server
-            server_tp, server_cmd, server_fn = start_server(
-                args, current_idx, current_env, use_paddlecloud)
+            server_tp, server_cmd, server_fn = start_server(args, current_idx,
+                                                            current_env)
             procs.append(server_tp)
             cmds.append(server_cmd)
             log_fns.append(server_fn)
@@ -525,15 +525,18 @@ def launch_ps_heter(args, use_paddlecloud):
             for i in trainer_proc_idx_list:
                 procs[i].proc.wait()
 
-            if args.distributed_mode == "ps_heter":
-                for i in server_proc_idx_list:
-                    print(
-                        "all server exit, going to finish heter trainer",
-                        file=sys.stderr)
-                    procs[i].proc.terminate()
+            for i in server_proc_idx_list:
+                procs[i].proc.wait()
 
-            for log in log_fns:
-                log.close()
+            # if args.distributed_mode == "ps_heter":
+            #     for i in server_proc_idx_list:
+            #         print(
+            #             "all server exit, going to finish heter trainer",
+            #             file=sys.stderr)
+            #         procs[i].proc.terminate()
+
+            # for log in log_fns:
+            #     log.close()
 
     def local_launch():
         idx = 0
