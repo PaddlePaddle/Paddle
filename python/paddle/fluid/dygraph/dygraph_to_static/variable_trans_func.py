@@ -22,8 +22,8 @@ from paddle.fluid.layers import fill_constant
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = [
-    'to_static_variable_gast_node', 'create_static_variable_gast_node',
-    'data_layer_not_check'
+    'create_fill_constant_node', 'create_static_variable_gast_node',
+    'data_layer_not_check', 'to_static_variable', 'to_static_variable_gast_node'
 ]
 
 
