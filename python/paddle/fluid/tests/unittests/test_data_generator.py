@@ -108,6 +108,8 @@ class TestMultiSlotStringDataGenerator(unittest.TestCase):
 
 
 class TestMultiSlotStringDataGenerator_2(unittest.TestCase):
+    @unittest.skipIf(sys.platform == "win32",
+                     "Windows does not support this pipe command")
     def test_MyMultiSlotStringDataGenerator_stdin(self):
         with open("test_queue_dataset_run_a.txt", "w") as f:
             data = "2 1 2\n"
