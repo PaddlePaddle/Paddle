@@ -563,8 +563,6 @@ def get_wlist():
                     wlist.append(item["name"])
             else:
                 wlist = wlist + load_dict[key]
-    print(wlist_file)
-    print(wlist)
     return wlist, wlist_file
 
 
