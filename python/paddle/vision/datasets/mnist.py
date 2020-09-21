@@ -44,8 +44,6 @@ class MNIST(Dataset):
             :attr:`download` is True. Default None
         label_path(str): path to label file, can be set None if
             :attr:`download` is True. Default None
-        chw_format(bool): If set True, the output shape is [1, 28, 28],
-            otherwise, output shape is [1, 784]. Default True.
         mode(str): 'train' or 'test' mode. Default 'train'.
         download(bool): whether to download dataset automatically if
             :attr:`image_path` :attr:`label_path` is not set. Default True
@@ -70,14 +68,12 @@ class MNIST(Dataset):
     def __init__(self,
                  image_path=None,
                  label_path=None,
-                 chw_format=True,
                  mode='train',
                  transform=None,
                  download=True):
         assert mode.lower() in ['train', 'test'], \
                 "mode should be 'train' or 'test', but got {}".format(mode)
         self.mode = mode.lower()
-        self.chw_format = chw_format
         self.image_path = image_path
         if self.image_path is None:
             assert download, "image_path is not set and downloading automatically is disabled"
@@ -139,10 +135,6 @@ class MNIST(Dataset):
                                                       cols)).astype('float32')
                     offset_img += struct.calcsize(fmt_images)
 
-                    images = images / 255.0
-                    images = images * 2.0
-                    images = images - 1.0
-
                     for i in range(buffer_size):
                         self.images.append(images[i, :])
                         self.labels.append(
@@ -150,8 +142,7 @@ class MNIST(Dataset):
 
     def __getitem__(self, idx):
         image, label = self.images[idx], self.labels[idx]
-        if self.chw_format:
-            image = np.reshape(image, [1, 28, 28])
+        image = np.reshape(image, [1, 28, 28])
         if self.transform is not None:
             image = self.transform(image)
         return image, label
