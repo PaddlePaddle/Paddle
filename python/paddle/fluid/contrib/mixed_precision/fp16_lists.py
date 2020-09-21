@@ -71,7 +71,11 @@ class AutoMixedPrecisionLists(object):
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16.
-white_list = {'conv2d', 'matmul', 'mul', 'fused_bn_add_activation'}
+white_list = {
+    'conv2d',
+    'matmul',
+    'mul',
+}
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # dangerous and whose effects may also be observed in downstream ops.
@@ -131,6 +135,7 @@ gray_list = {
     'get_tensor_from_selected_rows',
     'sign',
     'cast',
+    'fused_bn_add_activation',
 }
 '''
 # The set of ops that don't support fp16 calculation

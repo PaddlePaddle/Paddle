@@ -133,13 +133,6 @@ framework::OpKernelType FusedBatchNormAddActOp::GetExpectedKernelType(
                                  library);
 }
 
-framework::OpKernelType FusedBatchNormAddActOp::GetKernelTypeForVar(
-    const std::string &var_name, const Tensor &tensor,
-    const framework::OpKernelType &expected_kernel_type) const {
-  return framework::OpKernelType(expected_kernel_type.data_type_,
-                                 tensor.place(), tensor.layout());
-}
-
 void FusedBatchNormAddActOpMaker::Make() {
   AddInput("X", "The input tensor");
   AddInput("Z", "The input tensor");

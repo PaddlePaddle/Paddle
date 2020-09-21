@@ -64,13 +64,13 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
 
     auto *mean_out = ctx.Output<Tensor>("MeanOut");
     auto *variance_out = ctx.Output<Tensor>("VarianceOut");
-    mean_out->mutable_data<BatchNormParamType<float>>(ctx.GetPlace());
-    variance_out->mutable_data<BatchNormParamType<float>>(ctx.GetPlace());
+    mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
 
     auto *saved_mean = ctx.Output<Tensor>("SavedMean");
     auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
-    saved_mean->mutable_data<BatchNormParamType<float>>(ctx.GetPlace());
-    saved_variance->mutable_data<BatchNormParamType<float>>(ctx.GetPlace());
+    saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
 
     auto *y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
@@ -151,20 +151,19 @@ class FusedBatchNormAddActKernel<platform::CUDADeviceContext, T>
                                                   workspace_size);
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
-            handle, mode_, bnOps_, CudnnDataType<float>::kOne(),
-            CudnnDataType<float>::kZero(), data_desc_, x->template data<T>(),
+            handle, mode_, bnOps_, CudnnDataType<T>::kOne(),
+            CudnnDataType<T>::kZero(), data_desc_, x->template data<T>(),
             data_desc_, z->template data<T>(), data_desc_,
             y->template data<T>(), bn_param_desc_,
-            scale->template data<BatchNormParamType<float>>(),
-            bias->template data<BatchNormParamType<float>>(), this_factor,
-            mean_out->template mutable_data<BatchNormParamType<float>>(
+            scale->template data<BatchNormParamType<T>>(),
+            bias->template data<BatchNormParamType<T>>(), this_factor,
+            mean_out->template mutable_data<BatchNormParamType<T>>(
                 ctx.GetPlace()),
-            variance_out->template mutable_data<BatchNormParamType<float>>(
+            variance_out->template mutable_data<BatchNormParamType<T>>(
                 ctx.GetPlace()),
-            epsilon,
-            saved_mean->template mutable_data<BatchNormParamType<float>>(
-                ctx.GetPlace()),
-            saved_variance->template mutable_data<BatchNormParamType<float>>(
+            epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
+                         ctx.GetPlace()),
+            saved_variance->template mutable_data<BatchNormParamType<T>>(
                 ctx.GetPlace()),
             activation_desc_, workspace_ptr, workspace_size, reserve_space_ptr,
             reserve_space_size));
@@ -254,9 +253,9 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
     const auto *saved_mean_data =
-        saved_mean->template data<BatchNormParamType<float>>();
+        saved_mean->template data<BatchNormParamType<T>>();
     const auto *saved_var_data =
-        saved_var->template data<BatchNormParamType<float>>();
+        saved_var->template data<BatchNormParamType<T>>();
 
     size_t workspace_size = 0;
     void *workspace_ptr = nullptr;
@@ -288,10 +287,10 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
             /*handle=*/dev_ctx.cudnn_handle(),
             /*mode=*/mode_,
             /*bnOps=*/bnOps_,
-            /*alphaDataDiff=*/CudnnDataType<float>::kOne(),
-            /*betaDataDiff=*/CudnnDataType<float>::kZero(),
-            /*alphaParamDiff=*/CudnnDataType<float>::kOne(),
-            /*betaParamDiff=*/CudnnDataType<float>::kZero(),
+            /*alphaDataDiff=*/CudnnDataType<T>::kOne(),
+            /*betaDataDiff=*/CudnnDataType<T>::kZero(),
+            /*alphaParamDiff=*/CudnnDataType<T>::kOne(),
+            /*betaParamDiff=*/CudnnDataType<T>::kZero(),
             /*xDesc=*/data_desc_,
             /*xData=*/x->template data<T>(),
             /*yDesc=*/data_desc_,
@@ -303,11 +302,10 @@ class FusedBatchNormAddActGradKernel<platform::CUDADeviceContext, T>
             /*dxDesc=*/data_desc_,
             /*dxData=*/d_x->template data<T>(),
             /*dBnScaleBiasDesc=*/bn_param_desc_,
-            /*bnScaleData=*/scale->template data<BatchNormParamType<float>>(),
-            /*bnBiasData=*/bias->template data<BatchNormParamType<float>>(),
-            /*dBnScaleData=*/d_scale
-                ->template data<BatchNormParamType<float>>(),
-            /*dBnBiasData=*/d_bias->template data<BatchNormParamType<float>>(),
+            /*bnScaleData=*/scale->template data<BatchNormParamType<T>>(),
+            /*bnBiasData=*/bias->template data<BatchNormParamType<T>>(),
+            /*dBnScaleData=*/d_scale->template data<BatchNormParamType<T>>(),
+            /*dBnBiasData=*/d_bias->template data<BatchNormParamType<T>>(),
             /*epsilon=*/epsilon,
             /*savedMean=*/saved_mean_data,
             /*savedInvVariance=*/saved_var_data,
