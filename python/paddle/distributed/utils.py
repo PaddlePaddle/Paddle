@@ -133,11 +133,6 @@ class Trainer(object):
         self.gpus = []
         self.endpoint = None
         self.rank = None
-        self.gloo_prefix = None
-        self.gloo_iface = None
-        self.gloo_path = None
-        self.gloo_fs_name = None
-        self.gloo_fs_ugi = None
 
     def __str__(self):
         return "gpu:{} endpoint:{} rank:{}".format(self.gpus, self.endpoint,
@@ -344,12 +339,7 @@ def _prepare_trainer_env(cluster, trainer):
         "PADDLE_TRAINER_ID": "%d" % trainer.rank,
         "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
         "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-        "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
-        "PADDLE_GLOO_PREFIX": "%s" % trainer.gloo_prefix,
-        "PADDLE_GLOO_IFACE": "%s" % trainer.gloo_iface,
-        "PADDLE_GLOO_PATH": "%s" % trainer.gloo_path,
-        "PADDLE_GLOO_FS_NAME": "%s" % trainer.gloo_fs_name,
-        "PADDLE_GLOO_FS_UGI": "%s" % trainer.gloo_fs_ugi,
+        "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
     }
     return proc_env
 
