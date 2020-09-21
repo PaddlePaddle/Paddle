@@ -31,6 +31,9 @@ struct GlooParallelStrategy {
   std::string path;
   std::string fs_name;
   std::string fs_ugi;
+  std::string ip_address;
+  int ip_port;
+  std::string scope{"worker"};
 };
 
 class GlooParallelContext {

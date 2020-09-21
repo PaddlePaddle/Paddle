@@ -99,7 +99,21 @@ void BindGlooContext(py::module *m) {
                       return self.fs_ugi;
                     },
                     [](platform::GlooParallelStrategy &self,
-                       const std::string &fs_ugi) { self.fs_ugi = fs_ugi; });
+                       const std::string &fs_ugi) { self.fs_ugi = fs_ugi; })
+      .def_property(
+          "ip_address",
+          [](const platform::GlooParallelStrategy &self) {
+            return self.ip_address;
+          },
+          [](platform::GlooParallelStrategy &self,
+             const std::string &ip_address) { self.ip_address = ip_address; })
+      .def_property("ip_port",
+                    [](const platform::GlooParallelStrategy &self) {
+                      return self.ip_port;
+                    },
+                    [](platform::GlooParallelStrategy &self, int ip_port) {
+                      self.ip_port = ip_port;
+                    });
 
   py::class_<platform::GlooParallelContext> gloo_ctx(*m, "GlooParallelContext");
   gloo_ctx.def(py::init<const platform::GlooParallelStrategy &>())

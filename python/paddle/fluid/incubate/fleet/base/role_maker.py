@@ -983,7 +983,7 @@ class GeneralRoleMaker(RoleMakerBase):
         http_server.start()
         wait_seconds = 5
         while http_server_d.get("running",
-                                False) and not http_server.shoud_stop():
+                                False) and not http_server.should_stop():
             time.sleep(wait_seconds)
         http_server.stop()
 

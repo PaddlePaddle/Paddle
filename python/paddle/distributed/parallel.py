@@ -15,6 +15,7 @@
 import os
 import six
 import warnings
+from multiprocessing import Process, Manager
 
 from paddle import compat as cpt
 
@@ -27,6 +28,17 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 __all__ = ["init_parallel_env"]
 
 ParallelStrategy = core.ParallelStrategy
+
+
+def _start_kv_server(port, http_server_d, nranks):
+    from paddle.distributed.fleet.utils.http_server import KVServer
+    size_d = {"trainer": nranks, "all": nranks}
+    http_server = KVServer(port, size_d)
+    http_server.start()
+    wait_seconds = 5
+    while http_server_d.get("running", False) and not http_server.should_stop():
+        time.sleep(wait_seconds)
+    http_server.stop()
 
 
 def init_parallel_env():
@@ -109,11 +121,6 @@ def init_parallel_env():
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
     _check_var_exists("PADDLE_TRAINERS_NUM")
     _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
-    _check_var_exists("PADDLE_GLOO_PREFIX")
-    _check_var_exists("PADDLE_GLOO_PATH")
-    _check_var_exists("PADDLE_GLOO_IFACE")
-    _check_var_exists("PADDLE_GLOO_FS_NAME")
-    _check_var_exists("PADDLE_GLOO_FS_UGI")
 
     # 3. init NCCL ParallelStrategy
     strategy = ParallelStrategy()
@@ -135,21 +142,43 @@ def init_parallel_env():
     _set_expected_place(place)
 
     # init gloo context
+    ep_rank_0 = ParallelEnv().trainer_endpoints[0].split(":")
+    manager = Manager()
+    # glboal dict to store status
+    http_server_d = manager.dict()
+    http_server_d["running"] = False
     gloo_strategy = core.GlooParallelStrategy()
     gloo_strategy.rank = ParallelEnv().rank
     gloo_strategy.rank_num = ParallelEnv().world_size
-    gloo_strategy.prefix = os.environ.get("PADDLE_GLOO_PREFIX")
-    gloo_strategy.iface = os.environ.get("PADDLE_GLOO_IFACE")
-    default_timeout_seconds = 9999999
-    gloo_strategy.init_seconds = default_timeout_seconds
-    gloo_strategy.run_seconds = default_timeout_seconds
-    gloo_strategy.path = os.environ.get("PADDLE_GLOO_PATH")
-    if not os.path.exists(gloo_strategy.path):
-        os.mkdir(gloo_strategy.path)
-    gloo_strategy.fs_name = os.environ.get("PADDLE_GLOO_FS_NAME")
-    gloo_strategy.fs_ugi = os.environ.get("PADDLE_GLOO_FS_UGI")
+    gloo_strategy.ip_address = ep_rank_0[0]
+    gloo_strategy.ip_port = int(ep_rank_0[1])
+    if ParallelEnv().rank == 0:
+        http_server = Process(
+            target=_start_kv_server,
+            args=(int(ep_rank_0[1]), http_server_d, ParallelEnv().world_size))
+        http_server.daemon = True
+        http_server_d["running"] = True
+        http_server.start()
+    # gloo_strategy.prefix = os.environ.get("PADDLE_GLOO_PREFIX")
+    # gloo_strategy.iface = os.environ.get("PADDLE_GLOO_IFACE")
+    gloo_strategy.prefix = ""
+    gloo_strategy.iface = "lo"
+    default_init_timeout_seconds = 3600
+    default_run_timeout_seconds = 9999999
+    gloo_strategy.init_seconds = default_init_timeout_seconds
+    gloo_strategy.run_seconds = default_run_timeout_seconds
+    # gloo_strategy.path = os.environ.get("PADDLE_GLOO_PATH")
+    # default_init_timeout_seconds = 9999999
+    # if not os.path.exists(gloo_strategy.path):
+    #     os.mkdir(gloo_strategy.path)
+    # gloo_strategy.fs_name = os.environ.get("PADDLE_GLOO_FS_NAME")
+    # gloo_strategy.fs_ugi = os.environ.get("PADDLE_GLOO_FS_UGI")
+    gloo_strategy.ip_address = ep_rank_0[0]
+    gloo_strategy.ip_port = int(ep_rank_0[1])
     gloo = core.GlooParallelContext(gloo_strategy)
     gloo.init()
+    http_server_d["running"] = False
+    http_server.join()
 
     # init nccl context
     parallel_helper._set_parallel_ctx(core.NCCLParallelContext(strategy, place))
