@@ -87,7 +87,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role2._all_gather(1)
         role2._all_gather(1)
         role2._barrier_server()
-        role2.all_gather(1)
+        role2._all_gather(1)
         role3 = GeneralRoleMaker(path="./test_gloo_3")
         role3._worker_gather(1)
         role3._worker_gather(1)
