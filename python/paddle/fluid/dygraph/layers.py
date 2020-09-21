@@ -969,7 +969,7 @@ class Layer(core.Layer):
                 
                 paddle.disable_static()
                 
-                emb = paddle.nn.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
 
                 state_dict = emb.state_dict()
                 paddle.save(state_dict, "paddle_dy.pdparams")

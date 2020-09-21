@@ -610,7 +610,7 @@ class DataParallel(layers.Layer):
 
                 paddle.disable_static()
 
-                emb = paddle.nn.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
                 emb = fluid.dygraph.DataParallel(emb, strategy)
 
                 state_dict = emb.state_dict()
