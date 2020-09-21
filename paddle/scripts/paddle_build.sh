@@ -362,12 +362,12 @@ function build_size() {
     Calculate /paddle/build size and PR whl size
     ============================================
 EOF
-    if [ "$1" == "fluid_inference" ]; then
+    if [ "$1" == "paddle_inference" ]; then
         cd ${PADDLE_ROOT}/build
-        cp -r fluid_inference_install_dir fluid_inference
-        tar -czf fluid_inference.tgz fluid_inference
-        buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/fluid_inference.tgz |awk '{print $1}')
-        echo "FLuid_Inference Size: $buildSize"
+        cp -r paddle_inference_install_dir paddle_inference
+        tar -czf paddle_inference.tgz paddle_inference
+        buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
+        echo "Paddle_Inference Size: $buildSize"
     else
         SYSTEM=`uname -s`
         if [ "$SYSTEM" == "Darwin" ]; then
@@ -1446,7 +1446,7 @@ EOF
     fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
-    build_size "fluid_inference"
+    build_size "paddle_inference"
 }
 
 function tar_fluid_lib() {
@@ -1458,8 +1458,8 @@ EOF
     cd ${PADDLE_ROOT}/build
     cp -r fluid_install_dir fluid
     tar -czf fluid.tgz fluid
-    cp -r fluid_inference_install_dir fluid_inference
-    tar -czf fluid_inference.tgz fluid_inference
+    cp -r paddle_inference_install_dir paddle_inference
+    tar -czf paddle_inference.tgz paddle_inference
 }
 
 function test_fluid_lib() {

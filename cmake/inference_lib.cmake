@@ -16,8 +16,8 @@
 set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
   "A path setting fluid shared and static libraries")
 
-set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir" CACHE STRING
-  "A path setting fluid inference shared and static libraries")
+set(PADDLE_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_install_dir" CACHE STRING
+  "A path setting paddle inference shared and static libraries")
   
 # TODO(zhaolong)
 # At present, the size of static lib in Windows exceeds the system limit,
@@ -142,14 +142,14 @@ set(inference_lib_deps third_party paddle_fluid paddle_fluid_c paddle_fluid_shar
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
 
 
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/threadpool")
+set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/threadpool")
 copy(inference_lib_dist
         SRCS ${THREADPOOL_INCLUDE_DIR}/ThreadPool.h
         DSTS ${dst_dir})
 
 # Only GPU need cudaErrorMessage.pb
 IF(WITH_GPU)
-        set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/cudaerror/data")
+        set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/cudaerror/data")
         copy(inference_lib_dist
                 SRCS ${cudaerror_INCLUDE_DIR}
                 DSTS ${dst_dir})
@@ -158,9 +158,9 @@ ENDIF()
 # CMakeCache Info
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
-        DSTS ${FLUID_INFERENCE_INSTALL_DIR})
+        DSTS ${PADDLE_INFERENCE_INSTALL_DIR})
 
-copy_part_of_thrid_party(inference_lib_dist ${FLUID_INFERENCE_INSTALL_DIR})
+copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
@@ -177,33 +177,33 @@ endif(WIN32)
 if(WIN32 AND NOT WITH_STATIC_LIB)
         copy(inference_lib_dist
                 SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
-                DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib
-                      ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
+                DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib
+                      ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 else()
         copy(inference_lib_dist
                 SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
-                DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
+                DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 endif()
 
 copy(inference_lib_dist
         SRCS  ${CMAKE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
-        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/internal)
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/internal)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io/crypto/cipher.h
-        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/crypto/)
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/crypto/)
 include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 
 # CAPI inference library for only inference
-set(FLUID_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_c_install_dir" CACHE STRING
-"A path setting CAPI fluid inference shared")
-copy_part_of_thrid_party(inference_lib_dist ${FLUID_INFERENCE_C_INSTALL_DIR})
+set(PADDLE_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_c_install_dir" CACHE STRING
+"A path setting CAPI paddle inference shared")
+copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_C_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/libpaddle_fluid_c.*)
 
 copy(inference_lib_dist
       SRCS  ${src_dir}/inference/capi/paddle_c_api.h  ${paddle_fluid_c_lib}
-      DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
+      DSTS  ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/lib)
 
 # fluid library for both train and inference
 set(fluid_lib_deps inference_lib_dist)
@@ -296,7 +296,7 @@ copy(inference_lib_dist
 
 # CMakeCache Info
 copy(fluid_lib_dist
-        SRCS ${FLUID_INFERENCE_INSTALL_DIR}/third_party ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
+        SRCS ${PADDLE_INFERENCE_INSTALL_DIR}/third_party ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
         DSTS ${FLUID_INSTALL_DIR} ${FLUID_INSTALL_DIR}
         )
 
@@ -324,5 +324,5 @@ function(version version_file)
     
 endfunction()
 version(${FLUID_INSTALL_DIR}/version.txt)
-version(${FLUID_INFERENCE_INSTALL_DIR}/version.txt)
-version(${FLUID_INFERENCE_C_INSTALL_DIR}/version.txt)
+version(${PADDLE_INFERENCE_INSTALL_DIR}/version.txt)
+version(${PADDLE_INFERENCE_C_INSTALL_DIR}/version.txt)

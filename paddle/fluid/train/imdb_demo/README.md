@@ -11,7 +11,7 @@ PADDLE_ROOT=./Paddle
 cd Paddle
 mkdir build
 cd build
-cmake -DFLUID_INFERENCE_INSTALL_DIR=$PADDLE_ROOT \
+cmake -DPADDLE_INFERENCE_INSTALL_DIR=$PADDLE_ROOT \
       -DCMAKE_BUILD_TYPE=Release \
       -DWITH_PYTHON=OFF \
       -DWITH_MKL=OFF \
