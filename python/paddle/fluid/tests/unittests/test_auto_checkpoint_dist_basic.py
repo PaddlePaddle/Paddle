@@ -67,13 +67,13 @@ class AutoCheckpointTestDist(AutoCheckPointACLBase):
         save_dir = "./run_save_0"
         fs.delete(save_dir)
 
-        #basic
+        # basic
         exe, main_prog, startup_prog = self._generate()
 
         compiled, data_loader, optimizer, loss, image, label = \
             self._init_env(exe, main_prog, startup_prog, minimize=False)
 
-        #fleet
+        # fleet
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:6070"

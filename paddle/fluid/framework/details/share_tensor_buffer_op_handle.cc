@@ -34,17 +34,25 @@ ComputationOpHandle *GetUniquePendingComputationOpHandle(
     for (ir::Node *pending_op : out_var->outputs) {
       auto &op = pending_op->Wrapper<OpHandleBase>();
       auto *compute_op = dynamic_cast<ComputationOpHandle *>(&op);
-      PADDLE_ENFORCE_NOT_NULL(compute_op);
+      PADDLE_ENFORCE_NOT_NULL(
+          compute_op,
+          platform::errors::PreconditionNotMet(
+              "The pending OpHandle should be ComputationOpHandle."));
 
       if (result_op == nullptr) {
         result_op = compute_op;
       } else {
-        PADDLE_ENFORCE_EQ(result_op, compute_op);
+        PADDLE_ENFORCE_EQ(
+            result_op, compute_op,
+            platform::errors::PreconditionNotMet(
+                "The pending OpHandle should be the unique one."));
       }
     }
   }
 
-  PADDLE_ENFORCE_NOT_NULL(result_op);
+  PADDLE_ENFORCE_NOT_NULL(result_op,
+                          platform::errors::PreconditionNotMet(
+                              "The pending OpHandle should not be NULL."));
   return result_op;
 }
 

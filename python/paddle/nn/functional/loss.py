@@ -1093,7 +1093,7 @@ def cross_entropy(input,
             " 'none', but received %s, which is not allowed." % reduction)
 
     #step 1. log_softmax
-    log_softmax_out = paddle.nn.functional.log_softmax(input)
+    log_softmax_out = paddle.nn.functional.log_softmax(input, axis=1)
     if weight is not None and not isinstance(weight, Variable):
         raise ValueError(
             "The weight' is not a Variable, please convert to Variable.")

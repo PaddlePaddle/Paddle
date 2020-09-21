@@ -67,6 +67,13 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
         self.out = np.floor_divide(self.x, self.y)
 
 
+class TestElementwiseModOpInverse(TestElementwiseModOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, [10]).astype(self.dtype)
+        self.y = np.random.uniform(0, 1000, [10, 10]).astype(self.dtype)
+        self.out = np.floor_divide(self.x, self.y)
+
+
 class TestFloorDivideOp(unittest.TestCase):
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
