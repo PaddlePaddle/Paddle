@@ -167,10 +167,10 @@ class DataLoader(object):
             The variables should be created by :code:`fluid.data()`.
             :attr:`feed_list` must be set if :attr:`return_list` is
             False. Default None.
-        places(list(Place)|tuple(Place)): a list of Place, to put data
-            onto, :attr:`places` must be set in both static graph and 
-            dynamic graph mode, in dynamic graph mode, place number must
-            be 1. Default None.
+        places(list(Place)|tuple(Place)|optional): a list of Place,
+            to put data onto, :attr:`places` should be None in dynamic
+            graph mode. if :attr:`places` is None in static mode, default
+            place will be used. Default None.
         return_list (bool): whether the return value on each device is 
             presented as a list. If :attr:`return_list=False`, the return
             value on each device would be a dict of str -> LoDTensor, where
@@ -274,7 +274,6 @@ class DataLoader(object):
 
             loader = DataLoader(dataset,
                                 feed_list=[image, label],
-                                places=places,
                                 batch_size=BATCH_SIZE, 
                                 shuffle=True,
                                 drop_last=True,
@@ -303,7 +302,6 @@ class DataLoader(object):
                                           parameter_list=simple_net.parameters())
 
                 loader = DataLoader(dataset,
-                                    places=places[0],
                                     batch_size=BATCH_SIZE,
                                     shuffle=True,
                                     drop_last=True,
@@ -356,11 +354,9 @@ class DataLoader(object):
                     "feed_list should be set when return_list=False"
         self.feed_list = feed_list
 
-        assert places is not None, "places cannot be None"
+        if places is None:
+            places = _current_expected_place()
         self.places = _convert_places(places)
-        if in_dygraph_mode():
-            assert len(self.places) == 1, \
-                    "Number of places must be 1 in dygraph mode"
 
         assert num_workers >= 0, "num_workers should be a non-negative value"
         if num_workers > 0 and (sys.platform == 'darwin' or
