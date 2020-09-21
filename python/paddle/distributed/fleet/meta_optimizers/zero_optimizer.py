@@ -36,19 +36,16 @@ class SubProgram(object):
     def __init__(self, block):
         self._block = block
         self._allreduce_vars = []
-        self._allreduce_ops = []
-        self._fill_constant_ops = []
-        self._broadcast_ops = []
         # sub program start idx
         self._start_idx = -1
         # sub program end idx
         self._end_idx = -1
-        # reduce var names
-        self._sync_reduce_var_names = []
         # param name to broadcast name
         self._param2broadcast = {}
         # cast op pairs, fp16 name (str) -> fp32 name (str)
         self._cast_ops = {}
+        # fill constant vars
+        self._fill_constant_vars = []
         # parameter mems
         self._param_mem = 0.0
 
@@ -335,6 +332,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                 else:
                     broadcast_var_name = unique_name.generate(input_name +
                                                               "@BroadCast")
+                    sub_prog._fill_constant_vars.append(broadcast_var_name)
                 sub_prog._param2broadcast[input_name] = broadcast_var_name
                 sub_prog._param_mem += self._get_var_size(
                     self._main_program.global_block().var(input_name))
@@ -506,6 +504,428 @@ class ZeroOptimizer(MetaOptimizerBase):
         block._sync_with_cpp()
         return inserted_op_num
 
+    def _insert_broadcast_ops(self, block, insert_idx, broadcast2root):
+        """
+        _add_broadcast_ops
+        """
+        ring_id = -1
+        # TODO(mapingshuo): correct OP_ROLE_KEY
+        for broadcast_name, root_device in broadcast2root.items():
+            ring_id = (ring_id + 1) % self._nrings
+            block._insert_op(
+                insert_idx,
+                type='c_broadcast',
+                inputs={'X': broadcast_name},
+                outputs={'Out': broadcast_name},
+                attrs={
+                    'ring_id': ring_id,
+                    'root': root_device,
+                    OP_ROLE_KEY: OpRole.Forward
+                })
+        return
+
+    def _insert_allreduce_ops(self, block, insert_idx, allreduce_vars):
+        """
+        _add_allreduce_ops
+        """
+        ring_id = -1
+        for var in allreduce_vars:
+            ring_id = (ring_id + 1) % self._nrings
+            block._insert_op(
+                insert_idx,
+                type='c_allreduce_sum',
+                inputs={'X': var},
+                outputs={'Out': var},
+                attrs={'ring_id': ring_id,
+                       OP_ROLE_KEY: OpRole.Backward})
+        return
+
+    def _insert_cast_ops(self, block, insert_idx, cast_ops):
+        """
+        _add_cast_ops
+        """
+        for fp16_name, fp32_name in cast_ops.items():
+            block._insert_op(
+                insert_idx,
+                type="cast",
+                inputs={"X": fp32_name},
+                outputs={"Out": fp16_name},
+                attrs={
+                    "in_dtype": core.VarDesc.VarType.FP32,
+                    "out_dtype": core.VarDesc.VarType.FP16
+                })
+        return
+
+    def _insert_fill_constant_ops(self, block, insert_idx, fill_constant_vars):
+        """
+        _add_fill_constant_ops
+        """
+        for broadcast_name in fill_constant_vars:
+            broadcast_var = block.var(broadcast_name)
+            block._insert_op(
+                insert_idx,
+                type="fill_constant",
+                outputs={"Out": broadcast_var.name},
+                attrs={
+                    "shape": broadcast_var.shape,
+                    "dtype": broadcast_var.dtype,
+                    "value": 0.0,
+                })
+        return
+
+    def _insert_sync_comm_ops(self, block, insert_idx, comm_dep_vars):
+        """
+        _insert_sync_comm_ops
+        """
+        # TODO(mapingshuo) fix OP_ROLE_KEY
+        for i in range(self._nrings):
+            block._insert_op(
+                insert_idx,
+                type='c_sync_comm_stream',
+                inputs={'X': comm_dep_vars},
+                outputs={'Out': comm_dep_vars},
+                attrs={'ring_id': i,
+                       OP_ROLE_KEY: OpRole.Forward})
+        return
+
+    def _insert_sync_calc_op(self, block, insert_idx, calc_dep_vars):
+        """
+        _insert_sync_calc_op
+        """
+        # TODO(mapingshuo) fix OP_ROLE_KEY
+        block._insert_op(
+            insert_idx,
+            type='c_sync_calc_stream',
+            inputs={'X': calc_dep_vars},
+            outputs={'Out': calc_dep_vars},
+            attrs={OP_ROLE_KEY: OpRole.Forward})
+        return
+
+    def _add_broadcast_allreduce_v2(self, block):
+        """
+        _add_broadcast_allreduce_v2
+        """
+        ring_id = -1
+
+        if len(self._sub_progs) < 1:
+            return
+
+        if self._sub_progs[-1]._allreduce_vars:
+            self._insert_sync_comm_ops(block, self._sub_progs[-1]._end_idx,
+                                       self._sub_progs[-1]._allreduce_vars)
+            self._insert_allreduce_ops(block, self._sub_progs[-1]._end_idx,
+                                       self._sub_progs[-1]._allreduce_vars)
+
+        for idx, subprog in reversed(list(enumerate(self._sub_progs))):
+            print("subprog_{}: ({}-{})".format(idx, subprog._start_idx,
+                                               subprog._end_idx))
+
+            allreduce_vars = self._sub_progs[
+                idx - 1]._allreduce_vars if idx > 0 else []
+            param2broadcast = self._sub_progs[idx +
+                                              1]._param2broadcast if idx < len(
+                                                  self._sub_progs) - 1 else {}
+            fill_constant_vars = self._sub_progs[
+                idx + 2]._fill_constant_vars if idx < len(
+                    self._sub_progs) - 2 else []
+            cast_ops = self._sub_progs[idx + 2]._cast_ops if idx < len(
+                self._sub_progs) - 2 else {}
+
+            # step1: modify calculate ops
+            for op_idx in reversed(range(subprog._start_idx, subprog._end_idx)):
+                op = block.ops[op_idx]
+                for input_name in op.desc.input_arg_names():
+                    if input_name in subprog._param2broadcast and \
+                        input_name != subprog._param2broadcast[input_name]:
+                        op._rename_input(input_name,
+                                         subprog._param2broadcast[input_name])
+
+            for param_name, broadcast_name in subprog._param2broadcast.items():
+                if param_name != broadcast_name:
+                    block.create_var(
+                        name=broadcast_name,
+                        shape=self._main_program.global_block().var(
+                            param_name).shape,
+                        dtype=self._main_program.global_block().var(param_name)
+                        .dtype,
+                        persistable=False)
+
+            # step2: add Sync ops
+            comm_dep_vars = allreduce_vars + [
+                v for k, v in param2broadcast.items()
+            ]
+            if len(comm_dep_vars) > 0:
+                self._insert_sync_comm_ops(
+                    block,
+                    subprog._end_idx,
+                    comm_dep_vars, )
+            calc_dep_vars = fill_constant_vars + [
+                k for k, v in cast_ops.items()
+            ]
+            if len(calc_dep_vars) > 0:
+                self._insert_sync_calc_op(block, subprog._end_idx,
+                                          [calc_dep_vars[-1]])
+
+            # step3: insert `fill_constant` ops 
+            self._insert_fill_constant_ops(block, subprog._end_idx,
+                                           fill_constant_vars)
+
+            # step4  add `cast` ops     
+            self._insert_cast_ops(block, subprog._end_idx, cast_ops)
+
+            # step5 add broadcast ops
+            self._insert_broadcast_ops(block, subprog._end_idx, {
+                v: self._param2device[k]
+                for k, v in param2broadcast.items()
+            })
+
+            # step6 add all_reduce ops
+            self._insert_allreduce_ops(block, subprog._start_idx,
+                                       allreduce_vars)
+
+            block._sync_with_cpp()
+
+        if self._sub_progs[0]._param2broadcast:
+            self._insert_sync_comm_ops(
+                block, self._sub_progs[0]._start_idx,
+                [v for k, v in self._sub_progs[0]._param2broadcast.items()])
+            self._insert_broadcast_ops(block, self._sub_progs[0]._start_idx, {
+                v: self._param2device[k]
+                for k, v in self._sub_progs[0]._param2broadcast.items()
+            })
+
+        fill_constant_vars = reduce(
+            lambda x, y: x._fill_constant_vars + y._fill_constant_vars,
+            self._sub_progs[:2])
+        # Join
+        cast_ops = {}
+        for x in self._sub_progs[:2]:
+            for k, v in x._cast_ops:
+                cast_ops[k] = v
+
+        calc_deps_vars = fill_constant_vars + [k for k, v in cast_ops.items()]
+        if fill_constant_vars or cast_ops:
+            self._insert_sync_calc_op(block, self._sub_progs[0]._start_idx,
+                                      [calc_deps_vars[-1]])
+
+        if fill_constant_vars:
+            self._insert_fill_constant_ops(block, self._sub_progs[0]._start_idx,
+                                           fill_constant_vars)
+
+        if cast_ops:
+            self._insert_cast_ops(block, self._sub_progs[0]._start_idx,
+                                  cast_ops)
+
+        return
+
+    def _prune_startup_program(self, block):
+        for idx, op in reversed(list(enumerate(block.ops))):
+            for output_name in op.desc.output_arg_names():
+                var_device_id = self._var_device_id(output_name)
+                if var_device_id == -1 or var_device_id == self.role_maker.worker_index(
+                ):
+                    continue
+                print("%d: startup_block remove op %s" %
+                      (self.role_maker.worker_index(), op.type))
+                block._remove_op(idx)
+                break
+        for var_name, _ in block.vars.items():
+            var_device_id = self._var_device_id(var_name)
+            if var_device_id == -1 or var_device_id == self.role_maker.worker_index(
+            ):
+                continue
+            print("%d: startup_block remove var %s" %
+                  (self.role_maker.worker_index(), var_name))
+            block._remove_var(var_name)
+        block._sync_with_cpp()
+
+    def _find_broadcast_params(self, params, param2device):
+        broadcast_vars = set([])
+        fp16_params = set([])
+        fp16_to_fp32 = {}
+        main_block = self._main_program.global_block()
+
+        param_usage = {x: 0 for x in params}
+        for op in main_block.ops:
+            if is_optimizer_op(op):
+                continue
+            for input_name in op.desc.input_arg_names():
+                if input_name in params:
+                    param_usage[input_name] += 1
+
+        for op in main_block.ops:
+            if not self._is_fp16_cast_op(main_block, op):
+                continue
+            input_name = op.input_arg_names[0]
+            output_name = op.output_arg_names[0]
+            broadcast_vars.add(output_name)
+            fp16_params.add(output_name)
+            fp16_to_fp32[output_name] = input_name
+            param_usage[input_name] -= 1
+            param2device[output_name] = param2device[input_name]
+
+        for param, usage in param_usage.items():
+            if usage > 0:
+                broadcast_vars.add(param)
+        return fp16_params, broadcast_vars, fp16_to_fp32
+
+    def _set_up(self, params_grads):
+        # step 1: initialize nccl
+        # TODO(mapingshuo) fix get_trainer_endpoints
+        print("work idx: ", self.role_maker.worker_index())
+        endpoints = self.role_maker.get_trainer_endpoints()
+        current_endpoint = endpoints[self.role_maker.worker_index()]
+        collective_helper = CollectiveHelper(self.role_maker, self._nrings)
+        for ring_id in range(self._nrings):
+            collective_helper._init_communicator(
+                self._startup_program, current_endpoint, endpoints,
+                self.role_maker.worker_index(), ring_id, '6174')
+        startup_block = self._startup_program.global_block()
+        startup_block._sync_with_cpp()
+
+        # step 2: split params
+        self._params = set([x[0].name for x in params_grads])
+        self._param2device = self._split_params([x[0] for x in params_grads])
+
+        # step 3: get broadcast vars
+        self._fp16_params, self._broadcast_vars, self._fp16_to_params = self._find_broadcast_params(
+            self._params, self._param2device)
+
+    def minimize_impl(self,
+                      loss,
+                      startup_program=None,
+                      parameter_list=None,
+                      no_grad_set=None):
+
+        ckpts = list(self.user_defined_strategy.recompute_configs[
+            "checkpoints"])
+        optimizer = self.inner_opt
+        if len(ckpts) > 0:
+            print("add recompute")
+            print(ckpts)
+            optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
+            optimizer._set_checkpoints(ckpts)
+
+        optimizer = fluid.contrib.mixed_precision.decorate(
+            optimizer, use_dynamic_loss_scaling=True)
+        print("doing zero optimize...")
+        optimize_ops, params_grads = optimizer.minimize(
+            loss, startup_program, parameter_list, no_grad_set)
+
+        if startup_program is None:
+            startup_program = default_startup_program()
+        main_block = loss.block
+        startup_block = startup_program.global_block()
+        self._main_program = main_block.program
+        self._startup_program = startup_program
+
+        # step1: set_up
+        self._set_up(params_grads)
+
+        # step2: split_program
+        self._split_program(main_block)
+
+        # step3: add broadcast and reduce ops
+        print("insert broadcast and allreduce")
+        # for idx, subprog in reversed(list(enumerate(self._sub_progs))):
+        #     print("subprog_{}: ({}-{})".format(idx, subprog._start_idx,
+        #                                        subprog._end_idx))
+        #     if self._fp16_params:
+        #         self._remove_cast_op(main_block, subprog, 0)
+        #     self._add_broadcast_allreduce(main_block, subprog, 0)
+
+        for idx, subprog in reversed(list(enumerate(self._sub_progs))):
+            if self._fp16_params:
+                self._remove_cast_op(main_block, subprog, 0)
+
+        self._add_broadcast_allreduce_v2(main_block)
+
+        main_block._sync_with_cpp()
+        startup_block._sync_with_cpp()
+
+        # step4: insert reduce_sum for grad
+        self._insert_scale_loss_grad_ops(
+            main_block, scale=1.0 / self.role_maker.worker_num())
+        main_block._sync_with_cpp()
+
+        # step5: remove unneeded ops and vars from block
+        print("main_block remove ops and vars")
+        self._prune_main_program(main_block)
+        print("startup_block remove ops and vars")
+        self._prune_startup_program(startup_block)
+
+        # check op dependecy for broadcast
+        self._check_broadcast(main_block)
+        return optimize_ops, params_grads
+
+    def _check_broadcast(self, block):
+        """
+        if a var is broadcasted, it should have a sync_comm before
+        this var is used, if not, raise error.
+        if the broadcasted var has a fill_constant op, the fill_constant
+        op should stay forward before the broadcast op, and before a
+        sync_calc op. Otherwise, raise error.
+        """
+        broadcast_vars = {}
+        for idx, op in enumerate(block.ops):
+            if op.type == "c_broadcast":
+                var_name = op.desc.input_arg_names()[0]
+                if "@BroadCast" in var_name:
+                    if var_name in broadcast_vars:
+                        print("error: var_name areadly exist: ", var_name)
+                        print("the old pos is ",
+                              broadcast_vars[var_name]["broadcast_pos"])
+                        print("the new pos is ", idx)
+                    assert (var_name not in broadcast_vars)
+                    broadcast_vars[var_name] = {
+                        "fill_constant_pos": -1,
+                        "broadcast_pos": idx,
+                    }
+
+        for idx, op in enumerate(block.ops):
+            if op.type == "fill_constant":
+                var_name = op.desc.output_arg_names()[0]
+                if var_name in broadcast_vars:
+                    broadcast_vars[var_name]["fill_constant_pos"] = idx
+                continue
+
+        last_sync_comm_op_idx = -1
+        last_sync_calc_op_idx = -1
+        for idx, op in enumerate(block.ops):
+            if op.type == "c_sync_comm_stream":
+                last_sync_comm_op_idx = idx
+                continue
+            if op.type == "c_sync_calc_stream":
+                last_sync_calc_op_idx = idx
+                continue
+            if op.type == "c_broadcast":
+                var_name = op.desc.input_arg_names()[0]
+                if "@BroadCast" in var_name:
+                    if broadcast_vars[var_name]["fill_constant_pos"] != -1:
+                        # print("before_broadcast: ", var_name, 
+                        #         broadcast_vars[var_name]["fill_constant_pos"],
+                        #         last_sync_calc_op_idx,
+                        #         broadcast_vars[var_name]["broadcast_pos"],
+                        #         )
+                        assert (last_sync_calc_op_idx != -1)
+                        assert (broadcast_vars[var_name]["fill_constant_pos"] <
+                                last_sync_calc_op_idx)
+                        assert (last_sync_calc_op_idx < idx)
+                    continue
+            for input_name in op.desc.input_arg_names():
+                if input_name in broadcast_vars:
+                    # print("after_broadcast, op_type: ", op.type, ": ",
+                    #         "var_name: ", input_name, 
+                    #         broadcast_vars[input_name]["broadcast_pos"],
+                    #         last_sync_comm_op_idx,
+                    #         idx)
+                    assert (broadcast_vars[input_name]["broadcast_pos"] != -1)
+                    assert (broadcast_vars[input_name]["broadcast_pos"] <
+                            last_sync_comm_op_idx)
+                    assert (last_sync_comm_op_idx < idx)
+        print("check done")
+        return
+
     def _add_broadcast_allreduce(self, block, sub_prog, offset):
         """
         add broadcast and allreduce
@@ -634,209 +1054,6 @@ class ZeroOptimizer(MetaOptimizerBase):
         block._sync_with_cpp()
         return inserted_op_num
 
-    def _prune_startup_program(self, block):
-        for idx, op in reversed(list(enumerate(block.ops))):
-            for output_name in op.desc.output_arg_names():
-                var_device_id = self._var_device_id(output_name)
-                if var_device_id == -1 or var_device_id == self.role_maker.worker_index(
-                ):
-                    continue
-                print("%d: startup_block remove op %s" %
-                      (self.role_maker.worker_index(), op.type))
-                block._remove_op(idx)
-                break
-        for var_name, _ in block.vars.items():
-            var_device_id = self._var_device_id(var_name)
-            if var_device_id == -1 or var_device_id == self.role_maker.worker_index(
-            ):
-                continue
-            print("%d: startup_block remove var %s" %
-                  (self.role_maker.worker_index(), var_name))
-            block._remove_var(var_name)
-        block._sync_with_cpp()
-
-    def _find_broadcast_params(self, params, param2device):
-        broadcast_vars = set([])
-        fp16_params = set([])
-        fp16_to_fp32 = {}
-        main_block = self._main_program.global_block()
-
-        param_usage = {x: 0 for x in params}
-        for op in main_block.ops:
-            if is_optimizer_op(op):
-                continue
-            for input_name in op.desc.input_arg_names():
-                if input_name in params:
-                    param_usage[input_name] += 1
-
-        for op in main_block.ops:
-            if not self._is_fp16_cast_op(main_block, op):
-                continue
-            input_name = op.input_arg_names[0]
-            output_name = op.output_arg_names[0]
-            broadcast_vars.add(output_name)
-            fp16_params.add(output_name)
-            fp16_to_fp32[output_name] = input_name
-            param_usage[input_name] -= 1
-            param2device[output_name] = param2device[input_name]
-
-        for param, usage in param_usage.items():
-            if usage > 0:
-                broadcast_vars.add(param)
-        return fp16_params, broadcast_vars, fp16_to_fp32
-
-    def _set_up(self, params_grads):
-        # step 1: initialize nccl
-        # TODO(mapingshuo) fix get_trainer_endpoints
-        print("work idx: ", self.role_maker.worker_index())
-        endpoints = self.role_maker.get_trainer_endpoints()
-        current_endpoint = endpoints[self.role_maker.worker_index()]
-        collective_helper = CollectiveHelper(self.role_maker, self._nrings)
-        for ring_id in range(self._nrings):
-            collective_helper._init_communicator(
-                self._startup_program, current_endpoint, endpoints,
-                self.role_maker.worker_index(), ring_id, '6174')
-        startup_block = self._startup_program.global_block()
-        startup_block._sync_with_cpp()
-
-        # step 2: split params
-        self._params = set([x[0].name for x in params_grads])
-        self._param2device = self._split_params([x[0] for x in params_grads])
-
-        # step 3: get broadcast vars
-        self._fp16_params, self._broadcast_vars, self._fp16_to_params = self._find_broadcast_params(
-            self._params, self._param2device)
-
-    def minimize_impl(self,
-                      loss,
-                      startup_program=None,
-                      parameter_list=None,
-                      no_grad_set=None):
-
-        ckpts = list(self.user_defined_strategy.recompute_configs[
-            "checkpoints"])
-        optimizer = self.inner_opt
-        if len(ckpts) > 0:
-            print("add recompute")
-            print(ckpts)
-            optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
-            optimizer._set_checkpoints(ckpts)
-
-        optimizer = fluid.contrib.mixed_precision.decorate(
-            optimizer, use_dynamic_loss_scaling=True)
-        print("doing zero optimize...")
-        optimize_ops, params_grads = optimizer.minimize(
-            loss, startup_program, parameter_list, no_grad_set)
-
-        if startup_program is None:
-            startup_program = default_startup_program()
-        main_block = loss.block
-        startup_block = startup_program.global_block()
-        self._main_program = main_block.program
-        self._startup_program = startup_program
-
-        # step1: set_up
-        self._set_up(params_grads)
-
-        # step2: split_program
-        self._split_program(main_block)
-
-        # step3: add broadcast and reduce ops
-        print("insert broadcast and allreduce")
-        for idx, subprog in reversed(list(enumerate(self._sub_progs))):
-            print("subprog_{}: ({}-{})".format(idx, subprog._start_idx,
-                                               subprog._end_idx))
-            if self._fp16_params:
-                # need to remove fp16 cast ops
-                self._remove_cast_op(main_block, subprog, 0)
-            self._add_broadcast_allreduce(main_block, subprog, 0)
-
-        main_block._sync_with_cpp()
-        startup_block._sync_with_cpp()
-
-        # step4: insert reduce_sum for grad
-        self._insert_scale_loss_grad_ops(
-            main_block, scale=1.0 / self.role_maker.worker_num())
-        main_block._sync_with_cpp()
-
-        # step5: remove unneeded ops and vars from block
-        print("main_block remove ops and vars")
-        self._prune_main_program(main_block)
-        print("startup_block remove ops and vars")
-        self._prune_startup_program(startup_block)
-
-        # check op dependecy for broadcast
-        self._check_broadcast(main_block)
-        return optimize_ops, params_grads
-
-    def _check_broadcast(self, block):
-        """
-        if a var is broadcasted, it should have a sync_comm before
-        this var is used, if not, raise error.
-        if the broadcasted var has a fill_constant op, the fill_constant
-        op should stay forward before the broadcast op, and before a
-        sync_calc op. Otherwise, raise error.
-        """
-        broadcast_vars = {}
-        for idx, op in enumerate(block.ops):
-            if op.type == "c_broadcast":
-                var_name = op.desc.input_arg_names()[0]
-                if "@BroadCast" in var_name:
-                    if var_name in broadcast_vars:
-                        print("error: var_name areadly exist: ", var_name)
-                        print("the old pos is ",
-                              broadcast_vars[var_name]["broadcast_pos"])
-                        print("the new pos is ", idx)
-                    assert (var_name not in broadcast_vars)
-                    broadcast_vars[var_name] = {
-                        "fill_constant_pos": -1,
-                        "broadcast_pos": idx,
-                    }
-
-        for idx, op in enumerate(block.ops):
-            if op.type == "fill_constant":
-                var_name = op.desc.output_arg_names()[0]
-                if var_name in broadcast_vars:
-                    broadcast_vars[var_name]["fill_constant_pos"] = idx
-                continue
-
-        last_sync_comm_op_idx = -1
-        last_sync_calc_op_idx = -1
-        for idx, op in enumerate(block.ops):
-            if op.type == "c_sync_comm_stream":
-                last_sync_comm_op_idx = idx
-                continue
-            if op.type == "c_sync_calc_stream":
-                last_sync_calc_op_idx = idx
-                continue
-            if op.type == "c_broadcast":
-                var_name = op.desc.input_arg_names()[0]
-                if "@BroadCast" in var_name:
-                    if broadcast_vars[var_name]["fill_constant_pos"] != -1:
-                        # print("before_broadcast: ", var_name, 
-                        #         broadcast_vars[var_name]["fill_constant_pos"],
-                        #         last_sync_calc_op_idx,
-                        #         broadcast_vars[var_name]["broadcast_pos"],
-                        #         )
-                        assert (last_sync_calc_op_idx != -1)
-                        assert (broadcast_vars[var_name]["fill_constant_pos"] <
-                                last_sync_calc_op_idx)
-                        assert (last_sync_calc_op_idx < idx)
-                    continue
-            for input_name in op.desc.input_arg_names():
-                if input_name in broadcast_vars:
-                    # print("after_broadcast, op_type: ", op.type, ": ",
-                    #         "var_name: ", input_name, 
-                    #         broadcast_vars[input_name]["broadcast_pos"],
-                    #         last_sync_comm_op_idx,
-                    #         idx)
-                    assert (broadcast_vars[input_name]["broadcast_pos"] != -1)
-                    assert (broadcast_vars[input_name]["broadcast_pos"] <
-                            last_sync_comm_op_idx)
-                    assert (last_sync_comm_op_idx < idx)
-        print("check done")
-        return
-
     def _broadcast_params(self, block):
         ring_id = -1
         for param in block.iter_parameters():
@@ -860,54 +1077,54 @@ class ZeroOptimizer(MetaOptimizerBase):
                 attrs={'ring_id': ring_id,
                        OP_ROLE_KEY: OpRole.Forward})
 
-    def _insert_broadcast_ops(self, block, fuse_broadcast=False):
-        def _insert_cache(cache,
-                          prepend_comm_sync=False,
-                          append_comm_sync=False):
-            insert_idx = cache["insert_idx"]
-            dummy_var_name = cache["dummy_var_name"]
-            assert (len(cache["broadcast_ops"]) > 0)
+    # def _insert_broadcast_ops(self, block, fuse_broadcast=False):
+    #     def _insert_cache(cache,
+    #                       prepend_comm_sync=False,
+    #                       append_comm_sync=False):
+    #         insert_idx = cache["insert_idx"]
+    #         dummy_var_name = cache["dummy_var_name"]
+    #         assert (len(cache["broadcast_ops"]) > 0)
 
-            if prepend_comm_sync:
-                insert_idx += self._insert_comm_sync(block, insert_idx,
-                                                     [dummy_var_name])
+    #         if prepend_comm_sync:
+    #             insert_idx += self._insert_comm_sync(block, insert_idx,
+    #                                                  [dummy_var_name])
 
-            if len(cache["fill_constant_ops"]) > 0:
-                insert_idx += self._insert_fill_constant(
-                    block, insert_idx, cache["fill_constant_ops"],
-                    [dummy_var_name])
+    #         if len(cache["fill_constant_ops"]) > 0:
+    #             insert_idx += self._insert_fill_constant(
+    #                 block, insert_idx, cache["fill_constant_ops"],
+    #                 [dummy_var_name])
 
-            insert_idx += self._insert_broadcast_inner(block, insert_idx,
-                                                       cache["broadcast_ops"])
+    #         insert_idx += self._insert_broadcast_inner(block, insert_idx,
+    #                                                    cache["broadcast_ops"])
 
-            if append_comm_sync:
-                insert_idx += self._insert_comm_sync(block, insert_idx,
-                                                     [dummy_var_name])
+    #         if append_comm_sync:
+    #             insert_idx += self._insert_comm_sync(block, insert_idx,
+    #                                                  [dummy_var_name])
 
-            return insert_idx - cache["insert_idx"]
+    #         return insert_idx - cache["insert_idx"]
 
-        print("insert_idx: ", [x["insert_idx"] for x in self._sub_progs])
-        move_ahead = 1
-        for idx, cache in reversed(list(enumerate(self._sub_progs))):
-            if idx < move_ahead:
-                cache["insert_idx"] = 0
-            else:
-                cache["insert_idx"] = self._sub_progs[idx - move_ahead][
-                    "insert_idx"]
-        print("insert_idx: ", [x["insert_idx"] for x in self._sub_progs])
+    #     print("insert_idx: ", [x["insert_idx"] for x in self._sub_progs])
+    #     move_ahead = 1
+    #     for idx, cache in reversed(list(enumerate(self._sub_progs))):
+    #         if idx < move_ahead:
+    #             cache["insert_idx"] = 0
+    #         else:
+    #             cache["insert_idx"] = self._sub_progs[idx - move_ahead][
+    #                 "insert_idx"]
+    #     print("insert_idx: ", [x["insert_idx"] for x in self._sub_progs])
 
-        inserted_op_num = 0
-        for idx, cache in enumerate(self._sub_progs):
-            prepend_comm_sync = True
-            append_comm_sync = True
-            cache["insert_idx"] += inserted_op_num
-            inserted_op_num += _insert_cache(
-                cache,
-                prepend_comm_sync=prepend_comm_sync,
-                append_comm_sync=append_comm_sync)
-        return
+    #     inserted_op_num = 0
+    #     for idx, cache in enumerate(self._sub_progs):
+    #         prepend_comm_sync = True
+    #         append_comm_sync = True
+    #         cache["insert_idx"] += inserted_op_num
+    #         inserted_op_num += _insert_cache(
+    #             cache,
+    #             prepend_comm_sync=prepend_comm_sync,
+    #             append_comm_sync=append_comm_sync)
+    #     return
 
-    def _insert_allreduce_ops(self, block):
+    def _insert_allreduce_ops_tmp(self, block):
         ring_id = -1
         grad = None
         for idx, op in reversed(list(enumerate(block.ops))):
@@ -1007,37 +1224,37 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         self._insert_scale_loss_grad_ops(
             main_block, scale=1.0 / self.role_maker.worker_num())
-        self._insert_allreduce_ops(main_block)
+        self._insert_allreduce_ops_tmp(main_block)
         print("insert allreduce done")
         return optimize_ops, params_grads
 
-    def _insert_comm_sync(self, block, insert_idx, var_names):
-        for r in range(self._nrings):
-            block._insert_op(
-                insert_idx,
-                type='c_sync_comm_stream',
-                inputs={'X': var_names},
-                outputs={'Out': var_names},
-                attrs={'ring_id': r,
-                       OP_ROLE_KEY: OpRole.Backward})
-            insert_idx += 1
-        return self._nrings
+    # def _insert_comm_sync(self, block, insert_idx, var_names):
+    #     for r in range(self._nrings):
+    #         block._insert_op(
+    #             insert_idx,
+    #             type='c_sync_comm_stream',
+    #             inputs={'X': var_names},
+    #             outputs={'Out': var_names},
+    #             attrs={'ring_id': r,
+    #                    OP_ROLE_KEY: OpRole.Backward})
+    #         insert_idx += 1
+    #     return self._nrings
 
-    def _insert_broadcast_inner(self, block, insert_idx, broadcast_attrs):
-        for attr in broadcast_attrs:
-            block._insert_op(insert_idx, **attr)
-            insert_idx += 1
-        return len(broadcast_attrs)
+    # def _insert_broadcast_inner(self, block, insert_idx, broadcast_attrs):
+    #     for attr in broadcast_attrs:
+    #         block._insert_op(insert_idx, **attr)
+    #         insert_idx += 1
+    #     return len(broadcast_attrs)
 
-    def _insert_fill_constant(self, block, insert_idx, fill_constant_attrs,
-                              var_names):
-        for attr in fill_constant_attrs:
-            block._insert_op(insert_idx, **attr)
-            insert_idx += 1
-        block._insert_op(
-            insert_idx,
-            type='c_sync_calc_stream',
-            inputs={'X': var_names},
-            outputs={'Out': var_names},
-            attrs={OP_ROLE_KEY: OpRole.Backward})
-        return len(fill_constant_attrs) + 1
+    # def _insert_fill_constant(self, block, insert_idx, fill_constant_attrs,
+    #                           var_names):
+    #     for attr in fill_constant_attrs:
+    #         block._insert_op(insert_idx, **attr)
+    #         insert_idx += 1
+    #     block._insert_op(
+    #         insert_idx,
+    #         type='c_sync_calc_stream',
+    #         inputs={'X': var_names},
+    #         outputs={'Out': var_names},
+    #         attrs={OP_ROLE_KEY: OpRole.Backward})
+    #     return len(fill_constant_attrs) + 1
