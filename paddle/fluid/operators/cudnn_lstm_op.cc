@@ -232,8 +232,10 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
     };
 
     SetOutGradDim("Input");
-    ctx->SetOutputsDim(framework::GradVarName("WeightList"),
-                       ctx->GetInputsDim("WeightList"));
+    if (ctx->HasInputs("WeightList")) {
+      ctx->SetOutputsDim(framework::GradVarName("WeightList"),
+                         ctx->GetInputsDim("WeightList"));
+    }
     SetOutGradDim("InitH");
     SetOutGradDim("InitC");
   }
@@ -256,7 +258,12 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("InitH", this->Input("InitH"));
     op->SetInput("InitC", this->Input("InitC"));
-    op->SetInput("WeightList", this->Input("WeightList"));
+    if (this->HasInput("WeightList")) {
+      op->SetInput("WeightList", this->Input("WeightList"));
+    }
+    if (this->HasInput("W")) {
+      op->SetInput("W", this->Input("W"));
+    }
     if (this->HasInput("SequenceLength")) {
       op->SetInput("SequenceLength", this->Input("SequenceLength"));
     }
@@ -267,11 +274,16 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput(framework::GradVarName("LastC"), this->OutputGrad("LastC"));
     op->SetInput(framework::GradVarName("LastH"), this->OutputGrad("LastH"));
 
-    op->SetOutput(framework::GradVarName("WeightList"),
-                  this->InputGrad("WeightList", false));
+    if (this->HasInput("WeightList")) {
+      op->SetOutput(framework::GradVarName("WeightList"),
+                    this->InputGrad("WeightList", false));
+    }
+
+    if (this->HasInput("W")) {
+      op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    }
 
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
-    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
     op->SetOutput(framework::GradVarName("InitH"), this->InputGrad("InitH"));
     op->SetOutput(framework::GradVarName("InitC"), this->InputGrad("InitC"));
     op->SetAttrMap(this->Attrs());

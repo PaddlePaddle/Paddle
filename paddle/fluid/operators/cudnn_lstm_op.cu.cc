@@ -144,27 +144,6 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     T *last_h_data = last_h->mutable_data<T>(ctx.GetPlace());
     T *last_c_data = last_c->mutable_data<T>(ctx.GetPlace());
 
-    auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
-    bool continuous =
-        is_continuous<T, std::vector<const Tensor *>>(weight_list);
-    int weight_numel = size_sum(weight_list);
-
-    auto place = ctx.GetPlace();
-    auto stream = reinterpret_cast<const platform::CUDADeviceContext &>(
-                      ctx.device_context())
-                      .stream();
-    Tensor weight_whole;
-    T *w_data = nullptr;
-
-    if (!continuous) {
-      // LOG(WARNING) << "Input WeightList , please use op";
-      weight_whole.mutable_data<T>({weight_numel}, place);
-      weight_to_tensor<T>(place, stream, weight_list, &weight_whole);
-      w_data = weight_whole.data<T>();
-    } else {
-      w_data = const_cast<T *>(weight_list[0]->data<T>());
-    }
-
     float dropout_prob = ctx.Attr<float>("dropout_prob");
     bool is_bidirec = ctx.Attr<bool>("is_bidirec");
     int hidden_size = ctx.Attr<int>("hidden_size");
@@ -189,6 +168,39 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
 
     size_t workspace_size;
     size_t reserve_size;
+    Tensor weight_whole;
+    T *w_data = nullptr;
+    int weight_numel;
+    bool w_initialized = false;
+    auto place = ctx.GetPlace();
+    auto stream = reinterpret_cast<const platform::CUDADeviceContext &>(
+                      ctx.device_context())
+                      .stream();
+    if (is_test && ctx.HasInput("W")) {
+      auto *W = ctx.Input<Tensor>("W");
+      w_initialized = W->numel() > 0 ? true : false;
+    }
+    if (!w_initialized) {
+      auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
+      bool continuous =
+          is_continuous<T, std::vector<const Tensor *>>(weight_list);
+      weight_numel = size_sum(weight_list);
+
+      if (!continuous) {
+        LOG(WARNING) << "If the memory space of the Input WeightList is not "
+                        "continuous, a less efficient calculation will be "
+                        "called. Please call coalesce_tensor op to make the "
+                        "input memory continuous.";
+        weight_whole.mutable_data<T>({weight_numel}, place);
+        weight_to_tensor<T>(place, stream, weight_list, &weight_whole);
+        w_data = weight_whole.data<T>();
+      } else {
+        w_data = const_cast<T *>(weight_list[0]->data<T>());
+      }
+    } else {
+      auto *W = ctx.Input<Tensor>("W");
+      w_data = const_cast<T *>(W->data<T>());
+    }
 
     ScopedRNNBase rnn(seq_length, batch_size, input_size, hidden_size,
                       num_layers, dropout_prob, seed, weight_numel,
@@ -207,6 +219,12 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
       LSTMInferece<T>(has_seq_length, handle, seq_length, &rnn, x_data,
                       init_h_data, init_c_data, w_data, out_data, last_h_data,
                       last_c_data, &workspace_data_, workspace_size);
+      if (ctx.HasInput("W")) {
+        auto *W = const_cast<Tensor *>(ctx.Input<Tensor>("W"));
+        auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
+        W->mutable_data<T>({weight_numel}, place);
+        weight_to_tensor<T>(place, stream, weight_list, W);
+      }
     } else {
       if (!has_seq_length) {
         // for train
@@ -301,18 +319,16 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     T *weight_grad_data = nullptr;
     math::SetConstant<paddle::platform::CUDADeviceContext, T> zero;
     for (size_t i = 0; i < weight_grad_list.size(); ++i) {
-      weight_grad_list[i]->mutable_data<T>({weight_list[i]->numel()}, place);
+      weight_grad_list[i]->mutable_data<T>(place);
     }
 
     bool grad_continuous =
         is_continuous<T, std::vector<Tensor *>>(weight_grad_list);
-    LOG(INFO) << "grad_continuous: " << grad_continuous;
 
     if (!grad_continuous) {
       weight_grad.mutable_data<T>({weight_numel}, ctx.GetPlace());
       zero(dev_ctx, &weight_grad, static_cast<T>(0.0));
       weight_grad_data = weight_grad.data<T>();
-      LOG(INFO) << "weight_grad_number: " << weight_numel;
     } else {
       for (size_t i = 0; i < weight_grad_list.size(); ++i) {
         zero(dev_ctx, weight_grad_list[i], static_cast<T>(0.0));
@@ -405,7 +421,6 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
 #endif
     }
     if (!grad_continuous) {
-      LOG(INFO) << "weight_numel_copy";
       weight_to_tensor_list<T>(place, stream, &weight_grad_list, weight_list,
                                &weight_grad);
     }
