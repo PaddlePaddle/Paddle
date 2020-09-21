@@ -12,41 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
-"""Test for fusion of conv and elementwise_add."""
 
 
-class ConvElementwiseAddFusePassTest(InferencePassTest):
+class MulLstmFusePassTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 100, 100], dtype="float32")
-            param_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
-            conv_out = fluid.layers.conv2d(
-                input=data, num_filters=3, filter_size=3, bias_attr=param_attr)
+            dict_dim, emb_dim = 128, 64
+            hidden_dim = 512
 
-        self.feeds = {
-            "data": np.random.random((1, 3, 100, 100)).astype("float32")
-        }
-        self.fetch_list = [conv_out]
-        self.enable_mkldnn = False
+            data = fluid.data(
+                name='data', shape=[1], dtype='int64', lod_level=1)
+            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
+            x = fluid.layers.fc(input=emb, size=hidden_dim * 4, bias_attr=False)
+            forward, cell = fluid.layers.dynamic_lstm(
+                input=x, size=hidden_dim * 4)
+
+        batch = 16
+        lod_tensor = fluid.LoDTensor()
+        lod_tensor.set(np.random.randint(
+            0, dict_dim, size=[batch]).astype("int64"),
+                       fluid.CPUPlace())
+        lod_tensor.set_lod([[0, batch]])
+        self.feeds = {"data": lod_tensor}
+        self.fetch_list = [forward, cell]
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            self.check_output_with_option(use_gpu)
-        self.assertTrue(
-            PassVersionChecker.IsCompatible('conv_elementwise_add_fuse_pass'))
+        use_gpu = False
+        self.check_output_with_option(use_gpu)
+        self.assertTrue(PassVersionChecker.IsCompatible('mul_lstm_fuse_pass'))
 
 
 if __name__ == "__main__":

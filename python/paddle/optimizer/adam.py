@@ -282,14 +282,13 @@ class Adam(Optimizer):
         for param in self._parameter_list:
             if not param.trainable:
                 continue
-            if hasattr(
-                    param, "_is_sparse"
-            ) and param._is_sparse and self.regularization is not None:
-                raise RuntimeError(
-                    "Adam don't support weight_decay with sparse parameters, please set it to None."
-                )
             if param._grad_ivar() is not None:
                 grad_var = param._grad_ivar()
+                if hasattr(grad_var, "_is_sparse") and grad_var._is_sparse(
+                ) and self.regularization is not None:
+                    raise RuntimeError(
+                        "Adam don't support weight_decay with sparse parameters, please set it to None."
+                    )
                 params_grads.append((param, grad_var))
 
         optimize_ops = self._apply_optimize(

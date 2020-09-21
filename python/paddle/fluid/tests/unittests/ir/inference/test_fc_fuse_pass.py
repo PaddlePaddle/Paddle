@@ -19,37 +19,35 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
-"""Test for fusion of conv, elementwise_add and 2 act."""
+from paddle.fluid.core import PassVersionChecker
 
 
-class ConvElementwiseAdd2ActFusePassTest(InferencePassTest):
+class FcFusePassTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
-                name="data", shape=[-1, 3, 100, 100], dtype="float32")
-            add_y2 = fluid.data(
-                name="add_y2", shape=[1, 3, 98, 98], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                input=data, num_filters=3, filter_size=3, bias_attr=None)
-            add1_out = fluid.layers.elementwise_add(
-                add_y2, conv_out, act="relu")
+                name="data", shape=[-1, 128, 768], dtype="float32")
+            data_y = fluid.data(name="y", shape=[-1, 128, 768], dtype="float32")
+            fc_out1 = fluid.layers.fc(input=data,
+                                      size=3072,
+                                      num_flatten_dims=2,
+                                      act="relu")
+            fc_out2 = fluid.layers.fc(input=fc_out1,
+                                      size=768,
+                                      num_flatten_dims=2)
 
-        self.feeds = {
-            "data": np.random.random((1, 3, 100, 100)).astype("float32"),
-            "add_y2": np.random.random((1, 3, 98, 98)).astype("float32")
-        }
-        self.fetch_list = [add1_out]
-        self.enable_mkldnn = False
+        self.feeds = {"data": np.random.random((4, 128, 768)).astype("float32")}
+        self.fetch_list = [fc_out2]
 
     def test_check_output(self):
+        use_gpu = [False]
         if core.is_compiled_with_cuda():
-            use_gpu = True
-            self.check_output_with_option(use_gpu)
-        self.assertTrue(
-            PassVersionChecker.IsCompatible(
-                'conv_elementwise_add2_act_fuse_pass'))
+            use_gpu.append(True)
+        for i in range(len(use_gpu)):
+            self.check_output_with_option(use_gpu[i])
+
+        self.assertTrue(PassVersionChecker.IsCompatible('fc_fuse_pass'))
 
 
 if __name__ == "__main__":
