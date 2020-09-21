@@ -38,12 +38,17 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
       num_indices, input->dims()[0],
       platform::errors::InvalidArgument(
           "Segment_ids should be the same size as dimension 0 of input X."));
+  PADDLE_ENFORCE_EQ(num_indices, segment->dims()[0],
+                    platform::errors::InvalidArgument(
+                        "Segment_ids should be 1-D tensor, or it's other "
+                        "dimension size is 1. Segment_ids's shape is: [%s].",
+                        segment->dims()));
 
   if (input->numel() == 0 || segment->numel() == 0) {
     return;
   }
 
-  bool cpu_place = context.GetPlace() == platform::CPUPlace();
+  bool cpu_place = context.GetPlace().type() == typeid(platform::CPUPlace);
   if (cpu_place) {
     auto dims = input->dims();
     auto* segment_ids = segment->data<IndexT>();

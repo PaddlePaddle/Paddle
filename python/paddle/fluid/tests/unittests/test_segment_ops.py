@@ -72,8 +72,9 @@ def compute_segment_min_max(x, segment_ids, pooltype="MAX"):
 
 class TestSegmentOps(OpTest):
     def set_data(self):
-        x = np.random.uniform(0.1, 1, [30, 15]).astype(self.dtype)
-        return x
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
+        return x, segment_ids
 
     def set_segment(self, origin_len, reduce_len):
         segment = np.zeros(reduce_len, dtype='int64')
@@ -84,17 +85,20 @@ class TestSegmentOps(OpTest):
     def compute(self, x, segment_ids):
         return compute_segment_sum(x, segment_ids)
 
-    def setUp(self):
-        self.dtype = np.float64
-        x = self.set_data()
-        segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
+    def prepare(self):
         self.op_type = "segment_pool"
+        self.dtype = np.float64
+        self.shape = [30, 15]
+        self.attrs = {"pooltype": "SUM"}
+
+    def setUp(self):
+        self.prepare()
+        x, segment_ids = self.set_data()
         result = self.compute(x, segment_ids)
         self.inputs = {
             'X': x.astype(self.dtype),
             'SegmentIds': segment_ids.astype(np.int64)
         }
-        self.attrs = {"pooltype": "SUM"}
         self.outputs = {'Out': result.astype(self.dtype)}
 
     def test_check_output(self):
@@ -105,17 +109,19 @@ class TestSegmentOps(OpTest):
 
 
 class TestSegmentSum2(TestSegmentOps):
-    def setUp(self):
+    def prepare(self):
+        super().prepare()
+        self.shape = [40, 20]
         self.dtype = np.float32
-        x = self.set_data()
-        segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
-        self.op_type = "segment_pool"
+
+    def setUp(self):
+        self.prepare()
+        x, segment_ids = self.set_data()
         result = self.compute(x, segment_ids)
         self.inputs = {
             'X': x.astype(self.dtype),
             'SegmentIds': segment_ids.astype(np.int32)
         }
-        self.attrs = {}
         self.outputs = {'Out': result.astype(self.dtype)}
 
 
@@ -123,20 +129,19 @@ class TestSegmentMax(TestSegmentOps):
     def compute(self, x, segment_ids):
         return compute_segment_min_max(x, segment_ids, pooltype="MAX")
 
-    def get_dtype(self):
-        return np.float64
+    def prepare(self):
+        super().prepare()
+        self.shape = [40, 20]
+        self.attrs = {'pooltype': "MAX"}
 
     def setUp(self):
-        self.dtype = self.get_dtype()
-        x = self.set_data()
-        segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
-        self.op_type = "segment_pool"
+        self.prepare()
+        x, segment_ids = self.set_data()
         result, self.gradient = self.compute(x, segment_ids)
         self.inputs = {
             'X': x.astype(self.dtype),
             'SegmentIds': segment_ids.astype(np.int32)
         }
-        self.attrs = {'pooltype': "MAX"}
         self.outputs = {'Out': result.astype(self.dtype)}
 
     def test_check_grad(self):
@@ -144,30 +149,53 @@ class TestSegmentMax(TestSegmentOps):
 
 
 class TestSegmentMax2(TestSegmentMax):
-    def get_dtype(self):
-        return np.float32
+    def prepare(self):
+        super().prepare()
+        self.dtype = np.float32
+
+
+class TestSegmentMin(TestSegmentMax):
+    def compute(self, x, segment_ids):
+        return compute_segment_min_max(x, segment_ids, pooltype="MIN")
+
+    def prepare(self):
+        super().prepare()
+        self.attrs = {'pooltype': "MIN"}
+
+
+class TestSegmentMin2(TestSegmentMin):
+    def prepare(self):
+        super().prepare()
+        self.dtype = np.float32
 
 
 class TestSegmentMean(TestSegmentOps):
     def compute(self, x, segment_ids):
         return compute_segment_mean(x, segment_ids)
 
-    def get_dtype(self):
-        return np.float64
+    def prepare(self):
+        super().prepare()
+        self.shape = [40, 20]
+        self.attrs = {'pooltype': "MEAN"}
 
     def setUp(self):
-        self.dtype = self.get_dtype()
-        x = self.set_data()
-        segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
-        self.op_type = "segment_pool"
+        self.prepare()
+        x, segment_ids = self.set_data()
         result = self.compute(x, segment_ids)
         self.inputs = {'X': x, 'SegmentIds': segment_ids}
-        self.attrs = {'pooltype': "MEAN"}
         self.outputs = {
             'Out': result,
             'SummedIds': compute_segment_sum(
                 np.ones([len(x), 1]).astype(self.dtype), segment_ids)
         }
+
+
+class TestSegmentMean2(TestSegmentMean):
+    def prepare(self):
+        super().prepare()
+        self.dtype = np.float32
+        self.shape = [30, 20]
+        self.attrs = {'pooltype': "MEAN"}
 
 
 if __name__ == '__main__':

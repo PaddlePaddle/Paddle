@@ -28,13 +28,14 @@ class SegmentPoolOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("SegmentIds"), "Input", "SegmentIds",
                    "SegmentPool");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SegmentPool");
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    auto dims = ctx->GetInputDim("X");
+    dims[0] = -1;
+    ctx->SetOutputDim("Out", dims);
 
     if (ctx->Attrs().Get<std::string>("pooltype") == "MEAN") {
       OP_INOUT_CHECK(ctx->HasOutput("SummedIds"), "Output", "SummedIds",
                      "SegmentPool");
-      auto length = ctx->GetInputDim("X")[0];
-      ctx->SetOutputDim("SummedIds", {length, 1});
+      ctx->SetOutputDim("SummedIds", {-1, 1});
     }
   }
 
@@ -50,24 +51,38 @@ class SegmentPoolOp : public framework::OperatorWithKernel {
 class SegmentPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor) The variable-length input of SegmentPoolOp");
+    AddInput("X", "(Tensor) The input data of SegmentPoolOp");
     AddInput("SegmentIds",
-             "(Tensor) The variable-length input of SegmentPoolOp");
+             "(Tensor) 1-D tensor which have the same size with the fist "
+             "dimension of input X.");
+    AddOutput("Out", "(Tensor) The output of SegmentPoolOp.");
     AddOutput("SummedIds",
               "(Tensor) This tensor is used to counts of segment ids for the "
               "backward of the mean pool.")
         .AsIntermediate();
-    AddOutput("Out", "(Tensor) The output of SegmentPoolOp.");
     AddAttr<std::string>(
         "pooltype",
-        "(string, default 'SUM') the pooling pooltype of SegmentPoolOp.")
+        "(string, default 'SUM') the pooling type of SegmentPoolOp.")
         .SetDefault("SUM")
         .InEnum({"SUM", "MEAN", "MIN", "MAX"});
     AddComment(R"DOC(
-Segment Sum Operator.
+Segment Pool Operator.
 
-This operator sums the elements of input `X` which with the same index in `SegmentIds`.
-It computes a tensor such that $Out_i = \sum_{j} X_{j}$ where sum is over j such that `SegmentIds[j] == i`.
+This operator will pool the elements of input `X` which with the same index
+in `SegmentIds`.
+
+For SUM operation, it computes a tensor such that $Out_i = \sum_{j} X_{j}$
+where sum is over j such that `SegmentIds[j] == i`.
+
+For MEAN operation, it computes a tensor such that
+$Out_i = \frac{1}{n_i}  \sum_{j} X_{j}$ where sum is over j such that
+`SegmentIds[j] == i` and $n_i$ is the number of all index `SegmentIds[j] == i`.
+
+For MIN operation, it computes a tensor such that $Out_i = \min_{j} X_{j}$
+where min is over j such that `SegmentIds[j] == i`.
+
+For MAX operation, it computes a tensor such that $Out_i = \max_{j} X_{j}$
+where max is over j such that `SegmentIds[j] == i`.
     )DOC");
   }
 };
