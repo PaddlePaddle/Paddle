@@ -157,6 +157,14 @@ class OperatorBase {
         platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
     return BOOST_GET_CONST(T, attrs_.at(name));
   }
+  void SetAttr(const std::string& name, const Attribute& v) {
+    PADDLE_ENFORCE_EQ(
+        HasAttr(name), true,
+        platform::errors::NotFound(
+            "The attribute %s is not found in operator %s", name, Type()));
+
+    attrs_[name] = v;
+  }
   const AttributeMap& Attrs() const { return attrs_; }
 
   const VariableNameMap& Inputs() const { return inputs_; }
