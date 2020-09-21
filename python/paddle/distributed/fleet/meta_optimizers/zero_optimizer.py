@@ -173,12 +173,12 @@ class ZeroOptimizer(MetaOptimizerBase):
         # params and fp16 params is for broadcast
         self._params = set([])
         self._fp16_params = set([])
+        # fp16 to fp32
+        self._fp16_to_params = {}
         self._broadcast_vars = set([])
-        # param_name(str) -> device_id(int)
+        # _param(str) -> device_id(int) 
         self._param2device = {}
         # varname(str) -> param(Variable)
-        # self._varname2param = {}
-        self._paramname2param = {}
         # reduced grads to param name
         self._reduced_grads_to_param = {}
         # self._nrings(int) is for nccl communicate
@@ -216,7 +216,26 @@ class ZeroOptimizer(MetaOptimizerBase):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.zero = False
 
+    def _is_fp16_cast_op(self, block, op):
+        if op.type != "cast":
+            return False
+        if is_optimizer_op(op):
+            return False
+        assert (len(op.desc.input_arg_names()) == 1)
+        assert (len(op.desc.output_arg_names()) == 1)
+        input_name, output_name = op.desc.input_arg_names()[
+            0], op.desc.output_arg_names()[0]
+        if input_name not in self._params:
+            return False
+        input_var = block.var(input_name)
+        output_var = block.var(output_name)
+        if input_var.dtype != core.VarDesc.VarType.FP32 or \
+            output_var.dtype != core.VarDesc.VarType.FP16:
+            return False
+        return True
+
     def _split_params(self, params):
+        param2device = {}
         total_param_mem = 0.0
         param2mem = []
         for param in params:
@@ -234,11 +253,11 @@ class ZeroOptimizer(MetaOptimizerBase):
             if mem_accu > total_param_mem * 1.0 * (device_idx + 1) / device_num:
                 device_idx += 1
             device2params[device_idx].append(param_name)
-            self._param2device[param_name] = device_idx
+            param2device[param_name] = device_idx
             mem_accu += mem
         # for debug
         print(device2params)
-        return
+        return param2device
 
     def _is_opti_var(self, var_name):
         if var_name in self._params:
@@ -300,7 +319,7 @@ class ZeroOptimizer(MetaOptimizerBase):
 
             # find broadcast vars
             for input_name in op.desc.input_arg_names():
-                if input_name not in self._param2device:
+                if input_name not in self._broadcast_vars:
                     continue
                 root_device = self._param2device[input_name]
                 if input_name in sub_prog._param2broadcast:
@@ -315,8 +334,8 @@ class ZeroOptimizer(MetaOptimizerBase):
                     broadcast_var_name = unique_name.generate(input_name +
                                                               "@BroadCast")
                 sub_prog._param2broadcast[input_name] = broadcast_var_name
-                sub_prog._param_mem += self._get_var_size(self._paramname2param[
-                    input_name])
+                sub_prog._param_mem += self._get_var_size(
+                    self._main_program.global_block().var(input_name))
 
             # find reduce vars
             if is_backward_op(op) and \
@@ -465,6 +484,18 @@ class ZeroOptimizer(MetaOptimizerBase):
         block._sync_with_cpp()
         return
 
+    def _remove_cast_op(self, block, sub_prog, offset):
+        inserted_op_num = 0
+        for op_idx in reversed(
+                range(offset + sub_prog._start_idx, offset +
+                      sub_prog._end_idx)):
+            op = block.ops[op_idx]
+            if self._is_fp16_cast_op(block, op):
+                block._remove_op(op_idx)
+                inserted_op_num -= 1
+        block._sync_with_cpp()
+        return inserted_op_num
+
     def _add_broadcast_allreduce(self, block, sub_prog, offset):
         """
         add broadcast and allreduce
@@ -519,12 +550,16 @@ class ZeroOptimizer(MetaOptimizerBase):
             if param_name != broadcast_name:
                 block.create_var(
                     name=broadcast_name,
-                    shape=self._paramname2param[param_name].shape,
-                    dtype=self._paramname2param[param_name].dtype,
+                    shape=self._main_program.global_block().var(
+                        param_name).shape,
+                    dtype=self._main_program.global_block().var(param_name)
+                    .dtype,
                     persistable=False)
 
         comm_dep_vars = [v for k, v in sub_prog._param2broadcast.items()]
         for i in range(self._nrings):
+            print("insert c_sync_comm_stream id: ",
+                  offset + sub_prog._start_idx)
             block._insert_op(
                 offset + sub_prog._start_idx,
                 type='c_sync_comm_stream',
@@ -564,18 +599,29 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         for param_name, broadcast_name in sub_prog._param2broadcast.items():
             if param_name == broadcast_name:
-                continue
-            broadcast_var = block.var(broadcast_name)
-            block._insert_op(
-                offset + sub_prog._start_idx,
-                type="fill_constant",
-                outputs={"Out": broadcast_var.name},
-                attrs={
-                    "shape": broadcast_var.shape,
-                    "dtype": broadcast_var.dtype,
-                    "value": 0.0,
-                })
-            inserted_op_num += 1
+                if param_name in self._fp16_params:
+                    block._insert_op(
+                        offset + sub_prog._start_idx,
+                        type="cast",
+                        inputs={"X": self._fp16_to_params[param_name]},
+                        outputs={"Out": param_name},
+                        attrs={
+                            "in_dtype": core.VarDesc.VarType.FP32,
+                            "out_dtype": core.VarDesc.VarType.FP16
+                        })
+                    inserted_op_num += 1
+            else:
+                broadcast_var = block.var(broadcast_name)
+                block._insert_op(
+                    offset + sub_prog._start_idx,
+                    type="fill_constant",
+                    outputs={"Out": broadcast_var.name},
+                    attrs={
+                        "shape": broadcast_var.shape,
+                        "dtype": broadcast_var.dtype,
+                        "value": 0.0,
+                    })
+                inserted_op_num += 1
         block._sync_with_cpp()
         return inserted_op_num
 
@@ -600,7 +646,38 @@ class ZeroOptimizer(MetaOptimizerBase):
             block._remove_var(var_name)
         block._sync_with_cpp()
 
+    def _find_broadcast_params(self, params, param2device):
+        broadcast_vars = set([])
+        fp16_params = set([])
+        fp16_to_fp32 = {}
+        main_block = self._main_program.global_block()
+
+        param_usage = {x: 0 for x in params}
+        for op in main_block.ops:
+            if is_optimizer_op(op):
+                continue
+            for input_name in op.desc.input_arg_names():
+                if input_name in params:
+                    param_usage[input_name] += 1
+
+        for op in main_block.ops:
+            if not self._is_fp16_cast_op(main_block, op):
+                continue
+            input_name = op.input_arg_names[0]
+            output_name = op.output_arg_names[0]
+            broadcast_vars.add(output_name)
+            fp16_params.add(output_name)
+            fp16_to_fp32[output_name] = input_name
+            param_usage[input_name] -= 1
+            param2device[output_name] = param2device[input_name]
+
+        for param, usage in param_usage.items():
+            if usage > 0:
+                broadcast_vars.add(param)
+        return fp16_params, broadcast_vars, fp16_to_fp32
+
     def _set_up(self, params_grads):
+        # step 1: initialize nccl
         # TODO(mapingshuo) fix get_trainer_endpoints
         print("work idx: ", self.role_maker.worker_index())
         endpoints = self.role_maker.get_trainer_endpoints()
@@ -613,17 +690,13 @@ class ZeroOptimizer(MetaOptimizerBase):
         startup_block = self._startup_program.global_block()
         startup_block._sync_with_cpp()
 
-        # step 1.2 split params
+        # step 2: split params
         self._params = set([x[0].name for x in params_grads])
-        self.fp16_params, self._broadcast_vars = self.find_broadcast_params(
-            self._params)
-        self._paramname2param = {x[0].name: x[0] for x in params_grads}
-        self._split_params([x[0] for x in params_grads])
+        self._param2device = self._split_params([x[0] for x in params_grads])
 
-        # find fp16 params
-
-    def find_broadcast_params(self, params):
-        return set([]), params
+        # step 3: get broadcast vars
+        self._fp16_params, self._broadcast_vars, self._fp16_to_params = self._find_broadcast_params(
+            self._params, self._param2device)
 
     def minimize_impl(self,
                       loss,
@@ -663,12 +736,16 @@ class ZeroOptimizer(MetaOptimizerBase):
         # step3: add broadcast and reduce ops
         print("insert broadcast and allreduce")
         inserted_op_num = 0
-        for idx, subprog in enumerate(self._sub_progs):
+        for idx, subprog in reversed(list(enumerate(self._sub_progs))):
             print("subprog_{}: ({}-{})".format(idx, subprog._start_idx,
                                                subprog._end_idx))
+            print("inserted_op_num: ", inserted_op_num)
+            if self._fp16_params:
+                # need to remove fp16 cast ops
+                self._remove_cast_op(main_block, subprog, inserted_op_num)
+            print("inserted_op_num: ", inserted_op_num)
             print("_allreduce_vars: ", subprog._allreduce_vars)
-            inserted_op_num += self._add_broadcast_allreduce(
-                main_block, subprog, inserted_op_num)
+            self._add_broadcast_allreduce(main_block, subprog, inserted_op_num)
 
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
