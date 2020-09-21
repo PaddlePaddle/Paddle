@@ -135,8 +135,8 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
 #endif
 #ifdef PADDLE_WITH_XPU
         memory::Copy(BOOST_GET_CONST(platform::XPUPlace, places_[i]), w,
-            platform::CPUPlace(), pin_w,
-            sizeof(float) * tensor->numel());
+                     platform::CPUPlace(), pin_w,
+                     sizeof(float) * tensor->numel());
 #endif
       }
     }

@@ -128,7 +128,8 @@ class DistMultiTrainer : public MultiTrainer {
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
 };
 
-#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && (defined PADDLE_WITH_PSLIB)
+#if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
+    (defined PADDLE_WITH_PSLIB)
 class HeterServiceContext {
  public:
   HeterServiceContext() {}
@@ -171,7 +172,7 @@ class HeterXpuTrainer : public TrainerBase {
     new (&program_) ProgramDesc(main_program);
   }
   virtual std::string GetDumpPath(int tid) { return ""; }
-  virtual void InitDumpEnv() {};
+  virtual void InitDumpEnv(){};
   template <typename T>
 #ifdef PADDLE_WITH_CUDA
   void HeterMemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
@@ -179,7 +180,7 @@ class HeterXpuTrainer : public TrainerBase {
                    cudaStream_t stream);
 #endif
 #ifdef PADDLE_WITH_XPU
-  void HeterMemCpy(LoDTensor *thread_tensor, LoDTensor *root_tensor,
+  void HeterMemCpy(LoDTensor* thread_tensor, LoDTensor *root_tensor,
                    const paddle::platform::Place& thread_place);
 #endif
   void CreateThreadParam(const ProgramDesc& program, int num);

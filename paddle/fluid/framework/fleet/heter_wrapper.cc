@@ -130,7 +130,7 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope,
                  tensor->data<void>(),
                  tensor->numel() * SizeOfType(tensor->type()), nullptr);
   }
-#endif  // NOLINT
+#endif                  // NOLINT
 #ifdef PADDLE_WITH_XPU  // NOLINT
   else {
     memory::Copy(platform::CPUPlace(), data_ptr,
@@ -176,18 +176,18 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   void* tensor_data =
       tensor->mutable_data(place, ToVarType(req_var.data_type()));
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA)  // NOLINT
   memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place), tensor_data,
                platform::CPUPlace(), req_var.data().data(),
                tensor->numel() * SizeOfType(tensor->type()), stream);
-#elif defined(PADDLE_WITH_XPU)
+#elif defined(PADDLE_WITH_XPU) // NOLINT
   memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place), tensor_data,
                platform::CPUPlace(), req_var.data().data(),
                tensor->numel() * SizeOfType(tensor->type()));
-#else
+#else  // NOLINT
   memcpy(tensor_data, req_var.data().data(),
          tensor->numel() * SizeOfType(tensor->type()));
-#endif
+#endif  // NOLINT
 }
 
 framework::proto::VarType::Type HeterWrapper::ToVarType(

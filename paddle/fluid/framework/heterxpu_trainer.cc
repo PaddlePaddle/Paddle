@@ -342,9 +342,11 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #ifdef PADDLE_WITH_XPU
         auto place = thread_tensor->place();
         xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
-        platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+        platform::DeviceContextPool& pool =
+            platform::DeviceContextPool::Instance();
         platform::DeviceContext* dev_ctx = pool.Get(place);
-        const platform::XPUDeviceContext* xpu_ctx = reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
+        const platform::XPUDeviceContext* xpu_ctx =
+            reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
         xpu::memset(xpu_ctx->x_context(), thread_tensor->data<void>(), 0,
                     thread_tensor->numel() * SizeOfType(thread_tensor->type()));
 #endif
@@ -367,9 +369,11 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 #ifdef PADDLE_WITH_XPU
       auto place = root_tensor->place();
       xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
-      platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
       platform::DeviceContext* dev_ctx = pool.Get(place);
-      const platform::XPUDeviceContext* xpu_ctx = reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
+      const platform::XPUDeviceContext* xpu_ctx =
+          reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
       xpu::memset(xpu_ctx->x_context(), root_tensor->data<void>(), 0,
                   root_tensor->numel() * SizeOfType(root_tensor->type()));
 #endif
