@@ -13,3 +13,7 @@ third_party/
 bazel-*
 
 !build/*.deb
+.git/
+.github/
+python/
+paddle/fluid/
