@@ -164,7 +164,7 @@ class TestPSPassWithBow(unittest.TestCase):
 
         fleet.init(role)
         loss, acc, _ = self.net()
-        optimizer = fluid.optimizer.SGD(base_lr)
+        optimizer = fluid.optimizer.Adam(base_lr)
         strategy = StrategyFactory.create_async_strategy()
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)

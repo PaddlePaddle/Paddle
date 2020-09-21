@@ -40,7 +40,7 @@ class TestCommunicator(unittest.TestCase):
     def test_communicator_async(self):
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
-            role=role_maker.Role.WORKER,
+            role=role_maker.Role.SERVER,
             worker_num=2,
             server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
 
@@ -51,10 +51,6 @@ class TestCommunicator(unittest.TestCase):
         strategy = StrategyFactory.create_async_strategy()
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
-
-        fleet.init_worker()
-        time.sleep(10)
-        fleet.stop_worker()
 
 
 if __name__ == '__main__':
