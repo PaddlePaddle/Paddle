@@ -372,17 +372,17 @@ class StaticLayer(object):
             Traced ConcreteProgram and executable translated Layer.
         """
 
-        # 2. unify args/kwargs and replace Tensor with InputSpec
+        # 1. unify args/kwargs and replace Tensor with InputSpec
         if len(args) != len(self._function_spec.args_name):
             args, kwargs = self._function_spec.unified_args_and_kwargs(args,
                                                                        kwargs)
         input_with_spec = self._function_spec.args_to_input_spec(args, kwargs)
 
-        # 3. generate cache key
+        # 2. generate cache key
         cache_key = CacheKey(self._function_spec, input_with_spec,
                              self._class_instance)
 
-        # 4. check whether hit the cache or build a new program for the input arguments
+        # 3. check whether hit the cache or build a new program for the input arguments
         concrete_program, partial_program_layer = self._program_cache[cache_key]
         return concrete_program, partial_program_layer
 
