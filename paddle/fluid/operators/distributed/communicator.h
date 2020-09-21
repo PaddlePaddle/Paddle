@@ -457,6 +457,7 @@ class GeoCommunicator : public AsyncCommunicator {
   // parameter on pserver
   std::shared_ptr<Scope> pserver_scope_;
 
+  int send_var_nums_ = 0;
   std::unordered_map<std::string, std::shared_ptr<SparseValue>> old_sparses_;
   std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>>
       need_push_queue_;
