@@ -60,38 +60,6 @@ class TestCollectiveAPIRunnerBase(object):
             else:
                 break
 
-    def initCommunicator(self, program, rank, nranks, wait_port,
-                         current_endpoint, endpoints):
-        other_endpoints = endpoints[:]
-        other_endpoints.remove(current_endpoint)
-        if rank == 0 and wait_port:
-            self.wait_server_ready(other_endpoints)
-        block = program.global_block()
-        nccl_id_var = block.create_var(
-            name=nameGen.generate('nccl_id'),
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-
-        block.append_op(
-            type='c_gen_nccl_id',
-            inputs={},
-            outputs={'Out': nccl_id_var},
-            attrs={
-                'rank': rank,
-                'endpoint': current_endpoint,
-                'other_endpoints': other_endpoints
-            })
-
-        block.append_op(
-            type='c_comm_init',
-            inputs={'X': nccl_id_var},
-            outputs={},
-            attrs={
-                'nranks': nranks,
-                'rank': rank,
-                'ring_id': self.global_ring_id
-            })
-
     def run_trainer(self, args):
         train_prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -100,23 +68,12 @@ class TestCollectiveAPIRunnerBase(object):
         current_endpoint = args["currentendpoint"]
         nranks = 2
         result = self.get_model(train_prog, startup_prog, rank)
+        paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
-            self.initCommunicator(startup_prog, rank, nranks, True,
-                                  current_endpoint, endpoints)
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(
                 device_id)  #if args.use_gpu else fluid.CPUPlace()
         else:
-            strategy = fluid.core.GlooParallelStrategy()
-            strategy.rank = rank
-            strategy.rank_num = nranks
-            strategy.prefix = ""
-            strategy.iface = "lo"
-            strategy.init_seconds = 999999
-            strategy.run_seconds = 999999
-            strategy.path = "/tmp/tmp%d" % args['path_id']
-            gloo = fluid.core.GlooParallelContext(strategy)
-            gloo.init()
             place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
