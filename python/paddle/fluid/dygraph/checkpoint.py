@@ -162,7 +162,7 @@ def load_dygraph(model_path, config=None):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
             import paddle.fluid as fluid
             

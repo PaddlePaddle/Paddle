@@ -151,8 +151,8 @@ def save(obj, path):
     # 1. input check
     if not isinstance(obj, dict):
         raise NotImplementedError(
-            "Now only supports save state_dict of Layer or Optimizer. "
-            "Expect dict, but received %s" % type(obj))
+            "Now only supports save state_dict of Layer or Optimizer, "
+            "expect dict, but received %s." % type(obj))
 
     filename = os.path.basename(path)
     if filename == "":
@@ -229,8 +229,8 @@ def load(path, config=None):
         if os.path.exists(params_file_path) or os.path.exists(opti_file_path):
             error_msg += " If you want to load the results saved by `fluid.save_dygraph`, " \
                 "please specify the full file name, not just the file name prefix. For " \
-                "example, it should be written as `paddle.load(model.pdparams)` instead of " \
-                "`paddle.load(model)`."
+                "example, it should be written as `paddle.load('model.pdparams')` instead of " \
+                "`paddle.load('model')`."
         raise ValueError(error_msg % path)
 
     if config is None:
