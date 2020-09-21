@@ -26,6 +26,7 @@ import functools
 import pickle
 from contextlib import closing
 from six import string_types
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core

@@ -62,12 +62,6 @@ void BindGlooContext(py::module *m) {
           [](platform::GlooParallelStrategy &self, const std::string &iface) {
             self.iface = iface;
           })
-      .def_property("prefix",
-                    [](const platform::GlooParallelStrategy &self) {
-                      return self.prefix;
-                    },
-                    [](platform::GlooParallelStrategy &self,
-                       const std::string &prefix) { self.prefix = prefix; })
       .def_property("init_seconds",
                     [](const platform::GlooParallelStrategy &self) {
                       return self.init_seconds;
