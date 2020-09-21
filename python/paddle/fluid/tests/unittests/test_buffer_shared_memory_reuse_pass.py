@@ -36,6 +36,7 @@ class InplaceTestBase(unittest.TestCase):
         self.fuse_all_optimizer_ops = False
 
     def setUp(self):
+        paddle.enable_static()
         self.initParameter()
         if self.use_cuda and fluid.core.is_compiled_with_cuda():
             self.device_count = fluid.core.get_cuda_device_count()

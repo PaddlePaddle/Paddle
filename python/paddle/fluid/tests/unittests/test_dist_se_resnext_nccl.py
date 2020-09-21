@@ -29,6 +29,8 @@ class TestDistSeResneXtNCCL(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+        import paddle
+        paddle.enable_static()
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_se_resnext.py",
@@ -46,6 +48,8 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+        import paddle
+        paddle.enable_static()
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_se_resnext.py",
