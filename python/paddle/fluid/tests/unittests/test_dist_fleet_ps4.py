@@ -94,15 +94,13 @@ class TestPSPassWithBow(unittest.TestCase):
         pt = fluid.layers.data(
             name="pos_title_ids", shape=[1], dtype="int64", lod_level=1)
         # embedding
-        pt_emb = fluid.layers.embedding(
+        pt_emb = fluid.contrib.layers.sparse_embedding(
             input=pt,
-            is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__",
-                learning_rate=emb_lr),
-            is_sparse=is_sparse)
+                learning_rate=emb_lr))
         pt_emb = fluid.layers.reshape(pt_emb, [-1, emb_dim])
         # vsum
         pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')

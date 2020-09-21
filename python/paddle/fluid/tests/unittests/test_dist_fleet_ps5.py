@@ -165,12 +165,13 @@ class TestPSPassWithBow(unittest.TestCase):
         fleet.init(role)
         loss, acc, _ = self.net()
 
-        optimizer = fluid.optimizer.SGD(
+        optimizer = fluid.optimizer.Adagrad(
             learning_rate=fluid.layers.exponential_decay(
                 learning_rate=base_lr,
                 decay_steps=500,
                 decay_rate=0.969,
                 staircase=True))
+
         strategy = StrategyFactory.create_async_strategy()
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)
