@@ -13,8 +13,8 @@
 # limitations under the License.
 
 # make package for paddle fluid shared and static library
-set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
-  "A path setting fluid shared and static libraries")
+set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_install_dir" CACHE STRING
+  "A path setting paddle shared and static libraries")
 
 set(PADDLE_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_install_dir" CACHE STRING
   "A path setting paddle inference shared and static libraries")
