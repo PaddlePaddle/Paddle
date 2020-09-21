@@ -24,8 +24,6 @@ void GlooParallelContext::Init() {
   gloo_ptr->SetPrefix(strategy_.prefix);
   gloo_ptr->SetIface(strategy_.iface);
   gloo_ptr->SetTimeoutSeconds(strategy_.init_seconds, strategy_.run_seconds);
-  // gloo_ptr->SetHdfsStore(strategy_.path, strategy_.fs_name,
-  // strategy_.fs_ugi);
   gloo_ptr->SetHttpStore(strategy_.ip_address, strategy_.ip_port,
                          strategy_.scope);
   gloo_ptr->Init();

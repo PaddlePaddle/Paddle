@@ -44,7 +44,6 @@ import time
 import six
 import copy
 from argparse import ArgumentParser, REMAINDER
-import tempfile
 
 from paddle.distributed.utils import *
 from paddle.distributed import cloud_utils

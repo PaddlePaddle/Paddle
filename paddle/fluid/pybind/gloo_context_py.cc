@@ -83,24 +83,6 @@ void BindGlooContext(py::module *m) {
                       self.run_seconds = run_seconds;
                     })
       .def_property(
-          "path",
-          [](const platform::GlooParallelStrategy &self) { return self.path; },
-          [](platform::GlooParallelStrategy &self, const std::string &path) {
-            self.path = path;
-          })
-      .def_property("fs_name",
-                    [](const platform::GlooParallelStrategy &self) {
-                      return self.fs_name;
-                    },
-                    [](platform::GlooParallelStrategy &self,
-                       const std::string &fs_name) { self.fs_name = fs_name; })
-      .def_property("fs_ugi",
-                    [](const platform::GlooParallelStrategy &self) {
-                      return self.fs_ugi;
-                    },
-                    [](platform::GlooParallelStrategy &self,
-                       const std::string &fs_ugi) { self.fs_ugi = fs_ugi; })
-      .def_property(
           "ip_address",
           [](const platform::GlooParallelStrategy &self) {
             return self.ip_address;

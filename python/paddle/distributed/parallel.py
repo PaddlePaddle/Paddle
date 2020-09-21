@@ -16,6 +16,7 @@ import os
 import six
 import warnings
 from multiprocessing import Process, Manager
+import netifaces
 import time
 
 from paddle import compat as cpt
@@ -33,14 +34,36 @@ ParallelStrategy = core.ParallelStrategy
 
 def _start_kv_server(port, http_server_d, nranks):
     from paddle.distributed.fleet.utils.http_server import KVServer
-    size_d = {"trainer": nranks, "all": nranks}
+    size_d = {"trainer": nranks}
     http_server = KVServer(port, size_d)
     http_server.start()
     wait_seconds = 5
-    # while http_server_d.get("running", False) and not http_server.should_stop():
     while http_server_d.get("running", False):
         time.sleep(wait_seconds)
     http_server.stop()
+
+
+def _get_iface_by_ip(ip_address):
+    """
+    Get network interface name by its ip address.
+
+    Args:
+        ip_address (string): ip address
+    
+    Returns:
+        Name of the network interface which has the ip address 'ip_address',
+        or None if the ip_address is not found.
+    """
+    nicfaces = netifaces.interfaces()
+    for nicface in nicfaces:
+        message = netifaces.ifaddresses(nicface)
+        iface_info = message.get(netifaces.AF_INET)
+        if iface_info:
+            iface_dict = iface_info[0]
+            ipaddr = iface_dict.get('addr')
+            if ipaddr == ip_address:
+                return nicface
+    return None
 
 
 def init_parallel_env():
@@ -142,27 +165,17 @@ def init_parallel_env():
         http_server.daemon = True
         http_server_d["running"] = True
         http_server.start()
-        time.sleep(5)
-    else:
-        time.sleep(10)
-    # gloo_strategy.prefix = os.environ.get("PADDLE_GLOO_PREFIX")
-    # gloo_strategy.iface = os.environ.get("PADDLE_GLOO_IFACE")
-    gloo_strategy.prefix = ""
-    gloo_strategy.iface = "lo"
+    iface = _get_iface_by_ip(ep_rank_0[0])
+    if iface is None:
+        raise ValueError("No network interface associated with the "
+                         "ip address: {}.".format(ep_rank_0[0]))
+    gloo_strategy.iface = iface
     default_init_timeout_seconds = 3600
     default_run_timeout_seconds = 9999999
     gloo_strategy.init_seconds = default_init_timeout_seconds
     gloo_strategy.run_seconds = default_run_timeout_seconds
-    # gloo_strategy.path = os.environ.get("PADDLE_GLOO_PATH")
-    # default_init_timeout_seconds = 9999999
-    # if not os.path.exists(gloo_strategy.path):
-    #     os.mkdir(gloo_strategy.path)
-    # gloo_strategy.fs_name = os.environ.get("PADDLE_GLOO_FS_NAME")
-    # gloo_strategy.fs_ugi = os.environ.get("PADDLE_GLOO_FS_UGI")
     gloo_strategy.ip_address = ep_rank_0[0]
     gloo_strategy.ip_port = int(ep_rank_0[1])
-    print("ip_address:", gloo_strategy.ip_address)
-    print("ip_port:", gloo_strategy.ip_port)
     gloo = core.GlooParallelContext(gloo_strategy)
     gloo.init()
     if ParallelEnv().rank == 0:
