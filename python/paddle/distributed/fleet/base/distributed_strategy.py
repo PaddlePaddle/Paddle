@@ -729,6 +729,63 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.localsgd_configs, configs)
 
     @property
+    def adaptive_localsgd(self):
+        """
+        Indicating whether we are using Adaptive Local SGD training. Default Value: False
+        For more details, please refer to `Adaptive Communication Strategies to Achieve 
+        the Best Error-Runtime Trade-off in Local-Update SGD <https://arxiv.org/pdf/1810.08313.pdf>`_.
+
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.adaptive_localsgd = True # by default this is false
+
+        """
+        return self.strategy.localsgd
+
+    @adaptive_localsgd.setter
+    @is_strict_auto
+    def adaptive_localsgd(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.localsgd = flag
+        else:
+            print("WARNING: adaptive_localsgd should have value of bool type")
+
+    @property
+    def adaptive_localsgd_configs(self):
+        """
+        Set AdaptiveLocalSGD training configurations. AdaptiveLocalSGD has a configurable
+        setting that can be configured through a dict.
+
+        **Notes**:
+            init_k_steps(int) The initial steps for training before adaptive localsgd.
+                              Then, the adaptive localsgd method will modify init_k_steps automatically.
+                              Default 1.
+            begin_step(int) The step of begining training by adaptive localsgd. Default 1.
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.adaptive_localsgd = True
+            strategy.adaptive_localsgd_configs = {"init_k_steps": 1,
+                                                  "begin_step": 30}
+        """
+
+        return get_msg_dict(self.strategy.adaptive_localsgd_configs)
+
+    @adaptive_localsgd_configs.setter
+    @is_strict_auto
+    def adaptive_localsgd_configs(self, configs):
+        check_configs_key(self.strategy.adaptive_localsgd_configs, configs,
+                          "adaptive_localsgd_configs")
+        assign_configs_value(self.strategy.adaptive_localsgd_configs, configs)
+
+    @property
     def dgc(self):
         """
         Indicating whether we are using Deep Gradient Compression training. For more details, please refer to

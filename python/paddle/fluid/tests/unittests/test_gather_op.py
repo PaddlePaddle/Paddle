@@ -216,7 +216,7 @@ class API_TestGather(unittest.TestCase):
                       "index": index_np,
                       'axis': axis_np},
                 fetch_list=[out])
-            expected_output = gather_numpy(x_np, index_np, axis_np)
+            expected_output = gather_numpy(x_np, index_np, axis_np[0])
         self.assertTrue(np.allclose(result, expected_output))
 
 

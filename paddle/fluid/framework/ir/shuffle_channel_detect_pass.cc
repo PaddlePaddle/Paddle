@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/shuffle_channel_detect_pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -34,6 +35,8 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "shufflechannel_pattern";
   FusePassBase::Init(pattern_name, graph);
 
+  LOG(WARNING) << "There is fluid.layers.shuffle_channel API already, you can "
+                  "use it instead of (reshape + transpose +reshape)";
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode("x")
@@ -93,3 +96,8 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(shuffle_channel_detect_pass,
               paddle::framework::ir::ShuffleChannelDetectPass);
+REGISTER_PASS_CAPABILITY(shuffle_channel_detect_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("reshape2", 0)
+            .EQ("transpose2", 0));
