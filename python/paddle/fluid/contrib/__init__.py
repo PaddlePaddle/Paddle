@@ -25,8 +25,6 @@ from .quantize import *
 from . import reader
 from .reader import *
 from . import slim
-from . import utils
-from .utils import *
 from . import extend_optimizer
 from .extend_optimizer import *
 from . import model_stat
@@ -42,7 +40,6 @@ __all__ += memory_usage_calc.__all__
 __all__ += op_frequence.__all__
 __all__ += quantize.__all__
 __all__ += reader.__all__
-__all__ += utils.__all__
 __all__ += extend_optimizer.__all__
 __all__ += ['mixed_precision']
 __all__ += layers.__all__

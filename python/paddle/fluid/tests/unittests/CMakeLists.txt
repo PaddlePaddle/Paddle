@@ -98,7 +98,6 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_debugger)
     list(REMOVE_ITEM TEST_OPS test_fake_init_op)
     list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
-    list(REMOVE_ITEM TEST_OPS test_split_ids_op)
     LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
 endif()
 
