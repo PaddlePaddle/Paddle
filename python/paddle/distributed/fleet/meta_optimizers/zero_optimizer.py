@@ -42,6 +42,7 @@ class SubProgram(object):
         self._end_idx = -1
         # param name to broadcast name
         self._param2broadcast = {}
+        self._broadcast_vars = []
         # cast op pairs, fp16 name (str) -> fp32 name (str)
         self._cast_ops = {}
         # fill constant vars
@@ -334,6 +335,8 @@ class ZeroOptimizer(MetaOptimizerBase):
                                                               "@BroadCast")
                     sub_prog._fill_constant_vars.append(broadcast_var_name)
                 sub_prog._param2broadcast[input_name] = broadcast_var_name
+                sub_prog._broadcast_vars.append(
+                    (broadcast_var_name, self._param2device[input_name]))
                 sub_prog._param_mem += self._get_var_size(
                     self._main_program.global_block().var(input_name))
 
@@ -510,7 +513,7 @@ class ZeroOptimizer(MetaOptimizerBase):
         """
         ring_id = -1
         # TODO(mapingshuo): correct OP_ROLE_KEY
-        for broadcast_name, root_device in broadcast2root.items():
+        for broadcast_name, root_device in broadcast2root:
             ring_id = (ring_id + 1) % self._nrings
             block._insert_op(
                 insert_idx,
@@ -622,16 +625,23 @@ class ZeroOptimizer(MetaOptimizerBase):
 
             allreduce_vars = self._sub_progs[
                 idx - 1]._allreduce_vars if idx > 0 else []
-            param2broadcast = self._sub_progs[idx +
-                                              1]._param2broadcast if idx < len(
-                                                  self._sub_progs) - 1 else {}
+            broadcast_vars = self._sub_progs[idx +
+                                             1]._broadcast_vars if idx < len(
+                                                 self._sub_progs) - 1 else []
             fill_constant_vars = self._sub_progs[
                 idx + 2]._fill_constant_vars if idx < len(
                     self._sub_progs) - 2 else []
             cast_ops = self._sub_progs[idx + 2]._cast_ops if idx < len(
                 self._sub_progs) - 2 else {}
 
+            # for x in fill_constant_vars:
+            #     print("fill_constant_vars: ", x)
+
             # step1: modify calculate ops
+            # for op_idx in reversed(range(subprog._start_idx, subprog._end_idx)):
+            #     op = block.ops[op_idx]
+            #     print(_pretty_op_desc_(op.desc, "subprog_op"))
+
             for op_idx in reversed(range(subprog._start_idx, subprog._end_idx)):
                 op = block.ops[op_idx]
                 for input_name in op.desc.input_arg_names():
@@ -650,10 +660,12 @@ class ZeroOptimizer(MetaOptimizerBase):
                         .dtype,
                         persistable=False)
 
-            # step2: add Sync ops
-            comm_dep_vars = allreduce_vars + [
-                v for k, v in param2broadcast.items()
-            ]
+            # step2: remove cast ops
+            block._sync_with_cpp()
+            subprog._end_idx += self._remove_cast_op(block, subprog, 0)
+
+            # step3: add Sync ops
+            comm_dep_vars = allreduce_vars + [x[0] for x in broadcast_vars]
             if len(comm_dep_vars) > 0:
                 self._insert_sync_comm_ops(
                     block,
@@ -666,41 +678,37 @@ class ZeroOptimizer(MetaOptimizerBase):
                 self._insert_sync_calc_op(block, subprog._end_idx,
                                           [calc_dep_vars[-1]])
 
-            # step3: insert `fill_constant` ops 
+            # step4: insert `fill_constant` ops 
             self._insert_fill_constant_ops(block, subprog._end_idx,
                                            fill_constant_vars)
 
-            # step4  add `cast` ops     
+            # step5: add `cast` ops     
             self._insert_cast_ops(block, subprog._end_idx, cast_ops)
 
-            # step5 add broadcast ops
-            self._insert_broadcast_ops(block, subprog._end_idx, {
-                v: self._param2device[k]
-                for k, v in param2broadcast.items()
-            })
+            # step6: add broadcast ops
+            self._insert_broadcast_ops(block, subprog._end_idx, broadcast_vars)
 
-            # step6 add all_reduce ops
+            # step7: add all_reduce ops
             self._insert_allreduce_ops(block, subprog._start_idx,
                                        allreduce_vars)
 
             block._sync_with_cpp()
 
-        if self._sub_progs[0]._param2broadcast:
+        if self._sub_progs[0]._broadcast_vars:
             self._insert_sync_comm_ops(
                 block, self._sub_progs[0]._start_idx,
-                [v for k, v in self._sub_progs[0]._param2broadcast.items()])
-            self._insert_broadcast_ops(block, self._sub_progs[0]._start_idx, {
-                v: self._param2device[k]
-                for k, v in self._sub_progs[0]._param2broadcast.items()
-            })
+                [x[0] for x in self._sub_progs[0]._broadcast_vars])
+            self._insert_broadcast_ops(block, self._sub_progs[0]._start_idx,
+                                       self._sub_progs[0]._broadcast_vars)
 
         fill_constant_vars = reduce(
             lambda x, y: x._fill_constant_vars + y._fill_constant_vars,
             self._sub_progs[:2])
+
         # Join
         cast_ops = {}
         for x in self._sub_progs[:2]:
-            for k, v in x._cast_ops:
+            for k, v in x._cast_ops.items():
                 cast_ops[k] = v
 
         calc_deps_vars = fill_constant_vars + [k for k, v in cast_ops.items()]
@@ -834,14 +842,19 @@ class ZeroOptimizer(MetaOptimizerBase):
         #         self._remove_cast_op(main_block, subprog, 0)
         #     self._add_broadcast_allreduce(main_block, subprog, 0)
 
-        for idx, subprog in reversed(list(enumerate(self._sub_progs))):
-            if self._fp16_params:
-                self._remove_cast_op(main_block, subprog, 0)
+        # for _, subprog in reversed(list(enumerate(self._sub_progs))):
+        #     if self._fp16_params:
+        #         self._remove_cast_op(main_block, subprog, 0)
 
         self._add_broadcast_allreduce_v2(main_block)
-
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
+
+        # from paddle_debug_tools import memory_tool
+        # tool = memory_tool.MemoryEstimate(self._main_program, batch_size=1)
+        # tool.cal_memory()
+
+        # self._check_broadcast(main_block)
 
         # step4: insert reduce_sum for grad
         self._insert_scale_loss_grad_ops(
@@ -919,7 +932,11 @@ class ZeroOptimizer(MetaOptimizerBase):
                     #         broadcast_vars[input_name]["broadcast_pos"],
                     #         last_sync_comm_op_idx,
                     #         idx)
+                    print("input_name: ", input_name)
                     assert (broadcast_vars[input_name]["broadcast_pos"] != -1)
+                    print("broadcast_pos",
+                          broadcast_vars[input_name]["broadcast_pos"])
+                    print("last_sync_comm_op_idx: ", last_sync_comm_op_idx)
                     assert (broadcast_vars[input_name]["broadcast_pos"] <
                             last_sync_comm_op_idx)
                     assert (last_sync_comm_op_idx < idx)
