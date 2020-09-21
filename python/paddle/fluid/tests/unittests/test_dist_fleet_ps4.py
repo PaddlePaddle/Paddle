@@ -68,7 +68,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="query_ids", shape=[1], dtype="int64", lod_level=1)
         # embedding
         q_emb = fluid.contrib.layers.sparse_embedding(
-            input=pt,
+            input=q,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
@@ -117,7 +117,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="neg_title_ids", shape=[1], dtype="int64", lod_level=1)
         # embedding
         nt_emb = fluid.contrib.layers.sparse_embedding(
-            input=pt,
+            input=nt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
