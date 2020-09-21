@@ -532,17 +532,18 @@ void GeoCommunicator::SendByCommunicator(int batches) {
     auto &var_name = iter.first;
     auto &send_ctx = iter.second;
     int pserver_num = static_cast<int>(send_ctx.epmap.size());
-    if (var_name == STEP_COUNTER) {
-      continue;
-    }
-    auto &ids_queue = send_ids_to_queue_.at(var_name);
-
-    splited_ids_vec_[var_name].clear();
-    for (int i = 0; i < batches; ++i) {
-      splited_ids_vec_[var_name].push_back(*(ids_queue->Pop()));
-    }
 
     if (send_ctx.is_sparse) {
+      if (var_name == STEP_COUNTER) {
+        continue;
+      }
+      auto &ids_queue = send_ids_to_queue_.at(var_name);
+
+      splited_ids_vec_[var_name].clear();
+      for (int i = 0; i < batches; ++i) {
+        splited_ids_vec_[var_name].push_back(*(ids_queue->Pop()));
+      }
+
       for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
         auto send_recv_task = [this, ep_idx, &var_name] {
           if (var_name == STEP_COUNTER) {
