@@ -310,8 +310,8 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
         After transformed, q and z are created in parent scope. For example,
 
         x, y = 5, 10
-        q = fluid.dygraph.dygraph_to_static.variable_trans_func.data_layer_not_check(name='q', shape=[-1], dtype='float32')
-        z = fluid.dygraph.dygraph_to_static.variable_trans_func.data_layer_not_check(name='z', shape=[-1], dtype='float32')
+        q = paddle.jit.dygraph_to_static.variable_trans_func.data_layer_not_check(name='q', shape=[-1], dtype='float32')
+        z = paddle.jit.dygraph_to_static.variable_trans_func.data_layer_not_check(name='z', shape=[-1], dtype='float32')
 
         def true_func(x, y, q):
             x = x+1

@@ -74,20 +74,20 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
 
 
 def to_static_variable_gast_node(name):
-    func_code = "{} = fluid.dygraph.dygraph_to_static.variable_trans_func\
+    func_code = "{} = paddle.jit.dygraph_to_static.variable_trans_func\
         .to_static_variable({})".format(name, name)
     return gast.parse(func_code).body[0]
 
 
 def create_static_variable_gast_node(name):
-    func_code = "{} = fluid.dygraph.dygraph_to_static.variable_trans_func\
+    func_code = "{} = paddle.jit.dygraph_to_static.variable_trans_func\
         .data_layer_not_check(name='{}', shape=[-1], dtype='float32')".format(
         name, name)
     return gast.parse(func_code).body[0]
 
 
 def create_fill_constant_node(name, value):
-    func_code = "{} = fluid.layers.fill_constant(shape=[1], ".format(name)
+    func_code = "{} = paddle.fill_constant(shape=[1], ".format(name)
     if isinstance(value, bool):
         func_code += "dtype='bool', value={})".format(value)
         return gast.parse(func_code).body[0]
