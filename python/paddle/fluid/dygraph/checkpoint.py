@@ -145,7 +145,7 @@ def load_dygraph(model_path, config=None):
 
     .. note::
         Due to some historical reasons, if you load ``state_dict`` from the saved 
-        result of `paddle.io.save_inference_model`, the structured variable name 
+        result of `paddle.static.save_inference_model`, the structured variable name 
         will cannot be restored. You need to set the argument `use_structured_name=False` 
         when using `Layer.set_state_dict` later.
 
@@ -274,7 +274,7 @@ def load_dygraph(model_path, config=None):
             # If users save all parameters as one file, the [ variable.name -> variable ]
             # mapping info will lost, so users need to give variable list, but users build 
             # variable list in dygraph mode is difficult, we recommend users to use
-            # paddle.io.load_program_state in this case
+            # paddle.static.load_program_state in this case
 
             # Try to load all the files in the directory in VarBase format, 
             # the file name is used as the name of VarBase

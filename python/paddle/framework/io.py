@@ -123,7 +123,7 @@ def save(obj, path):
         Now only supports save ``state_dict`` of Layer or Optimizer.
     
     Args:
-        obj(object) : The object to be saved.
+        obj(Object) : The object to be saved.
         path(str) : The path of the object to be saved. 
           If saved in the current directory, the input path string will be used as the file name. 
 
@@ -181,19 +181,20 @@ def load(path, config=None):
 
     .. note::
         ``paddle.load`` supports loading ``state_dict`` from the result of several 
-        paddle1.x save APIs in static mode. But due to some historical reasons, 
+        paddle1.x save APIs in static mode, but due to some historical reasons, 
         if you load ``state_dict`` from the saved result of 
-        ``paddle.io.save_inference_model/paddle.io.save_params/paddle.io.save_persistables`` , 
+        ``paddle.static.save_inference_model/paddle.fluid.io.save_params/paddle.fluid.io.save_persistables`` , 
         the structured variable name will cannot be restored. You need to set the argument 
         ``use_structured_name=False`` when using ``Layer.set_state_dict`` later.
 
     Args:
-        path(str) : The path saved the target object. Generally, the path is the target 
-            file path, and in the case of compatible loading, the path is a directory.
+        path(str) : The path to load the target object. Generally, the path is the target 
+            file path, when compatible with loading the saved results of 
+            ``paddle.jit.save/paddle.static.save_inference_model`` , the path is a directory. 
         config (SaveLoadConfig, optional): :ref:`api_imperative_jit_saveLoadConfig`
             object that specifies additional configuration options, these options 
-            are for compatibility with ``jit.save/io.save_inference_model`` formats. 
-            Default None.
+            are for compatibility with ``paddle.jit.save/paddle.static.save_inference_model`` 
+            formats. Default None.
 
     Returns:
         Object(Object): a target object can be used in paddle
@@ -255,7 +256,7 @@ def load(path, config=None):
             model_filename = '__model__'
         else:
             model_filename = config.model_filename
-        model_file_path = os.path.join(model_path, model_filename)
+        model_file_path = os.path.join(path, model_filename)
 
         if os.path.exists(model_file_path):
             # Load state dict by `jit.save/io.save_inference_model` save format
@@ -273,7 +274,7 @@ def load(path, config=None):
             # If users save all parameters as one file, the [ variable.name -> variable ]
             # mapping info will lost, so users need to give variable list, but users build 
             # variable list in dygraph mode is difficult, we recommend users to use
-            # paddle.io.load_program_state in this case
+            # paddle.static.load_program_state in this case
             load_result = _load_state_dict_from_save_params(path)
     else:
         raise ValueError(
