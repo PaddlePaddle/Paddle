@@ -15,6 +15,7 @@ from __future__ import print_function
 
 from ...fluid.dygraph.dygraph_to_static.convert_operators import cast_bool_if_necessary  #DEFINE_ALIAS
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_assert  #DEFINE_ALIAS
+from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_ifelse  #DEFINE_ALIAS
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_len  #DEFINE_ALIAS
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_and  #DEFINE_ALIAS
 from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_not  #DEFINE_ALIAS

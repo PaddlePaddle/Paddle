@@ -460,7 +460,7 @@ def create_convert_ifelse_node(return_name_ids,
                                false_func,
                                is_if_expr=False):
     """
-    Create `fluid.dygraph.dygraph_to_static.convert_operators.convert_ifelse(
+    Create `paddle.jit.dygraph_to_static.convert_operators.convert_ifelse(
             pred, true_fn, false_fn, true_args, false_args, return_vars)`
     to replace original `python if/else` statement.
     """
@@ -491,7 +491,7 @@ def create_convert_ifelse_node(return_name_ids,
     return_vars = create_name_nodes(return_name_ids)
 
     convert_ifelse_layer = gast.parse(
-        'fluid.dygraph.dygraph_to_static.convert_operators.convert_ifelse('
+        'paddle.jit.dygraph_to_static.convert_operators.convert_ifelse('
         '{pred}, {true_fn}, {false_fn}, {true_args}, {false_args}, {return_vars})'.
         format(
             pred=ast_to_source_code(pred),
