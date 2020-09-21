@@ -27,14 +27,6 @@ class DataGenerator(object):
         self._proto_info = None
         self.batch_size_ = 32
 
-    def _set_line_limit(self, line_limit):
-        if not isinstance(line_limit, int):
-            raise ValueError("line_limit%s must be in int type" %
-                             type(line_limit))
-        if line_limit < 1:
-            raise ValueError("line_limit can not less than 1")
-        self._line_limit = line_limit
-
     def set_batch(self, batch_size):
         '''
         Set batch size of current DataGenerator
