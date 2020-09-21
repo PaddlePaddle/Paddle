@@ -49,5 +49,67 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestBatchNormDoubleGradCheck(unittest.TestCase):
+    def setUp(self):
+        self.init_test()
+
+    def init_test(self):
+        self.data_layout = 'NCHW'
+        self.use_global_stats = False
+        self.shape = [2, 3, 4, 5]
+
+    @prog_scope()
+    def func(self, place):
+        prog = fluid.Program()
+        with fluid.program_guard(prog):
+            np.random.seed()
+            dtype = "float32"
+            eps = 0.005
+            atol = 1e-4
+            x = layers.create_parameter(dtype=dtype, shape=self.shape, name='x')
+            z = fluid.layers.batch_norm(
+                input=x,
+                data_layout=self.data_layout,
+                use_global_stats=self.use_global_stats)
+            x_arr = np.random.uniform(-1, 1, self.shape).astype(dtype)
+            gradient_checker.double_grad_check(
+                [x], z, x_init=x_arr, atol=atol, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestBatchNormDoubleGradCheckCase1(TestBatchNormDoubleGradCheck):
+    def init_test(self):
+        self.data_layout = 'NHWC'
+        self.use_global_stats = False
+        self.shape = [2, 3, 4, 5]
+
+
+class TestBatchNormDoubleGradCheckCase2(TestBatchNormDoubleGradCheck):
+    def init_test(self):
+        self.data_layout = 'NCHW'
+        self.use_global_stats = True
+        self.shape = [2, 3, 4, 5]
+
+
+class TestBatchNormDoubleGradCheckCase3(TestBatchNormDoubleGradCheck):
+    def init_test(self):
+        self.data_layout = 'NHWC'
+        self.use_global_stats = True
+        self.shape = [2, 3, 4, 5]
+
+
+class TestBatchNormDoubleGradCheckCase4(TestBatchNormDoubleGradCheck):
+    def init_test(self):
+        self.data_layout = 'NCHW'
+        self.use_global_stats = False
+        self.shape = [2, 2, 3, 4, 5]
+
+
 if __name__ == "__main__":
     unittest.main()
