@@ -67,15 +67,13 @@ class TestPSPassWithBow(unittest.TestCase):
         q = fluid.layers.data(
             name="query_ids", shape=[1], dtype="int64", lod_level=1)
         # embedding
-        q_emb = fluid.layers.embedding(
-            input=q,
-            is_distributed=is_distributed,
+        q_emb = fluid.contrib.layers.sparse_embedding(
+            input=pt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__",
-                learning_rate=emb_lr),
-            is_sparse=is_sparse)
+                learning_rate=emb_lr))
         q_emb = fluid.layers.reshape(q_emb, [-1, emb_dim])
         # vsum
         q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
@@ -118,15 +116,13 @@ class TestPSPassWithBow(unittest.TestCase):
         nt = fluid.layers.data(
             name="neg_title_ids", shape=[1], dtype="int64", lod_level=1)
         # embedding
-        nt_emb = fluid.layers.embedding(
-            input=nt,
-            is_distributed=is_distributed,
+        nt_emb = fluid.contrib.layers.sparse_embedding(
+            input=pt,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__",
-                learning_rate=emb_lr),
-            is_sparse=is_sparse)
+                learning_rate=emb_lr))
         nt_emb = fluid.layers.reshape(nt_emb, [-1, emb_dim])
         # vsum
         nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
