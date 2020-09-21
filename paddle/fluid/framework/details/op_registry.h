@@ -21,6 +21,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/inplace_op_inference.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
@@ -195,10 +196,11 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
     T maker;
     maker(info->proto_, info->checker_);
     info->proto_->set_type(op_type);
-    PADDLE_ENFORCE(
-        info->proto_->IsInitialized(),
-        "Fail to initialize %s's OpProto, because %s is not initialized",
-        op_type, info->proto_->InitializationErrorString());
+    PADDLE_ENFORCE_EQ(
+        info->proto_->IsInitialized(), true,
+        platform::errors::PreconditionNotMet(
+            "Fail to initialize %s's OpProto, because %s is not initialized",
+            op_type, info->proto_->InitializationErrorString()));
   }
 };
 

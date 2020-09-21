@@ -54,8 +54,8 @@ void BroadcastOpHandle::BroadcastOneVar(
   auto *in_var =
       var_scopes.at(in_var_handle.scope_idx())->FindVar(in_var_handle.name());
   PADDLE_ENFORCE_NOT_NULL(
-      in_var, platform::errors::NotFound(
-      "Variable %s is not found in scopes.", in_var_handle.name());
+      in_var, platform::errors::NotFound("Variable %s is not found in scopes.",
+                                         in_var_handle.name()));
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
   if (UNLIKELY(!in_tensor.IsInitialized())) {
     VLOG(3) << "in var " << in_var_handle.name() << "not inited, return!";
@@ -165,7 +165,7 @@ void BroadcastOpHandle::InitOutputValue(
                         ->FindVar(out_var_handle->name());
     PADDLE_ENFORCE_NOT_NULL(out_var, platform::errors::NotFound(
                                          "Variable %s is not found in scopes.",
-                                         out_var_handle.name()));
+                                         out_var_handle->name()));
     if (is_gpu_place(in_tensor.place())) {
       PADDLE_ENFORCE(platform::is_gpu_place(t_out_p),
                      platform::errors::PreconditionNotMet(
