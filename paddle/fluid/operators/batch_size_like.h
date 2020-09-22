@@ -26,7 +26,7 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("Input"), "Input", "Input", Type());
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", Type());
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", Type());
 
     auto &shape = ctx->Attrs().Get<std::vector<int>>("shape");
