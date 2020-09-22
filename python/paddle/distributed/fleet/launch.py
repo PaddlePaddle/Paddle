@@ -463,9 +463,8 @@ def launch():
         cuda_device_num = 0
 
     if len(has_ps_args) > 0 or cuda_device_num == 0:
-        logger.info(
-            "Run parameter-sever cpu mode. pserver arguments:{}, cuda count:{}".
-            format(has_ps_args, cuda_device_num))
+        logger.info("Run parameter-sever cpu mode. pserver arguments:{}".format(
+            has_ps_args))
         launch_ps(args)
     elif len(has_collective_args) > 0:
         logger.info("Run collective gpu mode. gpu arguments:{}, cuda count:{}".
