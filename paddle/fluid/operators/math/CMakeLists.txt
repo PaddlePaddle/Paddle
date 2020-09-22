@@ -76,6 +76,7 @@ math_library(prelu)
 math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)
 math_library(matrix_inverse)
+math_library(segment_pooling)
 
 cc_test(math_function_test SRCS math_function_test.cc DEPS math_function)
 cc_test(selected_rows_functor_test SRCS selected_rows_functor_test.cc DEPS selected_rows_functor)
