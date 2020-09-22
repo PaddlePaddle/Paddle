@@ -4,6 +4,7 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FL
 set(dist_ENVS http_proxy="" https_proxy="")
 
 file(GLOB DIST_TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_dist_*.py")
+list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 if(NOT WITH_NCCL)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
 endif()
@@ -325,7 +326,6 @@ list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
-list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
@@ -399,23 +399,22 @@ py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS ${G
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS ${GC_ENVS})
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
-set_tests_properties(test_imperative_resnet PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_imperative_resnet PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 py_test_modules(test_imperative_resnet_sorted_gradient MODULES test_imperative_resnet_sorted_gradient ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
-set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
     FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_mnist_sorted_gradient MODULES test_imperative_mnist_sorted_gradient ENVS
         FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext ENVS
     FLAGS_cudnn_deterministic=1 SERIAL)
-set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+set_tests_properties(test_imperative_se_resnext PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 py_test_modules(test_imperative_ocr_attention_model MODULES test_imperative_ocr_attention_model ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 py_test_modules(test_install_check MODULES test_install_check ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
-py_test_modules(test_imperative_debug_string MODULES test_imperative_debug_string ENVS FLAGS_dygraph_debug=1)
 py_test_modules(test_imperative_static_runner_mnist MODULES test_imperative_static_runner_mnist ENVS
     FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_static_runner_while MODULES test_imperative_static_runner_while ENVS
@@ -464,8 +463,8 @@ if(WITH_DISTRIBUTE)
 	   #py_test_modules(test_fleet_auto MODULES test_fleet_auto ENVS ${dist_ENVS})
         if(NOT WIN32)
             py_test_modules(test_fleet_localsgd_meta_optimizer MODULES test_fleet_localsgd_meta_optimizer ENVS ${dist_ENVS})
-            #py_test_modules(test_fleet_lars_meta_optimizer MODULES test_fleet_lars_meta_optimizer ENVS ${dist_ENVS})
-            #py_test_modules(test_fleet_lamb_meta_optimizer MODULES test_fleet_lamb_meta_optimizer ENVS ${dist_ENVS})
+            py_test_modules(test_fleet_lars_meta_optimizer MODULES test_fleet_lars_meta_optimizer ENVS ${dist_ENVS})
+            py_test_modules(test_fleet_lamb_meta_optimizer MODULES test_fleet_lamb_meta_optimizer ENVS ${dist_ENVS})
         endif(NOT WIN32)
     endif(NOT APPLE)
     if(WITH_DGC)
@@ -559,7 +558,7 @@ endif()
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist
         test_parallel_executor_feed_persistable_var
         test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-        test_data_norm_op test_imperative_using_non_zero_gpu
+        test_data_norm_op
         test_dataloader_keep_order
         test_dataloader_unkeep_order
         test_parallel_executor_fetch_isolated_var

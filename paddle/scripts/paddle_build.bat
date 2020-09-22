@@ -20,14 +20,54 @@ rem       Paddle CI Task On Windows Platform
 rem =================================================
 
 rem -------clean up environment-----------
-wmic process where name="op_function_generator.exe" call terminate  2>NUL
 set work_dir=%cd%
-mkdir build
+wmic process where name="op_function_generator.exe" call terminate  2>NUL
+
+rem ------initialize common variable------
+if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
+if not defined BRANCH set BRANCH=develop
+if not defined TENSORRT_ROOT set TENSORRT_ROOT="C:/TensorRT-5.1.5.0"
+if not defined WITH_MKL set WITH_MKL=ON
+if not defined WITH_GPU set WITH_GPU=OFF
+if not defined WITH_AVX set WITH_AVX=ON
+if not defined WITH_TESTING set WITH_TESTING=ON
+if not defined WITH_PYTHON set WITH_PYTHON=ON
+if not defined ON_INFER set ON_INFER=ON
+if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
+if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
+if not defined WITH_CACHE set WITH_CACHE=ON
+if not defined WITH_TPCACHE set WITH_TPCACHE=ON
+
+
+rem -------set cache build work directory-----------
+if "%WITH_CACHE%"=="OFF" (
+    rmdir build /s/q
+    goto :mkbuild
+)
+
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+set day_now=%datetime:~6,2%
+set day_before=-1
+set /p day_before=<day.txt
+if %day_now% NEQ %day_before% (
+    echo %day_now% > day.txt
+    type day.txt
+    rmdir build /s/q
+)
+git diff origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
+if %ERRORLEVEL% EQU 0 (
+    rmdir build /s/q
+)
+
+:mkbuild
+if not exist build (
+    mkdir build
+)
 cd /d build
-tree .
+dir .
 dir paddle\fluid\pybind\Release
 
-rem ------initialize the virtual environment------
+rem ------initialize the python environment------
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
 
@@ -38,7 +78,7 @@ rem %PYTHON_EXECUTABLE% -m pip install virtualenv
 rem %PYTHON_EXECUTABLE% -m virtualenv paddle_winci
 rem call paddle_winci\Scripts\activate.bat
 
-rem ------pre install requirement----------
+rem ------pre install python requirement----------
 where python
 where pip
 pip install --upgrade pip --user
@@ -51,17 +91,17 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 7
 )
 
-rem ------initialize common variable------
-if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
-if not defined BRANCH set BRANCH=develop
-if not defined TENSORRT_ROOT set TENSORRT_ROOT="C:/TensorRT-5.1.5.0"
-if not defined WITH_AVX set WITH_AVX=ON
-if not defined WITH_TESTING set WITH_TESTING=ON
-if not defined WITH_PYTHON set WITH_PYTHON=ON
-if not defined ON_INFER set ON_INFER=ON
-if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
-if not defined WITH_TPCACHE set WITH_TPCACHE=ON
-if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
+rem ------pre install clcache and init config----------
+pip install clcache
+:: set USE_CLCACHE to enable clcache
+set USE_CLCACHE=1
+:: In some scenarios, CLCACHE_HARDLINK can save one file copy.
+set CLCACHE_HARDLINK=1
+:: If it takes more than 1000s to obtain the right to use the cache, an error will be reported
+set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
+:: set maximum cache size to 20G
+clcache.exe -M 21474836480
+
 
 rem ------set cache third_party------
 set cache_dir=%work_dir:Paddle=cache%
@@ -180,7 +220,7 @@ echo Build third_party successfully!
 set build_times=1
 :build_paddle
 echo Build Paddle the %build_times% time:
-msbuild /m:%PARALLEL_PROJECT_COUNT% /p:Configuration=Release /verbosity:minimal paddle.sln
+msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
     if %build_times% GTR 2 (
@@ -209,10 +249,10 @@ echo    ========================================
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "Build"
-tree /F %cd%\fluid_inference_install_dir\paddle
-%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\fluid_inference_install_dir\paddle\lib > lib_size.txt
+tree /F %cd%\paddle_inference_install_dir\paddle
+%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
 set /p libsize=< lib_size.txt
-for /F %%i in ("%libsize%") do echo "Windows FLuid_Inference Size: %%i"
+for /F %%i in ("%libsize%") do echo "Windows Paddle_Inference Size: %%i"
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
 set /p whlsize=< whl_size.txt
 for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
@@ -416,6 +456,7 @@ taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
 call paddle_winci\Scripts\deactivate.bat 2>NUL
+del %PADDLE_WHL_FILE_WIN%
 taskkill /f /im python.exe  2>NUL
 echo Windows CI run successfully!
 exit /b 0

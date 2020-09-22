@@ -24,6 +24,8 @@ import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
 
+paddle.enable_static()
+
 # For Net
 base_lr = 0.2
 emb_lr = base_lr * 3

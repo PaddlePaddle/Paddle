@@ -50,12 +50,12 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
 
     # should fix the variable
     def _setup_nccl_op(self, startup_program, main_program, build_strategy):
-        trainer_endpoints = self.role_maker.get_trainer_endpoints()
+        trainer_endpoints = self.role_maker._get_trainer_endpoints()
         trainers = trainer_endpoints
-        trainer_id = self.role_maker.worker_index()
-        current_endpoint = self.role_maker.get_trainer_endpoints()[trainer_id]
+        trainer_id = self.role_maker._worker_index()
+        current_endpoint = self.role_maker._get_trainer_endpoints()[trainer_id]
         trainer_endpoints_env = ",".join(trainer_endpoints)
-        trainers_num = self.role_maker.worker_num()
+        trainers_num = self.role_maker._worker_num()
         nccl_id_var = startup_program.global_block().create_var(
             name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
         for i in range(1, build_strategy.nccl_comm_num):
@@ -127,8 +127,8 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             local_build_strategy.enable_sequential_execution = True
 
         exe_strategy = self.user_defined_strategy.execution_strategy
-        worker_num = self.role_maker.worker_num()
-        node_num = self.role_maker.node_num()
+        worker_num = self.role_maker._worker_num()
+        node_num = self.role_maker._node_num()
 
         if self.role_maker._is_collective:
             assert worker_num >= 1, "nccl2 worker_num must >= 1, now:{}" % worker_num
@@ -170,9 +170,9 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         # TODO(guru4elephant): should be an independent optimizer
         self._setup_nccl_op(startup_program, main_program, local_build_strategy)
 
-        local_build_strategy.num_trainers = self.role_maker.worker_num()
-        local_build_strategy.trainer_id = self.role_maker.worker_index()
-        local_build_strategy.trainers_endpoints = self.role_maker.get_trainer_endpoints(
+        local_build_strategy.num_trainers = self.role_maker._worker_num()
+        local_build_strategy.trainer_id = self.role_maker._worker_index()
+        local_build_strategy.trainers_endpoints = self.role_maker._get_trainer_endpoints(
         )
         local_build_strategy.enable_backward_optimizer_op_deps = True
 

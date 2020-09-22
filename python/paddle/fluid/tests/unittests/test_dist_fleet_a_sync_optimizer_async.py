@@ -19,6 +19,8 @@ import unittest
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
 
+paddle.enable_static()
+
 
 class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
     def setUp(self):
