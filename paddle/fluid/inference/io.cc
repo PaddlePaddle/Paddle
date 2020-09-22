@@ -48,7 +48,7 @@ void Init(const std::vector<std::string> argv) {
 void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fin), true,
+      fin.is_open(), true,
       platform::errors::Unavailable("Failed to open file %s.", filename));
   fin.seekg(0, std::ios::end);
   contents->clear();

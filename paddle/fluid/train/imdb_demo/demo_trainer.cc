@@ -46,7 +46,7 @@ namespace train {
 void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fin), true,
+      fin.is_open(), true,
       platform::errors::Unavailable("Failed to open file %s.", filename));
   fin.seekg(0, std::ios::end);
   contents->clear();
@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
         dataset_ptr->GetReaders();
     PADDLE_ENFORCE_EQ(readers.size(), 1,
                       platform::errors::InvalidArgument(
-                          "Readers num(%d) should be equal to thread num(%1).",
+                          "Readers num(%d) should be equal to thread num(1).",
                           readers.size()));
     readers[0]->SetPlace(paddle::platform::CPUPlace());
     const std::vector<std::string>& input_feed_names =

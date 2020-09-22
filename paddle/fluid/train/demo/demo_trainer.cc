@@ -30,7 +30,7 @@ namespace train {
 void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fin), true,
+      fin.is_open(), true,
       platform::errors::Unavailable("Failed to open file %s.", filename));
   fin.seekg(0, std::ios::end);
   contents->clear();
@@ -73,7 +73,7 @@ int main() {
   }
 
   PADDLE_ENFORCE_NE(loss_name, "",
-                    platform::errors::NotFound("loss name is not found."));
+                    platform::errors::NotFound("Loss name is not found."));
 
   // init all parameters
   executor.Run(*startup_program, &scope, 0);
