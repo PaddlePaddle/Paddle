@@ -424,7 +424,7 @@ class GeoCommunicator : public AsyncCommunicator {
             const std::vector<std::string> &var_tables,
             const framework::Scope &scope) override;
 
-  void SendByCommunicator(int batches) override;
+  // void SendByCommunicator(int batches) override;
 
   void SendSparse(const std::string &varname, int ep_idx);
 
