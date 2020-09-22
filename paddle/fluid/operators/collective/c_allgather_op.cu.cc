@@ -37,7 +37,10 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
-    PADDLE_ENFORCE_EQ(nranks, comm->nranks());
+    PADDLE_ENFORCE_EQ(
+        nranks, comm->nranks(),
+        platform::errors::InvalidArgument("nranks: %s should equal to %s",
+                                          nranks, comm->nranks()));
 
     framework::DDim out_dims = in->dims();
     out_dims[0] *= nranks;
