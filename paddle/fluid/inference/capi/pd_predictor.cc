@@ -130,7 +130,8 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   VLOG(3) << "The inputs' size is " << input_names.size();
   PADDLE_ENFORCE_EQ(
       input_names.size(), in_size,
-      "The number of input and the number of model's input must match. ");
+      paddle::platform::errors::InvalidArgument(
+          "The number of input and the number of model's input must match."));
   for (int i = 0; i < in_size; ++i) {
     auto input_t = predictor->GetInputTensor(inputs[i].name);
     std::vector<int> tensor_shape;
