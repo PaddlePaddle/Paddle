@@ -72,14 +72,15 @@ class AddPositionEncodingOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_GE(
               alpha, 0.0f,
               platform::errors::InvalidArgument(
-                  "Attribute 'alpha' must be equal or greater than 0.0."));
+                  "Attribute 'alpha' must be greater than or equal to 0.0."));
         });
     AddAttr<float>("beta", "The scale of Position Embedding.")
         .SetDefault(1.0f)
         .AddCustomChecker([](const float& beta) {
-          PADDLE_ENFORCE_EQ(beta, 0.0f,
-                            platform::errors::InvalidArgument(
-                                "Attribute 'beta' must be equal to 0.0."));
+          PADDLE_ENFORCE_GE(
+              beta, 0.0f,
+              platform::errors::InvalidArgument(
+                  "Attribute 'beta' must be greater than or equal to 0.0."));
         });
     AddComment(R"DOC(
     Add Position Encoding Operator.
