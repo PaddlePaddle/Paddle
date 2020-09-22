@@ -14,9 +14,10 @@
 """Defination of Role Makers."""
 
 from __future__ import print_function
-from multiprocessing import Process, Manager
+import multiprocessing
 import paddle.fluid as fluid
 import os
+import sys
 import time
 
 __all__ = [
@@ -602,7 +603,7 @@ class GeneralRoleMaker(RoleMakerBase):
         if ip_port != "":
             self._http_ip_port = ip_port.split(":")
             # it's for communication between processes
-            self._manager = Manager()
+            self._manager = multiprocessing.Manager()
             # global dict to store status
             self._http_server_d = self._manager.dict()
             # set running status of http server
@@ -636,9 +637,15 @@ class GeneralRoleMaker(RoleMakerBase):
                         "all": len(worker_endpoints) + len(eplist)
                     }
                     # child process for http server
-                    self._http_server = Process(
-                        target=self.__start_kv_server,
-                        args=(self._http_server_d, size_d))
+                    if sys.version_info >= (3, 8) and sys.platform == 'darwin':
+                        self._http_server = multiprocessing.get_context(
+                            'fork').Process(
+                                target=self.__start_kv_server,
+                                args=(self._http_server_d, size_d))
+                    else:
+                        self._http_server = multiprocessing.Process(
+                            target=self.__start_kv_server,
+                            args=(self._http_server_d, size_d))
                     self._http_server.daemon = True
                     # set running status to True
                     self._http_server_d["running"] = True
