@@ -19,6 +19,7 @@ import gzip
 import struct
 import numpy as np
 
+import paddle
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 
@@ -95,6 +96,8 @@ class MNIST(Dataset):
         # read dataset into memory
         self._parse_dataset()
 
+        self.dtype = paddle.get_default_dtype()
+
     def _parse_dataset(self, buffer_size=100):
         self.images = []
         self.labels = []
@@ -145,7 +148,7 @@ class MNIST(Dataset):
         image = np.reshape(image, [1, 28, 28])
         if self.transform is not None:
             image = self.transform(image)
-        return image, label
+        return image.astype(self.dtype), label.astype('int64')
 
     def __len__(self):
         return len(self.labels)
