@@ -23,7 +23,7 @@ from .strategy_compiler import StrategyCompiler
 from .distributed_strategy import DistributedStrategy
 from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
-from .util_factory import UtilFactory
+from .. import util
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 
@@ -120,7 +120,6 @@ class Fleet(object):
         self.strategy_compiler = None
         self._is_collective = False
         self._runtime_handle = None
-        self._util = None
 
     def init(self, role_maker=None, is_collective=False):
         """
@@ -181,6 +180,8 @@ class Fleet(object):
                     "`role_maker` should be subclass of `RoleMakerBase`, but got {}".
                     format(type(role_maker)))
         self._role_maker._generate_role()
+
+        util._set_role_maker(self._role_maker)
 
         self.strategy_compiler = StrategyCompiler()
         if paddle.fluid.framework.in_dygraph_mode():
@@ -557,7 +558,8 @@ class Fleet(object):
 
         """
 
-        self._runtime_handle._save_persistables(executor, dirname, main_program)
+        self._runtime_handle._save_persistables(
+            executor, dirname, main_program)
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
@@ -1006,7 +1008,8 @@ class Fleet(object):
             MetaOptimizerFactory()._get_valid_meta_optimizers(
                 self.user_defined_optimizer)
 
-        context["user_defined_strategy"] = copy.copy(self.user_defined_strategy)
+        context["user_defined_strategy"] = copy.copy(
+            self.user_defined_strategy)
 
         # trigger the auto-parallel in very strict condition
         # strategy = DistributedStrategy()
@@ -1102,7 +1105,6 @@ class Fleet(object):
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-        if self._util is None:
-            self._util = UtilFactory()._create_util(context)
+        util._set_strategy(context["valid_strategy"])
 
         return optimize_ops, params_grads
