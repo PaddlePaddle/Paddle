@@ -600,6 +600,49 @@ class TestImperative(unittest.TestCase):
         my_layer.l1 = None
         self.assertEqual(len(my_layer.sublayers()), 0)
 
+    def test_varbase_setitem(self):
+        paddle.disable_static()
+
+        tensor_a = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
+
+        np_value_b = np.random.random((2, 3)).astype(np.float32)
+        id_a_origin = id(tensor_a)
+
+        self.assertFalse(np.array_equal(tensor_a[0].numpy(), np_value_b))
+        tensor_a[0] = np_value_b
+        self.assertTrue(np.array_equal(tensor_a[0].numpy(), np_value_b))
+        id_a_new_1 = id(tensor_a)
+
+        var_b = paddle.to_tensor(np_value_b)
+        self.assertFalse(np.array_equal(tensor_a[1].numpy(), np_value_b))
+        tensor_a[1] = var_b
+        self.assertTrue(np.array_equal(tensor_a[1].numpy(), var_b.numpy()))
+        id_a_new_2 = id(tensor_a)
+
+        tensor_a[0] = 10
+        self.assertTrue(
+            np.array_equal(tensor_a[0].numpy(),
+                           np.zeros_like(var_b.numpy()) + 10))
+        id_a_new_3 = id(tensor_a)
+
+        tensor_a[2:3] = var_b
+        self.assertTrue(np.array_equal(tensor_a[2].numpy(), var_b.numpy()))
+        id_a_new_4 = id(tensor_a)
+
+        tensor_a[...] = np.ones([2, 3])
+        self.assertTrue(np.array_equal(tensor_a.numpy(), np.ones([4, 2, 3])))
+        id_a_new_5 = id(tensor_a)
+
+        self.assertEqual(id_a_origin, id_a_new_1)
+        self.assertEqual(id_a_origin, id_a_new_2)
+        self.assertEqual(id_a_origin, id_a_new_3)
+        self.assertEqual(id_a_origin, id_a_new_4)
+        self.assertEqual(id_a_origin, id_a_new_5)
+
+        with self.assertRaisesRegex(
+                TypeError, "Assignment to a Variable only accepts a Variable"):
+            tensor_a[0] = "1"
+
 
 class TestDygraphUtils(unittest.TestCase):
     def test_append_activation_in_dygraph_exception(self):

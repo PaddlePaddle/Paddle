@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import six
 import inspect
+
 from .. import framework
 from .. import core
 from ..framework import Variable, Parameter, ParamBase
@@ -259,12 +261,31 @@ def monkey_patch_varbase():
     def __bool__(self):
         return self.__nonzero__()
 
+    def __setitem__(self, index, value):
+        self_tensor = self.value().get_tensor()
+        self_numpy = self_tensor.__array__()
+
+        if isinstance(value, core.VarBase):
+            tensor_value = value.value().get_tensor()
+            numpy_value = tensor_value.__array__()
+            self_numpy[index] = numpy_value
+            self_tensor.set(self_numpy, framework._current_expected_place())
+
+        elif isinstance(value, (six.integer_types, float, np.ndarray)):
+            self_numpy[index] = value
+            self_tensor.set(self_numpy, framework._current_expected_place())
+        else:
+            raise TypeError(
+                "Can't assign a {} to a Vaiable. Assignment to a Variable only accepts a Variable, int, float or numpy.ndarray, "
+                "but received {}".format(type(value), type(value)))
+
     for method_name, method in (
-        ("__bool__", __bool__), ("__nonzero__", __nonzero__),
-        ("_to_static_var", _to_static_var), ("set_value", set_value),
-        ("block", block), ("backward", backward), ("grad", grad),
-        ("gradient", gradient), ("__str__", __str__), ("__repr__", __str__),
-        ("__module__", "paddle"), ("__name__", "Tensor")):
+        ("__setitem__", __setitem__), ("__bool__", __bool__),
+        ("__nonzero__", __nonzero__), ("_to_static_var", _to_static_var),
+        ("set_value", set_value), ("block", block), ("backward", backward),
+        ("grad", grad), ("gradient", gradient), ("__str__", __str__),
+        ("__repr__", __str__), ("__module__", "paddle"),
+        ("__name__", "Tensor")):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase
