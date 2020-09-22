@@ -1453,11 +1453,14 @@ def linspace(start, stop, num, dtype=None, name=None):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if not isinstance(start, Variable):
-        tensor_start = fill_constant([1], dtype, start)
+        with device_guard("cpu"):
+            tensor_start = fill_constant([1], dtype, start)
     if not isinstance(stop, Variable):
-        tensor_stop = fill_constant([1], dtype, stop)
+        with device_guard("cpu"):
+            tensor_stop = fill_constant([1], dtype, stop)
     if not isinstance(num, Variable):
-        tensor_num = fill_constant([1], 'int32', num)
+        with device_guard("cpu"):
+            tensor_num = fill_constant([1], 'int32', num)
     if in_dygraph_mode():
         return core.ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                  dtype)
