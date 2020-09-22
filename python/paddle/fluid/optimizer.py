@@ -182,23 +182,25 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid   
+                import paddle
+                import paddle.fluid as fluid
 
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                paddle.disable_static()
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph(state_dict, "paddle_dy")
+                emb = paddle.nn.Embedding(10, 10)
 
-                    adam = fluid.optimizer.Adam(learning_rate=fluid.layers.noam_decay(100, 10000),
-                        parameter_list=emb.parameters())
+                state_dict = emb.state_dict()
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
-                    state_dict = adam.state_dict()
-                    fluid.save_dygraph(state_dict, "paddle_dy")
+                scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
+                    d_model=0.01, warmup_steps=100, verbose=True)
+                adam = paddle.optimizer.Adam(
+                    learning_rate=scheduler,
+                    parameters=emb.parameters())
+                state_dict = adam.state_dict()
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
-                    para_state_dict, opti_state_dict = fluid.load_dygraph("paddle_dy")
-
-                    adam.set_state_dict(opti_state_dict) 
+                para_state_dict, opti_state_dict = fluid.load_dygraph("paddle_dy")
         '''
         from paddle.optimizer.lr_scheduler import _LRScheduler
         if isinstance(self._learning_rate, _LRScheduler):

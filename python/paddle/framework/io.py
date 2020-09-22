@@ -18,6 +18,7 @@ import os
 import collections
 import pickle
 import six
+import warnings
 
 import paddle
 
@@ -141,8 +142,10 @@ def save(obj, path):
             layer_state_dict = emb.state_dict()
             paddle.save(layer_state_dict, "emb.pdparams")
 
+            scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
+                d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(
-                learning_rate=0.001,
+                learning_rate=scheduler,
                 parameters=emb.parameters())
             opt_state_dict = adam.state_dict()
             paddle.save(opt_state_dict, "adam.pdopt")
@@ -153,6 +156,9 @@ def save(obj, path):
         raise NotImplementedError(
             "Now only supports save state_dict of Layer or Optimizer, "
             "expect dict, but received %s." % type(obj))
+
+    if len(obj) == 0:
+        warnings.warn("The input state dict is empty, no need to save.")
 
     filename = os.path.basename(path)
     if filename == "":
@@ -210,8 +216,10 @@ def load(path, config=None):
             layer_state_dict = emb.state_dict()
             paddle.save(layer_state_dict, "emb.pdparams")
 
+            scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
+                d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(
-                learning_rate=0.001,
+                learning_rate=scheduler,
                 parameters=emb.parameters())
             opt_state_dict = adam.state_dict()
             paddle.save(opt_state_dict, "adam.pdopt")
