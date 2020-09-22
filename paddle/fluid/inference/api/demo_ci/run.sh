@@ -88,7 +88,7 @@ if [ $(echo `uname` | grep "Win") != "" ]; then
     -DWITH_MKL=$TURN_ON_MKL \
     -DDEMO_NAME=vis_demo \
     -DWITH_GPU=$TEST_GPU_CPU \
-    -DWITH_STATIC_LIB=OFF
+    -DWITH_STATIC_LIB=ON
   msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
   for vis_demo_name in $vis_demo_list; do
     Release/vis_demo.exe \
