@@ -114,6 +114,8 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "followed by all the arguments for the "
         "training script")
 
+    base_group.add_argument('training_script_args', nargs=REMAINDER)
+
     # Optional arguments for the launch helper
     # for collective
     collective_group = parser.add_argument_group("Collective Parameters")

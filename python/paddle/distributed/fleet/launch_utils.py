@@ -739,8 +739,7 @@ class ParameterServerLauncher(object):
                 if ip == self.heter_worker_endpoints_ips[k]:
                     heter_worker = Trainer()
                     heter_worker.endpoint = "%s:%s" % (
-                        ip,
-                        self.endpoints_dict["heter_worker_endpoints_port"][k])
+                        ip, self.heter_worker_endpoints_port[k])
                     heter_worker.rank = heter_worker_rank
                     heter_worker_rank += 1
                     pod.heter_workers.append(heter_worker)
@@ -770,9 +769,9 @@ class ParameterServerLauncher(object):
             self.procs[i].proc.wait()
             if len(self.log_fns) > 0:
                 self.log_fns[i].close()
-        print(
-            "all workers exit, going to finish parameter server and heter_worker",
-            file=sys.stderr)
+        logger.info(
+            "all workers exit, going to finish parameter server and heter_worker"
+        )
 
         for i in range(
                 len(pod.servers + pod.workers),
@@ -780,13 +779,13 @@ class ParameterServerLauncher(object):
             if len(self.log_fns) > 0:
                 self.log_fns[i].close()
             self.procs[i].proc.terminate()
-        print("all heter worker are killed", file=sys.stderr)
+        logger.info("all heter worker are killed")
 
         for i in range(len(pod.servers)):
             if len(self.log_fns) > 0:
                 self.log_fns[i].close()
             self.procs[i].proc.terminate()
-        print("all parameter server are killed", file=sys.stderr)
+        logger.info("all parameter server are killed", file=sys.stderr)
 
         if os.path.exists(self.gloo_rendezvous_dir):
             shutil.rmtree(self.gloo_rendezvous_dir)
@@ -857,6 +856,7 @@ class ParameterServerLauncher(object):
             heter_device_num = fluid.core.get_xpu_device_count()
 
         for idx, cur_worker in enumerate(pod.workers):
+            device_id = str(idx % heter_device_num)
             proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
@@ -869,10 +869,10 @@ class ParameterServerLauncher(object):
                 "PADDLE_WITH_GLOO": "1",
                 "PADDLE_GLOO_RENDEZVOUS": "2",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
-                "FLAGS_selected_gpus": idx % heter_device_num,
-                "FLAGS_selected_xpus": idx % heter_device_num,
-                "CUDA_VISIBLE_DEVICES": idx % heter_device_num,
-                "XPU_VISIBLE_DEVICES": idx % heter_device_num,
+                "FLAGS_selected_gpus": 0,
+                "FLAGS_selected_xpus": 0,
+                "CUDA_VISIBLE_DEVICES": device_id,
+                "XPU_VISIBLE_DEVICES": device_id,
             }
             current_env.update(proc_env)
 
@@ -921,6 +921,7 @@ class ParameterServerLauncher(object):
         assert heter_device_num != 0
 
         for idx, cur_heter_worker in enumerate(pod.heter_workers):
+            device_id = str(idx % heter_device_num)
             proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
@@ -934,10 +935,10 @@ class ParameterServerLauncher(object):
                 "PADDLE_WITH_GLOO": "1",
                 "PADDLE_GLOO_RENDEZVOUS": "2",
                 "PADDLE_GLOO_FS_PATH": self.gloo_rendezvous_dir,
-                "FLAGS_selected_gpus": idx % heter_device_num,
-                "FLAGS_selected_xpus": idx % heter_device_num,
-                "CUDA_VISIBLE_DEVICES": idx % heter_device_num,
-                "XPU_VISIBLE_DEVICES": idx % heter_device_num,
+                "FLAGS_selected_gpus": device_id,
+                "FLAGS_selected_xpus": device_id,
+                "CUDA_VISIBLE_DEVICES": device_id,
+                "XPU_VISIBLE_DEVICES": device_id,
             }
             current_env.update(proc_env)
 
