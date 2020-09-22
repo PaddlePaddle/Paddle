@@ -108,11 +108,12 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
     auto max_seq_len = items[0].length;
     auto rank_level = rank_table.level();
 
-    PADDLE_ENFORCE_LT(rank_level, x.lod().size(),
-                      platform::errors::InvalidArgument(
-            `"Input should be a LoDTensor, and its lod_level should be at "
-              "least %d",
-                          rank_level + 1));
+    PADDLE_ENFORCE_LT(
+        rank_level, x.lod().size(),
+        platform::errors::InvalidArgument(
+            "Input should be a LoDTensor, and its lod_level should be at "
+            "least %d",
+            rank_level + 1));
     out.resize(max_seq_len);
     std::vector<std::vector<CopyRange>> copy_ranges(max_seq_len);
 

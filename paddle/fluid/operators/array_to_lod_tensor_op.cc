@@ -211,7 +211,7 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         context->HasInput("X"), true,
         platform::errors::NotFound("Input(X) of BmmOp should not be null"));
-    PADDLE_ENFORCE_EQ(context->HasInput("RankTable", true),
+    PADDLE_ENFORCE_EQ(context->HasInput("RankTable"), true,
                       platform::errors::NotFound(
                           "Input(RankTable) of BmmOp should not be null"));
     // For compile-time, the first dim of input X and output Out should be -1.
