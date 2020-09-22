@@ -3167,7 +3167,7 @@ def instance_norm(input,
 
     param_shape = [channel_num]
 
-    if param_attr and bias_attr:
+    if param_attr != False and bias_attr != False:
         # create parameter
         scale = helper.create_parameter(
             attr=helper.param_attr,
@@ -3190,7 +3190,7 @@ def instance_norm(input,
     instance_norm_out = helper.create_variable_for_type_inference(dtype)
 
     inputs = {"X": input}
-    if param_attr and bias_attr:
+    if param_attr != False and bias_attr != False:
         inputs["Scale"] = scale
         inputs["Bias"] = bias
 
@@ -6309,7 +6309,7 @@ def unsqueeze(input, axes, name=None):
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
-            axes = [axes.numpy().item(0)]
+            axes = axes.numpy().tolist()
         elif isinstance(axes, (list, tuple)):
             axes = [
                 item.numpy().item(0) if isinstance(item, Variable) else item
@@ -11229,7 +11229,7 @@ def shape(input):
                 input.shape = [3, 2]
 
     Args:
-        input (Variable): The input can be N-D Tensor or SelectedRows with data type float16, float32, float64, int32, int64.
+        input (Variable): The input can be N-D Tensor or SelectedRows with data type bool, float16, float32, float64, int32, int64.
                           If input variable is type of SelectedRows, returns the shape of it's inner tensor.
 
     Returns:
@@ -11253,8 +11253,8 @@ def shape(input):
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'shape')
+        input, 'input',
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'shape')
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(

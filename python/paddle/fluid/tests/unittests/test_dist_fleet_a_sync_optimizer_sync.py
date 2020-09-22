@@ -19,6 +19,8 @@ import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import time
 
+paddle.enable_static()
+
 
 class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
     def setUp(self):

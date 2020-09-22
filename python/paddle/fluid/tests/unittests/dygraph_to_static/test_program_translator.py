@@ -21,6 +21,7 @@ import numpy as np
 import textwrap
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
@@ -277,6 +278,34 @@ class TestEnableDeclarative(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     static_output.numpy(), dygraph_output.numpy(), atol=1e-4))
+
+
+class Net(fluid.dygraph.layers.Layer):
+    def __init__(self):
+        super(Net, self).__init__()
+
+    def forward(self, x):
+        return x + 1
+
+
+class TestErrorWithInitFromStaticMode(unittest.TestCase):
+    def setUp(self):
+        self.program_translator = ProgramTranslator()
+        self.x = np.random.randn(10, 32).astype('float32')
+
+    def test_raise_error(self):
+        # disable imperative
+        paddle.enable_static()
+        net = Net()
+
+        self.program_translator.enable(True)
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            self.program_translator.get_output(net.forward, self.x)
+
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            self.program_translator.get_program(net.forward, self.x)
 
 
 if __name__ == '__main__':

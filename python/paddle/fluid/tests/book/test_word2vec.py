@@ -23,6 +23,8 @@ import numpy as np
 import math
 import sys
 
+paddle.enable_static()
+
 
 def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
     PASS_NUM = 100

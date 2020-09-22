@@ -25,8 +25,10 @@ PluginTensorRT* PluginFactoryTensorRT::createPlugin(const char* layer_name,
   const char* plugin_type;
   DeserializeValue(&serial_data, &serial_length, &plugin_type);
 
-  PADDLE_ENFORCE(Has(plugin_type),
-                 "trt plugin type %s does not exists, check it.", plugin_type);
+  PADDLE_ENFORCE_EQ(
+      Has(plugin_type), true,
+      platform::errors::NotFound(
+          "trt plugin type %s does not exists, check it.", plugin_type));
   auto plugin = plugin_registry_[plugin_type](serial_data, serial_length);
   owned_plugins_.emplace_back(plugin);
 

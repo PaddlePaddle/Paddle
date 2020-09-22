@@ -440,7 +440,9 @@ class TestModelFunction(unittest.TestCase):
         # dynamic saving
         device = paddle.set_device('cpu')
         fluid.enable_dygraph(device)
-        model = Model(MyModel())
+        inputs = [InputSpec([None, 20], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+        model = Model(MyModel(), inputs, labels)
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
@@ -539,11 +541,10 @@ class TestModelFunction(unittest.TestCase):
 
     def test_export_deploy_model(self):
         for dynamic in [True, False]:
-            fluid.enable_dygraph() if dynamic else None
-            # paddle.disable_static() if dynamic else None
+            paddle.disable_static() if dynamic else None
             prog_translator = ProgramTranslator()
             prog_translator.enable(False) if not dynamic else None
-            net = LeNetDeclarative()
+            net = LeNet()
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
@@ -552,8 +553,9 @@ class TestModelFunction(unittest.TestCase):
                 os.makedirs(save_dir)
             tensor_img = np.array(
                 np.random.random((1, 1, 28, 28)), dtype=np.float32)
-            ori_results = model.test_batch(tensor_img)
+
             model.save(save_dir, training=False)
+            ori_results = model.test_batch(tensor_img)
             fluid.disable_dygraph() if dynamic else None
 
             place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
@@ -570,6 +572,7 @@ class TestModelFunction(unittest.TestCase):
                 np.testing.assert_allclose(
                     results, ori_results, rtol=1e-5, atol=1e-7)
                 shutil.rmtree(save_dir)
+            paddle.enable_static()
 
 
 class TestRaiseError(unittest.TestCase):
@@ -580,6 +583,14 @@ class TestRaiseError(unittest.TestCase):
         labels = [InputSpec([None, 1], 'int64', 'label')]
         with self.assertRaises(ValueError):
             model = Model(net, inputs, labels)
+
+    def test_input_without_input_spec(self):
+        for dynamic in [True, False]:
+            paddle.disable_static() if dynamic else None
+            net = MyModel()
+            with self.assertRaises(TypeError):
+                model = Model(net)
+            paddle.enable_static()
 
 
 if __name__ == '__main__':

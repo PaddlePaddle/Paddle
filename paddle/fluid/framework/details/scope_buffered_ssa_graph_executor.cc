@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
+
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -37,7 +39,13 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       var_infos_(std::move(var_infos)),
       places_(std::move(places)),
       scope_monitor_(places_, local_exec_scopes_) {
-  PADDLE_ENFORCE_EQ(local_scopes_.size(), local_exec_scopes_.size());
+  PADDLE_ENFORCE_EQ(
+      local_scopes_.size(), local_exec_scopes_.size(),
+      platform::errors::InvalidArgument(
+          "The number of local scopes and the number of local execution scopes "
+          "should be equal, but got number of local scopes is %d and "
+          "number of local execution scopes is %d.",
+          local_scopes_.size(), local_exec_scopes_.size()));
   PrepareLocalExeScopes();
 }
 

@@ -53,12 +53,10 @@ if(WITH_TESTING)
     inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS paddle_fluid_shared
                         ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
     set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
-    set_tests_properties(test_api_impl PROPERTIES LABELS "RUN_TYPE=DIST")
   elseif(WIN32)
     inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS ${inference_deps}
                         ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
     set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
-    set_tests_properties(test_api_impl PROPERTIES LABELS "RUN_TYPE=DIST")
   endif()
 
 endif()
