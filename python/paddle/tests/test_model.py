@@ -55,8 +55,7 @@ class LeNetDygraph(paddle.nn.Layer):
 
         if num_classes > 0:
             self.fc = Sequential(
-                Linear(400, 120), Linear(120, 84),
-                Linear(84, 10))  #Todo: accept any activation
+                Linear(400, 120), Linear(120, 84), Linear(84, 10))
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -83,8 +82,7 @@ class LeNetDeclarative(fluid.dygraph.Layer):
 
         if num_classes > 0:
             self.fc = Sequential(
-                Linear(400, 120), Linear(120, 84),
-                Linear(84, 10))  #Todo: accept any activation
+                Linear(400, 120), Linear(120, 84), Linear(84, 10))
 
     @declarative
     def forward(self, inputs):
@@ -319,11 +317,9 @@ class MyModel(paddle.nn.Layer):
     def __init__(self):
         super(MyModel, self).__init__()
         self._fc = Linear(20, 10)
-        # self._act = Softmax()  #Todo: accept any activation
 
     def forward(self, x):
         y = self._fc(x)
-        # y = self._act(y)
         return y
 
 
