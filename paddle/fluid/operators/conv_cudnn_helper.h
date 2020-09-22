@@ -467,7 +467,6 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     algo_t algo;
     if (!exhaustive && !deterministic) {
 #if CUDNN_VERSION >= 7001
-      /*
       using perf_t = cudnnConvolutionBwdFilterAlgoPerf_t;
       int perf_count;
       int best_algo_idx = 0;
@@ -483,39 +482,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
       if (workspace_size > workspace_size_limit) {
         workspace_size = workspace_size_limit;
       }
-
-      auto math_type_str = "-";
-      if ((perf_results.get())[best_algo_idx].mathType ==
-          CUDNN_TENSOR_OP_MATH) {
-        math_type_str = "+";
-      }
-      VLOG(3) << "    algo: " << (perf_results.get())[best_algo_idx].algo
-              << ", TC" << math_type_str
-              << ", time: " << (perf_results.get())[best_algo_idx].time << " ms"
-              << ", wksp = " << (perf_results.get())[best_algo_idx].memory
-              << ", status = " << (perf_results.get())[best_algo_idx].status;
-*/
-      auto max_bwd_filt_algos = MaxBackwardFilterAlgos(args.handle);
-      std::vector<cudnnConvolutionBwdFilterAlgoPerf_t> bwd_filt_results(
-          max_bwd_filt_algos);
-      int actual_bwd_filter_algos = 0;
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnFindConvolutionBackwardFilterAlgorithm(
-              args.handle, args.idesc.desc(), args.odesc.desc(),
-              args.cdesc.desc(), args.wdesc.desc(), bwd_filt_results.size(),
-              &actual_bwd_filter_algos, bwd_filt_results.data()));
-      bwd_filt_results.resize(actual_bwd_filter_algos);
-      AlgoFinalSelect<cudnnConvolutionBwdFilterAlgoPerf_t,
-                      cudnnConvolutionBwdFilterAlgo_t>(
-          bwd_filt_results, "backprop-to-filter", -1, workspace_size_limit,
-          &algo, deterministic);
-      workspace_size = GetWorkspaceSize(args, algo);
-      if (workspace_size > workspace_size_limit) {
-        workspace_size = workspace_size_limit;
-      }
-
 #else
-      VLOG(3) << "=======cudnnGetConvolutionBackwardFilterAlgorithm=====";
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
               args.handle, args.idesc.desc(), args.odesc.desc(),
@@ -524,10 +491,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
               workspace_size_limit, &algo));
 #endif
     } else if (deterministic) {
-      VLOG(3) << "======choose deterministic algo======";
       return CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
     } else {
-      VLOG(3) << "========Get cache algo===========";
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
