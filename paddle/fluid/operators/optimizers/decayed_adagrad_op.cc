@@ -28,8 +28,7 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DecayedAdagradOp");
     OP_INOUT_CHECK(ctx->HasInput("Moment"), "Input", "Moment",
                    "DecayedAdagradOp");
-    OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input",
-                   "LearningRate"
+    OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
                    "DecayedAdagradOp");
     PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("Param").front(),
