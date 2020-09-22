@@ -127,6 +127,7 @@ message DistributedStrategy {
   optional int32 conv_workspace_size_limit = 22 [ default = 4000 ];
   optional bool cudnn_batchnorm_spatial_persistent = 23 [ default = true ];
   optional bool adaptive_localsgd = 24 [ default = false ];
+  optional bool fp16_compress = 25 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;

@@ -846,6 +846,30 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.dgc_configs, configs)
 
     @property
+    def fp16_compress(self):
+        """
+        Indicating whether we are using fp16 Gradient Compression training
+        Default Value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fp16_compress = True # by default this is false
+
+        """
+        return self.strategy.fp16_compress
+
+    @fp16_compress.setter
+    @is_strict_auto
+    def fp16_compress(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.fp16_compress = flag
+        else:
+            print("WARNING: fp16_compress should have value of bool type")
+
+    @property
     def gradient_merge(self):
         """
         Gradient Merge, also called as Gradient Accumulation,
