@@ -23,6 +23,13 @@ enum Mode {
 }
 
 message RecomputeConfig { repeated string checkpoints = 1; }
+message ZeROConfig {
+  optional bool amp = 1 [ default = true ];
+  optional int32 nrings = 2 [ default = 3 ];
+  optional float fuse_broadcast_MB_bytes = 3 [ default = 64.0 ];
+  repeated string checkpoints = 4;
+  optional bool allreduce = 5 [ default = false ];
+}
 
 message AMPConfig {
   optional float init_loss_scaling = 1 [ default = 32768.0 ];
@@ -127,6 +134,7 @@ message DistributedStrategy {
   optional AsyncConfig a_sync_configs = 107;
   optional LarsConfig lars_configs = 108;
   optional LambConfig lamb_configs = 109;
+  optional ZeROConfig zero_configs = 110;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
 }

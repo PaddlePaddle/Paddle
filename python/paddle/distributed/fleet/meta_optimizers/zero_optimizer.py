@@ -185,7 +185,6 @@ class ZeroOptimizer(MetaOptimizerBase):
         self._nrings = 3
         # self._sub_progs
         self._sub_progs = []
-        self._fuse_broadcast_num = 20
         self._fuse_broadcast_MB_bytes = 64
         self._dtype_to_size = {
             core.VarDesc.VarType.FP16: 2,
@@ -806,8 +805,11 @@ class ZeroOptimizer(MetaOptimizerBase):
                       parameter_list=None,
                       no_grad_set=None):
 
-        ckpts = list(self.user_defined_strategy.recompute_configs[
-            "checkpoints"])
+        if self.user_defined_strategy.zero_configs["allreduce"]:
+            return self.minimize_impl_allreduce(loss, startup_program,
+                                                parameter_list, no_grad_set)
+
+        ckpts = list(self.user_defined_strategy.zero_configs["checkpoints"])
         optimizer = self.inner_opt
         if len(ckpts) > 0:
             print("add recompute")
@@ -815,8 +817,14 @@ class ZeroOptimizer(MetaOptimizerBase):
             optimizer = fluid.optimizer.RecomputeOptimizer(optimizer)
             optimizer._set_checkpoints(ckpts)
 
-        optimizer = fluid.contrib.mixed_precision.decorate(
-            optimizer, use_dynamic_loss_scaling=True)
+        if self.user_defined_strategy.zero_configs["amp"]:
+            optimizer = fluid.contrib.mixed_precision.decorate(
+                optimizer, use_dynamic_loss_scaling=True)
+
+        self._nrings = self.user_defined_strategy.zero_configs["nrings"]
+        self._fuse_broadcast_MB_bytes = self.user_defined_strategy.zero_configs[
+            "fuse_broadcast_MB_bytes"]
+
         print("doing zero optimize...")
         optimize_ops, params_grads = optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
@@ -836,26 +844,9 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         # step3: add broadcast and reduce ops
         print("insert broadcast and allreduce")
-        # for idx, subprog in reversed(list(enumerate(self._sub_progs))):
-        #     print("subprog_{}: ({}-{})".format(idx, subprog._start_idx,
-        #                                        subprog._end_idx))
-        #     if self._fp16_params:
-        #         self._remove_cast_op(main_block, subprog, 0)
-        #     self._add_broadcast_allreduce(main_block, subprog, 0)
-
-        # for _, subprog in reversed(list(enumerate(self._sub_progs))):
-        #     if self._fp16_params:
-        #         self._remove_cast_op(main_block, subprog, 0)
-
         self._add_broadcast_allreduce_v2(main_block)
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
-
-        # from paddle_debug_tools import memory_tool
-        # tool = memory_tool.MemoryEstimate(self._main_program, batch_size=1)
-        # tool.cal_memory()
-
-        # self._check_broadcast(main_block)
 
         # step4: insert reduce_sum for grad
         self._insert_scale_loss_grad_ops(
@@ -916,11 +907,6 @@ class ZeroOptimizer(MetaOptimizerBase):
                 var_name = op.desc.input_arg_names()[0]
                 if "@BroadCast" in var_name:
                     if broadcast_vars[var_name]["fill_constant_pos"] != -1:
-                        # print("before_broadcast: ", var_name, 
-                        #         broadcast_vars[var_name]["fill_constant_pos"],
-                        #         last_sync_calc_op_idx,
-                        #         broadcast_vars[var_name]["broadcast_pos"],
-                        #         )
                         assert (last_sync_calc_op_idx != -1)
                         assert (broadcast_vars[var_name]["fill_constant_pos"] <
                                 last_sync_calc_op_idx)
@@ -928,16 +914,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                     continue
             for input_name in op.desc.input_arg_names():
                 if input_name in broadcast_vars:
-                    # print("after_broadcast, op_type: ", op.type, ": ",
-                    #         "var_name: ", input_name, 
-                    #         broadcast_vars[input_name]["broadcast_pos"],
-                    #         last_sync_comm_op_idx,
-                    #         idx)
-                    print("input_name: ", input_name)
                     assert (broadcast_vars[input_name]["broadcast_pos"] != -1)
-                    print("broadcast_pos",
-                          broadcast_vars[input_name]["broadcast_pos"])
-                    print("last_sync_comm_op_idx: ", last_sync_comm_op_idx)
                     assert (broadcast_vars[input_name]["broadcast_pos"] <
                             last_sync_comm_op_idx)
                     assert (last_sync_comm_op_idx < idx)
@@ -1184,18 +1161,6 @@ class ZeroOptimizer(MetaOptimizerBase):
                             'ring_id': ring_id,
                             OP_ROLE_KEY: OpRole.Backward
                         })
-                    offset += 1
-                    for ring_id in range(self._nrings):
-                        block._insert_op(
-                            offset,
-                            type='c_sync_comm_stream',
-                            inputs={'X': grad},
-                            outputs={'Out': grad},
-                            attrs={
-                                'ring_id': ring_id,
-                                OP_ROLE_KEY: OpRole.Backward
-                            })
-                        offset += 1
 
         if grad is None:
             return
@@ -1220,8 +1185,14 @@ class ZeroOptimizer(MetaOptimizerBase):
                                 parameter_list=None,
                                 no_grad_set=None):
 
-        self._nrings = 3
-        optimize_ops, params_grads = self.inner_opt.minimize(
+        self._nrings = self.user_defined_strategy.zero_configs["nrings"]
+
+        optimizer = self.inner_opt
+        if self.user_defined_strategy.zero_configs["amp"]:
+            optimizer = fluid.contrib.mixed_precision.decorate(
+                optimizer, use_dynamic_loss_scaling=True)
+
+        optimize_ops, params_grads = optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
         if startup_program is None:

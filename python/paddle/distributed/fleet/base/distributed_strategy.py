@@ -584,6 +584,19 @@ class DistributedStrategy(object):
             print("WARNING: zero should have value of bool type")
 
     @property
+    def zero_configs(self):
+        """
+        Set zero configurations.
+
+        """
+        return get_msg_dict(self.strategy.zero_configs)
+
+    @zero_configs.setter
+    def zero_configs(self, configs):
+        check_configs_key(self.strategy.zero_configs, configs, "zero_configs")
+        assign_configs_value(self.strategy.zero_configs, configs)
+
+    @property
     def pipeline(self):
         """
         Indicating whether we are using pipeline parallelism for distributed training.
