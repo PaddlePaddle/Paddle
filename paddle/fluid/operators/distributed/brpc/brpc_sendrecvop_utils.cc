@@ -155,12 +155,15 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
     return;
 #endif
   } else {
-    PADDLE_THROW("Serialize does not support type: %s",
-                 typeid(var->Type()).name());
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Serialize does not support type: %s", typeid(var->Type()).name()));
   }
 
-  PADDLE_ENFORCE_NOT_NULL(payload, platform::errors::InvalidArgument(
-                                       "Not support type: %s", var->Type()));
+  PADDLE_ENFORCE_NOT_NULL(
+      payload,
+      platform::errors::InvalidArgument(
+          "Not support type: %s, need to be LOD_TENSOR or SELECTED_ROWS.",
+          var->Type()));
 
   // FIXME(gongwb): it seems that can use zero copy.
   if (var_is_not_stable) {

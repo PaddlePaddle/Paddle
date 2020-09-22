@@ -73,8 +73,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     request.set_type(::sendrecv::NCCL_ID);
 #endif
   } else {
-    PADDLE_THROW("Serialize does not support type: %s",
-                 typeid(var->Type()).name());
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Serialize does not support type: %s", typeid(var->Type()).name()));
   }
   std::string header;
   request.AppendToString(&header);
@@ -99,8 +99,11 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     return;
   }
 #endif
-  PADDLE_ENFORCE_NOT_NULL(payload, platform::errors::InvalidArgument(
-                                       "Not support type: %s", var->Type()));
+  PADDLE_ENFORCE_NOT_NULL(
+      payload,
+      platform::errors::InvalidArgument(
+          "Not support type: %s, need to be LOD_TENSOR or SELECTED_ROWS",
+          var->Type()));
   e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                             payload->memory_size());
   if (payload->memory_size() >= std::numeric_limits<int>::max()) {

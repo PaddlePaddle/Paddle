@@ -46,7 +46,7 @@ void GRPCClient::SendComplete() {
       this->AsyncSendComplete(it.first);
     }
     PADDLE_ENFORCE_EQ(this->Wait(), true, platform::errors::PreconditionNotMet(
-                                              "internal grpc error"));
+                                              "internal grpc service error."));
     completed_ = true;
   }
 }

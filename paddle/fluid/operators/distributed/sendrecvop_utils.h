@@ -81,7 +81,7 @@ inline framework::proto::VarType::Type ToVarType(
       return framework::proto::VarType::BOOL;  // NOLINT
     default:
       PADDLE_THROW(
-          platform::errors::InvalidArgument("Not support type %d", type));
+          platform::errors::InvalidArgument("Not support type id: %d.", type));
   }
 }
 
