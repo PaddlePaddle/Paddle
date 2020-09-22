@@ -162,7 +162,8 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
       int rois_batch_size = rois_num_t->numel();
       PADDLE_ENFORCE_EQ(
           rois_batch_size, batch_size,
-          "The rois_batch_size and imgs batch_size must be the same.");
+          platform::errors::InvalidArgument(
+              "The rois_batch_size and imgs batch_size must be the same."));
       std::vector<int> rois_num_list(rois_batch_size);
       memory::Copy(cplace, rois_num_list.data(), gplace,
                    rois_num_t->data<int>(), sizeof(int) * rois_batch_size, 0);
@@ -178,10 +179,13 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
       int rois_batch_size = rois_lod.size() - 1;
       PADDLE_ENFORCE_EQ(
           rois_batch_size, batch_size,
-          "The rois_batch_size and imgs batch_size must be the same.");
+          platform::errors::InvalidArgument(
+              "The rois_batch_size and imgs batch_size must be the same."));
       int rois_num_with_lod = rois_lod[rois_batch_size];
-      PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
-                        "The rois_num from input and lod must be the same.");
+      PADDLE_ENFORCE_EQ(
+          rois_num, rois_num_with_lod,
+          platform::errors::InvalidArgument(
+              "The rois_num from input and lod must be the same."));
       for (int n = 0; n < rois_batch_size; ++n) {
         for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
           roi_batch_id_data[i] = n;

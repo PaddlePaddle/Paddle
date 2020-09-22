@@ -178,8 +178,9 @@ class GPUPSROIPoolOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(input_channels,
                       output_channels * pooled_height * pooled_width,
-                      "the channels of input X should equal the product of "
-                      "output_channels x pooled_height x pooled_width");
+                      platform::errors::InvalidArgument(
+                          "the channels of input X should equal the product of "
+                          "output_channels x pooled_height x pooled_width"));
 
     int rois_num = rois->dims()[0];
     if (rois_num == 0) return;
@@ -188,10 +189,12 @@ class GPUPSROIPoolOpKernel : public framework::OpKernel<T> {
     int rois_batch_size = rois_lod.size() - 1;
     PADDLE_ENFORCE_EQ(
         rois_batch_size, batch_size,
-        "The rois_batch_size and input(X) batch_size must be the same.");
+        platform::errors::InvalidArgument(
+            "The rois_batch_size and input(X) batch_size must be the same."));
     int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
-                      "The rois_num from input and lod must be the same.");
+                      platform::errors::InvalidArgument(
+                          "The rois_num from input and lod must be the same."));
 
     // set rois batch id
     framework::Tensor rois_batch_id_list;

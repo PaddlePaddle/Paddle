@@ -47,7 +47,8 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
     bool adaptive = ctx->Attrs().Get<bool>("adaptive");
 
     PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
-                   "Pooling intput should be 4-D or 5-D tensor.");
+                   platform::errors::InvalidArgument(
+                       "Pooling intput should be 4-D or 5-D tensor."));
 
     if (ctx->Attrs().Get<bool>("global_pooling")) {
       ksize.resize(static_cast<size_t>(in_x_dims.size()) - 2);

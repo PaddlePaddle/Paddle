@@ -83,7 +83,8 @@ inline void UpdatePadding(std::vector<T>* paddings, const bool global_pooling,
   } else {
     PADDLE_ENFORCE_EQ(
         data_dims.size() * 2, paddings->size(),
-        "Paddings size should be the same or twice as the pooling size.");
+        platform::errors::InvalidArgument(
+            "Paddings size should be the same or twice as the pooling size."));
   }
 
   // when padding_algorithm is "VALID" or "SAME"
@@ -200,7 +201,10 @@ class PoolKernel : public framework::OpKernel<T> {
                          pool_process, exclusive, adaptive, out);
         }
       } break;
-      default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
+      default: {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Pool op only supports 2D and 3D input."));
+      }
     }
   }
 };
@@ -287,7 +291,10 @@ class PoolGradKernel : public framework::OpKernel<T> {
                             adaptive, in_x_grad);
           }
         } break;
-        default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
+        default: {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Pool op only supports 2D and 3D input."));
+        }
       }
     }
   }
