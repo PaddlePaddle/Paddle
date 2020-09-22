@@ -41,10 +41,10 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
 
     int input_dim_idx = ctx->Attrs().Get<int>("input_dim_idx");
     int input_dim_size = static_cast<int>(ctx->GetInputDim("Input").size());
-    PADDLE_ENFORCE_GT(
+    PADDLE_ENFORCE_GE(
         input_dim_idx, 0,
         platform::errors::InvalidArgument(
-            "input dim idx must be larger than 0, but received: %s",
+            "input dim idx must be larger equal than 0, but received: %s",
             input_dim_idx));
     PADDLE_ENFORCE_GT(
         input_dim_size, input_dim_idx,
@@ -55,10 +55,10 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
 
     int output_dim_idx = ctx->Attrs().Get<int>("output_dim_idx");
     int output_dim_size = static_cast<int>(shape.size());
-    PADDLE_ENFORCE_GT(
+    PADDLE_ENFORCE_GE(
         output_dim_idx, 0,
         platform::errors::InvalidArgument(
-            "output dim idx must be larger than 0, but received: %s",
+            "output dim idx must be larger equal than 0, but received: %s",
             output_dim_idx));
     PADDLE_ENFORCE_GT(
         output_dim_size, output_dim_idx,
