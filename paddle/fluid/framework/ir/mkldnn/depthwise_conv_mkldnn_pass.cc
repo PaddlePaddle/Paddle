@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn/depthwise_conv_mkldnn_pass.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -57,3 +58,7 @@ void DepthwiseConvMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(depthwise_conv_mkldnn_pass,
               paddle::framework::ir::DepthwiseConvMKLDNNPass);
+REGISTER_PASS_CAPABILITY(depthwise_conv_mkldnn_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "depthwise_conv2d", 0));

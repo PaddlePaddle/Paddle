@@ -17,6 +17,7 @@ from __future__ import print_function
 import six
 import numpy as np
 
+import paddle
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 
@@ -88,6 +89,8 @@ class UCIHousing(Dataset):
         # read dataset into memory
         self._load_data()
 
+        self.dtype = paddle.get_default_dtype()
+
     def _load_data(self, feature_num=14, ratio=0.8):
         data = np.fromfile(self.data_file, sep=' ')
         data = data.reshape(data.shape[0] // feature_num, feature_num)
@@ -103,7 +106,8 @@ class UCIHousing(Dataset):
 
     def __getitem__(self, idx):
         data = self.data[idx]
-        return np.array(data[:-1]), np.array(data[-1:])
+        return np.array(data[:-1]).astype(self.dtype), \
+                np.array(data[-1:]).astype(self.dtype)
 
     def __len__(self):
         return len(self.data)

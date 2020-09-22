@@ -358,5 +358,24 @@ class TestDecorateModelDirectly(unittest.TestCase):
         self.assertListEqual(list(input_shape), [-1, 16, 10])
 
 
+class TestErrorWithInitFromStaticMode(unittest.TestCase):
+    def test_raise_error(self):
+        # disable imperative
+        paddle.enable_static()
+
+        net = SimpleNet()
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            net.forward.concrete_program
+
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            net.forward.inputs
+
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            net.forward.outputs
+
+
 if __name__ == '__main__':
     unittest.main()

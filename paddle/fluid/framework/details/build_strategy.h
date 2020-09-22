@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "boost/optional.hpp"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -118,6 +119,9 @@ struct BuildStrategy {
 
   // Turn on inplace by default.
   bool enable_inplace_{true};
+
+  // Turn off inplace addto by default.
+  bool enable_addto_{false};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if

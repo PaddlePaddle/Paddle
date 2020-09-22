@@ -7,7 +7,7 @@ DATA_DIR=$4 # dataset
 TENSORRT_INCLUDE_DIR=$5 # TensorRT header file dir, default to /usr/local/TensorRT/include
 TENSORRT_LIB_DIR=$6 # TensorRT lib file dir, default to /usr/local/TensorRT/lib
 
-inference_install_dir=${PADDLE_ROOT}/build/fluid_inference_install_dir
+inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 
 cd `dirname $0`
 current_dir=`pwd`
