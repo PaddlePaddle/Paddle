@@ -15,6 +15,7 @@ import unittest
 import paddle.distributed.fleet as fleet
 import os
 import sys
+import platform
 
 
 class MyMultiSlotDataGenerator(fleet.MultiSlotDataGenerator):
@@ -109,9 +110,11 @@ class TestMultiSlotStringDataGenerator(unittest.TestCase):
 
 
 class TestMultiSlotStringDataGenerator_2(unittest.TestCase):
-    @unittest.skipIf(sys.platform == "win32",
-                     "Windows does not support this pipe command")
     def test_MyMultiSlotStringDataGenerator_stdin(self):
+        plats = platform.platform()
+        if 'Linux' not in plats:
+            print("skip pipecommand UT on MacOS/Win")
+            return
         with open("test_queue_dataset_run_a.txt", "w") as f:
             data = "2 1 2\n"
             data += "2 6 2\n"

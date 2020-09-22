@@ -34,8 +34,5 @@ class MyDataset(fleet.MultiSlotDataGenerator):
 
 
 if __name__ == "__main__":
-    #start = time.clock()
     d = MyDataset()
     d.run_from_stdin()
-    #elapsed = (time.clock() - start)
-    #print("Time used:",elapsed)
