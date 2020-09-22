@@ -168,9 +168,9 @@ class DataLoader(object):
             :attr:`feed_list` must be set if :attr:`return_list` is
             False. Default None.
         places(list(Place)|tuple(Place)|optional): a list of Place,
-            to put data onto, :attr:`places` should be None in dynamic
-            graph mode. if :attr:`places` is None in static mode, default
-            place will be used. Default None.
+            to put data onto, :attr:`places` can be None, if 
+            :attr:`places` is None, default place(CPUPlace or CUDAPlace(0))
+            will be used. Default None.
         return_list (bool): whether the return value on each device is 
             presented as a list. If :attr:`return_list=False`, the return
             value on each device would be a dict of str -> LoDTensor, where
