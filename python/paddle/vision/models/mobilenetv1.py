@@ -225,9 +225,10 @@ class MobileNetV1(nn.Layer):
             x = dws(x)
 
         if self.with_pool:
-            x = self.pool2d_avg(x).reshape([x.shape[0], -1])
+            x = self.pool2d_avg(x)
 
         if self.num_classes > 0:
+            x = paddle.flatten(x, 1)
             x = self.fc(x)
         return x
 

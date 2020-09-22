@@ -27,7 +27,7 @@ class TestPretrainedModel(unittest.TestCase):
         if dygraph:
             paddle.disable_static()
 
-        net = models.__dict__[arch](pretrained=True, classifier_activation=None)
+        net = models.__dict__[arch](pretrained=True)
         inputs = [InputSpec([None, 3, 224, 224], 'float32', 'image')]
         model = paddle.Model(network=net, inputs=inputs)
         model.prepare()
