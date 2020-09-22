@@ -109,7 +109,7 @@ REGISTER_PASS_CAPABILITY(conv_leaky_relu_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("conv2d", 0)
-            .EQ("leaky_relu", 1));
+            .LE("leaky_relu", 1));
 
 REGISTER_PASS(conv_relu6_mkldnn_fuse_pass,
               paddle::framework::ir::Conv2DReLU6FusePass);
