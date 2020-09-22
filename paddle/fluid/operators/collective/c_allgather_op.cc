@@ -24,7 +24,7 @@ class CAllGatherOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AllGather");
-    OP_INPUT_CHECK(ctx->HasOutput("Out"), "Input", "Out", "AllGather");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Input", "Out", "AllGather");
     int nranks = ctx->Attrs().Get<int>("nranks");
     PADDLE_ENFORCE_GE(nranks, 2, platform::errors::InvalidArgument(
                                      "The value of nranks should be >=2."));
