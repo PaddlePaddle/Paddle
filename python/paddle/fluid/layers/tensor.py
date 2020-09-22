@@ -1424,7 +1424,7 @@ def linspace(start, stop, num, dtype=None, name=None):
         stop(int|float|Tensor): The input :attr:`stop` is start variable of range. It is a scalar, \
             or a Tensor of shape [1] with input data type int32, int64, float32 or float64.
         num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int scalar, \
-            or a Tensor of shape [1] with data type int32 or int64.
+            or a Tensor of shape [1] with data type int32.
         dtype(np.dtype|str, optional): The data type of output tensor, it could be
             int32, int64, float32 and float64. Default: if None, the data type is float32.
         name(str, optional): Normally there is no need for user to set this property. 
