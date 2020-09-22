@@ -14,6 +14,7 @@ import paddle
 import unittest
 import paddle.distributed.fleet as fleet
 import os
+import sys
 
 
 class MyMultiSlotDataGenerator(fleet.MultiSlotDataGenerator):
