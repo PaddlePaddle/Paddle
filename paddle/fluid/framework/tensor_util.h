@@ -183,7 +183,11 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
   dst->resize(src.numel());
   auto dst_ptr = static_cast<void*>(dst->data());
 
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(src.place()), true);
+  PADDLE_ENFORCE_EQ(
+      platform::is_cpu_place(src.place()), true,
+      platform::errors::InvalidArgument(
+          "The input tensor should be CPU device, but actually it is in %s.",
+          src.place()));
 
   memory::Copy(dst_place, dst_ptr,
                BOOST_GET_CONST(platform::CPUPlace, src.place()), src_ptr, size);

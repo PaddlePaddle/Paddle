@@ -559,8 +559,8 @@ class SELU(layers.Layer):
                  \\end{cases}
 
     Parameters:
-        scale (float, optional): The value of scale for SELU. Default is 1.0507009873554804934193349852946
-        alpha (float, optional): The value of alpha for SELU. Default is 1.6732632423543772848170429916717
+        scale (float, optional): The value of scale(must be greater than 1.0) for SELU. Default is 1.0507009873554804934193349852946
+        alpha (float, optional): The value of alpha(must be no less than zero) for SELU. Default is 1.6732632423543772848170429916717
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -860,11 +860,10 @@ class LogSigmoid(layers.Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
 
-            x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
+            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
             m = paddle.nn.LogSigmoid()
             out = m(x) # [-0.313262 -0.126928 -0.0485874 -0.0181499]
     """
@@ -874,7 +873,7 @@ class LogSigmoid(layers.Layer):
         self._name = name
 
     def forward(self, x):
-        return F.logsigmoid(x, self._name)
+        return F.log_sigmoid(x, self._name)
 
 
 class Softmax(layers.Layer):

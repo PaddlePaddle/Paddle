@@ -240,9 +240,8 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   framework::AttributeMap reduce_attr_map;
   tracer.TraceOp("reduce_sum", reduce_in, reduce_out, reduce_attr_map,
                  gpu_place, true);
-  detail::BackwardStrategy back_st;
   imperative::BasicEngine engine;
-  engine.Init(reduce_sum_out.get(), back_st);
+  engine.Init(reduce_sum_out.get());
   engine.Execute();
 
   framework::LoDTensor rlt;
@@ -356,9 +355,8 @@ TEST(test_tracer, test_var_without_grad_var) {
   ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(vout->GradVarBase()->GradOpNum(), 1UL);
 
-  detail::BackwardStrategy back_st;
   imperative::BasicEngine engine;
-  engine.Init(vout.get(), back_st);
+  engine.Init(vout.get());
   engine.Execute();
 
   // check the grad

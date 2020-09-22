@@ -209,8 +209,13 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto output_vars = ctx.MultiOutputVar("Out");
 
     auto input_var_names = ctx.InputNames("X");
-    auto param_names = ctx.InputNames("Params");
     auto output_var_names = ctx.OutputNames("Out");
+
+    // current program may not hold parameters
+    std::vector<std::string> param_names;
+    if (!param_vars.empty()) {
+      param_names = ctx.InputNames("Params");
+    }
 
     auto *block = ctx.Attr<BlockDesc *>("global_block");
     auto *program = block->Program();

@@ -22,8 +22,6 @@ class LinspaceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Start"),
-                   "Input(Start) of LinspaceOp should not be null.");
     OP_INOUT_CHECK(ctx->HasInput("Start"), "Input", "Start", "linspace");
     OP_INOUT_CHECK(ctx->HasInput("Stop"), "Input", "Stop", "linspace");
     OP_INOUT_CHECK(ctx->HasInput("Num"), "Input", "Num", "linspace");

@@ -228,7 +228,7 @@ class TestRMSPropV2(unittest.TestCase):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
-        linear = paddle.nn.Linear(13, 5, dtype="float32")
+        linear = paddle.nn.Linear(13, 5)
         # This can be any optimizer supported by dygraph.
         adam = paddle.optimizer.RMSProp(
             learning_rate=0.01,
@@ -275,6 +275,19 @@ class TestRMSPropV2(unittest.TestCase):
             paddle.optimizer.RMSProp,
             learning_rate=0.1,
             momentum=None)
+
+    def test_rmsprop_op_invalid_input(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.RMSProp(
+                0.1, epsilon=-1, parameters=linear.parameters())
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.RMSProp(
+                0.1, momentum=-1, parameters=linear.parameters())
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.RMSProp(
+                0.1, rho=-1, parameters=linear.parameters())
 
 
 if __name__ == "__main__":

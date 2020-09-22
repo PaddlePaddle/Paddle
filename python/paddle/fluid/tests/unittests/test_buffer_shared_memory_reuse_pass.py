@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import Parameter
 import numpy as np
@@ -44,10 +45,10 @@ class InplaceTestBase(unittest.TestCase):
 
     def build_program_and_scope(self):
         self.place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
+        paddle.manual_seed(1)
+        paddle.framework.random._manual_program_seed(1)
         startup_program = fluid.Program()
         main_program = fluid.Program()
-        startup_program.random_seed = 1
-        main_program.random_seed = 1
 
         scope = fluid.Scope()
         with fluid.program_guard(main_program, startup_program):

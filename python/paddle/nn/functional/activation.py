@@ -35,7 +35,7 @@ __all__ = [
     'hard_swish',
     'hsigmoid',
     'leaky_relu',
-    'logsigmoid',
+    'log_sigmoid',
     'maxout',
     'prelu',
     'relu',
@@ -552,13 +552,13 @@ def relu(x, name=None):
     return out
 
 
-def logsigmoid(x, name=None):
+def log_sigmoid(x, name=None):
     """
-    logsigmoid activation.
+    log_sigmoid activation.
 
     .. math::
 
-        logsigmoid(x) = log \\frac{1}{1 + e^{-x}}
+        log\\_sigmoid(x) = log \\frac{1}{1 + e^{-x}}
     
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -573,20 +573,19 @@ def logsigmoid(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
             paddle.disable_static()
 
-            x = paddle.to_tensor(np.array([1.0, 2.0, 3.0, 4.0]))
-            out = F.logsigmoid(x) # [-0.313262 -0.126928 -0.0485874 -0.0181499]
+            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            out = F.log_sigmoid(x) # [-0.313262 -0.126928 -0.0485874 -0.0181499]
     """
 
     if in_dygraph_mode():
         return core.ops.logsigmoid(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                             'logsigmoid')
-    helper = LayerHelper("logsigmoid", **locals())
+                             'log_sigmoid')
+    helper = LayerHelper("log_sigmoid", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='logsigmoid', inputs={'X': x}, outputs={'Out': out})
     return out
@@ -652,8 +651,8 @@ def selu(x,
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        scale (float, optional): The value of scale for selu. Default is 1.0507009873554804934193349852946
-        alpha (float, optional): The value of alpha for selu. Default is 1.6732632423543772848170429916717
+        scale (float, optional): The value of scale(must be greater than 1.0) for selu. Default is 1.0507009873554804934193349852946
+        alpha (float, optional): The value of alpha(must be no less than zero) for selu. Default is 1.6732632423543772848170429916717
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -672,6 +671,14 @@ def selu(x,
             x = paddle.to_tensor(np.array([[0.0, 1.0],[2.0, 3.0]]))
             out = F.selu(x) # [[0, 1.050701],[2.101402, 3.152103]]
     """
+    if scale <= 1.0:
+        raise ValueError(
+            "The scale must be greater than 1.0. Received: {}.".format(scale))
+
+    if alpha < 0:
+        raise ValueError(
+            "The alpha must be no less than zero. Received: {}.".format(alpha))
+
     if in_dygraph_mode():
         return core.ops.selu(x, 'scale', scale, 'alpha', alpha)
 

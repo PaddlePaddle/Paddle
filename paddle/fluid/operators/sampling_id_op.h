@@ -51,20 +51,15 @@ class SamplingIdKernel : public framework::OpKernel<T> {
     framework::TensorToVector(*input, context.device_context(), &ins_vector);
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    std::minstd_rand engine;
-    if (seed == 0) {
-      seed = std::random_device()();
-    }
-    engine.seed(seed);
+
     std::uniform_real_distribution<T> dist(
         static_cast<T>(context.Attr<float>("min")),
         static_cast<T>(context.Attr<float>("max")));
 
+    auto engine = framework::GetCPURandomEngine(seed);
     std::vector<int64_t> ids(batch_size);
     for (int i = 0; i < batch_size; ++i) {
-      T r = framework::Generator::GetInstance()->is_init_py
-                ? dist(framework::Generator::GetInstance()->GetCPUEngine())
-                : dist(engine);
+      T r = dist(*engine);
       int idx = width - 1;
       for (int j = 0; j < width; ++j) {
         if ((r -= ins_vector[i * width + j]) < 0) {

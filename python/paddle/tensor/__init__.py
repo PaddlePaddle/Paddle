@@ -40,6 +40,8 @@ from .creation import full_like  #DEFINE_ALIAS
 from .creation import triu  #DEFINE_ALIAS
 from .creation import tril  #DEFINE_ALIAS
 from .creation import meshgrid  #DEFINE_ALIAS
+from .creation import empty  #DEFINE_ALIAS
+from .creation import empty_like  #DEFINE_ALIAS
 from .io import save  #DEFINE_ALIAS
 from .io import load  #DEFINE_ALIAS
 from .linalg import matmul  #DEFINE_ALIAS
@@ -54,6 +56,7 @@ from .linalg import cholesky  #DEFINE_ALIAS
 # from .linalg import tensordot        #DEFINE_ALIAS
 from .linalg import bmm  #DEFINE_ALIAS
 from .linalg import histogram  #DEFINE_ALIAS
+from .linalg import mv  #DEFINE_ALIAS
 from .logic import equal  #DEFINE_ALIAS
 from .logic import greater_equal  #DEFINE_ALIAS
 from .logic import greater_than  #DEFINE_ALIAS

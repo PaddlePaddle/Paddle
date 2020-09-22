@@ -211,7 +211,8 @@ def ffn(src, encoder_layer, ffn_fc1_act="relu"):
 class TestTransformer(unittest.TestCase):
     def test_multi_head_attention(self):
         def multihead_attention_test_helper(self_attention, cache):
-            paddle.framework.manual_seed(2020)
+            paddle.manual_seed(2020)
+            paddle.framework.random._manual_program_seed(2020)
             # self_attention|cross_attention, cache|No cache
             with fluid.dygraph.guard(fluid.CPUPlace()):
 
@@ -275,6 +276,7 @@ class TestTransformer(unittest.TestCase):
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
             paddle.framework.manual_seed(2020)
+            paddle.framework.random._manual_program_seed(2020)
 
             ffn_fc1_act = "relu"
             # 1.generate basic params
@@ -451,6 +453,141 @@ class TestTransformer(unittest.TestCase):
                 n_head,
                 dim_feedforward=dim_feedforward,
                 dropout=dropout)
+            src = paddle.to_variable(
+                np.random.rand(batch_size, source_length, d_model).astype(
+                    "float32"))
+            tgt = paddle.to_variable(
+                np.random.rand(batch_size, target_length, d_model).astype(
+                    "float32"))
+            src_mask = np.zeros((batch_size, n_head, source_length,
+                                 source_length)).astype("float32")
+            src_mask[0][0][0][0] = -np.inf
+            src_mask = paddle.to_variable(src_mask)
+            tgt_mask = np.zeros((batch_size, n_head, target_length,
+                                 target_length)).astype("float32")
+            tgt_mask[0][0][0][0] = -1e9
+            memory_mask = np.zeros((batch_size, n_head, target_length,
+                                    source_length)).astype("float32")
+            memory_mask[0][0][0][0] = -1e9
+            tgt_mask, memory_mask = paddle.to_variable(
+                tgt_mask), paddle.to_variable(memory_mask)
+            trans_output = transformer(src, tgt, src_mask, tgt_mask,
+                                       memory_mask)
+
+    def test_transformer_attr_1(self):
+        batch_size, d_model, n_head, dim_feedforward, dropout, _, _, source_length, target_length = generate_basic_params(
+            mode="decoder_layer")
+
+        # batch_size, source_length, target_length, d_model, n_head = 4, 8, 8, 64, 8
+        with fluid.dygraph.guard(fluid.CPUPlace()):
+            transformer = Transformer(
+                d_model,
+                n_head,
+                dim_feedforward=dim_feedforward,
+                dropout=dropout,
+                weight_attr=[None],
+                bias_attr=[False])
+            src = paddle.to_variable(
+                np.random.rand(batch_size, source_length, d_model).astype(
+                    "float32"))
+            tgt = paddle.to_variable(
+                np.random.rand(batch_size, target_length, d_model).astype(
+                    "float32"))
+            src_mask = np.zeros((batch_size, n_head, source_length,
+                                 source_length)).astype("float32")
+            src_mask[0][0][0][0] = -np.inf
+            src_mask = paddle.to_variable(src_mask)
+            tgt_mask = np.zeros((batch_size, n_head, target_length,
+                                 target_length)).astype("float32")
+            tgt_mask[0][0][0][0] = -1e9
+            memory_mask = np.zeros((batch_size, n_head, target_length,
+                                    source_length)).astype("float32")
+            memory_mask[0][0][0][0] = -1e9
+            tgt_mask, memory_mask = paddle.to_variable(
+                tgt_mask), paddle.to_variable(memory_mask)
+            trans_output = transformer(src, tgt, src_mask, tgt_mask,
+                                       memory_mask)
+
+    def test_transformer_attr_2(self):
+        batch_size, d_model, n_head, dim_feedforward, dropout, _, _, source_length, target_length = generate_basic_params(
+            mode="decoder_layer")
+
+        # batch_size, source_length, target_length, d_model, n_head = 4, 8, 8, 64, 8
+        with fluid.dygraph.guard(fluid.CPUPlace()):
+            transformer = Transformer(
+                d_model,
+                n_head,
+                dim_feedforward=dim_feedforward,
+                dropout=dropout,
+                weight_attr=[None, None],
+                bias_attr=[False, False])
+            src = paddle.to_variable(
+                np.random.rand(batch_size, source_length, d_model).astype(
+                    "float32"))
+            tgt = paddle.to_variable(
+                np.random.rand(batch_size, target_length, d_model).astype(
+                    "float32"))
+            src_mask = np.zeros((batch_size, n_head, source_length,
+                                 source_length)).astype("float32")
+            src_mask[0][0][0][0] = -np.inf
+            src_mask = paddle.to_variable(src_mask)
+            tgt_mask = np.zeros((batch_size, n_head, target_length,
+                                 target_length)).astype("float32")
+            tgt_mask[0][0][0][0] = -1e9
+            memory_mask = np.zeros((batch_size, n_head, target_length,
+                                    source_length)).astype("float32")
+            memory_mask[0][0][0][0] = -1e9
+            tgt_mask, memory_mask = paddle.to_variable(
+                tgt_mask), paddle.to_variable(memory_mask)
+            trans_output = transformer(src, tgt, src_mask, tgt_mask,
+                                       memory_mask)
+
+    def test_transformer_attr_3(self):
+        batch_size, d_model, n_head, dim_feedforward, dropout, _, _, source_length, target_length = generate_basic_params(
+            mode="decoder_layer")
+
+        # batch_size, source_length, target_length, d_model, n_head = 4, 8, 8, 64, 8
+        with fluid.dygraph.guard(fluid.CPUPlace()):
+            transformer = Transformer(
+                d_model,
+                n_head,
+                dim_feedforward=dim_feedforward,
+                dropout=dropout,
+                weight_attr=[None, None, None],
+                bias_attr=[False, False, True])
+            src = paddle.to_variable(
+                np.random.rand(batch_size, source_length, d_model).astype(
+                    "float32"))
+            tgt = paddle.to_variable(
+                np.random.rand(batch_size, target_length, d_model).astype(
+                    "float32"))
+            src_mask = np.zeros((batch_size, n_head, source_length,
+                                 source_length)).astype("float32")
+            src_mask[0][0][0][0] = -np.inf
+            src_mask = paddle.to_variable(src_mask)
+            tgt_mask = np.zeros((batch_size, n_head, target_length,
+                                 target_length)).astype("float32")
+            tgt_mask[0][0][0][0] = -1e9
+            memory_mask = np.zeros((batch_size, n_head, target_length,
+                                    source_length)).astype("float32")
+            memory_mask[0][0][0][0] = -1e9
+            tgt_mask, memory_mask = paddle.to_variable(
+                tgt_mask), paddle.to_variable(memory_mask)
+            trans_output = transformer(src, tgt, src_mask, tgt_mask,
+                                       memory_mask)
+
+    def test_transformer_attr_boolean(self):
+        batch_size, d_model, n_head, dim_feedforward, dropout, _, _, source_length, target_length = generate_basic_params(
+            mode="decoder_layer")
+
+        # batch_size, source_length, target_length, d_model, n_head = 4, 8, 8, 64, 8
+        with fluid.dygraph.guard(fluid.CPUPlace()):
+            transformer = Transformer(
+                d_model,
+                n_head,
+                dim_feedforward=dim_feedforward,
+                dropout=dropout,
+                bias_attr=False)
             src = paddle.to_variable(
                 np.random.rand(batch_size, source_length, d_model).astype(
                     "float32"))

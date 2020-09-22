@@ -38,7 +38,9 @@ IRPassManager::IRPassManager(Argument *argument) {
   graph_ = std::unique_ptr<Graph>(new Graph(argument->main_program()));
   if (argument->Has("scope")) {
     auto *scope_ptr = argument->scope_ptr();
-    PADDLE_ENFORCE(scope_ptr);
+    PADDLE_ENFORCE_NOT_NULL(scope_ptr,
+                            platform::errors::PreconditionNotMet(
+                                "The scope ptr should not be nullptr."));
     graph_->SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
   }
 
@@ -101,13 +103,17 @@ void IRPassManager::CreatePasses(Argument *argument,
       std::string optim_cache_dir = argument->optim_cache_dir();
       bool int8_valid =
           !(model_from_memory && optim_cache_dir.empty() && enable_int8);
-      PADDLE_ENFORCE(int8_valid,
-                     "When you are in TRT INT8 mode, and load model from "
-                     "memory, you should set optim_cache_dir using "
-                     "config.SetOptimCacheDir()");
-      PADDLE_ENFORCE(!(model_from_memory && use_static_engine),
-                     "When you are using Paddle-TRT, and also using load model "
-                     "from memory, you should set the use_static to false.");
+      PADDLE_ENFORCE_EQ(
+          int8_valid, true,
+          platform::errors::PreconditionNotMet(
+              "When you are in TRT INT8 mode, and load model from "
+              "memory, you should set optim_cache_dir using "
+              "config.SetOptimCacheDir()"));
+      PADDLE_ENFORCE_EQ(
+          !(model_from_memory && use_static_engine), true,
+          platform::errors::PreconditionNotMet(
+              "When you are using Paddle-TRT, and also using load model "
+              "from memory, you should set the use_static to false."));
 
       if (!optim_cache_dir.empty()) {
         pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
@@ -150,6 +156,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_xpu", new bool(argument->use_xpu()));
       pass->Set("xpu_l3_workspace_size",
                 new int(argument->xpu_l3_workspace_size()));
+      pass->Set("cpu_math_library_num_threads",
+                new int(argument->cpu_math_library_num_threads()));
     }
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {

@@ -39,6 +39,11 @@ class SegmentPoolFunctor<platform::CPUDeviceContext, T, IndexT> {
     for (int64_t idx = 1; idx <= segments.numel(); ++idx) {
       if (idx < segments.numel()) {
         if (segment_ids[idx] == curent_id) continue;
+        PADDLE_ENFORCE_GE(segment_ids[idx], curent_id,
+                          platform::errors::InvalidArgument(
+                              "The segment ids should be sorted, but got "
+                              "segment_ids[%d]:%d > segment_ids[%d]:%d.",
+                              idx - 1, curent_id, idx, segment_ids[idx]));
       }
 
       Tensor out_t = output->Slice(curent_id, curent_id + 1);
@@ -89,6 +94,11 @@ class SegmentPoolGradFunctor<platform::CPUDeviceContext, T, IndexT> {
     for (int64_t idx = 1; idx <= segments.numel(); ++idx) {
       if (idx < segments.numel()) {
         if (segment_ids[idx] == curent_id) continue;
+        PADDLE_ENFORCE_GE(segment_ids[idx], curent_id,
+                          platform::errors::InvalidArgument(
+                              "The segment ids should be sorted, but got "
+                              "segment_ids[%d]:%d > segment_ids[%d]:%d.",
+                              idx - 1, curent_id, idx, segment_ids[idx]));
       }
 
       Tensor out_g_t = out_grad.Slice(curent_id, curent_id + 1);
