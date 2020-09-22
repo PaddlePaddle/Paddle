@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_op_handle.h"
@@ -92,6 +93,12 @@ class MemoryReusePass : public Pass {
 
   int64_t GetMemorySize(const details::VarHandle &var) const;
 
+  void AddReuseVar(details::ComputationOpHandle *op, details::VarHandle *in_var,
+                   details::VarHandle *out_var, bool share_dims = false) const;
+  virtual void UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
+                                     details::VarHandle *in_var,
+                                     details::VarHandle *out_var) const;
+
  private:
   VarDesc *GetVarDesc(const details::VarHandle &var) const;
 
@@ -108,13 +115,6 @@ class MemoryReusePass : public Pass {
   void CollectShareTensorBufferOpHandles() const;
 
   void CollectReusedVars() const;
-
-  void AddReuseVar(details::ComputationOpHandle *op, details::VarHandle *in_var,
-                   details::VarHandle *out_var) const;
-
-  void UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
-                             details::VarHandle *in_var,
-                             details::VarHandle *out_var) const;
 
  private:
   mutable Graph *graph_;

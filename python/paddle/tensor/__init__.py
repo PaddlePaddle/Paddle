@@ -54,6 +54,7 @@ from .linalg import cholesky  #DEFINE_ALIAS
 # from .linalg import tensordot        #DEFINE_ALIAS
 from .linalg import bmm  #DEFINE_ALIAS
 from .linalg import histogram  #DEFINE_ALIAS
+from .linalg import mv  #DEFINE_ALIAS
 from .logic import equal  #DEFINE_ALIAS
 from .logic import greater_equal  #DEFINE_ALIAS
 from .logic import greater_than  #DEFINE_ALIAS
@@ -168,7 +169,6 @@ from .math import prod  #DEFINE_ALIAS
 from .random import standard_normal
 from .random import normal
 from .random import uniform  #DEFINE_ALIAS
-from .random import shuffle  #DEFINE_ALIAS
 from .random import randn  #DEFINE_ALIAS
 from .random import rand  #DEFINE_ALIAS
 from .random import randint  #DEFINE_ALIAS

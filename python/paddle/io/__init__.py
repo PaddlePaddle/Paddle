@@ -25,19 +25,8 @@ __all__ = [
     'Sampler',
     'SequenceSampler',
     'RandomSampler',
-    'batch',
-    'shuffle',
-    'buffered',
-    'cache',
-    'chain',
-    'firstn',
-    'compose',
-    'map_readers',
-    'xmap_readers'
 ]
 
 from ..fluid.io import DataLoader
 from ..fluid.dataloader import Dataset, IterableDataset, BatchSampler, get_worker_info, \
         TensorDataset, Sampler, SequenceSampler, RandomSampler, DistributedBatchSampler
-from ..batch import batch
-from ..reader import shuffle, buffered, cache, chain, firstn, compose, map_readers, xmap_readers

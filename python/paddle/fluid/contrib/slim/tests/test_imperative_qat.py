@@ -181,7 +181,6 @@ class TestImperativeQat(unittest.TestCase):
 
                     img = fluid.dygraph.to_variable(x_data)
                     label = fluid.dygraph.to_variable(y_data)
-
                     out = lenet(img)
                     acc = fluid.layers.accuracy(out, label)
                     loss = fluid.layers.cross_entropy(out, label)
