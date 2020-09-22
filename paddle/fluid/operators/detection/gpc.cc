@@ -696,7 +696,7 @@ static bbox *create_contour_bboxes(gpc_polygon *p) {
 
   gpc_malloc<bbox>(box, p->num_contours * sizeof(bbox),
                    const_cast<char *>("Bounding box creation"));
-  PADDLE_ENFORCE_NOT_NULL(box, paddle::platform::errors::Unavailable(
+  PADDLE_ENFORCE_NOT_NULL(box, paddle::platform::errors::ResourceExhausted(
                                    "Failed to malloc box memory."));
 
   /* Construct contour bounding boxes */
@@ -862,7 +862,7 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
   gpc_malloc<int>(extended_hole, (p->num_contours + 1) * sizeof(int),
                   const_cast<char *>("contour hole addition"));
   PADDLE_ENFORCE_NOT_NULL(extended_hole,
-                          paddle::platform::errors::Unavailable(
+                          paddle::platform::errors::ResourceExhausted(
                               "Failed to malloc extended hole memory."));
 
   /* Create an extended contour array */
@@ -981,7 +981,7 @@ void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   /* Build scanbeam table from scanbeam tree */
   gpc_malloc<double>(sbt, sbt_entries * sizeof(double),
                      const_cast<char *>("sbt creation"));
-  PADDLE_ENFORCE_NOT_NULL(sbt, paddle::platform::errors::Unavailable(
+  PADDLE_ENFORCE_NOT_NULL(sbt, paddle::platform::errors::ResourceExhausted(
                                    "Failed to malloc scanbeam table memory."));
 
   build_sbt(&scanbeam, sbt, sbtree);
@@ -1622,7 +1622,7 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   /* Build scanbeam table from scanbeam tree */
   gpc_malloc<double>(sbt, sbt_entries * sizeof(double),
                      const_cast<char *>("sbt creation"));
-  PADDLE_ENFORCE_NOT_NULL(sbt, paddle::platform::errors::Unavailable(
+  PADDLE_ENFORCE_NOT_NULL(sbt, paddle::platform::errors::ResourceExhausted(
                                    "Failed to malloc scanbeam table memory."));
   build_sbt(&scanbeam, sbt, sbtree);
   scanbeam = 0;

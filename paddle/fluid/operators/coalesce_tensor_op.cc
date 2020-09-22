@@ -75,7 +75,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
             platform::errors::InvalidArgument(
                 "The input and output variable of CoalesceTensor operator is "
                 "different, %dth input is %s, %dth output is %s.",
-                in_var_names[i], out_var_names[i]));
+                i, in_var_names[i], i, out_var_names[i]));
       }
     } else {
       // Init the output as input
