@@ -50,8 +50,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     const Tensor* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* output = ctx.Output<Tensor>("Output");
@@ -66,8 +67,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     bool deterministic = FLAGS_cudnn_deterministic;
     auto exhaustive_deterministic = exhaustive_search && deterministic;
     PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
-           platform::errors::InvalidArgument("Cann't set exhaustive_search True and "
-          "FLAGS_cudnn_deterministic True at same time."));
+                      platform::errors::InvalidArgument(
+                          "Cann't set exhaustive_search True and "
+                          "FLAGS_cudnn_deterministic True at same time."));
 
     const std::string padding_algorithm =
         ctx.Attr<std::string>("padding_algorithm");
@@ -198,7 +200,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
               &transformed_input);
         } break;
         default:
-          PADDLE_THROW(platform::errors::InvalidArgument("ConvOp only support tensors with 4 or 5 dimensions."));
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "ConvOp only support tensors with 4 or 5 dimensions."));
       }
 
     } else {
@@ -318,8 +321,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     auto input = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
@@ -344,8 +348,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     bool deterministic = FLAGS_cudnn_deterministic;
     auto exhaustive_deterministic = exhaustive_search && deterministic;
     PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
-           platform::errors::InvalidArgument("Cann't set exhaustive_search True and "
-          "FLAGS_cudnn_deterministic True at same time."));
+                      platform::errors::InvalidArgument(
+                          "Cann't set exhaustive_search True and "
+                          "FLAGS_cudnn_deterministic True at same time."));
 
     const std::string data_format = ctx.Attr<std::string>("data_format");
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
@@ -497,7 +502,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
               &transformed_input);
         } break;
         default:
-          PADDLE_THROW(platform::errors::InvalidArgument("ConvOp only support tensors with 4 or 5 dimensions."));
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "ConvOp only support tensors with 4 or 5 dimensions."));
       }
     } else {
       transformed_input.ShareDataWith(transformed_input_channel);
@@ -703,8 +709,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     auto X = ctx.Input<Tensor>("Input");
     auto W = ctx.Input<Tensor>("Filter");
     auto dO = ctx.Input<Tensor>("DOutput");
@@ -744,8 +751,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     bool deterministic = FLAGS_cudnn_deterministic;
     auto exhaustive_deterministic = exhaustive_search && deterministic;
     PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
-           platform::errors::InvalidArgument("Cann't set exhaustive_search True and "
-          "FLAGS_cudnn_deterministic True at same time."));
+                      platform::errors::InvalidArgument(
+                          "Cann't set exhaustive_search True and "
+                          "FLAGS_cudnn_deterministic True at same time."));
 
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
 
@@ -881,7 +889,8 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
           }
         } break;
         default:
-          PADDLE_THROW(platform::errors::InvalidArgument("ConvOp only support tensors with 4 or 5 dimensions."));
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "ConvOp only support tensors with 4 or 5 dimensions."));
       }
 
     } else {

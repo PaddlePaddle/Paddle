@@ -51,8 +51,9 @@ template <typename T>
 class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* output = ctx.Output<Tensor>("Output");
@@ -145,8 +146,8 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
               ctx, input_pad, input_transpose, pad_value, &transformed_input);
         } break;
         default:
-          PADDLE_THROW(
-              platform::errors::InvalidArgument("Op(ConvTranspose) only supports 4-D or 5-D input Tensor."));
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Op(ConvTranspose) only supports 4-D or 5-D input Tensor."));
       }
     } else {
       transformed_input = input_transpose;
@@ -289,8 +290,9 @@ template <typename T>
 class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                    paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     auto input = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
@@ -392,8 +394,8 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
               &transformed_output_grad);
         } break;
         default:
-          PADDLE_THROW(
-              platform::errors::InvalidArgument("Op(ConvTranspose) only supports 4-D or 5-D input Tensor."));
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Op(ConvTranspose) only supports 4-D or 5-D input Tensor."));
       }
     } else {
       transformed_output_grad = output_grad_transpose;
