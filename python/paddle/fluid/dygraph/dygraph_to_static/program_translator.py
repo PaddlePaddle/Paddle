@@ -528,7 +528,7 @@ def _verify_init_in_dynamic_mode(class_instance):
     """
     Verifies the instance is initialized in dynamic mode.
     """
-    if isinstance(selfclass_instance, layers.Layer):
+    if isinstance(class_instance, layers.Layer):
         if not class_instance._init_in_dynamic_mode:
             raise RuntimeError(
                 " `paddle.jit.to_static` is only available in dynamic mode. Please call `paddle.disable_static()` before "
