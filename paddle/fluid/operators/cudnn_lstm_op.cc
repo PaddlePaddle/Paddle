@@ -261,9 +261,6 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     if (this->HasInput("WeightList")) {
       op->SetInput("WeightList", this->Input("WeightList"));
     }
-    if (this->HasInput("W")) {
-      op->SetInput("W", this->Input("W"));
-    }
     if (this->HasInput("SequenceLength")) {
       op->SetInput("SequenceLength", this->Input("SequenceLength"));
     }
@@ -277,10 +274,6 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     if (this->HasInput("WeightList")) {
       op->SetOutput(framework::GradVarName("WeightList"),
                     this->InputGrad("WeightList", false));
-    }
-
-    if (this->HasInput("W")) {
-      op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
     }
 
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));

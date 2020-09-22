@@ -178,7 +178,8 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
                       .stream();
     if (is_test && ctx.HasInput("W")) {
       auto *W = ctx.Input<Tensor>("W");
-      w_initialized = W->numel() > 0 ? true : false;
+      w_initialized = W->IsInitialized() ? true : false;
+      weight_numel = W->numel();
     }
     if (!w_initialized) {
       auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
@@ -187,10 +188,11 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
       weight_numel = size_sum(weight_list);
 
       if (!continuous) {
-        LOG(WARNING) << "If the memory space of the Input WeightList is not "
-                        "continuous, a less efficient calculation will be "
-                        "called. Please call coalesce_tensor op to make the "
-                        "input memory continuous.";
+        LOG_FIRST_N(WARNING, 2)
+            << "If the memory space of the Input WeightList is not "
+               "continuous, less efficient calculation will be "
+               "called. Please call coalesce_tensor op to make the "
+               "input memory continuous.";
         weight_whole.mutable_data<T>({weight_numel}, place);
         weight_to_tensor<T>(place, stream, weight_list, &weight_whole);
         w_data = weight_whole.data<T>();
@@ -219,7 +221,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
       LSTMInferece<T>(has_seq_length, handle, seq_length, &rnn, x_data,
                       init_h_data, init_c_data, w_data, out_data, last_h_data,
                       last_c_data, &workspace_data_, workspace_size);
-      if (ctx.HasInput("W")) {
+      if (ctx.HasInput("W") && ctx.HasInput("WeightList")) {
         auto *W = const_cast<Tensor *>(ctx.Input<Tensor>("W"));
         auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
         W->mutable_data<T>({weight_numel}, place);

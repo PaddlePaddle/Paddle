@@ -378,7 +378,6 @@ class LSTM(RNNMixin):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestCUDNNLstmOp(OpTest):
-    #TODO(GaoWei8): Need to satisfy the result through the new interface
     def get_weight_names(self):
         weight_names = []
         for i in range(2 * self.num_layers):
@@ -484,13 +483,6 @@ class TestCUDNNLstmOp(OpTest):
                 place,
                 set(['Input', var_name, 'InitH', 'InitC']),
                 ['Out', 'LastH', 'LastC'])
-
-
-#@unittest.skipIf(not core.is_compiled_with_cuda(),
-#                 "core is not compiled with CUDA")
-#class TestCUDNNLstmOp2(TestCUDNNLstmOp):
-#    def set_attrs(self):
-#        self.num_layers = 2
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
