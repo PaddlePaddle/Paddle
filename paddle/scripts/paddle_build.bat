@@ -213,10 +213,10 @@ echo    ========================================
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "Build"
-tree /F %cd%\fluid_inference_install_dir\paddle
-%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\fluid_inference_install_dir\paddle\lib > lib_size.txt
+tree /F %cd%\paddle_inference_install_dir\paddle
+%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
 set /p libsize=< lib_size.txt
-for /F %%i in ("%libsize%") do echo "Windows FLuid_Inference Size: %%i"
+for /F %%i in ("%libsize%") do echo "Windows Paddle_Inference Size: %%i"
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
 set /p whlsize=< whl_size.txt
 for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
