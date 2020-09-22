@@ -686,7 +686,8 @@ class ZeroOptimizer(MetaOptimizerBase):
             self._insert_cast_ops(block, subprog._end_idx, cast_ops)
 
             # step6: add broadcast ops
-            self._insert_broadcast_ops(block, subprog._end_idx, broadcast_vars)
+            self._insert_broadcast_ops(block, subprog._start_idx,
+                                       broadcast_vars)
 
             # step7: add all_reduce ops
             self._insert_allreduce_ops(block, subprog._start_idx,
