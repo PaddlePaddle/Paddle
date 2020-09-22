@@ -510,8 +510,11 @@ class QuantizedNoweightLayer(layers.Layer):
         self.layer = layer
         self._fake_quant_input = _get_fake_quant_type(
             activation_quantize_type,
-            layer.full_name(), moving_rate, activation_bits, self._dtype, False,
-            None)
+            name=layer.full_name(),
+            moving_rate=moving_rate,
+            quant_bits=activation_bits,
+            dtype=self._dtype,
+            quant_on_weight=False)
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
