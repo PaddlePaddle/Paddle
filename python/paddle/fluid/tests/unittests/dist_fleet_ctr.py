@@ -30,6 +30,8 @@ import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
 from paddle.distributed.fleet.base.util_factory import fleet_util
 
+paddle.enable_static()
+
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
