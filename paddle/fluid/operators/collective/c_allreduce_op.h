@@ -158,7 +158,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
         sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-                "PaddlePaddle should compile with GPU.");
+        "PaddlePaddle should compile with GPU."));
 #endif
   }
 };
