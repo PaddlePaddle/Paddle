@@ -169,16 +169,24 @@ def append_send_ops_pass(program, config, merge=False):
     trainer_id = config.get_role_id()
     pserver_endpoints = config.get_ps_endpoints()
 
-    def _append_send_op(union_vars, queue):
+    def _append_send_op():
 
-        send_input_vars = []
-        assert (len(queue) == len(union_vars))
-        for i in range(len(queue)):
-            if queue[i] == STEP_COUNTER:
-                send_input_vars.append("")
-            else:
-                send_input_vars.append(program.global_block().vars[union_vars[
-                    i]])
+        sparse_var = []
+        sparse_tables = []
+        unique_sparse_var = {}
+        for op in program.global_block().ops:
+            if "is_sparse" in op.all_attrs():
+                if op.type == "lookup_table":
+                    op._set_attr('remote_prefetch', False)
+                for input_var_name, sparse_var_name in zip(
+                        op.input("Ids"), op.input("W")):
+                    if input_var_name in unique_sparse_var:
+                        if unique_sparse_var[input_var_name] == sparse_var_name:
+                            continue
+                    input_var = program.global_block().var(input_var_name)
+                    sparse_var.append(input_var)
+                    sparse_tables.append(sparse_var_name)
+                    unique_sparse_var[input_var_name] = sparse_var_name
 
         dummy_output = []
         if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
@@ -187,10 +195,10 @@ def append_send_ops_pass(program, config, merge=False):
 
         program.global_block().append_op(
             type="send",
-            inputs={"X": send_input_vars},
+            inputs={"X": sparse_var},
             outputs={"Out": dummy_output},
             attrs={
-                "send_varnames": queue,
+                "send_varnames": sparse_tables,
                 "merge_add": True,
                 "use_send_handler": False,
                 "endpoints": pserver_endpoints,
@@ -216,17 +224,10 @@ def append_send_ops_pass(program, config, merge=False):
     sends = config.get_trainer_send_context()
 
     if merge:
-        origin_varnames = []
-        merged_names = []
-        for merged_name, send in sends.items():
-            for var in send.origin_varnames():
-                origin_varnames.append(var)
-                merged_names.append(merged_name)
-        if len(origin_varnames) > 0:
-            dummys.append(_append_send_op(origin_varnames, merged_names))
+        dummys.append(_append_send_op())
     else:
         for merged_name, send in sends.items():
-            dummys.append(_append_send_op(send.origin_varnames(), merged_name))
+            dummys.append(_append_send_op())
 
     if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
         _append_barrier_op(dummys)

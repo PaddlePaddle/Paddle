@@ -426,7 +426,8 @@ class GeoCommunicator : public AsyncCommunicator {
 
   // void SendByCommunicator(int batches) override;
 
-  void SendSparse(const std::string &varname, int ep_idx);
+  void SendSparse(const std::string &varname, int ep_idx,
+                  const std::vector<SparseIdsMap> &ids_send_vec);
 
   void SendDense(const std::string &varname);
 
