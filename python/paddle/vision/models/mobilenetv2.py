@@ -30,14 +30,10 @@ model_urls = {
 
 
 def _make_divisible(v, divisor, min_value=None):
-    """
-    This function is taken from the original tf repo.
-    It ensures that all layers have a channel number that is divisible by 8
-    """
     if min_value is None:
         min_value = divisor
     new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
-    # Make sure that round down does not go down by more than 10%.
+
     if new_v < 0.9 * v:
         new_v += divisor
     return new_v
@@ -67,32 +63,31 @@ class ConvBNReLU(nn.Sequential):
 
 
 class InvertedResidual(nn.Layer):
-    def __init__(self, inp, oup, stride, expand_ratio, norm_layer=None):
+    def __init__(self,
+                 inp,
+                 oup,
+                 stride,
+                 expand_ratio,
+                 norm_layer=nn.BatchNorm2d):
         super(InvertedResidual, self).__init__()
         self.stride = stride
         assert stride in [1, 2]
-
-        if norm_layer is None:
-            norm_layer = nn.BatchNorm2d
 
         hidden_dim = int(round(inp * expand_ratio))
         self.use_res_connect = self.stride == 1 and inp == oup
 
         layers = []
         if expand_ratio != 1:
-            # pw
             layers.append(
                 ConvBNReLU(
                     inp, hidden_dim, kernel_size=1, norm_layer=norm_layer))
         layers.extend([
-            # dw
             ConvBNReLU(
                 hidden_dim,
                 hidden_dim,
                 stride=stride,
                 groups=hidden_dim,
                 norm_layer=norm_layer),
-            # pw-linear
             nn.Conv2d(
                 hidden_dim, oup, 1, 1, 0, bias_attr=False),
             norm_layer(oup),
@@ -134,7 +129,6 @@ class MobileNetV2(nn.Layer):
         round_nearest = 8
         norm_layer = nn.BatchNorm2d
         inverted_residual_setting = [
-            # t, c, n, s
             [1, 16, 1, 1],
             [6, 24, 2, 2],
             [6, 32, 3, 2],
@@ -144,7 +138,6 @@ class MobileNetV2(nn.Layer):
             [6, 320, 1, 1],
         ]
 
-        # building first layer
         input_channel = _make_divisible(input_channel * scale, round_nearest)
         self.last_channel = _make_divisible(last_channel * max(1.0, scale),
                                             round_nearest)
@@ -152,7 +145,7 @@ class MobileNetV2(nn.Layer):
             ConvBNReLU(
                 3, input_channel, stride=2, norm_layer=norm_layer)
         ]
-        # building inverted residual blocks
+
         for t, c, n, s in inverted_residual_setting:
             output_channel = _make_divisible(c * scale, round_nearest)
             for i in range(n):
@@ -165,21 +158,19 @@ class MobileNetV2(nn.Layer):
                         expand_ratio=t,
                         norm_layer=norm_layer))
                 input_channel = output_channel
-        # building last several layers
+
         features.append(
             ConvBNReLU(
                 input_channel,
                 self.last_channel,
                 kernel_size=1,
                 norm_layer=norm_layer))
-        # make it nn.Sequential
+
         self.features = nn.Sequential(*features)
 
-        # building classifier
         if self.num_classes > 0:
             self.classifier = nn.Sequential(
-                nn.Dropout(0.2),
-                nn.Linear(self.last_channel, num_classes), )
+                nn.Dropout(0.2), nn.Linear(self.last_channel, num_classes))
 
     def forward(self, x):
         x = self.features(x)
