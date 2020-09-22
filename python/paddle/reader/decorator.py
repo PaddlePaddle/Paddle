@@ -52,11 +52,14 @@ def cache(reader):
         .. code-block:: python
 
             import paddle
+            
             def reader():
                 for i in range(3):
                     yield i
+            
             # All data is cached into memory
             cached_reader = paddle.io.cache(reader)
+            
             # Output: 0 1 2
             for i in cached_reader():
                 print(i)
@@ -305,11 +308,14 @@ def buffered(reader, size):
         .. code-block:: python
 
             import paddle
+            
             def reader():
                 for i in range(3):
                     yield i
+            
             # Create a buffered reader, and the buffer size is 2.
             buffered_reader = paddle.io.buffered(reader, 2)
+            
             # Output: 0 1 2
             for i in buffered_reader():
                 print(i)
