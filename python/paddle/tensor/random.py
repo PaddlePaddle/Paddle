@@ -21,14 +21,11 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid.layers import utils
 import paddle
 
-from ..fluid.io import shuffle  #DEFINE_ALIAS
-
 __all__ = [
     'bernoulli',
     'standard_normal',
     'normal',
     'uniform',
-    'shuffle',
     'randn',
     'rand',
     'randint',
