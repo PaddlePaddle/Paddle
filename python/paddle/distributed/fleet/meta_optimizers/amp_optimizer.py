@@ -22,9 +22,13 @@ class AMPOptimizer(MetaOptimizerBase):
         self.amp_opt = None
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = [
-            "LarsOptimizer", "LambOptimizer", "RecomputeOptimizer",
-            "LocalSGDOptimizer", "GradientMergeOptimizer",
-            "GraphExecutionOptimizer"
+            "LarsOptimizer",
+            "LambOptimizer",
+            "RecomputeOptimizer",
+            "LocalSGDOptimizer",
+            "GradientMergeOptimizer",
+            "GraphExecutionOptimizer",
+            "AdaptiveLocalSGDOptimizer",
         ]
         self.meta_optimizers_black_list = ["DGCOptimizer"]
 

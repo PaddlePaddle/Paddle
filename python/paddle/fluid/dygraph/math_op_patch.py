@@ -62,31 +62,15 @@ def monkey_patch_math_varbase():
             Tensor: a new Tensor with target dtype
 
         Examples:
-            In Static Graph Mode:
-
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-
-                startup_prog = fluid.Program()
-                main_prog = fluid.Program()
-                with fluid.program_guard(startup_prog, main_prog):
-                    original_variable = fluid.data(name = "new_variable", shape=[2,2], dtype='float32')
-                    new_variable = original_variable.astype('int64')
-                    print("new var's dtype is: {}".format(new_variable.dtype))
-
-            In Dygraph Mode:
-
             .. code-block:: python
 
                 import paddle
                 import numpy as np
 
-                x = np.ones([2, 2], np.float32)
-                original_tensor = paddle.to_tensor(x)
-                print("original tensor's dtype is: {}, numpy dtype is {}".format(original_tensor.dtype, original_tensor.numpy().dtype))
-                new_tensor = original_tensor.astype('int64')
-                print("new tensor's dtype is: {}, numpy dtype is {}".format(new_tensor.dtype, new_tensor.numpy().dtype))
+                original_tensor = paddle.ones([2, 2])
+                print("original tensor's dtype is: {}".format(original_tensor.dtype))
+                new_tensor = original_tensor.astype('float32')
+                print("new tensor's dtype is: {}".format(new_tensor.dtype))
 
         """
         if not isinstance(dtype, core.VarDesc.VarType):
@@ -275,9 +259,12 @@ def monkey_patch_math_varbase():
         import paddle.tensor
         # Tensor method from module paddle.tensor
         tensor_methods = paddle.tensor.linalg.__all__ + \
-            paddle.tensor.math.__all__ + paddle.tensor.logic.__all__ + \
-                paddle.tensor.manipulation.__all__ + paddle.tensor.search.__all__ + \
-                paddle.tensor.stat.__all__ + paddle.tensor.attribute.__all__
+                         paddle.tensor.math.__all__ + \
+                         paddle.tensor.logic.__all__ + \
+                         paddle.tensor.manipulation.__all__ + \
+                         paddle.tensor.search.__all__ + \
+                         paddle.tensor.stat.__all__ + \
+                         paddle.tensor.attribute.__all__
         for method_name in tensor_methods:
             if hasattr(core.VarBase, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)

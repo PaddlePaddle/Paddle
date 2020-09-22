@@ -350,9 +350,12 @@ def monkey_patch_variable():
     else:
         import paddle.tensor
         variabel_methods = paddle.tensor.linalg.__all__ + \
-            paddle.tensor.math.__all__ + paddle.tensor.logic.__all__ + \
-                paddle.tensor.manipulation.__all__ + paddle.tensor.search.__all__ + \
-                paddle.tensor.stat.__all__ + paddle.tensor.attribute.__all__
+                           paddle.tensor.math.__all__ + \
+                           paddle.tensor.logic.__all__ + \
+                           paddle.tensor.manipulation.__all__ + \
+                           paddle.tensor.search.__all__ + \
+                           paddle.tensor.stat.__all__ + \
+                           paddle.tensor.attribute.__all__
         for method_name in variabel_methods:
             if hasattr(Variable, method_name): continue
             method_impl = getattr(paddle.tensor, method_name, None)

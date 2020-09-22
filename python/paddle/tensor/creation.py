@@ -49,6 +49,7 @@ __all__ = [
     'full',
     'full_like',
     'empty',
+    'empty_like',
     'triu',
     'tril',
     'meshgrid'
@@ -1060,6 +1061,73 @@ def empty(shape, dtype=None, name=None):
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
     attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
+    helper.append_op(
+        type='empty',
+        inputs=inputs,
+        outputs={'Out': [out]},
+        attrs=attrs,
+        stop_gradient=True)
+    out.stop_gradient = True
+    return out
+
+
+def empty_like(x, dtype=None, name=None):
+    """
+    This Op returns a Tensor with uninitialized data which has identical shape of ``x`` and ``dtype``.
+    If the ``dtype`` is None, the data type of Tensor is same with ``x``.
+    
+    Args:
+        x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
+        dtype(np.dtype|str, optional): The data type of output. The data type can be one
+            of bool, float16, float32, float64, int32, int64. The default value is None, which means the output 
+            data type is the same as input.
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Tensor: Tensor which is created according to ``x`` and ``dtype``, and is uninitialized.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+
+          paddle.disable_static()   # Now we are in imperative mode
+          paddle.set_device("cpu")  # and use cpu device
+
+          x = paddle.randn([2, 3], 'float32')
+          output = paddle.empty_like(x)
+          #[[1.8491974e+20 1.8037303e+28 1.7443726e+28]     # uninitialized
+          # [4.9640171e+28 3.0186127e+32 5.6715899e-11]]    # uninitialized
+    """
+
+    if dtype is None:
+        dtype = x.dtype
+    dtype = convert_dtype(dtype)
+
+    if in_dygraph_mode():
+        out = core.ops.empty('shape', x.shape, 'dtype',
+                             convert_np_dtype_to_dtype_(dtype))
+        out.stop_gradient = True
+        return out
+
+    helper = LayerHelper("empty_like", **locals())
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'empty_like')
+    check_dtype(dtype, 'dtype',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'empty_like')
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    inputs = {}
+    attrs = {}
+    attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
+    shape = paddle.shape(x)
+    utils.get_shape_tensor_inputs(
+        inputs=inputs, attrs=attrs, shape=shape, op_type='empty_like')
+
     helper.append_op(
         type='empty',
         inputs=inputs,
