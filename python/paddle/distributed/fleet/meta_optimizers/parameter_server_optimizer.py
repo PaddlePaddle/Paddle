@@ -13,6 +13,7 @@
 
 from paddle import fluid
 from .meta_optimizer_base import MetaOptimizerBase
+from ..base.private_helper_function import wait_server_ready
 from paddle.fluid import core
 import subprocess
 import re
@@ -74,6 +75,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             _startup = worker.delet_extra_optimizes_pass(_startup,
                                                          compiled_config)
 
+            compiled_config.set_origin_ps_main_program(_main)
+            compiled_config.set_origin_ps_startup_program(_startup)
             # for heter program
             if self.role_maker._is_heter_parameter_server_mode:
                 from paddle.fluid.incubate.fleet.parameter_server.ir import heter_trainer_pass as heter_worker
@@ -91,6 +94,16 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         else:
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
+            compiled_config.set_origin_ps_main_program(_main)
+            compiled_config.set_origin_ps_startup_program(_startup)
+
+        # for trainer wait server ready
+        wait_server_ready(self.role_maker._get_pserver_endpoints())
+
+        # for ps-heter mode, wait heter worker ready
+        if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
+        ):
+            wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
         return _main, _startup
 
