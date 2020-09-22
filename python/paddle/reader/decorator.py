@@ -32,6 +32,21 @@ import random
 import zlib
 import paddle.compat as cpt
 
+# On macOS, the 'spawn' start method is now the default in Python3.8 multiprocessing,
+# Paddle is currently unable to solve this, so forces the process to start using 
+# the 'fork' start method.
+#
+# TODO: This solution is not good, because the fork start method could lead to 
+# crashes of the subprocess. Figure out how to make 'spawn' work.
+#
+# For more details, please refer to
+# https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
+# https://bugs.python.org/issue33725
+if sys.version_info >= (3, 8) and sys.platform == 'darwin':
+    fork_context = multiprocessing.get_context('fork')
+else:
+    fork_context = multiprocessing
+
 
 def cache(reader):
     """
@@ -556,9 +571,9 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
             six.reraise(*sys.exc_info())
 
     def queue_reader():
-        queue = multiprocessing.Queue(queue_size)
+        queue = fork_context.Queue(queue_size)
         for reader in readers:
-            p = multiprocessing.Process(
+            p = fork_context.Process(
                 target=_read_into_queue, args=(reader, queue))
             p.start()
 
@@ -589,9 +604,9 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     def pipe_reader():
         conns = []
         for reader in readers:
-            parent_conn, child_conn = multiprocessing.Pipe()
+            parent_conn, child_conn = fork_context.Pipe()
             conns.append(parent_conn)
-            p = multiprocessing.Process(
+            p = fork_context.Process(
                 target=_read_into_pipe, args=(reader, child_conn))
             p.start()
 
