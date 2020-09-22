@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/platform/errors.h"
 #include "xpu/api.h"
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
@@ -40,9 +41,9 @@ class XPUActHelper {
         {"square", xpu::Activation_t::SQUARE}};
 
     auto res = str2act.find(act_type_str);
-    PADDLE_THROW_NE(res, str2act.end(),
-                    platform::errors::InvalidArgument(
-                        "Invalid activation type(%s) in XPU", act_type_str));
+    PADDLE_ENFORCE_NE(res, str2act.end(),
+                      paddle::platform::errors::InvalidArgument(
+                          "Invalid activation type(%s) in XPU", act_type_str));
     return res->second;
   }
 };

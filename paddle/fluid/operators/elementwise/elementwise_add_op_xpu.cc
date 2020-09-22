@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include <memory>
 #include <string>
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 #include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
@@ -63,7 +63,7 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
       dy_data = dy->data<T>();
     }
 
-    int pre, n, post;
+    int pre, n, post, is_common_broadcast;
     if (dx_dims == dy_dims_untrimed) {
       pre = post = 1;
       n = dout->numel();
@@ -73,7 +73,8 @@ class ElementwiseAddGradXPUKernel : public ElemwiseGradKernel<T> {
                      "Axis should be in range [0, dx_dims)");
       auto dy_dims = trim_trailing_singular_dims(dy_dims_untrimed);
       axis = (dy_dims.size() == 0) ? dx_dims.size() : axis;
-      get_mid_dims(dx_dims, dy_dims, axis, &pre, &n, &post);
+      get_mid_dims(dx_dims, dy_dims, axis, &pre, &n, &post,
+                   &is_common_broadcast);
     }
     int len = pre * n * post;
 

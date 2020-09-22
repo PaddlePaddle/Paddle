@@ -38,9 +38,7 @@ void XPUElementwise(const framework::ExecutionContext& ctx) {
   PADDLE_ENFORCE(platform::is_xpu_place(ctx.GetPlace()),
                  "This kernel only runs on XPU device.");
   auto x_var = ctx.InputVar("X");
-  PADDLE_ENFORCE(x_var != nullptr,
-                 "Cannot get input Variable X, variable name = %s",
-                 ctx.op().Input("X"));
+  PADDLE_ENFORCE(x_var != nullptr, "Cannot get input Variable X");
   PADDLE_ENFORCE(x_var->IsType<framework::LoDTensor>(),
                  "XPU only support LoDTensor");
 
@@ -59,8 +57,8 @@ void XPUElementwise(const framework::ExecutionContext& ctx) {
                  "Axis should be in range [0, x_dims)");
   auto y_dims = trim_trailing_singular_dims(y_dims_untrimed);
   axis = (y_dims.size() == 0) ? x_dims.size() : axis;
-  int pre, n, post;
-  get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post);
+  int pre, n, post, is_common_broadcast;
+  get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post, &is_common_broadcast);
   int len = pre * n * post;
 
   const T* x_data = x.data<T>();

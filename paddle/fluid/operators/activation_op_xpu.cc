@@ -14,8 +14,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include <string>
 #include "paddle/fluid/operators/activation_op.h"
+#include <string>
 #include "paddle/fluid/platform/xpu_header.h"
 
 namespace paddle {

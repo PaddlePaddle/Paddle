@@ -22,7 +22,9 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 __all__ = [
     'get_cudnn_version',
     'set_device',
-    'get_device'
+    'get_device',
+    'XPUPlace',
+    'is_compiled_with_xpu'
     #            'cpu_places',
     #            'CPUPlace',
     #            'cuda_pinned_places',
@@ -33,6 +35,25 @@ __all__ = [
 ]
 
 _cudnn_version = None
+
+
+def is_compiled_with_xpu():
+    """
+    Whether this whl package can be used to run the model on XPU.
+
+    Returns (bool): support xpu or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_xpu = fluid.is_compiled_with_xpu()
+    """
+    return core.is_compiled_with_xpu()
+
+
+def XPUPlace(dev_id):
+    return core.XPUPlace(dev_id)
 
 
 def get_cudnn_version():
