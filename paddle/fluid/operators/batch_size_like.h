@@ -26,8 +26,8 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(context->HasOutput("Input"), "Input", "Input", Type());
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", Type());
+    OP_INOUT_CHECK(ctx->HasOutput("Input"), "Input", "Input", Type());
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", Type());
 
     auto &shape = ctx->Attrs().Get<std::vector<int>>("shape");
     PADDLE_ENFORCE_GT(shape.size(), 0,
@@ -51,7 +51,7 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument("input dim size must be larger than "
                                           "input dim index, but received input "
                                           "dim size: %s, input dim index: %s.",
-                                          input_dim_size, input_dim_index));
+                                          input_dim_size, input_dim_idx));
 
     int output_dim_idx = ctx->Attrs().Get<int>("output_dim_idx");
     int output_dim_size = static_cast<int>(shape.size());
@@ -65,7 +65,7 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "output dim size must be larger than output dim index, but "
             "received output dim size: %s, output dim index: %s.",
-            output_dim_size, output_dim_index));
+            output_dim_size, output_dim_idx));
 
     output_dim[output_dim_idx] = ctx->GetInputDim("Input")[input_dim_idx];
     ctx->SetOutputDim("Out", output_dim);
