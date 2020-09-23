@@ -414,7 +414,6 @@ class HeterCpuWorker : public HogwildWorker {
 #if defined(PADDLE_WITH_NCCL)
 class SectionWorker : public DeviceWorker {
  public:
-  // SectionWorker() { local_batch_id_ = 0; }
   SectionWorker() {}
   ~SectionWorker() override {}
 
@@ -430,7 +429,6 @@ class SectionWorker : public DeviceWorker {
 
   const platform::Place& place() const { return place_; }
 
-  // void SetSectionIndex(int section_id) { section_id_ = section_id; }
   void SetDeviceIndex(int tid) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
   void SetMicrobatchNum(int num) { num_microbatches_ = num; }
@@ -442,7 +440,6 @@ class SectionWorker : public DeviceWorker {
     skip_vars_ = skip_vars;
   }
   void SetStartCpuCoreId(int id) { cpu_id_ = id; }
-  // static void ResetBatchId() { batch_id_ = 0; }
 
  protected:
   void AutoSetCPUAffinity(bool reuse);
@@ -455,13 +452,8 @@ class SectionWorker : public DeviceWorker {
   const Scope* minibatch_scope_;
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
-  // static std::mutex thread_mutex;
-  // static std::mutex cout_mutex;
-  // static std::condition_variable thread_condition;
-  // static bool threads_completed;
   std::shared_ptr<framework::ProgramDesc> program_;
   static uint64_t batch_id_;
-  // uint64_t local_batch_id_;
 
   platform::DeviceContext* dev_ctx_ = nullptr;
 };

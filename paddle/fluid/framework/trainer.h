@@ -221,32 +221,19 @@ class PipelineTrainer : public TrainerBase {
   void GetSkipVars(const ProgramDesc& main_program);
 
  protected:
-  // int section_num_;
   int num_microbatches_;
-  int start_cpu_core_id_;
-  // std::vector<platform::Place> places_;
   platform::Place place_;
-  // std::vector<std::vector<std::string>> skip_vars_;
   std::vector<std::string> skip_vars_;
   TrainerDesc trainer_desc_;
 
-  // std::vector<std::thread> section_threads_;
   std::thread section_thread_;
-  // worker: [section_id]
-  // std::vector<std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
   std::shared_ptr<paddle::framework::DeviceWorker> worker_;
-  // minibatch_scopes_: [section_id]
-  // std::vector<Scope*> minibatch_scopes_;
   Scope* minibatch_scope_;
-  // microbatch_scopes_: [section_id][microbatch_id]
-  // std::vector<std::vector<Scope*>> microbatch_scopes_;
   // microbatch_scopes_: [microbatch_id]
   std::vector<Scope*> microbatch_scopes_;
 
   void CopyParameters(int microbatch_id, const ProgramDesc& program,
                       const platform::Place& place);
-  // bool isPersistableVarGrad(std::string name);
-  // bool isPersistable(VarDesc* var);
 };
 #endif
 

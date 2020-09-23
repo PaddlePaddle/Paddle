@@ -73,8 +73,9 @@ class CRecvOpCUDAKernel : public framework::OpKernel<T> {
     } else {
       stream = comm->stream();
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
-        numel_ptr, 1, ncclInt, peer, comm->comm(), stream));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::ncclRecv(static_cast<void *>(numel_ptr), 1, ncclInt,
+                                    peer, comm->comm(), stream));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaMemcpy(&numel, numel_ptr, sizeof(int), cudaMemcpyDeviceToHost));
     VLOG(0) << "numel:" << numel;

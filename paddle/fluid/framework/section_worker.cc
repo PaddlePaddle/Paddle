@@ -30,28 +30,19 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// std::atomic<int> SectionWorker::cpu_id_(0);
-// std::mutex SectionWorker::thread_mutex;
-// std::mutex SectionWorker::cout_mutex;
-// std::condition_variable SectionWorker::thread_condition;
-// bool SectionWorker::threads_completed = false;
 uint64_t SectionWorker::batch_id_(0);
 
 void SectionWorker::Initialize(const TrainerDesc& desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   program_.reset(
       new ProgramDesc(desc.section_param().section_config().program_desc()));
-  // desc.section_param().section_config(section_id_).program_desc()));
   for (auto& op_desc : program_->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
 }
 
 void SectionWorker::AutoSetCPUAffinity(bool reuse) {
-  // int thread_cpu_id = cpu_id_.fetch_add(1);
-
   unsigned concurrency_cap = std::thread::hardware_concurrency();
-  // unsigned proc = thread_cpu_id;
   unsigned proc = cpu_id_;
 
   if (proc >= concurrency_cap) {
@@ -61,7 +52,6 @@ void SectionWorker::AutoSetCPUAffinity(bool reuse) {
       LOG(INFO) << "All " << concurrency_cap
                 << " CPUs have been set affinities. Fail to set " << cpu_id_
                 << "th thread.";
-      // << thread_cpu_id << "th thread";
       return;
     }
   }
@@ -80,13 +70,12 @@ void SectionWorker::AutoSetCPUAffinity(bool reuse) {
       (0 == CPU_ISSET(proc, &mask))) {
     LOG(WARNING) << "Fail to set thread affinity to CPU " << proc;
   }
-  // VLOG(3) << "Set " << thread_cpu_id << "th thread affinity to CPU " << proc;
   VLOG(3) << "Set " << cpu_id_ << "th thread affinity to CPU " << proc;
 }
 
 void SectionWorker::TrainFiles() {
-  VLOG(3) << "begin section_worker TrainFiles";
-  // AutoSetCPUAffinity(true);
+  VLOG(5) << "begin section_worker TrainFiles";
+  AutoSetCPUAffinity(true);
 
   int64_t max_memory_size = 0;
   std::unique_ptr<GarbageCollector> gc;
@@ -109,12 +98,6 @@ void SectionWorker::TrainFiles() {
 #endif
 
   platform::Timer batch_timer;
-
-  // if (thread_id_ == 0) {
-  // while (true) {
-  // Start a minibatch.
-  // real number of microbatches run
-  // int real_microbatch_num = 0;
   batch_timer.Start();
   for (int i = 0; i < num_microbatches_; ++i) {
     try {
@@ -130,7 +113,8 @@ void SectionWorker::TrainFiles() {
                           op_role == (static_cast<int>(OpRole::kForward) |
                                       static_cast<int>(OpRole::kLoss));
         if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
-          VLOG(3) << "running an op " << op->Type() << " for scope " << i;
+          VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
+                  << i;
           op->Run(*microbatch_scopes_[i], place_);
           if (gc) {
             DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
@@ -139,19 +123,10 @@ void SectionWorker::TrainFiles() {
         }
       }
     } catch (platform::EOFException& e) {
-      // std::unique_lock<std::mutex> lk(thread_mutex);
-      // threads_completed = true;
-      VLOG(3) << "thread  completed.";
-      // VLOG(3) << "called notify all";
-      // thread_condition.notify_all();
-      VLOG(3) << "EOF encountered";
-      // throw platform::EOFException();
-      // throw e;
-      PADDLE_THROW_EOF();
-      break;
+      VLOG(3) << "EOF encountered and completed.";
+      throw;
     }
   }
-  dev_ctx_->Wait();
 
   // backward pass
   for (int i = 0; i < num_microbatches_; ++i) {
@@ -160,7 +135,8 @@ void SectionWorker::TrainFiles() {
       if (op_role == static_cast<int>(OpRole::kBackward) ||
           op_role == (static_cast<int>(OpRole::kBackward) |
                       static_cast<int>(OpRole::kLoss))) {
-        VLOG(3) << "running an op " << op->Type() << " for scope " << i;
+        VLOG(3) << "Backward: running op " << op->Type() << " for micro-batch "
+                << i;
         op->Run(*microbatch_scopes_[i], place_);
         if (gc) {
           DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
@@ -169,30 +145,28 @@ void SectionWorker::TrainFiles() {
       }
     }
   }
-  dev_ctx_->Wait();
+
   // update pass
   for (auto& op : ops_) {
     int op_role = op->Attr<int>(std::string("op_role"));
     if (op_role == static_cast<int>(OpRole::kOptimize)) {
-      VLOG(3) << "running an op " << op->Type() << " for minibatch scope";
+      VLOG(3) << "Update: running op " << op->Type();
       op->Run(*microbatch_scopes_[0], place_);
       if (gc) {
-        for (int i = 0; i < num_microbatches_; ++i) {
-          DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
-                              gc.get());
-        }
+        DeleteUnusedTensors(*microbatch_scopes_[0], op.get(), unused_vars_,
+                            gc.get());
       }
     }
   }
   dev_ctx_->Wait();
   batch_timer.Pause();
-  VLOG(0) << "batch time: " << batch_timer.ElapsedUS();
+  VLOG(0) << "batch: " << batch_id_ << ", time: " << batch_timer.ElapsedUS();
   ++batch_id_;
 }
 
 void SectionWorker::TrainFilesWithProfiler() {
-  VLOG(3) << "begin section_worker TrainFiles with profiler";
-  // AutoSetCPUAffinity(true);
+  VLOG(5) << "begin section_worker TrainFiles with profiler";
+  AutoSetCPUAffinity(true);
 
   platform::Timer batch_timer;
   platform::Timer timeline;
@@ -216,7 +190,6 @@ void SectionWorker::TrainFilesWithProfiler() {
 
   int64_t max_memory_size = 0;
   std::unique_ptr<GarbageCollector> gc;
-  // const std::vector<std::string> keep_vars;
   auto unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(place_)) {
@@ -235,14 +208,13 @@ void SectionWorker::TrainFilesWithProfiler() {
   }
 #endif
 
-  // if (thread_id_ == 0) {
   struct timeval start;
   struct timeval end;
   struct timeval micro_start;
   struct timeval micro_end;
+
   // Start a minibatch.
   batch_timer.Start();
-  // int real_microbatch_num = 0;
   for (int i = 0; i < num_microbatches_; ++i) {
     try {
       int op_idx = 0;
@@ -260,9 +232,8 @@ void SectionWorker::TrainFilesWithProfiler() {
                           op_role == (static_cast<int>(OpRole::kForward) |
                                       static_cast<int>(OpRole::kLoss));
         if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
-          // VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
-          //        << " for scope " << i;
-          VLOG(3) << "running an op " << op->Type() << " for scope " << i;
+          VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
+                  << i;
           timeline.Start();
           op->Run(*microbatch_scopes_[i], place_);
           if (gc) {
@@ -282,32 +253,26 @@ void SectionWorker::TrainFilesWithProfiler() {
           }
           op_count[op_idx] += 1;
           op_total_time[op_idx] += time;
-          {
-            // std::unique_lock<std::mutex> lk(cout_mutex);
-            std::cout << std::fixed;
-            std::cout.precision(0);
-            std::cout << "::FWD:B[" << batch_id_ << "]:SEC[" << thread_id_
-                      << "]:SCOPE[" << i << "]:OP[" << op->Type() << "]:START["
-                      << start.tv_sec * 1e6 + start.tv_usec << "]:END["
-                      << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
-          }
+
+          std::cout << std::fixed;
+          std::cout.precision(0);
+          std::cout << "::FWD:B[" << batch_id_ << "]:SCOPE[" << i << "]:OP["
+                    << op->Type() << "]:START["
+                    << start.tv_sec * 1e6 + start.tv_usec << "]:END["
+                    << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
         }
         op_idx++;
       }
+
       gettimeofday(&micro_end, NULL);
-      {
-        // std::unique_lock<std::mutex> lk(cout_mutex);
-        std::cout << std::fixed;
-        std::cout.precision(0);
-        std::cout << "!!FWD:B[" << batch_id_ << "]:SEC[" << thread_id_
-                  << "]:START["
-                  << micro_start.tv_sec * 1e6 + micro_start.tv_usec << "]:END["
-                  << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]"
-                  << std::endl;
-      }
+      std::cout << std::fixed;
+      std::cout.precision(0);
+      std::cout << "!!FWD:B[" << batch_id_ << "]:START["
+                << micro_start.tv_sec * 1e6 + micro_start.tv_usec << "]:END["
+                << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]"
+                << std::endl;
     } catch (platform::EOFException& e) {
-      VLOG(3) << "thread  completed.";
-      VLOG(0) << "EOF encountered";
+      VLOG(0) << "EOF encountered, and completed";
       VLOG(0) << "============timeline============";
       for (size_t i = 0; i < ops_.size(); ++i) {
         VLOG(0) << "op: " << op_name[i] << ", max_time: " << op_max_time[i]
@@ -315,11 +280,10 @@ void SectionWorker::TrainFilesWithProfiler() {
                 << ", mean_time: " << op_total_time[i] / op_count[i];
       }
       VLOG(0) << "================================";
-      throw e;
-      break;
+      throw;
     }
   }
-  dev_ctx_->Wait();
+
   // backward pass
   for (int i = 0; i < num_microbatches_; ++i) {
     int op_idx = 0;
@@ -330,7 +294,8 @@ void SectionWorker::TrainFilesWithProfiler() {
       if (op_role == static_cast<int>(OpRole::kBackward) ||
           op_role == (static_cast<int>(OpRole::kBackward) |
                       static_cast<int>(OpRole::kLoss))) {
-        VLOG(3) << "running an op " << op->Type() << " for scope " << i;
+        VLOG(3) << "Backward: running an op " << op->Type()
+                << " for micro-batch " << i;
         timeline.Start();
         op->Run(*microbatch_scopes_[i], place_);
         if (gc) {
@@ -350,35 +315,25 @@ void SectionWorker::TrainFilesWithProfiler() {
         }
         op_count[op_idx] += 1;
         op_total_time[op_idx] += time;
-        {
-          // std::unique_lock<std::mutex> lk(cout_mutex);
-          std::cout << std::fixed;
-          std::cout.precision(0);
-          std::cout << "::BWD:B[" << batch_id_ << "]:SEC[" << thread_id_
-                    << "]:SCOPE[" << i << "]:OP[" << op->Type() << "]:START["
-                    << start.tv_sec * 1e6 + start.tv_usec << "]:END["
-                    << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
-        }
+
+        std::cout << std::fixed;
+        std::cout.precision(0);
+        std::cout << "::BWD:B[" << batch_id_ << "]:SCOPE[" << i << "]:OP["
+                  << op->Type() << "]:START["
+                  << start.tv_sec * 1e6 + start.tv_usec << "]:END["
+                  << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
       }
       op_idx++;
     }
+
     gettimeofday(&micro_end, NULL);
-    {
-      // std::unique_lock<std::mutex> lk(cout_mutex);
-      std::cout << std::fixed;
-      std::cout.precision(0);
-      std::cout << "!!BWD:B[" << batch_id_ << "]:SEC[" << thread_id_
-                << "]:START[" << micro_start.tv_sec * 1e6 + micro_start.tv_usec
-                << "]:END[" << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]"
-                << std::endl;
-    }
+    std::cout << std::fixed;
+    std::cout.precision(0);
+    std::cout << "!!BWD:B[" << batch_id_ << "]:START["
+              << micro_start.tv_sec * 1e6 + micro_start.tv_usec << "]:END["
+              << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
   }
-  dev_ctx_->Wait();
-  // if (real_microbatch_num == 0) {
-  //   batch_timer.Pause();
-  //   VLOG(0) << "batch time: " << batch_timer.ElapsedUS();
-  //   return;
-  // }
+
   // update pass
   int op_idx = 0;
   gettimeofday(&micro_start, NULL);
@@ -386,15 +341,12 @@ void SectionWorker::TrainFilesWithProfiler() {
     gettimeofday(&start, NULL);
     int op_role = op->Attr<int>(std::string("op_role"));
     if (op_role == static_cast<int>(OpRole::kOptimize)) {
-      VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
-              << " for minibatch scope";
+      VLOG(3) << "Update: running op " << op->Type();
       timeline.Start();
       op->Run(*microbatch_scopes_[0], place_);
       if (gc) {
-        for (int i = 0; i < num_microbatches_; ++i) {
-          DeleteUnusedTensors(*microbatch_scopes_[i], op.get(), unused_vars_,
-                              gc.get());
-        }
+        DeleteUnusedTensors(*microbatch_scopes_[0], op.get(), unused_vars_,
+                            gc.get());
       }
       cudaDeviceSynchronize();
       gettimeofday(&end, NULL);
@@ -409,31 +361,27 @@ void SectionWorker::TrainFilesWithProfiler() {
       }
       op_count[op_idx] += 1;
       op_total_time[op_idx] += time;
-      {
-        std::cout << std::fixed;
-        std::cout.precision(0);
-        std::cout << "::UPD:B[" << batch_id_ << "]:SEC[" << thread_id_
-                  << "]:SCOPE[" << num_microbatches_ << "]:OP[" << op->Type()
-                  << "]:START[" << start.tv_sec * 1e6 + start.tv_usec
-                  << "]:END[" << end.tv_sec * 1e6 + end.tv_usec << "]"
-                  << std::endl;
-      }
+
+      std::cout << std::fixed;
+      std::cout.precision(0);
+      std::cout << "::UPD:B[" << batch_id_ << "]:OP[" << op->Type()
+                << "]:START[" << start.tv_sec * 1e6 + start.tv_usec << "]:END["
+                << end.tv_sec * 1e6 + end.tv_usec << "]" << std::endl;
     }
     op_idx++;
   }
   gettimeofday(&micro_end, NULL);
-  {
-    std::cout << std::fixed;
-    std::cout.precision(0);
-    std::cout << "!!UPD:B[" << batch_id_ << "]:SEC[" << thread_id_ << "]:START["
-              << micro_start.tv_sec * 1e6 + micro_start.tv_usec << "]:END["
-              << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
-  }
+  std::cout << std::fixed;
+  std::cout.precision(0);
+  std::cout << "!!UPD:B[" << batch_id_ << "]:START["
+            << micro_start.tv_sec * 1e6 + micro_start.tv_usec << "]:END["
+            << micro_end.tv_sec * 1e6 + micro_end.tv_usec << "]" << std::endl;
   dev_ctx_->Wait();
   batch_timer.Pause();
-  VLOG(0) << "batch time: " << batch_timer.ElapsedUS();
+  VLOG(0) << "batch: " << batch_id_ << ", time: " << batch_timer.ElapsedUS();
   ++batch_id_;
 }
+
 }  // namespace framework
 }  // namespace paddle
 #endif
