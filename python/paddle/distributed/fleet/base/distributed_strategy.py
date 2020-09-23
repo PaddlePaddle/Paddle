@@ -626,6 +626,7 @@ class DistributedStrategy(object):
         return self.strategy.zero
 
     @zero.setter
+    @is_strict_auto
     def zero(self, flag):
         if isinstance(flag, bool):
             self.strategy.zero = flag
@@ -640,6 +641,7 @@ class DistributedStrategy(object):
         return get_msg_dict(self.strategy.zero_configs)
 
     @zero_configs.setter
+    @is_strict_auto
     def zero_configs(self, configs):
         check_configs_key(self.strategy.zero_configs, configs, "zero_configs")
         assign_configs_value(self.strategy.zero_configs, configs)
