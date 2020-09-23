@@ -50,6 +50,9 @@ do
     cat -n ${log}
 done
 
+echo "display the cpu load"
+top -b -n 1
+
 #display system context
 for i in {1..2}; do 
     sleep 3
