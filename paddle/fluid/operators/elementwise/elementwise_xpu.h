@@ -38,7 +38,8 @@ void XPUElementwise(const framework::ExecutionContext& ctx) {
   PADDLE_ENFORCE(platform::is_xpu_place(ctx.GetPlace()),
                  "This kernel only runs on XPU device.");
   auto x_var = ctx.InputVar("X");
-  PADDLE_ENFORCE(x_var != nullptr, "Cannot get input Variable X");
+  PADDLE_ENFORCE_NE(x_var, nullptr,
+                    platform::errors::Fatal("Cannot get input Variable X"));
   PADDLE_ENFORCE(x_var->IsType<framework::LoDTensor>(),
                  "XPU only support LoDTensor");
 
