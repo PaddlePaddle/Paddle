@@ -34,7 +34,6 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.distributed.fleet.base.util_factory import fleet_util
 from paddle.distributed.fleet import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
@@ -97,7 +96,7 @@ class FleetDistRunnerBase(object):
         self.dump_fields_path = os.getenv("dump_fields_path", "")
         debug = int(os.getenv("Debug", "0"))
         # TODO(update strategy to support dump params)
-        if False:  #debug:
+        if False:  # debug:
             self.strategy.set_debug_opt({
                 "dump_param": self.dump_param,
                 "dump_fields": self.dump_fields,
@@ -163,7 +162,8 @@ class TestFleetBase(unittest.TestCase):
     """
 
     def _setup_config(self):
-        raise NotImplementedError("tests should have _setup_config implemented")
+        raise NotImplementedError(
+            "tests should have _setup_config implemented")
 
     def tearDown(self):
         t = time.time() - self.startTime
@@ -363,7 +363,8 @@ def runtime_main(test_class):
     parser.add_argument('--mode', type=str, required=False, default='geo')
     parser.add_argument(
         '--geo_sgd_need_push_nums', type=int, required=False, default=2)
-    parser.add_argument('--reader', type=str, required=False, default='dataset')
+    parser.add_argument('--reader', type=str,
+                        required=False, default='dataset')
     args = parser.parse_args()
 
     model = test_class()
@@ -372,8 +373,6 @@ def runtime_main(test_class):
     strategy = model.build_strategy(args)
     avg_cost = model.net(args)
     model.build_optimizer(avg_cost, strategy)
-    fleet_util._set_strategy(strategy)
-    fleet_util._set_role_maker(role)
     if args.role == "pserver":
         model.run_pserver(args)
     else:

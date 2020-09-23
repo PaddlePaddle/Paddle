@@ -32,7 +32,6 @@ import os
 import signal
 from functools import reduce
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
-from paddle.distributed.fleet.base.util_factory import fleet_util
 
 DTYPE = "int64"
 DATA_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/simnet.train.1000'
@@ -196,7 +195,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
     def net(self, args, batch_size=4, lr=0.01):
         avg_cost, _, predict, self.reader = \
             train_network(batch_size=batch_size, is_distributed=False,
-                               is_sparse=True, is_self_contained_lr=False, is_pyreader=(args.reader == "pyreader"))
+                          is_sparse=True, is_self_contained_lr=False, is_pyreader=(args.reader == "pyreader"))
         self.avg_cost = avg_cost
         self.predict = predict
 
@@ -224,7 +223,8 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
         exe.run(fluid.default_startup_program())
         batch_size = 4
         # reader
-        train_reader = paddle.batch(fake_simnet_reader(), batch_size=batch_size)
+        train_reader = paddle.batch(
+            fake_simnet_reader(), batch_size=batch_size)
         self.reader.decorate_sample_list_generator(train_reader)
         for epoch_id in range(1):
             self.reader.start()
@@ -236,7 +236,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
                     loss_val = np.mean(loss_val)
                     message = "TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
                                                                       loss_val)
-                    fleet_util.print_on_rank(message, 0)
+                    fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start
             except fluid.core.EOFException:

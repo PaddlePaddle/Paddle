@@ -22,7 +22,6 @@ import tempfile
 import os
 import sys
 from paddle.dataset.common import download, DATA_HOME
-from paddle.distributed.fleet.base.util_factory import fleet_util
 import paddle.distributed.fleet.base.role_maker as role_maker
 
 
@@ -59,8 +58,7 @@ class TestFleetUtil(unittest.TestCase):
         import paddle.distributed.fleet.base.role_maker as role_maker
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        default_util = fleet.util()
-        self.assertEqual(default_util, None)
+        self.assertNotEqual(fleet.util, None)
 
     def test_set_user_defined_util(self):
         import paddle.distributed.fleet as fleet
@@ -77,11 +75,11 @@ class TestFleetUtil(unittest.TestCase):
         fleet.init(role)
         my_util = UserDefinedUtil()
         fleet.set_util(my_util)
-        user_id = fleet.util().get_user_id()
+        user_id = fleet.util.get_user_id()
         self.assertEqual(user_id, 10)
 
     def test_fs(self):
-        from paddle.distributed.fleet.utils.fs import LocalFS
+        from paddle.distributed.fleet.utils import LocalFS
         fs = LocalFS()
         dirs, files = fs.ls_dir("test_tmp")
         dirs, files = fs.ls_dir("./")
@@ -98,7 +96,7 @@ class TestFleetUtil(unittest.TestCase):
         return unzip_folder
 
     def test_get_file_shard(self):
-        self.assertRaises(Exception, fleet_util.get_file_shard, "files")
+        self.assertRaises(Exception, fleet.util.get_file_shard, "files")
         try:
             import netifaces
         except:
@@ -112,8 +110,9 @@ class TestFleetUtil(unittest.TestCase):
             role=role_maker.Role.WORKER,
             worker_endpoints=["127.0.0.1:6003", "127.0.0.1:6004"],
             server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
-        fleet_util._set_role_maker(role)
-        files = fleet_util.get_file_shard(["1", "2", "3"])
+        fleet.init(role)
+
+        files = fleet.util.get_file_shard(["1", "2", "3"])
         self.assertTrue(len(files) == 2 and "1" in files and "2" in files)
 
     def test_program_type_trans(self):
@@ -121,9 +120,9 @@ class TestFleetUtil(unittest.TestCase):
         program_dir = os.path.join(data_dir, self.pruned_dir)
         text_program = "pruned_main_program.pbtxt"
         binary_program = "pruned_main_program.bin"
-        text_to_binary = fleet_util._program_type_trans(program_dir,
+        text_to_binary = fleet.util._program_type_trans(program_dir,
                                                         text_program, True)
-        binary_to_text = fleet_util._program_type_trans(program_dir,
+        binary_to_text = fleet.util._program_type_trans(program_dir,
                                                         binary_program, False)
         self.assertTrue(
             os.path.exists(os.path.join(program_dir, text_to_binary)))
@@ -160,11 +159,11 @@ class TestFleetUtil(unittest.TestCase):
         # test saved var's shape
         conf.dump_program_filename = "pruned_main_program.save_var_shape_not_match"
 
-        self.assertRaises(Exception, fleet_util._params_check)
+        self.assertRaises(Exception, fleet.util._params_check)
 
         # test program.proto without feed_op and fetch_op
         conf.dump_program_filename = "pruned_main_program.no_feed_fetch"
-        results = fleet_util._params_check(conf)
+        results = fleet.util._params_check(conf)
         self.assertTrue(len(results) == 1)
         np.testing.assert_array_almost_equal(
             results[0], np.array(
@@ -237,7 +236,8 @@ class TestFleetUtil(unittest.TestCase):
             program = fleet_util._load_program(program_path, is_text)
             output_dir = os.path.join(data_dir, self.train_dir)
             output_filename = "draw_prog"
-            fleet_util._visualize_graphviz(program, output_dir, output_filename)
+            fleet_util._visualize_graphviz(
+                program, output_dir, output_filename)
             self.assertTrue(
                 os.path.exists(
                     os.path.join(output_dir, output_filename + ".dot")))

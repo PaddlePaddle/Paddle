@@ -29,7 +29,6 @@ import numpy as np
 import ctr_dataset_reader
 from test_dist_fleet_heter_base import runtime_main, FleetDistHeterRunnerBase
 from dist_fleet_ctr import TestDistCTR2x2, fake_ctr_reader
-from paddle.distributed.fleet.base.util_factory import fleet_util
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -104,7 +103,8 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
                 name="wide_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)),
             is_sparse=True)
-        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
+        lr_pool = fluid.layers.sequence_pool(
+            input=lr_embbding, pool_type="sum")
 
         with fluid.device_guard("gpu"):
             for i, dim in enumerate(dnn_layer_dims[1:]):
@@ -179,7 +179,7 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
 
         thread_num = int(os.getenv("CPU_NUM", 2))
         batch_size = 128
-        filelist = fleet_util.get_file_shard(train_file_list)
+        filelist = fleet.util.get_file_shard(train_file_list)
         print("filelist: {}".format(filelist))
 
         # config dataset
