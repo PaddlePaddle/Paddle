@@ -231,9 +231,7 @@ def declarative(function=None, input_spec=None):
 class SaveLoadConfig(object):
     """
     The additional configuration options may be used in function 
-    :ref:`api_imperative_jit_save` that save :ref:`api_imperative_TranslatedLayer` 
-    or used in function :ref:`api_imperative_jit_load` that 
-    load :ref:`api_imperative_TranslatedLayer` .
+    ``paddle.jit.save/load`` and ``paddle.load`` .
     
     Examples:
         1. Using ``SaveLoadConfig`` when saving model
@@ -319,7 +317,7 @@ class SaveLoadConfig(object):
     @property
     def output_spec(self):
         """
-        Selects the output targets of the saved model ( :ref:`api_imperative_TranslatedLayer` ).
+        Selects the output targets of the saved model ( ``paddle.jit.TranslatedLayer`` ).
         By default, all return variables of original Layer's forward function
         are kept as the output of the saved TranslatedLayer.
 
@@ -531,10 +529,13 @@ class SaveLoadConfig(object):
     def separate_params(self):
         """
         Configure whether to save the Layer parameters as separete files.
-        (In order to be compatible with the behavior of :ref:`api_fluid_io_save_inference_model` )
+        (In order to be compatible with the behavior of ``paddle.static.save_inference_model`` )
 
         If True, each parameter will be saved to a file separately, the file name is the parameter name,
         and the SaveLoadConfig.params_filename configuration will not take effect. Default False.
+
+        .. note::
+            Only used for ``paddle.jit.save`` .
 
         Examples:
             .. code-block:: python
@@ -569,7 +570,7 @@ class SaveLoadConfig(object):
                     adam.clear_grad()
 
                 model_path = "simplenet.example.model.separate_params"
-                config = paddle.jit.SaveLoadConfig()
+                config = paddle.SaveLoadConfig()
                 config.separate_params = True
 
                 # saving with configs.separate_params
@@ -599,12 +600,12 @@ class SaveLoadConfig(object):
     def keep_name_table(self):
         """
         Configures whether keep ``structured_name -> parameter_name`` dict in loaded state dict.
-        This dict is the debugging information saved when call `paddle.save`. 
+        This dict is the debugging information saved when call ``paddle.save`` . 
         It is generally only used for debugging and does not affect the actual training or inference. 
-        By default, it will not be retained in `paddle.load` result. Default: False.
+        By default, it will not be retained in ``paddle.load`` result. Default: False.
         
         .. note::
-            Only used for ``paddle.load``.
+            Only used for ``paddle.load`` .
 
         Examples:
             .. code-block:: python
@@ -616,11 +617,11 @@ class SaveLoadConfig(object):
                 linear = paddle.nn.Linear(5, 1)
 
                 state_dict = linear.state_dict()
-                paddle.save(state_dict, "paddle_dy")
+                paddle.save(state_dict, "paddle_dy.pdparams")
 
-                configs = paddle.SaveLoadConfig()
-                configs.keep_name_table = True
-                para_state_dict, _ = paddle.load("paddle_dy", configs)
+                config = paddle.SaveLoadConfig()
+                config.keep_name_table = True
+                para_state_dict = paddle.load("paddle_dy.pdparams", config)
 
                 print(para_state_dict)
                 # the name_table is 'StructuredToParameterName@@'
