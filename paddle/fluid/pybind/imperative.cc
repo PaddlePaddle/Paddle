@@ -563,112 +563,22 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromTensorWithArgDefault, py::arg("tensor"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
-      .def("__setitem__use_op",
-           [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
-              std::shared_ptr<imperative::VarBase> &value) {
-             const auto &tracer = imperative::GetCurrentTracer();
-             auto self_tensor =
-                 self->MutableVar()->GetMutable<framework::LoDTensor>();
-
-             // Step 1: Set self_tensor[_index] to 0
-             auto self_numpy = TensorToPyArray(*self_tensor);
-             self_numpy[_index] = 0;
-             SetTensorFromPyArray(self_tensor, self_numpy, self_tensor->place(),
-                                  true);
-
-             // Step 2: Set op
-             //   (1) Use op slice_grad or strided_slice_grad to get a
-             //   slice_grad_out
-             //   with the same shape as self_tensor and the same value as
-             //   `value` at `_index` and zero value at other index
-             //   (2) Use op elementwise_add to add self_tensor and
-             //   slice_grad_out
-             //   (3) Use op assign to assign value to self_tensor inplace
-
-             // Step 2.1
-             //   Set ins, outs and attrs of op 'slice_grad' or
-             //   'strided_slice_grad'
-             std::string slice_grad_op_type = "slice_grad";
-             imperative::NameVarBaseMap slice_grad_ins = {
-                 {"Input", {self}}, {"Out@GRAD", {value}}};
-             auto slice_grad_out = std::shared_ptr<imperative::VarBase>(
-                 new imperative::VarBase(tracer->GenerateUniqueName()));
-             imperative::NameVarBaseMap slice_grad_outs = {
-                 {"Input@GRAD", {slice_grad_out}}};
-
-             std::vector<int> slice_axes, slice_starts, slice_ends,
-                 slice_strides, decrease_axis, infer_flags;
-             ParseIndexingSlice(self_tensor, _index.ptr(), &slice_axes,
-                                &slice_starts, &slice_ends, &slice_strides,
-                                &decrease_axis, &infer_flags);
-             framework::AttributeMap slice_grad_attrs = {
-                 {"axes", slice_axes},
-                 {"starts", slice_starts},
-                 {"ends", slice_ends},
-                 {"infer_flags", infer_flags},
-                 {"decrease_axis", decrease_axis}};
-
-             for (auto stride : slice_strides) {
-               if (stride != 1) {
-                 slice_grad_op_type = "strided_slice_grad";
-                 slice_grad_attrs.insert({"strides", slice_strides});
-                 slice_grad_attrs.erase("decrease_axis");
-                 break;
-               }
-             }
-
-             // Step 2.2
-             //   Set ins, outs and attrs of op 'elementwise_add'
-             imperative::NameVarBaseMap add_ins = {{"X", {self}},
-                                                   {"Y", {slice_grad_out}}};
-             framework::AttributeMap add_attrs = {{"axes", -1},
-                                                  {"use_mkldnn", false}};
-             auto add_out = std::shared_ptr<imperative::VarBase>(
-                 new imperative::VarBase(tracer->GenerateUniqueName()));
-             imperative::NameVarBaseMap add_outs = {{"Out", {add_out}}};
-
-             // Step 2.3
-             //   Set ins, outs and attrs of op 'assign'
-             imperative::NameVarBaseMap assign_ins = {{"X", {add_out}}};
-             imperative::NameVarBaseMap assign_outs = {{"Out", {self}}};
-             framework::AttributeMap assign_attrs = {};
-
-             // Step 3: Trace op
-             {
-               // release gil and do tracing
-               py::gil_scoped_release release;
-
-               // Use op slice_grad or strided_slice_grad
-               tracer->TraceOp(slice_grad_op_type, slice_grad_ins,
-                               slice_grad_outs, std::move(slice_grad_attrs));
-
-               // Use op elementwise_add to add self_tensor and out.
-               tracer->TraceOp("elementwise_add", add_ins, add_outs,
-                               std::move(add_attrs));
-
-               // Assign new_value to self_tensor for assigning value inplace
-               tracer->TraceOp("assign", assign_ins, assign_outs,
-                               std::move(assign_attrs));
-             }
-           })
-      .def("__setitem_without_op",
+      .def("__setitem__",
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index,
               py::object &value_obj) {
-             VLOG(4) << " __setitem_no_op__5 " << std::endl;
              auto self_tensor =
                  self->MutableVar()->GetMutable<framework::LoDTensor>();
              auto self_numpy = TensorToPyArray(*self_tensor);
+
              if (py::isinstance<py::array>(value_obj) ||
                  py::isinstance<py::int_>(value_obj) ||
                  py::isinstance<py::float_>(value_obj)) {
-               VLOG(4) << " __setitem_no_op__5 other" << std::endl;
                auto value_numpy = value_obj;
                self_numpy[_index] = value_numpy;
                SetTensorFromPyArray(self_tensor, self_numpy,
                                     self_tensor->place(), true);
 
              } else {
-               VLOG(4) << " __setitem_no_op__5 VarBase" << std::endl;
                auto value =
                    value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                auto value_tensor =

@@ -451,11 +451,6 @@ class TestVarBaseSetitem(unittest.TestCase):
         paddle.disable_static()
         self._test(3.3)
 
-    # def test_error(self):
-    #     with self.assertRaisesRegexp(
-    #             TypeError, "Assignment to a Variable only accepts a Variable"):
-    #         tensor_a[0] = "1"
-
 
 if __name__ == '__main__':
     unittest.main()
