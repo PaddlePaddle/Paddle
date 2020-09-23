@@ -229,7 +229,7 @@ int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
   auto var = scope->FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::NotFound("Variable %s is not found in scope.",
-                                      var_name)););
+                                      var_name));
   auto tensor = var->Get<LoDTensor>().data<float>();
   return *tensor;
 }

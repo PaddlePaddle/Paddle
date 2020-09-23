@@ -83,7 +83,7 @@ void EagerDeletionOpHandle::InitCUDA() {
 }
 
 void EagerDeletionOpHandle::CallOnce() {
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       vars_.empty(), true,
       platform::errors::InvalidArgument(
           "The variables to be deleted should be initialized here."));
