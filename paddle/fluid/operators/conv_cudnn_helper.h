@@ -467,6 +467,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     algo_t algo;
     if (!exhaustive && !deterministic) {
 #if CUDNN_VERSION >= 7001
+      VLOG(3) << "=====Not exhaustive=====";
       using perf_t = cudnnConvolutionBwdFilterAlgoPerf_t;
       int perf_count;
       int best_algo_idx = 0;
@@ -493,6 +494,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     } else if (deterministic) {
       return CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
     } else {
+      VLOG(3) << "=======exhaustive=======: " << exhaustive;
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();

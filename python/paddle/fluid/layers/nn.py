@@ -1582,7 +1582,7 @@ def conv2d(input,
             'use_mkldnn': False,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
-            "data_format": data_format
+            "data_format": data_format,
         })
 
     if data_format == 'NCHW':
