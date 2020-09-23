@@ -51,14 +51,14 @@ inline MKLDNNMemoryFormat GetWeightsFormat(const MKLDNNMemoryFormat format,
   }
 }
 
-static mkldnn::memory::data_type GetDstType(std::string mkldnn_data_type,
+static mkldnn::memory::data_type GetDstType(bool is_int8, bool is_bfloat16,
                                             bool force_fp32_output,
                                             std::string fuse_activation,
                                             bool fuse_residual_conn,
                                             const Tensor* residual_param) {
   auto dst_dt =
       mkldnn::memory::data_type::f32;  // uint8_t, int8_t, float, bfloat16
-  if (mkldnn_data_type == "int8") {
+  if (is_int8) {
     dst_dt = (fuse_activation == "relu" || fuse_activation == "relu6")
                  ? mkldnn::memory::data_type::u8
                  : mkldnn::memory::data_type::s8;
@@ -70,7 +70,7 @@ static mkldnn::memory::data_type GetDstType(std::string mkldnn_data_type,
       if (dst_dt != residual_dt) dst_dt = residual_dt;
     }
   } else {
-    if (!force_fp32_output && mkldnn_data_type == "bfloat16") {
+    if (!force_fp32_output && is_bfloat16) {
       dst_dt = mkldnn::memory::data_type::bf16;
       if (fuse_residual_conn && residual_param) {
         dst_dt = framework::ToMKLDNNDataType(residual_param->type());
@@ -389,16 +389,17 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL Conv must use CPUPlace"));
-
-    std::string mkldnn_data_type = ctx.Attr<std::string>("mkldnn_data_type");
+    bool is_INT8 =
+        std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+    bool is_BFLOAT16 = ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16";
     auto residual_param = ctx.Input<Tensor>("ResidualData");
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
     std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
 
-    if (mkldnn_data_type != "int8") {
+    if (!is_INT8) {
       auto dst_dt =
-          GetDstType(mkldnn_data_type, force_fp32_output, fuse_activation,
+          GetDstType(false, is_BFLOAT16, force_fp32_output, fuse_activation,
                      fuse_residual_conn, residual_param);
       if (dst_dt == mkldnn::memory::data_type::f32) {
         ComputeFP32<float>(ctx);
@@ -407,7 +408,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       }
     } else {
       auto dst_dt =
-          GetDstType(mkldnn_data_type, force_fp32_output, fuse_activation,
+          GetDstType(true, false, force_fp32_output, fuse_activation,
                      fuse_residual_conn, residual_param);
       if (dst_dt == mkldnn::memory::data_type::f32) {
         ComputeINT8<float>(ctx);
