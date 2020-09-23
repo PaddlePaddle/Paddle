@@ -196,6 +196,7 @@ class ZeroOptimizer(MetaOptimizerBase):
             core.VarDesc.VarType.BOOL: 1,
             core.VarDesc.VarType.UINT8: 1,
         }
+        self._collective_helper = None
 
     def _get_var_size(self, param):
         """
@@ -778,11 +779,12 @@ class ZeroOptimizer(MetaOptimizerBase):
         print("work idx: ", self.role_maker._worker_index())
         endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[self.role_maker._worker_index()]
-        collective_helper = CollectiveHelper(self.role_maker, self._nrings)
+        self._collective_helper = CollectiveHelper(self.role_maker,
+                                                   self._nrings)
         for ring_id in range(self._nrings):
-            collective_helper._init_communicator(
+            self._collective_helper._init_communicator(
                 self._startup_program, current_endpoint, endpoints,
-                self.role_maker._worker_index(), ring_id, '6174')
+                self.role_maker._worker_index(), ring_id, None)
         startup_block = self._startup_program.global_block()
         startup_block._sync_with_cpp()
 
@@ -793,6 +795,12 @@ class ZeroOptimizer(MetaOptimizerBase):
         # step 3: get broadcast vars
         self._fp16_params, self._broadcast_vars, self._fp16_to_params = self._find_broadcast_params(
             self._params, self._param2device)
+
+    def _wait(self, ):
+        endpoints = self.role_maker._get_trainer_endpoints()
+        current_endpoint = endpoints[self.role_maker._worker_index()]
+        if self.role_maker._worker_index() == 0:
+            self._collective_helper._wait(current_endpoint, endpoints, '6174')
 
     def minimize_impl(self,
                       loss,
@@ -855,6 +863,7 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         # check op dependecy for broadcast
         self._check_broadcast(main_block)
+        self._wait()
         return optimize_ops, params_grads
 
     def _check_broadcast(self, block):
