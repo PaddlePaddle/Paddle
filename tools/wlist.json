@@ -409,5 +409,13 @@
         "LinearChainCRF.forward",
         "CRFDecoding.forward",
         "SequenceTagging.forward"
+    ],
+    "gpu_not_white":[
+        "deformable_conv",
+        "cuda_places",
+        "CUDAPinnedPlace",
+        "CUDAPlace",
+        "cuda_profiler",
+        "DGCMomentumOptimizer"
     ]
 }
