@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fusion_gru_op.h"
 #include <cstring>  // for memcpy
 #include <string>
+#include <vector>
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc.h"

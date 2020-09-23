@@ -23,6 +23,8 @@
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
+#include "paddle/fluid/framework/op_version_registry.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -34,7 +36,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 
   // Build pattern
   PDNode* x = pattern->NewNode(patterns::PDNodeName(name_scope, "x"))
-                  ->assert_is_op_input("lookup_table")
+                  ->assert_is_op_input("lookup_table_v2")
                   ->assert_var_not_persistable();
   patterns::Embedding embedding_pattern(pattern, name_scope);
   // TODO(jczaja): Intermediate can only be for val that are not used anywhere
@@ -256,3 +258,11 @@ void EmbeddingFCLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(embedding_fc_lstm_fuse_pass,
               paddle::framework::ir::EmbeddingFCLSTMFusePass);
+REGISTER_PASS_CAPABILITY(embedding_fc_lstm_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("lookup_table_v2", 0)
+            .EQ("mul", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("lstm", 0)
+            .EQ("fused_embedding_fc_lstm", 0));

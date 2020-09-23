@@ -1048,6 +1048,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
     const AnalysisConfig &config) {
+  LOG(WARNING) << "Deprecated. Please use CreatePredictor instead.";
   return CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       config);
 }

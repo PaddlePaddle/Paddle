@@ -348,56 +348,98 @@ class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
 
 
 class TestArgsort(unittest.TestCase):
+    def init(self):
+        self.input_shape = [10000, ]
+        self.axis = 0
+
     def setUp(self):
+        self.init()
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
         else:
             self.place = core.CPUPlace()
-        self.data = np.random.rand(2, 3, 4).astype("float32")
+        self.data = np.random.rand(*self.input_shape)
 
-    def test_api_0(self):
+    def test_api(self):
         with fluid.program_guard(fluid.Program()):
-            input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
-            output = paddle.argsort(x=input)
+            input = fluid.data(
+                name="input", shape=self.input_shape, dtype="float64")
+
+            output = paddle.argsort(input, axis=self.axis)
+            output2 = paddle.argsort(input, axis=self.axis, descending=True)
+
             exe = fluid.Executor(self.place)
-            result, = exe.run(feed={'input': self.data}, fetch_list=[output])
-            np_result = np.argsort(self.data)
+            result, result2 = exe.run(feed={'input': self.data},
+                                      fetch_list=[output, output2])
+
+            np_result = np.argsort(self.data, axis=self.axis)
             self.assertEqual((result == np_result).all(), True)
 
-    def test_api_1(self):
-        with fluid.program_guard(fluid.Program()):
-            input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
-            output = paddle.argsort(x=input, axis=1)
-            exe = fluid.Executor(self.place)
-            result, = exe.run(feed={'input': self.data}, fetch_list=[output])
-            np_result = np.argsort(self.data, axis=1)
-            self.assertEqual((result == np_result).all(), True)
+            np_result2 = np.argsort(-self.data, axis=self.axis)
+            self.assertEqual((result2 == np_result2).all(), True)
 
 
-class TestArgsortDygraph(unittest.TestCase):
+class TestArgsort2(TestArgsort):
+    def init(self):
+        self.input_shape = [10000, 1]
+        self.axis = 0
+
+
+class TestArgsort3(TestArgsort):
+    def init(self):
+        self.input_shape = [1, 10000]
+        self.axis = 1
+
+
+class TestArgsort4(TestArgsort):
+    def init(self):
+        self.input_shape = [2, 3, 4]
+        self.axis = 1
+
+
+class TestArgsortImperative(unittest.TestCase):
+    def init(self):
+        self.input_shape = [10000, ]
+        self.axis = 0
+
     def setUp(self):
-        self.input_data = np.random.rand(10, 10)
+        self.init()
+        self.input_data = np.random.rand(*self.input_shape)
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
         else:
             self.place = core.CPUPlace()
 
-    def test_api_0(self):
+    def test_api(self):
         paddle.disable_static(self.place)
-        var_x = paddle.to_variable(self.input_data)
-        out = paddle.argsort(var_x)
-        self.assertEqual((np.argsort(self.input_data) == out.numpy()).all(),
-                         True)
+        var_x = paddle.to_tensor(self.input_data)
+        out = paddle.argsort(var_x, axis=self.axis)
+        expect = np.argsort(self.input_data, axis=self.axis)
+        self.assertEqual((expect == out.numpy()).all(), True)
+
+        out2 = paddle.argsort(var_x, axis=self.axis, descending=True)
+        expect2 = np.argsort(-self.input_data, axis=self.axis)
+        self.assertEqual((expect2 == out2.numpy()).all(), True)
+
         paddle.enable_static()
 
-    def test_api_1(self):
-        paddle.disable_static(self.place)
-        var_x = paddle.to_variable(self.input_data)
-        out = paddle.argsort(var_x, axis=-1)
-        self.assertEqual(
-            (np.argsort(
-                self.input_data, axis=-1) == out.numpy()).all(), True)
-        paddle.enable_static()
+
+class TestArgsortImperative2(TestArgsortImperative):
+    def init(self):
+        self.input_shape = [10000, 1]
+        self.axis = 0
+
+
+class TestArgsortImperative3(TestArgsortImperative):
+    def init(self):
+        self.input_shape = [1, 10000]
+        self.axis = 1
+
+
+class TestArgsortImperative2(TestArgsortImperative):
+    def init(self):
+        self.input_shape = [2, 3, 4]
+        self.axis = 1
 
 
 if __name__ == "__main__":

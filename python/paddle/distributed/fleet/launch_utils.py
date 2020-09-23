@@ -398,8 +398,14 @@ def start_local_trainers(cluster,
                          pod,
                          training_script,
                          training_script_args,
-                         log_dir=None):
-    current_env = copy.copy(os.environ.copy())
+                         log_dir=None,
+                         envs=None):
+
+    if envs is None:
+        current_env = copy.copy(os.environ.copy())
+    else:
+        current_env = copy.copy(envs)
+
     #paddle broadcast ncclUniqueId use socket, and
     #proxy maybe make trainers unreachable, so delete them.
     #if we set them to "", grpc will log error message "bad uri"
@@ -429,9 +435,17 @@ def start_local_trainers(cluster,
                             len(pod.trainers),
                             pretty_print_envs(proc_env, ("Distributed Envs",
                                                          "Value"))))
+            logger.info(
+                "details abouts PADDLE_TRAINER_ENDPOINTS can be found in {}/endpoints.log.".
+                format(log_dir))
         fn = None
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))
+            if os.path.exists("%s/endpoints.log" % log_dir):
+                os.system("rm -f {}/endpoints.log".format(log_dir))
+            with open("%s/endpoints.log" % log_dir, "w") as f:
+                f.write("PADDLE_TRAINER_ENDPOINTS: \n")
+                f.write("\n".join(cluster.trainers_endpoints()))
             fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:

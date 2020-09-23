@@ -24,7 +24,7 @@ namespace framework {
 namespace ir {
 
 /**
- * Fuse ( (A.^2 * B.^2) - (A * B).^2 ) .* scalar
+ * Fuse ( (A * B).^2 - (A.^2 * B.^2) ) .* scalar
  */
 class SquaredMatSubFusePass : public FusePassBase {
  public:
