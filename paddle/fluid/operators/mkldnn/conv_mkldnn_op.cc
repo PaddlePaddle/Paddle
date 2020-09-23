@@ -407,9 +407,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         ComputeFP32<platform::bfloat16>(ctx);
       }
     } else {
-      auto dst_dt =
-          GetDstType(true, false, force_fp32_output, fuse_activation,
-                     fuse_residual_conn, residual_param);
+      auto dst_dt = GetDstType(true, false, force_fp32_output, fuse_activation,
+                               fuse_residual_conn, residual_param);
       if (dst_dt == mkldnn::memory::data_type::f32) {
         ComputeINT8<float>(ctx);
       } else if (dst_dt == mkldnn::memory::data_type::u8) {
