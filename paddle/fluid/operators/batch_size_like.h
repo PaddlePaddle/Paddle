@@ -32,7 +32,7 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
     auto &shape = ctx->Attrs().Get<std::vector<int>>("shape");
     PADDLE_ENFORCE_GT(shape.size(), 0,
                       platform::errors::InvalidArgument(
-                          "shape size must be larger than 0, but received: %s",
+                          "Shape size must be larger than 0, but received: %s.",
                           shape.size()));
     std::vector<int64_t> shape_int64(shape.size(), 0);
     std::transform(shape.begin(), shape.end(), shape_int64.begin(),
@@ -43,28 +43,29 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
     int input_dim_size = static_cast<int>(ctx->GetInputDim("Input").size());
     PADDLE_ENFORCE_GE(
         input_dim_idx, 0,
-        platform::errors::InvalidArgument(
-            "input dim idx must be larger equal than 0, but received: %s",
-            input_dim_idx));
-    PADDLE_ENFORCE_GT(
-        input_dim_size, input_dim_idx,
-        platform::errors::InvalidArgument("input dim size must be larger than "
-                                          "input dim index, but received input "
-                                          "dim size: %s, input dim index: %s.",
-                                          input_dim_size, input_dim_idx));
+        platform::errors::InvalidArgument("Input dimension idx must be larger "
+                                          "equal than 0, but received: %s.",
+                                          input_dim_idx));
+    PADDLE_ENFORCE_GT(input_dim_size, input_dim_idx,
+                      platform::errors::InvalidArgument(
+                          "Input dimension size must be larger than "
+                          "input dimension index, but received input "
+                          "dim size: %s, input dim index: %s.",
+                          input_dim_size, input_dim_idx));
 
     int output_dim_idx = ctx->Attrs().Get<int>("output_dim_idx");
     int output_dim_size = static_cast<int>(shape.size());
     PADDLE_ENFORCE_GE(
         output_dim_idx, 0,
-        platform::errors::InvalidArgument(
-            "output dim idx must be larger equal than 0, but received: %s",
-            output_dim_idx));
+        platform::errors::InvalidArgument("Output dimension idx must be larger "
+                                          "equal than 0, but received: %s.",
+                                          output_dim_idx));
     PADDLE_ENFORCE_GT(
         output_dim_size, output_dim_idx,
         platform::errors::InvalidArgument(
-            "output dim size must be larger than output dim index, but "
-            "received output dim size: %s, output dim index: %s.",
+            "Output dimension size must be larger than output dimension index, "
+            "but "
+            "received output dimension size: %s, output dimension index: %s.",
             output_dim_size, output_dim_idx));
 
     output_dim[output_dim_idx] = ctx->GetInputDim("Input")[input_dim_idx];
