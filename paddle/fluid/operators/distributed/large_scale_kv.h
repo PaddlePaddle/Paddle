@@ -246,7 +246,7 @@ struct VALUE {
 
   std::vector<std::string> names_;
   int count_;
-  bool seen_after_save_;
+  bool seen_after_last_save_;
   int unseen_days_;
   bool is_entry_;
   std::vector<std::vector<float>> values_;
@@ -323,7 +323,7 @@ class ValueBlock {
 
     auto value = new VALUE(value_names_);
     value->set(values);
-    value->seen_after_save_ = true;
+    value->seen_after_last_save_ = true;
     value->count_ = count;
     values_[id] = value;
   }
@@ -629,18 +629,22 @@ class SparseVariable {
 
     for (auto &block : shard_blocks_) {
       for (auto value : block->values_) {
-        bool id_need_save = false;
-        // save all params
         if (mode == 0) {
-          id_need_save = true;
-        } else {
-          id_need_save = value.second.seen_after_save_;
-        }
-
-        if (id_need_save) {
           ids.push_back(value.first);
+        } else {
+          bool id_need_save = false;
+          // save all params
+          if (mode == 1) {
+            id_need_save = true;
+          } else {
+            id_need_save = value.second.seen_after_last_save_;
+          }
+
+          if (id_need_save) {
+            ids.push_back(value.first);
+          }
+          value.second.seen_after_last_save_ = false;
         }
-        value.second.seen_after_save_ = false;
       }
     }
 
