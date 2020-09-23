@@ -16,8 +16,8 @@ import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import unittest
 import paddle
+import paddle.fluid as fluid
 import os
-import pdb
 
 
 class TestFleetFP16CompressOptimizer(unittest.TestCase):
@@ -25,22 +25,31 @@ class TestFleetFP16CompressOptimizer(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
 
-    def test_amp_optimizer(self):
+    def net(self, main_prog, startup_prog, dtype='float32'):
+        with fluid.program_guard(main_prog, startup_prog):
+            input_x = paddle.fluid.layers.data(
+                name="x", shape=[32], dtype=dtype)
+            input_y = paddle.fluid.layers.data(
+                name="y", shape=[1], dtype='int64')
+
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+            prediction = paddle.fluid.layers.fc(input=[fc_2],
+                                                size=2,
+                                                act='softmax')
+            cost = paddle.fluid.layers.cross_entropy(
+                input=prediction, label=input_y)
+            avg_cost = paddle.fluid.layers.mean(x=cost)
+
+            strategy = paddle.distributed.fleet.DistributedStrategy()
+            strategy.fp16_compress = True
+        return avg_cost, strategy
+
+    def test_fp16_compress_optimizer(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        input_x = paddle.fluid.layers.data(
-            name="x", shape=[32], dtype='float32')
-        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
-
-        fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-        fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-        prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
-
-        strategy = paddle.distributed.fleet.DistributedStrategy()
-        strategy.fp16_compress = True
+        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        avg_cost, strategy = self.net(train_prog, startup_prog)
 
         optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
@@ -61,6 +70,19 @@ class TestFleetFP16CompressOptimizer(unittest.TestCase):
 
         for name in cast_out:
             self.assertIn('cast_fp16', name)
+
+    def test_fp16_compress_not_apply_fp16_net(self):
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        fleet.init(role)
+        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        avg_cost, strategy = self.net(train_prog, startup_prog, dtype='float16')
+
+        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+        optimizer.minimize(avg_cost)
+
+        ops = [op.type for op in avg_cost.block.ops]
+        self.assertNotIn('cast', ops)
 
 
 if __name__ == "__main__":
