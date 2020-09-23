@@ -190,6 +190,9 @@ class Fleet(object):
             else:
                 paddle.distributed.init_parallel_env()
 
+    def _role_maker_(self):
+        return self._role_maker
+
     def is_first_worker(self):
         """
         Check whether the node is the first instance of worker.
