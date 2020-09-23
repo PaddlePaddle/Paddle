@@ -122,8 +122,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 name="wide_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)),
             is_sparse=True)
-        lr_pool = fluid.layers.sequence_pool(
-            input=lr_embbding, pool_type="sum")
+        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
 
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 

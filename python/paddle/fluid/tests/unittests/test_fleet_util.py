@@ -243,8 +243,7 @@ class TestFleetUtil(unittest.TestCase):
             program = fleet.util._load_program(program_path, is_text)
             output_dir = os.path.join(data_dir, self.train_dir)
             output_filename = "draw_prog"
-            fleet.util._visualize_graphviz(
-                program, output_dir, output_filename)
+            fleet.util._visualize_graphviz(program, output_dir, output_filename)
             self.assertTrue(
                 os.path.exists(
                     os.path.join(output_dir, output_filename + ".dot")))

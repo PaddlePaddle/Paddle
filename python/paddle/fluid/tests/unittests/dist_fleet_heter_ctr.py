@@ -103,8 +103,7 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
                 name="wide_embedding",
                 initializer=fluid.initializer.Constant(value=0.01)),
             is_sparse=True)
-        lr_pool = fluid.layers.sequence_pool(
-            input=lr_embbding, pool_type="sum")
+        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
 
         with fluid.device_guard("gpu"):
             for i, dim in enumerate(dnn_layer_dims[1:]):
