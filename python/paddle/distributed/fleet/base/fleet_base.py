@@ -180,8 +180,8 @@ class Fleet(object):
                     format(type(role_maker)))
         self._role_maker._generate_role()
 
-        import paddle.distributed.fleet.util as util
-        util._set_role_maker(self._role_maker)
+        import paddle.distributed.fleet as fleet
+        fleet.util._set_role_maker(self._role_maker)
 
         self.strategy_compiler = StrategyCompiler()
         if paddle.fluid.framework.in_dygraph_mode():
@@ -355,8 +355,8 @@ class Fleet(object):
         ) or self._role_maker._is_heter_worker()
 
     def set_util(self, _util):
-        import paddle.distributed.fleet.util as util
-        util = _util
+        import paddle.distributed.fleet as fleet
+        fleet.util = _util
 
     def barrier_worker(self):
         """
@@ -1086,7 +1086,7 @@ class Fleet(object):
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-        import paddle.distributed.fleet.util as util
-        util._set_strategy(context["valid_strategy"])
+        import paddle.distributed.fleet as fleet
+        fleet.util._set_strategy(context["valid_strategy"])
 
         return optimize_ops, params_grads

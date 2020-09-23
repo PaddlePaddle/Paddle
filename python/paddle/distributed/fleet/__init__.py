@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # TODO: define distributed api under this directory,
-from .base.role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker
+from .base.role_maker import Role, UserDefinedRoleMaker, PaddleCloudRoleMaker
 from .base.distributed_strategy import DistributedStrategy
 from .base.fleet_base import Fleet
 from .base.util_factory import UtilBase
@@ -26,6 +26,7 @@ __all__ = [
     "UserDefinedRoleMaker",
     "PaddleCloudRoleMaker",
     "Fleet",
+    "Role",
 ]
 
 fleet = Fleet()

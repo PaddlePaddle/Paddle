@@ -181,8 +181,8 @@ def get_gpus(gpus):
             cuda_visible_devices_list = cuda_visible_devices.split(',')
             for x in gpus.split(','):
                 assert x in cuda_visible_devices_list, "Can't find "\
-                "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
-                % (x, cuda_visible_devices)
+                    "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                    % (x, cuda_visible_devices)
             res_gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in gpus.split(',')
@@ -209,7 +209,8 @@ def launch_collective(args):
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
     if cloud_utils.use_paddlecloud() and trainers_num != 1:
-        cluster, pod = cloud_utils.get_cloud_cluster(args.ips, gpus, start_port)
+        cluster, pod = cloud_utils.get_cloud_cluster(
+            args.ips, gpus, start_port)
         logger.debug("get cluster from cloud:{}".format(cluster))
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
@@ -348,8 +349,7 @@ def launch_ps(args):
             "PADDLE_PORT": cur_server.endpoint.split(":")[1],
             "TRAINING_ROLE": "PSERVER",
             "PADDLE_TRAINERS_NUM": str(worker_num),
-            "POD_IP": cur_server.endpoint.split(":")[0],
-            "PADDLE_WITH_GLOO": "1"
+            "POD_IP": cur_server.endpoint.split(":")[0]
         }
         current_env.update(proc_env)
 
@@ -388,8 +388,7 @@ def launch_ps(args):
             "PADDLE_TRAINER_ENDPOINTS": worker_endpoints,
             "PADDLE_TRAINERS_NUM": str(worker_num),
             "TRAINING_ROLE": "TRAINER",
-            "PADDLE_TRAINER_ID": str(cur_worker.rank),
-            "PADDLE_WITH_GLOO": "1"
+            "PADDLE_TRAINER_ID": str(cur_worker.rank)
         }
         current_env.update(proc_env)
 

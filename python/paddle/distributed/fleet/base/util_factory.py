@@ -77,6 +77,9 @@ class UtilBase(object):
                 from paddle.distributed.fleet import PaddleCloudRoleMaker
                 import sys
                 import numpy as np
+                import os
+
+                os.environ["PADDLE_WITH_GLOO"] = "2"
 
                 def train():
                     role = PaddleCloudRoleMaker(
@@ -118,6 +121,9 @@ class UtilBase(object):
                 import paddle.distributed.fleet as fleet
                 from paddle.distributed.fleet import PaddleCloudRoleMaker
                 import sys
+                import os
+
+                os.environ["PADDLE_WITH_GLOO"] = "2"
 
                 def train():
                     role = PaddleCloudRoleMaker(
@@ -159,6 +165,9 @@ class UtilBase(object):
                 import paddle.distributed.fleet as fleet
                 from paddle.distributed.fleet import PaddleCloudRoleMaker
                 import sys
+                import os
+
+                os.environ["PADDLE_WITH_GLOO"] = "2"
 
                 def train():
                     role = PaddleCloudRoleMaker(
@@ -221,12 +230,13 @@ class UtilBase(object):
                     is_collective=False,
                     init_gloo=False,
                     current_id=0,
-                    role=role_maker.Role.WORKER,
+                    role=fleet.Role.WORKER,
                     worker_endpoints=["127.0.0.1:6003", "127.0.0.1:6004"],
                     server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
                 fleet.init(role)
 
                 files = fleet.util.get_file_shard(["file1", "file2", "file3"])
+                print(files)
                 # files = ["file1", "file2"]
         """
         if not isinstance(files, list):
@@ -269,7 +279,7 @@ class UtilBase(object):
                     is_collective=False,
                     init_gloo=False,
                     current_id=0,
-                    role=role_maker.Role.WORKER,
+                    role=fleet.Role.WORKER,
                     worker_endpoints=["127.0.0.1:6003", "127.0.0.1:6004"],
                     server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
                 fleet.init(role)
