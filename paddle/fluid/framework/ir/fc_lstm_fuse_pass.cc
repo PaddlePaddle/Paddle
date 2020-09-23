@@ -16,6 +16,7 @@
 #include <string>
 #include <unordered_set>
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -196,3 +197,17 @@ void FCLstmFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(mul_lstm_fuse_pass, paddle::framework::ir::MulLstmFusePass);
 REGISTER_PASS(fc_lstm_fuse_pass, paddle::framework::ir::FCLstmFusePass);
+
+REGISTER_PASS_CAPABILITY(fc_lstm_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("mul", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("lstm", 0)
+            .EQ("fusion_lstm", 0));
+REGISTER_PASS_CAPABILITY(mul_lstm_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("mul", 0)
+            .EQ("lstm", 0)
+            .EQ("fusion_lstm", 0));

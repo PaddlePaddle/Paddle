@@ -29,13 +29,14 @@ from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, con
 from paddle.utils import deprecated
 import numpy
 import warnings
+from .utils import check_shape
 
 __all__ = [
     'create_tensor', 'create_parameter', 'create_global_var', 'cast',
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye'
+    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye', 'triu'
 ]
 
 
@@ -276,11 +277,6 @@ def concat(input, axis=0, name=None):
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
-    Raises:
-        TypeError: ``input`` must be one of list, tuple or Tensor.
-        TypeError: The data type of ``input`` must be one of bool, float16, float32, float64, int32 and int64. 
-        TypeError: The ``axis`` must be int or Tensor. The dtype of ``axis`` must be int32 or int64 when it's a Tensor.
-        TypeError: All the Tensors in ``input`` must have the same data type.
 
     Returns:
         Tensor: A Tensor with the same data type as ``input``.
@@ -657,12 +653,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     Returns:
         Tensor: Tensor which is created according to shape and dtype.
 
-    Raises:
-        TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
-            and the data type of ``out`` must be the same as the ``dtype``. 
-        TypeError: The shape must be one of list, tuple and Tensor, the data type of ``shape``
-            must be int32 or int64 when ``shape`` is a Tensor
-
     Examples:
         .. code-block:: python
 
@@ -690,11 +680,13 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     if not isinstance(value, Variable):
         if dtype in ['int64', 'int32']:
             attrs['str_value'] = str(int(value))
+            attrs['value'] = int(value)
         else:
             attrs['str_value'] = str(float(value))
+            attrs['value'] = float(value)
 
     if in_dygraph_mode():
-        shape = utils._convert_shape_to_list(shape)
+        shape = utils.convert_shape_to_list(shape)
         if out is None:
             out = _varbase_creator(dtype=dtype)
 
@@ -718,20 +710,18 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             value = cast(value, dtype)
         inputs['ValueTensor'] = value
 
+    check_shape(shape)
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
-
-    if isinstance(shape, Variable):
-        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
 
     if out is not None:
         check_variable_and_dtype(out, 'out', [convert_dtype(dtype)],
                                  'fill_constant')
 
     helper = LayerHelper("fill_constant", **locals())
-    utils._get_shape_tensor_inputs(
+    utils.get_shape_tensor_inputs(
         inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant')
 
     if out is None:
@@ -1050,10 +1040,6 @@ def ones(shape, dtype, force_cpu=False):
 
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
-    Raises:
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
-            be int32 or int64 when it's a Tensor.
 
     Examples:
         .. code-block:: python
@@ -1086,10 +1072,6 @@ def zeros(shape, dtype, force_cpu=False, name=None):
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
-    Raises:
-        TypeError: The ``dtype`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: The ``shape`` must be one of list, tuple and Tensor. The data type of ``shape`` must
-            be int32 or int64 when it's a Tensor.
     Examples:
         .. code-block:: python
 
@@ -1442,7 +1424,7 @@ def linspace(start, stop, num, dtype=None, name=None):
         stop(int|float|Tensor): The input :attr:`stop` is start variable of range. It is a scalar, \
             or a Tensor of shape [1] with input data type int32, int64, float32 or float64.
         num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int scalar, \
-            or a Tensor of shape [1] with data type int32 or int64.
+            or a Tensor of shape [1] with data type int32.
         dtype(np.dtype|str, optional): The data type of output tensor, it could be
             int32, int64, float32 and float64. Default: if None, the data type is float32.
         name(str, optional): Normally there is no need for user to set this property. 
@@ -1452,14 +1434,6 @@ def linspace(start, stop, num, dtype=None, name=None):
         Tensor: the output data type will be float32, float64. The 1-D tensor with fixed number of evenly spaced values, \
         the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
         the value with input :attr:`start`. 
-
-    Raises:
-        TypeError: The ``dtype`` must be one of int32, int64, float32 and float64.
-        TypeError: The type of ``num`` must be int When it's not a Tensor.
-        TypeError: The data type of ``num`` must be int32  When it's  a Tensor.
-        TypeError: The data type of ``start`` and  ``stop`` must be same as ``dtype`` When it's  a Tensor.
-
-
 
     Examples:
         .. code-block:: python
@@ -1474,35 +1448,51 @@ def linspace(start, stop, num, dtype=None, name=None):
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
+    if not isinstance(num, Variable):
+        check_type(num, 'num', (int), 'linspace')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if not isinstance(start, Variable):
-        tensor_start = fill_constant([1], dtype, start)
+        with device_guard("cpu"):
+            tensor_start = fill_constant([1], dtype, start)
     if not isinstance(stop, Variable):
-        tensor_stop = fill_constant([1], dtype, stop)
+        with device_guard("cpu"):
+            tensor_stop = fill_constant([1], dtype, stop)
     if not isinstance(num, Variable):
-        tensor_num = fill_constant([1], 'int32', num)
+        with device_guard("cpu"):
+            tensor_num = fill_constant([1], 'int32', num)
     if in_dygraph_mode():
         return core.ops.linspace(tensor_start, tensor_stop, tensor_num, 'dtype',
                                  dtype)
 
     helper = LayerHelper("linspace", **locals())
 
+    start_dtype = convert_dtype(tensor_start.dtype)
+    stop_dtype = convert_dtype(tensor_stop.dtype)
+    out_dtype = convert_dtype(dtype)
     if isinstance(start, Variable):
-        check_dtype(start.dtype, 'start', (convert_dtype(dtype)), 'linspace')
+        check_dtype(start.dtype, 'start',
+                    ['float32', 'float64', 'int32', 'int64'], 'linspace')
     else:
         check_type(start, 'start', (int, float), 'linspace')
 
     if isinstance(stop, Variable):
-        check_dtype(stop.dtype, 'stop', (convert_dtype(dtype)), 'linspace')
+        check_dtype(stop.dtype, 'stop',
+                    ['float32', 'float64', 'int32', 'int64'], 'linspace')
     else:
         check_type(stop, 'stop', (int, float), 'linspace')
     if isinstance(num, Variable):
         check_dtype(num.dtype, 'num', ['int32'], 'linspace')
-    else:
-        check_type(num, 'num', (int), 'linspace')
     check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
                 'linspace')
+    if ((stop_dtype == "float64" or start_dtype == "float64") and
+            out_dtype in ["float32", "int32"]) or ((stop_dtype == "int64" or
+                                                    start_dtype == "int64") and
+                                                   out_dtype == "int32"):
+        raise ValueError(
+            "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
+            "which may cause data type overflows. Please reset attr(dtype) of linspace."
+            .format(start_dtype, stop_dtype, dtype))
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
@@ -1629,9 +1619,6 @@ def eye(num_rows,
 
     Returns:
         Tensor: An identity Tensor or LoDTensor of shape batch_shape + [num_rows, num_columns].
-    Raises:
-        TypeError: The `dtype` must be one of float16, float32, float64, int32 and int64.
-        TypeError: The `num_columns` must be non-negative int.
 
     Examples:
         .. code-block:: python
@@ -1743,3 +1730,9 @@ def ones_like(x, out=None):
         attrs={'value': 1.0},
         outputs={'Out': [out]})
     return out
+
+
+@deprecated(since="2.0.0", update_to="paddle.triu")
+def triu(input, diagonal=0, name=None):
+    import paddle
+    return paddle.tensor.triu(x=input, diagonal=diagonal, name=name)

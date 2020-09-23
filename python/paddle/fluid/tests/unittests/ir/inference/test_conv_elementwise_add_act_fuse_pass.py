@@ -19,6 +19,7 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
 """Test for fusion of conv, elementwise_add and act."""
 
@@ -48,6 +49,9 @@ class ConvElementwiseAddActFusePassTest(InferencePassTest):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
+        self.assertTrue(
+            PassVersionChecker.IsCompatible(
+                'conv_elementwise_add_act_fuse_pass'))
 
 
 if __name__ == "__main__":

@@ -68,10 +68,11 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
             << " From " << root_dev_id << " to " << dev_id;
 
     if (ctx.Attr<bool>("sync_mode")) {
-      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
     }
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with GPU."));
 #endif
   }
 };

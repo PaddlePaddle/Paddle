@@ -32,6 +32,8 @@ from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.log_helper import get_logger
 
+paddle.enable_static()
+
 os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
@@ -181,7 +183,6 @@ class TestImperativeQat(unittest.TestCase):
 
                     img = fluid.dygraph.to_variable(x_data)
                     label = fluid.dygraph.to_variable(y_data)
-
                     out = lenet(img)
                     acc = fluid.layers.accuracy(out, label)
                     loss = fluid.layers.cross_entropy(out, label)
@@ -221,7 +222,7 @@ class TestImperativeQat(unittest.TestCase):
             model_dict = lenet.state_dict()
             fluid.save_dygraph(model_dict, "save_temp")
 
-            # test the correctness of `save_quantized_model`
+            # test the correctness of `paddle.jit.save`
             data = next(test_reader())
             test_data = np.array([x[0].reshape(1, 28, 28)
                                   for x in data]).astype('float32')
@@ -231,13 +232,14 @@ class TestImperativeQat(unittest.TestCase):
 
         # save inference quantized model
         path = "./mnist_infer_model"
-        imperative_qat.save_quantized_model(
-            dirname=path,
-            model=lenet,
-            input_shape=[(1, 28, 28)],
-            input_dtype=['float32'],
-            feed=[0],
-            fetch=[0])
+        paddle.jit.save(
+            layer=lenet,
+            model_path=path,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 1, 28, 28], dtype='float32')
+            ])
+
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
@@ -245,7 +247,10 @@ class TestImperativeQat(unittest.TestCase):
         exe = fluid.Executor(place)
         [inference_program, feed_target_names, fetch_targets] = (
             fluid.io.load_inference_model(
-                dirname=path, executor=exe))
+                dirname=path,
+                executor=exe,
+                model_filename="__model__",
+                params_filename="__variables__"))
         after_save, = exe.run(inference_program,
                               feed={feed_target_names[0]: test_data},
                               fetch_list=fetch_targets)
@@ -332,13 +337,13 @@ class TestImperativeQat(unittest.TestCase):
                 if batch_id % 100 == 0:
                     _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
 
-        imperative_qat.save_quantized_model(
-            dirname="./dynamic_mnist",
-            model=lenet,
-            input_shape=[(1, 28, 28)],
-            input_dtype=['float32'],
-            feed=[0],
-            fetch=[0])
+        paddle.jit.save(
+            layer=lenet,
+            model_path="./dynamic_mnist",
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 1, 28, 28], dtype='float32')
+            ])
 
         # static graph train
         _logger.info(

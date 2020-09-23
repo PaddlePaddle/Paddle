@@ -28,6 +28,8 @@ import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
 
+paddle.enable_static()
+
 
 class TestCommunicatorGeoEnd2End(unittest.TestCase):
     def net(self):
@@ -140,6 +142,7 @@ import paddle.distributed.fleet as fleet
 
 from test_communicator_geo import TestCommunicatorGeoEnd2End
 
+paddle.enable_static()
 
 class RunServer(TestCommunicatorGeoEnd2End):
     def runTest(self):

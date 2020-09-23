@@ -26,16 +26,55 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+class SlicePlugin : public PluginTensorRT {
+ public:
+  explicit SlicePlugin(std::vector<int> starts, std::vector<int> ends,
+                       std::vector<int> axes, bool ban_fp16);
+
+  // It was used for tensorrt deserialization.
+  // It should not be called by users.
+  SlicePlugin(void const* serial_data, size_t serial_length);
+  ~SlicePlugin();
+  SlicePlugin* clone() const override;
+
+  const char* getPluginType() const override { return "slice_plugin"; }
+  int getNbOutputs() const override { return 1; }
+  int initialize() override { return 0; }
+  bool supportsFormat(nvinfer1::DataType type,
+                      nvinfer1::PluginFormat format) const override;
+  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
+                                     int nb_input_dims) override;
+  int enqueue(int batch_size, const void* const* inputs, void** outputs,
+              void* workspace, cudaStream_t stream) override;
+
+ protected:
+  size_t getSerializationSize() override;
+
+  // TRT will call this func  to serialize the configuration of TRT
+  // It should not be called by users.
+  void serialize(void* buffer) override;
+
+ private:
+  std::vector<int> starts_;
+  std::vector<int> ends_;
+  std::vector<int> axes_;
+  bool ban_fp16_{false};
+  int* offset_temp_data_{nullptr};
+  cudaEvent_t copy_event_;
+  cudaStream_t copy_stream_;
+};
+
 #if IS_TRT_VERSION_GE(6000)
 class SlicePluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit SlicePluginDynamic(std::vector<int> starts, std::vector<int> ends,
-                              std::vector<int> axes, bool ban_fp16)
-      : starts_(starts), ends_(ends), axes_(axes), ban_fp16_(ban_fp16) {}
-  SlicePluginDynamic(void const* serialData, size_t serialLength) {}
+                              std::vector<int> axes, bool ban_fp16);
+
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new SlicePluginDynamic(starts_, ends_, axes_, ban_fp16_);
   }
+
+  SlicePluginDynamic(void const* serialData, size_t serialLength);
 
   const char* getPluginType() const override { return "slice_plugin"; }
   int getNbOutputs() const override { return 1; }
@@ -72,15 +111,54 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
                                        const nvinfer1::DataType* inputTypes,
                                        int nbInputs) const override;
 
-  void destroy() override { delete this; }
+  void destroy() override;
 
  private:
   std::vector<int> starts_;
   std::vector<int> ends_;
   std::vector<int> axes_;
-
   bool ban_fp16_{false};
+  int* offset_temp_data_{nullptr};
+  cudaEvent_t copy_event_;
+  cudaStream_t copy_stream_;
 };
+
+class SlicePluginV2Creator : public nvinfer1::IPluginCreator {
+ public:
+  SlicePluginV2Creator() {}
+  const char* getPluginName() const override { return "slice_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() override {
+    return &field_collection_;
+  }
+
+  nvinfer1::IPluginV2* createPlugin(
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
+    return nullptr;
+  }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serialData,
+                                         size_t serialLength) override {
+    auto plugin = new SlicePluginDynamic(serialData, serialLength);
+    return plugin;
+  }
+
+  void setPluginNamespace(const char* libNamespace) override {
+    namespace_ = libNamespace;
+  }
+
+  const char* getPluginNamespace() const override { return namespace_.c_str(); }
+
+ private:
+  std::string namespace_;
+  nvinfer1::PluginFieldCollection field_collection_;
+};
+
+REGISTER_TRT_PLUGIN_V2(SlicePluginV2Creator);
+
 #endif
 
 }  // namespace plugin

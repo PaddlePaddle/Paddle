@@ -66,16 +66,15 @@ def argsort(x, axis=-1, descending=False, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            import numpy as np
             
             paddle.disable_static()
-            input_array = np.array([[[5,8,9,5],
-                            [0,0,1,7],
-                            [6,9,2,4]],
-                            [[5,2,4,2],
-                            [4,7,7,9],
-                            [1,7,0,6]]]).astype(np.float32)
-            x = paddle.to_variable(input_array)
+            x = paddle.to_tensor([[[5,8,9,5],
+                                   [0,0,1,7],
+                                   [6,9,2,4]],
+                                  [[5,2,4,2],
+                                   [4,7,7,9],
+                                   [1,7,0,6]]], 
+                                dtype='float32')
             out1 = paddle.argsort(x=x, axis=-1)
             out2 = paddle.argsort(x=x, axis=0)
             out3 = paddle.argsort(x=x, axis=1)
@@ -148,14 +147,12 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            data = np.array([[5,8,9,5],
-                             [0,0,1,7],
-                             [6,9,2,4]])
-            x =  paddle.to_variable(data)
+            x =  paddle.to_tensor([[5,8,9,5],
+                                     [0,0,1,7],
+                                     [6,9,2,4]])
             out1 = paddle.argmax(x)
             print(out1.numpy()) # 2
             out2 = paddle.argmax(x, axis=1)
@@ -169,6 +166,12 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         raise TypeError(
             "The type of 'axis'  must be int or None in argmax, but received %s."
             % (type(axis)))
+
+    if dtype is None:
+        raise ValueError(
+            "the value of 'dtype' in argmax could not be None, but received None"
+        )
+
     var_dtype = convert_np_dtype_to_dtype_(dtype)
     check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
     flatten = False
@@ -222,14 +225,12 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             paddle.disable_static()
-            data = np.array([[5,8,9,5],
-                             [0,0,1,7],
-                             [6,9,2,4]])
-            x =  paddle.to_variable(data)
+            x =  paddle.to_tensor([[5,8,9,5],
+                                     [0,0,1,7],
+                                     [6,9,2,4]])
             out1 = paddle.argmin(x)
             print(out1.numpy()) # 4
             out2 = paddle.argmin(x, axis=1)
@@ -243,6 +244,12 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         raise TypeError(
             "The type of 'axis'  must be int or None in argmin, but received %s."
             % (type(axis)))
+
+    if dtype is None:
+        raise ValueError(
+            "the value of 'dtype' in argmin could not be None, but received None"
+        )
+
     var_dtype = convert_np_dtype_to_dtype_(dtype)
     check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
     flatten = False
@@ -292,24 +299,16 @@ def index_select(x, index, axis=0, name=None):
     Returns:
         Tensor: A Tensor with same data type as ``x``.
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
-        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
-
     Examples:
         .. code-block:: python
             
             import paddle
-            import numpy as np
 
             paddle.disable_static()  # Now we are in imperative mode
-            data = np.array([[1.0, 2.0, 3.0, 4.0],
-                             [5.0, 6.0, 7.0, 8.0],
-                             [9.0, 10.0, 11.0, 12.0]])
-            data_index = np.array([0, 1, 1]).astype('int32')
-
-            x = paddle.to_tensor(data)
-            index = paddle.to_tensor(data_index)
+            x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
+                                  [5.0, 6.0, 7.0, 8.0],
+                                  [9.0, 10.0, 11.0, 12.0]])
+            index = paddle.to_tensor([0, 1, 1], dtype='int32')
             out_z1 = paddle.index_select(x=x, index=index)
             #[[1. 2. 3. 4.]
             # [5. 6. 7. 8.]
@@ -363,48 +362,44 @@ def nonzero(input, as_tuple=False):
     Examples:
         .. code-block:: python
             import paddle
-            import paddle.fluid as fluid
-            import numpy as np
 
-            data1 = np.array([[1.0, 0.0, 0.0],
-                              [0.0, 2.0, 0.0],
-                              [0.0, 0.0, 3.0]])
-            data2 = np.array([0.0, 1.0, 0.0, 3.0])
-            data3 = np.array([0.0, 0.0, 0.0])
-            with fluid.dygraph.guard():
-                x1 = fluid.dygraph.to_variable(data1)
-                x2 = fluid.dygraph.to_variable(data2)
-                x3 = fluid.dygraph.to_variable(data3)
-                out_z1 = paddle.nonzero(x1)
-                print(out_z1.numpy())
-                #[[0 0]
-                # [1 1]
-                # [2 2]]
-                out_z1_tuple = paddle.nonzero(x1, as_tuple=True)
-                for out in out_z1_tuple:
-                    print(out.numpy())
-                #[[0]
-                # [1]
-                # [2]]
-                #[[0]
-                # [1]
-                # [2]]
-                out_z2 = paddle.nonzero(x2)
-                print(out_z2.numpy())
-                #[[1]
-                # [3]]
-                out_z2_tuple = paddle.nonzero(x2, as_tuple=True)
-                for out in out_z2_tuple:
-                    print(out.numpy())
-                #[[1]
-                # [3]]
-                out_z3 = paddle.nonzero(x3)
-                print(out_z3.numpy())
-                #[]
-                out_z3_tuple = paddle.nonzero(x3, as_tuple=True)
-                for out in out_z3_tuple:
-                    print(out.numpy())
-                #[]                    
+            paddle.disable_static()
+
+            x1 = paddle.to_tensor([[1.0, 0.0, 0.0],
+                          [0.0, 2.0, 0.0],
+                          [0.0, 0.0, 3.0]])
+            x2 = paddle.to_tensor([0.0, 1.0, 0.0, 3.0])
+            x3 = paddle.to_tensor([0.0, 0.0, 0.0])
+            out_z1 = paddle.nonzero(x1)
+            print(out_z1.numpy())
+            #[[0 0]
+            # [1 1]
+            # [2 2]]
+            out_z1_tuple = paddle.nonzero(x1, as_tuple=True)
+            for out in out_z1_tuple:
+                print(out.numpy())
+            #[[0]
+            # [1]
+            # [2]]
+            #[[0]
+            # [1]
+            # [2]]
+            out_z2 = paddle.nonzero(x2)
+            print(out_z2.numpy())
+            #[[1]
+            # [3]]
+            out_z2_tuple = paddle.nonzero(x2, as_tuple=True)
+            for out in out_z2_tuple:
+                print(out.numpy())
+            #[[1]
+            # [3]]
+            out_z3 = paddle.nonzero(x3)
+            print(out_z3.numpy())
+            #[]
+            out_z3_tuple = paddle.nonzero(x3, as_tuple=True)
+            for out in out_z3_tuple:
+                print(out.numpy())
+            #[]                    
     """
     list_out = []
     shape = input.shape
@@ -451,16 +446,15 @@ def sort(x, axis=-1, descending=False, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            import numpy as np
             
             paddle.disable_static()
-            input_array = np.array([[[5,8,9,5],
-                            [0,0,1,7],
-                            [6,9,2,4]],
-                            [[5,2,4,2],
-                            [4,7,7,9],
-                            [1,7,0,6]]]).astype(np.float32)
-            x = paddle.to_variable(input_array)
+            x = paddle.to_tensor([[[5,8,9,5],
+                                   [0,0,1,7],
+                                   [6,9,2,4]],
+                                  [[5,2,4,2],
+                                   [4,7,7,9],
+                                   [1,7,0,6]]], 
+                                 dtype='float32')
             out1 = paddle.sort(x=x, axis=-1)
             out2 = paddle.sort(x=x, axis=0)
             out3 = paddle.sort(x=x, axis=1)
@@ -536,16 +530,11 @@ def where(condition, x, y, name=None):
         .. code-block:: python
 
           import paddle
-          import numpy as np
-          import paddle.fluid as fluid
 
-          x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
-          y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
-
-          with fluid.dygraph.guard():
-              x = fluid.dygraph.to_variable(x_i)
-              y = fluid.dygraph.to_variable(y_i)
-              out = paddle.where(x>1, x, y)
+          paddle.disable_static()
+          x = paddle.to_tensor([0.9383, 0.1983, 3.2, 1.2])
+          y = paddle.to_tensor([1.0, 1.0, 1.0, 1.0])
+          out = paddle.where(x>1, x, y)
 
           print(out.numpy())
           #out: [1.0, 1.0, 3.2, 1.2]
@@ -622,50 +611,41 @@ def index_sample(x, index):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import numpy as np
 
-            data = np.array([[1.0, 2.0, 3.0, 4.0],
-                                [5.0, 6.0, 7.0, 8.0],
-                                [9.0, 10.0, 11.0, 12.0]]).astype('float32')
+            paddle.disable_static()
+            x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
+                                  [5.0, 6.0, 7.0, 8.0],
+                                  [9.0, 10.0, 11.0, 12.0]], dtype='float32')
+            index = paddle.to_tensor([[0, 1, 2],
+                                      [1, 2, 3],
+                                      [0, 0, 0]], dtype='int32')
+            target = paddle.to_tensor([[100, 200, 300, 400],
+                                       [500, 600, 700, 800],
+                                       [900, 1000, 1100, 1200]], dtype='int32')
+            out_z1 = paddle.index_sample(x, index)
+            print(out_z1.numpy())
+            #[[1. 2. 3.]
+            # [6. 7. 8.]
+            # [9. 9. 9.]]
 
-            data_index = np.array([[0, 1, 2],
-                                    [1, 2, 3],
-                                    [0, 0, 0]]).astype('int32')
+            # Use the index of the maximum value by topk op
+            # get the value of the element of the corresponding index in other tensors
+            top_value, top_index = paddle.topk(x, k=2)
+            out_z2 = paddle.index_sample(target, top_index)
+            print(top_value.numpy())
+            #[[ 4.  3.]
+            # [ 8.  7.]
+            # [12. 11.]]
 
-            target_data = np.array([[100, 200, 300, 400],
-                                    [500, 600, 700, 800],
-                                    [900, 1000, 1100, 1200]]).astype('int32')
+            print(top_index.numpy())
+            #[[3 2]
+            # [3 2]
+            # [3 2]]
 
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(data)
-                index = fluid.dygraph.to_variable(data_index)
-                target = fluid.dygraph.to_variable(target_data)
-
-                out_z1 = paddle.index_sample(x, index)
-                print(out_z1.numpy())
-                #[[1. 2. 3.]
-                # [6. 7. 8.]
-                # [9. 9. 9.]]
-
-                # Use the index of the maximum value by topk op
-                # get the value of the element of the corresponding index in other tensors
-                top_value, top_index = fluid.layers.topk(x, k=2)
-                out_z2 = paddle.index_sample(target, top_index)
-                print(top_value.numpy())
-                #[[ 4.  3.]
-                # [ 8.  7.]
-                # [12. 11.]]
-
-                print(top_index.numpy())
-                #[[3 2]
-                # [3 2]
-                # [3 2]]
-
-                print(out_z2.numpy())
-                #[[ 400  300]
-                # [ 800  700]
-                # [1200 1100]]
+            print(out_z2.numpy())
+            #[[ 400  300]
+            # [ 800  700]
+            # [1200 1100]]
 
 
     """
@@ -698,27 +678,20 @@ def masked_select(x, mask, name=None):
 
     Returns: A 1-D Tensor which is the same data type  as ``x``.
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must be one of  float32, float64, int32 and int64.
-        TypeError: ``mask`` must be a Tensor and the data type of ``mask`` must be bool.
-
     Examples:
 
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            
+
             paddle.disable_static()
-            data = np.array([[1.0, 2.0, 3.0, 4.0],
-                                [5.0, 6.0, 7.0, 8.0],
-                                [9.0, 10.0, 11.0, 12.0]]).astype('float32')
-            
-            mask_data = np.array([[True, False, False, False],
-                            [True, True, False, False],
-                            [True, False, False, False]]).astype('bool')
-            x = paddle.to_tensor(data)
-            mask = paddle.to_tensor(mask_data)
+
+            x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
+                                  [5.0, 6.0, 7.0, 8.0],
+                                  [9.0, 10.0, 11.0, 12.0]])
+            mask = paddle.to_tensor([[True, False, False, False],
+                                     [True, True, False, False],
+                                     [True, False, False, False]])
             out = paddle.masked_select(x, mask)
             #[1.0 5.0 6.0 9.0]
     """
@@ -763,20 +736,17 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
 
         .. code-block:: python
 
-           import numpy as np
            import paddle
 
            paddle.disable_static()
 
-           data_1 = np.array([1, 4, 5, 7])
-           tensor_1 = paddle.to_tensor(data_1)
+           tensor_1 = paddle.to_tensor([1, 4, 5, 7])
            value_1, indices_1 = paddle.topk(tensor_1, k=1)
            print(value_1.numpy())
            # [7]
            print(indices_1.numpy())
            # [3] 
-           data_2 = np.array([[1, 4, 5, 7], [2, 6, 2, 5]])
-           tensor_2 = paddle.to_tensor(data_2)
+           tensor_2 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
            value_2, indices_2 = paddle.topk(tensor_2, k=1)
            print(value_2.numpy())
            # [[7]

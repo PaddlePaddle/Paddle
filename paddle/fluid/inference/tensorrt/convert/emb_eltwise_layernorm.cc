@@ -136,7 +136,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       plugin::DynamicPluginTensorRT* plugin = nullptr;
       plugin = new plugin::EmbLaynormPluginDynamicV2<float>(
           input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
-          eps);
+          eps, use_fp16);
       layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
 #endif
     } else {

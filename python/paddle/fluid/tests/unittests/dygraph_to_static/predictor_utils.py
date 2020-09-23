@@ -81,7 +81,7 @@ class PredictorTools(object):
                 tensor.set_lod(feed_data.lod())
 
         # ensure no diff in multiple repeat times
-        repeat_time = 10
+        repeat_time = 2
         for i in range(repeat_time):
             predictor.zero_copy_run()
 
