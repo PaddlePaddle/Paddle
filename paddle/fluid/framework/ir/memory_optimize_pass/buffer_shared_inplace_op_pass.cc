@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_op_handle.h"
@@ -141,11 +142,12 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
         VLOG(4) << "Inplace performed in op " << op_type << ": "
                 << in_var_handle_ptr->Name() << " -> "
                 << out_var_handle_ptr->Name()
-                << ". Debug String is: " << op->GetOp()->DebugString();
+                << ". Debug String is: " << op->GetOp()->DebugString()
+                << ". ReuseType: " << ReuseType();
       } else {
         VLOG(3) << "Inplace failed in op " << op_type << ": "
                 << in_var_handle_ptr->Name() << " -> "
-                << out_var_handle_ptr->Name();
+                << out_var_handle_ptr->Name() << ". ReuseType: " << ReuseType();
       }
     }
   }

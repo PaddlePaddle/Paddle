@@ -192,6 +192,9 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
           copy_size += src_mat_w_sz;
         }
         // fill data
+        if (context_start > 0) {
+          src_data += context_start * src_mat_w;
+        }
         for (int j = 0; j < seq_len - up_pad - down_pad; ++j) {
           std::memcpy(dst_data, src_data, copy_size);
           dst_data += col_mat_w;
@@ -201,18 +204,15 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
         std::memset(dst_data, 0, down_pad * col_mat_w_sz);
         copy_size -= src_mat_w_sz;
         for (int j = 0; j < down_pad; ++j) {
+          if (copy_size < 0) {
+            copy_size = 0;
+          }
           std::memcpy(dst_data, src_data, copy_size);
           dst_data += col_mat_w;
           src_data += src_mat_w;
           copy_size -= src_mat_w_sz;
         }
       } else {
-        PADDLE_ENFORCE_GE(context_length, up_pad + down_pad + 1,
-                          platform::errors::InvalidArgument(
-                              "context length must be bigger or equal than "
-                              "up_pad + down_pad + 1, but received context "
-                              "length is: %d, up_pad is: %d, down_pad is: %d.",
-                              context_length, up_pad, down_pad));
         std::memset(dst_data, 0, seq_len * col_mat_w_sz);
         dst_data = dst_data + up_pad * src_mat_w;
         int zero_sz = up_pad * src_mat_w_sz;
@@ -226,9 +226,15 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
         // from bottom
         dst_data = col_data + ed * col_mat_w;
         src_data = x_data + st * src_mat_w;
+        if (context_start > 0) {
+          src_data += context_start * src_mat_w;
+        }
         zero_sz = down_pad * src_mat_w_sz;
         for (int j = 1; j <= std::min(down_pad, seq_len); ++j) {
           int copy_size = std::min(cur_src_sz, col_mat_w_sz - zero_sz);
+          if (copy_size < 0) {
+            copy_size = 0;
+          }
           std::memcpy(dst_data - (zero_sz + copy_size) / sizeof(T),
                       src_data + std::max(seq_len - j - up_pad, 0) * src_mat_w,
                       copy_size);

@@ -60,8 +60,9 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         place = fluid.CUDAPlace(device_id)
         exe = fluid.Executor(place)
-        fleet.init_worker()
+
         exe.run(fleet.startup_program)
+        fleet.init_worker()
 
         batch_size = 4
         train_reader = paddle.batch(fake_ctr_reader(), batch_size=batch_size)
@@ -104,8 +105,8 @@ class TestDistGpuPsCTR2x2(TestDistCTR2x2):
         place = fluid.CUDAPlace(device_id)
         exe = fluid.Executor(place)
 
-        fleet.init_worker()
         exe.run(fleet.startup_program)
+        fleet.init_worker()
 
         thread_num = 2
         batch_size = 128

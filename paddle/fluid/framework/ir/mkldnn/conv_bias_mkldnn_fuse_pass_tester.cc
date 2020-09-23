@@ -18,6 +18,7 @@
 #include "paddle/fluid/platform/place.h"
 
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
@@ -147,6 +148,12 @@ TEST(ConvBiasFusePass, conv3d) {
 TEST(ConvBiasFusePass, conv2d_transpose) {
   Conv2DTransposeBiasFusePass pass;
   ASSERT_EQ(pass.type(), std::string("conv2d_transpose"));
+}
+
+TEST(ConvBiasFusePass, pass_op_version_check) {
+  ASSERT_TRUE(
+      paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
+          .IsPassCompatible("conv_bias_mkldnn_fuse_pass"));
 }
 
 }  // namespace ir
