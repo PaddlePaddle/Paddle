@@ -58,7 +58,7 @@ class TestDygraphGroupNormv2(unittest.TestCase):
             y2 = compute_v2(x)
             result = np.allclose(y1, y2)
             if not result:
-                print("y1:", y1, " y2:", y2)
+                print("y1:", y1, "\ty2:", y2)
             self.assertTrue(result)
             test_weight_bias_false()
 
