@@ -297,7 +297,6 @@ void GlooWrapper::Init() {
           http_ip_, http_port_, prefix_ + "_" + http_scope_, rank_);
       http_store->SetTimeoutSeconds(init_timeout_.count());
       context->connectFullMesh(*http_store, dev);
-      http_store->Finalize();
       break;
     }
     default:
