@@ -16,7 +16,7 @@ from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper
 from .common import is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 from .meta_optimizer_base import MetaOptimizerBase
 from paddle.fluid import unique_name, core
-from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
+from zero.decorator import decorate as amp_decorate
 import paddle.fluid as fluid
 
 import math
@@ -813,8 +813,7 @@ class ZeroOptimizer(MetaOptimizerBase):
             optimizer._set_checkpoints(ckpts)
 
         if self.user_defined_strategy.zero_configs["amp"]:
-            optimizer = fluid.contrib.mixed_precision.decorate(
-                optimizer, use_dynamic_loss_scaling=True)
+            optimizer = amp_decorate(optimizer, use_dynamic_loss_scaling=True)
 
         self._nrings = self.user_defined_strategy.zero_configs["nrings"]
         self._fuse_broadcast_MB_bytes = self.user_defined_strategy.zero_configs[
@@ -1184,8 +1183,7 @@ class ZeroOptimizer(MetaOptimizerBase):
 
         optimizer = self.inner_opt
         if self.user_defined_strategy.zero_configs["amp"]:
-            optimizer = fluid.contrib.mixed_precision.decorate(
-                optimizer, use_dynamic_loss_scaling=True)
+            optimizer = amp_decorate(optimizer, use_dynamic_loss_scaling=True)
 
         optimize_ops, params_grads = optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
