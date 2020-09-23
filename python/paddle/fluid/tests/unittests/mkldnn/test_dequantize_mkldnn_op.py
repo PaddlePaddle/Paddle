@@ -74,9 +74,6 @@ class TestDeQuantizeOp2(TestDeQuantizeOp):
 
 
 class TestDeQuantizeOpBf16(TestDeQuantizeOp):
-    def test_check_output(self):
-        self.check_output(atol=1e-2, check_dygraph=False)
-
     def set_scale(self):
         self.scale = 1.0
 
