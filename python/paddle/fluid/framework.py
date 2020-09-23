@@ -603,6 +603,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
     elif dtype == np.bool:
         return core.VarDesc.VarType.BOOL
     elif dtype == np.uint16:
+        # since there is still no support for bfloat16 in NumPy,
+        # uint16 is used for casting bfloat16
         return core.VarDesc.VarType.BF16
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8

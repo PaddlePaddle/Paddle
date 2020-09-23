@@ -259,6 +259,10 @@ class OpTest(unittest.TestCase):
             self.call_once = True
             self.dtype = data_type
 
+    def is_bfloat16_op(self):
+        return (hasattr(self, 'mkldnn_data_type') and
+                getattr(self, 'mkldnn_data_type') is "bfloat16")
+
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def is_np_data(input):
             return isinstance(input, (np.ndarray, np.generic))
@@ -975,6 +979,14 @@ class OpTest(unittest.TestCase):
             self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST:
             atol = 0
 
+        if self.is_bfloat16_op():
+            check_dygraph = False
+            if hasattr(self, 'force_fp32_output') and getattr(
+                    self, 'force_fp32_output'):
+                atol = 1e-2
+            else:
+                atol = 2
+
         if no_check_set is not None:
             if self.op_type not in no_check_set_white_list.no_check_set_white_list:
                 raise AssertionError(
@@ -1304,8 +1316,9 @@ class OpTest(unittest.TestCase):
             no_grad_set = set()
         else:
             if (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
-                ) and (self.op_type not in
-                       no_grad_set_white_list.NOT_CHECK_OP_LIST):
+                ) and (
+                    self.op_type not in no_grad_set_white_list.NOT_CHECK_OP_LIST
+                ) and (not self.is_bfloat16_op()):
                 raise AssertionError("no_grad_set must be None, op_type is " +
                                      self.op_type + " Op.")
 

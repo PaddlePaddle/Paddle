@@ -35,8 +35,6 @@ def conv2d_residual_naive(out, residual):
     return out
 
 
-@skip_check_grad_ci(
-    reason="Grad check is meaningless because Grad Op BF16 is not registered")
 class TestConv2dBf16Op(TestConv2dOp):
     def setUp(self):
         self.op_type = "conv2d"
@@ -104,10 +102,7 @@ class TestConv2dBf16Op(TestConv2dOp):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(
-            core.CPUPlace(),
-            atol=1e-2 if self.force_fp32_output else 2,
-            check_dygraph=False)
+        self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad(self):
         pass
