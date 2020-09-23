@@ -19,6 +19,8 @@ import paddle
 import paddle.fluid as fluid
 import os
 
+paddle.enable_static()
+
 
 class TestFleetFP16CompressOptimizer(unittest.TestCase):
     def setUp(self):
