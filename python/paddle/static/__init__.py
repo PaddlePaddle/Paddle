@@ -43,3 +43,6 @@ from ..fluid.parallel_executor import ParallelExecutor  #DEFINE_ALIAS
 from ..fluid.param_attr import WeightNormParamAttr  #DEFINE_ALIAS
 from ..tensor.io import save  #DEFINE_ALIAS
 from ..tensor.io import load  #DEFINE_ALIAS
+
+# NOTE: This function is not exposed to users, only used for paddle2onnx now
+from ..fluid.io import get_inference_program
