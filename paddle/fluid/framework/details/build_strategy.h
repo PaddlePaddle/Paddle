@@ -132,6 +132,9 @@ struct BuildStrategy {
   // Turn on inplace by default.
   bool enable_inplace_{true};
 
+  // Turn off inplace addto by default.
+  bool enable_addto_{false};
+
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
   // it's distributed model.

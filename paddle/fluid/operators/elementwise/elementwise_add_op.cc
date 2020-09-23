@@ -14,8 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 
+#include <memory>
 #include <string>
 
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 
 namespace paddle {
@@ -143,3 +145,18 @@ REGISTER_OP_CPU_KERNEL(
                                         int>,
     ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
                                         int64_t>);
+
+// A specialization elementwise_add operator, used in gradient accumulation with
+// inplace addto.
+REGISTER_OPERATOR(
+    grad_add, paddle::operators::ElementwiseOp,
+    paddle::operators::ElementwiseAddOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OP_CPU_KERNEL(
+    grad_add,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>);

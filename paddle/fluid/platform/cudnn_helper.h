@@ -300,6 +300,7 @@ class ScopedTensorDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedTensorDescriptor);
 };
 
+#if CUDNN_VERSION >= 7201
 class ScopedRNNTensorDescriptor {
  public:
   ScopedRNNTensorDescriptor() {
@@ -343,6 +344,7 @@ class ScopedRNNTensorDescriptor {
   cudnnRNNDataDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedRNNTensorDescriptor);
 };
+#endif
 
 class ScopedDropoutDescriptor {
  public:

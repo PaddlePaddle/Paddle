@@ -51,7 +51,8 @@ void Train() {
     }
   }
 
-  PADDLE_ENFORCE_NE(loss_name, "", "loss not found");
+  PADDLE_ENFORCE_NE(loss_name, "",
+                    platform::errors::NotFound("Loss name is not found."));
 
   // prepare data
   auto x_var = scope.Var("img");

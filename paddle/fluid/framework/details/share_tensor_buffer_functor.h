@@ -50,10 +50,12 @@ class ShareTensorBufferFunctor {
   ShareTensorBufferFunctor(
       Scope *scope, size_t scope_idx, const std::string &op_type,
       const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
-      const std::vector<std::string> &out_var_names);
+      const std::vector<std::string> &out_var_names, bool share_dims = false);
 
   void AddReuseVarPair(const ir::MemOptVarInfo *in_var_info,
                        const std::string &out_var_name);
+
+  void SetShareDims(bool share_dims) { share_dims_ = share_dims; }
 
   void operator()(Scope *exec_scope);
 
@@ -76,6 +78,11 @@ class ShareTensorBufferFunctor {
   std::vector<std::string> out_var_names_;
 
   std::vector<std::pair<const Variable *, Variable *>> in_out_vars_;
+
+  // NOTE(zhiqiu): In the case of inplace addto, if the operator of
+  // the in_out_vars is skipped during running, we should set the dims of output
+  // as the same as input.
+  bool share_dims_{false};
 };
 
 }  // namespace details

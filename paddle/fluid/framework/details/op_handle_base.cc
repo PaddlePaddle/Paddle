@@ -13,6 +13,9 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/op_handle_base.h"
 
+#include <map>
+#include <unordered_set>
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -85,6 +88,12 @@ void OpHandleBase::Run(bool use_cuda) {
 #else
   PADDLE_ENFORCE(!use_cuda);
 #endif
+
+  // skip running current op, used with inplace_addto_op_pass
+  if (skip_running_) {
+    VLOG(4) << "skip running: " << Name();
+    return;
+  }
 
   RunImpl();
 }

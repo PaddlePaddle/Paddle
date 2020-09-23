@@ -65,6 +65,10 @@ class OpHandleBase {
 
   virtual Priority GetPriority() const { return kNormal; }
 
+  virtual bool GetSkipRunning() const { return skip_running_; }
+
+  virtual void SetSkipRunning(bool skip_runing) { skip_running_ = skip_runing; }
+
   virtual std::string Name() const = 0;
 
   void Run(bool use_cuda);
@@ -144,6 +148,7 @@ class OpHandleBase {
   std::map<platform::Place, platform::DeviceContext *> dev_ctxes_;
 
   std::vector<Scope *> local_exec_scopes_;
+  bool skip_running_ = false;
 
 #ifdef PADDLE_WITH_CUDA
   std::unordered_map<int, cudaEvent_t> events_;

@@ -127,7 +127,8 @@ function(op_library TARGET)
 "tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op"
 "fusion_transpose_flatten_concat_op" "fusion_conv_inception_op"
 "sync_batch_norm_op" "dgc_op" "fused_fc_elementwise_layernorm_op"
-"multihead_matmul_op" "fusion_group_op" "fused_bn_activation_op" "fused_embedding_eltwise_layernorm_op" "fusion_gru_op")
+"multihead_matmul_op" "fusion_group_op" "fused_bn_activation_op" "fused_embedding_eltwise_layernorm_op" "fusion_gru_op"
+"fused_bn_add_activation_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
         endif()
@@ -138,12 +139,17 @@ function(op_library TARGET)
     # And for detail pybind information, please see generated paddle/pybind/pybind.h.
     file(READ ${TARGET}.cc TARGET_CONTENT)
     string(REGEX MATCH "REGISTER_OPERATOR\\(.*REGISTER_OPERATOR\\(" multi_register "${TARGET_CONTENT}")
-    string(REGEX MATCH "REGISTER_OPERATOR\\([a-z0-9_]*," one_register "${multi_register}")
+    # [ \t\r\n]* is used for blank characters
+    string(REGEX MATCH "REGISTER_OPERATOR\\([ \t\r\n]*[a-z0-9_]*," one_register "${multi_register}")
+
     if (one_register STREQUAL "")
         string(REPLACE "_op" "" TARGET "${TARGET}")
     else ()
         string(REPLACE "REGISTER_OPERATOR(" "" TARGET "${one_register}")
         string(REPLACE "," "" TARGET "${TARGET}")
+        # [ \t\r\n]+ is used for blank characters.
+        # Here we use '+' instead of '*' since it is a REPLACE operation.
+        string(REGEX REPLACE "[ \t\r\n]+" "" TARGET "${TARGET}")
     endif()
 
     # pybind USE_NO_KERNEL_OP
