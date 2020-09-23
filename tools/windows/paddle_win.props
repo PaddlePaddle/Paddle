@@ -37,7 +37,7 @@
             <BuildDynamicCommandLineTemplate>[CodeGeneration]</BuildDynamicCommandLineTemplate>
             <CleanCommandLineTemplate>-clean</CleanCommandLineTemplate>
             <!-- <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] [ProgramDataBaseFileName] $(CudaForceSynchronousPdbWrites) /Zi [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate> -->
-            <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] [ProgramDataBaseFileName] $(CudaForceSynchronousPdbWrites) /ZI [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate>
+            <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] [ProgramDataBaseFileName] $(CudaForceSynchronousPdbWrites) [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate>
 
             <DriverApiCommandLineTemplate>%(BaseCommandLineTemplate) [CompileOut] "%(FullPath)"</DriverApiCommandLineTemplate>
             <RuntimeApiCommandLineTemplate>%(BaseCommandLineTemplate) [HostDebugInfo] [Emulation] [FastMath] [Defines] %(HostCommandLineTemplate) [CompileOut] "%(FullPath)"</RuntimeApiCommandLineTemplate>
@@ -87,7 +87,7 @@ set CUDAFE_FLAGS=--sdk_dir "$(WindowsSdkDir)"
             <Inputs></Inputs>
 
             <!-- <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] /Zi [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate> -->
-            <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] /ZI [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate>
+            <HostCommandLineTemplate>-Xcompiler &quot;/EHsc [Warning] /nologo [Optimization] [RuntimeChecks] [Runtime] [TypeInfo]&quot;</HostCommandLineTemplate>
             <LinkCommandLineTemplate>"$(CudaToolkitNvccPath)" -dlink [LinkOut] %(HostCommandLineTemplate) [AdditionalLibraryDirectories] [AdditionalDependencies] [AdditionalOptions] [CodeGeneration] [GPUDebugInfo] [TargetMachinePlatform] [Inputs]</LinkCommandLineTemplate>
             <CommandLineTemplate>
 # (Approximate command-line.  Settings inherited from host are not visible below.)
