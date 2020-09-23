@@ -34,7 +34,11 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
+<<<<<<< HEAD
 from paddle.distributed.fleet import fleet
+=======
+import paddle.distributed.fleet as fleet
+>>>>>>> 8caa7103992b8b57fcd6301891f994838e630509
 
 __all__ = ['FleetDistHeterRunnerBase', 'TestFleetHeterBase', 'runtime_main']
 
