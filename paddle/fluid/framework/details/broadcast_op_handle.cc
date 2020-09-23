@@ -167,9 +167,9 @@ void BroadcastOpHandle::InitOutputValue(
                                          "Variable %s is not found in scopes.",
                                          out_var_handle->name()));
     if (is_gpu_place(in_tensor.place())) {
-      PADDLE_ENFORCE(platform::is_gpu_place(t_out_p),
-                     platform::errors::PreconditionNotMet(
-                         "Places of input and output must be all on GPU."));
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(t_out_p), true,
+                        platform::errors::PreconditionNotMet(
+                            "Places of input and output must be all on GPU."));
     } else {
       t_out_p = platform::CPUPlace();
     }

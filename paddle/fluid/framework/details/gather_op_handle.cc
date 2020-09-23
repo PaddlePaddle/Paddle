@@ -60,11 +60,9 @@ void GatherOpHandle::RunImpl() {
       platform::errors::NotFound("The variable '%s' is not found in the scope.",
                                  in_0_handle->name()));
 
-  PADDLE_ENFORCE_EQ(
-      pre_in_var->IsType<framework::SelectedRows>(), true,
-      platform::errors::Unimplemented(
-          "Currently, gather_op only supports SelectedRows, but got %s.",
-          DataTypeToString(pre_in_var->type())));
+  PADDLE_ENFORCE_EQ(pre_in_var->IsType<framework::SelectedRows>(), true,
+                    platform::errors::Unimplemented(
+                        "Currently, gather_op only supports SelectedRows."));
 
   // Wait input done, this Wait is asynchronous operation
   WaitInputVarGenerated();
@@ -93,9 +91,9 @@ void GatherOpHandle::RunImpl() {
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
   platform::Place t_out_p = out_var_handle->place();
   if (platform::is_gpu_place(pre_in_value.place())) {
-    PADDLE_ENFORCE(platform::is_gpu_place(t_out_p),
-                   platform::errors::PreconditionNotMet(
-                       "Places of input and output must be all on GPU."));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(t_out_p), true,
+                      platform::errors::PreconditionNotMet(
+                          "Places of input and output must be all on GPU."));
   } else {
     t_out_p = platform::CPUPlace();
   }
@@ -105,7 +103,7 @@ void GatherOpHandle::RunImpl() {
   PADDLE_ENFORCE_NOT_NULL(
       out_var,
       platform::errors::NotFound("The variable '%s' is not found in the scope.",
-                                 in_handle->name()));
+                                 out_var_handle->name()));
   auto out_value = out_var->GetMutable<framework::SelectedRows>();
   out_value->set_height(pre_in_value.height());
   out_value->set_rows(out_rows);

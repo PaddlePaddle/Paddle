@@ -84,7 +84,7 @@ void EagerDeletionOpHandle::InitCUDA() {
 
 void EagerDeletionOpHandle::CallOnce() {
   PADDLE_ENFORCE(
-      vars_.empty(),
+      vars_.empty(), true,
       platform::errors::InvalidArgument(
           "The variables to be deleted should be initialized here."));
   Scope *exec_scope = local_exec_scopes_[0];
