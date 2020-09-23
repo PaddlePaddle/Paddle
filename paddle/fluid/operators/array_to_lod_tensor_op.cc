@@ -49,7 +49,7 @@ struct ArrayToLoDFunctor : public boost::static_visitor<void> {
       Apply(static_cast<platform::CUDADeviceContext *>(pool.Get(place)));
 #else
       PADDLE_THROW(
-          platform::errors::Unavailable("Fluid is not compiled with CUDA"));
+          platform::errors::Unavailable("Paddle is not compiled with CUDA"));
 #endif
     }
   }
@@ -106,20 +106,23 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
           ins_i_dims, ins_dims,
           platform::errors::InvalidArgument(
               "The dimension of the %zu'th element in LoDTensorArray "
-              "differs from previous ones.",
-              i));
+              "differs from previous ones."
+              "The current dimension is %d, and the previous dimesion is %d.",
+              i, ins_i_dims, ins_dims));
       PADDLE_ENFORCE_EQ(
           x[i].place(), place,
           platform::errors::InvalidArgument(
               "The place class of the %zu'th element in LoDTensorArray "
-              "differs from previous ones.",
-              i));
+              "differs from previous ones."
+              "The current place is %d, and the previous place is %d.",
+              i, x[i].place(), place));
       PADDLE_ENFORCE_EQ(
           x[i].type(), data_type,
           platform::errors::InvalidArgument(
               "The date type of the %zu'th element in LoDTensorArray "
-              "differs from previous ones.",
-              i));
+              "differs from previous ones."
+              "The current data type is %d, and the previous data type is %d.",
+              i, x[i].type(), data_type));
       batch_size += x[i].dims()[0];
     }
     auto ins_dim_vec = framework::vectorize(ins_dims);
@@ -150,7 +153,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
       PADDLE_ENFORCE_LE(table_items[idx].length, x.size(),
                         platform::errors::InvalidArgument(
                             "The RankTable items length should less than or "
-                            "equal Input(X) size,"
+                            "equal to Input(X) size,"
                             "but receive TankTable items length is %d , longer "
                             "than Input(X) size %d.",
                             table_items[idx].length, x.size()));
@@ -169,7 +172,8 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         PADDLE_ENFORCE_GE(
             end_offset, start_offset,
             platform::errors::InvalidArgument(
-                "The lod data start offset should smaller or equal end offset,"
+                "The lod data start offset should smaller or equal to the end "
+                "offset,"
                 "but the start offset is %d, larger than end offset %d.",
                 start_offset, end_offset));
         size_t len = end_offset - start_offset;
@@ -210,10 +214,10 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(
         context->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of BmmOp should not be null"));
+        platform::errors::NotFound("Input(X) of BmmOp should not be null."));
     PADDLE_ENFORCE_EQ(context->HasInput("RankTable"), true,
                       platform::errors::NotFound(
-                          "Input(RankTable) of BmmOp should not be null"));
+                          "Input(RankTable) of BmmOp should not be null."));
     // For compile-time, the first dim of input X and output Out should be -1.
     // For runtime, the first dim of output Out should be the sum of all
     // elements's first dim in input X. The output's dims will be re-computed in

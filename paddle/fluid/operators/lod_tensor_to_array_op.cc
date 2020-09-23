@@ -62,7 +62,7 @@ struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
       Apply(static_cast<platform::CUDADeviceContext *>(dev_ctx));
 #else
       PADDLE_THROW(
-          platform::errors::Unavailable("Fluid is not compiled with CUDA"));
+          platform::errors::Unavailable("Place is not compiled with CUDA"));
 #endif
     }
   }
@@ -112,8 +112,8 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
         rank_level, x.lod().size(),
         platform::errors::InvalidArgument(
             "Input should be a LoDTensor, and its lod_level should be at "
-            "least %d",
-            rank_level + 1));
+            "least %d, but given is %d.",
+            rank_level + 1, x.lod().size()));
     out.resize(max_seq_len);
     std::vector<std::vector<CopyRange>> copy_ranges(max_seq_len);
 
