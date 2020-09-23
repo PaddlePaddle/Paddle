@@ -134,6 +134,7 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R3(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #define CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8(__macro) \
   __macro(cudnnGetConvolutionBackwardFilterAlgorithm);   \
   __macro(cudnnGetConvolutionForwardAlgorithm);          \
+  __macro(cudnnGetConvolutionBackwardDataAlgorithm);     \
   __macro(cudnnSetRNNDescriptor);
 CUDNN_DNN_ROUTINE_EACH_AFTER_R3_LESS_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
