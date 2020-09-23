@@ -16,7 +16,6 @@ from ... import default_main_program
 from ... import default_startup_program
 from ... import layers
 from ... import unique_name
-from ... import framework
 from . import fp16_utils
 from .fp16_utils import rewrite_program
 from .fp16_utils import update_role_var_grad
@@ -133,8 +132,7 @@ class OptimizerWithMixedPrecision(object):
             gradient respectively, and the scaled loss.
         """
         rewrite_program(self._train_program, self._amp_lists)
-        with framework.name_scope('mixed_precision'):
-            self._scaled_loss = loss * self._loss_scaling
+        self._scaled_loss = loss * self._loss_scaling
         self._params_grads = self._optimizer.backward(
             self._scaled_loss, startup_program, parameter_list, no_grad_set,
             callbacks)
@@ -158,24 +156,22 @@ class OptimizerWithMixedPrecision(object):
 
         grads = [g for _, g in params_grads]
         with self._train_program._optimized_guard(grads):
-            with framework.name_scope('mixed_precision'):
-                grads, found_inf = check_finite_and_unscale(
-                    grads, self._loss_scaling, name="find_infinite_scale")
+            grads, found_inf = check_finite_and_unscale(
+                grads, self._loss_scaling, name="find_infinite_scale")
 
         if self._use_dynamic_loss_scaling:
             with self._train_program._optimized_guard(grads):
-                with framework.name_scope('mixed_precision'):
-                    grads = update_loss_scaling(
-                        grads,
-                        found_inf,
-                        self._loss_scaling,
-                        self._num_good_steps,
-                        self._num_bad_steps,
-                        self._incr_every_n_steps,
-                        self._decr_every_n_nan_or_inf,
-                        self._incr_ratio,
-                        self._decr_ratio,
-                        name="update_loss_scaling")
+                grads = update_loss_scaling(
+                    grads,
+                    found_inf,
+                    self._loss_scaling,
+                    self._num_good_steps,
+                    self._num_bad_steps,
+                    self._incr_every_n_steps,
+                    self._decr_every_n_nan_or_inf,
+                    self._incr_ratio,
+                    self._decr_ratio,
+                    name="update_loss_scaling")
 
         params_unscaled_grads = []
         for pg, new_g in zip(params_grads, grads):
