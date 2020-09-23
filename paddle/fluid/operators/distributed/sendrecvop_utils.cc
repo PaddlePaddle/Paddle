@@ -37,9 +37,9 @@ static TensorPayload GetCommunicationAllocationFromTensor(
     const platform::DeviceContext& ctx, const framework::Tensor& tensor) {
   if (is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_EQ(is_gpu_place(tensor.place()), true,
-                      platform::errors::PreconditionNotMet(
-                          "The tensor %s must in gpu place.", tensor.name()));
+    PADDLE_ENFORCE_EQ(
+        is_gpu_place(tensor.place()), true,
+        platform::errors::PreconditionNotMet("Please run in gpu place."));
     auto& gpu_dev_ctx =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
