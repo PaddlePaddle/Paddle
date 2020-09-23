@@ -107,6 +107,10 @@ class FP16CompressOptimizer(MetaOptimizerBase):
 
         ret_param_and_grads = []
         # cast grad from fp16->fp32 after allreduce.
+        # NOTE. Now we split fp16 compression into two for loops,
+        # if we do not separate them, fuse allreduce will wrong.
+        # This must be the problem of fuse allreduce pass, need
+        # fixed in future.
         for param, grad, cast in new_param_and_grads:
             if not cast:
                 ret_param_and_grads.append((param, grad))
