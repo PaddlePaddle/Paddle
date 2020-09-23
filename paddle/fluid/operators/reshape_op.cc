@@ -253,6 +253,8 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
         "It has the lowest priority compare with Input(Shape) and "
         " Input(ShapeTensor).")
         .SetDefault({});
+    AddAttr<bool>("inplace", "").SetDefault(true);
+
     AddComment(R"DOC(
 Reshape Operator.
 
@@ -327,6 +329,7 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
 class ReshapeKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
+    auto inplace = ctx.Attr<bool>("inplace");
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("X");
 
@@ -360,6 +363,10 @@ class ReshapeKernel {
 
     out->Resize(out_dims);
     out->mutable_data(ctx.GetPlace(), in->type());
+    if (inplace) {
+      return;
+    }
+
     framework::TensorCopy(
         *in, ctx.GetPlace(),
         ctx.template device_context<platform::DeviceContext>(), out);
