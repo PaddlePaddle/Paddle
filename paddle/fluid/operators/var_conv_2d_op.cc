@@ -78,21 +78,35 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
       platform::errors::NotFound("Col(Output) of VarConv2dOP is not found."));
 
   auto x_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(x_dims.size(), 2,
-                    "The rank of X(Input) can't be less than 2.");
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(), 2,
+      platform::errors::InvalidArgument(
+          "The rank of X(Input) can't be less than 2, but received rank is %u.",
+          x_dims.size()));
 
   auto w_dims = ctx->GetInputDim("W");
 
-  PADDLE_ENFORCE_EQ(w_dims.size(), 2, "W should be 2-D tensor");
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(), 2,
+      platform::errors::InvalidArgument(
+          "Input W should be a 2-D tensor, but its actual dimension is %u.",
+          w_dims.size()));
   int output_channel = ctx->Attrs().Get<int>("OutputChannel");
   int input_channel = ctx->Attrs().Get<int>("InputChannel");
   int kernel_h = ctx->Attrs().Get<int>("KernelH");
   int kernel_w = ctx->Attrs().Get<int>("KernelW");
-  PADDLE_ENFORCE_EQ(w_dims[0], output_channel,
-                    "W dim[0] should be equal to OutputChannel");
+  PADDLE_ENFORCE_EQ(
+      w_dims[0], output_channel,
+      platform::errors::InvalidArgument(
+          "Input W's dimension[0] should be equal to OutputChannel, the "
+          "dimension[0] is %d, OutputChannel is %d.",
+          w_dims[0], output_channel));
   PADDLE_ENFORCE_EQ(
       w_dims[1], input_channel * kernel_h * kernel_w,
-      "W dim[1] should be equal to InputChannel * StrideH * StrideW");
+      platform::errors::InvalidArgument(
+          "Input W's dimension[1] should be equal to InputChannel * StrideH * "
+          "StrideW, the dimension[1] is %d, expected value is %d.",
+          w_dims[1], input_channel * kernel_h * kernel_w));
 
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
@@ -103,10 +117,14 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
         platform::errors::InvalidArgument("The Input(X) Tensor of VarConv2dOP "
                                           "does not contain LoD information."));
 
-    PADDLE_ENFORCE_GE(x_lod.size(), 1, "The Input(X)'s lod info is corrupted.");
-    PADDLE_ENFORCE_EQ(
-        x_dims[0], static_cast<int64_t>(x_lod[0].back()),
-        "The Input(X)'s lod info mismatches the actual tensor shape.");
+    PADDLE_ENFORCE_GE(x_lod.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "The Input(X)'s lod info is corrupted."));
+    PADDLE_ENFORCE_EQ(x_dims[0], static_cast<int64_t>(x_lod[0].back()),
+                      platform::errors::InvalidArgument(
+                          "The Input(X)'s lod info mismatches the actual "
+                          "tensor shape, input lod is %s, tensor shape is %s.",
+                          x_lod, x_dims));
 
     framework::Variable* row_var =
         BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("ROW")[0]);

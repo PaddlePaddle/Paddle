@@ -57,7 +57,14 @@ FILE_WHITE_LIST="\
     random_crop_op.h \
     elementwise_op_function.cu.h \
     fused_elemwise_activation_op.cc \
-    auc_op.cu"
+    auc_op.cu \
+    unsqueeze_op.h \
+    unsqueeze_op.cc \
+    enforce.h \
+    errors_test.cc \
+    cross_entropy.cu \
+    cross_entropy.h \
+    unpooling.cu"
 
 function count_file_recursively(){
     dir_name=$1

@@ -23,7 +23,7 @@ set(PADDLE_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_install_d
 # so we need to crop the library size.
 if(WIN32)
     #todo: remove the option 
-    option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
+    option(WITH_STATIC_LIB "Compile demo with static/shared library, default use dynamic."   OFF)
     if(NOT PYTHON_EXECUTABLE)
         FIND_PACKAGE(PythonInterp REQUIRED)
     endif()
@@ -164,25 +164,22 @@ copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
     if(WITH_STATIC_LIB)
-        set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.lib)
+        set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.lib
+                             ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_fluid.*)
     else()
         set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_fluid.dll
-                            ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_fluid.lib)
+                             ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_fluid.lib)
     endif()
+    copy(inference_lib_dist
+            SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
+            DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib
+            ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 else(WIN32)
     set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
-endif(WIN32)
-
-if(WIN32 AND NOT WITH_STATIC_LIB)
-        copy(inference_lib_dist
-                SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
-                DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib
-                      ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
-else()
-        copy(inference_lib_dist
+    copy(inference_lib_dist
                 SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
                 DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
-endif()
+endif(WIN32)
 
 copy(inference_lib_dist
         SRCS  ${CMAKE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
@@ -214,12 +211,12 @@ add_custom_target(fluid_lib_dist ALL DEPENDS ${fluid_lib_deps})
 
 set(dst_dir "${PADDLE_INSTALL_DIR}/paddle/fluid")
 set(module "inference")
-if(WIN32 AND NOT WITH_STATIC_LIB)
+if(WIN32)
         copy(fluid_lib_dist
                 SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_fluid_lib}
                 DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
                 )
-else()
+        else()
         copy(fluid_lib_dist
                 SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_fluid_lib}
                 DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} 
