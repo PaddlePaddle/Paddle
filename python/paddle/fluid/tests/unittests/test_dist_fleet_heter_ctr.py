@@ -18,6 +18,9 @@ import os
 import unittest
 import tempfile
 from test_dist_fleet_heter_base import TestFleetHeterBase
+import paddle
+
+paddle.enable_static()
 
 
 class TestDistHeterDatasetAsync2x2(TestFleetHeterBase):

@@ -237,8 +237,8 @@ class UtilBase(object):
         if not isinstance(files, list):
             raise TypeError("files should be a list of file need to be read.")
 
-        trainer_id = self.role_maker.worker_index()
-        trainers = self.role_maker.worker_num()
+        trainer_id = self.role_maker._worker_index()
+        trainers = self.role_maker._worker_num()
 
         remainder = len(files) % trainers
         blocksize = int(len(files) / trainers)
@@ -280,7 +280,7 @@ class UtilBase(object):
                 fleet_util._set_role_maker(role)
                 fleet_util.print_on_rank("I'm worker 0", 0)
         """
-        if self.role_maker.worker_index() != rank_id:
+        if self.role_maker._worker_index() != rank_id:
             return
         print(message)
 

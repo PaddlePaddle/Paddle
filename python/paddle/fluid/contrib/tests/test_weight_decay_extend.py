@@ -21,6 +21,8 @@ import paddle
 import paddle.fluid as fluid
 import contextlib
 
+paddle.enable_static()
+
 
 def get_places():
     places = [fluid.CPUPlace()]
