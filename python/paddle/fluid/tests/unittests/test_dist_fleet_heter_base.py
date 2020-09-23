@@ -34,7 +34,6 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.distributed.fleet.base.util_factory import fleet_util
 from paddle.distributed.fleet import fleet
 
 __all__ = ['FleetDistHeterRunnerBase', 'TestFleetHeterBase', 'runtime_main']
@@ -376,8 +375,6 @@ def runtime_main(test_class):
     strategy = model.build_strategy(args)
     avg_cost = model.net(args)
     model.build_optimizer(avg_cost, strategy)
-    fleet_util._set_strategy(strategy)
-    fleet_util._set_role_maker(role)
 
     if args.role == "pserver" or args.role == "heter_trainer":
         model.run_pserver(args)
