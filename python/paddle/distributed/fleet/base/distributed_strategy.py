@@ -612,6 +612,39 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.recompute_configs, configs)
 
     @property
+    def zero(self):
+        """
+        Indicating whether we are using Zero Redundancy Optimizer for memory
+        optimization
+        Default value: False
+        Examples:
+          .. code-block:: python
+            import paddle.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.zero = True
+        """
+        return self.strategy.zero
+
+    @zero.setter
+    def zero(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.zero = flag
+        else:
+            print("WARNING: zero should have value of bool type")
+
+    @property
+    def zero_configs(self):
+        """
+        Set zero configurations.
+        """
+        return get_msg_dict(self.strategy.zero_configs)
+
+    @zero_configs.setter
+    def zero_configs(self, configs):
+        check_configs_key(self.strategy.zero_configs, configs, "zero_configs")
+        assign_configs_value(self.strategy.zero_configs, configs)
+
+    @property
     def pipeline(self):
         """
         Indicating whether we are using pipeline parallelism for distributed training.

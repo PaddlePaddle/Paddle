@@ -24,6 +24,14 @@ enum Mode {
 
 message RecomputeConfig { repeated string checkpoints = 1; }
 
+message ZeROConfig {
+  optional bool amp = 1 [ default = true ];
+  optional int32 nrings = 2 [ default = 3 ];
+  optional float fuse_broadcast_MB_bytes = 3 [ default = 64.0 ];
+  repeated string checkpoints = 4;
+  optional bool allreduce = 5 [ default = false ];
+}
+
 message AMPConfig {
   optional float init_loss_scaling = 1 [ default = 32768.0 ];
   optional int32 incr_every_n_steps = 2 [ default = 1000 ];
@@ -127,6 +135,7 @@ message DistributedStrategy {
   optional int32 conv_workspace_size_limit = 22 [ default = 4000 ];
   optional bool cudnn_batchnorm_spatial_persistent = 23 [ default = true ];
   optional bool adaptive_localsgd = 24 [ default = false ];
+  optional bool zero = 25 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
@@ -138,6 +147,7 @@ message DistributedStrategy {
   optional LarsConfig lars_configs = 108;
   optional LambConfig lamb_configs = 109;
   optional AdaptiveLocalSGDConfig adaptive_localsgd_configs = 110;
+  optional ZeROConfig zero_configs = 111;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
 }
