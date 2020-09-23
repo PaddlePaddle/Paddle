@@ -108,7 +108,8 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.fp16_compress, True)
         strategy.fp16_compress = False
         self.assertEqual(strategy.fp16_compress, False)
-        strategy.fp16_compress = "True"
+        with self.assertRaises(TypeError):
+            strategy.fp16_compress = "True"
         self.assertEqual(strategy.fp16_compress, False)
 
     def test_sync_nccl_allreduce(self):

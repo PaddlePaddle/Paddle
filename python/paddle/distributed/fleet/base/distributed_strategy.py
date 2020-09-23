@@ -864,10 +864,9 @@ class DistributedStrategy(object):
     @fp16_compress.setter
     @is_strict_auto
     def fp16_compress(self, flag):
-        if isinstance(flag, bool):
-            self.strategy.fp16_compress = flag
-        else:
-            print("WARNING: fp16_compress should have value of bool type")
+        if not isinstance(flag, bool):
+            raise TypeError('fp16_compress must be value of bool type')
+        self.strategy.fp16_compress = flag
 
     @property
     def gradient_merge(self):
