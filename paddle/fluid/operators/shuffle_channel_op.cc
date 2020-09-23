@@ -21,10 +21,8 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"),
-                   "Input(X) of ShuffleChannelOp should not be null.");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"),
-                   "Output(Out) of ShuffleChannelOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ShuffleChannelOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ShuffleChannelOp");
 
     auto input_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
