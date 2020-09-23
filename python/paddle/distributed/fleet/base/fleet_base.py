@@ -354,10 +354,6 @@ class Fleet(object):
         return self._role_maker._is_server(
         ) or self._role_maker._is_heter_worker()
 
-    def set_util(self, _util):
-        import paddle.distributed.fleet as fleet
-        fleet.util = _util
-
     def barrier_worker(self):
         """
         barrier all workers

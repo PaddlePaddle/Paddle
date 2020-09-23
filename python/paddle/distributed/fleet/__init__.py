@@ -40,7 +40,6 @@ server_num = fleet.server_num
 server_index = fleet.server_index
 server_endpoints = fleet.server_endpoints
 is_server = fleet.is_server
-set_util = fleet.set_util
 util = UtilBase()
 barrier_worker = fleet.barrier_worker
 init_worker = fleet.init_worker
