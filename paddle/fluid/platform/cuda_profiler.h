@@ -24,7 +24,11 @@ namespace platform {
 
 void CudaProfilerInit(std::string output_file, std::string output_mode,
                       std::string config_file) {
-  PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv");
+  PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv",
+                 platform::errors::InvalidArgument(
+                     "Unsupported cuda profiler output mode, expect `kvp` or "
+                     "`csv`, but received `%s`.",
+                     output_mode));
   cudaOutputMode_t mode = output_mode == "csv" ? cudaCSV : cudaKeyValuePair;
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaProfilerInitialize(config_file.c_str(), output_file.c_str(), mode));
