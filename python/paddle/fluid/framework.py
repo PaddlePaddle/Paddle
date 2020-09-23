@@ -217,7 +217,16 @@ def _dygraph_not_support_(func):
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
         assert in_dygraph_mode(
-        ), "We Only support %s in dynamic mode, please call 'paddle.disable_static()' to enter dynamic mode." % func.__name__
+        ), "We only support %s in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode." % func.__name__
+        return func(*args, **kwargs)
+
+    return __impl__
+
+
+def _static_only_(func):
+    def __impl__(*args, **kwargs):
+        assert not in_dygraph_mode(
+        ), "We only support %s in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -260,6 +269,7 @@ def deprecate_stat_dict(func):
 
 dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
+static_only = wrap_decorator(_static_only_)
 fake_interface_only = wrap_decorator(_fake_interface_only_)
 
 
