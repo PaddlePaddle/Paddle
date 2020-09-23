@@ -20,7 +20,8 @@ class DataGenerator(object):
     """
     DataGenerator is a general Base class for user to inherit
     A user who wants to define his/her own python processing logic
-    with paddle.fluid.dataset should inherit this class.
+    with paddle.distributed.InMemoryDataset/QueueDataset should 
+    inherit this class.
     """
 
     def __init__(self):
@@ -35,7 +36,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
-                from paddle.distributed.fleet.dataset import data_generator as dg
+                import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
                     def generate_sample(self, line):
@@ -61,7 +62,7 @@ class DataGenerator(object):
 
         Example:
             .. code-block:: python
-                from paddle.distributed.fleet.dataset import data_generator as dg
+                import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
                     def generate_sample(self, line):
@@ -99,7 +100,7 @@ class DataGenerator(object):
         Example:
         
             .. code-block:: python
-                from paddle.distributed.fleet.dataset import data_generator as dg
+                import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
                     def generate_sample(self, line):
@@ -170,7 +171,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
-                from paddle.distributed.fleet.dataset import data_generator as dg
+                import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
                     def generate_sample(self, line):
@@ -201,7 +202,7 @@ class DataGenerator(object):
         Example:
 
             .. code-block:: python
-                from paddle.distributed.fleet.dataset import data_generator as dg
+                import paddle.distributed.fleet.data_generator as dg
                 class MyData(dg.DataGenerator):
 
                     def generate_sample(self, line):
