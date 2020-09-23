@@ -20,6 +20,9 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
+import paddle
+paddle.enable_static()
+
 
 class TestLookupTableFuseOp(unittest.TestCase):
     def test_fuse(self):
