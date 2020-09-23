@@ -821,6 +821,28 @@ class SquareDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   }
 };
 
+// log Grad: dx = dout / x
+// log Grad Grad: ddout = ddx / x; dx = -(dout / x) * (ddx / x)
+template <typename T>
+class LogDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("log_grad_grad");
+    op->SetInput("X", this->Input("X"));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    op->SetAttrMap(this->Attrs());
+    // X@GRAD: dx
+    op->SetOutput("DX", this->InputGrad("X"));
+    // Out@GRAD@GRAD: ddy
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
 DECLARE_INPLACE_OP_INFERER(ActivationGradOpInplaceInference,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
@@ -1182,4 +1204,64 @@ REGISTER_OP_CPU_KERNEL(
                               ops::AbsGradFunctor<int>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                               ops::AbsGradFunctor<int64_t>>);
+/* ========================================================================== */
+
+/* ==========================  Log register ==================================*/
+REGISTER_OPERATOR(
+    log, ops::ActivationOp, ops::LogOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<ops::LogGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::LogGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(log_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInference,
+                  ops::LogDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::LogDoubleGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(
+    log_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::LogGradGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInference);
+
+REGISTER_ACTIVATION_CPU_KERNEL(log, Log, LogFunctor, LogGradFunctor);
+
+REGISTER_OP_CPU_KERNEL(
+    log_grad_grad, ops::LogDoubleGradKernel<plat::CPUDeviceContext,
+                                            ops::LogGradGradFunctor<float>>,
+    ops::LogDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::LogGradGradFunctor<double>>,
+    ops::LogDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::LogGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
+/* ==========================  register checkpoint ===========================*/
+REGISTER_OP_VERSION(leaky_relu)
+    .AddCheckpoint(
+        R"ROC(fix leaky_relu, bahavior changed when alpha < 0 or alpha > 1)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .BugfixWithBehaviorChanged(
+                "leaky_relu calculate formula before checkponit: out = max(x, "
+                "alpha * x); after checkpoint: out = x if x > 0 else alpha * "
+                "x"));
+
+REGISTER_OP_VERSION(hard_shrink)
+    .AddCheckpoint(
+        R"ROC(fix hard_shrink, bahavior changed when threshold<0)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .BugfixWithBehaviorChanged(
+                "hard_shrink calculate formula before checkponit: out = x * "
+                "((x < -threshold) + (x > threshold)); after checkpoint: out = "
+                "x * (((x < -threshold) + (x > threshold)) > 0)"));
+
+REGISTER_OP_VERSION(softplus)
+    .AddCheckpoint(
+        R"ROC(add new attributes [beta] and [threshold], and the formula is changed to "
+         " softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\ \\text{For numerical"
+         " stability, the implementation reverts to the linear function when: beta * x > threshold.})ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("beta", "The beta value of the new formula", 1.0f)
+            .NewAttr("threshold", "The threshold value of the new formula",
+                     20.0f));
+
 /* ========================================================================== */
