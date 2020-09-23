@@ -181,3 +181,15 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ActivationGradKernel<plat::CUDADeviceContext,
                               ops::AbsGradFunctor<plat::float16>>);
 /* ========================================================================== */
+
+/* ==========================  Log register ==================================*/
+REGISTER_ACTIVATION_CUDA_KERNEL(log, Log, LogFunctor, LogGradFunctor);
+
+REGISTER_OP_CUDA_KERNEL(
+    log_grad_grad, ops::LogDoubleGradKernel<plat::CUDADeviceContext,
+                                            ops::LogGradGradFunctor<float>>,
+    ops::LogDoubleGradKernel<plat::CUDADeviceContext,
+                             ops::LogGradGradFunctor<double>>,
+    ops::LogDoubleGradKernel<plat::CUDADeviceContext,
+                             ops::LogGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
