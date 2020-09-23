@@ -206,7 +206,7 @@ class Accuracy(Metric):
         paddle.disable_static()
         train_dataset = paddle.vision.datasets.MNIST(mode='train')
 
-        model = paddle.Model(paddle.vision.LeNet(classifier_activation=None))
+        model = paddle.Model(paddle.vision.LeNet())
         optim = paddle.optimizer.Adam(
             learning_rate=0.001, parameters=model.parameters())
         model.prepare(

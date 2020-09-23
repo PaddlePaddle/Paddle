@@ -626,7 +626,7 @@ class DynamicGraphAdapter(object):
         labels = [to_variable(l) for l in to_list(labels)]
 
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
@@ -635,7 +635,7 @@ class DynamicGraphAdapter(object):
             self.ddp_model.apply_collective_grads()
         else:
             outputs = self.model.network.forward(
-                * [to_variable(x) for x in inputs])
+                *[to_variable(x) for x in inputs])
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
@@ -646,7 +646,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -659,7 +659,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -690,7 +690,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss and len(metrics):
@@ -1313,7 +1313,7 @@ class Model(object):
               label = InputSpec([None, 1], 'int64', 'label')
            
               model = paddle.Model(
-                  paddle.vision.models.LeNet(classifier_activation=None),
+                  paddle.vision.models.LeNet(),
                   input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())
@@ -1350,7 +1350,7 @@ class Model(object):
               label = InputSpec([None, 1], 'int64', 'label')
            
               model = paddle.Model(
-                  paddle.vision.models.LeNet(classifier_activation=None), input, label)
+                  paddle.vision.models.LeNet(), input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())
               model.prepare(
@@ -1841,7 +1841,7 @@ class Model(object):
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
            
-              model = paddle.Model(paddle.vision.LeNet(classifier_activation=None),
+              model = paddle.Model(paddle.vision.LeNet(),
                   input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())

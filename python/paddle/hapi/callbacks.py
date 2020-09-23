@@ -301,7 +301,7 @@ class ProgBarLogger(Callback):
 
             train_dataset = paddle.vision.datasets.MNIST(mode='train')
 
-            model = paddle.Model(paddle.vision.LeNet(classifier_activation=None),
+            model = paddle.Model(paddle.vision.LeNet(),
                 inputs, labels)
 
             optim = paddle.optimizer.Adam(0.001)
@@ -436,7 +436,7 @@ class ModelCheckpoint(Callback):
 
             train_dataset = paddle.vision.datasets.MNIST(mode='train')
 
-            model = paddle.Model(paddle.vision.LeNet(classifier_activation=None),
+            model = paddle.Model(paddle.vision.LeNet(),
                 inputs, labels)
 
             optim = paddle.optimizer.Adam(0.001)
