@@ -336,11 +336,6 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     int groups = ctx.Attr<int>("groups");
     bool exhaustive_search =
         FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
-    VLOG(3) << "=====exhaustive_search====: " << exhaustive_search;
-    VLOG(3) << "====FLAGS_cudnn_exhaustive_search====: "
-            << FLAGS_cudnn_exhaustive_search;
-    VLOG(3) << "====Attr: exhaustive_search====: "
-            << ctx.Attr<bool>("exhaustive_search");
     bool deterministic = FLAGS_cudnn_deterministic;
     if (exhaustive_search && deterministic) {
       PADDLE_THROW(

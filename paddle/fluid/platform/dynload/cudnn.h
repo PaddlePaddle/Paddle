@@ -185,7 +185,8 @@ CUDNN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnCTCLoss);                                  \
   __macro(cudnnGetConvolutionBackwardDataAlgorithm_v7);   \
   __macro(cudnnGetConvolutionBackwardFilterAlgorithm_v7); \
-  __macro(cudnnGetConvolutionForwardAlgorithm_v7);
+  __macro(cudnnGetConvolutionForwardAlgorithm_v7);        \
+  __macro(cudnnGetConvolutionBackwardFilterAlgorithmMaxCount);
 CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
@@ -195,8 +196,7 @@ CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnBatchNormalizationForwardTrainingEx);                 \
   __macro(cudnnGetBatchNormalizationBackwardExWorkspaceSize);        \
   __macro(cudnnBatchNormalizationBackwardEx);                        \
-  __macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);     \
-  __macro(cudnnGetConvolutionBackwardFilterAlgorithmMaxCount);
+  __macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);
 CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
