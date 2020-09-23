@@ -41,7 +41,7 @@ extern void* tensorrt_dso_handle;
       });                                                                     \
       static void* p_##__name = dlsym(tensorrt_dso_handle, #__name);          \
       if (p_##__name == nullptr) {                                            \
-        return p_##__name;                                                    \
+        return nullptr;                                                       \
       }                                                                       \
       using tensorrt_func = decltype(&::__name);                              \
       auto ret = reinterpret_cast<tensorrt_func>(p_##__name)(args...);        \
