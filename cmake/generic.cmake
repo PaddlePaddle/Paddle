@@ -712,6 +712,7 @@ function(proto_library TARGET_NAME)
   set(proto_hdrs)
   paddle_protobuf_generate_cpp(proto_srcs proto_hdrs ${proto_library_SRCS})
   cc_library(${TARGET_NAME} SRCS ${proto_srcs} DEPS ${proto_library_DEPS} protobuf)
+  add_dependencies(extern_xxhash ${TARGET_NAME})
 endfunction()
 
 function(py_proto_compile TARGET_NAME)

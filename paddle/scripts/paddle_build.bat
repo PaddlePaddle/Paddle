@@ -40,6 +40,7 @@ if not defined WITH_TPCACHE set WITH_TPCACHE=ON
 
 
 rem -------set cache build work directory-----------
+rmdir build\python /s/q
 if "%WITH_CACHE%"=="OFF" (
     rmdir build /s/q
     goto :mkbuild
@@ -48,10 +49,10 @@ if "%WITH_CACHE%"=="OFF" (
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
 set day_now=%datetime:~6,2%
 set day_before=-1
-set /p day_before=<day.txt
+set /p day_before=< %work_dir%\..\day.txt
 if %day_now% NEQ %day_before% (
-    echo %day_now% > day.txt
-    type day.txt
+    echo %day_now% > %work_dir%\..\day.txt
+    type %work_dir%\..\day.txt
     rmdir build /s/q
 )
 git diff origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
@@ -301,6 +302,7 @@ goto:eof
 call paddle_winci\Scripts\deactivate.bat 2>NUL
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
+call :timestamp "%start%" "%end%" "1 card TestCases Total"
 call :timestamp "%start%" "%end%" "TestCases Total"
 echo Running unit tests failed, will exit!
 exit /b 8
@@ -313,6 +315,7 @@ echo    ========================================
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
+call :timestamp "%start%" "%end%" "1 card TestCases Total"
 call :timestamp "%start%" "%end%" "TestCases Total"
 
 cd %work_dir%\paddle\fluid\inference\api\demo_ci
@@ -345,6 +348,8 @@ echo     ============================================ >>  check_change_of_unitte
 echo EOF>>  check_change_of_unittest.sh
 echo spec_path=$(pwd)/UNITTEST_PR.spec>>  check_change_of_unittest.sh
 echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
+echo num=$(awk 'END{print NR}' ${spec_path})>> check_change_of_unittest.sh
+echo echo "Windows 1 card TestCases count is $num">> check_change_of_unittest.sh
 echo UPSTREAM_URL='https://github.com/PaddlePaddle/Paddle'>>  check_change_of_unittest.sh
 echo origin_upstream_url=`git remote -v ^| awk '{print $1, $2}' ^| uniq ^| grep upstream ^| awk '{print $2}'`>>  check_change_of_unittest.sh
 echo if [ "$origin_upstream_url" == "" ]; then>>  check_change_of_unittest.sh
@@ -455,8 +460,6 @@ taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
-call paddle_winci\Scripts\deactivate.bat 2>NUL
-del %PADDLE_WHL_FILE_WIN%
 taskkill /f /im python.exe  2>NUL
 echo Windows CI run successfully!
 exit /b 0
