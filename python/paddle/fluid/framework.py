@@ -217,7 +217,7 @@ def _dygraph_not_support_(func):
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
         assert in_dygraph_mode(
-        ), "We only support %s in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode." % func.__name__
+        ), "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -226,7 +226,7 @@ def _dygraph_only_(func):
 def _static_only_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
-        ), "We only support %s in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
+        ), "We only support '%s()' in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
