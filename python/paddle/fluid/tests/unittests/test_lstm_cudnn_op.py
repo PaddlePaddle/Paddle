@@ -515,5 +515,35 @@ class TestCUDNNlstmAPI(unittest.TestCase):
                       fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'])
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestCUDNNlstmAPI(unittest.TestCase):
+    def test_lstm(self):
+        seq_len = 20
+        batch_size = 5
+        hidden_size = 20
+        dropout_prob = 0.0
+        num_layers = 2
+        input = fluid.data(
+            name='input',
+            shape=[seq_len, batch_size, hidden_size],
+            dtype='float64')
+        init_h = layers.fill_constant([num_layers, batch_size, hidden_size],
+                                      'float64', 0.0)
+        init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
+                                      'float64', 0.0)
+        rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
+                                              hidden_size, num_layers,
+                                              dropout_prob, False, True)
+        exe = fluid.Executor(fluid.CUDAPlace(0))
+        exe.run(fluid.default_startup_program())
+        input_i = np.random.uniform(
+            low=-0.1, high=0.1, size=(seq_len, batch_size,
+                                      hidden_size)).astype("float64")
+        out = exe.run(fluid.default_main_program(),
+                      feed={'input': input_i},
+                      fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'])
+
+
 if __name__ == '__main__':
     unittest.main()
