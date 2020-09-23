@@ -297,6 +297,15 @@ class TestFleetHeterBase(unittest.TestCase):
                 "========================Error tr0_err end==========================="
             )
 
+            print(
+                "========================Error heter0_err begin==========================="
+            )
+            os.system("cat {}".format(tempfile.gettempdir() +
+                                      "/heter0_err.log"))
+            print(
+                "========================Error heter0_err end==========================="
+            )
+
         if tr1_ret != 0:
             print(
                 "========================Error tr1_err begin==========================="
@@ -304,6 +313,15 @@ class TestFleetHeterBase(unittest.TestCase):
             os.system("cat {}".format(tempfile.gettempdir() + "/tr1_err.log"))
             print(
                 "========================Error tr1_err end==========================="
+            )
+
+            print(
+                "========================Error heter1_err begin==========================="
+            )
+            os.system("cat {}".format(tempfile.gettempdir() +
+                                      "/heter1_err.log"))
+            print(
+                "========================Error heter1_err end==========================="
             )
 
         self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")

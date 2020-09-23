@@ -508,7 +508,7 @@ class RoleMakerBase(object):
              and No.1 and No.3 cpu-trainer will work with No.1 gpu-trainerr
         """
         assert self._heter_trainer_endpoints != []
-        return self._heter_trainer_endpoints[(self._current_id + 1) %
+        return self._heter_trainer_endpoints[(self._current_id) %
                                              self._heter_worker_num()]
 
     def _get_heter_worker_device(self):
