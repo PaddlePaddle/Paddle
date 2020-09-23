@@ -138,7 +138,7 @@ class UniformTest(unittest.TestCase):
             self.static_values = layers.data(
                 name='values', shape=[], dtype='float32')
 
-    def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-6):
+    def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-4):
         sample, entropy, log_prob, probs = fetch_list
 
         np_uniform = UniformNumpy(self.low_np, self.high_np)
@@ -154,7 +154,7 @@ class UniformTest(unittest.TestCase):
             log_prob, np_lp, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
 
-    def test_uniform_distribution_dygraph(self, sample_shape=7, tolerance=1e-6):
+    def test_uniform_distribution_dygraph(self, sample_shape=7, tolerance=1e-4):
         paddle.disable_static(self.place)
         uniform = Uniform(self.dynamic_low, self.dynamic_high)
         sample = uniform.sample([sample_shape]).numpy()
@@ -165,7 +165,7 @@ class UniformTest(unittest.TestCase):
 
         self.compare_with_numpy(fetch_list)
 
-    def test_uniform_distribution_static(self, sample_shape=7, tolerance=1e-6):
+    def test_uniform_distribution_static(self, sample_shape=7, tolerance=1e-4):
         paddle.enable_static()
         with fluid.program_guard(self.test_program):
             uniform = Uniform(self.static_low, self.static_high)
@@ -368,7 +368,7 @@ class NormalTest(unittest.TestCase):
             self.static_values = layers.data(
                 name='values', shape=[], dtype='float32')
 
-    def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-6):
+    def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-4):
         sample, entropy, log_prob, probs, kl = fetch_list
 
         np_normal = NormalNumpy(self.loc_np, self.scale_np)
@@ -387,7 +387,7 @@ class NormalTest(unittest.TestCase):
         np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(kl, np_kl, rtol=tolerance, atol=tolerance)
 
-    def test_normal_distribution_dygraph(self, sample_shape=7, tolerance=1e-6):
+    def test_normal_distribution_dygraph(self, sample_shape=7, tolerance=1e-4):
         paddle.disable_static(self.place)
         normal = Normal(self.dynamic_loc, self.dynamic_scale)
 
@@ -401,7 +401,7 @@ class NormalTest(unittest.TestCase):
         fetch_list = [sample, entropy, log_prob, probs, kl]
         self.compare_with_numpy(fetch_list)
 
-    def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-6):
+    def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-4):
         paddle.enable_static()
         with fluid.program_guard(self.test_program):
             normal = Normal(self.static_loc, self.static_scale)
