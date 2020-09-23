@@ -107,6 +107,14 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     )
 
     base_group.add_argument(
+        "--gpus",
+        type=str,
+        default=None,
+        help="It's for gpu training and the training process will run on the gpus,"
+        "each process is bound to a single GPU. And if it's not set, this module will use all the gpu cards for training."
+    )
+
+    base_group.add_argument(
         "training_script",
         type=str,
         help="The full path to the single GPU training "
@@ -124,13 +132,6 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         type=str,
         default="127.0.0.1",
         help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
-    collective_group.add_argument(
-        "--gpus",
-        type=str,
-        default=None,
-        help="It's for gpu training and the training process will run on the gpus,"
-        "each process is bound to a single GPU. And if it's not set, this module will use all the gpu cards for training."
-    )
 
     ps_group = parser.add_argument_group("Parameter-Server Parameters")
     # for parameter server
@@ -191,35 +192,6 @@ def get_cluster_from_args(args, gpus):
     for ip in node_ips:
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
     return get_cluster(node_ips, node_ip, trainer_endpoints, gpus)
-
-
-def get_gpus(gpus):
-    if gpus is None:
-        gpus_num = fluid.core.get_cuda_device_count()
-        res_gpus = [str(x) for x in range(0, gpus_num)]
-    else:
-        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
-        if cuda_visible_devices is None or cuda_visible_devices == "":
-            res_gpus = [x.strip() for x in gpus.split(',')]
-        else:
-            # change gpus into relative values
-            # e.g. CUDA_VISIBLE_DEVICES=4,5,6,7; args.gpus=4,5,6,7;
-            # therefore gpus=0,1,2,3
-            cuda_visible_devices_list = cuda_visible_devices.split(',')
-            for x in gpus.split(','):
-                assert x in cuda_visible_devices_list, "Can't find "\
-                    "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
-                    % (x, cuda_visible_devices)
-            res_gpus = [
-                cuda_visible_devices_list.index(x.strip())
-                for x in gpus.split(',')
-            ]
-            logger.info("Change selected_gpus into reletive values. --ips:{} "
-                        "will change into relative_ips:{} according to your "
-                        "CUDA_VISIBLE_DEVICES:{}".format(
-                            gpus, res_gpus, cuda_visible_devices_list))
-
-    return res_gpus
 
 
 def launch_collective(args):
