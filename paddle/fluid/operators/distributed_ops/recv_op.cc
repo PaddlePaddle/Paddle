@@ -37,12 +37,6 @@ class RecvOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    int do_not_run = Attr<int>("do_not_run");
-    if (do_not_run) {
-      VLOG(3) << "recv do not run!";
-      return;
-    }
-
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     std::vector<std::string> varnames =
         Attr<std::vector<std::string>>("varnames");
@@ -63,11 +57,10 @@ class RecvOp : public framework::OperatorBase {
     if (recv_varnames.size() > 0) {
       auto *communicator = distributed::Communicator::GetInstance();
 
-      if (communicator == nullptr) {
+      if (communicator != nullptr) {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "need run fleet.init_worker first"));
+            "execute startup program must before fleet.init_worker"));
       }
-      communicator->RecvNoBarrier();
     } else {
       std::vector<distributed::VarHandlePtr> rets;
       if (with_barrier) {
