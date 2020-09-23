@@ -26,6 +26,7 @@ wmic process where name="op_function_generator.exe" call terminate  2>NUL
 rem ------initialize common variable------
 if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
 if not defined BRANCH set BRANCH=develop
+if not defined TENSORRT_ROOT set TENSORRT_ROOT="C:/TensorRT-5.1.5.0"
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_GPU set WITH_GPU=OFF
 if not defined WITH_AVX set WITH_AVX=ON
@@ -33,8 +34,10 @@ if not defined WITH_TESTING set WITH_TESTING=ON
 if not defined WITH_PYTHON set WITH_PYTHON=ON
 if not defined ON_INFER set ON_INFER=ON
 if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
+if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
 if not defined WITH_CACHE set WITH_CACHE=ON
 if not defined WITH_TPCACHE set WITH_TPCACHE=ON
+
 
 rem -------set cache build work directory-----------
 if "%WITH_CACHE%"=="OFF" (
@@ -99,6 +102,7 @@ set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
 clcache.exe -M 21474836480
 
+
 rem ------set cache third_party------
 set cache_dir=%work_dir:Paddle=cache%
 dir %cache_dir%
@@ -138,6 +142,7 @@ exit /b 1
 :CASE_wincheck_mkl
 set WITH_MKL=ON
 set WITH_GPU=OFF
+set MSVC_STATIC_CRT=ON
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
@@ -149,11 +154,13 @@ goto:success
 :CASE_wincheck_openblas
 set WITH_MKL=OFF
 set WITH_GPU=ON
+set MSVC_STATIC_CRT=OFF
 rem Temporarily turn off WITH_INFERENCE_API_TEST on GPU due to compile hang
 set WITH_INFERENCE_API_TEST=OFF
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
+:: call :test_inference || goto test_inference_error
 goto:success
 
 rem "Other configurations are added here"
@@ -172,12 +179,14 @@ set start=%start:~4,10%
 echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% ^
 -DON_INFER=%ON_INFER% -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
--DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR%
+-DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
+-DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT%
 
 cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% ^
 -DON_INFER=%ON_INFER%  -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
--DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR%
+-DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
+-DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT%
 goto:eof
 
 :cmake_error
@@ -282,7 +291,9 @@ dir %THIRD_PARTY_PATH:/=\%\install\mklml\lib
 dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
 
-set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;%THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
+set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
+%THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
+%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
 ctest.exe --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
 goto:eof
 
@@ -305,7 +316,7 @@ set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "TestCases Total"
 
 cd %work_dir%\paddle\fluid\inference\api\demo_ci
-%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT%/include %TENSORRT_ROOT%/lib %MSVC_STATIC_CRT%
 goto:eof
 
 :test_inference_error
