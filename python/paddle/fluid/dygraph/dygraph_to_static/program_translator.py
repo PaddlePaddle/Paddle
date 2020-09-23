@@ -205,7 +205,7 @@ def unwrap_decorators(func):
     decorators = []
     cur = func
     while True:
-        if isinstance(cur, StaticLayer):
+        if isinstance(cur, StaticWrapper):
             decorators.append(cur)
             # Note: if `cur` is a method, keep it as bound method of class.
             instance = cur._class_instance
@@ -218,7 +218,7 @@ def unwrap_decorators(func):
     return decorators, cur
 
 
-class StaticLayer(object):
+class StaticWrapper(object):
     """
     Wrapper class to Manage program conversion of decorated function.
 
@@ -226,7 +226,7 @@ class StaticLayer(object):
 
     def __init__(self, function, input_spec=None):
         """
-        Initializes a `StaticLayer`.
+        Initializes a `StaticWrapper`.
 
         Args:
             function(callable): A function or method that will be converted into static program.
@@ -268,12 +268,12 @@ class StaticLayer(object):
         
         In above case, `net(x, y)` will call `net.forward(x, y)` firstly that is a bound method
         of `Net` instance. After decorated by `@paddle.jit.to_static`, it will firstly to call `__get__`
-        to parse the class instance correctly instead of the `StaticLayer` instance.
+        to parse the class instance correctly instead of the `StaticWrapper` instance.
         """
         if instance not in self._descriptor_cache:
             if instance is None:
                 return self
-            # Note(Aurelius84): To construct new instance of StaticLayer when we
+            # Note(Aurelius84): To construct new instance of StaticWrapper when we
             # first encouter the bound function of layer and cache it.
             new_static_layer = self._clone()
             new_static_layer._class_instance = instance
