@@ -736,7 +736,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         elif training_role == "HETER_TRAINER":
             role = Role.HETER_WORKER
             cur_port = os.getenv("PADDLE_PORT", None)
-            assert port != None
+            assert cur_port != None
             cur_ip = os.getenv("POD_IP", None)
             assert cur_ip != None
             curr_endpoint = ":".join([cur_ip, cur_port])
