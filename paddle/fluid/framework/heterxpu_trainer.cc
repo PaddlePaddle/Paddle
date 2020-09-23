@@ -161,45 +161,46 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 #endif
 }
 
-template <typename T>
 #ifdef PADDLE_WITH_CUDA
+template <typename T>
 void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
                                   LoDTensor* root_tensor,
                                   const paddle::platform::Place& thread_place,
                                   cudaStream_t stream) {
-#endif
-#ifdef PADDLE_WITH_XPU
-void HeterXpuTrainer::HeterMemCpy(
-    LoDTensor *thread_tensor, LoDTensor *root_tensor,
-    const paddle::platform::Place& thread_place) {
-#endif
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
   if (platform::is_cpu_place(root_tensor->place())) {
-#ifdef PADDLE_WITH_CUDA
     memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, thread_place), thread_ptr,
                  platform::CPUPlace(), root_ptr,
                  sizeof(T) * root_tensor->numel(), stream);
-#endif
-#ifdef PADDLE_WITH_XPU
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, thread_place), thread_ptr,
-                 platform::CPUPlace(), root_ptr,
-                 sizeof(T) * root_tensor->numel());
-#endif
   } else {
-#ifdef PADDLE_WITH_CUDA
     memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, thread_place), thread_ptr,
                  BOOST_GET_CONST(platform::CUDAPlace, root_tensor->place()),
                  root_ptr, sizeof(T) * root_tensor->numel(), stream);
+  }
+}
 #endif
+
 #ifdef PADDLE_WITH_XPU
+template <typename T>
+void HeterXpuTrainer::HeterMemCpy(
+    LoDTensor *thread_tensor, LoDTensor *root_tensor,
+    const paddle::platform::Place& thread_place) {
+  T* thread_ptr =
+      thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
+  T* root_ptr = root_tensor->data<T>();
+  if (platform::is_cpu_place(root_tensor->place())) {
+    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, thread_place), thread_ptr,
+                 platform::CPUPlace(), root_ptr,
+                 sizeof(T) * root_tensor->numel());
+  } else {
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, thread_place), thread_ptr,
                  BOOST_GET_CONST(platform::XPUPlace, root_tensor->place()),
                  root_ptr, sizeof(T) * root_tensor->numel());
-#endif
   }
 }
+#endif
 
 void HeterXpuTrainer::DumpWork(int tid) {}
 
@@ -564,7 +565,6 @@ void HeterXpuTrainer::Finalize() {
   pull_dense_worker_->Stop();
   root_scope_->DropKids();
 }
-
 }  // namespace framework
 }  // namespace paddle
 #endif

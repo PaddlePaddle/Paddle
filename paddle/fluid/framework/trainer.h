@@ -17,6 +17,7 @@ limitations under the License. */
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <map>
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
@@ -172,7 +173,7 @@ class HeterXpuTrainer : public TrainerBase {
     new (&program_) ProgramDesc(main_program);
   }
   virtual std::string GetDumpPath(int tid) { return ""; }
-  virtual void InitDumpEnv(){};
+  virtual void InitDumpEnv() {}
   template <typename T>
 #ifdef PADDLE_WITH_CUDA
   void HeterMemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
