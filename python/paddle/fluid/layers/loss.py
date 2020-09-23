@@ -571,6 +571,7 @@ def warpctc(input,
         .. code-block:: python
 
             # using LoDTensor
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
@@ -581,6 +582,7 @@ def warpctc(input,
             # class num
             class_num = 5
 
+            paddle.enable_static()
             logits = fluid.data(name='logits',shape=[None, class_num+1],
                                  dtype='float32',lod_level=1)
             label = fluid.data(name='label', shape=[None, 1],
@@ -602,6 +604,7 @@ def warpctc(input,
         .. code-block:: python
 
             # using Tensor
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
@@ -613,6 +616,7 @@ def warpctc(input,
             batch_size = 16
             # class num
             class_num = 5
+            paddle.enable_static()
             logits = fluid.data(name='logits',
                            shape=[max_seq_length, batch_size, class_num+1],
                            dtype='float32')
