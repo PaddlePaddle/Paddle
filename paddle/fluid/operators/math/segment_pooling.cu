@@ -25,23 +25,36 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, typename Index, typename Helper>
-__global__ void SegmentMeanCustomKernel(const Index* segment_ids,
-                                        const T* input, T* output,
-                                        T* summed_ids, Helper h) {
-  CUDA_KERNEL_LOOP(stripe_index, h.total_stripe_count) {
-    Index segment_offset, dim_index_base, actual_height;
-    Index inner_dim_size = h.inner_dim_size;
-    h.calculate(stripe_index, segment_offset, dim_index_base, actual_height);
+template <typename T, typename Index, int DimTileSize>
+__global__ void SegmentMeanCustomKernel(
+    const Index* segment_ids, const T* input, T* output, T* summed_ids,
+    const Index input_length_size, const Index inner_dim_size,
+    const Index output_length_size, const Index total_stripe_count) {
+  CUDA_KERNEL_LOOP(stripe_index, total_stripe_count) {
+    const Index segment_offset = stripe_index % inner_dim_size;
+    const Index dim_index_base =
+        stripe_index / inner_dim_size * Index(DimTileSize);
+    const Index actual_height =
+        min(Index(DimTileSize), input_length_size - dim_index_base);
 
     Index first_segment_id = segment_ids[dim_index_base];
-    Index last_segment_id = h.output_length_size;
-
+    Index last_segment_id = -1;
+    if (dim_index_base > 0) {
+      last_segment_id = segment_ids[dim_index_base - 1];
+    }
     if (segment_offset == 0) {
       T sum = T(0);
       for (Index j = 0; j < actual_height; j++) {
         Index current_segment_id = segment_ids[dim_index_base + j];
-        if (current_segment_id > last_segment_id) {
+        // Note(ZHUI): following check may cause
+        // cudaErrorLaunchOutOfResources.
+        // PADDLE_ENFORCE(current_segment_id >= last_segment_id,
+        //               "the segment ids should be sorted, but got "
+        //               "segment_ids[%d]:%d > segment_ids[%d]:%d.",
+        //               dim_index_base + j - 1, dim_index_base + j,
+        //               last_segment_id, current_segment_id);
+
+        if (j > 0 && current_segment_id > last_segment_id) {
           if (last_segment_id == first_segment_id) {
             platform::CudaAtomicAdd(summed_ids + last_segment_id, sum);
           } else {
@@ -49,11 +62,13 @@ __global__ void SegmentMeanCustomKernel(const Index* segment_ids,
           }
           sum = T(0);
         }
-        sum += 1;
+        sum += T(1);
         last_segment_id = current_segment_id;
       }
       platform::CudaAtomicAdd(summed_ids + last_segment_id, sum);
     }
+    // ensure last_segment_id is the largest
+    last_segment_id = output_length_size;
     __syncthreads();
     T sum = T(0);
     for (Index j = 0; j < actual_height; j++) {
@@ -89,35 +104,38 @@ __global__ void SegmentOpsKernel(const Index* segment_ids, const T* input,
 
     T minmax = pool.initial();
     Index first_segment_id = segment_ids[dim_index_base];
-    Index last_segment_id = h.output_length_size;
     // -1 is for the start value when interval_id = 0
-    Index previous_segment_id = -1;
+    Index last_segment_id = -1;
     if (dim_index_base > 0) {
-      previous_segment_id = segment_ids[dim_index_base - 1];
-    }
-    for (Index interval_id = previous_segment_id + 1;
-         interval_id < first_segment_id; ++interval_id) {
-      *(output + interval_id * inner_dim_size + segment_offset) = 0;
+      last_segment_id = segment_ids[dim_index_base - 1];
     }
 
     for (Index j = 0; j < actual_height; j++) {
       Index current_segment_id = segment_ids[dim_index_base + j];
+      // ensure the segment_ids is sorted.
+      PADDLE_ENFORCE(current_segment_id >= last_segment_id,
+                     "The segment ids should be sorted, but got "
+                     "segment_ids[%d]:%d > segment_ids[%d]:%d.",
+                     dim_index_base + j - 1, dim_index_base + j,
+                     last_segment_id, current_segment_id);
 
       if (current_segment_id > last_segment_id) {
-        const Index output_index =
-            last_segment_id * inner_dim_size + segment_offset;
-        if (last_segment_id == first_segment_id) {
-          pool.atomic(output + output_index, minmax);
-        } else {
-          *(output + output_index) = minmax;
-        }
         // reset the interval value which do not have corresponding ids.
-        for (Index interval_index = 1;
-             interval_index < current_segment_id - last_segment_id;
-             ++interval_index) {
-          *(output + output_index + interval_index * inner_dim_size) = 0;
+        for (Index interval_id = last_segment_id + 1;
+             interval_id < current_segment_id; ++interval_id) {
+          *(output + interval_id * inner_dim_size + segment_offset) = 0;
         }
-        minmax = pool.initial();
+        // don't update result when j=0
+        if (j > 0) {
+          const Index output_index =
+              last_segment_id * inner_dim_size + segment_offset;
+          if (last_segment_id == first_segment_id) {
+            pool.atomic(output + output_index, minmax);
+          } else {
+            *(output + output_index) = minmax;
+          }
+          minmax = pool.initial();
+        }
       }
       pool.compute(
           input[(dim_index_base + j) * inner_dim_size + segment_offset],
@@ -259,10 +277,12 @@ class SegmentPoolFunctor<platform::CUDADeviceContext, T, IndexT> {
                                    output->dims()[0]);
     auto config = platform::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
     if (pooltype == "MEAN") {
-      SegmentMeanCustomKernel<T, IndexT, ArrangeHelper<IndexT>><<<
-          config.block_per_grid.x, config.thread_per_block.x, 0,
-          ctx.stream()>>>(segment_ids.data<IndexT>(), input.data<T>(),
-                          output->data<T>(), summed_ids->data<T>(), h);
+      SegmentMeanCustomKernel<
+          T, IndexT, IndexT(8)><<<config.block_per_grid.x,
+                                  config.thread_per_block.x, 0, ctx.stream()>>>(
+          segment_ids.data<IndexT>(), input.data<T>(), output->data<T>(),
+          summed_ids->data<T>(), h.input_length_size, h.inner_dim_size,
+          h.output_length_size, h.total_stripe_count);
     } else if (pooltype == "SUM") {
       SumPool<T> pool;
       SegmentOpsKernel<
