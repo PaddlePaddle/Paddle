@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import inspect
-
 from .. import framework
 from .. import core
 from ..framework import Variable, Parameter, ParamBase
