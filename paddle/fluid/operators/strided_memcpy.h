@@ -11,8 +11,10 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/detail/strided_memcpy.h"
+
 namespace paddle {
 namespace operators {
 

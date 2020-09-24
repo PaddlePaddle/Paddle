@@ -20,6 +20,17 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+namespace platform {
+class NCCLCommunicator;
+}  // namespace platform
+}  // namespace paddle
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/nccl_helper.h"

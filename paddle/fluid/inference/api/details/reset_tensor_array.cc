@@ -15,6 +15,12 @@
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace details {
 
 // Should be called after the parameters are loaded.

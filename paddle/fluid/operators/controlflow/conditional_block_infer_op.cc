@@ -15,6 +15,18 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
 namespace paddle {
+namespace framework {
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 
 /* We will implement the op with block separately in the future.

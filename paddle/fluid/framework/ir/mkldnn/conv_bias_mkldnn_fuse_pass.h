@@ -13,16 +13,20 @@
 // limitations under the License.
 #pragma once
 #include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
 /*
 * Fuse the Conv and Elementwise_add to a ConvBiasOp.
 */
+class Graph;
+
 class ConvBiasFusePass : public FusePassBase {
  public:
   virtual ~ConvBiasFusePass() {}
