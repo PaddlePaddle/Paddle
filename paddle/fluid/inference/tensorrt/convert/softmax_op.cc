@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -30,9 +31,28 @@ class SoftMaxOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
+    nvinfer1::Dims input_shape = input1->getDimensions();
+    int input_dims = input_shape.nbDims;
+    int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
+
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, SoftMax,
                                        *const_cast<nvinfer1::ITensor*>(input1));
-
+    uint32_t axes = std::max(0, input_dims - 3);
+    if (!engine_->with_dynamic_shape()) {
+      if (axis == -1) {
+        axes = input_dims - 1;
+      } else {
+        axes = axis;
+      }
+      layer->setAxes(1 << axes);
+    } else {
+      if (axis == -1) {
+        axes = input_dims - 1;
+      } else {
+        axes = axis + 1;
+      }
+      layer->setAxes(1 << axes);
+    }
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "softmax", {output_name}, test_mode);
 
