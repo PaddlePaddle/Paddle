@@ -75,7 +75,9 @@ class TestMatMulV2Op(OpTest):
         self.op_type = "matmul_v2"
         x = np.random.random(self.x_shape).astype(self.dtype)
         y = np.random.random(self.y_shape).astype(self.dtype)
-
+        # -0.1 ~ 0.1
+        x = -0.1 + 0.2 * x
+        y = -0.1 + 0.2 * y
         result = reference_matmul(x, y, self.trans_x, self.trans_y)
         result = result.astype(self.dtype)
         self.inputs = {
@@ -134,7 +136,7 @@ class TestMatMuklOp5(TestMatMulV2Op):
     """
 
     def config(self):
-        self.x_shape = (1, 1, 100, 2)
+        self.x_shape = (1, 1, 100, 1)
         self.y_shape = (100, )
         self.trans_x = True
         self.trans_y = False
@@ -194,8 +196,8 @@ class TestMatMuklOp10(TestMatMulV2Op):
     """
 
     def config(self):
-        self.x_shape = (1, 1, 50, 2)
-        self.y_shape = (1, 2, 2, 50)
+        self.x_shape = (1, 1, 25, 4)
+        self.y_shape = (1, 2, 4, 25)
         self.trans_x = False
         self.trans_y = False
 
@@ -313,12 +315,12 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
     globals()[cls_name] = TestMatMulOpFp16Case
 
 
-create_test_fp16_class(TestMatMulV2Op, atol=0.1)
+create_test_fp16_class(TestMatMulV2Op)
 create_test_fp16_class(TestMatMuklOp2)
 create_test_fp16_class(TestMatMuklOp3)
-create_test_fp16_class(TestMatMuklOp4, atol=0.1)
+create_test_fp16_class(TestMatMuklOp4)
 create_test_fp16_class(TestMatMuklOp5)
-create_test_fp16_class(TestMatMuklOp6, atol=0.1)
+create_test_fp16_class(TestMatMuklOp6)
 create_test_fp16_class(TestMatMuklOp7)
 create_test_fp16_class(TestMatMuklOp8)
 create_test_fp16_class(TestMatMuklOp9)
@@ -328,7 +330,7 @@ create_test_fp16_class(TestMatMuklOp12)
 create_test_fp16_class(TestMatMuklOp13)
 create_test_fp16_class(TestMatMuklOp14)
 create_test_fp16_class(TestMatMuklOp15)
-create_test_fp16_class(TestMatMuklOp16, atol=0.1)
+create_test_fp16_class(TestMatMuklOp16)
 create_test_fp16_class(TestMatMuklOp17)
 
 
