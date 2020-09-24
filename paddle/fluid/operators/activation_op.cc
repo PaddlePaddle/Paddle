@@ -1234,34 +1234,3 @@ REGISTER_OP_CPU_KERNEL(
     ops::LogDoubleGradKernel<plat::CPUDeviceContext,
                              ops::LogGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
-
-/* ==========================  register checkpoint ===========================*/
-REGISTER_OP_VERSION(leaky_relu)
-    .AddCheckpoint(
-        R"ROC(fix leaky_relu, bahavior changed when alpha < 0 or alpha > 1)ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .BugfixWithBehaviorChanged(
-                "leaky_relu calculate formula before checkponit: out = max(x, "
-                "alpha * x); after checkpoint: out = x if x > 0 else alpha * "
-                "x"));
-
-REGISTER_OP_VERSION(hard_shrink)
-    .AddCheckpoint(
-        R"ROC(fix hard_shrink, bahavior changed when threshold<0)ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .BugfixWithBehaviorChanged(
-                "hard_shrink calculate formula before checkponit: out = x * "
-                "((x < -threshold) + (x > threshold)); after checkpoint: out = "
-                "x * (((x < -threshold) + (x > threshold)) > 0)"));
-
-REGISTER_OP_VERSION(softplus)
-    .AddCheckpoint(
-        R"ROC(add new attributes [beta] and [threshold], and the formula is changed to "
-         " softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\ \\text{For numerical"
-         " stability, the implementation reverts to the linear function when: beta * x > threshold.})ROC",
-        paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("beta", "The beta value of the new formula", 1.0f)
-            .NewAttr("threshold", "The threshold value of the new formula",
-                     20.0f));
-
-/* ========================================================================== */
