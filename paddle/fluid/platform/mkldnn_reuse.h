@@ -859,8 +859,8 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
 	PADDLE_ENFORCE_EQ(ksize , std::vector<int64_t>(2,1), 
 	  platform::errors::InvalidArgument(
           "Not supported ksize for adaptive mode"));
-	ksize[0] = dst_tz[dst_tz.size()-2];  
-	ksize[1] = dst_tz[dst_tz.size()-1];
+	ksize[0] = src_tz[src_tz.size()-2];  
+	ksize[1] = src_tz[src_tz.size()-1];
       }
 
       this->AcquireForwardPrimitiveDescriptor(
