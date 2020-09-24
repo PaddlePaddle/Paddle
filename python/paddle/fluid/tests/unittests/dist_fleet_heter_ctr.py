@@ -207,13 +207,6 @@ class TestHeterPsCTR2x2(FleetDistHeterRunnerBase):
                 debug=int(os.getenv("Debug", "0")))
             pass_time = time.time() - pass_start
             print("do_dataset_training done. using time {}".format(pass_time))
-        if os.getenv("SAVE_MODEL") == "1":
-            model_dir = tempfile.mkdtemp()
-            fleet.save_inference_model(exe, model_dir,
-                                       [feed.name for feed in self.feeds],
-                                       self.avg_cost)
-            self.check_model_right(model_dir)
-            shutil.rmtree(model_dir)
 
         fleet.stop_worker()
         print("do_dataset_training stop worker.")
