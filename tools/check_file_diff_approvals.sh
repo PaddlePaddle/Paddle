@@ -286,7 +286,7 @@ fi
 # Get the list of PR authors with unresolved unit test issues
 pip install PyGithub
 # For getting PR related data
-wget https://paddle-ci.gz.bcebos.com/blk/block.txt --no-check-certificate
+wget https://sys-p0.bj.bcebos.com/blk/block.txt --no-check-certificate
 wget https://sys-p0.bj.bcebos.com/bk-ci/bk.txt --no-check-certificate
 HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has unit-test to be fixed" || true`
 if [ "${HASUTFIXED}" != "" ]; then

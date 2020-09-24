@@ -140,18 +140,18 @@ function cmake_base() {
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
             if [ "$1" == "cp27-cp27m" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.15-ucs4/lib:}
                 export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
             -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
-            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs2/lib/libpython2.7.so"
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.15-ucs2/lib/libpython2.7.so"
                 pip install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp27-cp27mu" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:}
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.15-ucs2/lib:}
                 export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
             -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
-            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.15-ucs4/lib/libpython2.7.so"
                 pip install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp27-cp27m-gcc82" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.15-ucs4/lib:}
@@ -362,12 +362,12 @@ function build_size() {
     Calculate /paddle/build size and PR whl size
     ============================================
 EOF
-    if [ "$1" == "fluid_inference" ]; then
+    if [ "$1" == "paddle_inference" ]; then
         cd ${PADDLE_ROOT}/build
-        cp -r fluid_inference_install_dir fluid_inference
-        tar -czf fluid_inference.tgz fluid_inference
-        buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/fluid_inference.tgz |awk '{print $1}')
-        echo "FLuid_Inference Size: $buildSize"
+        cp -r paddle_inference_install_dir paddle_inference
+        tar -czf paddle_inference.tgz paddle_inference
+        buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference.tgz |awk '{print $1}')
+        echo "Paddle_Inference Size: $buildSize"
     else
         SYSTEM=`uname -s`
         if [ "$SYSTEM" == "Darwin" ]; then
@@ -988,6 +988,11 @@ set +x
                 fi
                 read testcase <<< $(echo "$line"|grep -oEi "\w+$")
 
+                if python $PADDLE_ROOT/tools/is_ut_disabled.py $testcase; then
+                    echo $testcase" is disabled."
+                    continue
+                fi
+
                 if [[ "$is_nightly" != "" ]] && [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
                     echo $testcase" will only run at night."
                     continue
@@ -1446,7 +1451,7 @@ EOF
     fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
-    build_size "fluid_inference"
+    build_size "paddle_inference"
 }
 
 function tar_fluid_lib() {
@@ -1456,10 +1461,10 @@ function tar_fluid_lib() {
     ========================================
 EOF
     cd ${PADDLE_ROOT}/build
-    cp -r fluid_install_dir fluid
+    cp -r paddle_install_dir fluid
     tar -czf fluid.tgz fluid
-    cp -r fluid_inference_install_dir fluid_inference
-    tar -czf fluid_inference.tgz fluid_inference
+    cp -r paddle_inference_install_dir paddle_inference
+    tar -czf paddle_inference.tgz paddle_inference
 }
 
 function test_fluid_lib() {

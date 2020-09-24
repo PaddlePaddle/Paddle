@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_bias_mkldnn_fuse_pass.h"
 #include <functional>
-#include <string>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"

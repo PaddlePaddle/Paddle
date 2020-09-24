@@ -12,8 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define functions to save & load a tensor  
-from ..fluid import save  #DEFINE_ALIAS
-from ..fluid.io import load  #DEFINE_ALIAS
-
-__all__ = ['save', 'load']
+from ..fluid.inference import Config, DataType, PlaceType, PrecisionType, Tensor, \
+    Predictor, create_predictor, get_version, get_num_bytes_of_data_type, PredictorPool

@@ -180,7 +180,7 @@ class Fleet(object):
                 raise ValueError(
                     "`role_maker` should be subclass of `RoleMakerBase`, but got {}".
                     format(type(role_maker)))
-        self._role_maker.generate_role()
+        self._role_maker._generate_role()
 
         self.strategy_compiler = StrategyCompiler()
         if paddle.fluid.framework.in_dygraph_mode():
@@ -207,7 +207,7 @@ class Fleet(object):
                 fleet.is_first_worker()
 
         """
-        return self._role_maker.is_first_worker()
+        return self._role_maker._is_first_worker()
 
     def worker_index(self):
         """
@@ -224,7 +224,7 @@ class Fleet(object):
                 fleet.worker_index()
 
         """
-        return self._role_maker.worker_index()
+        return self._role_maker._worker_index()
 
     def worker_num(self):
         """
@@ -241,7 +241,7 @@ class Fleet(object):
                 fleet.worker_num()
 
         """
-        return self._role_maker.worker_num()
+        return self._role_maker._worker_num()
 
     def is_worker(self):
         """
@@ -259,7 +259,7 @@ class Fleet(object):
                 fleet.is_worker()
 
         """
-        return self._role_maker.is_worker()
+        return self._role_maker._is_worker()
 
     def worker_endpoints(self, to_string=False):
         """
@@ -277,9 +277,9 @@ class Fleet(object):
 
         """
         if to_string:
-            return ",".join(self._role_maker.get_trainer_endpoints())
+            return ",".join(self._role_maker._get_trainer_endpoints())
         else:
-            return self._role_maker.get_trainer_endpoints()
+            return self._role_maker._get_trainer_endpoints()
 
     def server_num(self):
         """
@@ -294,7 +294,7 @@ class Fleet(object):
             fleet.init()
             fleet.server_num()
         """
-        return len(self._role_maker.get_pserver_endpoints())
+        return len(self._role_maker._get_pserver_endpoints())
 
     def server_index(self):
         """
@@ -311,7 +311,7 @@ class Fleet(object):
                 fleet.server_index()
 
         """
-        return self._role_maker.server_index()
+        return self._role_maker._server_index()
 
     def server_endpoints(self, to_string=False):
         """
@@ -330,9 +330,9 @@ class Fleet(object):
         """
 
         if to_string:
-            return ",".join(self._role_maker.get_pserver_endpoints())
+            return ",".join(self._role_maker._get_pserver_endpoints())
         else:
-            return self._role_maker.get_pserver_endpoints()
+            return self._role_maker._get_pserver_endpoints()
 
     def is_server(self):
         """
@@ -350,7 +350,7 @@ class Fleet(object):
                 fleet.is_server()
 
         """
-        return self._role_maker.is_server(
+        return self._role_maker._is_server(
         ) or self._role_maker._is_heter_worker()
 
     def set_util(self, util):

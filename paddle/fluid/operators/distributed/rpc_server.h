@@ -18,6 +18,7 @@
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -26,8 +27,19 @@
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 namespace distributed {
+
+class RequestHandler;
 
 struct MonomerHandle {
   std::string var_name_;

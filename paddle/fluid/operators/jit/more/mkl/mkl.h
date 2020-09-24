@@ -17,6 +17,7 @@
 #include <cmath>
 #include <type_traits>
 #include <vector>
+
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/platform/enforce.h"
 

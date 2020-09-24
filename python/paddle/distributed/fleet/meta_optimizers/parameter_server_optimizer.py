@@ -239,10 +239,10 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                                                      strategy, self.role_maker)
         compiled_config.strategy = strategy
 
-        if self.role_maker.is_worker() or self.role_maker._is_heter_worker():
+        if self.role_maker._is_worker() or self.role_maker._is_heter_worker():
             main_program, startup_program = self._build_trainer_programs(
                 compiled_config)
-        elif self.role_maker.is_server():
+        elif self.role_maker._is_server():
             main_program, startup_program = self._build_pserver_programs(
                 compiled_config)
 

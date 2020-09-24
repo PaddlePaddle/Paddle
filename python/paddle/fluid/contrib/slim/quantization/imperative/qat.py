@@ -99,7 +99,12 @@ class ImperativeQuantAware(object):
         self._activation_bits = activation_bits
         self._moving_rate = moving_rate
 
-        quant_type = {'abs_max', 'moving_average_abs_max'}
+        quant_type = {
+            'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max'
+        }
+
+        assert activation_quantize_type != 'channel_wise_abs_max', \
+            "The activation quantization type does not support 'channel_wise_abs_max'."
         if activation_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown activation_quantize_type : '%s'. It can only be "
@@ -108,8 +113,8 @@ class ImperativeQuantAware(object):
         if weight_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown weight_quantize_type: '%s'. It can only be "
-                "'abs_max' or 'moving_average_abs_max' now." %
-                (str(weight_quantize_type)))
+                "'abs_max' or 'moving_average_abs_max' or 'channel_wise_abs_max' now."
+                % (str(weight_quantize_type)))
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
 
