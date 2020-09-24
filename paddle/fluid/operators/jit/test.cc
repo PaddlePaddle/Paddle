@@ -851,13 +851,13 @@ void TestKernelSgd() {
   auto UnDuplicatedRandomVec = [](int n, const int64_t lower,
                                   const int64_t upper) -> std::vector<int64_t> {
     PADDLE_ENFORCE_LE(static_cast<size_t>(upper - lower), n - 1,
-                      platform::errors::InvalidArgument(
+                      paddle::platform::errors::InvalidArgument(
                           "The range of Sgd (upper - lower) should be lower "
                           "than n-1 (Sgd size -1). But the upper - lower is %d "
                           "and n-1 is %d.",
                           static_cast<size_t>(upper - lower), n - 1));
     PADDLE_ENFORCE_GT(
-        n, 0, platform::errors::InvalidArgument(
+        n, 0, paddle::platform::errors::InvalidArgument(
                   "The Sgd size should be larger than 0. But the n is %d.", n));
     std::vector<int64_t> all, out;
     for (int i = 0; i < n; ++i) {

@@ -133,7 +133,7 @@ void OpInputConfig::ParseLoD(std::istream& is) {
       lod_str.length(), 4U,
       platform::errors::InvalidArgument(
           "The length of lod string should be "
-          "equal to or larger than 4. But length of lod string is %d.",
+          "equal to or larger than 4. But length of lod string is %zu.",
           lod_str.length()));
   VLOG(4) << "lod: " << lod_str << ", length: " << lod_str.length();
 
