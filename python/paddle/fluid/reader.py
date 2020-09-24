@@ -222,6 +222,8 @@ class DataLoader(object):
         .. code-block:: python
 
             import numpy as np
+
+            import paddle
             import paddle.fluid as fluid
             from paddle.io import Dataset, BatchSampler, DataLoader
 
@@ -247,45 +249,11 @@ class DataLoader(object):
                 def __len__(self):
                     return self.num_samples
 
+            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+
             # get places
             places = fluid.cuda_places() if USE_GPU else fluid.cpu_places()
 
-            # -------------------- static graph ---------------------
-
-            def simple_net(image, label):
-                fc_tmp = fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
-                cross_entropy = fluid.layers.softmax_with_cross_entropy(image, label)
-                loss = fluid.layers.reduce_mean(cross_entropy)
-                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-                sgd.minimize(loss)
-                return loss
-
-            image = fluid.data(name='image', shape=[None, IMAGE_SIZE], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-
-            loss = simple_net(image, label)
-
-            exe = fluid.Executor(places[0])
-            exe.run(fluid.default_startup_program())
-
-            prog = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(loss_name=loss.name)
-
-            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-
-            loader = DataLoader(dataset,
-                                feed_list=[image, label],
-                                batch_size=BATCH_SIZE, 
-                                shuffle=True,
-                                drop_last=True,
-                                num_workers=2)
-
-            for e in range(EPOCH_NUM):
-                for i, data in enumerate(loader()):
-                    l = exe.run(prog, feed=data, fetch_list=[loss], return_numpy=True)
-                    print("Epoch {} batch {}: loss = {}".format(e, i, l[0][0]))
-
-            # -------------------------------------------------------
-                
             # --------------------- dygraph mode --------------------
 
             class SimpleNet(fluid.dygraph.Layer):
@@ -318,6 +286,43 @@ class DataLoader(object):
                         print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
 
             # -------------------------------------------------------
+
+            # -------------------- static graph ---------------------
+
+            paddle.enable_static()
+
+            def simple_net(image, label):
+                fc_tmp = fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
+                cross_entropy = fluid.layers.softmax_with_cross_entropy(image, label)
+                loss = fluid.layers.reduce_mean(cross_entropy)
+                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd.minimize(loss)
+                return loss
+
+            image = fluid.data(name='image', shape=[None, IMAGE_SIZE], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+
+            loss = simple_net(image, label)
+
+            exe = fluid.Executor(places[0])
+            exe.run(fluid.default_startup_program())
+
+            prog = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(loss_name=loss.name)
+
+            loader = DataLoader(dataset,
+                                feed_list=[image, label],
+                                batch_size=BATCH_SIZE, 
+                                shuffle=True,
+                                drop_last=True,
+                                num_workers=2)
+
+            for e in range(EPOCH_NUM):
+                for i, data in enumerate(loader()):
+                    l = exe.run(prog, feed=data, fetch_list=[loss], return_numpy=True)
+                    print("Epoch {} batch {}: loss = {}".format(e, i, l[0][0]))
+
+            # -------------------------------------------------------
+                
 
     .. note::
         For reading iterable dataset with multiprocess Dataloader,
