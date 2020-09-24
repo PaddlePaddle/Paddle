@@ -17,6 +17,7 @@ from paddle.fluid import core
 import subprocess
 import re
 import platform
+from ..base.private_helper_function import wait_server_ready
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
@@ -129,6 +130,14 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                                                       compiled_config, True)
             _startup = server.delete_unused_in_startup_pass(_startup, _main,
                                                             compiled_config)
+
+        # for trainer wait server ready
+        wait_server_ready(self.role_maker._get_pserver_endpoints())
+
+        # for ps-heter mode, wait heter worker ready
+        if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
+        ):
+            wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
         return _main, _startup
 
