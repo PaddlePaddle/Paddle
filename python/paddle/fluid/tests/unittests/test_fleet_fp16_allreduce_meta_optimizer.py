@@ -44,10 +44,10 @@ class TestFleetFP16CompressOptimizer(unittest.TestCase):
             avg_cost = paddle.fluid.layers.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
-            strategy.fp16_compress = True
+            strategy.fp16_allreduce = True
         return avg_cost, strategy
 
-    def test_fp16_compress_optimizer(self):
+    def test_fp16_allreduce_optimizer(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         train_prog, startup_prog = fluid.Program(), fluid.Program()
@@ -73,7 +73,7 @@ class TestFleetFP16CompressOptimizer(unittest.TestCase):
         for name in cast_out:
             self.assertIn('cast_fp16', name)
 
-    def test_fp16_compress_not_apply_fp16_net(self):
+    def test_fp16_allreduce_not_apply_fp16_net(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         train_prog, startup_prog = fluid.Program(), fluid.Program()

@@ -15,9 +15,9 @@ from paddle.fluid import core, framework, unique_name
 from .meta_optimizer_base import MetaOptimizerBase
 
 
-class FP16CompressOptimizer(MetaOptimizerBase):
+class FP16AllReduceOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(FP16CompressOptimizer, self).__init__(optimizer)
+        super(FP16AllReduceOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = [
@@ -33,23 +33,23 @@ class FP16CompressOptimizer(MetaOptimizerBase):
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
-        super(FP16CompressOptimizer, self)._set_basic_info(
+        super(FP16AllReduceOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
             return False
 
-        if self.user_defined_strategy.fp16_compress:
+        if self.user_defined_strategy.fp16_allreduce:
             return True
 
         return False
 
     def _disable_strategy(self, dist_strategy):
-        dist_strategy.fp16_compress = False
+        dist_strategy.fp16_allreduce = False
 
     def _enable_strategy(self, dist_strategy, context=None):
-        dist_strategy.fp16_compress = True
+        dist_strategy.fp16_allreduce = True
 
     @staticmethod
     def fp16_compression(param_and_grads):
@@ -124,7 +124,7 @@ class FP16CompressOptimizer(MetaOptimizerBase):
                 stop_gradient=True)
 
             with block.program._optimized_guard(
-                [param, grad]), framework.name_scope('fp16_compress'):
+                [param, grad]), framework.name_scope('fp16_allreduce'):
                 cast_op = block.append_op(
                     type="cast",
                     inputs={"X": grad},

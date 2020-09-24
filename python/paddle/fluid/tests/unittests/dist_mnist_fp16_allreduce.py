@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
-from paddle.distributed.fleet.meta_optimizers import FP16CompressOptimizer as FP16Compress
+from paddle.distributed.fleet.meta_optimizers import FP16AllReduceOptimizer as FP16AllReduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 from dist_mnist import cnn_model
 
@@ -48,7 +48,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         # Optimization
         opt = fluid.optimizer.MomentumOptimizer(
             learning_rate=0.001, momentum=0.9)
-        opt = FP16Compress(opt)
+        opt = FP16AllReduce(opt)
 
         # Reader
         train_reader = paddle.batch(
