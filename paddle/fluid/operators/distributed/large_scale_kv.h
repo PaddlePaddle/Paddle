@@ -637,13 +637,13 @@ class SparseVariable {
           if (mode == 1) {
             id_need_save = true;
           } else {
-            id_need_save = value.second.seen_after_last_save_;
+            id_need_save = value.second->seen_after_last_save_;
           }
 
           if (id_need_save) {
             ids.push_back(value.first);
           }
-          value.second.seen_after_last_save_ = false;
+          value.second->seen_after_last_save_ = false;
         }
       }
     }
@@ -661,7 +661,7 @@ class SparseVariable {
       auto *slr = var->GetMutable<framework::SelectedRows>();
       auto *src_t = slr->mutable_value();
 
-      src_t->Resize({ids.size(), dim});
+      src_t->Resize({static_cast<int64_t>(ids.size()), dim});
       auto *value = src_t->mutable_data<float>(place);
 
       dims.push_back(dim);
@@ -669,12 +669,11 @@ class SparseVariable {
       tensors.push_back(value);
     }
 
-    std::vector<std::vector<std::vector<float> *>> *values;
-    Get(ids, variables, values);
+    std::vector<std::vector<std::vector<float> *>> values;
+    Get(ids, valuenames, &values);
 
     int64_t offset = 0;
-    for (auto *value : values) {
-      auto vss = value;
+    for (auto &vss : values) {
       for (int i = 0; i < static_cast<int>(vss.size()); i++) {
         auto &vs = vss[i];
         std::memcpy(tensors[i] + offset * dims[i], vs->data(),
