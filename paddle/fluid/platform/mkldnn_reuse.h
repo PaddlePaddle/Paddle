@@ -835,7 +835,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
       const auto fmt = input->format();
 
       const auto exclude_padding = ctx.Attr<bool>("exclusive");
-      const bool adaptive = context.Attr<bool>("adaptive");
+      const bool adaptive = ctx.Attr<bool>("adaptive");
 
       const auto src_md = mkldnn::memory::desc(src_tz, dt, fmt);
       /* create memory descriptor for pooling without specified format
