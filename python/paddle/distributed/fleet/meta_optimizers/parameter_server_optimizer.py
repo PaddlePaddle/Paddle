@@ -93,6 +93,14 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
 
+        # for trainer wait server ready
+        wait_server_ready(self.role_maker._get_pserver_endpoints())
+
+        # for ps-heter mode, wait heter worker ready
+        if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
+        ):
+            wait_server_ready(self.role_maker._get_heter_worker_endpoints())
+
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):
@@ -130,14 +138,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                                                       compiled_config, True)
             _startup = server.delete_unused_in_startup_pass(_startup, _main,
                                                             compiled_config)
-
-        # for trainer wait server ready
-        wait_server_ready(self.role_maker._get_pserver_endpoints())
-
-        # for ps-heter mode, wait heter worker ready
-        if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
-        ):
-            wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
         return _main, _startup
 
