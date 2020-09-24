@@ -831,7 +831,7 @@ class Model(object):
                       paddle.nn.CrossEntropyLoss(),
                       paddle.metric.Accuracy())
         
-        data = paddle.vision.datasets.MNIST(mode='train', chw_format=False)
+        data = paddle.vision.datasets.MNIST(mode='train')
         model.fit(data, epochs=2, batch_size=32, verbose=1)
     """
 
@@ -1044,7 +1044,7 @@ class Model(object):
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
                     parameters=model.parameters())
                 model.prepare(optim, paddle.nn.CrossEntropyLoss())
-                data = paddle.vision.datasets.MNIST(mode='train', chw_format=False)
+                data = paddle.vision.datasets.MNIST(mode='train')
                 model.fit(data, epochs=1, batch_size=32, verbose=0)
                 model.save('checkpoint/test')  # save for training
                 model.save('inference_model', False)  # save for inference
@@ -1487,7 +1487,7 @@ class Model(object):
 
             # imperative mode
             paddle.disable_static()
-            model = paddle.Model(paddle.vision.models.LeNet())
+            model = paddle.Model(paddle.vision.models.LeNet(), input, label)
             model.prepare(metrics=paddle.metric.Accuracy())
             result = model.evaluate(val_dataset, batch_size=64)
             print(result)
@@ -1593,7 +1593,7 @@ class Model(object):
 
             # declarative mode
             device = paddle.set_device('cpu')
-            paddle.enable_static(device)
+            paddle.enable_static()
             input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
             model = paddle.Model(paddle.vision.models.LeNet(), input)
             model.prepare()
