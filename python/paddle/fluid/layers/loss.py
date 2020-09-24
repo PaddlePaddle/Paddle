@@ -641,6 +641,21 @@ def warpctc(input,
                                   fetch_list=[cost.name])
             print(output)
     """
+    if in_dygraph_mode():
+        if input_length is None or label_length is None:
+            raise ValueError(
+                "input_length and label_length must not be None in dygraph mode!"
+            )
+        grad, loss_out = core.ops.warpctc(
+            input,
+            label,
+            input_length,
+            label_length,
+            'blank',
+            blank,
+            'norm_by_times',
+            norm_by_times, )
+        return loss_out
     helper = LayerHelper('warpctc', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], "warpctc")
     check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
