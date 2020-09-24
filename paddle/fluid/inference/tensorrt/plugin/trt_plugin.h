@@ -183,7 +183,7 @@ template <typename T>
 class TrtPluginRegistrarV2 {
  public:
   TrtPluginRegistrarV2() {
-    static auto func_ptr = getPluginRegistry();
+    static auto func_ptr = GetPluginRegistry();
     if (func_ptr != nullptr) {
       func_ptr->registerCreator(creator, "");
     }
