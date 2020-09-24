@@ -220,11 +220,11 @@ class ParameterServerRuntime(RuntimeBase):
         else:
             model_dirname = None
 
-        if self.role_maker._is_heter_worker():
-            self._init_worker()
-
         executor = self._get_executor()
         executor.run(fluid.default_startup_program())
+
+        if self.role_maker._is_heter_worker():
+            self._init_worker()
 
         if self.role_maker._is_heter_worker():
             return

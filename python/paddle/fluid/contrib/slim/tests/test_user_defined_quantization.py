@@ -29,6 +29,8 @@ from paddle.fluid.contrib.slim.quantization import AddQuantDequantPass
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 
+paddle.enable_static()
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["CPU_NUM"] = "1"
 

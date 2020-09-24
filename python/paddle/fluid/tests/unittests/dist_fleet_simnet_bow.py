@@ -34,6 +34,8 @@ from functools import reduce
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
 from paddle.distributed.fleet.base.util_factory import fleet_util
 
+paddle.enable_static()
+
 DTYPE = "int64"
 DATA_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/simnet.train.1000'
 DATA_MD5 = '24e49366eb0611c552667989de2f57d5'
@@ -220,8 +222,8 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
         """
 
         exe = fluid.Executor(fluid.CPUPlace())
-        fleet.init_worker()
         exe.run(fluid.default_startup_program())
+        fleet.init_worker()
         batch_size = 4
         # reader
         train_reader = paddle.batch(fake_simnet_reader(), batch_size=batch_size)

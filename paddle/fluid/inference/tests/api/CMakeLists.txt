@@ -198,6 +198,9 @@ inference_analysis_test(test_analyzer_ernie_large SRCS analyzer_ernie_tester.cc
 if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 150 LABELS "RUN_TYPE=NIGHTLY")
 endif()
+if (WIN32)
+    set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 200)
+endif()
 
 # text_classification
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
@@ -258,6 +261,10 @@ set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
 download_data(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
 inference_analysis_api_test_with_fake_data_run(test_analyzer_resnet50 ${IMG_CLASS_TEST_APP}
 	${RESNET50_MODEL_DIR} true)
+if (WIN32)
+    set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 200)
+endif()
+
 
 # mobilenet with depthwise_conv op
 set(MOBILENET_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv")

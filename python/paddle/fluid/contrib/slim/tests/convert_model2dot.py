@@ -19,6 +19,9 @@ import argparse
 import paddle.fluid as fluid
 from paddle.fluid.framework import IrGraph
 from paddle.fluid import core
+import paddle
+
+paddle.enable_static()
 
 
 def parse_args():

@@ -156,7 +156,7 @@ def get_cluster_from_args(args, gpus):
     else:
         start_port = 6070
         if os.environ.get('FLAGS_START_PORT') is not None:
-            start_port = os.environ.get('FLAGS_START_PORT')
+            start_port = int(os.environ.get('FLAGS_START_PORT'))
 
         free_ports = [x for x in range(start_port, start_port + len(gpus))]
 
@@ -463,9 +463,8 @@ def launch():
         cuda_device_num = 0
 
     if len(has_ps_args) > 0 or cuda_device_num == 0:
-        logger.info(
-            "Run parameter-sever cpu mode. pserver arguments:{}, cuda count:{}".
-            format(has_ps_args, cuda_device_num))
+        logger.info("Run parameter-sever cpu mode. pserver arguments:{}".format(
+            has_ps_args))
         launch_ps(args)
     elif len(has_collective_args) > 0:
         logger.info("Run collective gpu mode. gpu arguments:{}, cuda count:{}".
