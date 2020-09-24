@@ -17,7 +17,6 @@ from __future__ import print_function
 import unittest
 import numpy as np
 
-import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -157,7 +156,7 @@ class TestLogDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
-        y = paddle.log(x)
+        y = layers.log(x)
 
         x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
 
