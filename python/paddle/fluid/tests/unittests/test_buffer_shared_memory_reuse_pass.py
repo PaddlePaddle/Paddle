@@ -116,7 +116,11 @@ class InplaceTestBase(unittest.TestCase):
                                               feed=feed_dict,
                                               fetch_list=[fetch_var])
 
-                        self.assertTrue(np.array_equal(fetch_val1, fetch_val2))
+                        np.testing.assert_array_equal(fetch_val1, fetch_val2)
+                        self.assertTrue(
+                            np.array_equal(fetch_val1, fetch_val2),
+                            "\fetch_val1: {}\fetch_val2: {}".format(fetch_val1,
+                                                                    fetch_val2))
 
     def check_multi_card_fetch_var(self):
         if self.is_invalid_test():
@@ -160,7 +164,11 @@ class InplaceTestBase(unittest.TestCase):
                         fetch_vals.append(fetch_val)
 
                 for item in fetch_vals:
-                    self.assertTrue(np.array_equal(fetch_vals[0], item))
+                    np.testing.assert_array_equal(fetch_vals[0], item)
+                    self.assertTrue(
+                        np.array_equal(fetch_vals[0], item),
+                        "\fetch_vals[0]: {}\item: {}".format(fetch_vals[0],
+                                                             item))
 
 
 class CUDAInplaceTest(InplaceTestBase):
