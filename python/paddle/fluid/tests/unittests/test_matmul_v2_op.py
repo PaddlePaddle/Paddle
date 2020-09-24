@@ -366,14 +366,15 @@ class TestMatMulV2API(unittest.TestCase):
                 result = paddle.matmul(x, y)
 
     def test_dygraph_fp16(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            with fluid.dygraph.guard(place):
-                input_x = np.random.random([4, 3]).astype("float16")
-                input_y = np.random.random([3, 4]).astype("float16")
-                x = paddle.to_tensor(input_x)
-                y = paddle.to_tensor(input_y)
-                result = paddle.matmul(x, y)
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                with fluid.dygraph.guard(place):
+                    input_x = np.random.random([4, 3]).astype("float16")
+                    input_y = np.random.random([3, 4]).astype("float16")
+                    x = paddle.to_tensor(input_x)
+                    y = paddle.to_tensor(input_y)
+                    result = paddle.matmul(x, y)
 
 
 if __name__ == "__main__":
