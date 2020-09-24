@@ -53,9 +53,10 @@ inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
       trans6(dev_ctx, in, out, axis);
       break;
     default:
-      // for dim >= 7 situation
-      math::TransposeNormal<DeviceContext, T> trans_normal;
-      trans_normal(dev_ctx, in, out, axis);
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Tensors with rank at most 6 are supported"
+          ", but received input tensor's rank is %d,",
+          dim));
   }
 }
 

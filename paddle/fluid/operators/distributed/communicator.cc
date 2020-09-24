@@ -452,7 +452,6 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const std::vector<std::string> &var_tables,
                            const framework::Scope &scope) {
-  return;
   waiting_ = false;
 
   // PADDLE_ENFORCE_EQ(
@@ -568,7 +567,7 @@ void GeoCommunicator::MainThread() {
               if (var_name == STEP_COUNTER) {
                 return;
               }
-              //  SendSparse(var_name, ep_idx, ids_send_vec_);
+              SendSparse(var_name, ep_idx, ids_send_vec_);
               auto after_send_sparse = GetCurrentUS();
               RecvSparse(var_name, ep_idx);
               auto after_recv_sparse = GetCurrentUS();
@@ -586,7 +585,6 @@ void GeoCommunicator::MainThread() {
           }
         } else {
           auto send_recv_task = [this, &var_name, &send_ctx] {
-            return;
             if (var_name == STEP_COUNTER) {
               return;
             }
@@ -631,12 +629,6 @@ void GeoCommunicator::SendSparse(
     for (auto id : ids_map[varname][ep_idx]) {
       ids_set.insert(id);
       vector_size += 1;
-      if (vector_size > 10) {
-        break;
-      }
-    }
-    if (vector_size > 10) {
-      break;
     }
   }
 
