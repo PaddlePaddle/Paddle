@@ -498,12 +498,12 @@ void NormDoubleGradFunctor(const framework::ExecutionContext &ctx,
     if (use_global_stats) {
       if (data_layout == DataLayout::kNHWC) {
         DoubleGradComputeDDYWithGlobal<
-            T, DataLayout::kNHWC><<<grid, block, 0, dev_ctx.stream()>>>(
+            T, DataLayout::kNHWC><<<grid1, block, 0, dev_ctx.stream()>>>(
             ddx_data, scale_data, mean_data, variance_data, x_data, ddbias_data,
             ddscale_data, epsilon, C, sample_size, num, ddy_data);
       } else {
         DoubleGradComputeDDYWithGlobal<
-            T, DataLayout::kNCHW><<<grid, block, 0, dev_ctx.stream()>>>(
+            T, DataLayout::kNCHW><<<grid1, block, 0, dev_ctx.stream()>>>(
             ddx_data, scale_data, mean_data, variance_data, x_data, ddbias_data,
             ddscale_data, epsilon, C, sample_size, num, ddy_data);
       }
