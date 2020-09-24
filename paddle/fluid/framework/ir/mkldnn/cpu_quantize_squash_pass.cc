@@ -14,15 +14,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_squash_pass.h"
-#include <algorithm>
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 using string::PrettyLogDetail;
 

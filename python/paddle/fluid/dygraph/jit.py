@@ -28,7 +28,7 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticLayer, unwrap_decorators
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticFunction, unwrap_decorators
 from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
@@ -141,7 +141,7 @@ def copy_decorator_attrs(original_func, decorated_obj):
 
     Args:
         original_func(callable): the original decorated function.
-        decorated_obj(StaticLayer): the target decorated StaticLayer object.
+        decorated_obj(StaticFunction): the target decorated StaticFunction object.
     """
     decorator_name = "declarative"
 
@@ -198,7 +198,7 @@ def declarative(function=None, input_spec=None):
 
     def decorated(python_func):
         """
-        Decorates a python function into a StaticLayer object.
+        Decorates a python function into a StaticFunction object.
         """
         # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
@@ -206,7 +206,7 @@ def declarative(function=None, input_spec=None):
         # Step 2. copy some attributes from original python function.
         static_layer = copy_decorator_attrs(
             original_func=python_func,
-            decorated_obj=StaticLayer(
+            decorated_obj=StaticFunction(
                 function=python_func, input_spec=input_spec))
 
         return static_layer
@@ -214,7 +214,7 @@ def declarative(function=None, input_spec=None):
     # for usage: `declarative(foo, ...)`
     if function is not None:
         if isinstance(function, Layer):
-            if isinstance(function.forward, StaticLayer):
+            if isinstance(function.forward, StaticFunction):
                 class_name = function.__class__.__name__
                 logging_utils.warn(
                     "`{}.forward` has already been decorated somewhere. It will be redecorated to replace previous one.".
@@ -231,9 +231,7 @@ def declarative(function=None, input_spec=None):
 class SaveLoadConfig(object):
     """
     The additional configuration options may be used in function 
-    :ref:`api_imperative_jit_save` that save :ref:`api_imperative_TranslatedLayer` 
-    or used in function :ref:`api_imperative_jit_load` that 
-    load :ref:`api_imperative_TranslatedLayer` .
+    ``paddle.jit.save/load`` and ``paddle.load`` .
     
     Examples:
         1. Using ``SaveLoadConfig`` when saving model
@@ -319,7 +317,7 @@ class SaveLoadConfig(object):
     @property
     def output_spec(self):
         """
-        Selects the output targets of the saved model ( :ref:`api_imperative_TranslatedLayer` ).
+        Selects the output targets of the saved model ( ``paddle.jit.TranslatedLayer`` ).
         By default, all return variables of original Layer's forward function
         are kept as the output of the saved TranslatedLayer.
 
@@ -531,10 +529,13 @@ class SaveLoadConfig(object):
     def separate_params(self):
         """
         Configure whether to save the Layer parameters as separete files.
-        (In order to be compatible with the behavior of :ref:`api_fluid_io_save_inference_model` )
+        (In order to be compatible with the behavior of ``paddle.static.save_inference_model`` )
 
         If True, each parameter will be saved to a file separately, the file name is the parameter name,
         and the SaveLoadConfig.params_filename configuration will not take effect. Default False.
+
+        .. note::
+            Only used for ``paddle.jit.save`` .
 
         Examples:
             .. code-block:: python
@@ -569,7 +570,7 @@ class SaveLoadConfig(object):
                     adam.clear_grad()
 
                 model_path = "simplenet.example.model.separate_params"
-                config = paddle.jit.SaveLoadConfig()
+                config = paddle.SaveLoadConfig()
                 config.separate_params = True
 
                 # saving with configs.separate_params
@@ -599,12 +600,12 @@ class SaveLoadConfig(object):
     def keep_name_table(self):
         """
         Configures whether keep ``structured_name -> parameter_name`` dict in loaded state dict.
-        This dict is the debugging information saved when call `paddle.save`. 
+        This dict is the debugging information saved when call ``paddle.save`` . 
         It is generally only used for debugging and does not affect the actual training or inference. 
-        By default, it will not be retained in `paddle.load` result. Default: False.
+        By default, it will not be retained in ``paddle.load`` result. Default: False.
         
         .. note::
-            Only used for ``paddle.load``.
+            Only used for ``paddle.load`` .
 
         Examples:
             .. code-block:: python
@@ -616,11 +617,11 @@ class SaveLoadConfig(object):
                 linear = paddle.nn.Linear(5, 1)
 
                 state_dict = linear.state_dict()
-                paddle.save(state_dict, "paddle_dy")
+                paddle.save(state_dict, "paddle_dy.pdparams")
 
-                configs = paddle.SaveLoadConfig()
-                configs.keep_name_table = True
-                para_state_dict, _ = paddle.load("paddle_dy", configs)
+                config = paddle.SaveLoadConfig()
+                config.keep_name_table = True
+                para_state_dict = paddle.load("paddle_dy.pdparams", config)
 
                 print(para_state_dict)
                 # the name_table is 'StructuredToParameterName@@'
@@ -867,7 +868,7 @@ def save(layer, model_path, input_spec=None, config=None):
 
     # 2. get program from Layer
     # TODO(chenweihang): add support for other method, not only forward
-    if isinstance(layer.forward, StaticLayer):
+    if isinstance(layer.forward, StaticFunction):
         concrete_program = layer.forward.concrete_program
     else:
         # transform in jit.save, if input_spec is incomplete, declarative will throw error

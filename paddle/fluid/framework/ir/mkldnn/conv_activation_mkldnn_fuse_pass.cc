@@ -13,13 +13,20 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
-#include <string>
 #include <vector>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
+
+class Graph;
 
 void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
