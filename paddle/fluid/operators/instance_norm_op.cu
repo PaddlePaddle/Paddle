@@ -467,8 +467,8 @@ __global__ void DoubleGradComputeDX(const T *x, const T *mean,
   if (ddscale != nullptr) {
     for (int i = beg_idx; i < end_idx; i += BlockDim) {
       dx[i] += (dy[i] * var_val - dy_sum_val / sample_size * var_val -
-                (x[i] - mean_val) * var_val * dy_mul_x_sub_mean_sum_val *
-                    var_val / sample_size) *
+                (x[i] - mean_val) * var_val * var_val *
+                    dy_mul_x_sub_mean_sum_val * var_val / sample_size) *
                ddscale[c];
     }
   }

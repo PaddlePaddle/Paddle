@@ -839,6 +839,7 @@ void BatchNormDoubleGradMaker<T>::Apply(GradOpPtr<T> op) const {
   op->SetInput("SavedMean", this->Input("SavedMean"));
   op->SetInput("SavedVariance", this->Input("SavedVariance"));
   if (boost::get<bool>(this->GetAttr("use_global_stats"))) {
+    op->SetInput("Mean", this->Input("Mean"));
     op->SetInput("Variance", this->Input("Variance"));
   }
   op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
@@ -868,7 +869,6 @@ void BatchNormDoubleGradOp::InferShape(
                    "BatchNormDoubleGrad");
   }
 
-  OP_INOUT_CHECK(ctx->HasInput("DDX"), "Input", "DDX", "BatchNormDoubleGrad");
   OP_INOUT_CHECK(ctx->HasInput("DY"), "Input", "DY", "BatchNormDoubleGrad");
 
   // check output
@@ -957,7 +957,9 @@ class BatchNormDoubleGradKernel<platform::CPUDeviceContext, T>
 
     Tensor inv_var_tensor;
     if (use_global_stats) {
+      const auto *running_mean = ctx.Input<Tensor>("Mean");
       const auto *running_variance = ctx.Input<Tensor>("Variance");
+      mean_data = running_mean->data<T>();
       inv_var_tensor.Resize({C});
 
       T *running_inv_var_data = inv_var_tensor.mutable_data<T>(ctx.GetPlace());
@@ -1077,12 +1079,12 @@ class BatchNormDoubleGradKernel<platform::CPUDeviceContext, T>
         //          (np.mean(dy, axis=(n,h,w)) - dy) + inv_var.pow(3) / NxHxW *
         //          np.sum(dy,
         //          axis=(n,h,w)) * (x - mean) *
-        //          (np.mean(ddx, axis=(n,h,w)) - ddx) + ddr * (dy * inv_var -
+        //          (np.mean(ddx, axis=(n,h,w)) - ddx)) + ddr * (dy * inv_var -
         //          inv_var
         //          *
         //          np.mean(dy, axis=(n,h,w)) -
         //          inv_var.pow(3) * (x - mean) * np.mean(dy * (x - mean),
-        //          axis=(n,h,w))))
+        //          axis=(n,h,w)))
 
         if (ddX) {
           dx_arr +=
@@ -1176,7 +1178,8 @@ class BatchNormDoubleGradKernel<platform::CPUDeviceContext, T>
                                C, sample_size);
       ddy_arr.setZero();
       if (use_global_stats) {
-        // math: ddy = r * ddx * inv_var
+        // math: ddy = r * ddx * inv_var + ddbias +
+        //           ddscale * (x - mean) * inv_var
         if (ddX) {
           ddy_arr = scale_tile_data * ddx_arr * inv_var_tile_data;
         }
@@ -1196,25 +1199,29 @@ class BatchNormDoubleGradKernel<platform::CPUDeviceContext, T>
                        .replicate(1, sample_size) /
                    sample_size);
         }
-        if (ddScale && ddBias) {
-          ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
-          Tensor ddscale_tile;
-          ddscale_tile.Resize({C, sample_size});
-          EigenArrayMap<T> ddscale_tile_data(
-              ddscale_tile.mutable_data<T>(ctx.GetPlace()), C, sample_size);
-          ddscale_tile_data = ddscale_arr.replicate(1, sample_size);
-
-          ConstEigenVectorArrayMap<T> ddbias_arr(ddBias->data<T>(), C);
-          Tensor ddbias_tile;
-          ddbias_tile.Resize({C, sample_size});
-          EigenArrayMap<T> ddbias_tile_data(
-              ddbias_tile.mutable_data<T>(ctx.GetPlace()), C, sample_size);
-          ddbias_tile_data = ddbias_arr.replicate(1, sample_size);
-
-          ddy_arr += x_sub_mean_mul_invstd_arr * ddscale_tile_data;
-          ddy_arr += ddbias_tile_data;
-        }
       }
+      if (ddScale) {
+        ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
+        Tensor ddscale_tile;
+        ddscale_tile.Resize({C, sample_size});
+        EigenArrayMap<T> ddscale_tile_data(
+            ddscale_tile.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+        ddscale_tile_data = ddscale_arr.replicate(1, sample_size);
+
+        ddy_arr += x_sub_mean_mul_invstd_arr * ddscale_tile_data;
+      }
+
+      if (ddBias) {
+        ConstEigenVectorArrayMap<T> ddbias_arr(ddBias->data<T>(), C);
+        Tensor ddbias_tile;
+        ddbias_tile.Resize({C, sample_size});
+        EigenArrayMap<T> ddbias_tile_data(
+            ddbias_tile.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+        ddbias_tile_data = ddbias_arr.replicate(1, sample_size);
+
+        ddy_arr += ddbias_tile_data;
+      }
+
       if (data_layout == DataLayout::kNCHW) {
         VLOG(3) << "Transform batchnorm output from NHWC to NCHW";
         TransToChannelFirst<paddle::platform::CPUDeviceContext, T>(
