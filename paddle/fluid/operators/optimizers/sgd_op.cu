@@ -62,7 +62,7 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
                           "The Var(%s)'s type should be LoDTensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
-                          framework::ToTypeName(param_var->Type())));
+                          paddle::framework::ToTypeName(param_var->Type())));
 
     auto* param = ctx.Input<framework::Tensor>("Param");
     auto* param_out = ctx.Output<framework::Tensor>("ParamOut");
@@ -131,11 +131,12 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
           out_data, in_row_numel, in_rows.size());
 
     } else {
-      PADDLE_ENFORCE_EQ(false, true, platform::errors::PermissionDenied(
-                                         "Unsupported Variable Type of Grad "
-                                         "in SgdOp. Excepted LodTensor or "
-                                         "SelectedRows, But received [%s]",
-                                         ToTypeName(grad_var->Type())));
+      PADDLE_ENFORCE_EQ(false, true,
+                        platform::errors::PermissionDenied(
+                            "Unsupported Variable Type of Grad "
+                            "in SgdOp. Excepted LodTensor or "
+                            "SelectedRows, But received [%s]",
+                            paddle::framework::ToTypeName(grad_var->Type())));
     }
   }
 };
