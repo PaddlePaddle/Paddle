@@ -42,8 +42,6 @@ from .creation import tril  #DEFINE_ALIAS
 from .creation import meshgrid  #DEFINE_ALIAS
 from .creation import empty  #DEFINE_ALIAS
 from .creation import empty_like  #DEFINE_ALIAS
-from .io import save  #DEFINE_ALIAS
-from .io import load  #DEFINE_ALIAS
 from .linalg import matmul  #DEFINE_ALIAS
 from .linalg import dot  #DEFINE_ALIAS
 # from .linalg import einsum        #DEFINE_ALIAS

@@ -145,7 +145,7 @@ def load_dygraph(model_path, config=None):
 
     .. note::
         Due to some historical reasons, if you load ``state_dict`` from the saved 
-        result of `paddle.io.save_inference_model`, the structured variable name 
+        result of `paddle.static.save_inference_model`, the structured variable name 
         will cannot be restored. You need to set the argument `use_structured_name=False` 
         when using `Layer.set_state_dict` later.
 
@@ -164,24 +164,24 @@ def load_dygraph(model_path, config=None):
         .. code-block:: python
 
             import paddle
-            
+            import paddle.fluid as fluid
+
             paddle.disable_static()
 
-            emb = paddle.nn.Embedding([10, 10])
+            emb = paddle.nn.Embedding(10, 10)
 
             state_dict = emb.state_dict()
-            paddle.save(state_dict, "paddle_dy")
+            fluid.save_dygraph(state_dict, "paddle_dy")
 
-            scheduler = paddle.optimizer.lr_scheduler.NoamLR(
+            scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
                 d_model=0.01, warmup_steps=100, verbose=True)
             adam = paddle.optimizer.Adam(
                 learning_rate=scheduler,
                 parameters=emb.parameters())
             state_dict = adam.state_dict()
-            paddle.save(state_dict, "paddle_dy")
+            fluid.save_dygraph(state_dict, "paddle_dy")
 
-            para_state_dict, opti_state_dict = paddle.load("paddle_dy")
-
+            para_state_dict, opti_state_dict = fluid.load_dygraph("paddle_dy")
     '''
     # deal with argument `model_path`
     model_prefix = model_path
@@ -275,7 +275,7 @@ def load_dygraph(model_path, config=None):
             # If users save all parameters as one file, the [ variable.name -> variable ]
             # mapping info will lost, so users need to give variable list, but users build 
             # variable list in dygraph mode is difficult, we recommend users to use
-            # paddle.io.load_program_state in this case
+            # paddle.static.load_program_state in this case
 
             # Try to load all the files in the directory in VarBase format, 
             # the file name is used as the name of VarBase
