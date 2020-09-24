@@ -814,8 +814,6 @@ class Model(object):
         from paddle.static import InputSpec
 
         device = paddle.set_device('cpu') # or 'gpu'
-        # if use static graph, do not set
-        paddle.disable_static(device)
 
         net = nn.Sequential(
             nn.Linear(784, 200),
@@ -885,7 +883,6 @@ class Model(object):
               from paddle.static import InputSpec
 
               device = paddle.set_device('cpu') # or 'gpu'
-              paddle.disable_static(device)
 
               net = nn.Sequential(
                   nn.Linear(784, 200),
@@ -930,7 +927,6 @@ class Model(object):
               from paddle.static import InputSpec
 
               device = paddle.set_device('cpu') # or 'gpu'
-              paddle.disable_static(device)
 
               net = nn.Sequential(
                   nn.Linear(784, 200),
@@ -972,7 +968,6 @@ class Model(object):
               import paddle.nn as nn
 
               device = paddle.set_device('cpu') # or 'gpu'
-              paddle.disable_static(device)
 
               net = nn.Sequential(
                   nn.Linear(784, 200),
@@ -1094,7 +1089,6 @@ class Model(object):
               import paddle.nn as nn
               
               device = paddle.set_device('cpu')
-              paddle.disable_static(device)
 
               model = paddle.Model(nn.Sequential(
                   nn.Linear(784, 200),
@@ -1165,8 +1159,6 @@ class Model(object):
 
               import paddle
               import paddle.nn as nn
-
-              paddle.disable_static()
 
               model = paddle.Model(nn.Sequential(
                   nn.Linear(784, 200),
