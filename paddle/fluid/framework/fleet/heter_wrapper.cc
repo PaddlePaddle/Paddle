@@ -179,7 +179,6 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
 
 // void HeterWrapper::DeSerializeToTensor(Scope* scope,
 // const HeterRequest* request) {
-#ifdef PADDLE_WITH_XPU
 void HeterWrapper::DeSerializeToTensor(Scope* scope,
                                        const VariableMessage& req_var,
                                        platform::Place place) {
@@ -215,7 +214,6 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
          tensor->numel() * SizeOfType(tensor->type()));
 #endif
 }
-#endif
 
 framework::proto::VarType::Type HeterWrapper::ToVarType(
     VariableMessage::Type type) {
