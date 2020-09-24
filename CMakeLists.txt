@@ -28,6 +28,7 @@ message(STATUS "AR tools: ${CMAKE_AR}")
 
 if(WIN32)
     option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
+    set(WIN_PROPS ${CMAKE_SOURCE_DIR}/cmake/paddle_win.props)
 
     set(CMAKE_SUPPRESS_REGENERATION ON)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
