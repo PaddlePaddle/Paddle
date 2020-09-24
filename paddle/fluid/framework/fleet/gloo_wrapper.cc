@@ -199,6 +199,9 @@ bool HdfsStore::Check(const std::vector<std::string>& keys,
 #ifdef PADDLE_WITH_GLOO
 void ParallelConnectContext::connectFullMesh(
     Store& store, std::shared_ptr<transport::Device>& dev) {
+  // TODO(lilong12) Remove the following VLOG(0) statements.
+  // Now there statements are needed for PY3.
+  VLOG(0) << "Entering ParallelConnectContext::connectFullMesh";
   std::vector<char> allBytes;
   // Create pairs
   auto transportContext = dev->createContext(rank, size);
@@ -212,7 +215,17 @@ void ParallelConnectContext::connectFullMesh(
     allBytes.insert(allBytes.end(), addrBytes.begin(), addrBytes.end());
   }
   std::ostringstream storeKey;
+  VLOG(0) << "More info in ParallelConnectContext::connectFullMesh";
   storeKey << rank;
+  VLOG(0) << "rank:" << rank;
+  VLOG(0) << "key:" << storeKey.str();
+  VLOG(0) << "allBytes.size():" << allBytes.size();
+  VLOG(0) << "allBytes:" << allBytes.size();
+  for (size_t i = 0; i < allBytes.size(); ++i) {
+    VLOG(0) << int(allBytes[i]);
+  }
+  VLOG(0) << "End allBytes";
+  VLOG(0) << "End more info";
   store.set(storeKey.str(), allBytes);
 
   auto total_add_size = kNodeSize * (size - 1);
@@ -258,6 +271,7 @@ void ParallelConnectContext::connectFullMesh(
   }
   device_ = dev;
   transportContext_ = std::move(transportContext);
+  VLOG(0) << "ParallelConnectContext::connectFullMesh done.";
 }
 #endif
 }  // namespace rendezvous
