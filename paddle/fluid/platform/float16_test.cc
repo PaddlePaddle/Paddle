@@ -10,13 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 
-#include <vector>
-
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/init.h"
 
 namespace paddle {
 namespace platform {

@@ -27,15 +27,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
-#include <algorithm>
-#include <utility>
-#include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/device_worker.h"
-#include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/timer.h"
 #ifdef PADDLE_WITH_PSLIB
 
 namespace paddle {
@@ -277,7 +268,7 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task,
   request.set_cur_batch(task->cur_batch_);
 
   OnHeterRpcDone* done = new OnHeterRpcDone([this, task, worker](void* done) {
-    auto* closure = (OnHeterRpcDone*)done;
+    auto* closure = reinterpret_cast<OnHeterRpcDone*>(done);
     if (closure->cntl.Failed()) {
       VLOG(0) << "call xpu fail: " << closure->cntl.ErrorText();
     } else {

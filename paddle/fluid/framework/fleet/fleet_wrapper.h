@@ -37,6 +37,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 
 // A wrapper class for pslib.h, this class follows Singleton pattern
 // i.e. only initialized once in the current process
@@ -281,6 +287,11 @@ class FleetWrapper {
   // save cache model
   // cache model can speed up online predict
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
+  // save sparse table filtered by user-defined whitelist
+  int32_t SaveWithWhitelist(int table_id, const std::string& path,
+                            const int mode, const std::string& whitelist_path);
+  void LoadWithWhitelist(const uint64_t table_id, const std::string& path,
+                         const int mode);
   // copy feasign key/value from src_table_id to dest_table_id
   int32_t CopyTable(const uint64_t src_table_id, const uint64_t dest_table_id);
   // copy feasign key/value from src_table_id to dest_table_id

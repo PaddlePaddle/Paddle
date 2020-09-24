@@ -28,7 +28,8 @@ import numpy as np
 
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
-from paddle.distributed.fleet.base.util_factory import fleet_util
+
+paddle.enable_static()
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -161,8 +162,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         """
 
         exe = fluid.Executor(fluid.CPUPlace())
-        fleet.init_worker()
+
         exe.run(fluid.default_startup_program())
+        fleet.init_worker()
+
         batch_size = 4
         train_reader = paddle.batch(fake_ctr_reader(), batch_size=batch_size)
         self.reader.decorate_sample_list_generator(train_reader)
@@ -176,13 +179,13 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                                        fetch_list=[self.avg_cost.name])
                     loss_val = np.mean(loss_val)
                     # TODO(randomly fail)
-                    #   reduce_output = fleet_util.all_reduce(
+                    #   reduce_output = fleet.util.all_reduce(
                     #       np.array(loss_val), mode="sum")
-                    #   loss_all_trainer = fleet_util.all_gather(float(loss_val))
+                    #   loss_all_trainer = fleet.util.all_gather(float(loss_val))
                     #   loss_val = float(reduce_output) / len(loss_all_trainer)
                     message = "TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
                                                                       loss_val)
-                    fleet_util.print_on_rank(message, 0)
+                    fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start
             except fluid.core.EOFException:
@@ -196,29 +199,28 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         fleet.stop_worker()
 
     def do_dataset_training(self, fleet):
-        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
-        )
+        train_file_list = ctr_dataset_reader.prepare_fake_data()
 
         exe = fluid.Executor(fluid.CPUPlace())
 
-        fleet.init_worker()
         exe.run(fluid.default_startup_program())
+        fleet.init_worker()
 
         thread_num = 2
         batch_size = 128
-        filelist = []
-        for _ in range(thread_num):
-            filelist.append(train_file_path)
+        filelist = train_file_list
 
         # config dataset
-        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset()
-        dataset.set_batch_size(batch_size)
-        dataset.set_use_var(self.feeds)
+        dataset = paddle.distributed.QueueDataset()
         pipe_command = 'python ctr_dataset_reader.py'
-        dataset.set_pipe_command(pipe_command)
+
+        dataset.init(
+            batch_size=batch_size,
+            use_var=self.feeds,
+            pipe_command=pipe_command,
+            thread_num=thread_num)
 
         dataset.set_filelist(filelist)
-        dataset.set_thread(thread_num)
 
         for epoch_id in range(1):
             pass_start = time.time()

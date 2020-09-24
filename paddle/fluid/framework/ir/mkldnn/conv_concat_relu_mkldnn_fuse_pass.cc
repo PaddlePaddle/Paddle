@@ -20,6 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Graph;
+
 void ConvConcatReLUFusePass::FindConcatWithConvs(
     ir::Graph* graph,
     std::unordered_map<const Node*, int>* concat_with_convs_counter) const {

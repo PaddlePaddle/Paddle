@@ -15,11 +15,15 @@
 #include "paddle/fluid/framework/ir/fc_gru_fuse_pass.h"
 #include <string>
 #include <unordered_set>
+
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Node;
 
 static int BuildFusion(Graph* graph, const std::string& name_scope,
                        Scope* scope, bool with_fc_bias) {
@@ -125,7 +129,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     auto* x_n = subgraph.at(x);
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(Weight, Weight, gru_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gru, gru, gru_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(Bias, Bias, gru_pattern);
@@ -136,10 +139,17 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
                               gru_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(BatchHidden, BatchHidden, gru_pattern);
 
+    // TODO(wilber): Support origin_mode=True.
+    if (gru->Op()->GetAttrIfExists<bool>("origin_mode") == true) {
+      LOG(INFO) << "fc_gru_fuse_pass not supported when origin_mode=True.";
+      return;
+    }
+
     if (with_fc_bias) {
       GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(fc_bias, bias, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
 
       gru_creater(gru, x_n, w, Weight, Bias, Hidden, fc_bias);
       // Remove unneeded nodes.
@@ -188,3 +198,16 @@ void FCGRUFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(mul_gru_fuse_pass, paddle::framework::ir::MulGRUFusePass);
 REGISTER_PASS(fc_gru_fuse_pass, paddle::framework::ir::FCGRUFusePass);
+REGISTER_PASS_CAPABILITY(mul_gru_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("mul", 0)
+            .EQ("gru", 0)
+            .EQ("fusion_gru", 0));
+REGISTER_PASS_CAPABILITY(fc_gru_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("mul", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("gru", 0)
+            .EQ("fusion_gru", 0));

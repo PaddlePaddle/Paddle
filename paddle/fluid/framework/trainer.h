@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <ctime>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -22,7 +23,6 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
-#include <ctime>
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker.h"
@@ -38,6 +38,15 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+class Dataset;
+class LoDTensor;
+class ProgramDesc;
+class PullDenseWorker;
+class Scope;
+class VarDesc;
+template <class T>
+class ChannelObject;
 
 class TrainerBase {
  public:
