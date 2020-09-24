@@ -16,7 +16,7 @@ from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper
 from .common import is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 from .meta_optimizer_base import MetaOptimizerBase
 from paddle.fluid import unique_name, core
-from zero.decorator import decorate as amp_decorate
+from paddle.distributed.fleet.meta_optimizers.zero.decorator import decorate as amp_decorate
 import paddle.fluid as fluid
 
 import math
