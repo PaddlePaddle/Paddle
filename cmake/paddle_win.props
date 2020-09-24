@@ -3,9 +3,7 @@
     <ItemDefinitionGroup>
         <CudaCompile>
             <!-- Project schema: Host properties -->
-            <Defines></Defines>
             <UseHostDefines>true</UseHostDefines>
-            <AdditionalCompilerOptions></AdditionalCompilerOptions>
             <Emulation>false</Emulation>
             <HostDebugInfo Condition="'$(Configuration)' == 'Debug'">true</HostDebugInfo>
             <HostDebugInfo Condition="'$(Configuration)' != 'Debug'">false</HostDebugInfo>
@@ -15,22 +13,6 @@
             <RuntimeChecks>InheritFromHost</RuntimeChecks>
             <TypeInfo>InheritFromHost</TypeInfo>
             <Warning>InheritFromHost</Warning>
-
-            <!-- Project schema: Command line properties -->
-            <!-- <AdditionalOptions></AdditionalOptions> -->
-
-            <!-- Added so that the correct platform's bin directory is used for ccbin -->
-            <VCBinDir Condition="'$(Platform)' == 'Win32'">$(VC_ExecutablePath_x86_x86)</VCBinDir>
-            <VCBinDir Condition="'$(Platform)' == 'Win32' AND '%(VCBinDir)' == ''">$(VCInstallDir)bin</VCBinDir>
-
-            <VCBinDir Condition="'$(Platform)' == 'x64'">$(VC_ExecutablePath_x86_x64)</VCBinDir>
-            <VCBinDir Condition="'$(Platform)' == 'x64' AND '%(VCBinDir)' == ''">$(VCInstallDir)bin\x86_amd64</VCBinDir>
-
-            <VCBinDir Condition="'$(Platform)' == 'Win32' AND '$(CudaPreferredToolArchitecture)' == 'x64'">$(VC_ExecutablePath_x64_x86)</VCBinDir>
-            <VCBinDir Condition="'$(Platform)' == 'Win32' AND '$(CudaPreferredToolArchitecture)' == 'x64' AND '%(VCBinDir)' == ''">$(VCInstallDir)bin\amd64_x86</VCBinDir>
-
-            <VCBinDir Condition="'$(Platform)' == 'x64'   AND '$(CudaPreferredToolArchitecture)' == 'x64'">$(VC_ExecutablePath_x64_x64)</VCBinDir>
-            <VCBinDir Condition="'$(Platform)' == 'x64'   AND '$(CudaPreferredToolArchitecture)' == 'x64' AND '%(VCBinDir)' == ''">$(VCInstallDir)bin\amd64</VCBinDir>
 
             <BaseCommandLineTemplate>-ccbin "%(VCBinDir)" -x cu [GenerateRelocatableDeviceCode] [Include] [RequiredIncludes] [InterleaveSourceInPTX] [GPUDebugInfo] [GenerateLineInfo] [Keep] [KeepDir] [MaxRegCount] [PtxAsOptionV] [TargetMachinePlatform] [NvccCompilation] [CudaRuntime] [AdditionalOptions]</BaseCommandLineTemplate>
             <BuildCommandLineTemplate>--use-local-env</BuildCommandLineTemplate>

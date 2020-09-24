@@ -27,6 +27,6 @@ if(WITH_GPU)
 endif()
 
 if(WIN32)
-    set(WIN_PROPS ${CMAKE_SOURCE_DIR}/tools/windows/paddle_win.props)
+    set(WIN_PROPS ${CMAKE_SOURCE_DIR}/cmake/paddle_win.props)
 endif()
 
