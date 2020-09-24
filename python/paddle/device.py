@@ -39,20 +39,32 @@ _cudnn_version = None
 
 def is_compiled_with_xpu():
     """
-    Whether this whl package can be used to run the model on XPU.
+    Whether paddle was built with WITH_XPU=ON to support Baidu Kunlun
 
-    Returns (bool): support xpu or not.
+    Returns (bool): where paddle was built with WITH_XPU=ON
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            support_xpu = fluid.is_compiled_with_xpu()
+            import paddle
+            support_xpu = paddle.device.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
 
 
 def XPUPlace(dev_id):
+    """
+    Return a Baidu Kunlun Place
+
+    Parameters:
+        dev_id(int): Baidu Kunlun device id
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            place = paddle.device.XPUPlace(0)
+    """
     return core.XPUPlace(dev_id)
 
 
