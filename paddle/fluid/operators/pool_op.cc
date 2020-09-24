@@ -39,7 +39,7 @@ int PoolOutputSize(int input_size, int filter_size, int padding_1,
   PADDLE_ENFORCE_GT(
       output_size, 0,
       platform::errors::InvalidArgument(
-          "ShapeError: the output size must be greater than 0. But received: "
+          "the output size must be greater than 0. But received: "
           "output_size = %d due to the settings of input_size(%d), "
           "padding(%d,%d), "
           "k_size(%d) and stride(%d). Please check again!",
@@ -48,12 +48,12 @@ int PoolOutputSize(int input_size, int filter_size, int padding_1,
 }
 
 void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    platform::errors::InvalidArgument(
-                        "X(Input) of Pooling should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                    platform::errors::InvalidArgument(
-                        "Out(Output) of Pooling should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("X"), true,
+      platform::errors::NotFound("Input(X) of Pool operator is not found."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasOutput("Out"), true,
+      platform::errors::NotFound("Output(Out) of Pool operator is not found."));
 
   std::string pooling_type = ctx->Attrs().Get<std::string>("pooling_type");
   std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
@@ -70,14 +70,14 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       in_x_dims.size() == 4 || in_x_dims.size() == 5, true,
       platform::errors::InvalidArgument(
-          "ShapeError: the input of Op(pool) should be 4-D or 5-D Tensor. But "
+          "the input of Op(pool) should be 4-D or 5-D Tensor. But "
           "received: %u-D Tensor and it's shape is [%s].",
           in_x_dims.size(), in_x_dims));
 
   PADDLE_ENFORCE_EQ(
       in_x_dims.size() - ksize.size(), 2U,
       platform::errors::InvalidArgument(
-          "ShapeError: the dimension of input minus the size of "
+          "the dimension of input minus the size of "
           "Attr(ksize) must be euqal to 2 in Op(pool). "
           "But received: the dimension of input minus the size "
           "of Attr(ksize) is %d, the "
@@ -89,7 +89,7 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       ksize.size(), strides.size(),
       platform::errors::InvalidArgument(
-          "ShapeError: the size of Attr(ksize) and Attr(strides) in "
+          "the size of Attr(ksize) and Attr(strides) in "
           "Op(pool) must be equal. "
           "But received: Attr(ksize)'s size is %d, Attr(strides)'s "
           "size is %d, Attr(ksize) is [%s], Attr(strides)is [%s].",
@@ -190,12 +190,12 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
 }
 
 void PoolOpGrad::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("X"), true,
-      platform::errors::InvalidArgument("Input(X) must not be null."));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasOutput(framework::GradVarName("X")), true,
-      platform::errors::InvalidArgument("Input(X@GRAD) should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                    platform::errors::NotFound(
+                        "Input(X) of Pool Gradoperator is not found."));
+  PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                    platform::errors::NotFound(
+                        "Input(X@GRAD) of Pool Gradoperator is not found."));
   ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
 }
 
@@ -222,7 +222,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
                       platform::errors::InvalidArgument(
-                          "float16 can only be used when CUDNN is used"));
+                          "Float16 can only be used when CUDNN is used"));
   }
   return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
                                  library_);

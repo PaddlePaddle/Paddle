@@ -81,10 +81,11 @@ inline void UpdatePadding(std::vector<T>* paddings, const bool global_pooling,
       paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
     }
   } else {
-    PADDLE_ENFORCE_EQ(
-        data_dims.size() * 2, paddings->size(),
-        platform::errors::InvalidArgument(
-            "Paddings size should be the same or twice as the pooling size."));
+    PADDLE_ENFORCE_EQ(data_dims.size() * 2, paddings->size(),
+                      platform::errors::InvalidArgument(
+                          "Paddings size %d should be the same or twice as the "
+                          "pooling size %d.",
+                          paddings->size(), data_dims.size() * 2));
   }
 
   // when padding_algorithm is "VALID" or "SAME"
