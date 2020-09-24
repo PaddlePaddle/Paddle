@@ -182,7 +182,6 @@ class Accuracy(Metric):
         import numpy as np
         import paddle
 
-        paddle.disable_static()
         x = paddle.to_tensor(np.array([
             [0.1, 0.2, 0.3, 0.4],
             [0.1, 0.4, 0.3, 0.2],
@@ -203,7 +202,6 @@ class Accuracy(Metric):
 
         import paddle
 
-        paddle.disable_static()
         train_dataset = paddle.vision.datasets.MNIST(mode='train')
 
         model = paddle.Model(paddle.vision.LeNet())
