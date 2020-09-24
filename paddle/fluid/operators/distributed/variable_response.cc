@@ -51,7 +51,7 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
       }
       // This log is useful to see how long a internal block size is of rpc.
       VLOG(7) << "copy " << size_to_write << " data to CUDAPlace";
-      memory::Copy(boost::get<platform::CUDAPlace>(place),
+      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place),
                    reinterpret_cast<void*>(p), cpu, data, size_to_write,
                    gpu_dev_ctx.stream());
       p += size_to_write;
@@ -62,6 +62,34 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
     gpu_dev_ctx.Wait();
 #else
     PADDLE_THROW("Unexpected branch");
+#endif
+    return true;
+  } else if (platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+    auto& xpu_dev_ctx = static_cast<const platform::XPUDeviceContext&>(dev_ctx);
+    platform::CPUPlace cpu;
+    char* p = reinterpret_cast<char*>(dest);
+    while (total_written < length) {
+      if (!input->GetDirectBufferPointer(&data, &size_to_write)) {
+        return false;
+      }
+
+      if (total_written + size_to_write > length) {
+        size_to_write = length - total_written;
+      }
+
+      memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place),
+                   reinterpret_cast<void*>(p), cpu, data, size_to_write);
+      p += size_to_write;
+      total_written += size_to_write;
+      input->Skip(size_to_write);
+    }
+    xpu_dev_ctx.Wait();
+#else
+    PADDLE_ENFORCE_NOT_NULL(
+        nullptr,
+        platform::errors::Unimplemented(
+            "Not supported XPU, please compile with option WITH_XPU=ON."));
 #endif
     return true;
   }

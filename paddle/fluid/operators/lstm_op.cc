@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lstm_op.h"
+#include <memory>
 #include <string>
 
 namespace paddle {
@@ -23,64 +24,80 @@ class LSTMOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                   "Input(Bias) of LSTM should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "LSTM");
+    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "LSTM");
+    OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "LSTM");
 
-    PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
-                   "Output(Hidden) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Cell"),
-                   "Output(Cell) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("BatchGate"),
-                   "Output(BatchGate) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("BatchCellPreAct"),
-                   "Output(BatchGate) of LSTM should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "LSTM");
+    OP_INOUT_CHECK(ctx->HasOutput("Cell"), "Output", "Cell", "LSTM");
+    OP_INOUT_CHECK(ctx->HasOutput("BatchGate"), "Output", "BatchGate", "LSTM");
+    OP_INOUT_CHECK(ctx->HasOutput("BatchCellPreAct"), "Output",
+                   "BatchCellPreAct", "LSTM");
 
     auto in_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE_EQ(in_dims.size(), 2, "Input(X)'s rank must be 2.");
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Input(X)'s rank must be 2, but received %d.", in_dims.size()));
 
     if (ctx->HasInput("H0")) {
-      PADDLE_ENFORCE(ctx->HasInput("C0"),
-                     "Input(Cell) and Input(Hidden) of LSTM should not "
-                     "be null at the same time.");
+      PADDLE_ENFORCE_EQ(
+          ctx->HasInput("C0"), true,
+          platform::errors::NotFound("Input(Cell) and Input(Hidden) of LSTM "
+                                     "should not be null at the same time."));
       auto h_dims = ctx->GetInputDim("H0");
       auto c_dims = ctx->GetInputDim("C0");
-      PADDLE_ENFORCE(h_dims == c_dims,
-                     "The dimension of Input(H0) and Input(C0) "
-                     "should be the same.");
+      PADDLE_ENFORCE_EQ(h_dims, c_dims,
+                        platform::errors::InvalidArgument(
+                            "The dimension of Input(H0) and Input(C0) should "
+                            "be the same, but received [%s] (H0) vs [%s] (C0).",
+                            h_dims, c_dims));
     }
 
     int frame_size = in_dims[1] / 4;
     auto w_dims = ctx->GetInputDim("Weight");
-    PADDLE_ENFORCE_EQ(w_dims.size(), 2,
-                      "The rank of Input(Weight) should be 2.");
+    PADDLE_ENFORCE_EQ(
+        w_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The rank of Input(Weight) should be 2, but received %d.",
+            w_dims.size()));
     PADDLE_ENFORCE_EQ(w_dims[0], frame_size,
-                      "The first dimension of Input(Weight) "
-                      "should be %d.",
-                      frame_size);
+                      platform::errors::InvalidArgument(
+                          "The first dimension of Input(Weight) should be %d, "
+                          "but received %d.",
+                          frame_size, w_dims[0]));
     PADDLE_ENFORCE_EQ(w_dims[1], 4 * frame_size,
-                      "The second dimension of Input(Weight) "
-                      "should be 4 * %d.",
-                      frame_size);
+                      platform::errors::InvalidArgument(
+                          "The second dimension of Input(Weight) should be 4 * "
+                          "%d, but received %d.",
+                          frame_size, w_dims[1]));
 
     auto b_dims = ctx->GetInputDim("Bias");
-    PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) should be 2.");
-    PADDLE_ENFORCE_EQ(b_dims[0], 1,
-                      "The first dimension of Input(Bias) should be 1.");
+    PADDLE_ENFORCE_EQ(
+        b_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The rank of Input(Bias) should be 2, but received %d.",
+            b_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        b_dims[0], 1,
+        platform::errors::InvalidArgument(
+            "The first dimension of Input(Bias) should be 1, but received %d.",
+            b_dims[0]));
 
     if (ctx->Attrs().Get<bool>("use_peepholes")) {
-      PADDLE_ENFORCE_EQ(b_dims[1], 7 * frame_size,
-                        "The second dimension of Input(Bias) should be "
-                        "7 * %d if enable peepholes connection",
-                        frame_size);
+      PADDLE_ENFORCE_EQ(
+          b_dims[1], 7 * frame_size,
+          platform::errors::InvalidArgument(
+              "The second dimension of Input(Bias) should be 7 * %d if enable "
+              "peepholes connection, but received %d.",
+              frame_size, b_dims[1]));
     } else {
-      PADDLE_ENFORCE_EQ(b_dims[1], 4 * frame_size,
-                        "The second dimension of Input(Bias) should be "
-                        "4 * %d if disable peepholes connection",
-                        frame_size);
+      PADDLE_ENFORCE_EQ(
+          b_dims[1], 4 * frame_size,
+          platform::errors::InvalidArgument(
+              "The second dimension of Input(Bias) should be 4 * %d if disable "
+              "peepholes connection, but received %d.",
+              frame_size, b_dims[1]));
     }
 
     framework::DDim out_dims({in_dims[0], frame_size});
@@ -96,7 +113,8 @@ class LSTMOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -152,11 +170,11 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
               "in the backward.")
         .AsIntermediate();
     AddAttr<bool>("use_peepholes",
-                  "(bool, defalut: True) "
+                  "(bool, default: True) "
                   "whether to enable diagonal/peephole connections.")
         .SetDefault(true);
     AddAttr<bool>("is_reverse",
-                  "(bool, defalut: False) "
+                  "(bool, default: False) "
                   "whether to compute reversed LSTM.")
         .SetDefault(false);
     AddAttr<std::string>(
@@ -168,7 +186,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddAttr<std::string>("cell_activation",
                          "(string, default: tanh)"
-                         "The activation for cell output, `tanh` by defalut.")
+                         "The activation for cell output, `tanh` by default.")
         .SetDefault("tanh")
         .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddAttr<std::string>("candidate_activation",
@@ -180,7 +198,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Long-Short Term Memory (LSTM) Operator.
 
-The defalut implementation is diagonal/peephole connection
+The default implementation is diagonal/peephole connection
 (https://arxiv.org/pdf/1402.1128.pdf), the formula is as follows:
 
 $$ i_t = \\sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i) $$
@@ -198,7 +216,7 @@ $$ h_t = o_t \\odot act_h(c_t) $$
 - W terms denote weight matrices (e.g. $W_{xi}$ is the matrix
   of weights from the input gate to the input), $W_{ic}, W_{fc}, W_{oc}$
   are diagonal weight matrices for peephole connections. In our implementation,
-  we use vectors to reprenset these diagonal weight matrices.
+  we use vectors to represent these diagonal weight matrices.
 - The b terms denote bias vectors ($b_i$ is the input gate bias vector).
 - $\sigma$ is the non-line activations, such as logistic sigmoid function.
 - $i, f, o$ and $c$ are the input gate, forget gate, output gate,
@@ -227,21 +245,16 @@ class LSTMGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Hidden"),
-                   "Input(Hidden) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Cell"),
-                   "Input(Cell) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                   "Input(Bias) of LSTM should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "LSTM@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("Hidden"), "Input", "Hidden", "LSTM@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("Cell"), "Input", "Cell", "LSTM@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "LSTM@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "LSTM@Grad");
 
-    PADDLE_ENFORCE(ctx->HasInput("BatchGate"),
-                   "Input(BatchGate) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("BatchCellPreAct"),
-                   "Input(BatchGate) of LSTM should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("BatchGate"), "Input", "BatchGate",
+                   "LSTM@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("BatchCellPreAct"), "Input", "BatchCellPreAct",
+                   "LSTM@Grad");
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
       auto g_name = framework::GradVarName(name);
@@ -260,7 +273,46 @@ class LSTMGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
+  }
+};
+
+template <typename T>
+class LSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("lstm_grad");
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("Input", this->Input("Input"));
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+
+    if (this->HasInput("H0")) {
+      op->SetInput("H0", this->Input("H0"));
+      op->SetOutput(framework::GradVarName("H0"), this->InputGrad("H0"));
+    }
+
+    if (this->HasInput("C0")) {
+      op->SetInput("C0", this->Input("C0"));
+      op->SetOutput(framework::GradVarName("C0"), this->InputGrad("C0"));
+    }
+
+    op->SetInput("Weight", this->Input("Weight"));
+    op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
+
+    op->SetInput("Bias", this->Input("Bias"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+
+    op->SetInput("Cell", this->Output("Cell"));
+
+    op->SetInput("Hidden", this->Output("Hidden"));
+    op->SetInput(framework::GradVarName("Hidden"), this->OutputGrad("Hidden"));
+
+    op->SetInput("BatchGate", this->Output("BatchGate"));
+    op->SetInput("BatchCellPreAct", this->Output("BatchCellPreAct"));
   }
 };
 
@@ -269,7 +321,8 @@ class LSTMGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstm, ops::LSTMOp, ops::LSTMOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::LSTMGradOpMaker<paddle::framework::OpDesc>,
+                  ops::LSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstm_grad, ops::LSTMGradOp);
 REGISTER_OP_CPU_KERNEL(
     lstm, ops::LSTMKernel<paddle::platform::CPUDeviceContext, float>,

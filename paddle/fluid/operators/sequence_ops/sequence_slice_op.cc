@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_slice_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -22,14 +23,10 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceSliceOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Offset"),
-                   "Input(Offset) of SequenceSliceOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Length"),
-                   "Input(Length) of SequenceSliceOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceSliceOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceSlice");
+    OP_INOUT_CHECK(ctx->HasInput("Offset"), "Input", "Offset", "SequenceSlice");
+    OP_INOUT_CHECK(ctx->HasInput("Length"), "Input", "Length", "SequenceSlice");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SequenceSlice");
     auto input_dims = ctx->GetInputDim("X");
 
     auto offset_dim = ctx->GetInputDim("Offset");
@@ -37,10 +34,18 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(
         offset_dim.size(), 2UL,
-        "Only support one level sequence now, The rank of offset must be 2.");
+        platform::errors::InvalidArgument(
+            "Input Offset dimension error. SequenceSlice operator only support "
+            "one level sequence now, the dimension of input Offset must be 2, "
+            "but received dimension is %d.",
+            offset_dim.size()));
     PADDLE_ENFORCE_EQ(
         length_dim.size(), 2UL,
-        "Only support one level sequence now, The rank of Length must be 2.");
+        platform::errors::InvalidArgument(
+            "Input Length dimension error. SequenceSlice operator only support "
+            "one level sequence now, the dimension of input Length must be 2, "
+            "but received dimension is %d.",
+            offset_dim.size()));
 
     // Initialize the output's dims to maximum,
     // and re-set to real dims by the value of Offset and Length at kernel
@@ -50,8 +55,9 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -60,17 +66,18 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "The gradient of Out should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName("X")),
-                   "The gradient of X should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "SequenceSliceGrad");
+    OP_INOUT_CHECK(ctx->HasOutputs(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "SequenceSliceGrad");
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
                                    ctx.device_context());
   }
 };
@@ -113,17 +120,46 @@ NOTE: The first dimension size of input, the size of offset and Length, should b
   }
 };
 
+template <typename T>
+class SequenceSliceGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("sequence_slice_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Offset", this->Input("Offset"));
+    op->SetInput("Length", this->Input("Length"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceSliceGradNoNeedBufferVarsInferer,
+                                    "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_slice, ops::SequenceSliceOp,
                   ops::SequenceSliceOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp);
+                  ops::SequenceSliceGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequenceSliceGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp,
+                  ops::SequenceSliceGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice,
-    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice_grad,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext,
+                                   int64_t>);

@@ -20,9 +20,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init("identity_scale_op_clean", graph.get());
+class Graph;
+
+void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init("identity_scale_op_clean", graph);
 
   // pre_op -> scale_in -> scale_op -> scale_out
   // ->
@@ -65,15 +66,18 @@ std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
     for (auto& parameter : *pre_op_desc->Proto()->mutable_outputs()) {
       auto* arguments = parameter.mutable_arguments();
       auto it = std::find(arguments->begin(), arguments->end(), scale_in_name);
-      PADDLE_ENFORCE(it != arguments->end());
+      PADDLE_ENFORCE_NE(
+          it, arguments->end(),
+          platform::errors::NotFound(
+              "Can not find input variable(%s) from scale op(%s).",
+              scale_in_name, pre_op_desc->Type()));
       *it = scale_out_name;
     }
 
     IR_NODE_LINK_TO(pre_op_var, scale_out_var);
   };
 
-  detector(graph.get(), handler);
-  return graph;
+  detector(graph, handler);
 }
 
 }  // namespace ir

@@ -63,11 +63,22 @@ inline static int RoundToPowerOfTwo(int dim) {
 
 template <typename T>
 __forceinline__ __device__ T CudaShuffleDownSync(unsigned mask, T val,
-                                                 int delta, int width = 32) {
+                                                 int delta,
+                                                 int width = warpSize) {
 #if CUDA_VERSION < 9000
   return __shfl_down(val, delta, width);
 #else
   return __shfl_down_sync(mask, val, static_cast<unsigned>(delta), width);
+#endif
+}
+
+template <typename T>
+__forceinline__ __device__ T CudaShuffleXorSync(unsigned mask, T val,
+                                                int width = warpSize) {
+#if CUDA_VERSION < 9000
+  return __shfl_xor(val, width);
+#else
+  return __shfl_xor_sync(mask, val, width);
 #endif
 }
 
@@ -80,6 +91,11 @@ __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
   return float16(
       __shfl_down(static_cast<half>(val), static_cast<unsigned>(delta), width));
 }
+template <>
+__forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
+                                                      float16 val, int width) {
+  return float16(__shfl_xor(static_cast<half>(val), width));
+}
 #else
 template <>
 __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
@@ -87,6 +103,11 @@ __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
                                                        int width) {
   return float16(__shfl_down_sync(mask, static_cast<half>(val),
                                   static_cast<unsigned>(delta), width));
+}
+template <>
+__forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
+                                                      float16 val, int width) {
+  return float16(__shfl_xor_sync(mask, static_cast<half>(val), width));
 }
 #endif
 

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <stdlib.h>
+
 #include "paddle/fluid/platform/port.h"
 
 #ifdef _WIN32
@@ -50,7 +51,7 @@ class Timer {
   struct timeval _start;
   struct timeval _now;
   int _count;
-  int _elapsed;
+  int64_t _elapsed;
   bool _paused;
 
   // get us difference between start and now

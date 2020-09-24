@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_scatter_op.h"
+#include <memory>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/gather.h"
@@ -73,47 +74,59 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     // Enforce has inputs and outputs
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceScatterOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Ids"),
-                   "Input(Ids) of SequenceScatterOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Updates"),
-                   "Input(Updates) of SequenceScatterOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceScatterOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceScatter");
+    OP_INOUT_CHECK(ctx->HasInput("Ids"), "Input", "Ids", "SequenceScatter");
+    OP_INOUT_CHECK(ctx->HasInput("Updates"), "Input", "Updates",
+                   "SequenceScatter");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SequenceScatter");
 
     // Set output dim the same as input
     auto ref_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", ref_dims);
 
     // Enforce the Updates and Ids are the same shape
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Updates")[0],
-                      ctx->GetInputDim("Ids")[0],
-                      "Updates and Ids should have same shape.");
+    auto updates_dim = ctx->GetInputDim("Updates");
+    auto ids_dim = ctx->GetInputDim("Ids");
+    PADDLE_ENFORCE_EQ(
+        updates_dim[0], ids_dim[0],
+        platform::errors::InvalidArgument(
+            "The shape of SequenceScatter operator's input Updates and Ids do "
+            "not match, receive Updates's shape is [%s], Ids's shape is [%s].",
+            updates_dim, ids_dim));
 
     // Enforce LoD of ids and updates be the same
     if (ctx->IsRuntime()) {
       framework::Variable* ids_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("Ids")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Ids")[0]);
       framework::Variable* updates_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("Updates")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Updates")[0]);
 
       auto& ids_lod = ids_var->Get<LoDTensor>().lod();
       auto& updates_lod = updates_var->Get<LoDTensor>().lod();
-      PADDLE_ENFORCE_EQ(ids_lod.size(), 1,
-                        "Currently only level 1 LoD could be"
-                        " processed by sequence scatter op.");
-      PADDLE_ENFORCE_EQ(updates_lod.size(), 1,
-                        "Currently only level 1 LoD "
-                        "could be processed by sequence scatter op.");
+      PADDLE_ENFORCE_EQ(
+          ids_lod.size(), 1,
+          platform::errors::InvalidArgument(
+              "The SequenceScatter operator’s Input Ids holds wrong LoD "
+              "information. Currently SequenceScatter operator can only deal "
+              "with one level LoD for input Ids, but received LoD level is %d.",
+              ids_lod.size()));
+      PADDLE_ENFORCE_EQ(
+          updates_lod.size(), 1,
+          platform::errors::InvalidArgument(
+              "The SequenceScatter operator’s Input Updates holds wrong LoD "
+              "information. Currently SequenceScatter operator can only deal "
+              "with one level LoD for input Updates, but received LoD level is "
+              "%d.",
+              ids_lod.size()));
     }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 
@@ -124,16 +137,39 @@ class SequenceScatterGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("Updates"),
                       ctx->GetInputDim("Updates"));
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->SetOutputDim(framework::GradVarName("X"),
+                      ctx->GetInputDim(framework::GradVarName("Out")));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
                                    platform::CPUPlace());
   }
 };
+
+template <typename T>
+class SequenceScatterGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("sequence_scatter_grad");
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput("Updates", this->Input("Updates"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Updates"),
+                  this->InputGrad("Updates"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceScatterGradNoNeedBufferVarsInferer,
+                                    "Updates");
 
 }  // namespace operators
 }  // namespace paddle
@@ -141,8 +177,10 @@ class SequenceScatterGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_scatter, ops::SequenceScatterOp,
                   ops::SequenceScatterOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(sequence_scatter_grad, ops::SequenceScatterGradOp);
+                  ops::SequenceScatterGradMaker<paddle::framework::OpDesc>,
+                  ops::SequenceScatterGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(sequence_scatter_grad, ops::SequenceScatterGradOp,
+                  ops::SequenceScatterGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(sequence_scatter, ops::SequenceScatterOpKernel<float>,
                        ops::SequenceScatterOpKernel<double>,
                        ops::SequenceScatterOpKernel<int>,

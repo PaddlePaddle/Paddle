@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <memory>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -127,11 +128,11 @@ void get_transform_matrix(const int transformed_width,
   T estimated_width = (len1 + len3) / 2.0;
 
   // Get the normalized height and normalized width
-  int normalized_height = transformed_height;
+  int normalized_height = std::max(2, transformed_height);
   int normalized_width =
       std::round(estimated_width * (normalized_height - 1) / estimated_height) +
       1;
-  normalized_width = std::min(normalized_width, transformed_width);
+  normalized_width = std::max(2, std::min(normalized_width, transformed_width));
 
   T dx1 = x1 - x2;
   T dx2 = x3 - x2;
@@ -140,9 +141,9 @@ void get_transform_matrix(const int transformed_width,
   T dy2 = y3 - y2;
   T dy3 = y0 - y1 + y2 - y3;
 
-  matrix[6] = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1) /
+  matrix[6] = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1 + 1e-5) /
               (normalized_width - 1);
-  matrix[7] = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1) /
+  matrix[7] = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1 + 1e-5) /
               (normalized_height - 1);
   matrix[8] = 1;
 
@@ -186,17 +187,17 @@ void bilinear_interpolate(const T* in_data, const int channels, const int width,
                           const int height, int in_n, int in_c, T in_w, T in_h,
                           T* val) {
   // Deal with cases that source coords are out of feature map boundary
-  if (GT<T>(-0.5, in_w) || GT<T>(in_w, width - 0.5) || GT<T>(-0.5, in_h) ||
-      GT<T>(in_h, height - 0.5)) {
+  if (GT_E<T>(-0.5, in_w) || GT_E<T>(in_w, width - 0.5) ||
+      GT_E<T>(-0.5, in_h) || GT_E<T>(in_h, height - 0.5)) {
     // empty
     val[0] = 0.0;
     return;
   }
 
-  if (GT<T>(0, in_w)) {
+  if (GT_E<T>(0, in_w)) {
     in_w = 0;
   }
-  if (GT<T>(0, in_h)) {
+  if (GT_E<T>(0, in_h)) {
     in_h = 0;
   }
 
@@ -242,7 +243,9 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
     auto* out = ctx.Output<framework::Tensor>("Out");
-
+    auto* mask = ctx.Output<framework::Tensor>("Mask");
+    auto* out_transform_matrix =
+        ctx.Output<framework::Tensor>("TransformMatrix");
     auto transformed_height = ctx.Attr<int>("transformed_height");
     auto transformed_width = ctx.Attr<int>("transformed_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
@@ -254,6 +257,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     int rois_num = rois->dims()[0];
 
     const T* input_data = in->data<T>();
+    int* mask_data = mask->mutable_data<int>(ctx.GetPlace());
 
     framework::Tensor roi2image;
     roi2image.Resize({rois_num});
@@ -268,6 +272,9 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     const T* rois_data = rois->data<T>();
 
+    T* transform_matrix =
+        out_transform_matrix->mutable_data<T>({rois_num, 9}, ctx.GetPlace());
+
     for (int n = 0; n < rois_num; ++n) {
       const T* n_rois = rois_data + n * 8;
       T roi_x[4];
@@ -278,10 +285,12 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
       }
       int image_id = roi2image_data[n];
       // Get transform matrix
-      T transform_matrix[9];
+      T matrix[9];
       get_transform_matrix<T>(transformed_width, transformed_height, roi_x,
-                              roi_y, transform_matrix);
-
+                              roi_y, matrix);
+      for (int i = 0; i < 9; i++) {
+        transform_matrix[n * 9 + i] = matrix[i];
+      }
       for (int c = 0; c < channels; ++c) {
         for (int out_h = 0; out_h < transformed_height; ++out_h) {
           for (int out_w = 0; out_w < transformed_width; ++out_w) {
@@ -290,20 +299,26 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
                 c * transformed_height * transformed_width +
                 out_h * transformed_width + out_w;
             T in_w, in_h;
-            get_source_coords<T>(transform_matrix, out_w, out_h, &in_w, &in_h);
+            get_source_coords<T>(matrix, out_w, out_h, &in_w, &in_h);
             if (in_quad<T>(in_w, in_h, roi_x, roi_y)) {
-              if (GT<T>(-0.5, in_w) ||
-                  GT<T>(in_w, static_cast<T>(in_width - 0.5)) ||
-                  GT<T>(-0.5, in_h) ||
-                  GT<T>(in_h, static_cast<T>(in_height - 0.5))) {
+              if (GT_E<T>(-0.5, in_w) ||
+                  GT_E<T>(in_w, static_cast<T>(in_width - 0.5)) ||
+                  GT_E<T>(-0.5, in_h) ||
+                  GT_E<T>(in_h, static_cast<T>(in_height - 0.5))) {
                 output_data[out_index] = 0.0;
+                mask_data[(n * transformed_height + out_h) * transformed_width +
+                          out_w] = 0;
               } else {
                 bilinear_interpolate(input_data, channels, in_width, in_height,
                                      image_id, c, in_w, in_h,
                                      output_data + out_index);
+                mask_data[(n * transformed_height + out_h) * transformed_width +
+                          out_w] = 1;
               }
             } else {
               output_data[out_index] = 0.0;
+              mask_data[(n * transformed_height + out_h) * transformed_width +
+                        out_w] = 0;
             }
           }
         }
@@ -315,15 +330,15 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
 template <typename T>
 T get_feature_gradient(T xs, T ys, int w, int h, const int width,
                        const int height) {
-  if (GT<T>(-0.5, xs) || GT<T>(xs, width - 0.5) || GT<T>(-0.5, ys) ||
-      GT<T>(ys, height - 0.5)) {
+  if (GT_E<T>(-0.5, xs) || GT_E<T>(xs, width - 0.5) || GT_E<T>(-0.5, ys) ||
+      GT_E<T>(ys, height - 0.5)) {
     return 0;
   }
 
-  if (GT<T>(0, xs)) {
+  if (GT_E<T>(0, xs)) {
     xs = 0;
   }
-  if (GT<T>(0, ys)) {
+  if (GT_E<T>(0, ys)) {
     ys = 0;
   }
 
@@ -426,10 +441,10 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
                   T src_h;
                   get_source_coords<T>(matrix, out_w, out_h, &src_w, &src_h);
                   if (in_quad<T>(src_w, src_h, roi_x, roi_y)) {
-                    if (GT<T>(-0.5, src_w) ||
-                        GT<T>(src_w, static_cast<T>(in_width - 0.5)) ||
-                        GT<T>(-0.5, src_h) ||
-                        GT<T>(src_h, static_cast<T>(in_height - 0.5))) {
+                    if (GT_E<T>(-0.5, src_w) ||
+                        GT_E<T>(src_w, static_cast<T>(in_width - 0.5)) ||
+                        GT_E<T>(-0.5, src_h) ||
+                        GT_E<T>(src_h, static_cast<T>(in_height - 0.5))) {
                       continue;
                     }
                     T weight = get_feature_gradient<T>(src_w, src_h, in_w, in_h,
@@ -456,51 +471,83 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ROIPerspectiveTransformOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasInput("ROIs"),
-        "Input(ROIs) of ROIPerspectiveTransformOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Output(Out) of ROIPerspectiveTransformOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "roi_perspective_transform");
+    OP_INOUT_CHECK(ctx->HasInput("ROIs"), "Input", "ROIs",
+                   "roi_perspective_transform");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Ountput", "Out",
+                   "roi_perspective_transform");
+
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
-    PADDLE_ENFORCE(input_dims.size() == 4,
-                   "The format of input tensor is NCHW.");
-    PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
-                   "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]");
-    PADDLE_ENFORCE(rois_dims[1] == 8,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
-                   "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...].");
+    PADDLE_ENFORCE_EQ(input_dims.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "The format of input tensor must be NCHW. But "
+                          "received input dims is %d.",
+                          input_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        rois_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+            "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received "
+            "rois dims is %d",
+            rois_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        rois_dims[1], 8,
+        platform::errors::InvalidArgument(
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+            "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received %d",
+            rois_dims[1]));
 
     int transformed_height = ctx->Attrs().Get<int>("transformed_height");
     int transformed_width = ctx->Attrs().Get<int>("transformed_width");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
 
-    PADDLE_ENFORCE_GT(transformed_height, 0,
-                      "The transformed output height must greater than 0");
-    PADDLE_ENFORCE_GT(transformed_width, 0,
-                      "The transformed output width must greater than 0");
-    PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
-                      "The spatial scale must greater than 0");
+    PADDLE_ENFORCE_GT(
+        transformed_height, 0,
+        platform::errors::InvalidArgument("The transformed output height must "
+                                          "greater than 0. But received %d.",
+                                          transformed_height));
+    PADDLE_ENFORCE_GT(
+        transformed_width, 0,
+        platform::errors::InvalidArgument("The transformed output width must "
+                                          "greater than 0. But received %d.",
+                                          transformed_width));
+    PADDLE_ENFORCE_GT(
+        spatial_scale, 0.0f,
+        platform::errors::InvalidArgument(
+            "The spatial scale must greater than 0. But received %f.",
+            spatial_scale));
     std::vector<int64_t> out_dims_v({rois_dims[0],   // num_rois
                                      input_dims[1],  // channels
                                      static_cast<int64_t>(transformed_height),
                                      static_cast<int64_t>(transformed_width)});
     auto out_dims = framework::make_ddim(out_dims_v);
 
+    std::vector<int64_t> mask_dims_v({rois_dims[0],  // num_rois
+                                      1,             // channels
+                                      static_cast<int64_t>(transformed_height),
+                                      static_cast<int64_t>(transformed_width)});
+    auto mask_dims = framework::make_ddim(mask_dims_v);
+
+    std::vector<int64_t> matrix_dims_v({rois_dims[0], 9});
+    auto matrix_dims = framework::make_ddim(matrix_dims_v);
+
     ctx->SetOutputDim("Out", out_dims);
+    ctx->SetOutputDim("Mask", mask_dims);
+    ctx->SetOutputDim("TransformMatrix", matrix_dims);
+    ctx->SetOutputDim("Out2InIdx", out_dims);
+    ctx->SetOutputDim("Out2InWeights", out_dims);
     ctx->ShareLoD("ROIs", /*->*/ "Out");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -509,18 +556,20 @@ class ROIPerspectiveTransformGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "The gradient of Out should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName("X")),
-                   "The gradient of X should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@Grad", "roi_perspective_transform_grad");
+    OP_INOUT_CHECK(ctx->HasOutputs(framework::GradVarName("X")), "Output",
+                   "X@Grad", "roi_perspective_transform_grad");
+
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -549,6 +598,30 @@ class ROIPerspectiveTransformOpMaker
         "(Tensor), "
         "The output of ROIPerspectiveTransformOp is a 4-D tensor with shape "
         "(num_rois, channels, transformed_h, transformed_w).");
+    AddOutput("Mask",
+              "(Tensor), "
+              "The output mask of ROIPerspectiveTransformOp is a 4-D tensor "
+              "with shape "
+              "(num_rois, 1, transformed_h, transformed_w).");
+    AddOutput("TransformMatrix",
+              "(Tensor), "
+              "The output transform matrix of ROIPerspectiveTransformOp is a "
+              "1-D tensor with shape "
+              "(num_rois, 9).");
+    AddOutput("Out2InIdx",
+              "(Tensor), "
+              "An intermediate tensor used to map indexes of input feature map "
+              "and indexes of output feature map."
+              "The shape of the tensor is [out_size, 4] and out_size is the "
+              "number of elements in output feature map.")
+        .AsIntermediate();
+    AddOutput("Out2InWeights",
+              "(Tensor), "
+              "An intermediate tensor used to record the weights of bilinear "
+              "interpolatein for each element in output. The shape of the "
+              "tensor is [out_size, 4] and out_size is the number of elements "
+              "in output feature map.")
+        .AsIntermediate();
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
                    "Spatial scale factor to scale ROI coords.")
@@ -568,13 +641,34 @@ class ROIPerspectiveTransformOpMaker
   }
 };
 
+template <typename T>
+class ROIPerspectiveTransformGradMaker
+    : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("roi_perspective_transform_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("Out2InIdx", this->Output("Out2InIdx"));
+    op->SetInput("Out2InWeights", this->Output("Out2InWeights"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(roi_perspective_transform, ops::ROIPerspectiveTransformOp,
-                  ops::ROIPerspectiveTransformOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    roi_perspective_transform, ops::ROIPerspectiveTransformOp,
+    ops::ROIPerspectiveTransformOpMaker,
+    ops::ROIPerspectiveTransformGradMaker<paddle::framework::OpDesc>,
+    ops::ROIPerspectiveTransformGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(roi_perspective_transform_grad,
                   ops::ROIPerspectiveTransformGradOp);
 REGISTER_OP_CPU_KERNEL(roi_perspective_transform,

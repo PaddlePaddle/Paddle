@@ -124,8 +124,10 @@ class TestMNIST(TestParallelExecutorBase):
 
     def test_simple_fc_with_new_strategy(self):
         # use_cuda, use_reduce
-        self._compare_reduce_and_allreduce(simple_fc_net, True)
-        self._compare_reduce_and_allreduce(simple_fc_net, False)
+        # NOTE: the computation result of nccl_reduce is non-deterministic,
+        # related issue: https://github.com/NVIDIA/nccl/issues/157
+        self._compare_reduce_and_allreduce(simple_fc_net, True, 1e-5, 1e-2)
+        self._compare_reduce_and_allreduce(simple_fc_net, False, 1e-5, 1e-2)
 
     def check_simple_fc_parallel_accuracy(self, use_cuda):
         if use_cuda and not core.is_compiled_with_cuda():
@@ -135,14 +137,12 @@ class TestMNIST(TestParallelExecutorBase):
 
         single_first_loss, single_last_loss = self.check_network_convergence(
             method=simple_fc_net,
-            seed=1,
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
             use_parallel_executor=False)
         parallel_first_loss, parallel_last_loss = self.check_network_convergence(
             method=simple_fc_net,
-            seed=1,
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
@@ -181,7 +181,7 @@ class TestMNIST(TestParallelExecutorBase):
         # NOTE: the computation result of nccl_reduce is non-deterministic,
         # related issue: https://github.com/NVIDIA/nccl/issues/157
         self._compare_reduce_and_allreduce(fc_with_batchnorm, True, 1e-5, 1e-2)
-        self._compare_reduce_and_allreduce(fc_with_batchnorm, False)
+        self._compare_reduce_and_allreduce(fc_with_batchnorm, False, 1e-5, 1e-2)
 
 
 if __name__ == '__main__':

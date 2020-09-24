@@ -13,10 +13,21 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <deque>
+#include <functional>
+#include <memory>
+#include <mutex>  // NOLINT
+#include <utility>
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+
+DECLARE_double(eager_delete_tensor_gb);
+DECLARE_double(memory_fraction_of_eager_deletion);
+DECLARE_bool(fast_eager_deletion_mode);
 
 namespace paddle {
 namespace framework {
@@ -26,6 +37,9 @@ GarbageCollector::GarbageCollector(const platform::Place &place,
     : max_memory_size_((std::max)(max_memory_size, static_cast<size_t>(1))) {
   garbages_.reset(new GarbageQueue());
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place);
+  if (max_memory_size_ > 1) {
+    mutex_.reset(new std::mutex());
+  }
 }
 
 CPUGarbageCollector::CPUGarbageCollector(const platform::CPUPlace &place,
@@ -35,6 +49,15 @@ CPUGarbageCollector::CPUGarbageCollector(const platform::CPUPlace &place,
 void CPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
   callback();
 }
+
+#ifdef PADDLE_WITH_XPU
+XPUGarbageCollector::XPUGarbageCollector(const platform::XPUPlace &place,
+                                         size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+void XPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
+  callback();
+}
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 UnsafeFastGPUGarbageCollector::UnsafeFastGPUGarbageCollector(
@@ -65,15 +88,15 @@ StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
                                                size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {
   platform::CUDADeviceGuard guard(place.device);
-  PADDLE_ENFORCE(cudaStreamCreate(&stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
   callback_manager_.reset(new platform::StreamCallbackManager(stream_));
 }
 
 StreamGarbageCollector::~StreamGarbageCollector() {
-  auto place = boost::get<platform::CUDAPlace>(this->dev_ctx_->GetPlace());
+  auto place = BOOST_GET_CONST(platform::CUDAPlace, this->dev_ctx_->GetPlace());
   platform::CUDADeviceGuard guard(place.device);
-  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-  PADDLE_ENFORCE(cudaStreamDestroy(stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
 }
 
 cudaStream_t StreamGarbageCollector::stream() const { return stream_; }
@@ -85,5 +108,25 @@ void StreamGarbageCollector::ClearCallback(
   callback_manager_->AddCallback(callback);
 }
 #endif
+
+int64_t GetEagerDeletionThreshold() {
+  return FLAGS_eager_delete_tensor_gb < 0
+             ? -1
+             : static_cast<int64_t>(FLAGS_eager_delete_tensor_gb *
+                                    (static_cast<int64_t>(1) << 30));
+}
+
+bool IsFastEagerDeletionModeEnabled() { return FLAGS_fast_eager_deletion_mode; }
+
+void SetEagerDeletionMode(double threshold, double fraction, bool fast_mode) {
+  FLAGS_eager_delete_tensor_gb = threshold;
+  FLAGS_memory_fraction_of_eager_deletion = fraction;
+  FLAGS_fast_eager_deletion_mode = fast_mode;
+}
+
+double GetEagerDeletionMemoryFraction() {
+  return FLAGS_memory_fraction_of_eager_deletion;
+}
+
 }  // namespace framework
 }  // namespace paddle

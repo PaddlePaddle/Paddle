@@ -20,7 +20,10 @@ namespace framework {
 
 void ReaderBase::ReadNext(std::vector<LoDTensor> *out) {
   std::lock_guard<std::mutex> lock(mu_);
-  PADDLE_ENFORCE_EQ(status_, ReaderStatus::kRunning);
+  PADDLE_ENFORCE_EQ(status_, ReaderStatus::kRunning,
+                    platform::errors::Unavailable(
+                        "The current reader has stopped running and cannot "
+                        "continue to read the next batch of data."));
   ReadNextImpl(out);
 }
 
@@ -69,6 +72,9 @@ void ReaderBase::Start() {
 
 ReaderBase::~ReaderBase() {}
 
-DecoratedReader::~DecoratedReader() { reader_->Shutdown(); }
+DecoratedReader::~DecoratedReader() {
+  VLOG(1) << "~DecoratedReader";
+  reader_->Shutdown();
+}
 }  // namespace framework
 }  // namespace paddle

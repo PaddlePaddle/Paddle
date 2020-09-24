@@ -30,6 +30,8 @@ import sys
 import signal
 from test_dist_base import TestDistRunnerBase, runtime_main
 
+paddle.enable_static()
+
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
@@ -210,7 +212,7 @@ class SE_ResNeXt():
 
 
 class DistSeResneXt2x2(TestDistRunnerBase):
-    def get_model(self, batch_size=2):
+    def get_model(self, batch_size=2, use_dgc=False):
         # Input data
         image = fluid.layers.data(
             name="data", shape=[3, 224, 224], dtype='float32')
@@ -237,11 +239,19 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         base_lr = 0.1
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
 
-        optimizer = fluid.optimizer.Momentum(
-            learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr),
-            momentum=0.9,
-            regularization=fluid.regularizer.L2Decay(1e-4))
+        if not use_dgc:
+            optimizer = fluid.optimizer.Momentum(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr),
+                momentum=0.9,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+        else:
+            optimizer = fluid.optimizer.DGCMomentumOptimizer(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr),
+                momentum=0.9,
+                rampup_begin_step=0,
+                regularization=fluid.regularizer.L2Decay(1e-4))
         optimizer.minimize(avg_cost)
 
         # Reader

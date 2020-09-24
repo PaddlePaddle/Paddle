@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
 #include <random>
 #include <thread>  // NOLINT
 #include <vector>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
@@ -36,22 +38,23 @@ struct ForEachFill {
 TEST(BestFitAllocator, concurrent_cuda) {
   CUDAAllocator allocator(platform::CUDAPlace(0));
   // 256 MB
-  auto cuda_allocation =
-      allocator.Allocate(256U * 1024 * 1024, allocator.kDefault);
+  auto cuda_allocation = allocator.Allocate(256U * 1024 * 1024);
   LockedAllocator concurrent_allocator(
       std::unique_ptr<Allocator>(new BestFitAllocator(cuda_allocation.get())));
+
+  platform::CUDAPlace gpu(0);
+  platform::CUDADeviceContext dev_ctx(gpu);
 
   auto th_main = [&](std::random_device::result_type seed) {
     std::default_random_engine engine(seed);
     std::uniform_int_distribution<size_t> dist(1U, 1024U);
-    platform::CUDAPlace gpu(0);
-    platform::CUDADeviceContext dev_ctx(gpu);
     std::array<size_t, 1024> buf;
+
     for (size_t i = 0; i < 128; ++i) {
       size_t allocate_size = dist(engine);
 
-      auto allocation = concurrent_allocator.Allocate(
-          sizeof(size_t) * allocate_size, concurrent_allocator.kDefault);
+      auto allocation =
+          concurrent_allocator.Allocate(sizeof(size_t) * allocate_size);
 
       size_t* data = reinterpret_cast<size_t*>(allocation->ptr());
 

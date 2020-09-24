@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/ir/conv_elementwise_add_fuse_pass.h"
 #include <string>
 
-#include "paddle/fluid/framework/ir/conv_elementwise_add_fuse_pass.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -30,10 +31,9 @@ namespace ir {
   GET_IR_NODE(elementwise_add_in_y); \
   GET_IR_NODE(elementwise_add_out);
 
-std::unique_ptr<ir::Graph> ConvElementwiseAddFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "conv_elementwise_add_fuse";
-  FusePassBase::Init(pattern_name, graph.get());
+  FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
@@ -67,7 +67,9 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddFusePass::ApplyImpl(
     auto* new_conv_op = graph->CreateOpNode(&new_op_desc);
 
     // Link inputs and outputs.
-    PADDLE_ENFORCE(subgraph.count(x));
+    PADDLE_ENFORCE_NE(
+        subgraph.count(x), 0,
+        platform::errors::NotFound("Detector did not find input x of conv2d."));
     auto* conv_in_node = subgraph.at(x);
 
     IR_NODE_LINK_TO(conv_in_node, new_conv_op);          // Input
@@ -76,11 +78,10 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddFusePass::ApplyImpl(
     IR_NODE_LINK_TO(new_conv_op, elementwise_add_out);   // Output
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph.get(), {conv_op, conv_out, elementwise_add_op});
+    GraphSafeRemoveNodes(graph, {conv_op, conv_out, elementwise_add_op});
   };
 
-  gpd(graph.get(), handler);
-  return graph;
+  gpd(graph, handler);
 }
 
 }  // namespace ir
@@ -89,3 +90,8 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddFusePass::ApplyImpl(
 
 REGISTER_PASS(conv_elementwise_add_fuse_pass,
               paddle::framework::ir::ConvElementwiseAddFusePass);
+REGISTER_PASS_CAPABILITY(conv_elementwise_add_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("conv2d", 0)
+            .EQ("elementwise_add", 0));

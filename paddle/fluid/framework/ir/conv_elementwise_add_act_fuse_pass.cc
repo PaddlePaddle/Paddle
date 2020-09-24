@@ -14,7 +14,9 @@
 
 #include "paddle/fluid/framework/ir/conv_elementwise_add_act_fuse_pass.h"
 #include <string>
+
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -31,7 +33,7 @@ namespace ir {
   GET_IR_NODE(act_op);               \
   GET_IR_NODE(act_out);
 
-// Inherient the basic infomation from `base_desc`, and modify some fields.
+// Inherient the basic information from `base_desc`, and modify some fields.
 framework::proto::OpDesc PrepareOpDesc(
     const framework::proto::OpDesc& base_desc, const std::string& bias,
     const std::string& activation, const std::string& output) {
@@ -48,10 +50,9 @@ framework::proto::OpDesc PrepareOpDesc(
   return *desc.Proto();
 }
 
-std::unique_ptr<ir::Graph> ConvElementwiseAddActFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "conv_elementwise_add_act_fuse";
-  FusePassBase::Init(pattern_name, graph.get());
+  FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
@@ -79,7 +80,9 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddActFusePass::ApplyImpl(
     auto* new_conv_op = graph->CreateOpNode(&new_op_desc);
 
     // Link inputs and outputs.
-    PADDLE_ENFORCE(subgraph.count(x));
+    PADDLE_ENFORCE_NE(
+        subgraph.count(x), 0,
+        platform::errors::NotFound("Detector did not find input x of conv2d."));
     auto* conv_in_node = subgraph.at(x);
 
     IR_NODE_LINK_TO(conv_in_node, new_conv_op);          // Input
@@ -88,12 +91,11 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddActFusePass::ApplyImpl(
     IR_NODE_LINK_TO(new_conv_op, act_out);               // Output
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph.get(), {conv_op, conv_out, elementwise_add_op,
-                                       elementwise_add_out, act_op});
+    GraphSafeRemoveNodes(graph, {conv_op, conv_out, elementwise_add_op,
+                                 elementwise_add_out, act_op});
   };
 
-  gpd(graph.get(), handler);
-  return graph;
+  gpd(graph, handler);
 }
 
 }  // namespace ir
@@ -102,3 +104,10 @@ std::unique_ptr<ir::Graph> ConvElementwiseAddActFusePass::ApplyImpl(
 
 REGISTER_PASS(conv_elementwise_add_act_fuse_pass,
               paddle::framework::ir::ConvElementwiseAddActFusePass);
+REGISTER_PASS_CAPABILITY(conv_elementwise_add_act_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("conv2d", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("relu", 0)
+            .EQ("identity", 0));

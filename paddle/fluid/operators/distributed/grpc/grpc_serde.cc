@@ -12,22 +12,30 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
 #endif
 #include <limits>
-#include <thread>  // NOLINT
-
-#include "google/protobuf/io/coded_stream.h"
-#include "google/protobuf/io/zero_copy_stream.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/operators/distributed/grpc/grpc_bytebuffer_stream.h"
+#include <memory>
+#include "grpcpp/impl/codegen/byte_buffer.h"
+#include "grpcpp/impl/codegen/slice.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/proto_encoder_helper.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+class Variable;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -67,7 +75,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   } else if (var->IsType<framework::SelectedRows>()) {
     request.set_type(::sendrecv::SELECTED_ROWS);
     payload = new TensorPayload(GetSelectedRowsPayload(var, ctx, &request));
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_NCCL
   } else if (var->IsType<ncclUniqueId>()) {
     request.set_type(::sendrecv::NCCL_ID);
 #endif
@@ -75,7 +83,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     PADDLE_THROW("Serialize does not support type: %s",
                  typeid(var->Type()).name());
   }
-
   std::string header;
   request.AppendToString(&header);
   auto buffer = std::unique_ptr<char[]>(new char[1024]);
@@ -84,7 +91,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   e.WriteRawBytes(std::string(header.data(), header.size()));
 // NCCLID is copied directly to the message, return bytebuffer
 // with only one slice if serializing NCCLID.
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_NCCL
   if (var->IsType<ncclUniqueId>()) {
     e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                               NCCL_UNIQUE_ID_BYTES);
@@ -100,12 +107,12 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   }
 #endif
   PADDLE_ENFORCE_NOT_NULL(payload);
-
   e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                             payload->memory_size());
   if (payload->memory_size() >= std::numeric_limits<int>::max()) {
-    LOG(FATAL) << "AppendZeroCopy varname:" << name
-               << ", vlen:" << payload->memory_size();
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Variable %s length %d should less than %d.", name,
+        payload->memory_size(), std::numeric_limits<int>::max()));
   }
   // steal reference of tensor data
   ::grpc::Slice slices[4];  // metadata, tensor, rows meta, rows
@@ -138,7 +145,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         ::grpc::Slice::STEAL_REF);
     num_slices = 4;
   }
-
   ::grpc::ByteBuffer tmp(&slices[0], num_slices);
   msg->Swap(&tmp);
 }
@@ -151,6 +157,19 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
   operators::distributed::GRPCVariableResponse resp(scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
   *var = resp.GetVar();
+  *trainer_id = resp.GetTrainerId();
+}
+
+void DeserializeRecvFromByteBuffer(const ::grpc::ByteBuffer& msg,
+                                   const platform::DeviceContext& ctx,
+                                   const framework::Scope* scope,
+                                   framework::Variable** var, int* trainer_id) {
+  platform::RecordRPCEvent record_event("deserial");
+  operators::distributed::GRPCVariableResponse resp(scope, &ctx);
+  PADDLE_ENFORCE_EQ(
+      resp.Parse(msg), 0,
+      platform::errors::InvalidArgument("parse bytebuffer to tensor error!"));
+  *var = resp.GetRecvVar();
   *trainer_id = resp.GetTrainerId();
 }
 

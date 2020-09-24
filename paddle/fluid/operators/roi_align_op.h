@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <limits>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -163,18 +164,53 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
     roi_batch_id_list.Resize({rois_num});
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
-
-    auto rois_lod = rois->lod().back();
-    int rois_batch_size = rois_lod.size() - 1;
-    PADDLE_ENFORCE_EQ(
-        rois_batch_size, batch_size,
-        "The rois_batch_size and imgs batch_size must be the same.");
-    int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
-                      "The rois_num from input and lod must be the same.");
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        roi_batch_id_data[i] = n;
+    int rois_batch_size;
+    if (ctx.HasInput("RoisNum")) {
+      auto* rois_num_t = ctx.Input<framework::Tensor>("RoisNum");
+      rois_batch_size = rois_num_t->numel();
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          platform::errors::InvalidArgument(
+              "The batch size of rois and the batch size of images "
+              " must be the same. But received the batch size of rois is %d, "
+              "and the batch size of images is %d",
+              rois_batch_size, batch_size));
+      auto* rois_num_data = rois_num_t->data<int>();
+      int start = 0;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (int i = start; i < start + rois_num_data[n]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
+        start += rois_num_data[n];
+      }
+    } else {
+      auto lod = rois->lod();
+      PADDLE_ENFORCE_EQ(lod.empty(), false,
+                        platform::errors::InvalidArgument(
+                            "Input(ROIs) Tensor of ROIAlignOp "
+                            "does not contain LoD information."));
+      auto rois_lod = lod.back();
+      int rois_batch_size = rois_lod.size() - 1;
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          platform::errors::InvalidArgument(
+              "The rois_batch_size and imgs "
+              "batch_size must be the same. But received rois_batch_size = %d, "
+              "batch_size = %d",
+              rois_batch_size, batch_size));
+      int rois_num_with_lod = rois_lod[rois_batch_size];
+      PADDLE_ENFORCE_EQ(
+          rois_num, rois_num_with_lod,
+          platform::errors::InvalidArgument(
+              "The actual number of rois and the number of rois "
+              "provided from Input(RoIsLoD) in RoIAlign must be the same."
+              " But received actual number of rois is %d, and the number "
+              "of rois from RoIsLoD is %d",
+              rois_num, rois_num_with_lod));
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
       }
     }
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
@@ -254,24 +290,50 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
     auto in_dims = in->dims();
-    if (!in_grad) {
-      return;
-    }
+
     int channels = in_dims[1];
     int height = in_dims[2];
     int width = in_dims[3];
     int rois_num = rois->dims()[0];
+
+    if (!in_grad) {
+      return;
+    }
     Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({rois_num});
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
 
-    auto rois_lod = rois->lod().back();
-    int rois_batch_size = rois_lod.size() - 1;
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        roi_batch_id_data[i] = n;
+    int rois_batch_size;
+    if (ctx.HasInput("RoisNum")) {
+      auto* rois_num_t = ctx.Input<framework::Tensor>("RoisNum");
+      rois_batch_size = rois_num_t->numel();
+      auto* rois_num_data = rois_num_t->data<int>();
+      int start = 0;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (int i = start; i < start + rois_num_data[n]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
+        start += rois_num_data[n];
       }
+    } else {
+      auto rois_lod = rois->lod().back();
+      rois_batch_size = rois_lod.size() - 1;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
+      }
+    }
+    in_grad->mutable_data<T>(ctx.GetPlace());
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    math::SetConstant<DeviceContext, T> set_zero;
+    set_zero(dev_ctx, in_grad, static_cast<T>(0));
+
+    int output_grad_size = out_grad->numel();
+
+    if ((!out_grad->IsInitialized()) || (output_grad_size <= 0)) {
+      return;
     }
 
     const T* rois_data = rois->data<T>();

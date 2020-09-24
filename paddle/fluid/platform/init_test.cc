@@ -20,7 +20,7 @@ TEST(InitDevices, CPU) {
   using paddle::framework::InitDevices;
   using paddle::platform::DeviceContextPool;
 
-#ifndef PADDLE_WITH_CUDA
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_XPU)
   InitDevices(true);
   DeviceContextPool& pool = DeviceContextPool::Instance();
   ASSERT_EQ(pool.size(), 1U);
@@ -35,6 +35,25 @@ TEST(InitDevices, CUDA) {
   int count = paddle::platform::GetCUDADeviceCount();
   InitDevices(true);
   DeviceContextPool& pool = DeviceContextPool::Instance();
+  ASSERT_EQ(pool.size(), 2U + static_cast<unsigned>(count));
+#endif
+}
+
+TEST(InitDevices, XPU) {
+  using paddle::framework::InitDevices;
+  using paddle::platform::DeviceContextPool;
+
+#ifdef PADDLE_WITH_XPU
+  int count = paddle::platform::GetXPUDeviceCount();
+  InitDevices(true);
+  DeviceContextPool& pool = DeviceContextPool::Instance();
   ASSERT_EQ(pool.size(), 1U + static_cast<unsigned>(count));
 #endif
 }
+
+#ifndef _WIN32
+TEST(SignalHandle, SignalHandle) {
+  std::string msg = "Signal raises";
+  paddle::framework::SignalHandle(msg.c_str(), msg.size());
+}
+#endif

@@ -31,10 +31,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 namespace {
-void SortHelper(
-    const std::map<ir::Node *, std::unordered_set<ir::Node *>> &adj_list,
-    ir::Node *node, std::unordered_set<ir::Node *> *visited,
-    std::vector<ir::Node *> *ret) {
+void SortHelper(const std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>,
+                               ir::NodeComp> &adj_list,
+                ir::Node *node, std::unordered_set<ir::Node *> *visited,
+                std::vector<ir::Node *> *ret) {
   visited->insert(node);
 
   for (auto adj : adj_list.at(node)) {
@@ -50,7 +50,8 @@ void SortHelper(
 
 bool HasCircleHelper(
     ir::Node *node,
-    const std::map<ir::Node *, std::unordered_set<ir::Node *>> &adj_list,
+    const std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
+        &adj_list,
     std::unordered_set<ir::Node *> *visited,
     std::unordered_set<ir::Node *> *in_trace,
     std::vector<std::vector<ir::Node *>> *circles) {
@@ -84,7 +85,8 @@ bool HasCircleHelper(
 }
 
 bool HasCircleInternal(
-    const std::map<ir::Node *, std::unordered_set<ir::Node *>> &adj_list,
+    const std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
+        &adj_list,
     std::vector<std::vector<ir::Node *>> *circles) {
   std::unordered_set<ir::Node *> visited;
   std::unordered_set<ir::Node *> in_trace;
@@ -101,15 +103,42 @@ bool HasCircle(const Graph &graph) {
   return HasCircleInternal(BuildOperationAdjList(graph), nullptr);
 }
 
+bool VarDescIsConsistency(const Graph &graph) {
+  std::unordered_map<std::string, std::unordered_set<ir::Node *>>
+      var_name2node_set;
+  for (ir::Node *node : graph.Nodes()) {
+    if (node->IsVar() && node->Var()) {
+      var_name2node_set[node->Var()->Name()].emplace(node);
+    }
+  }
+  for (auto &iter : var_name2node_set) {
+    auto &first_node = *iter.second.begin();
+    bool is_persistable = std::any_of(iter.second.begin(), iter.second.end(),
+                                      [&first_node](const ir::Node *node) {
+                                        return node->Var()->Persistable();
+                                      });
+    if (is_persistable) {
+      bool is_consistency =
+          std::all_of(iter.second.begin(), iter.second.end(),
+                      [&first_node](const ir::Node *node) {
+                        return *node->Var() == *first_node->Var();
+                      });
+      if (!is_consistency) return false;
+    }
+  }
+  return true;
+}
 bool FindCircleSubGraph(const Graph &graph,
                         std::vector<std::vector<ir::Node *>> *circles) {
   return HasCircleInternal(BuildOperationAdjList(graph), circles);
 }
 
 std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
-  std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list =
-      BuildOperationAdjList(graph);
-  PADDLE_ENFORCE(!HasCircleInternal(adj_list, nullptr));
+  std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
+      adj_list = BuildOperationAdjList(graph);
+  PADDLE_ENFORCE_EQ(HasCircleInternal(adj_list, nullptr), false,
+                    platform::errors::InvalidArgument(
+                        "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
   for (auto adj : adj_list) {
@@ -117,22 +146,28 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
       SortHelper(adj_list, adj.first, &visited, &ret);
     }
   }
+
   return ret;
 }
 
 // Build operator inlink edge table.
-std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
-    const Graph &graph) {
-  std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list;
+std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
+BuildOperationAdjList(const Graph &graph) {
+  std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
+      adj_list;
 
   for (auto &n : graph.Nodes()) {
     if (!n->IsOp()) continue;
     if (adj_list.find(n) == adj_list.end()) {
-      adj_list[n] = std::unordered_set<ir::Node *>();
+      adj_list[n] = std::set<ir::Node *, ir::NodeComp>();
     }
     for (auto &var : n->inputs) {
       for (auto &adj_n : var->inputs) {
-        PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
+        PADDLE_ENFORCE_EQ(
+            adj_n->NodeType(), ir::Node::Type::kOperation,
+            platform::errors::InvalidArgument(
+                "Node(%s)'s type(%d) must be kOperation type.", adj_n->Name(),
+                static_cast<int>(adj_n->NodeType())));
         VLOG(4) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
                 << " -> " << n->Name() << reinterpret_cast<void *>(n)
                 << "  via " << var->Name() << reinterpret_cast<void *>(var);
@@ -155,7 +190,11 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationOutAdjList(
     }
     for (auto &var : n->outputs) {
       for (auto &adj_n : var->outputs) {
-        PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
+        PADDLE_ENFORCE_EQ(
+            adj_n->NodeType(), ir::Node::Type::kOperation,
+            platform::errors::InvalidArgument(
+                "Node(%s)'s type(%d) must be kOperation type.", adj_n->Name(),
+                static_cast<int>(adj_n->NodeType())));
         VLOG(40) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
                  << " -> " << n->Name() << reinterpret_cast<void *>(n)
                  << "  via " << var->Name() << reinterpret_cast<void *>(var);
@@ -330,7 +369,10 @@ size_t GraphNum(const Graph &graph) {
       }
       std::unique_ptr<std::ostream> fout(
           new std::ofstream(FLAGS_print_sub_graph_dir));
-      PADDLE_ENFORCE(fout->good());
+      PADDLE_ENFORCE_EQ(fout->good(), true,
+                        platform::errors::Unavailable(
+                            "Can not open file %s for printing the graph.",
+                            FLAGS_print_sub_graph_dir));
       *fout << out.str();
     }
   }

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -23,13 +24,14 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Graph;
+
 class SeqConvEltAddReluFusePass : public FusePassBase {
  public:
   virtual ~SeqConvEltAddReluFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 
   const std::string name_scope_{"seqconv_eltadd_relu_fuse"};
 };

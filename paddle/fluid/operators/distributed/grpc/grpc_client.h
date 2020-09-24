@@ -16,16 +16,17 @@ limitations under the License. */
 
 #include <time.h>
 #include <atomic>
-
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
 #include <ctime>
 #include <functional>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <vector>
 
 #include "grpc++/channel.h"
@@ -45,11 +46,25 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
+namespace grpc {
+class Channel;
+}  // namespace grpc
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
 namespace paddle {
 namespace operators {
 namespace distributed {
 
 void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
+
+void ProcGetRecvResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
 class BaseProcessor {
  public:
@@ -129,6 +144,28 @@ class GetProcessor : public BaseProcessor {
   RequestGetCallBack response_call_back_ = ProcGetResponse;
 };
 
+class SendAndRecvProcessor : public BaseProcessor {
+ public:
+  explicit SendAndRecvProcessor(std::shared_ptr<grpc::Channel> ch)
+      : BaseProcessor(), stub_g_(ch) {}
+
+  virtual ~SendAndRecvProcessor() {}
+
+  void ProcessImpl() override {
+    if (response_call_back_) {
+      response_call_back_(*var_h_recv_.get(), reply_);
+      var_h_recv_->Finish(true);
+    }
+  }
+
+  void RecvPrepare(VarHandlePtr h_recv) { var_h_recv_ = h_recv; }
+
+  ::grpc::ByteBuffer reply_;
+  ::grpc::GenericStub stub_g_;
+  RequestGetCallBack response_call_back_ = ProcGetResponse;
+  VarHandlePtr var_h_recv_;
+};
+
 class BatchBarrierProcessor : public BaseProcessor {
  public:
   explicit BatchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
@@ -187,6 +224,7 @@ class GRPCClient : public RPCClient {
                            const framework::Scope& scope,
                            const std::string& var_name,
                            const std::string& out_varname,
+                           const std::string& table_name = "",
                            int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncGetVarNoBarrier(
@@ -219,8 +257,22 @@ class GRPCClient : public RPCClient {
       int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncCheckpointNotify(
-      const std::string& ep, const std::string& dir,
+      const std::string& ep, const std::string& dirname,
+      const std::string& varname,
       int64_t time_out = FLAGS_rpc_deadline) override;
+
+  VarHandlePtr AsyncDistributeNotify(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) override;
+
+  VarHandlePtr AsyncSendAndRecv(const std::string& ep,
+                                const platform::DeviceContext& ctx,
+                                const framework::Scope& scope,
+                                const std::string& send_var_name,
+                                const std::string& recv_var_name,
+                                const std::string& table_name = "",
+                                int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncSendComplete(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
@@ -239,7 +291,8 @@ class GRPCClient : public RPCClient {
       const std::string& ep, const platform::DeviceContext& ctx,
       const framework::Scope& scope, const std::string& method,
       const std::string& var_name, const std::string& out_varname,
-      const std::string& rpc_path, int64_t time_out = FLAGS_rpc_deadline);
+      const std::string& rpc_path, const std::string& table_name = "",
+      int64_t time_out = FLAGS_rpc_deadline);
 
  private:
   grpc::CompletionQueue cq_;

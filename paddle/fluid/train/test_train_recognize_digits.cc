@@ -19,6 +19,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -50,7 +51,8 @@ void Train() {
     }
   }
 
-  PADDLE_ENFORCE_NE(loss_name, "", "loss not found");
+  PADDLE_ENFORCE_NE(loss_name, "",
+                    platform::errors::NotFound("Loss name is not found."));
 
   // prepare data
   auto x_var = scope.Var("img");
@@ -74,7 +76,8 @@ void Train() {
   float first_loss = 0.0;
   float last_loss = 0.0;
   for (int i = 0; i < 100; ++i) {
-    executor.Run(*train_program.get(), &scope, 0, false, true);
+    executor.Run(*train_program, &scope, 0, false, true,
+                 {loss_name, "img", "label"});
     if (i == 0) {
       first_loss = loss_var->Get<framework::LoDTensor>().data<float>()[0];
     } else if (i == 99) {

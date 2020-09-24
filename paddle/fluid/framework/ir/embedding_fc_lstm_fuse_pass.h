@@ -27,13 +27,14 @@ namespace ir {
 // Fusing of Embedding , FC and LSTM op
 
 // Just FC without bias
+class Graph;
+
 class EmbeddingFCLSTMFusePass : public FusePassBase {
  public:
   virtual ~EmbeddingFCLSTMFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 
   const std::string name_scope_{"embedding_fc_lstm_fuse"};
 };

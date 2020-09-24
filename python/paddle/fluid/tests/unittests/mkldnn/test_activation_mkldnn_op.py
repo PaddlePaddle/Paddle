@@ -16,10 +16,12 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+from scipy.special import expit
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_activation_op import TestRelu, TestTanh, TestSqrt, TestAbs
-import paddle.fluid as fluid
+from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestRelu6, TestSigmoid
+from paddle.fluid.tests.unittests.test_gelu_op import gelu
+from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
 
 class TestMKLDNNReluDim2(TestRelu):
@@ -28,12 +30,63 @@ class TestMKLDNNReluDim2(TestRelu):
 
         self.attrs = {"use_mkldnn": True}
 
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNRelu6Dim2(TestRelu6):
+    def setUp(self):
+        super(TestMKLDNNRelu6Dim2, self).setUp()
+        self.attrs.update({"use_mkldnn": True})
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
+    def setUp(self):
+        super(TestMKLDNNLeakyReluDim2, self).setUp()
+
+        self.attrs = {"use_mkldnn": True}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNGeluDim2(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.float32
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        out = gelu(x, False)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNGeluDim2Approx(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.float32
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        out = gelu(x, True)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True, "approximate": True}
+
 
 class TestMKLDNNTanhDim2(TestTanh):
     def setUp(self):
         super(TestMKLDNNTanhDim2, self).setUp()
 
         self.attrs = {"use_mkldnn": True}
+
+    def init_dtype(self):
+        self.dtype = np.float32
 
 
 class TestMKLDNNSqrtDim2(TestSqrt):
@@ -42,10 +95,35 @@ class TestMKLDNNSqrtDim2(TestSqrt):
 
         self.attrs = {"use_mkldnn": True}
 
+    def init_dtype(self):
+        self.dtype = np.float32
+
 
 class TestMKLDNNAbsDim2(TestAbs):
     def setUp(self):
         super(TestMKLDNNAbsDim2, self).setUp()
+        self.attrs = {"use_mkldnn": True}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNSwishDim2(TestSwish):
+    def setUp(self):
+        super(TestMKLDNNSwishDim2, self).setUp()
+
+        self.attrs["use_mkldnn"] = True
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNSigmoidDim2(TestSigmoid):
+    def setUp(self):
+        super(TestMKLDNNSigmoidDim2, self).setUp()
         self.attrs = {"use_mkldnn": True}
 
 
@@ -61,6 +139,52 @@ class TestMKLDNNReluDim4(TestRelu):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
+    def setUp(self):
+        super(TestMKLDNNLeakyReluDim4, self).setUp()
+
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        out = np.maximum(x, 0.02 * x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNGeluDim4(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.float32
+
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        out = gelu(x, False)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNGeluDim4Approx(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.dtype = np.float32
+
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        out = gelu(x, True)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True, "approximate": True}
 
 
 class TestMKLDNNTanhDim4(TestTanh):
@@ -96,64 +220,56 @@ class TestMKLDNNAbsDim4(TestAbs):
         self.outputs = {'Out': np.abs(self.inputs['X'])}
         self.attrs = {"use_mkldnn": True}
 
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNSwishDim4(TestSwish):
+    def setUp(self):
+        super(TestMKLDNNSwishDim4, self).setUp()
+
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        beta = 2.3
+        out = x * expit(beta * x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True, "beta": beta}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNSigmoidDim4(TestSigmoid):
+    def setUp(self):
+        super(TestMKLDNNSigmoidDim4, self).setUp()
+
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        out = 1 / (1 + np.exp(-x))
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
 
 # Check if primitives already exist in backward
-class TestMKLDNNReluPrimitivesAlreadyExist(unittest.TestCase):
-    def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
-
-    def test_check_forward_backward(self):
-        place = core.CPUPlace()
+class TestMKLDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
+    def setUp(self):
+        super(TestMKLDNNAbsPrimitivesAlreadyExist, self).setUp()
 
         np.random.seed(123)
-        x = np.random.uniform(-1, 1, [2, 2]).astype(np.float32)
-        out = np.abs(x)
+        self.op_type = 'abs'
+        self.x = np.random.uniform(-1, 1, [2, 2]).astype(np.float32)
+        self.out = np.abs(self.x)
+        self.out_grad = np.random.random_sample(self.x.shape).astype(np.float32)
+        self.x_grad = self.__abs_bwd(self.x, self.out_grad)
 
-        out_grad = np.random.random_sample(x.shape).astype(np.float32)
-        x_grad = out_grad * np.sign(x)  # Abs grad calculation
+    # Abs grad calculation
+    def __abs_bwd(self, x, out_grad):
+        return out_grad * np.sign(x)
 
-        var_dict = {'x': x, 'out': out, 'out@GRAD': out_grad, 'x@GRAD': x_grad}
-        var_names = list(var_dict.keys())
-        ground_truth = {name: var_dict[name] for name in var_names}
-
-        program = fluid.Program()
-        with fluid.program_guard(program):
-            block = program.global_block()
-            for name in ground_truth:
-                block.create_var(
-                    name=name, dtype='float32', shape=ground_truth[name].shape)
-
-            relu_op = block.append_op(
-                type="abs",
-                inputs={"X": block.var('x'), },
-                outputs={"Out": block.var('out')},
-                attrs={"use_mkldnn": True})
-
-            # Generate backward op_desc
-            grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
-                relu_op.desc, set(), [])
-            grad_op_desc = grad_op_desc_list[0]
-            new_op_desc = block.desc.append_op()
-            new_op_desc.copy_from(grad_op_desc)
-            for var_name in grad_op_desc.output_arg_names():
-                block.desc.var(var_name.encode("ascii"))
-            grad_op_desc.infer_var_type(block.desc)
-            grad_op_desc.infer_shape(block.desc)
-            for arg in grad_op_desc.output_arg_names():
-                grad_var = block.desc.find_var(arg.encode("ascii"))
-                grad_var.set_dtype(core.VarDesc.VarType.FP32)
-
-            exe = fluid.Executor(place)
-
-            # Do at least 2 iterations
-            for i in range(2):
-                out = exe.run(
-                    program,
-                    feed={name: var_dict[name]
-                          for name in ['x', 'out@GRAD']},
-                    fetch_list=['x@GRAD'])
-
-            self.__assert_close(x_grad, out[0], "x@GRAD")
+    def test_check(self):
+        check_if_mkldnn_primitives_exist_in_bwd(
+            self, self.op_type, self.x, self.out, self.out_grad, self.x_grad)
 
 
 if __name__ == '__main__':

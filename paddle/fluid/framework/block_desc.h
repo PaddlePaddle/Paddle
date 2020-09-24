@@ -30,6 +30,8 @@ namespace paddle {
 namespace framework {
 
 class ProgramDesc;
+class OpDesc;
+class VarDesc;
 
 // Each Protobuf Message, we provide a XXXBind class. In that class, we optimize
 // read/write speed. Only when we want the protobuf message, the local changes
@@ -92,6 +94,8 @@ class BlockDesc {
    * do nothing to its input and output variables
    */
   void RemoveOp(size_t s, size_t e);
+
+  void RemoveOpInternal(const OpDesc *op_desc);
 
   void RemoveVar(const std::string &name) { vars_.erase(name); }
 

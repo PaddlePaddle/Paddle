@@ -14,13 +14,22 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <typeindex>
 #include <typeinfo>
 #include <vector>
+
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+class VarDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -48,7 +57,7 @@ class Node {
  public:
   virtual ~Node() {
     if (!wrapper_.empty()) {
-      VLOG(4) << "ir::Node deleting a wrapper node " << Name();
+      VLOG(10) << "ir::Node deleting a wrapper node " << Name();
       wrapper_deleter_();
     }
   }
@@ -65,12 +74,18 @@ class Node {
   std::string Name() const { return name_; }
 
   VarDesc* Var() const {
-    PADDLE_ENFORCE(IsVar());
+    PADDLE_ENFORCE_EQ(IsVar(), true,
+                      platform::errors::InvalidArgument(
+                          "Node(%s) must be kVariable type, but not %d.", name_,
+                          static_cast<int>(type_)));
     return var_desc_.get();
   }
 
   OpDesc* Op() const {
-    PADDLE_ENFORCE(IsOp());
+    PADDLE_ENFORCE_EQ(IsOp(), true,
+                      platform::errors::InvalidArgument(
+                          "Node(%s) must be kOperation type, but not %d.",
+                          name_, static_cast<int>(type_)));
     return op_desc_.get();
   }
 
@@ -88,12 +103,18 @@ class Node {
   // Return a reference to the `wrapper`.
   template <typename T>
   T& Wrapper() {
-    return *boost::any_cast<T*>(wrapper_);
+    try {
+      return *boost::any_cast<T*>(wrapper_);
+    } catch (boost::bad_any_cast&) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid wrapper type error, expected %s, actual %s.",
+          typeid(T).name(), wrapper_type_.name()));
+    }
   }
 
   // Test if the Node is wrapped by type T.
   template <typename T>
-  bool IsWrappedBy() {
+  bool IsWrappedBy() const {
     return std::type_index(typeid(T)) == wrapper_type_;
   }
 
@@ -107,11 +128,19 @@ class Node {
            Name().find(ir::Node::kControlDepVarName) != std::string::npos;
   }
 
+  void RenameVar(const std::string& new_name) {
+    PADDLE_ENFORCE_EQ(
+        type_ == Type::kVariable && var_desc_, true,
+        platform::errors::InvalidArgument("Node must be type of variable."));
+    name_ = new_name;
+    var_desc_->SetName(new_name);
+  }
+
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
 
  protected:
-  const std::string name_;
+  std::string name_;
   std::unique_ptr<VarDesc> var_desc_;
   std::unique_ptr<OpDesc> op_desc_;
   Type type_;

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/distributed/brpc/brpc_server.h"
+#include <memory>
+#include <unordered_map>
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/brpc/brpc_sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/brpc/brpc_variable_response.h"
@@ -100,7 +102,7 @@ class BRPCServiceImpl : public SendRecvService {
 
     distributed::BRPCVariableResponse resp(request_send_h_->scope(),
                                            request_send_h_->dev_ctx(),
-                                           !request_send_h_->sync_mode());
+                                           request_send_h_->distributed_mode());
     PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
                    "parse iobuf to tensor error!");
 
@@ -362,7 +364,8 @@ void AsyncBRPCServer::StartServer() {
   // service is put on stack, we don't want server to delete it, otherwise
   // use brpc::SERVER_OWNS_SERVICE.
   if (server_.AddService(&service_impl, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-    LOG(FATAL) << "Fail to add service";
+    PADDDLE_THROW(platform::errors::Unavailable(
+        "Failed to add service into BRPC server."));
     return;
   }
 
@@ -373,7 +376,8 @@ void AsyncBRPCServer::StartServer() {
   options.idle_timeout_sec = idle_timeout_s_;
   options.max_concurrency = max_concurrency_;
   if (server_.Start(bind_address_.c_str(), &options) != 0) {
-    LOG(FATAL) << "Fail to start EchoServer" << bind_address_;
+    PADDDLE_THROW(platform::errors::Unavailable(
+        "Failed to start EchoServer %s.", bind_address_));
     return;
   }
 

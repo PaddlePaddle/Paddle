@@ -14,6 +14,7 @@ about: 您可以提问模型、算法、数据集方向的使用报错等问题�
     2）CPU：请提供CPU型号，MKL/OpenBlas/MKLDNN/等数学库的使用情况
     3）GPU：请提供GPU型号，CUDA和CUDNN版本号
     4）系统环境：请说明系统类型、版本（例如Mac OS 10.14），Python版本
+ 注：您可以通过执行[summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py)获取以上信息。
 - 模型信息
     1）模型名称 2）使用数据集名称 3）使用算法名称 4）模型链接
 - 复现信息：如为报错，请给出复现环境、复现步骤
@@ -29,6 +30,7 @@ If there is no solution,please make sure that this is a issue of models includin
 -OS Platform (eg.Mac OS 10.14)
 -Python version
 -Name of Models&Dataset/details of operator
+Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py). 
 **To Reproduce**
 Steps to reproduce the behavior
 **Describe your current behavior**

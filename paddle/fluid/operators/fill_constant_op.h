@@ -14,50 +14,95 @@ limitations under the License. */
 
 #pragma once
 
+#include <sstream>
+#include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
+
 template <typename T>
 class FillConstantKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-    auto value = ctx.Attr<float>("value");
-    auto force_cpu = ctx.Attr<bool>("force_cpu");
 
+    auto str_value = ctx.Attr<std::string>("str_value");
+    auto float_value = ctx.Attr<float>("value");
+    auto force_cpu = ctx.Attr<bool>("force_cpu");
     framework::Tensor *tensor = nullptr;
 
     framework::Variable *out_var = ctx.OutputVar("Out");
 
+    T value;
+    if (str_value.empty()) {
+      value = static_cast<T>(float_value);
+    } else {
+      std::stringstream convert_stream(str_value);
+      if (std::is_same<int64_t, T>::value) {
+        int64_t tmp_value;
+        convert_stream >> tmp_value;
+        value = static_cast<T>(tmp_value);
+      } else {
+        double tmp_value;
+        convert_stream >> tmp_value;
+        value = static_cast<T>(tmp_value);
+      }
+    }
+    if (ctx.HasInput("ValueTensor")) {
+      auto *value_tensor = ctx.Input<framework::Tensor>("ValueTensor");
+      PADDLE_ENFORCE_EQ(
+          value_tensor->numel(), 1,
+          platform::errors::InvalidArgument(
+              "When use Tensor as value to set Tensor value in fill_cosntant, "
+              "value input(ValueTensor) size must be 1, but get %d",
+              value_tensor->numel()));
+      const T *tensor_data = value_tensor->data<T>();
+      framework::Tensor cpu_tensor;
+      if (platform::is_gpu_place(value_tensor->place())) {
+        TensorCopySync(*value_tensor, platform::CPUPlace(), &cpu_tensor);
+        tensor_data = cpu_tensor.data<T>();
+      }
+      value = tensor_data[0];
+    }
+    auto shape = GetShape(ctx);
+
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
-      tensor->Resize(
-          framework::make_ddim(ctx.Attr<std::vector<int64_t>>("shape")));
+      tensor->Resize(shape);
     } else if (out_var->IsType<framework::SelectedRows>()) {
       tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
-      tensor->Resize(
-          framework::make_ddim(ctx.Attr<std::vector<int64_t>>("shape")));
+      tensor->Resize(shape);
     } else {
-      PADDLE_THROW(
-          "fill constant op's output only"
-          "supports SelectedRows and LoDTensor");
-    }
-
-    if (force_cpu) {
-      tensor->mutable_data(platform::CPUPlace(), data_type);
-    } else {
-      tensor->mutable_data(ctx.GetPlace(), data_type);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "In fill constant Op, the output only supports SelectedRows and "
+          "LoDTensor."));
     }
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
-    math::set_constant(dev_ctx, tensor, value);
+    bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
+    if (cpu_place) {
+      tensor->mutable_data(platform::CPUPlace(), data_type);
+      math::SetConstant<platform::CPUDeviceContext, T> functor;
+      functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
+              tensor, static_cast<T>(value));
+    }
+#ifdef PADDLE_WITH_CUDA
+    if (!cpu_place) {
+      tensor->mutable_data(ctx.GetPlace(), data_type);
+      math::SetConstant<platform::CUDADeviceContext, T> functor;
+      functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
+              tensor, static_cast<T>(value));
+    }
+#endif
   }
 };
 }  // namespace operators

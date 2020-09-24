@@ -16,30 +16,11 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
-
-static int FindOutIdx(int row, const std::vector<int64_t>& abs_sections) {
-  for (size_t i = 1; i < abs_sections.size(); ++i) {
-    if (row < abs_sections[i]) {
-      return i - 1;
-    }
-  }
-  return abs_sections.size() - 1;
-}
-
-static std::vector<int64_t> ToAbsoluteSection(
-    const std::vector<int64_t>& height_sections) {
-  std::vector<int64_t> abs_sections;
-  abs_sections.resize(height_sections.size());
-  abs_sections[0] = 0;
-  for (size_t i = 1; i < height_sections.size(); ++i) {
-    abs_sections[i] = height_sections[i - 1] + abs_sections[i - 1];
-  }
-  return abs_sections;
-}
 
 template <typename DeviceContext, typename T>
 class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
@@ -51,7 +32,8 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
 
     auto abs_sections = ToAbsoluteSection(height_sections);
 
-    auto x_rows = x->rows();
+    auto& x_rows = x->rows();
+    auto height = x->height();
     std::vector<std::vector<int>> outs_rows_idx;
     std::vector<std::vector<int>> outs_dense_idx;
 
@@ -63,8 +45,14 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
 
     // split rows index into output sparse vars
     for (size_t i = 0; i < x_rows.size(); ++i) {
-      int out_idx = FindOutIdx(x_rows[i], abs_sections);
-      outs_rows_idx[out_idx].push_back(x_rows[i]);
+      auto& id = x_rows[i];
+      PADDLE_ENFORCE_LT(id, height,
+                        platform::errors::OutOfRange(
+                            "Each row_id in x.rows must be less than x.height. "
+                            "But received x.rows[%d] = %d, x.height = %d",
+                            i, id, height));
+      int out_idx = GetSectionIndex(id, abs_sections);
+      outs_rows_idx[out_idx].push_back(id);
       outs_dense_idx[out_idx].push_back(i);
     }
     auto place = ctx.GetPlace();
@@ -78,7 +66,14 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
       outs[i]->mutable_rows()->clear();
       if (rows_idx.size() > 0) {
         for (auto idx : rows_idx) {
-          outs[i]->mutable_rows()->push_back(idx - abs_sections[i]);
+          auto id_offset = idx - abs_sections[i];
+          PADDLE_ENFORCE_LT(
+              id_offset, height_sections[i],
+              platform::errors::OutOfRange("Each row_id in out.rows must be "
+                                           "less than out.height. But recived "
+                                           "out.rows = [%d], out.height = [%d]",
+                                           id_offset, height_sections[i]));
+          outs[i]->mutable_rows()->push_back(id_offset);
         }
         auto dst = outs[i]->mutable_value()->mutable_data<T>(ctx.GetPlace());
         for (size_t j = 0; j < rows_idx.size(); j++) {
@@ -94,13 +89,17 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
                          src + outs_dense_idx[i][j] * row_numel,
                          sizeof(T) * row_numel, stream);
 #else
-            PADDLE_THROW("Paddle is not compiled with GPU");
+            PADDLE_THROW(platform::errors::Unavailable(
+                "Paddle is not compiled with CUDA. Cannot visit cuda device"));
 #endif
           }
         }
       }
       PADDLE_ENFORCE_EQ(rows_idx.size(), outs[i]->rows().size(),
-                        "rows should has the same size with tensor dim 0");
+                        platform::errors::InvalidArgument(
+                            "rows should has the same size with tensor dim 0. "
+                            "But received rows = %d, tensor's dim[0] = %d.",
+                            rows_idx.size(), outs[i]->rows().size()));
     }
   }
 };

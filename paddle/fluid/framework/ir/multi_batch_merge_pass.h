@@ -31,12 +31,14 @@ namespace ir {
 // sync training, we can simulate even large batch size as if we have more
 // GPUs.
 
+class Graph;
+
 class BatchMergePass : public Pass {
  public:
   virtual ~BatchMergePass() {}
 
  protected:
-  std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const override;
+  void ApplyImpl(Graph* graph) const override;
 };
 
 }  // namespace ir

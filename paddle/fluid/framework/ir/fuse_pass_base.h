@@ -14,16 +14,31 @@
 
 #pragma once
 
+#include <string>
+
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
+
+class Graph;
+class Node;
 
 static const char kParamScopeAttr[] = "__param_scope__";
 static const char kFuseStatisAttr[] = "__fuse_statis__";
+// When we use trt or other third_party lib, the parameters are managed by
+// the lib, but not the fluid. So we need to record them to avoid duplicate
+// allocation.
+static const char kRepetitiveParamAttr[] = "__repetitive_param__";
 
 enum FuseOptions {
   DO_NOT_FUSE,  // fusing will not be done

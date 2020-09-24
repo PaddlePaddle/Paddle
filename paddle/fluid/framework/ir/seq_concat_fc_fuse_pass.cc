@@ -12,14 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/ir/seq_concat_fc_fuse_pass.h"
 #include <set>
 #include <string>
-
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
-#include "paddle/fluid/framework/ir/seq_concat_fc_fuse_pass.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -178,24 +175,25 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
   return fc_out;
 }
 
-std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init("seq_concat_fc_fuse", graph.get());
+void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init("seq_concat_fc_fuse", graph);
   GraphPatternDetector detector;
   auto* pattern = detector.mutable_pattern();
   auto* concat_out = BuildSeqExpandConcatPattern(pattern);
   BuildFCPattern(pattern, concat_out);
 
-#define GET_NODE(id, pattern)                               \
-  PADDLE_ENFORCE(subgraph.count(pattern.RetrieveNode(#id)), \
-                 "pattern has no Node called %s", #id);     \
-  auto* id = subgraph.at(pattern.RetrieveNode(#id));        \
-  PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
+#define GET_NODE(id, pattern)                                             \
+  PADDLE_ENFORCE_GT(                                                      \
+      subgraph.count(pattern.RetrieveNode(#id)), 0,                       \
+      platform::errors::NotFound("Pattern has no node called %s.", #id)); \
+  auto* id = subgraph.at(pattern.RetrieveNode(#id));                      \
+  PADDLE_ENFORCE_NOT_NULL(                                                \
+      id, platform::errors::NotFound("Subgraph has no node %s.", #id));
 
   int fuse_count{0};
 
-  detector(graph.get(), [&](const GraphPatternDetector::subgraph_t& subgraph,
-                            Graph* graph) {
+  detector(graph, [&](const GraphPatternDetector::subgraph_t& subgraph,
+                      Graph* graph) {
     VLOG(4) << "get one concat pattern";
     // fc
     GET_NODE(fc_w, detector.pattern());
@@ -215,7 +213,9 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
     op_desc.SetInput("FCWeight", {fc_w->Name()});
     op_desc.SetInput("FCBias", {fc_bias->Name()});
     const std::string fc_out_tmp = fc_out->Name() + ".tmp";
-    param_scope()->Var(fc_out_tmp)->GetMutable<framework::LoDTensor>();
+    VarDesc fc_out_key(fc_out_tmp);
+    fc_out_key.SetPersistable(false);
+    auto* fc_out_node = graph->CreateVarNode(&fc_out_key);
     op_desc.SetOutput("FCOut", {fc_out_tmp});
     op_desc.SetOutput("Out", {fc_out->Name()});
     op_desc.SetAttr("fc_activation", act->Op()->Type());
@@ -228,6 +228,7 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
     IR_NODE_LINK_TO(sequence_expand0_in, op_node);
     IR_NODE_LINK_TO(sequence_expand1_in, op_node);
     IR_NODE_LINK_TO(op_node, fc_out);
+    IR_NODE_LINK_TO(op_node, fc_out_node);
 
     // Clean nodes.
     std::unordered_set<const Node*> marked_nodes;
@@ -246,8 +247,6 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
   });
 
   AddStatis(fuse_count);
-
-  return graph;
 }
 
 }  // namespace ir

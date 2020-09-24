@@ -13,22 +13,21 @@
 // limitations under the License.
 
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/transpose_flatten_concat_fuse_pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-template <int times>
-std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void RunTransposeFlattenConcatFuse(ir::Graph *graph, int times) {
   const std::string pattern_name =
       "transpose_flatten" + std::to_string(times) + "_concat_fuse";
-  FusePassBase::Init(pattern_name, graph.get());
 
   GraphPatternDetector gpd;
   std::vector<PDNode *> input_nodes;
@@ -52,15 +51,25 @@ std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
     std::vector<Node *> nodes;
 
     for (int i = 0; i < times; i++) {
-      PADDLE_ENFORCE(
-          subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i))));
-      PADDLE_ENFORCE(
-          subgraph.at(pattern.GetPDNode("transpose_out" + std::to_string(i))));
-      PADDLE_ENFORCE(
-          subgraph.at(pattern.GetPDNode("flatten" + std::to_string(i))));
-      PADDLE_ENFORCE(
-          subgraph.at(pattern.GetPDNode("flatten_out" + std::to_string(i))));
-      PADDLE_ENFORCE(subgraph.at(input_nodes[i]));
+      PADDLE_ENFORCE_NOT_NULL(
+          subgraph.at(pattern.GetPDNode("transpose" + std::to_string(i))),
+          platform::errors::NotFound("Can not find transpose%d in subgraph.",
+                                     i));
+      PADDLE_ENFORCE_NOT_NULL(
+          subgraph.at(pattern.GetPDNode("transpose_out" + std::to_string(i))),
+          platform::errors::NotFound(
+              "Can not find transpose_out%d in subgraph.", i));
+      PADDLE_ENFORCE_NOT_NULL(
+          subgraph.at(pattern.GetPDNode("flatten" + std::to_string(i))),
+          platform::errors::NotFound("Can not find flatten%d in subgraph.", i));
+      PADDLE_ENFORCE_NOT_NULL(
+          subgraph.at(pattern.GetPDNode("flatten_out" + std::to_string(i))),
+          platform::errors::NotFound("Can not find flatten_out%d in subgraph.",
+                                     i));
+      PADDLE_ENFORCE_NOT_NULL(
+          subgraph.at(input_nodes[i]),
+          platform::errors::NotFound("Can not find %s in subgraph.",
+                                     input_nodes[i]->name()));
 
       nodes.push_back(subgraph.at(input_nodes[i]));
       nodes.push_back(
@@ -76,11 +85,11 @@ std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
     Node *concat_op = subgraph.at(pattern.GetPDNode("concat"));
     Node *concat_out = subgraph.at(pattern.GetPDNode("concat_out"));
     std::vector<std::string> input_names;
-    std::vector<int> trans_axis = boost::get<std::vector<int>>(
-        nodes[kTransOffset]->Op()->GetAttr("axis"));
+    std::vector<int> trans_axis = BOOST_GET_CONST(
+        std::vector<int>, nodes[kTransOffset]->Op()->GetAttr("axis"));
     int flatten_axis =
-        boost::get<int>(nodes[kFlattenOffset]->Op()->GetAttr("axis"));
-    int concat_axis = boost::get<int>(concat_op->Op()->GetAttr("axis"));
+        BOOST_GET_CONST(int, nodes[kFlattenOffset]->Op()->GetAttr("axis"));
+    int concat_axis = BOOST_GET_CONST(int, concat_op->Op()->GetAttr("axis"));
     std::string output_name = concat_out->Name();
 
     for (int i = 0; i < times; i++) {
@@ -115,34 +124,32 @@ std::unique_ptr<ir::Graph> TransposeFlattenConcatFusePass<times>::ApplyImpl(
     concat_out->inputs.push_back(new_conv_op);
 
     // Delete the unneeded nodes.
-    GraphSafeRemoveNodes(graph.get(), delete_nodes);
+    GraphSafeRemoveNodes(graph, delete_nodes);
   };
 
-  gpd(graph.get(), handler);
-  return graph;
+  gpd(graph, handler);
 }
 
-template class TransposeFlattenConcatFusePass<1>;
-template class TransposeFlattenConcatFusePass<3>;
-template class TransposeFlattenConcatFusePass<4>;
-template class TransposeFlattenConcatFusePass<5>;
-template class TransposeFlattenConcatFusePass<6>;
+void TransposeFlattenConcatFusePass::ApplyImpl(ir::Graph *graph) const {
+  const int pattern_nums = 6;
+  const std::string pattern_name = "transpose_flatten_concat_fuse";
+  FusePassBase::Init(pattern_name, graph);
+  for (int i = 1; i <= pattern_nums; i++) {
+    RunTransposeFlattenConcatFuse(graph, i);
+  }
+}
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
 REGISTER_PASS(transpose_flatten_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<1>);
-
-REGISTER_PASS(transpose_flatten3_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<3>);
-
-REGISTER_PASS(transpose_flatten4_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<4>);
-
-REGISTER_PASS(transpose_flatten5_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<5>);
-
-REGISTER_PASS(transpose_flatten6_concat_fuse_pass,
-              paddle::framework::ir::TransposeFlattenConcatFusePass<6>);
+              paddle::framework::ir::TransposeFlattenConcatFusePass);
+REGISTER_PASS_CAPABILITY(transpose_flatten_concat_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("transpose", 0)
+            .EQ("transpose2", 0)
+            .EQ("flatten", 0)
+            .EQ("concat", 0)
+            .EQ("fusion_transpose_flatten_concat", 0));

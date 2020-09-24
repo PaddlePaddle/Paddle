@@ -46,27 +46,5 @@ Scope* TryCreateTransferScope(OpKernelType type0, OpKernelType type1,
   return new_scope;
 }
 
-void RemoveKidsFromTransferScopeCache(Scope* scope) {
-  auto it = global_transfer_scope_cache().find(scope);
-  if (it != global_transfer_scope_cache().end()) {
-    global_transfer_scope_cache().erase(it);
-  }
-  for (auto* s : scope->kids()) {
-    auto it = global_transfer_scope_cache().find(s);
-    if (it != global_transfer_scope_cache().end()) {
-      global_transfer_scope_cache().erase(it);
-    }
-  }
-
-  // remove global transfer data cache
-  auto& cache = global_transfer_data_cache();
-  for (auto it = cache.begin(); it != cache.end();) {
-    if (it->second == scope)
-      it = cache.erase(it);
-    else
-      it++;
-  }
-}
-
 }  // namespace framework
 }  // namespace paddle

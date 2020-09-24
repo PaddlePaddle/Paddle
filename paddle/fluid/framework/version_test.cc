@@ -19,12 +19,12 @@ namespace paddle {
 namespace framework {
 TEST(Version, Basic) {
   EXPECT_TRUE(IsProgramVersionSupported(0));
-  EXPECT_FALSE(IsProgramVersionSupported(1));
-  EXPECT_FALSE(IsProgramVersionSupported(-1));
+  EXPECT_TRUE(IsProgramVersionSupported(1));
+  EXPECT_TRUE(IsProgramVersionSupported(-1));
 
   EXPECT_TRUE(IsTensorVersionSupported(0));
-  EXPECT_FALSE(IsTensorVersionSupported(1));
-  EXPECT_FALSE(IsTensorVersionSupported(-1));
+  EXPECT_TRUE(IsTensorVersionSupported(1));
+  EXPECT_TRUE(IsTensorVersionSupported(-1));
 }
 }  // namespace framework
 }  // namespace paddle

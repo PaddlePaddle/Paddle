@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
 #endif
 #include <sys/time.h>
 #include <limits>
+#include <memory>
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
@@ -35,7 +36,9 @@ class IOBufWriter {
   static void Append(const std::string& varname, butil::IOBuf* iobuf, int k,
                      const char* v, int64_t vlen) {
     if (vlen >= std::numeric_limits<int>::max() || vlen < 0) {
-      LOG(FATAL) << "AppendZeroCopy varname:" << varname << ", vlen:" << vlen;
+      PADDDLE_THROW(platform::errors::Unavailable(
+          "Variable lenght is invalid. Variable name is %s, length is %d.",
+          varname, vlen));
     }
 
     iobuf->append(reinterpret_cast<char*>(&k), 4);
@@ -94,7 +97,9 @@ class IOBufWriter {
                              bool in_cuda_pinned, void (*destroy)(void*),
                              void* user_data) {
     if (vlen >= std::numeric_limits<int>::max() || vlen < 0) {
-      LOG(FATAL) << "AppendZeroCopy varname:" << varname << ", vlen:" << vlen;
+      PADDDLE_THROW(platform::errors::Unavailable(
+          "Variable lenght is invalid. Variable name is %s, length is %d.",
+          varname, vlen));
     }
 
 #ifdef PADDLE_WITH_BRPC_RDMA
@@ -139,7 +144,7 @@ void SerializeToIOBuf(const std::string& name, framework::Variable* var,
   } else if (var->IsType<framework::SelectedRows>()) {
     request->set_type(::sendrecv::SELECTED_ROWS);
     payload.reset(new TensorPayload(GetSelectedRowsPayload(var, ctx, request)));
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_NCCL
   } else if (var->IsType<ncclUniqueId>()) {
     request->set_type(::sendrecv::NCCL_ID);
     const ncclUniqueId& uid = var->Get<ncclUniqueId>();

@@ -14,11 +14,16 @@
 
 #include "paddle/fluid/framework/ir/seqconv_eltadd_relu_fuse_pass.h"
 #include <string>
+#include <unordered_set>
+
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Node;
 
 int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
   GraphPatternDetector gpd;
@@ -41,18 +46,19 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
     op_desc.SetAttr("contextLength", seqconv->Op()->GetAttr("contextLength"));
     op_desc.SetAttr("contextStart", seqconv->Op()->GetAttr("contextStart"));
     op_desc.SetAttr("contextStride", seqconv->Op()->GetAttr("contextStride"));
-    PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-    auto* scope = graph->Get<Scope*>(kParamScopeAttr);
     const std::string ColMat = patterns::UniqueKey("SeqConvColMat");
     op_desc.SetOutput("ColMat", {ColMat});
     op_desc.SetOutput("Out", {relu_out->Name()});
-    scope->Var(ColMat)->GetMutable<LoDTensor>();
+    VarDesc key(ColMat);
+    key.SetPersistable(false);
+    auto* key_col_mat = graph->CreateVarNode(&key);
 
     auto* op = graph->CreateOpNode(&op_desc);
     IR_NODE_LINK_TO(input, op);
     IR_NODE_LINK_TO(seqconv_weight, op);
     IR_NODE_LINK_TO(eltadd_bias, op);
     IR_NODE_LINK_TO(op, relu_out);
+    IR_NODE_LINK_TO(op, key_col_mat);
     return op;
   };
 
@@ -83,14 +89,11 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
   return fusion_count;
 }
 
-std::unique_ptr<ir::Graph> SeqConvEltAddReluFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
 
-  int fusion_count = BuildFusion(graph.get(), name_scope_, param_scope());
+  int fusion_count = BuildFusion(graph, name_scope_, param_scope());
   AddStatis(fusion_count);
-
-  return graph;
 }
 
 }  // namespace ir
@@ -99,3 +102,9 @@ std::unique_ptr<ir::Graph> SeqConvEltAddReluFusePass::ApplyImpl(
 
 REGISTER_PASS(seqconv_eltadd_relu_fuse_pass,
               paddle::framework::ir::SeqConvEltAddReluFusePass);
+REGISTER_PASS_CAPABILITY(seqconv_eltadd_relu_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("sequence_conv", 0)
+            .EQ("elementwise_add", 0)
+            .EQ("relu", 0));

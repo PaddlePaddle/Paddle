@@ -14,12 +14,23 @@ function(train_test TARGET_NAME)
     endif()
     foreach(arg ${arg_list})
         string(REGEX REPLACE "^_$" "" arg "${arg}")
-        cc_test(test_train_${TARGET_NAME}${arg}
-                SRCS test_train_${TARGET_NAME}.cc
-                DEPS paddle_fluid_origin
-                ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.train.model/)
+        if (NOT APPLE AND NOT WIN32)
+            cc_test(test_train_${TARGET_NAME}${arg}
+                    SRCS test_train_${TARGET_NAME}.cc
+                    DEPS paddle_fluid_shared
+                    ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.train.model/)
+        else()
+            cc_test(test_train_${TARGET_NAME}${arg}
+                    SRCS test_train_${TARGET_NAME}.cc
+                    DEPS paddle_fluid_api
+                    ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.train.model/)
+        endif()
         set_tests_properties(test_train_${TARGET_NAME}${arg}
-                PROPERTIES DEPENDS test_${TARGET_NAME})
+                PROPERTIES FIXTURES_REQUIRED test_${TARGET_NAME}_infer_model)
+        if(NOT WIN32 AND NOT APPLE)
+            set_tests_properties(test_train_${TARGET_NAME}${arg}
+                    PROPERTIES TIMEOUT 150)
+        endif()
     endforeach()
 endfunction(train_test)
 

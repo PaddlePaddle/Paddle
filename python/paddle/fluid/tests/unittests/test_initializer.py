@@ -17,67 +17,89 @@ from __future__ import print_function
 import numpy as np
 import unittest
 
+import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.initializer as initializer
+from paddle.fluid.core import VarDesc
 
 DELTA = 0.00001
 
 
+def check_cast_op(op):
+    return op.type == 'cast' and \
+           op.attr('in_dtype') == VarDesc.VarType.FP32 and \
+           op.attr('out_dtype') == VarDesc.VarType.FP16
+
+
 class TestConstantInitializer(unittest.TestCase):
-    def test_constant_initializer_default_value(self):
+    def test_constant_initializer_default_value(self, dtype="float32"):
         """Test the constant initializer with default value
         """
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
             block.create_parameter(
-                dtype="float32",
+                dtype=dtype,
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
                 initializer=initializer.ConstantInitializer())
-        self.assertEqual(len(block.ops), 1)
+        num_ops = 2 if dtype == "float16" else 1
+        self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
         self.assertAlmostEqual(init_op.attr('value'), 0.0, delta=DELTA)
+        return block
 
-    def test_constant_initializer(self):
+    def test_constant_initializer(self, dtype="float32"):
         """Test constant initializer with supplied value
         """
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
             block.create_parameter(
-                dtype="float32",
+                dtype=dtype,
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
                 initializer=initializer.ConstantInitializer(2.3))
-        self.assertEqual(len(block.ops), 1)
+        num_ops = 2 if dtype == "float16" else 1
+        self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
         self.assertAlmostEqual(init_op.attr('value'), 2.3, delta=DELTA)
+        return block
+
+    def test_constant_initializer_fp16(self):
+        """Test constant initializer with float16
+        """
+        block = self.test_constant_initializer_default_value("float16")
+        self.assertTrue(check_cast_op(block.ops[1]))
+        block = self.test_constant_initializer("float16")
+        self.assertTrue(check_cast_op(block.ops[1]))
 
 
 class TestUniformInitializer(unittest.TestCase):
-    def test_uniform_initializer_default_value(self):
+    def test_uniform_initializer_default_value(self, dtype="float32"):
         """Test the uniform initializer with default value
         """
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
             block.create_parameter(
-                dtype="float32",
+                dtype=dtype,
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
                 initializer=initializer.UniformInitializer())
-        self.assertEqual(len(block.ops), 1)
+        num_ops = 2 if dtype == "float16" else 1
+        self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
         self.assertAlmostEqual(init_op.attr('min'), -1.0, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), 1.0, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 0)
+        return block
 
     def test_uniform_initializer_random_seed(self):
         """Test the uniform initializer with manually setting seed
@@ -103,43 +125,57 @@ class TestUniformInitializer(unittest.TestCase):
         init_op1 = block.ops[0]
         self.assertEqual(init_op1.attr("seed"), 456)
 
-    def test_uniform_initializer(self):
+    def test_uniform_initializer(self, dtype="float32"):
         """Test uniform initializer with supplied attributes
         """
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
             block.create_parameter(
-                dtype="float32",
+                dtype=dtype,
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
                 initializer=initializer.UniformInitializer(-4.2, 3.1, 123))
-        self.assertEqual(len(block.ops), 1)
+        num_ops = 2 if dtype == "float16" else 1
+        self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
         self.assertAlmostEqual(init_op.attr('min'), -4.2, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), 3.1, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 123)
+        return block
 
-    def test_uniform_initializer_two_op(self):
+    def test_uniform_initializer_two_op(self, dtype="float32"):
         """Test uniform initializer with supplied attributes
         """
         program = framework.Program()
         block = program.global_block()
         for i in range(2):
             block.create_parameter(
-                dtype="float32",
+                dtype=dtype,
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
                 initializer=initializer.UniformInitializer(-4.2, float(i), 123))
-        self.assertEqual(len(block.ops), 1)
+        num_ops = 2 if dtype == "float16" else 1
+        self.assertEqual(len(block.ops), num_ops)
         init_op0 = block.ops[0]
         self.assertEqual(init_op0.type, 'uniform_random')
         self.assertAlmostEqual(init_op0.attr('min'), -4.2, delta=DELTA)
         self.assertAlmostEqual(init_op0.attr('max'), 0.0, delta=DELTA)
         self.assertEqual(init_op0.attr('seed'), 123)
+        return block
+
+    def test_uniform_initializer_fp16(self):
+        """Test uniform initializer with float16
+        """
+        block = self.test_uniform_initializer_default_value("float16")
+        self.assertTrue(check_cast_op(block.ops[1]))
+        block = self.test_uniform_initializer(dtype="float16")
+        self.assertTrue(check_cast_op(block.ops[1]))
+        block = self.test_uniform_initializer_two_op("float16")
+        self.assertTrue(check_cast_op(block.ops[1]))
 
 
 class TestNormalInitializer(unittest.TestCase):
@@ -162,24 +198,32 @@ class TestNormalInitializer(unittest.TestCase):
         self.assertAlmostEqual(init_op.attr('std'), 1.0, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 0)
 
-    def test_normal_initializer(self):
+    def test_normal_initializer(self, dtype="float32"):
         """Test normal initializer with supplied attributes
         """
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
             block.create_parameter(
-                dtype="float32",
+                dtype=dtype,
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
                 initializer=initializer.NormalInitializer(2.3, 1.9, 123))
-        self.assertEqual(len(block.ops), 1)
+        num_ops = 2 if dtype == "float16" else 1
+        self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
         self.assertAlmostEqual(init_op.attr('mean'), 2.3, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('std'), 1.9, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 123)
+        return block
+
+    def test_normal_initializer_fp16(self):
+        """Test normal initializer with float16
+        """
+        block = self.test_normal_initializer("float16")
+        self.assertTrue(check_cast_op(block.ops[1]))
 
 
 class TestXavierInitializer(unittest.TestCase):
@@ -271,26 +315,34 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 0)
 
-    def test_xavier_initializer_supplied_arguments(self):
+    def test_xavier_initializer_supplied_arguments(self, dtype="float32"):
         """Test the Xavier initializer with supplied arguments
         """
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
             block.create_parameter(
-                dtype="float32",
+                dtype=dtype,
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
                 initializer=initializer.XavierInitializer(
                     fan_in=12, fan_out=23, seed=134))
-        self.assertEqual(len(block.ops), 1)
+        num_ops = 2 if dtype == "float16" else 1
+        self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
         limit = np.sqrt(6.0 / (12 + 23))
         self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 134)
+        return block
+
+    def test_xavier_initializer_fp16(self):
+        """Test the Xavier initializer with float16
+        """
+        block = self.test_xavier_initializer_supplied_arguments("float16")
+        self.assertTrue(check_cast_op(block.ops[1]))
 
 
 class TestMSRAInitializer(unittest.TestCase):
@@ -380,54 +432,76 @@ class TestMSRAInitializer(unittest.TestCase):
         self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 0)
 
-    def test_msra_initializer_supplied_arguments(self):
+    def test_msra_initializer_supplied_arguments(self, dtype="float32"):
         """Test the MSRA initializer with supplied arguments
         """
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
             block.create_parameter(
-                dtype="float32",
+                dtype=dtype,
                 shape=[5, 10],
                 lod_level=0,
                 name="param",
                 initializer=initializer.MSRAInitializer(
                     fan_in=12, seed=134))
-        self.assertEqual(len(block.ops), 1)
+        num_ops = 2 if dtype == "float16" else 1
+        self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
         limit = np.sqrt(6.0 / 12)
         self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 134)
+        return block
+
+    def test_msra_initializer_fp16(self):
+        """Test the MSRA initializer with float16
+        """
+        block = self.test_msra_initializer_supplied_arguments("float16")
+        self.assertTrue(check_cast_op(block.ops[1]))
 
 
-class TestMSRAInitializer(unittest.TestCase):
-    def test_bilinear_initializer(self):
+class TestBilinearInitializer(unittest.TestCase):
+    def test_bilinear_initializer(self, dtype="float32"):
         """Test the bilinear initializer with supplied arguments
         """
         program = framework.Program()
         block = program.global_block()
         for _ in range(2):
             block.create_parameter(
-                dtype="float32",
+                dtype=dtype,
                 shape=[8, 1, 3, 3],
                 lod_level=0,
                 name="param",
                 initializer=initializer.BilinearInitializer())
-        self.assertEqual(len(block.ops), 1)
+        num_ops = 2 if dtype == "float16" or dtype == "float64" else 1
+        self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'assign_value')
+        return block
+
+    def test_bilinear_initializer_fp64(self):
+        self.test_bilinear_initializer(dtype='float64')
+
+    def test_bilinear_initializer_fp16(self):
+        """Test the bilinear initializer with supplied arguments
+        """
+        block = self.test_bilinear_initializer("float16")
+        self.assertTrue(check_cast_op(block.ops[1]))
+
+    def test_type_error(self):
+        self.assertRaises(TypeError, self.test_bilinear_initializer, 'int32')
 
 
 class TestNumpyArrayInitializer(unittest.TestCase):
-    def test_numpy_array_initializer(self):
+    def test_numpy_array_initializer(self, dtype="float32"):
         """Test the numpy array initializer with supplied arguments
         """
         import numpy
         program = framework.Program()
         block = program.global_block()
-        np_array = numpy.random.random((10000)).astype("float32")
+        np_array = numpy.random.random((10000)).astype(dtype)
         for _ in range(2):
             block.create_parameter(
                 dtype=np_array.dtype,
@@ -435,10 +509,78 @@ class TestNumpyArrayInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.NumpyArrayInitializer(np_array))
-        self.assertEqual(len(block.ops), 1)
+        num_ops = 2 if dtype == "float16" else 1
+        self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'assign_value')
         assert (init_op.attr('fp32_values') == np_array).all()
+        return block
+
+    def test_numpy_array_initializer_fp16(self):
+        """Test the numpy array initializer with float16
+        """
+        block = self.test_numpy_array_initializer("float16")
+        self.assertTrue(block.ops[1])
+
+
+class TestSetGlobalInitializer(unittest.TestCase):
+    def test_set_global_weight_initilizer(self):
+        """Test Set Global Param initilizer with UniformInitializer
+        """
+        main_prog = framework.Program()
+        startup_prog = framework.Program()
+        fluid.set_global_initializer(initializer.Uniform(low=-0.5, high=0.5))
+        with fluid.program_guard(main_prog, startup_prog):
+            x = fluid.data(name="x", shape=[1, 3, 32, 32])
+            # default initilizer of param in layers.conv2d is NormalInitializer
+            conv = fluid.layers.conv2d(x, 5, 3)
+
+        block = startup_prog.global_block()
+        self.assertEqual(len(block.ops), 2)
+
+        # init bias is the first op, and weight is the second
+        bias_init_op = block.ops[0]
+        self.assertEqual(bias_init_op.type, 'fill_constant')
+        self.assertAlmostEqual(bias_init_op.attr('value'), 0.0, delta=DELTA)
+
+        param_init_op = block.ops[1]
+        self.assertEqual(param_init_op.type, 'uniform_random')
+        self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
+        self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
+        self.assertEqual(param_init_op.attr('seed'), 0)
+        fluid.set_global_initializer(None)
+
+    def test_set_global_bias_initilizer(self):
+        """Test Set Global Bias initilizer with NormalInitializer
+        """
+        main_prog = framework.Program()
+        startup_prog = framework.Program()
+        fluid.set_global_initializer(
+            initializer.Uniform(
+                low=-0.5, high=0.5),
+            bias_init=initializer.Normal(
+                loc=0.0, scale=2.0))
+        with fluid.program_guard(main_prog, startup_prog):
+            x = fluid.data(name="x", shape=[1, 3, 32, 32])
+            # default initilizer of bias in layers.conv2d is ConstantInitializer
+            conv = fluid.layers.conv2d(x, 5, 3)
+
+        block = startup_prog.global_block()
+        self.assertEqual(len(block.ops), 2)
+
+        # init bias is the first op, and weight is the second
+        bias_init_op = block.ops[0]
+        self.assertEqual(bias_init_op.type, 'gaussian_random')
+        self.assertAlmostEqual(bias_init_op.attr('mean'), 0.0, delta=DELTA)
+        self.assertAlmostEqual(bias_init_op.attr('std'), 2.0, delta=DELTA)
+        self.assertEqual(bias_init_op.attr('seed'), 0)
+
+        param_init_op = block.ops[1]
+        self.assertEqual(param_init_op.type, 'uniform_random')
+        self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
+        self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
+        self.assertEqual(param_init_op.attr('seed'), 0)
+        fluid.set_global_initializer(None)
 
 
 if __name__ == '__main__':

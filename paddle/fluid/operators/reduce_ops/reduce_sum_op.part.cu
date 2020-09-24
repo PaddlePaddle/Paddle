@@ -15,12 +15,12 @@
 #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    reduce_sum_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
-                                           float, ops::SumGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,
-                          ops::SumGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int,
-                          ops::SumGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int64_t,
-                          ops::SumGradFunctor>);
+template <typename T>
+using CUDAReduceSumGradKernel =
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, T,
+                          ops::SumGradFunctor, true>;
+
+REGISTER_OP_CUDA_KERNEL(reduce_sum_grad, CUDAReduceSumGradKernel<float>,
+                        CUDAReduceSumGradKernel<double>,
+                        CUDAReduceSumGradKernel<int>,
+                        CUDAReduceSumGradKernel<int64_t>);

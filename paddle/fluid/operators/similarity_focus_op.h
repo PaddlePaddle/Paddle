@@ -43,13 +43,19 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
       dim[i] = x->dims()[i];
     }
 
-    if (indexes.size() < 1) {
-      PADDLE_THROW("Indexes' size can not be 0.");
-    }
-    for (auto index : indexes) {
-      if (dim[axis] < index) {
-        PADDLE_THROW("Index exceeds tensor shape limit.");
-      }
+    PADDLE_ENFORCE_GT(
+        indexes.size(), 0,
+        platform::errors::InvalidArgument("The size of Attr(indexes) must be "
+                                          "greater than 0, but received %d.",
+                                          indexes.size()));
+
+    for (size_t i = 0; i < indexes.size(); i++) {
+      PADDLE_ENFORCE_GT(
+          dim[axis], indexes[i],
+          platform::errors::InvalidArgument(
+              "Each value of Attr(indexes) must be less than X.dim[axis], "
+              "but indexes[%d] received %d.",
+              i, indexes[i]));
     }
 
     int64_t array_size = 1;
@@ -72,6 +78,16 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
              d3 * dim[3] + d4;
     };
 
+    PADDLE_ENFORCE_GT(
+        axis, 0,
+        platform::errors::InvalidArgument(
+            "The value of Attr(axis) must be 1 or 2 or 3, but received %d.",
+            axis));
+    PADDLE_ENFORCE_LT(
+        axis, 4,
+        platform::errors::InvalidArgument(
+            "The value of Attr(axis) must be 1 or 2 or 3, but received %d.",
+            axis));
     memset(out_data, 0, sizeof(T) * batch_size * dim[1] * dim[2] * dim[3]);
     for (int i = 0; i < batch_size; ++i) {
       for (auto index : indexes) {
@@ -156,8 +172,6 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
               break;
             }
           }
-        } else {
-          PADDLE_THROW("Axis must be 1 or 2 or 3");
         }
       }
     }

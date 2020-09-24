@@ -17,6 +17,13 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
+
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
@@ -112,6 +119,22 @@ class Blas {
 
   template <typename T>
   void GEMM_FREE(T* data) const;
+
+  template <typename T>
+  void CSRMM(const char* transa, const int* m, const int* n, const int* k,
+             const T* alpha, const char* matdescra, const T* val,
+             const int* indx, const int* pntrb, const int* pntre, const T* b,
+             const int* ldb, const T* beta, T* c, const int* ldc) const;
+
+#if !defined(PADDLE_WITH_CUDA)
+  template <typename T>
+  void MatMulWithHead(const framework::Tensor& mat_a,
+                      const MatDescriptor& dim_a,
+                      const framework::Tensor& mat_b,
+                      const MatDescriptor& dim_b, T alpha, int head_number,
+                      framework::Tensor* mat_out, T beta,
+                      bool mat_y_split_vertical) const;
+#endif
 #endif
 
   template <typename T>
@@ -144,7 +167,13 @@ class Blas {
   void VADD(int n, const T* x, const T* y, T* z) const;
 
   template <typename T>
+  void VSUB(int n, const T* x, const T* y, T* z) const;
+
+  template <typename T>
   void VMUL(int n, const T* x, const T* y, T* z) const;
+
+  template <typename T>
+  void VDIV(int n, const T* x, const T* y, T* z) const;
 
   template <typename T>
   void VCOPY(int n, const T* x, T* y) const;
@@ -177,12 +206,47 @@ class Blas {
                    int batchCount, int64_t strideA, int64_t strideB) const;
 
   template <typename T>
+  void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
+                   int K, T alpha, const T** A, const T** B, T beta, T** C,
+                   int batchCount) const;
+
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+  template <typename T>
+  void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB,
+                           int W1, int H1, int W2, int H2, T alpha, const T* A,
+                           const T* B, T beta, T* C, int batchCount,
+                           int64_t strideA, int64_t strideB,
+                           int64_t head_number, bool split_b_vertical) const;
+#endif
+
+  template <typename T>
   void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a,
               const framework::Tensor& mat_b, const MatDescriptor& dim_b,
               T alpha, framework::Tensor* mat_out, T beta) const;
 
   template <typename T>
   void VINV(int n, const T* a, T* y) const;
+
+  template <typename T>
+  void VMERF(int n, const T* a, T* y, int64_t mode) const;
+
+  template <typename T>
+  void TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo, CBLAS_TRANSPOSE transA,
+            CBLAS_DIAG diag, int M, int N, T alpha, const T* A, int lda, T* B,
+            int ldb) const;
+
+#ifdef PADDLE_WITH_CUDA
+  template <typename T>
+  void BatchedGETRF(int n, T** a, int* ipiv, int* info, int batch_size) const;
+
+  template <typename T>
+  void BatchedGETRI(int n, const T** a, const int* ipiv, T** a_inv, int* info,
+                    int batch_size) const;
+
+  template <typename T>
+  void BatchedMatInv(int n, const T** a, T** a_inv, int* info,
+                     int batch_size) const;
+#endif
 
  private:
   const DeviceContext& context_;
@@ -218,6 +282,18 @@ class BlasT : private Blas<DeviceContext> {
   void GEMM_FREE(ARGS... args) const {
     Base()->template GEMM_FREE<T>(args...);
   }
+
+  template <typename... ARGS>
+  void CSRMM(ARGS... args) const {
+    Base()->template CSRMM<T>(args...);
+  }
+
+#if !defined(PADDLE_WITH_CUDA)
+  template <typename... ARGS>
+  void MatMulWithHead(ARGS... args) const {
+    Base()->template MatMulWithHead<T>(args...);
+  }
+#endif
 #endif
 
   template <typename... ARGS>
@@ -236,8 +312,18 @@ class BlasT : private Blas<DeviceContext> {
   }
 
   template <typename... ARGS>
+  void VSUB(ARGS... args) const {
+    Base()->template VSUB<T>(args...);
+  }
+
+  template <typename... ARGS>
   void VMUL(ARGS... args) const {
     Base()->template VMUL<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VDIV(ARGS... args) const {
+    Base()->template VDIV<T>(args...);
   }
 
   template <typename... ARGS>
@@ -289,6 +375,33 @@ class BlasT : private Blas<DeviceContext> {
   void VINV(ARGS... args) const {
     Base()->template VINV<T>(args...);
   }
+
+  template <typename... ARGS>
+  void VMERF(ARGS... args) const {
+    Base()->template VMERF<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void TRSM(ARGS... args) const {
+    Base()->template TRSM<T>(args...);
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  template <typename... ARGS>
+  void BatchedGETRF(ARGS... args) const {
+    Base()->template BatchedGETRF<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void BatchedGETRI(ARGS... args) const {
+    Base()->template BatchedGETRI<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void BatchedMatInv(ARGS... args) const {
+    Base()->template BatchedMatInv<T>(args...);
+  }
+#endif
 
  private:
   const Blas<DeviceContext>* Base() const {

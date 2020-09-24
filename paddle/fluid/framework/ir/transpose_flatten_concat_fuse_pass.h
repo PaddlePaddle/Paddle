@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
@@ -24,14 +26,12 @@ namespace ir {
 // these structures will be used as inputs to the concat Op. This pattern will
 // be detected by our pass. The times here represents the repeat times of this
 // structure.
-template <int times>
 class TransposeFlattenConcatFusePass : public FusePassBase {
  public:
   virtual ~TransposeFlattenConcatFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
 }  // namespace ir

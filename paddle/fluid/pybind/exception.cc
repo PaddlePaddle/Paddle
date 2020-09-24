@@ -30,8 +30,10 @@ void BindException(pybind11::module* m) {
     }
   });
 
-  m->def("__unittest_throw_exception__",
-         [] { PADDLE_THROW("test exception"); });
+  m->def("__unittest_throw_exception__", [] {
+    PADDLE_THROW(
+        platform::errors::PermissionDenied("This is a test of exception"));
+  });
 }
 
 }  // namespace pybind

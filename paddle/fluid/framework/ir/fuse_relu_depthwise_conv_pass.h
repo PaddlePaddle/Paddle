@@ -15,6 +15,7 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -27,15 +28,15 @@ namespace ir {
 /*
  * Fuse the relu and depthwise conv
  */
+class Graph;
+
 class FuseReluDepthwiseConvPass : public FusePassBase {
  public:
   virtual ~FuseReluDepthwiseConvPass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
-  std::unique_ptr<ir::Graph> FuseReluDepthwiseConv(
-      std::unique_ptr<ir::Graph> graph, bool only_forward) const;
+  void ApplyImpl(ir::Graph* graph) const override;
+  ir::Graph* FuseReluDepthwiseConv(ir::Graph* graph, bool only_forward) const;
 };
 
 }  // namespace ir

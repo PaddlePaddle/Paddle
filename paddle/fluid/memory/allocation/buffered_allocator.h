@@ -18,6 +18,7 @@
 #include <map>
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 
@@ -31,7 +32,7 @@ namespace allocation {
 // underlying_allocator_
 class BufferedAllocator : public Allocator {
  public:
-  explicit BufferedAllocator(std::unique_ptr<Allocator> &&allocator);
+  explicit BufferedAllocator(std::shared_ptr<Allocator> allocator);
 
   ~BufferedAllocator();
 
@@ -44,11 +45,11 @@ class BufferedAllocator : public Allocator {
   void FreeCache(size_t size);
 
  protected:
-  void Free(Allocation *allocation) override;
-  Allocation *AllocateImpl(size_t size, Allocator::Attr attr) override;
+  void FreeImpl(Allocation *allocation) override;
+  Allocation *AllocateImpl(size_t size) override;
 
  private:
-  std::unique_ptr<Allocator> underlying_allocator_;
+  std::shared_ptr<Allocator> underlying_allocator_;
   std::multimap<size_t, AllocationPtr> allocations_;
   std::unique_ptr<std::mutex> mtx_;
 };

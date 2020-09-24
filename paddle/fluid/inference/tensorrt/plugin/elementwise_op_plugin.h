@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
@@ -24,9 +25,8 @@ namespace plugin {
 
 class ElementWisePlugin : public PluginTensorRT {
  public:
-  ElementWisePlugin(nvinfer1::ElementWiseOperation type,
-                    nvinfer1::Dims const &dims_x, nvinfer1::Dims const &dims_y,
-                    int axis)
+  ElementWisePlugin(std::string type, nvinfer1::Dims const& dims_x,
+                    nvinfer1::Dims const& dims_y, int axis)
       : type_(type),
         dims_x_(dims_x),
         dims_y_(dims_y),
@@ -35,44 +35,50 @@ class ElementWisePlugin : public PluginTensorRT {
         midd_size_(1),
         post_size_(1) {}
 
-  ElementWisePlugin(void const *serial_data, size_t serial_length) {
+  ElementWisePlugin(void const* serial_data, size_t serial_length) {
     deserializeBase(serial_data, serial_length);
+    const char* elementwise_type;
+    DeserializeValue(&serial_data, &serial_length, &elementwise_type);
+    type_ = std::string(elementwise_type);
     DeserializeValue(&serial_data, &serial_length, &axis_);
     DeserializeValue(&serial_data, &serial_length, &dims_x_);
     DeserializeValue(&serial_data, &serial_length, &dims_y_);
   }
 
-  ElementWisePlugin *clone() const override {
+  ElementWisePlugin* clone() const override {
     // return new ElementWisePlugin(dims_x_, dims_y_, axis_);
     return nullptr;
   }
 
-  const char *getPluginType() const override { return "elementwise"; }
+  const char* getPluginType() const override { return "elementwise_plugin"; }
 
   nvinfer1::Dims getOutputDimensions(int index,
-                                     const nvinfer1::Dims *input_dims,
+                                     const nvinfer1::Dims* input_dims,
                                      int num_inputs) override;
 
   int initialize() override;
 
   // execute the layer
-  int enqueue(int batch_size, const void *const *inputs, void **outputs,
-              void *workspace, cudaStream_t stream);
+  int enqueue(int batch_size, const void* const* inputs, void** outputs,
+              void* workspace, cudaStream_t stream);
 
  protected:
   size_t getSerializationSize() override {
-    return SerializedSize(axis_) + SerializedSize(dims_x_) +
-           SerializedSize(dims_y_) + getBaseSerializationSize();
+    return SerializedSize(getPluginType()) + SerializedSize(axis_) +
+           SerializedSize(dims_x_) + SerializedSize(dims_y_) +
+           getBaseSerializationSize();
   }
 
-  void serialize(void *buffer) override {
+  void serialize(void* buffer) override {
+    SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
+    SerializeValue(&buffer, type_.c_str());
     SerializeValue(&buffer, axis_);
     SerializeValue(&buffer, dims_x_);
     SerializeValue(&buffer, dims_y_);
   }
 
-  nvinfer1::ElementWiseOperation type_;
+  std::string type_;
   nvinfer1::Dims dims_x_;
   nvinfer1::Dims dims_y_;
   int axis_;
@@ -80,6 +86,59 @@ class ElementWisePlugin : public PluginTensorRT {
   int midd_size_;
   int post_size_;
 };
+
+#if IS_TRT_VERSION_GE(6000)
+class ElementwisePluginDynamic : public DynamicPluginTensorRT {
+ public:
+  explicit ElementwisePluginDynamic(const std::string& type, int axis)
+      : type_(type), axis_(axis) {}
+  ElementwisePluginDynamic(void const* serialData, size_t serialLength) {}
+  nvinfer1::IPluginV2DynamicExt* clone() const override {
+    return new ElementwisePluginDynamic(type_, axis_);
+  }
+
+  const char* getPluginType() const override { return "elementwise_plugin"; }
+  int getNbOutputs() const override { return 1; }
+  int initialize() override;
+
+  size_t getSerializationSize() const override;
+  void serialize(void* buffer) const override;
+
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder) override;
+
+  bool supportsFormatCombination(int pos,
+                                 const nvinfer1::PluginTensorDesc* inOut,
+                                 int nbInputs, int nbOutputs) override;
+
+  void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
+                       int nbInputs,
+                       const nvinfer1::DynamicPluginTensorDesc* out,
+                       int nbOutputs) override {}
+
+  size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
+                          int nbInputs,
+                          const nvinfer1::PluginTensorDesc* outputs,
+                          int nbOutputs) const override {
+    return 0;
+  }
+
+  int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
+              const nvinfer1::PluginTensorDesc* outputDesc,
+              const void* const* inputs, void* const* outputs, void* workspace,
+              cudaStream_t stream) override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const override;
+
+  void destroy() override { delete this; }
+
+ private:
+  std::string type_;
+  int axis_;
+};
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

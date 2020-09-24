@@ -20,17 +20,17 @@ from __future__ import print_function
 from .layer_function_generator import autodoc
 from ..framework import unique_name
 from ..layer_helper import LayerHelper
-from ..annotations import deprecated
+from paddle.utils import deprecated
 
 __all__ = []
 
 
-@deprecated(since='0.15.0', instead="ParallelExecutor")
+@deprecated(since='0.15.0', update_to="paddle.fluid.ParallelExecutor")
 @autodoc()
 def get_places(device_count=None, device_type=None):
     helper = LayerHelper('get_places', **locals())
     out_places = helper.create_variable(
-        name=unique_name.generate(helper.name + ".out"))
+        name=unique_name.generate_with_ignorable_key(helper.name + ".out"))
     attrs = dict()
     if device_count is not None:
         attrs['device_count'] = int(device_count)

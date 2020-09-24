@@ -7,4 +7,7 @@ endforeach()
 
 add_subdirectory(unittests)
 add_subdirectory(book)
-add_subdirectory(book_memory_optimization)
+
+if(NOT APPLE AND NOT WIN32)
+  add_subdirectory(custom_op)
+endif()

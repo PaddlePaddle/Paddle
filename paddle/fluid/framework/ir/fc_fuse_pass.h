@@ -26,13 +26,16 @@ namespace ir {
 /*
  * Fuse the MUL and ELEMENTWISE_ADD to a FCOp.
  */
+class Graph;
+
 class FCFusePass : public FusePassBase {
  public:
   virtual ~FCFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(Graph* graph) const override;
+
+  int ApplyFCPattern(Graph* graph, bool with_relu) const;
 };
 
 }  // namespace ir

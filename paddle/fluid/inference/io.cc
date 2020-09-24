@@ -47,7 +47,9 @@ void Init(const std::vector<std::string> argv) {
 
 void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
+  PADDLE_ENFORCE_EQ(
+      fin.is_open(), true,
+      platform::errors::Unavailable("Failed to open file %s.", filename));
   fin.seekg(0, std::ios::end);
   contents->clear();
   contents->resize(fin.tellg());
@@ -85,7 +87,12 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
       new_var->SetShape(var->GetShape());
       new_var->SetDataType(var->GetDataType());
       new_var->SetType(var->GetType());
-      new_var->SetLoDLevel(var->GetLoDLevel());
+
+      if (var->GetType() !=
+          framework::proto::VarType::Type::VarType_Type_SELECTED_ROWS) {
+        new_var->SetLoDLevel(var->GetLoDLevel());
+      }
+
       new_var->SetPersistable(true);
 
       if (!param_filename.empty()) {
@@ -128,11 +135,12 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
-  PADDLE_ENFORCE(framework::IsProgramVersionSupported(main_program->Version()),
-                 "model version %ld is not supported.",
-                 main_program->Version());
+  PADDLE_ENFORCE_EQ(
+      framework::IsProgramVersionSupported(main_program->Version()), true,
+      platform::errors::Unavailable("Model version %ld is not supported.",
+                                    main_program->Version()));
 
-  // model_from_memory is false in seperate parameters.
+  // model_from_memory is false in separate parameters.
   LoadPersistables(executor, scope, *main_program, dirname, "",
                    false /* model_from_memory */);
   return main_program;
@@ -146,9 +154,10 @@ std::unique_ptr<framework::ProgramDesc> Load(
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
-  PADDLE_ENFORCE(framework::IsProgramVersionSupported(main_program->Version()),
-                 "model version %ld is not supported.",
-                 main_program->Version());
+  PADDLE_ENFORCE_EQ(
+      framework::IsProgramVersionSupported(main_program->Version()), true,
+      platform::errors::Unavailable("Model version %ld is not supported.",
+                                    main_program->Version()));
 
   LoadPersistables(executor, scope, *main_program, "", param_filename,
                    false /* model_from_memory */);
@@ -160,9 +169,10 @@ std::unique_ptr<framework::ProgramDesc> LoadFromMemory(
     const std::string& prog_buffer, const std::string& param_buffer) {
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(prog_buffer));
-  PADDLE_ENFORCE(framework::IsProgramVersionSupported(main_program->Version()),
-                 "model version %ld is not supported.",
-                 main_program->Version());
+  PADDLE_ENFORCE_EQ(
+      framework::IsProgramVersionSupported(main_program->Version()), true,
+      platform::errors::Unavailable("Model version %ld is not supported.",
+                                    main_program->Version()));
 
   LoadPersistables(executor, scope, *main_program, "", param_buffer,
                    true /* model_filename */);

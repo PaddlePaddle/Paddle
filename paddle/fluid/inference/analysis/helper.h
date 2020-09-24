@@ -17,10 +17,12 @@ limitations under the License. */
 #include <sys/stat.h>
 #include <cstdio>
 #include <fstream>
+#include <memory>
 #include <set>
 #include <string>
 #include <typeindex>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/framework.pb.h"
@@ -71,12 +73,15 @@ struct DataTypeNamer {
   template <typename T>
   const std::string &repr() const {
     auto x = std::type_index(typeid(T));
-    PADDLE_ENFORCE(dic_.count(x), "unknown type for representation");
+    PADDLE_ENFORCE_GT(dic_.count(x), 0, platform::errors::PreconditionNotMet(
+                                            "unknown type for representation"));
     return dic_.at(x);
   }
 
   const std::string &repr(const std::type_index &type) const {  // NOLINT
-    PADDLE_ENFORCE(dic_.count(type), "unknown type for representation");
+    PADDLE_ENFORCE_GT(dic_.count(type), 0,
+                      platform::errors::PreconditionNotMet(
+                          "unknown type for representation"));
     return dic_.at(type);
   }
 
@@ -114,7 +119,9 @@ template <typename T>
 class OrderedRegistry {
  public:
   T *Register(const std::string &name, T *x) {
-    PADDLE_ENFORCE(!dic_.count(name), "duplicate key [%s]", name);
+    PADDLE_ENFORCE_EQ(dic_.count(name), 0,
+                      platform::errors::PreconditionNotMet(
+                          "There exists duplicate key [%s]", name));
     dic_[name] = elements_.size();
     elements_.emplace_back(std::unique_ptr<T>(x));
     return elements_.back().get();
@@ -134,14 +141,20 @@ class OrderedRegistry {
 template <typename T>
 T &GetFromScope(const framework::Scope &scope, const std::string &name) {
   framework::Variable *var = scope.FindVar(name);
-  PADDLE_ENFORCE(var != nullptr);
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::PreconditionNotMet(
+               "The var which name is %s should not be nullptr.", name));
   return *var->GetMutable<T>();
 }
 
 static framework::proto::ProgramDesc LoadProgramDesc(
     const std::string &model_path) {
   std::ifstream fin(model_path, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE(fin.is_open(), "Cannot open file %s", model_path);
+  PADDLE_ENFORCE_EQ(
+      fin.is_open(), true,
+      platform::errors::NotFound(
+          "Cannot open file %s, please confirm whether the file exists",
+          model_path));
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');
   fin.seekg(0, std::ios::beg);
@@ -186,10 +199,12 @@ static std::string GetDirRoot(const std::string &path) {
 static std::string GetOrCreateModelOptCacheDir(const std::string &model_root) {
   std::string opt_cache_dir = model_root + "/_opt_cache/";
   if (!PathExists(opt_cache_dir)) {
-    PADDLE_ENFORCE(MKDIR(opt_cache_dir.c_str()) != -1,
-                   "Can not create optimize cache directory: %s, Make sure you "
-                   "have permission to write",
-                   opt_cache_dir);
+    PADDLE_ENFORCE_NE(
+        MKDIR(opt_cache_dir.c_str()), -1,
+        platform::errors::PreconditionNotMet(
+            "Can not create optimize cache directory: %s, Make sure you "
+            "have permission to write",
+            opt_cache_dir));
   }
   return opt_cache_dir;
 }
@@ -215,6 +230,35 @@ static std::string GetTrtCalibTableData(const std::string &model_opt_cache_dir,
     return calibration_data;
   }
   return "";
+}
+
+static std::string GetTrtEngineSerializedPath(const std::string &model_root,
+                                              const std::string &engine_key) {
+  return model_root + "/trt_serialized_" + engine_key;
+}
+
+static std::string GetTrtEngineSerializedData(
+    const std::string &model_opt_cache_dir, const std::string &engine_key) {
+  std::string trt_serialized_path =
+      GetTrtEngineSerializedPath(model_opt_cache_dir, engine_key);
+  if (FileExists(trt_serialized_path)) {
+    VLOG(3) << "Trt serialized file: " << trt_serialized_path
+            << "is found here";
+    std::ifstream infile(trt_serialized_path, std::ios::in);
+    std::stringstream buffer;
+    buffer << infile.rdbuf();
+    std::string trt_engine_serialized_data(buffer.str());
+    return trt_engine_serialized_data;
+  }
+  return "";
+}
+
+static void SaveTrtEngineSerializedDataToFile(
+    const std::string &trt_serialized_path,
+    const std::string &engine_serialized_data) {
+  std::ofstream outfile(trt_serialized_path);
+  outfile << engine_serialized_data;
+  outfile.close();
 }
 
 }  // namespace analysis

@@ -23,21 +23,25 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "GetTensorFromSelectedRowsOp must has input X.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "GetTensorFromSelectedRowsOp must has output Out.");
-    PADDLE_ENFORCE(
-        ctx->GetInputsVarType("X").front() ==
-            framework::proto::VarType::SELECTED_ROWS,
-        "The input X's type should be SelectedRows, but the received is %s",
-        ctx->Inputs("X").front(), ctx->GetInputsVarType("X").front());
-    PADDLE_ENFORCE(
-        ctx->GetOutputsVarType("Out").front() ==
-            framework::proto::VarType::LOD_TENSOR,
-        "The output Out's type should be LoDTensor, but the received is %s",
-        ctx->Outputs("Out").front(), ctx->GetOutputsVarType("Out").front());
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "GetTensorFromSelectedRows");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                   "GetTensorFromSelectedRows");
 
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("X").front(),
+        framework::proto::VarType::SELECTED_ROWS,
+        platform::errors::InvalidArgument(
+            "The input X(%s)'s type should be SelectedRows, "
+            "but the received is %s",
+            ctx->Inputs("X").front(), ctx->GetInputsVarType("X").front()));
+    PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out").front(),
+                      framework::proto::VarType::LOD_TENSOR,
+                      platform::errors::InvalidArgument(
+                          "The output Out(%s)'s type should be LoDTensor, "
+                          "but the received is %s",
+                          ctx->Outputs("Out").front(),
+                          ctx->GetOutputsVarType("Out").front()));
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 
@@ -45,7 +49,8 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::GetDataTypeOfVar(ctx.InputVar("X")), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -81,15 +86,9 @@ GetTensorFromSelectedRows is used to get the tensor from SelectedRows.
 class GetTensorFromSelectedRowsOpVarTypeInference
     : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const final {
-    auto out_var_name = op_desc.Output("Out").front();
-    auto in_var_name = op_desc.Input("X").front();
-
-    auto out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    auto in_var = block->FindRecursiveOrCreateVar(in_var_name);
-    out_var.SetType(framework::proto::VarType::LOD_TENSOR);
-    out_var.SetDataType(in_var.GetDataType());
+  void operator()(framework::InferVarTypeContext *ctx) const {  // NOLINT
+    ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR);
+    ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
   }
 };
 

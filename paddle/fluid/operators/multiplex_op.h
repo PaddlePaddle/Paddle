@@ -34,12 +34,15 @@ class MultiplexCPUKernel : public framework::OpKernel<T> {
     auto rows = ins[0]->dims()[0];
     auto cols = ins[0]->numel() / rows;
     auto index = ids->data<int32_t>();
-    platform::CPUPlace place = boost::get<platform::CPUPlace>(ctx.GetPlace());
+    platform::CPUPlace place =
+        BOOST_GET_CONST(platform::CPUPlace, ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
       int32_t k = index[i];
-      PADDLE_ENFORCE_GE(k, 0, "index must be nonnegative.");
+      PADDLE_ENFORCE_GE(k, 0, platform::errors::PreconditionNotMet(
+                                  "index must be nonnegative."));
       PADDLE_ENFORCE_LT(static_cast<size_t>(k), ins.size(),
-                        "index exceeds the number of candidate tensors.");
+                        platform::errors::PreconditionNotMet(
+                            "index exceeds the number of candidate tensors."));
       memory::Copy(place, out->data<T>() + i * cols, place,
                    ins[k]->data<T>() + i * cols, cols * sizeof(T));
     }
@@ -52,22 +55,28 @@ class MultiplexGradCPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* ids = ctx.Input<framework::Tensor>("Ids");
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto d_ins =
         ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
+
+    size_t idx = -1UL;
     for (size_t i = 0; i < d_ins.size(); i++) {
       if (d_ins[i]) {
         d_ins[i]->mutable_data<T>(ctx.GetPlace());
         auto t = framework::EigenVector<T>::Flatten(*d_ins[i]);
         t.device(*ctx.template device_context<DeviceContext>().eigen_device()) =
             t.constant(static_cast<T>(0));
+
+        idx = i;
       }
     }
 
-    auto rows = ins[0]->dims()[0];
-    auto cols = ins[0]->numel() / rows;
+    if (idx == -1UL) return;
+
+    auto rows = d_ins[idx]->dims()[0];
+    auto cols = d_ins[idx]->numel() / rows;
     auto* index = ids->data<int32_t>();
-    platform::CPUPlace place = boost::get<platform::CPUPlace>(ctx.GetPlace());
+    platform::CPUPlace place =
+        BOOST_GET_CONST(platform::CPUPlace, ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
       size_t k = static_cast<size_t>(index[i]);
       if (d_ins[k]) {

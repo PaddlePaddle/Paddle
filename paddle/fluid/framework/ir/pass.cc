@@ -13,31 +13,60 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass.h"
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-std::unique_ptr<Graph> Pass::Apply(std::unique_ptr<Graph> graph) const {
-  PADDLE_ENFORCE(graph.get(), "graph passed to Pass::Apply() cannot be empty.");
+class Graph;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
+namespace paddle {
+namespace framework {
+namespace ir {
+
+Graph* Pass::Apply(Graph* graph) const {
+  CheckPrevPass();
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   for (const std::string& attr : required_pass_attrs_) {
-    PADDLE_ENFORCE(attrs_.find(attr) != attrs_.end(),
-                   "Required pass atrribute %s not set.", attr);
+    PADDLE_ENFORCE_NE(
+        attrs_.find(attr), attrs_.end(),
+        platform::errors::InvalidArgument(
+            "Required atrribute %s for pass < %s > is not set.", attr, Type()));
   }
   for (const std::string& attr : required_graph_attrs_) {
-    PADDLE_ENFORCE(graph->Has(attr), "Required graph atrribute %s not set.",
-                   attr);
+    PADDLE_ENFORCE_EQ(graph->Has(attr), true,
+                      platform::errors::InvalidArgument(
+                          "Required atrribute %s for graph is not set.", attr));
   }
-  auto* native_graph = graph.get();
-  auto applied_graph = ApplyImpl(std::move(graph));
+  ApplyImpl(graph);
   // TODO(panyx0718): Add more verifications.
-  PADDLE_ENFORCE(!HasCircle(*applied_graph),
-                 "Illegal Pass. Generated graph shouldn't has cycle.");
-  PADDLE_ENFORCE(applied_graph.get() == native_graph,
-                 "Pass::Apply() cannot delete the passed graph and shouldn't "
-                 "return a new graph.(For the need of pybind11)");
+  PADDLE_ENFORCE_EQ(
+      HasCircle(*graph), false,
+      platform::errors::InvalidArgument(
+          "Illegal pass %s. Generated graph shouldn't contain cycle.", Type()));
+  PADDLE_ENFORCE_EQ(
+      VarDescIsConsistency(*graph), true,
+      platform::errors::InvalidArgument(
+          "The VarDescs of persistable variable are not consistency."));
   applied_ = true;
-  return applied_graph;
+  if (!graph->Has(kPassRecorder)) {
+    graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
+  }
+  graph->Get<PassRecorder>(kPassRecorder).insert(Type());
+#ifdef PADDLE_WITH_MKLDNN
+  // Clear mkl-dnn cache,
+  // Passes can change params, tensors, so caching need to be discarded
+  ClearMKLDNNCache(paddle::platform::CPUPlace());
+#endif
+  return graph;
 }
 
 PassRegistry& PassRegistry::Instance() {

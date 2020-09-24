@@ -47,6 +47,8 @@ struct DataRecord {
       num_lines++;
       std::vector<std::string> data;
       split(line, '\t', &data);
+      PADDLE_ENFORCE_GT(data.size(), 4, paddle::platform::errors::Fatal(
+                                            "The size of data is invaild."));
       // load title1 data
       std::vector<int64_t> title1_data;
       split_to_int64(data[0], ' ', &title1_data);
@@ -110,7 +112,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_seq_conv1, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -119,10 +121,18 @@ TEST(Analyzer_seq_conv1, profile) {
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
-    PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
-    size_t size = GetSize(outputs[0]);
-    PADDLE_ENFORCE_GT(size, 0);
-    float *result = static_cast<float *>(outputs[0].data.data());
+    PADDLE_ENFORCE_GT(outputs.size(), 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be greater than 0."));
+    auto output = outputs.back();
+    PADDLE_ENFORCE_EQ(output.size(), 1UL,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be equal to 0."));
+    size_t size = GetSize(output[0]);
+    PADDLE_ENFORCE_GT(size, 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be greater than 0."));
+    float *result = static_cast<float *>(output[0].data.data());
     // output is probability, which is in (0, 1).
     for (size_t i = 0; i < size; i++) {
       EXPECT_GT(result[i], 0);
@@ -143,7 +153,7 @@ TEST(Analyzer_seq_conv1, fuse_statis) {
   ASSERT_TRUE(fuse_statis.count("seqconv_eltadd_relu_fuse"));
   EXPECT_EQ(fuse_statis.at("fc_fuse"), 2);
   EXPECT_EQ(fuse_statis.at("seqconv_eltadd_relu_fuse"), 6);
-  EXPECT_EQ(num_ops, 32);
+  EXPECT_EQ(num_ops, 31);
 }
 
 // Compare result of NativeConfig and AnalysisConfig

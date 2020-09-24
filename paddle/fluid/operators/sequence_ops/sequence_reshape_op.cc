@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/sequence_ops/sequence_reshape_op.h"
+#include <memory>
 #include "paddle/fluid/framework/ddim.h"
 
 namespace paddle {
@@ -22,13 +23,20 @@ class SequenceReshapeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceReshapeOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceReshapeOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound(
+                          "Input(X) of SequenceReshapeOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::NotFound(
+            "Output(Out) of SequenceReshapeOp should not be null."));
     auto x_dims = ctx->GetInputDim("X");
     auto x_numel = product(x_dims);
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2U, "Rank of Input(X) should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2U,
+                      platform::errors::InvalidArgument(
+                          "The rank of SequenceReshapeOp Input(X) should be 2. "
+                          "But the rank we received is %d",
+                          x_dims.size()));
     int new_dim = ctx->Attrs().Get<int>("new_dim");
     if (ctx->IsRuntime()) {
       ctx->SetOutputDim("Out",
@@ -36,6 +44,9 @@ class SequenceReshapeOp : public framework::OperatorWithKernel {
     } else {
       // when compiling, the batch size is undetermined, just set to -1
       ctx->SetOutputDim("Out", {-1, static_cast<int64_t>(new_dim)});
+      // when compiling, the LodLevel of Out is set to be 1, which is consistent
+      // with that in running time.
+      ctx->SetLoDLevel("Out", 1);
     }
   }
 };
@@ -86,30 +97,33 @@ class SequenceReshapeGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasInput(framework::GradVarName("Out")),
-        "Input(Out@GRAD) of SequenceReshapeGradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceReshapeGradOp should  not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::NotFound(
+            "Input(Out@GRAD) of SequenceReshapeGradOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound(
+            "Input(X) of SequenceReshapeGradOp should not be null."));
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
     ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
   }
 };
 
-class SequenceReshapeGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequenceReshapeGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op_desc_ptr = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("sequence_reshape_grad");
-    op_desc_ptr->SetInput("X", Input("X"));
-    op_desc_ptr->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op_desc_ptr->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op_desc_ptr->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
+    op_desc_ptr->SetInput("X", this->Input("X"));
+    op_desc_ptr->SetInput(framework::GradVarName("Out"),
+                          this->OutputGrad("Out"));
+    op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op_desc_ptr->SetAttrMap(this->Attrs());
   }
 };
 
@@ -118,7 +132,9 @@ class SequenceReshapeGradOpMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_reshape, ops::SequenceReshapeOp,
-                  ops::SequenceReshapeOpMaker, ops::SequenceReshapeGradOpMaker);
+                  ops::SequenceReshapeOpMaker,
+                  ops::SequenceReshapeGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequenceReshapeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_reshape_grad, ops::SequenceReshapeGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_reshape,

@@ -31,25 +31,37 @@ template <>
 struct CUBlas<float> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
-    PADDLE_ENFORCE(platform::dynload::cublasSgemm(args...));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSgemm(args...));
   }
 
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
-    PADDLE_ENFORCE(platform::dynload::cublasSaxpy(args...));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSaxpy(args...));
+  }
+
+  template <typename... ARGS>
+  static void SCAL(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSscal(args...));
+  }
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasScopy(args...));
   }
 
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
-    PADDLE_ENFORCE(platform::dynload::cublasSgemv(args...));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSgemv(args...));
   }
 
   template <typename... ARGS>
   static void GEMM_STRIDED_BATCH(ARGS... args) {
 #if CUDA_VERSION >= 8000
-    PADDLE_ENFORCE(platform::dynload::cublasSgemmStridedBatched(args...));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasSgemmStridedBatched(args...));
 #else
-    PADDLE_THROW("SgemmStridedBatched is not supported on cuda <= 7.5");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "SgemmStridedBatched is not supported on cuda <= 7.5"));
 #endif
   }
 
@@ -69,13 +81,37 @@ struct CUBlas<float> {
     VLOG(5) << "use_tensor_op_math: "
             << (dev_ctx->tensor_core_available() ? "True" : "False");
     dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE(platform::dynload::cublasSgemmEx(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSgemmEx(
           handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
           beta, C, Ctype, ldc));
     });
 #else
-    PADDLE_THROW("cublasSgemmEx is supported on cuda >= 8.0");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "cublasSgemmEx is not supported on cuda <= 7.5"));
 #endif
+  }
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasStrsm(args...));
+  }
+
+  template <typename... ARGS>
+  static void GETRF_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasSgetrfBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void GETRI_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasSgetriBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void MATINV_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasSmatinvBatched(args...));
   }
 };
 
@@ -83,31 +119,67 @@ template <>
 struct CUBlas<double> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
-    PADDLE_ENFORCE(platform::dynload::cublasDgemm(args...));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDgemm(args...));
   }
 
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
-    PADDLE_ENFORCE(platform::dynload::cublasDaxpy(args...));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDaxpy(args...));
+  }
+
+  template <typename... ARGS>
+  static void SCAL(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDscal(args...));
+  }
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDcopy(args...));
   }
 
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
-    PADDLE_ENFORCE(platform::dynload::cublasDgemv(args...));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDgemv(args...));
   }
 
   template <typename... ARGS>
   static void GEMM_STRIDED_BATCH(ARGS... args) {
 #if CUDA_VERSION >= 8000
-    PADDLE_ENFORCE(platform::dynload::cublasDgemmStridedBatched(args...));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDgemmStridedBatched(args...));
 #else
-    PADDLE_THROW("DgemmStridedBatched is not supported on cuda <= 7.5");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "DgemmStridedBatched is not supported on cuda <= 7.5"));
 #endif
   }
 
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
-    PADDLE_THROW("Currently there are not cublasDgemmEx.");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Currently there are not cublasDgemmEx."));
+  }
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDtrsm(args...));
+  }
+
+  template <typename... ARGS>
+  static void GETRF_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDgetrfBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void GETRI_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDgetriBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void MATINV_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDmatinvBatched(args...));
   }
 };
 
@@ -120,7 +192,7 @@ struct CUBlas<platform::float16> {
                    const float16 *alpha, const float16 *A, int lda,
                    const float16 *B, int ldb, const float16 *beta, float16 *C,
                    int ldc) {
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cublasHgemm(handle, transa, transb, m, n, k,
                                        reinterpret_cast<const __half *>(alpha),
                                        reinterpret_cast<const __half *>(A), lda,
@@ -140,7 +212,7 @@ struct CUBlas<platform::float16> {
                                  long long int strideC,  // NOLINT
                                  int batchCount) {
 #if CUDA_VERSION >= 8000
-    PADDLE_ENFORCE(platform::dynload::cublasHgemmStridedBatched(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasHgemmStridedBatched(
         handle, transa, transb, m, n, k,
         reinterpret_cast<const __half *>(alpha),
         reinterpret_cast<const __half *>(A), lda, strideA,
@@ -148,7 +220,8 @@ struct CUBlas<platform::float16> {
         reinterpret_cast<const __half *>(beta), reinterpret_cast<__half *>(C),
         ldc, strideC, batchCount));
 #else
-    PADDLE_THROW("HgemmStridedBatched is not supported on cuda <= 7.5");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "HgemmStridedBatched is not supported on cuda <= 7.5"));
 #endif
   }
 
@@ -174,12 +247,13 @@ struct CUBlas<platform::float16> {
 #endif  // CUDA_VERSION >= 9000
 
     dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE(platform::dynload::cublasGemmEx(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmEx(
           handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
           beta, C, Ctype, ldc, computeType, algo));
     });
 #else
-    PADDLE_THROW("cublasGemmEx is supported on cuda >= 8.0");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "cublasGemmEx is not supported on cuda <= 7.5"));
 #endif
   }
 };
@@ -234,8 +308,12 @@ inline void Blas<platform::CUDADeviceContext>::GEMM(
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
 
   // TODO(kexinzhao): add processing code for compute capability < 53 case
-  PADDLE_ENFORCE_GE(context_.GetComputeCapability(), 53,
-                    "cublas fp16 gemm requires GPU compute capability >= 53");
+  PADDLE_ENFORCE_GE(
+      context_.GetComputeCapability(), 53,
+      platform::errors::InvalidArgument(
+          "cublas fp16 gemm requires GPU compute capability >= 53,"
+          "but received %d",
+          context_.GetComputeCapability()));
 
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
@@ -318,6 +396,20 @@ void Blas<platform::CUDADeviceContext>::AXPY(int n, T alpha, const T *x,
 
 template <>
 template <typename T>
+void Blas<platform::CUDADeviceContext>::SCAL(int n, const T alpha, T *x) const {
+  context_.CublasCall(
+      [&](cublasHandle_t handle) { CUBlas<T>::SCAL(handle, n, &alpha, x, 1); });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::VCOPY(int n, const T *x, T *y) const {
+  context_.CublasCall(
+      [&](cublasHandle_t handle) { CUBlas<T>::VCOPY(handle, n, x, 1, y, 1); });
+}
+
+template <>
+template <typename T>
 void Blas<platform::CUDADeviceContext>::GEMV(bool trans_a, int M, int N,
                                              T alpha, const T *A, const T *B,
                                              T beta, T *C) const {
@@ -346,7 +438,8 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
   const int64_t strideC = M * N;
 
 #if CUDA_VERSION >= 9010
-  if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
+  if ((FLAGS_enable_cublas_tensor_op_math && (std::is_same<T, float>::value)) ||
+      std::is_same<T, paddle::platform::float16>::value) {
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
     bool use_tensor_op_math = context_.tensor_core_available();
     if (use_tensor_op_math) {
@@ -355,11 +448,11 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
     VLOG(5) << "use_tensor_op_math: "
             << (use_tensor_op_math ? "True" : "False");
 
+    auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE(platform::dynload::cublasGemmStridedBatchedEx(
-          handle, cuTransB, cuTransA, N, M, K, &alpha, B, CUDA_R_32F, ldb,
-          strideB, A, CUDA_R_32F, lda, strideA, &beta, C, CUDA_R_32F, ldc,
-          strideC, batchCount, CUDA_R_32F, algo));
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmStridedBatchedEx(
+          handle, cuTransB, cuTransA, N, M, K, &alpha, B, fp, ldb, strideB, A,
+          fp, lda, strideA, &beta, C, fp, ldc, strideC, batchCount, fp, algo));
     });
   } else {
 #endif  // CUDA_VERSION >= 9010
@@ -373,6 +466,80 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 #if CUDA_VERSION >= 9010
   }
 #endif  // CUDA_VERSION >= 9010
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedGEMM(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    T alpha, const T **A, const T **B, T beta, T **C, int batchCount) const {
+  for (int k = 0; k < batchCount; ++k) {
+    this->template GEMM<T>(transA, transB, M, N, K, alpha, A[k], B[k], beta,
+                           C[k]);
+  }
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
+                                             CBLAS_TRANSPOSE transA,
+                                             CBLAS_DIAG diag, int M, int N,
+                                             T alpha, const T *A, int lda, T *B,
+                                             int ldb) const {
+  // solve row major `op ( A ) X = α B` by taking it as `X' op ( A' )  =  α B'`
+  // where ' stands for transpose
+  cublasSideMode_t cuSide =
+      (side == CblasLeft) ? CUBLAS_SIDE_RIGHT : CUBLAS_SIDE_LEFT;
+  cublasFillMode_t cuUplo =
+      (uplo == CblasLower) ? CUBLAS_FILL_MODE_UPPER : CUBLAS_FILL_MODE_LOWER;
+  // use CUBLAS_OP_C (conjugate transpose) for complex
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasDiagType_t cuDiag =
+      (diag == CblasUnit) ? CUBLAS_DIAG_UNIT : CUBLAS_DIAG_NON_UNIT;
+
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::TRSM(handle, cuSide, cuUplo, cuTransA, cuDiag, N, M, &alpha, A,
+                    lda, B, ldb);
+  });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedGETRF(int n, T **a, int *ipiv,
+                                                     int *info,
+                                                     int batch_size) const {
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::GETRF_BATCH(handle, n, a, n, ipiv, info, batch_size);
+  });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedGETRI(int n, const T **a,
+                                                     const int *ipiv, T **a_inv,
+                                                     int *info,
+                                                     int batch_size) const {
+  PADDLE_ENFORCE_NE(
+      a_inv, a,
+      platform::errors::InvalidArgument(
+          "cuBLAS fuction 'cublas<S/D>getrfBatched' cannot be executed "
+          "in-place. The memory space of output matrix (address: %p) cannot "
+          "overlap memory space of input matrix (address: %p).",
+          a_inv, a));
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::GETRI_BATCH(handle, n, a, n, ipiv, a_inv, n, info, batch_size);
+  });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedMatInv(int n, const T **a,
+                                                      T **a_inv, int *info,
+                                                      int batch_size) const {
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::MATINV_BATCH(handle, n, a, n, a_inv, n, info, batch_size);
+  });
 }
 
 }  // namespace math

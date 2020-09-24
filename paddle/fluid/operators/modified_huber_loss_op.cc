@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/modified_huber_loss_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -22,15 +23,34 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "X must be initialized.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Y must be initialized.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ModifiedHuberLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ModifiedHuberLoss");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(x_dims, y_dims, "The shape of X and Y must be the same.");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "The tensor rank of X must be 2.");
-    PADDLE_ENFORCE_EQ(x_dims[1], 1, "The 2nd dimension of X must be 1.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::InvalidArgument(
+                                            "Input(input) rank should be 2, "
+                                            "but received input rank(%d) != 2",
+                                            x_dims.size()));
+
+    if (ctx->IsRuntime() ||
+        (framework::product(x_dims) > 0 && framework::product(y_dims) > 0)) {
+      PADDLE_ENFORCE_EQ(
+          x_dims, y_dims,
+          platform::errors::InvalidArgument(
+              "The Input(input) and Input(label) should have the same "
+              "shape, but received input shape [%s] != label shape [%s]",
+              x_dims, y_dims));
+    }
+
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(x_dims[1], 1,
+                        platform::errors::InvalidArgument(
+                            "The second dimension of Input(input) should be 1, "
+                            "but received second dimension of input (%d) != 1",
+                            x_dims[1]));
+    }
 
     ctx->SetOutputDim("IntermediateVal", x_dims);
     ctx->SetOutputDim("Out", {x_dims[0], 1});
@@ -79,26 +99,54 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "X must be initialized.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Y must be initialized.");
-    PADDLE_ENFORCE(ctx->HasInput("IntermediateVal"),
-                   "Intermediate value must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@Grad) must not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ModifiedHuberLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput("IntermediateVal"), "Input", "IntermediateVal",
+                   "ModifiedHuberLossGrad");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "ModifiedHuberLossGrad");
 
-    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
     auto intermediate_dims = ctx->GetInputDim("IntermediateVal");
     auto out_grad_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
-    PADDLE_ENFORCE_EQ(
-        intermediate_dims, x_dims,
-        "The shape of X and intermediate value must be the same.");
-    PADDLE_ENFORCE_EQ(out_grad_dims, x_dims,
-                      "The shape of Input(Out@Grad) and X must be the same.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          intermediate_dims, y_dims,
+          platform::errors::InvalidArgument(
+              "The shape of Intermediate variable which will be reused in "
+              "backward processing should the same as "
+              "the shape of Input(label), but received Intermediate variable "
+              "shape [%s] != label shape [%s]",
+              intermediate_dims, y_dims));
+
+      PADDLE_ENFORCE_EQ(
+          out_grad_dims, y_dims,
+          platform::errors::InvalidArgument(
+              "The shape of output gradient should be the same as "
+              "the shape of Input(label), but received the output gradient "
+              "shape [%s] != label shape [%s]",
+              out_grad_dims, y_dims));
+    }
 
     if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+      ctx->SetOutputDim(framework::GradVarName("X"), y_dims);
     }
+  }
+};
+
+template <typename T>
+class ModifiedHuberLossGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("modified_huber_loss_grad");
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("IntermediateVal", this->Output("IntermediateVal"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -106,9 +154,11 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(modified_huber_loss, ops::ModifiedHuberLossOp,
-                  ops::ModifiedHuberLossOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    modified_huber_loss, ops::ModifiedHuberLossOp,
+    ops::ModifiedHuberLossOpMaker,
+    ops::ModifiedHuberLossGradOpMaker<paddle::framework::OpDesc>,
+    ops::ModifiedHuberLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(modified_huber_loss_grad, ops::ModifiedHuberLossGradOp);
 
 REGISTER_OP_CPU_KERNEL(

@@ -72,6 +72,18 @@ def to_text(obj, encoding='utf-8', inplace=False):
             return obj
         else:
             return set([_to_text(item, encoding) for item in obj])
+    elif isinstance(obj, dict):
+        if inplace:
+            new_obj = {}
+            for key, value in six.iteritems(obj):
+                new_obj[_to_text(key, encoding)] = _to_text(value, encoding)
+            obj.update(new_obj)
+            return obj
+        else:
+            new_obj = {}
+            for key, value in six.iteritems(obj):
+                new_obj[_to_text(key, encoding)] = _to_text(value, encoding)
+            return new_obj
     else:
         return _to_text(obj, encoding)
 
@@ -98,6 +110,8 @@ def _to_text(obj, encoding):
     if isinstance(obj, six.binary_type):
         return obj.decode(encoding)
     elif isinstance(obj, six.text_type):
+        return obj
+    elif isinstance(obj, (bool, float)):
         return obj
     else:
         return six.u(obj)
@@ -188,7 +202,7 @@ def round(x, d=0):
     """
     if six.PY3:
         # The official walkaround of round in Python3 is incorrect
-        # we implement accroding this answer: https://www.techforgeek.info/round_python.html
+        # we implement according this answer: https://www.techforgeek.info/round_python.html
         if x > 0.0:
             p = 10**d
             return float(math.floor((x * p) + math.copysign(0.5, x))) / p

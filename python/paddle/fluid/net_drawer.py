@@ -21,9 +21,9 @@ from collections import defaultdict
 
 import paddle.fluid.core as core
 import paddle.fluid.proto.framework_pb2 as framework_pb2
+from paddle.fluid.log_helper import get_logger
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger = get_logger(__name__, logging.INFO)
 
 try:
     from .graphviz import Graph

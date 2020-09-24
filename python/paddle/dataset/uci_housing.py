@@ -34,7 +34,7 @@ URL = 'http://paddlemodels.bj.bcebos.com/uci_housing/housing.data'
 MD5 = 'd4accdce7a25600298819f8e28e8d593'
 feature_names = [
     'CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX',
-    'PTRATIO', 'B', 'LSTAT', 'convert'
+    'PTRATIO', 'B', 'LSTAT'
 ]
 
 UCI_TRAIN_DATA = None
@@ -74,7 +74,8 @@ def load_data(filename, feature_num=14, ratio=0.8):
     data = data.reshape(data.shape[0] // feature_num, feature_num)
     maximums, minimums, avgs = data.max(axis=0), data.min(axis=0), data.sum(
         axis=0) / data.shape[0]
-    feature_range(maximums[:-1], minimums[:-1])
+    # if you want to print the distribution of input data, you could use function of feature_range
+    #feature_range(maximums[:-1], minimums[:-1])
     for i in six.moves.range(feature_num - 1):
         data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
     offset = int(data.shape[0] * ratio)
@@ -147,11 +148,3 @@ def predict_reader():
 
 def fetch():
     paddle.dataset.common.download(URL, 'uci_housing', MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    paddle.dataset.common.convert(path, train(), 1000, "uci_housing_train")
-    paddle.dataset.common.convert(path, test(), 1000, "uci_houseing_test")

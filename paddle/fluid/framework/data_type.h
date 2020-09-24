@@ -15,9 +15,18 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <typeindex>
+
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+
+namespace paddle {
+namespace platform {
+struct bfloat16;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -28,27 +37,36 @@ struct DataTypeTrait {};
 // Stub handle for void
 template <>
 struct DataTypeTrait<void> {
-  constexpr static auto DataType = proto::VarType::RAW;
+  constexpr static proto::VarType::Type DataType() {
+    return proto::VarType::RAW;
+  }
 };
 
 #define _ForEachDataTypeHelper_(callback, cpp_type, proto_type) \
   callback(cpp_type, ::paddle::framework::proto::VarType::proto_type);
 
-#define _ForEachDataType_(callback)                                     \
-  _ForEachDataTypeHelper_(callback, float, FP32);                       \
-  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16); \
-  _ForEachDataTypeHelper_(callback, double, FP64);                      \
-  _ForEachDataTypeHelper_(callback, int, INT32);                        \
-  _ForEachDataTypeHelper_(callback, int64_t, INT64);                    \
-  _ForEachDataTypeHelper_(callback, bool, BOOL);                        \
-  _ForEachDataTypeHelper_(callback, uint8_t, UINT8);                    \
-  _ForEachDataTypeHelper_(callback, int16_t, INT16);                    \
+#define _ForEachDataType_(callback)                                      \
+  _ForEachDataTypeHelper_(callback, float, FP32);                        \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::float16, FP16);  \
+  _ForEachDataTypeHelper_(callback, ::paddle::platform::bfloat16, BF16); \
+  _ForEachDataTypeHelper_(callback, double, FP64);                       \
+  _ForEachDataTypeHelper_(callback, int, INT32);                         \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64);                     \
+  _ForEachDataTypeHelper_(callback, bool, BOOL);                         \
+  _ForEachDataTypeHelper_(callback, uint8_t, UINT8);                     \
+  _ForEachDataTypeHelper_(callback, int16_t, INT16);                     \
   _ForEachDataTypeHelper_(callback, int8_t, INT8)
 
-#define DefineDataTypeTrait(cpp_type, proto_type) \
-  template <>                                     \
-  struct DataTypeTrait<cpp_type> {                \
-    constexpr static auto DataType = proto_type;  \
+#define _ForEachDataTypeSmall_(callback)           \
+  _ForEachDataTypeHelper_(callback, float, FP32);  \
+  _ForEachDataTypeHelper_(callback, double, FP64); \
+  _ForEachDataTypeHelper_(callback, int, INT32);   \
+  _ForEachDataTypeHelper_(callback, int64_t, INT64);
+
+#define DefineDataTypeTrait(cpp_type, proto_type)                           \
+  template <>                                                               \
+  struct DataTypeTrait<cpp_type> {                                          \
+    constexpr static proto::VarType::Type DataType() { return proto_type; } \
   }
 
 _ForEachDataType_(DefineDataTypeTrait);
@@ -70,7 +88,23 @@ inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
 
   _ForEachDataType_(VisitDataTypeCallback);
 #undef VisitDataTypeCallback
-  PADDLE_THROW("Not supported %d", type);
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Not supported proto::VarType::Type(%d) as data type.",
+      static_cast<int>(type)));
+}
+
+template <typename Visitor>
+inline void VisitDataTypeSmall(proto::VarType::Type type, Visitor visitor) {
+#define VisitDataTypeCallbackSmall(cpp_type, proto_type) \
+  do {                                                   \
+    if (type == proto_type) {                            \
+      visitor.template apply<cpp_type>();                \
+      return;                                            \
+    }                                                    \
+  } while (0)
+
+  _ForEachDataTypeSmall_(VisitDataTypeCallbackSmall);
+#undef VisitDataTypeCallbackSmall
 }
 
 extern std::string DataTypeToString(const proto::VarType::Type type);

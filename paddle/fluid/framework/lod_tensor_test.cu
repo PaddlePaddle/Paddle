@@ -18,15 +18,11 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 
 __global__ void test(size_t* a, int size) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;
-       i += blockDim.x * gridDim.x) {
-    a[i] *= 2;
-  }
+  CUDA_KERNEL_LOOP(i, size) { a[i] *= 2; }
 }
 
 TEST(LoD, data) {

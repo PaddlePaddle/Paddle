@@ -15,6 +15,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -23,7 +24,22 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/device_context.h"
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+
+namespace paddle {
+namespace framework {
+class SelectedRows;
+namespace details {
+struct VarHandle;
+}  // namespace details
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+namespace platform {
+struct NCCLContextMap;
+}  // namespace platform
+}  // namespace paddle
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -61,7 +77,7 @@ struct ReduceOpHandle : public OpHandleBase {
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   const platform::NCCLContextMap *nccl_ctxs_;
   ReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places,
@@ -90,6 +106,8 @@ struct ReduceOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
+  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
+
 #if defined PADDLE_WITH_CUDA && defined PADDLE_WITH_DISTRIBUTE
   template <typename DevCtx, typename DataType>
   void GatherSelectedRows(
@@ -106,7 +124,7 @@ struct ReduceOpHandle : public OpHandleBase {
   template <typename T>
   std::vector<const T *> GetInputValues(
       const std::vector<VarHandle *> &in_var_handles,
-      const std::vector<const Scope *> &var_scopes) const;
+      const std::vector<Scope *> &var_scopes) const;
 };
 
 }  // namespace details

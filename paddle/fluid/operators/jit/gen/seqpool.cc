@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen/seqpool.h"
+#include <memory>
 #include "paddle/fluid/operators/jit/gen/act.h"  // for exp_float_consts ones
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -57,7 +58,7 @@ void SeqPoolJitCode::genCode() {
 
 class SeqPoolCreator : public JitCodeCreator<seq_pool_attr_t> {
  public:
-  bool UseMe(const seq_pool_attr_t& attr) const override {
+  bool CanBeUsed(const seq_pool_attr_t& attr) const override {
     return platform::MayIUse(platform::avx);
   }
   size_t CodeSize(const seq_pool_attr_t& attr) const override {
@@ -65,7 +66,7 @@ class SeqPoolCreator : public JitCodeCreator<seq_pool_attr_t> {
            ((attr.w / YMM_FLOAT_BLOCK + 4 /* for rest */) *
                 4 /* load, mul and save */ +
             256) *
-               8;
+               16;
   }
   std::unique_ptr<GenBase> CreateJitCode(
       const seq_pool_attr_t& attr) const override {

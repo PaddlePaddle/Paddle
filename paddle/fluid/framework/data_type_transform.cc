@@ -56,7 +56,8 @@ struct CastDataType {
       context->Wait();
 #endif
     } else {
-      PADDLE_THROW("Unsupported place!");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Place type is not supported when casting data type."));
     }
   }
 };
@@ -75,6 +76,10 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
     case proto::VarType::FP16:
       framework::VisitDataType(dst_type,
                                CastDataType<platform::float16>(in, out, ctx));
+      break;
+    case proto::VarType::BF16:
+      framework::VisitDataType(dst_type,
+                               CastDataType<platform::bfloat16>(in, out, ctx));
       break;
     case proto::VarType::FP32:
       framework::VisitDataType(dst_type, CastDataType<float>(in, out, ctx));
@@ -98,7 +103,9 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
       framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
       break;
     default:
-      PADDLE_THROW("Not support type %d", src_type);
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when casting data type.",
+          DataTypeToString(src_type)));
   }
 }
 

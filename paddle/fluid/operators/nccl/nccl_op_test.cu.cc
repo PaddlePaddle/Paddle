@@ -45,10 +45,9 @@ class NCCLTester : public ::testing::Test {
  public:
   void SetUp() override {
     int count = p::GetCUDADeviceCount();
-    if (count <= 1) {
-      LOG(WARNING)
-          << "Cannot test multi-gpu nccl, because the CUDA device count is "
-          << count;
+    if (count <= 0) {
+      LOG(WARNING) << "Cannot test gpu nccl, because the CUDA device count is "
+                   << count;
       exit(0);
     }
     for (int i = 0; i < count; ++i) {
@@ -114,8 +113,9 @@ class NCCLTester : public ::testing::Test {
 
     lk.unlock();
 
-    PADDLE_ENFORCE(send_tensor->numel() == f::product(kDims),
-                   "Tensor numel not match!");
+    PADDLE_ENFORCE_EQ(
+        send_tensor->numel(), f::product(kDims),
+        paddle::platform::errors::InvalidArgument("Tensor numel not match!"));
 
     auto op = f::OpRegistry::CreateOp(*op1);
 
@@ -126,6 +126,10 @@ class NCCLTester : public ::testing::Test {
     VLOG(1) << "Device : " << gpu_id << " finished " << op_desc.Type();
   }
 
+  void testNcclReduceOp();
+  void testNcclAllReduceOp();
+  void testNcclBcastOp();
+
  public:
   std::vector<p::DeviceContext *> dev_ctxs_;
   f::Scope g_scope_;
@@ -133,13 +137,7 @@ class NCCLTester : public ::testing::Test {
   std::vector<int> gpu_list_;
 };
 
-// ncclInitOp with desc
-TEST_F(NCCLTester, ncclInitOp) {}
-
-// ncclAllReduceOp with desc
-// TODO(helin): https://github.com/PaddlePaddle/Paddle/issues/9367
-/*
-TEST_F(NCCLTester, ncclAllReduceOp) {
+void NCCLTester::testNcclAllReduceOp() {
   std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
   op2->SetType("ncclAllReduce");
   op2->SetInput("X", {"st"});
@@ -186,10 +184,8 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
     }
   }
 }
-*/
 
-// ncclReduceOp with desc
-TEST_F(NCCLTester, ncclReduceOp) {
+void NCCLTester::testNcclReduceOp() {
   std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
   const int kRoot = 0;
   op2->SetType("ncclReduce");
@@ -236,10 +232,7 @@ TEST_F(NCCLTester, ncclReduceOp) {
   }
 }
 
-// ncclBcastOp with desc
-// TODO(helin): https://github.com/PaddlePaddle/Paddle/issues/9540
-/*
-TEST_F(NCCLTester, ncclBcastOp) {
+void NCCLTester::testNcclBcastOp() {
   std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
   const int kRoot = 0;
   op2->SetType("ncclBcast");
@@ -263,13 +256,17 @@ TEST_F(NCCLTester, ncclBcastOp) {
     ths[i].join();
   }
 
-  const int idx = 1;
+  const int idx = gpu_list_.size() - 1;
   float result = GetGPUData(kRoot);
 
   p::CPUPlace cpu_place;
   p::CUDAPlace gpu_place(gpu_list_[idx]);
 
-  auto &recv_tensor = dev_scopes[idx]->FindVar("rt")->Get<f::LoDTensor>();
+  std::string rt_str = "rt";
+  if (idx == kRoot) {
+    rt_str = "st";
+  }
+  auto &recv_tensor = dev_scopes[idx]->FindVar(rt_str)->Get<f::LoDTensor>();
   auto *rt = recv_tensor.data<float>();
   auto *result_tensor = dev_scopes[idx]->Var("ct")->GetMutable<f::LoDTensor>();
   result_tensor->Resize(kDims);
@@ -284,4 +281,20 @@ TEST_F(NCCLTester, ncclBcastOp) {
     ASSERT_NEAR(ct[j], result, 1e-5);
   }
 }
-*/
+
+// ncclInitOp with desc
+TEST_F(NCCLTester, ncclInitOp) {}
+
+TEST_F(NCCLTester, ncclOp) {
+  // Serial execution is required for the same nccl comm.
+
+  // ncclAllReduceOp with desc
+  // TODO(helin): https://github.com/PaddlePaddle/Paddle/issues/9367
+  testNcclReduceOp();
+
+  testNcclAllReduceOp();
+
+  // ncclBcastOp with desc
+  // TODO(helin): https://github.com/PaddlePaddle/Paddle/issues/9540
+  testNcclBcastOp();
+}

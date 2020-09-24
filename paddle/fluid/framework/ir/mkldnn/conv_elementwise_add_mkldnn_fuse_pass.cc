@@ -16,9 +16,10 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <tuple>
-
 #include "paddle/fluid/framework/ir/graph_traits.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -73,7 +74,7 @@ bool IsReachable(ir::Graph* graph, Node* from, Node* to) {
 template <typename T>
 boost::optional<T> HasAttribute(const Node& op, const std::string& attr) {
   if (op.Op()->HasAttr(attr))
-    return boost::get<T>(op.Op()->GetAttr(attr));
+    return BOOST_GET_CONST(T, op.Op()->GetAttr(attr));
   else
     return boost::none;
 }
@@ -109,8 +110,7 @@ void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
 
   if (!IsReachable(graph, elementwise_add_identity, conv_output)) return;
 
-  auto fuse_relu = HasAttribute<bool>(*conv_op, "fuse_relu");
-  if (fuse_relu && *fuse_relu) return;
+  if (HasFusedActivation(conv_op)) return;
 
   conv_op->Op()->SetInput("ResidualData", {elementwise_add_identity->Name()});
   conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
@@ -179,8 +179,7 @@ void ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::operator()(
     return;
   }
 
-  auto fuse_relu = HasAttribute<bool>(*residual_conv_op, "fuse_relu");
-  if (fuse_relu && *fuse_relu) return;
+  if (HasFusedActivation(residual_conv_op)) return;
 
   residual_conv_op->Op()->SetInput("ResidualData", {projection_node->Name()});
   residual_conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
@@ -327,17 +326,15 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
       get_node_from_elementwise_add);
 }
 
-graph_ptr ResidualConnectionMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void ResidualConnectionMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
+  FusePassBase::Init(name_scope_, graph);
   auto fused_graph_with_stats = FuseConvAsY(
       name_scope_,
-      FuseConvAsX(
-          name_scope_,
-          FuseProjectionConv(name_scope_, std::make_pair(graph.get(), 0))));
+      FuseConvAsX(name_scope_,
+                  FuseProjectionConv(name_scope_, std::make_pair(graph, 0))));
 
-  std::cout << "Fused graph " << fused_graph_with_stats.second << std::endl;
+  LOG(INFO) << "Fused graph " << fused_graph_with_stats.second << "\n";
   AddStatis(fused_graph_with_stats.second);
-  return graph;
 }
 }  // namespace ir
 }  // namespace framework
@@ -345,3 +342,8 @@ graph_ptr ResidualConnectionMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
 
 REGISTER_PASS(conv_elementwise_add_mkldnn_fuse_pass,
               paddle::framework::ir::ResidualConnectionMKLDNNFusePass);
+REGISTER_PASS_CAPABILITY(conv_elementwise_add_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("conv2d", 0)
+            .EQ("elementwise_add", 0));

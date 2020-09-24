@@ -15,6 +15,15 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
+namespace framework {
+class Scope;
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -34,10 +43,10 @@ class SoftMaxOpConverter : public OpConverter {
                                        *const_cast<nvinfer1::ITensor*>(input1));
 
     auto output_name = op_desc.Output("Out")[0];
-    engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {
-      engine_->DeclareOutput(output_name);
-    }
+    RreplenishLayerAndOutput(layer, "softmax", {output_name}, test_mode);
+
+    // The trt will not run int for softmax.
+    engine_->SetTensorDynamicRange(input1, 1.0);
   }
 };
 

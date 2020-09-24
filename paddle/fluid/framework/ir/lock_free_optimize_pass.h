@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_PASS_H_
-#define PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_PASS_H_
+#pragma once
 
 #include <string>
 #include <vector>
@@ -28,6 +27,7 @@ namespace framework {
 namespace ir {
 
 class Node;
+class Graph;
 
 /*
 * Remove the sum op of all gradients of the backward op.
@@ -60,8 +60,7 @@ class LockFreeOptimizePass : public Pass {
   virtual ~LockFreeOptimizePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 
  private:
   // Create a new sgd node via current optimizer node
@@ -89,34 +88,46 @@ class LockFreeOptimizePass : public Pass {
                                            ir::Node* downstream_node) const;
 
   inline bool IsOpNamed(ir::Node* node, const std::string& name) const {
-    PADDLE_ENFORCE(node);
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            platform::errors::InvalidArgument(
+                                "Input argument node cannot be nullptr."));
 
     return node->NodeType() == Node::Type::kOperation && node->Name() == name;
   }
 
   inline bool IsVarNamed(ir::Node* node, const std::string& name) const {
-    PADDLE_ENFORCE(node);
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            platform::errors::InvalidArgument(
+                                "Input argument node cannot be nullptr."));
 
     return node->NodeType() == Node::Type::kVariable && node->Name() == name;
   }
 
   inline bool IsVarNameEndsWith(ir::Node* node, const std::string& name) const {
-    PADDLE_ENFORCE(node);
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            platform::errors::InvalidArgument(
+                                "Input argument node cannot be nullptr."));
 
     return node->NodeType() == Node::Type::kVariable &&
            boost::algorithm::ends_with(node->Name(), name);
   }
 
   inline bool IsVarNameContains(ir::Node* node, const std::string& name) const {
-    PADDLE_ENFORCE(node);
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            platform::errors::InvalidArgument(
+                                "Input argument node cannot be nullptr."));
 
     return node->NodeType() == Node::Type::kVariable &&
            node->Name().find(name) != std::string::npos;
   }
 
   inline bool IsControlDepFrom(ir::Node* ctrl_dep_node, ir::Node* node) const {
-    PADDLE_ENFORCE(ctrl_dep_node);
-    PADDLE_ENFORCE(node);
+    PADDLE_ENFORCE_NOT_NULL(
+        ctrl_dep_node, platform::errors::InvalidArgument(
+                           "Input argument ctrl_dep_node cannot be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            platform::errors::InvalidArgument(
+                                "Input argument node cannot be nullptr."));
 
     return IsControlDepVar(*ctrl_dep_node) &&
            ctrl_dep_node->inputs.size() >= 1u &&
@@ -127,5 +138,3 @@ class LockFreeOptimizePass : public Pass {
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
-
-#endif  // PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_PASS_H_

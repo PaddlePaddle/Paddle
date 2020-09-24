@@ -23,6 +23,8 @@ import numpy as np
 import math
 import sys
 
+paddle.enable_static()
+
 
 def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
     PASS_NUM = 100
@@ -151,7 +153,7 @@ def infer(use_cuda, save_dirname=None):
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
         # Use fluid.io.load_inference_model to obtain the inference program desc,
-        # the feed_target_names (the names of variables that will be feeded
+        # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
         [inference_program, feed_target_names,
@@ -214,7 +216,7 @@ def infer(use_cuda, save_dirname=None):
             infer_config.device = 0
             infer_config.fraction_of_gpu_memory = 0.15
         compiled_program = fluid.compiler.CompiledProgram(inference_program)
-        compiled_program.with_inference_optimize(infer_config)
+        compiled_program._with_inference_optimize(infer_config)
         assert compiled_program._is_inference is True
         infer_outputs = exe.run(compiled_program, feed=infer_inputs)
         np_data = np.array(results[0])

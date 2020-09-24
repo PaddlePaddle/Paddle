@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "cub/cub.cuh"
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/hostdevice.h"
@@ -21,11 +23,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-static HOSTDEVICE float real_exp(float x) { return expf(x); }
-static HOSTDEVICE float real_exp(double x) { return exp(x); }
-static HOSTDEVICE float real_log(float x) { return logf(x); }
-static HOSTDEVICE float real_log(double x) { return log(x); }
-
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
@@ -34,15 +31,11 @@ static inline int NumBlocks(const int N) {
                   kNumMaxinumNumBlocks);
 }
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 template <typename T>
 __global__ void GPUSigmoidForward(const T *x_data, const T *label_data,
                                   const int ignore_index, const int limit,
                                   T *out_data, T *counts) {
-  CUDA_1D_KERNEL_LOOP(i, limit) {
+  CUDA_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     T label = label_data[i];
     T eps = static_cast<T>(1e-5);
@@ -80,14 +73,14 @@ __global__ void Sum(const T *counts, int num, const T eps, T *sum) {
 
 template <typename T>
 __global__ void Div(T *loss, const int num, const T *norm) {
-  CUDA_1D_KERNEL_LOOP(i, num) { loss[i] /= norm[0]; }
+  CUDA_KERNEL_LOOP(i, num) { loss[i] /= norm[0]; }
 }
 
 template <typename T>
 __global__ void GPUSigmoidBackward(const T *x_data, const T *label_data,
                                    const int ignore_index, const T *dout_data,
                                    const int limit, T *dx_data, T *counts) {
-  CUDA_1D_KERNEL_LOOP(i, limit) {
+  CUDA_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     T label = label_data[i];
     T dout = dout_data[i];
@@ -120,9 +113,7 @@ class GPUSigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
     bool normalize = context.Attr<bool>("normalize");
 
     // Temporary memory
-    auto &allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
-    auto cnt_ptr = allocator.Allocate(Labels->numel() * sizeof(T));
+    auto cnt_ptr = memory::Alloc(dev_ctx, Labels->numel() * sizeof(T));
     T *counts = reinterpret_cast<T *>(cnt_ptr->ptr());
 
     int limit = Out->numel();
@@ -131,7 +122,7 @@ class GPUSigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
     GPUSigmoidForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         X->data<T>(), Labels->data<T>(), ignore_index, limit, out_data, counts);
     if (normalize) {
-      auto norm_ptr = allocator.Allocate(sizeof(T));
+      auto norm_ptr = memory::Alloc(dev_ctx, sizeof(T));
       T *norm = reinterpret_cast<T *>(norm_ptr->ptr());
       Sum<T, kNumCUDAThreads><<<1, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
           counts, limit, static_cast<T>(1e-5), norm);
@@ -156,9 +147,7 @@ class GPUSigmoidCrossEntropyWithLogitsGradKernel
 
     auto &dev_ctx = context.cuda_device_context();
     // Temporary memory
-    auto &allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
-    auto cnt_ptr = allocator.Allocate(X->numel() * sizeof(T));
+    auto cnt_ptr = memory::Alloc(dev_ctx, X->numel() * sizeof(T));
     T *counts = reinterpret_cast<T *>(cnt_ptr->ptr());
 
     int limit = dX->numel();
@@ -169,7 +158,7 @@ class GPUSigmoidCrossEntropyWithLogitsGradKernel
         dx_data, counts);
     bool normalize = context.Attr<bool>("normalize");
     if (normalize) {
-      auto norm_ptr = allocator.Allocate(sizeof(T));
+      auto norm_ptr = memory::Alloc(dev_ctx, sizeof(T));
       T *norm = reinterpret_cast<T *>(norm_ptr->ptr());
       Sum<T, kNumCUDAThreads><<<1, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
           counts, limit, static_cast<T>(1e-5), norm);

@@ -14,14 +14,41 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/imperative/dygraph_grad_maker.h"
+#include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace framework {
+
+namespace details {
+
+template <typename T>
+struct GradOpPtrTrait {};
+
+template <>
+struct GradOpPtrTrait<OpDesc> {
+  using Type = OpDesc*;
+};
+
+template <>
+struct GradOpPtrTrait<imperative::OpBase> {
+  using Type = imperative::TracedGradOp*;
+};
+
+}  // namespace details
+
+template <typename T>
+using GradOpPtr = typename details::GradOpPtrTrait<T>::Type;
 
 /*
   This functor class is responsible for creating the gradient ops for the given
@@ -42,6 +69,10 @@ class GradOpDescMakerBase {
         grad_to_var_(grad_to_var),
         grad_block_(grad_block) {}
 
+  static std::unique_ptr<OpDesc> CreateOp() {
+    return std::unique_ptr<OpDesc>(new OpDesc());
+  }
+
   virtual ~GradOpDescMakerBase() = default;
   virtual std::vector<std::unique_ptr<OpDesc>> operator()() const = 0;
 
@@ -55,24 +86,24 @@ class GradOpDescMakerBase {
                    std::back_inserter(ret_val),
                    [this](const std::string& fwd_var_name) -> std::string {
                      auto g_name = GradVarName(fwd_var_name);
-                     if (no_grad_set_.count(g_name)) {
-                       return kEmptyVarName;
-                     } else {
+                     if (no_grad_set_.empty() || !no_grad_set_.count(g_name)) {
                        (*this->grad_to_var_)[g_name] = fwd_var_name;
                        return g_name;
+                     } else {
+                       return kEmptyVarName;
                      }
                    });
     if (!drop_empty_grad) {
       return ret_val;
     }
-    PADDLE_ENFORCE_LE(var_names.size(), 1UL,
-                      "BUG from operator developer:"
-                      " for input argument with a list of variables, "
-                      " drop_empty_grad is not allowed because it makes"
-                      " the correspondence bewteen a variable and its gradient"
-                      " ambiguous."
-                      " Op type %s",
-                      fwd_op_.Type());
+    PADDLE_ENFORCE_LE(
+        var_names.size(), 1UL,
+        platform::errors::Unavailable(
+            "BUG from operator developer:"
+            " for input argument with a list of variables, "
+            " drop_empty_grad is not allowed because it makes"
+            " the correspondence bewteen a variable and its gradient"
+            " ambiguous."));
 
     std::vector<std::string> dropped_ret_val;
     dropped_ret_val.reserve(ret_val.size());
@@ -94,6 +125,14 @@ class GradOpDescMakerBase {
                    });
     return ret_val;
   }
+
+  static std::vector<std::string> EmptyInput() { return {}; }
+
+  static std::vector<std::string> EmptyOutput() { return {}; }
+
+  static std::vector<std::string> EmptyInputGrad() { return {}; }
+
+  static std::vector<std::string> EmptyOutputGrad() { return {}; }
 
   std::vector<std::string> InputNames() const {
     return this->fwd_op_.InputNames();
@@ -118,19 +157,26 @@ class GradOpDescMakerBase {
   const Attribute& GetAttr(const std::string& name) const {
     auto& map = fwd_op_.GetAttrMap();
     auto it = map.find(name);
-    PADDLE_ENFORCE(it != map.end(), "Cannot find attribute %s", name);
+    PADDLE_ENFORCE_NE(it, map.end(), platform::errors::NotFound(
+                                         "Cannot find attribute (%s).", name));
     return it->second;
   }
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return boost::get<T>(GetAttr(name));
+    return BOOST_GET_CONST(T, GetAttr(name));
   }
 
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
 
  protected:
-  const OpDesc& ForwardOp() const { return fwd_op_; }
+  bool HasInput(const std::string& name) const {
+    return (fwd_op_.Inputs().count(name) > 0);
+  }
+
+  bool HasOutput(const std::string& name) const {
+    return (fwd_op_.Outputs().count(name) > 0);
+  }
 
  private:
   const OpDesc& fwd_op_;
@@ -141,29 +187,66 @@ class GradOpDescMakerBase {
   std::vector<BlockDesc*> grad_block_;
 };
 
-class SingleGradOpDescMaker : public GradOpDescMakerBase {
+template <typename T>
+class SingleGradOpMaker {};
+
+template <>
+class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<OpDesc>> operator()() const {
+  std::vector<std::unique_ptr<OpDesc>> operator()() const final {
     std::vector<std::unique_ptr<OpDesc>> retv;
-    retv.emplace_back(this->Apply());
+    retv.emplace_back(new OpDesc());
+    try {
+      this->Apply(retv.front().get());
+    } catch (platform::EnforceNotMet& exception) {
+      framework::AppendErrorOpHint(retv.front().get()->Type(), &exception);
+      throw std::move(exception);
+    } catch (...) {
+      std::rethrow_exception(std::current_exception());
+    }
     return retv;
   }
 
  protected:
-  virtual std::unique_ptr<OpDesc> Apply() const = 0;
+  virtual void Apply(GradOpPtr<OpDesc> op) const = 0;
 };
 
-template <bool DropEmptyIG = true>
-class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
+template <>
+class SingleGradOpMaker<imperative::OpBase>
+    : public imperative::GradOpBaseMakerBase {
  public:
-  using SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using GradOpBaseMakerBase::GradOpBaseMakerBase;
+
+  std::shared_ptr<imperative::GradOpNode> operator()() const final {
+    auto node = this->NewGradNode();
+    {
+      imperative::TracedGradOp traced_grad_op(node);
+      try {
+        this->Apply(&traced_grad_op);
+      } catch (platform::EnforceNotMet& exception) {
+        framework::AppendErrorOpHint(traced_grad_op.Type(), &exception);
+        throw std::move(exception);
+      } catch (...) {
+        std::rethrow_exception(std::current_exception());
+      }
+    }
+    return node->empty() ? nullptr : node;
+  }
 
  protected:
-  virtual std::unique_ptr<OpDesc> Apply() const {
-    auto* grad = new OpDesc();
-    grad->SetType(this->GradOpType());
+  virtual void Apply(GradOpPtr<imperative::OpBase> op) const = 0;
+};
+
+template <typename T, bool DropEmptyIG = true>
+class DefaultGradOpMaker final : public SingleGradOpMaker<T> {
+ public:
+  using SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad) const final {
+    grad->SetType(this->ForwardOpType() + "_grad");
 
     for (auto& input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
@@ -177,22 +260,37 @@ class DefaultGradOpDescMaker : public SingleGradOpDescMaker {
     }
 
     grad->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<OpDesc>(grad);
-  }
-
-  virtual std::string GradOpType() const {
-    return this->ForwardOpType() + "_grad";
   }
 };
 
-class EmptyGradOpMaker : public GradOpDescMakerBase {
+template <typename T>
+class EmptyGradOpMaker {};
+
+template <>
+class EmptyGradOpMaker<OpDesc> final : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
-  std::vector<std::unique_ptr<OpDesc>> operator()() const override {
-    return {};
+  std::vector<std::unique_ptr<OpDesc>> operator()() const final { return {}; }
+};
+
+template <>
+class EmptyGradOpMaker<imperative::OpBase> final
+    : public imperative::GradOpBaseMakerBase {
+ public:
+  using GradOpBaseMakerBase::GradOpBaseMakerBase;
+
+  std::shared_ptr<imperative::GradOpNode> operator()() const final {
+    return nullptr;
   }
 };
 
 }  // namespace framework
+
+namespace operators {
+
+template <typename T>
+using GradOpPtr = framework::GradOpPtr<T>;
+
+}  // namespace operators
+
 }  // namespace paddle

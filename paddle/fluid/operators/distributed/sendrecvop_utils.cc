@@ -11,18 +11,24 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <memory>
 
-#ifdef PADDLE_WITH_CUDA
-#include <nccl.h>
-#endif
-#include <thread>  // NOLINT
-
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
-#include "paddle/fluid/operators/distributed/variable_response.h"
-#include "paddle/fluid/platform/port.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+namespace memory {
+namespace allocation {
+class Allocation;
+}  // namespace allocation
+}  // namespace memory
+}  // namespace paddle
 
 DEFINE_bool(rpc_disable_reuse_port, false, "Disable SO_REUSEPORT or not.");
+DEFINE_int32(rpc_retry_bind_port, 3,
+             "Retry to bind the address if address is already used.");
 
 namespace paddle {
 namespace operators {
@@ -39,11 +45,10 @@ static TensorPayload GetCommunicationAllocationFromTensor(
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
     platform::CUDAPinnedPlace cuda_pinned;
-    auto result = memory::AllocShared(
-        cuda_pinned, copy_size, memory::allocation::Allocator::kCrossDevice);
+    auto result = memory::AllocShared(cuda_pinned, copy_size);
 
     memory::Copy(cuda_pinned, result->ptr(),
-                 boost::get<platform::CUDAPlace>(tensor.place()),
+                 BOOST_GET_CONST(platform::CUDAPlace, tensor.place()),
                  tensor.data<void>(), copy_size, gpu_dev_ctx.stream());
     ctx.Wait();
     return TensorPayload(result);

@@ -21,18 +21,26 @@ import numpy
 import unittest
 
 
-class TestFetchVar(op_test.OpTest):
+class TestFetchVar(unittest.TestCase):
+    def set_input(self):
+        self.val = numpy.array([1, 3, 5]).astype(numpy.int32)
+
     def test_fetch_var(self):
-        val = numpy.array([1, 3, 5]).astype(numpy.int32)
+        self.set_input()
         x = layers.create_tensor(dtype="int32", persistable=True, name="x")
-        layers.assign(input=val, output=x)
+        layers.assign(input=self.val, output=x)
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_main_program(), feed={}, fetch_list=[])
         fetched_x = fluid.executor._fetch_var("x")
         self.assertTrue(
-            numpy.array_equal(fetched_x, val),
-            "fetch_x=%s val=%s" % (fetched_x, val))
-        self.assertEqual(fetched_x.dtype, val.dtype)
+            numpy.array_equal(fetched_x, self.val),
+            "fetch_x=%s val=%s" % (fetched_x, self.val))
+        self.assertEqual(fetched_x.dtype, self.val.dtype)
+
+
+class TestFetchNullVar(TestFetchVar):
+    def set_input(self):
+        self.val = numpy.array([]).astype(numpy.int32)
 
 
 if __name__ == '__main__':

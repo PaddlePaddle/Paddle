@@ -15,8 +15,10 @@
 #pragma once
 
 #include <string>
+
 #include "glog/logging.h"
 #include "paddle/fluid/operators/jit/gen/jitcode.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
@@ -36,7 +38,8 @@ class VXXJitCode : public JitCode {
         with_relu_(with_relu) {
     if (!(type_ == operand_type::MUL || type_ == operand_type::ADD ||
           type_ == operand_type::SUB)) {
-      LOG(FATAL) << "Do not support this operand type: " << type_;
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Do not support operand type code: %d.", type));
     }
     this->genCode();
   }

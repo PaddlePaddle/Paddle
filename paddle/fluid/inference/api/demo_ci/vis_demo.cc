@@ -25,11 +25,13 @@ DECLARE_double(fraction_of_gpu_memory_to_use);
 #endif
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_string(refer, "", "path to reference result for comparison.");
-DEFINE_string(
-    data, "",
-    "path of data; each line is a record, format is "
-    "'<space splitted floats as data>\t<space splitted ints as shape'");
+DEFINE_string(data, "",
+              "path of data; each line is a record, format is "
+              "'<space split floats as data>\t<space split ints as shape'");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
+#ifdef PADDLE_WITH_SHARED_LIB
+DECLARE_bool(profile);
+#endif
 
 namespace paddle {
 namespace demo {

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_info.h"
+#include <set>
 
 namespace paddle {
 namespace framework {
@@ -24,5 +25,17 @@ OpInfoMap& OpInfoMap::Instance() {
   static OpInfoMap g_op_info_map;
   return g_op_info_map;
 }
+
+std::vector<std::string> OpInfoMap::GetUseDefaultGradOpDescMakerOps() const {
+  // Use set to sort op names
+  std::set<std::string> result_ops;
+  for (auto& pair : map_) {
+    if (pair.second.use_default_grad_op_desc_maker_) {
+      result_ops.insert(pair.first);
+    }
+  }
+  return std::vector<std::string>(result_ops.begin(), result_ops.end());
+}
+
 }  // namespace framework
 }  // namespace paddle

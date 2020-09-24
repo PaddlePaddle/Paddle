@@ -66,23 +66,25 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     if (pad_seq_len == -1) {
       pad_seq_len = max_seq_len;
     }
-    PADDLE_ENFORCE_GE(pad_seq_len, max_seq_len,
-                      "The pad_seq_len must be equal to or greater than the "
-                      "original max sequence length.");
+    PADDLE_ENFORCE_GE(
+        pad_seq_len, max_seq_len,
+        platform::errors::InvalidArgument(
+            "The pad_seq_len must be equal to or greater than the "
+            "original max sequence length. Expected %ld >= %ld, but got %ld < "
+            "%ld. Please check the input value.",
+            pad_seq_len, max_seq_len, pad_seq_len, max_seq_len));
     int step_width = seq_tensor.numel() / seq_tensor_dims[0];
     int seq_num = seq_offsets.size() - 1;
 
     CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
               step_width, layout);
-    PADDLE_ENFORCE(pad_value.numel() == 1 || pad_value.numel() == step_width,
-                   "The numel of 'pad_value' can only be 1 or be equal to the "
-                   "'step_width'.");
-
-    if (!norm_by_times && seq_num == 1UL && pad_seq_len == max_seq_len) {
-      TensorCopy(seq_tensor, context.GetPlace(), context, pad_tensor);
-      pad_tensor->Resize(pad_tensor_dims);
-      return;
-    }
+    PADDLE_ENFORCE_EQ(
+        pad_value.numel() == 1 || pad_value.numel() == step_width, true,
+        platform::errors::InvalidArgument(
+            "The numel of 'pad_value' can only be 1 or be equal to "
+            "the 'step_width', but got %ld != 1 and %ld. Please check the "
+            "input value.",
+            pad_value.numel(), step_width));
 
     const int kBlockSize = 512;
 
@@ -129,12 +131,13 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
 
     CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
               step_width, layout);
-
+    /*
     if (!norm_by_times && seq_num == 1UL && pad_seq_len == max_seq_len) {
       TensorCopy(pad_tensor, context.GetPlace(), context, seq_tensor);
       seq_tensor->Resize(seq_tensor_dims);
       return;
     }
+    */
 
     const int kBlockSize = 512;
 

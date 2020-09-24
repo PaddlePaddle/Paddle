@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This module privides a memory usage calculate function for user.
+This module provides a memory usage calculate function for user.
 The purpose of this API is to allow users to estimate memory usage of
 a program under a special batch size, then user can set appropriate
 batch size to fully utilize a GPU.
@@ -91,8 +91,9 @@ def memory_usage(program, batch_size):
             for x in var.shape:
                 if x < 0:
                     if neg_dim_count >= 1:
-                        raise ValueError("Var %s has more than one negtive dim."
-                                         % (var_name))
+                        raise ValueError(
+                            "Var %s has more than one negative dim." %
+                            (var_name))
                     neg_dim_count += 1
                     data_count *= batch_size * (-x)
                 else:

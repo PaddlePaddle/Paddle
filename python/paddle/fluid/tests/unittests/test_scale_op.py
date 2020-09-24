@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 
@@ -24,13 +25,36 @@ from paddle.fluid.op import Operator
 class TestScaleOp(OpTest):
     def setUp(self):
         self.op_type = "scale"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
         self.attrs = {'scale': -2.3}
         self.outputs = {
             'Out': self.inputs['X'] * self.dtype(self.attrs['scale'])
         }
+
+    def init_dtype_type(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestScaleOpScaleVariable(OpTest):
+    def setUp(self):
+        self.op_type = "scale"
+        self.dtype = np.float64
+        self.init_dtype_type()
+        self.scale = -2.3
+        self.inputs = {
+            'X': np.random.random((10, 10)).astype(self.dtype),
+            'ScaleTensor': np.array([self.scale]).astype('float64')
+        }
+        self.attrs = {}
+        self.outputs = {'Out': self.inputs['X'] * self.dtype(self.scale)}
 
     def init_dtype_type(self):
         pass
@@ -49,7 +73,7 @@ class TestScaleOpSelectedRows(unittest.TestCase):
     def check_with_place(self, place, in_name, out_name):
         scope = core.Scope()
 
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype_type()
 
         # create and initialize Grad Variable
@@ -98,6 +122,14 @@ class TestScaleOpSelectedRows(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place, 'in', 'in')
+
+
+class TestScaleRaiseError(unittest.TestCase):
+    def test_errors(self):
+        def test_type():
+            fluid.layers.scale([10])
+
+        self.assertRaises(TypeError, test_type)
 
 
 # Add FP16 test

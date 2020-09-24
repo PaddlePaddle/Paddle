@@ -13,9 +13,11 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen/embseqpool.h"
+
 #include <stddef.h>  // offsetof
+#include <memory>
 #include <vector>
-#include "paddle/fluid/operators/jit/gen/act.h"  // for exp_float_consts ones
+
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -121,7 +123,7 @@ void EmbSeqPoolJitCode::genCode() {
 
 class EmbSeqPoolCreator : public JitCodeCreator<emb_seq_pool_attr_t> {
  public:
-  bool UseMe(const emb_seq_pool_attr_t& attr) const override {
+  bool CanBeUsed(const emb_seq_pool_attr_t& attr) const override {
     return platform::MayIUse(platform::avx) &&
            attr.table_width % YMM_FLOAT_BLOCK == 0;
   }

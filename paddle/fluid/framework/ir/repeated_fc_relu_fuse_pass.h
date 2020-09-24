@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -26,13 +27,14 @@ namespace ir {
 /**
  * Fuse Repeated FC Relu
  */
+class Graph;
+
 class RepeatedFCReluFusePass : public FusePassBase {
  public:
   virtual ~RepeatedFCReluFusePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 
   const std::string name_scope_{"repeated_fc_relu_fuse"};
 };

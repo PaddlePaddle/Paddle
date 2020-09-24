@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/bilinear_tensor_product_op.h"
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -25,37 +28,61 @@ class BilinearTensorProductOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::InvalidArgument("Input(X) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Y"), true,
+        platform::errors::InvalidArgument("Input(Y) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Weight"), true,
+        platform::errors::InvalidArgument("Input(Weight) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::InvalidArgument("Output(Out) should not be null."));
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     auto weight_dims = ctx->GetInputDim("Weight");
 
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "The input(X) must be a 2D Tensor.");
-    PADDLE_ENFORCE_EQ(y_dims.size(), 2UL, "The input(Y) must be a 2D Tensor.");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 2UL,
+        platform::errors::InvalidArgument("The input(X) must be a 2D Tensor."));
+    PADDLE_ENFORCE_EQ(
+        y_dims.size(), 2UL,
+        platform::errors::InvalidArgument("The input(Y) must be a 2D Tensor."));
     PADDLE_ENFORCE_EQ(weight_dims.size(), 3UL,
-                      "The input(Weight) must be a 3D tensor.");
-    PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
-                      "The first dimension(batch_size) of input(X) must be "
-                      "equal to the first dimension of the input(Y).");
+                      platform::errors::InvalidArgument(
+                          "The input(Weight) must be a 3D tensor."));
+    if (ctx->IsRuntime() || (x_dims[0] > 0 && y_dims[0] > 0)) {
+      PADDLE_ENFORCE_EQ(
+          x_dims[0], y_dims[0],
+          platform::errors::InvalidArgument(
+              "The first dimension(batch_size) of input(X) must be "
+              "equal to the first dimension of the input(Y)."));
+    }
     PADDLE_ENFORCE_EQ(x_dims[1], weight_dims[1],
-                      "The second dimension of input(X) must be equal to "
-                      "the second dimension of the input(Weight).");
+                      platform::errors::InvalidArgument(
+                          "The second dimension of input(X) must be equal to "
+                          "the second dimension of the input(Weight)."));
     PADDLE_ENFORCE_EQ(y_dims[1], weight_dims[2],
-                      "The second dimension of input(Y) must be equal to "
-                      "the third dimension of the input(Weight).");
+                      platform::errors::InvalidArgument(
+                          "The second dimension of input(Y) must be equal to "
+                          "the third dimension of the input(Weight)."));
 
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
-      PADDLE_ENFORCE(bias_dims.size() == 2UL && bias_dims[0] == 1UL,
-                     "The Input(Bias) must be a 2-D tensor with "
-                     "the 2nd dimension fixed to 1 (a row vector).");
+      PADDLE_ENFORCE_EQ(bias_dims.size(), 2UL,
+                        platform::errors::InvalidArgument(
+                            "The Input(Bias) must be a 2-D tensor with "
+                            "the 2nd dimension fixed to 1 (a row vector)."));
+      PADDLE_ENFORCE_EQ(bias_dims[0], 1UL,
+                        platform::errors::InvalidArgument(
+                            "The Input(Bias) must be a 2-D tensor with "
+                            "the 2nd dimension fixed to 1 (a row vector)."));
       PADDLE_ENFORCE_EQ(bias_dims[1], weight_dims[0],
-                        "The second dimension of input(Bias) must be equal "
-                        "to the first dimension of the input(Weight).");
+                        platform::errors::InvalidArgument(
+                            "The second dimension of input(Bias) must be equal "
+                            "to the first dimension of the input(Weight)."));
     }
 
     ctx->SetOutputDim("Out", {x_dims[0], weight_dims[0]});
@@ -99,37 +126,40 @@ class BilinearTensorProductOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::InvalidArgument("Input(X) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Y"), true,
+        platform::errors::InvalidArgument("Input(Y) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Weight"), true,
+        platform::errors::InvalidArgument("Input(Weight) should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Out@GRAD) should not be null."));
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     auto weight_dims = ctx->GetInputDim("Weight");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(out_dims.size(), 2UL,
-                      "The input(Out@GRAD) must be a 2D Tensor.");
+                      platform::errors::InvalidArgument(
+                          "The input(Out@GRAD) must be a 2D Tensor."));
     PADDLE_ENFORCE_EQ(
         x_dims[0], out_dims[0],
-        "The first dimension(batch_size) of input(Out@GRAD) must be "
-        "equal to the first dimension of the Input(X).");
+        platform::errors::InvalidArgument(
+            "The first dimension(batch_size) of input(Out@GRAD) must be "
+            "equal to the first dimension of the Input(X)."));
     PADDLE_ENFORCE_EQ(
         weight_dims[0], out_dims[1],
-        "The second dimension of input(Out@GRAD) must be equal to "
-        "the third dimension of the Input(Weight).");
+        platform::errors::InvalidArgument(
+            "The second dimension of input(Out@GRAD) must be equal to "
+            "the third dimension of the Input(Weight)."));
 
-    if (ctx->HasInput("Bias")) {
-      auto bias_dims = ctx->GetInputDim("Bias");
-      PADDLE_ENFORCE_EQ(
-          bias_dims[1], out_dims[1],
-          "The second dimension of input(Out@GRAD) must be equal to "
-          "the second dimension of the Input(Bias).");
-      auto bias_grad_name = framework::GradVarName("Bias");
-      if (ctx->HasOutput(bias_grad_name))
-        ctx->SetOutputDim(bias_grad_name, bias_dims);
+    auto bias_grad_name = framework::GradVarName("Bias");
+    if (ctx->HasOutput(bias_grad_name)) {
+      ctx->SetOutputDim(bias_grad_name, {1, out_dims[1]});
     }
 
     auto x_grad_name = framework::GradVarName("X");
@@ -148,13 +178,39 @@ class BilinearTensorProductOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class BilinearTensorProductGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("bilinear_tensor_product_grad");
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("Weight", this->Input("Weight"));
+    if (this->HasInput("Bias")) {
+      op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    }
+
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(bilinear_tensor_product, ops::BilinearTensorProductOp,
-                  ops::BilinearTensorProductOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    bilinear_tensor_product, ops::BilinearTensorProductOp,
+    ops::BilinearTensorProductOpMaker,
+    ops::BilinearTensorProductGradOpMaker<paddle::framework::OpDesc>,
+    ops::BilinearTensorProductGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bilinear_tensor_product_grad,
                   ops::BilinearTensorProductOpGrad);
 REGISTER_OP_CPU_KERNEL(

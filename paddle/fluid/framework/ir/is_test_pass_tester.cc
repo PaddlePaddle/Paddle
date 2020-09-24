@@ -97,17 +97,17 @@ TEST(IsTestPass, basic) {
 
   auto pass = PassRegistry::Instance().Get("is_test_pass");
 
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       auto* op = node->Op();
-      auto op_name = boost::get<std::string>(op->GetAttr("name"));
+      auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
       if (op_name == "conv3") {
         ASSERT_FALSE(op->HasAttr("is_test"));
       } else {
         ASSERT_TRUE(op->HasAttr("is_test"));
-        EXPECT_TRUE(boost::get<bool>(op->GetAttr("is_test")));
+        EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("is_test")));
       }
     }
   }

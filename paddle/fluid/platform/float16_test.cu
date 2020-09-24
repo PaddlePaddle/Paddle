@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/enforce.h"
 
 #define ARITHMETIC_KERNEL(op_type, sign)                                 \
   __global__ void op_type(const half* in1, const half* in2, half* out) { \
@@ -260,8 +261,12 @@ TEST(float16, typeid) {
   int b(0);
 
   // compile time assert
-  PADDLE_ASSERT(functor(a) == true);
-  PADDLE_ASSERT(functor2(b) == false);
+  PADDLE_ENFORCE_EQ(
+      functor(a), true,
+      platform::errors::Unavailable("The float16 support in GPU failed."));
+  PADDLE_ENFORCE_EQ(
+      functor2(b), false,
+      platform::errors::Unavailable("The float16 support in GPU failed."));
 }
 
 // GPU test

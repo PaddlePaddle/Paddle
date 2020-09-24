@@ -24,3 +24,11 @@ limitations under the License. */
 
 #pragma pop_macro("_XOPEN_SOURCE")
 #pragma pop_macro("_POSIX_C_SOURCE")
+
+#if !defined(PYBIND11_HIDDEN)
+#ifdef _WIN32
+#define PYBIND11_HIDDEN __declspec(dllexport)
+#else
+#define PYBIND11_HIDDEN __attribute__((visibility("hidden")))
+#endif
+#endif

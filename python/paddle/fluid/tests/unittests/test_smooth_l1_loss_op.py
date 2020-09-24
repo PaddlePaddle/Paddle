@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
 
 
 def smooth_l1_loss_forward(val, sigma2):
@@ -30,7 +31,7 @@ def smooth_l1_loss_forward(val, sigma2):
 class TestSmoothL1LossOp1(OpTest):
     def setUp(self):
         self.op_type = "smooth_l1_loss"
-        dims = (5, 10)
+        dims = (5, 20)
         self.inputs = {
             'X': np.random.random(dims).astype("float32"),
             'Y': np.random.random(dims).astype("float32")
@@ -64,7 +65,7 @@ class TestSmoothL1LossOp1(OpTest):
 class TestSmoothL1LossOp2(OpTest):
     def setUp(self):
         self.op_type = "smooth_l1_loss"
-        dims = (5, 10)
+        dims = (5, 20)
         self.inputs = {
             'X': np.random.random(dims).astype("float32"),
             'Y': np.random.random(dims).astype("float32"),
@@ -103,6 +104,21 @@ class TestSmoothL1LossOp2(OpTest):
             'Out',
             max_relative_error=0.03,
             no_grad_set=set(['Y', 'InsideWeight', 'OutsideWeight']))
+
+
+class TestSmoothL1LossOpError(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            # The input type of accuracy_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            y1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.smooth_l1, x1, y1)
+            # The input dtype of accuracy_op must be float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            y2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.smooth_l1, x2, y2)
 
 
 if __name__ == '__main__':

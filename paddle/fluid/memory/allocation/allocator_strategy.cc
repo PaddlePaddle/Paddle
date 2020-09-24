@@ -13,21 +13,33 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
-#include "gflags/gflags.h"
 
-DEFINE_string(
-    allocator_strategy, "legacy",
-    "The allocation strategy. Legacy means the original allocator of Fluid."
-    "New means the experimental allocators of Fluid. in [legacy, new]");
+#include "gflags/gflags.h"
+#include "paddle/fluid/platform/enforce.h"
+
+DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
 static AllocatorStrategy GetStrategyFromFlag() {
-  return FLAGS_allocator_strategy == "legacy"
-             ? AllocatorStrategy::kLegacy
-             : AllocatorStrategy::kNaiveBestFit;
+  if (FLAGS_allocator_strategy == "naive_best_fit") {
+    return AllocatorStrategy::kNaiveBestFit;
+  }
+
+  if (FLAGS_allocator_strategy == "auto_growth") {
+    return AllocatorStrategy::kAutoGrowth;
+  }
+
+  if (FLAGS_allocator_strategy == "thread_local") {
+    return AllocatorStrategy::kThreadLocal;
+  }
+
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Unsupported allocator strategy: %s, condicates are naive_best_fit, "
+      "auto_growth or thread_local.",
+      FLAGS_allocator_strategy));
 }
 
 AllocatorStrategy GetAllocatorStrategy() {

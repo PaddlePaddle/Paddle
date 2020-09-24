@@ -17,6 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestAccuracyOp(OpTest):
@@ -26,8 +28,8 @@ class TestAccuracyOp(OpTest):
         self.init_dtype()
         n = 8192
         infer = np.random.random((n, 1)).astype(self.dtype)
-        indices = np.random.randint(0, 2, (n, 1))
-        label = np.random.randint(0, 2, (n, 1))
+        indices = np.random.randint(0, 2, (n, 1)).astype('int64')
+        label = np.random.randint(0, 2, (n, 1)).astype('int64')
         self.inputs = {'Out': infer, 'Indices': indices, "Label": label}
         num_correct = 0
         for rowid in range(n):
@@ -54,6 +56,22 @@ class TestAccuracyOpFp16(TestAccuracyOp):
 
     def test_check_output(self):
         self.check_output(atol=1e-3)
+
+
+class TestAccuracyOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of accuracy_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            label = fluid.layers.data(
+                name='label', shape=[-1, 1], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.accuracy, x1, label)
+            # The input dtype of accuracy_op must be float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.accuracy, x2, label)
+            x3 = fluid.layers.data(name='input', shape=[-1, 2], dtype="float16")
+            fluid.layers.accuracy(input=x3, label=label)
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <type_traits>
+
 #include "paddle/fluid/operators/jit/kernel_base.h"
 
 namespace paddle {
@@ -26,11 +27,11 @@ namespace intrinsic {
 void CRFDecoding(const int seq_len, const float* x, const float* w,
                  float* alpha, int* track, int tag_num);
 
-class CRFDecodingKernel : public KernelMore<CRFDecodingTuples<float>> {
+class CRFDecodingKernel : public KernelMore<CRFDecodingTuple<float>> {
  public:
   CRFDecodingKernel() { this->func = CRFDecoding; }
-  bool UseMe(
-      const typename CRFDecodingTuples<float>::attr_type&) const override;
+  bool CanBeUsed(
+      const typename CRFDecodingTuple<float>::attr_type&) const override;
   const char* ImplType() const override { return "Intrinsic"; }
 };
 

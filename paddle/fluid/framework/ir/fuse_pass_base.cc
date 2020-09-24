@@ -13,10 +13,19 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include <unordered_map>
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 void FusePassBase::Init(const std::string& repr, Graph* graph) const {
   repr_ = repr;
@@ -24,13 +33,19 @@ void FusePassBase::Init(const std::string& repr, Graph* graph) const {
 }
 
 Scope* FusePassBase::param_scope() const {
-  PADDLE_ENFORCE(graph_->Has(kParamScopeAttr));
-  return graph_->Get<framework::Scope*>(kParamScopeAttr);
+  PADDLE_ENFORCE_EQ(graph_->Has(kParamScopeAttr), true,
+                    platform::errors::InvalidArgument(
+                        "Graph must have kParamScopeAttr attribute."));
+  auto& scope = graph_->Get<framework::Scope>(kParamScopeAttr);
+  return &scope;
 }
 
 void FusePassBase::AddStatis(int count_of_fused) const {
-  PADDLE_ENFORCE(graph_);
-  PADDLE_ENFORCE(!repr_.empty());
+  PADDLE_ENFORCE_NOT_NULL(
+      graph_, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+  PADDLE_ENFORCE_EQ(repr_.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "Fuse pass must be initialized with a name."));
   if (!graph_->Has(kFuseStatisAttr)) {
     graph_->Set(kFuseStatisAttr, new std::unordered_map<std::string, int>);
   }
@@ -43,9 +58,9 @@ FuseOptions FusePassBase::FindFuseOption(const Node& node1,
                                          const Node& node2) const {
 #ifdef PADDLE_WITH_MKLDNN
   bool node1_mkldnn = node1.Op()->HasAttr("use_mkldnn") &&
-                      boost::get<bool>(node1.Op()->GetAttr("use_mkldnn"));
+                      BOOST_GET_CONST(bool, node1.Op()->GetAttr("use_mkldnn"));
   bool node2_mkldnn = node2.Op()->HasAttr("use_mkldnn") &&
-                      boost::get<bool>(node2.Op()->GetAttr("use_mkldnn"));
+                      BOOST_GET_CONST(bool, node2.Op()->GetAttr("use_mkldnn"));
   if (node1_mkldnn && node2_mkldnn)
     return FUSE_MKLDNN;
   else if (!node1_mkldnn && !node2_mkldnn)
@@ -55,7 +70,7 @@ FuseOptions FusePassBase::FindFuseOption(const Node& node1,
 #else
   return FUSE_NATIVE;
 #endif
-};
+}
 
 }  // namespace ir
 }  // namespace framework

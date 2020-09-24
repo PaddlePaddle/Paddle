@@ -51,9 +51,9 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("selected_scores",
               "A LoDTensor containing the accumulated scores corresponding to "
               "Output(selected_ids).");
-    AddOutput(
-        "parent_idx",
-        "A Tensor preserving the selected_ids' parent indice in pre_ids.");
+    AddOutput("parent_idx",
+              "A Tensor preserving the selected_ids' parent index in pre_ids.")
+        .AsDispensable();
 
     // Attributes stored in AttributeMap
     AddAttr<int>("level", "the level of LoDTensor");
@@ -65,7 +65,7 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
 
     AddComment(R"DOC(
-This operator does the search in beams for one time step. 
+This operator does the search in beams for one time step.
 Specifically, it selects the top-K candidate word ids of current step from
 Input(ids) according to their Input(scores) for all source sentences,
 where K is Attr(beam_size) and Input(ids), Input(scores) are predicted results
@@ -89,14 +89,16 @@ class BeamSearchOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     for (const std::string &arg :
          std::vector<std::string>({"pre_ids", "scores"})) {
-      PADDLE_ENFORCE(ctx->HasInput(arg), "BeamSearch need input argument '%s'",
-                     arg);
+      OP_INOUT_CHECK(ctx->HasInput(arg), "Input", arg, "BeamSeach");
     }
     for (const std::string &arg :
          std::vector<std::string>({"selected_ids", "selected_scores"})) {
-      PADDLE_ENFORCE(ctx->HasOutput(arg),
-                     "BeamSearch need output argument '%s'", arg);
+      OP_INOUT_CHECK(ctx->HasOutput(arg), "Output", arg, "BeamSeach");
     }
+    auto id_dims = ctx->GetInputDim("pre_ids");
+    ctx->SetOutputDim("selected_scores", ctx->GetInputDim("pre_scores"));
+    ctx->SetOutputDim("selected_ids", id_dims);
+    ctx->SetOutputDim("parent_idx", {id_dims[0]});
   }
 
  protected:
@@ -109,10 +111,11 @@ class BeamSearchOp : public framework::OperatorWithKernel {
     // Compute on CPU for cases with batch_size > 4.
     if (batch_size <= 4) {
       return framework::OpKernelType(
-          ctx.Input<framework::LoDTensor>("pre_ids")->type(), ctx.GetPlace());
+          OperatorWithKernel::IndicateVarDataType(ctx, "pre_ids"),
+          ctx.GetPlace());
     } else {
       return framework::OpKernelType(
-          ctx.Input<framework::LoDTensor>("pre_ids")->type(),
+          OperatorWithKernel::IndicateVarDataType(ctx, "pre_ids"),
           platform::CPUPlace());
     }
   }
@@ -120,16 +123,11 @@ class BeamSearchOp : public framework::OperatorWithKernel {
 
 class BeamSearchInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    for (auto &o : op_desc.Output("selected_ids")) {
-      auto &selected_ids = block->FindRecursiveOrCreateVar(o);
-      selected_ids.SetType(framework::proto::VarType::LOD_TENSOR);
-    }
-    for (auto &o : op_desc.Output("selected_scores")) {
-      auto &selected_scores = block->FindRecursiveOrCreateVar(o);
-      selected_scores.SetType(framework::proto::VarType::LOD_TENSOR);
-    }
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SetOutputType("selected_ids", framework::proto::VarType::LOD_TENSOR,
+                       framework::ALL_ELEMENTS);
+    ctx->SetOutputType("selected_scores", framework::proto::VarType::LOD_TENSOR,
+                       framework::ALL_ELEMENTS);
   }
 };
 

@@ -15,20 +15,28 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
+
 namespace paddle {
+
+namespace platform {
+class DeviceContext;
+}  // platform
+
 namespace memory {
+
 using allocation::Allocation;
 using allocation::Allocator;
 using allocation::AllocationPtr;
 
-extern std::shared_ptr<Allocation> AllocShared(
-    const platform::Place& place, size_t size,
-    Allocator::Attr attr = Allocator::kDefault);
+extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
+                                               size_t size);
 
-extern AllocationPtr Alloc(const platform::Place& place, size_t size,
-                           Allocator::Attr attr = Allocator::kDefault);
+extern AllocationPtr Alloc(const platform::Place& place, size_t size);
+
+extern AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size);
 
 }  // namespace memory
 }  // namespace paddle

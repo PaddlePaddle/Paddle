@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import random
 from op_test import OpTest
-from test_seq_conv import seqconv
+from sequence.test_sequence_conv import seqconv
 
 
 class TestSeqConvEltAddRelu(OpTest):

@@ -17,6 +17,9 @@ import os
 import unittest
 from test_dist_base import TestDistBase
 
+import os
+flag_name = os.path.splitext(__file__)[0]
+
 
 class TestDistTextClassification2x2(TestDistBase):
     def _setup_config(self):
@@ -24,7 +27,11 @@ class TestDistTextClassification2x2(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_text_classification(self):
-        self.check_with_place("dist_text_classification.py", delta=1e-6)
+        self.check_with_place(
+            "dist_text_classification.py",
+            delta=1e-6,
+            check_error_log=True,
+            log_name=flag_name)
 
 
 class TestDistTextClassification2x2Async(TestDistBase):
@@ -33,7 +40,11 @@ class TestDistTextClassification2x2Async(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_se_resnext(self):
-        self.check_with_place("dist_text_classification.py", delta=100)
+        self.check_with_place(
+            "dist_text_classification.py",
+            delta=100,
+            check_error_log=True,
+            log_name=flag_name)
 
 
 if __name__ == "__main__":

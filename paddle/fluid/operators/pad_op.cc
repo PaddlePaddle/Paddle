@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pad_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -24,18 +25,32 @@ class PadOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of PadOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of PadOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Pad");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Pad");
 
     auto x_dim = ctx->GetInputDim("X");
-    auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    PADDLE_ENFORCE_EQ(x_dim.size() * 2, int64_t(paddings.size()),
-                      "Size of paddings should be equal to 2 * dimension size "
-                      "of input tensor.");
+    auto& paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(paddings.size()), x_dim.size() * 2,
+        platform::errors::InvalidArgument(
+            "Size of 'paddings' dimension should be equal to 2 * size of "
+            "Input(X)'s dimension, but received (size of 'paddings' dimension "
+            "is) %d vs (2 * size of Input(X)'s dimension is) %d.",
+            static_cast<int>(paddings.size()), x_dim.size() * 2));
+    for (size_t i = 0; i < paddings.size(); ++i) {
+      PADDLE_ENFORCE_GE(paddings[i], 0,
+                        platform::errors::InvalidArgument(
+                            "The element of 'paddings' should >= 0, but "
+                            "received %d for index %d.",
+                            paddings[i], static_cast<int>(i)));
+    }
     std::vector<int64_t> out_dims(x_dim.size());
     for (int i = 0; i < x_dim.size(); ++i) {
-      out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
+      if ((!ctx->IsRuntime()) && (x_dim[i] == -1)) {
+        out_dims[i] = -1;
+      } else {
+        out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
+      }
     }
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
     if (out_dims[0] == x_dim[0]) {
@@ -99,30 +114,31 @@ class PadOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
+      auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+      auto& paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+      for (int i = 0; i < dout_dims.size(); ++i) {
+        if (ctx->IsRuntime() || (dout_dims[i] != -1)) {
+          dout_dims[i] -= (paddings[i * 2] + paddings[i * 2 + 1]);
+        }
+      }
+      ctx->SetOutputDim(x_grad_name, dout_dims);
     }
   }
 };
 
-class PadOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PadOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* bind = new framework::OpDesc();
-    bind->SetInput("X", Input("X"));
-    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    bind->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    bind->SetAttrMap(Attrs());
+  void Apply(GradOpPtr<T> bind) const override {
+    bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    bind->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    bind->SetAttrMap(this->Attrs());
     bind->SetType("pad_grad");
-    return std::unique_ptr<framework::OpDesc>(bind);
   }
 };
 
@@ -131,9 +147,15 @@ class PadOpGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker, ops::PadOpGradMaker);
+REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker,
+                  ops::PadOpGradMaker<paddle::framework::OpDesc>,
+                  ops::PadOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pad_grad, ops::PadOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>);
+    pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PadKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::PadKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::PadKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
-    pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>);
+    pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PadGradKernel<paddle::platform::CPUDeviceContext, double>);

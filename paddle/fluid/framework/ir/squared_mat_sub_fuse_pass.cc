@@ -14,8 +14,10 @@
 
 #include "paddle/fluid/framework/ir/squared_mat_sub_fuse_pass.h"
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -76,7 +78,8 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
   };
 
   auto is_fusion_input_var = [=](Node* x, const std::string& arg_name) {
-    bool basic = var_is_op_input(x, "matmul", arg_name) &&
+    bool basic = (var_is_op_input(x, "matmul_v2", arg_name) ||
+                  var_is_op_input(x, "matmul", arg_name)) &&
                  var_is_op_input(x, "square", "X");
     if (!basic) {
       return false;
@@ -87,7 +90,8 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
     }
     auto* squared_x = squared_x_op->outputs[0];
     bool next_is_matmul_from_arg =
-        var_is_op_input(squared_x, "matmul", arg_name) &&
+        (var_is_op_input(squared_x, "matmul_v2", arg_name) ||
+         var_is_op_input(squared_x, "matmul", arg_name)) &&
         squared_x->outputs.size() == 1 &&
         squared_x->outputs[0]->outputs.size() == 1;
     if (!next_is_matmul_from_arg) {
@@ -102,7 +106,8 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
   auto is_fusion_first_mul_out = [=](Node* x) -> bool {
     bool input_is_matmul_op = x && x->inputs.size() == 1 &&
                               x->inputs[0]->IsOp() &&
-                              x->inputs[0]->Op()->Type() == "matmul";
+                              (x->inputs[0]->Op()->Type() == "matmul_v2" ||
+                               x->inputs[0]->Op()->Type() == "matmul");
     if (!input_is_matmul_op) {
       return false;
     }
@@ -166,7 +171,8 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
 
   auto* matmul_xy_op = pattern->NewNode(
       [=](Node* x) {
-        return x && x->IsOp() && x->Op()->Type() == "matmul" &&
+        return x && x->IsOp() && (x->Op()->Type() == "matmul_v2" ||
+                                  x->Op()->Type() == "matmul") &&
                is_fusion_first_mul_out(x->outputs[0]);
       },
       name_scope + "/matmul_xy_op");
@@ -188,7 +194,9 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
 
   auto is_fusion_mat_squared_x_y_op_out = [=](Node* x) -> bool {
     bool basic = x && x->IsVar() && x->inputs.size() == 1 &&
-                 x->inputs[0]->IsOp() && x->inputs[0]->Op()->Type() == "matmul";
+                 x->inputs[0]->IsOp() &&
+                 (x->inputs[0]->Op()->Type() == "matmul_v2" ||
+                  x->inputs[0]->Op()->Type() == "matmul");
     if (!basic) {
       return false;
     }
@@ -205,7 +213,8 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
 
   auto* matmul_squared_x_y_op = pattern->NewNode(
       [=](Node* x) {
-        return x && x->IsOp() && x->Op()->Type() == "matmul" &&
+        return x && x->IsOp() && (x->Op()->Type() == "matmul_v2" ||
+                                  x->Op()->Type() == "matmul") &&
                is_fusion_mat_squared_x_y_op_out(x->outputs[0]);
       },
       name_scope + "/matmul_squared_x_y_op");
@@ -239,7 +248,8 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
       return false;
     }
     for (auto* in : x->inputs) {
-      if (in && in->inputs[0] && is_fusion_sub_op(in->inputs[0])) {
+      if (in && in->inputs.size() > 0 && in->inputs[0] &&
+          is_fusion_sub_op(in->inputs[0])) {
         return true;
       }
     }
@@ -261,7 +271,7 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
   auto* constant_op_out = pattern->NewNode(
       [=](Node* x) {
         return x && x->IsVar() && var_is_op_input(x, "elementwise_mul") &&
-               x->inputs[0] && x->inputs[0]->IsOp() &&
+               x->inputs.size() > 0 && x->inputs[0] && x->inputs[0]->IsOp() &&
                x->inputs[0]->Op()->Type() == "fill_constant" && x->outputs[0] &&
                is_fusion_element_op(x->outputs[0]);
       },
@@ -298,10 +308,12 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
   auto retrieve_node = [](const std::string& name,
                           const GraphPatternDetector::subgraph_t& subgraph,
                           const PDPattern& pat) -> Node* {
-    PADDLE_ENFORCE(subgraph.count(pat.RetrieveNode(name)),
-                   "pattern has no Node called %s", name.c_str());
+    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)), 0,
+                      platform::errors::NotFound(
+                          "Pattern has no node called %s.", name.c_str()));
     Node* p = subgraph.at(pat.RetrieveNode(name));
-    PADDLE_ENFORCE_NOT_NULL(p, "subgraph has no node %s", name.c_str());
+    PADDLE_ENFORCE_NOT_NULL(p, platform::errors::NotFound(
+                                   "Subgraph has no node %s.", name.c_str()));
     return p;
   };
 
@@ -362,13 +374,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
   return fusion_count;
 }
 
-std::unique_ptr<ir::Graph> SquaredMatSubFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
-  int fusion_count = BuildFusion(graph.get(), name_scope_);
+void SquaredMatSubFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
+  int fusion_count = BuildFusion(graph, name_scope_);
   AddStatis(fusion_count);
-
-  return graph;
 }
 
 }  // namespace ir
@@ -377,3 +386,13 @@ std::unique_ptr<ir::Graph> SquaredMatSubFusePass::ApplyImpl(
 
 REGISTER_PASS(squared_mat_sub_fuse_pass,
               paddle::framework::ir::SquaredMatSubFusePass);
+REGISTER_PASS_CAPABILITY(squared_mat_sub_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("matmul", 0)
+            .EQ("matmul_v2", 0)
+            .EQ("square", 0)
+            .EQ("elementwise_mul", 0)
+            .EQ("elementwise_sub", 0)
+            .EQ("fill_constant", 0)
+            .EQ("fusion_squared_mat_sub", 0));

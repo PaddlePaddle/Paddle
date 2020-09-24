@@ -16,6 +16,14 @@
 
 #include <string>
 
+#include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -38,13 +46,11 @@ struct ScaleLossGradFunctor {
   float coeff_;
   Tensor *out_;
   platform::Place place_;
-  OpHandleBase *op_handle_;
   proto::VarType::Type out_dtype_;
   platform::DeviceContext *ctx_;
 
   ScaleLossGradFunctor(float coeff, Tensor *out, platform::Place place,
-                       OpHandleBase *op_handle, proto::VarType::Type dtype,
-                       platform::DeviceContext *ctx)
+                       proto::VarType::Type dtype, platform::DeviceContext *ctx)
       : coeff_(coeff), out_(out), place_(place), out_dtype_(dtype), ctx_(ctx) {}
 
   template <typename OutT>
@@ -56,7 +62,7 @@ struct ScaleLossGradFunctor {
 #ifdef PADDLE_WITH_CUDA
       OutT cast_coeff = static_cast<OutT>(coeff_);
       auto stream = static_cast<platform::CUDADeviceContext *>(ctx_)->stream();
-      memory::Copy(boost::get<platform::CUDAPlace>(place_), out_data,
+      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), out_data,
                    platform::CPUPlace(), &cast_coeff, SizeOfType(out_dtype_),
                    stream);
       VLOG(10) << place_ << "RUN Scale loss grad op";
@@ -67,19 +73,20 @@ struct ScaleLossGradFunctor {
 };
 
 void ScaleLossGradOpHandle::RunImpl() {
+  platform::RecordEvent record_event(Name());
   // Doesn't wait any event
   std::string var_name = static_cast<VarHandle *>(this->outputs_[0])->name();
-  auto &local_scope = *scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
 
-  auto *tensor = local_scope.FindVar(var_name)->GetMutable<LoDTensor>();
+  auto *tensor =
+      local_exec_scopes_[0]->FindVar(var_name)->GetMutable<LoDTensor>();
   tensor->Resize(make_ddim({1}));
 
 #ifdef PADDLE_WITH_CUDA
-  ScaleLossGradFunctor func(coeff_, tensor, place_, this, out_dtype_,
+  ScaleLossGradFunctor func(coeff_, tensor, place_, out_dtype_,
                             this->dev_ctxes_.at(place_));
   this->RunAndRecordEvent([&] { framework::VisitDataType(out_dtype_, func); });
 #else
-  ScaleLossGradFunctor func(coeff_, tensor, place_, this, out_dtype_, nullptr);
+  ScaleLossGradFunctor func(coeff_, tensor, place_, out_dtype_, nullptr);
   framework::VisitDataType(out_dtype_, func);
 #endif
 }

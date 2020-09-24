@@ -22,7 +22,9 @@ struct DataReader {
       : file(new std::ifstream(path)) {}
 
   bool NextBatch(std::vector<PaddleTensor> *input, int batch_size) {
-    PADDLE_ENFORCE_EQ(batch_size, 1);
+    PADDLE_ENFORCE_EQ(batch_size, 1,
+                      paddle::platform::errors::Fatal(
+                          "The size of batch should be equal to 1."));
     std::string line;
     PaddleTensor tensor;
     tensor.dtype = PaddleDType::INT64;
@@ -36,6 +38,8 @@ struct DataReader {
     tensor.lod.front().push_back(data.size());
 
     tensor.data.Resize(data.size() * sizeof(int64_t));
+    CHECK(tensor.data.data() != nullptr);
+    CHECK(data.data() != nullptr);
     memcpy(tensor.data.data(), data.data(), data.size() * sizeof(int64_t));
     tensor.shape.push_back(data.size());
     tensor.shape.push_back(1);
@@ -70,7 +74,7 @@ TEST(Analyzer_Text_Classification, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   cfg.SwitchIrDebug();
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -79,14 +83,22 @@ TEST(Analyzer_Text_Classification, profile) {
 
   if (FLAGS_num_threads == 1) {
     // Get output
-    LOG(INFO) << "get outputs " << outputs.size();
-    for (auto &output : outputs) {
+    PADDLE_ENFORCE_GT(outputs.size(), 0,
+                      paddle::platform::errors::Fatal(
+                          "The size of output should be greater than 0."));
+    LOG(INFO) << "get outputs " << outputs.back().size();
+    for (auto &output : outputs.back()) {
       LOG(INFO) << "output.shape: " << to_string(output.shape);
       // no lod ?
       CHECK_EQ(output.lod.size(), 0UL);
       LOG(INFO) << "output.dtype: " << output.dtype;
       std::stringstream ss;
-      for (int i = 0; i < 5; i++) {
+      int num_data = 1;
+      for (auto i : output.shape) {
+        num_data *= i;
+      }
+
+      for (int i = 0; i < num_data; i++) {
         ss << static_cast<float *>(output.data.data())[i] << " ";
       }
       LOG(INFO) << "output.data summary: " << ss.str();

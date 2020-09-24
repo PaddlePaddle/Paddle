@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sign_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -22,10 +23,9 @@ class SignOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SignOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SignOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "sign");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "sign");
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -45,17 +45,16 @@ $$Out = X.sign()$$
   }
 };
 
-class SignGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SignGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("scale");
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetOutput("Out", InputGrad("X"));
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttr("scale", 0.0f);
-    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
@@ -65,7 +64,8 @@ class SignGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(sign, ops::SignOp, ops::SignOpMaker<float>,
-                  ops::SignGradMaker);
+                  ops::SignGradMaker<paddle::framework::OpDesc>,
+                  ops::SignGradMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     sign, ops::SignKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SignKernel<paddle::platform::CPUDeviceContext, double>);

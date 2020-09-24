@@ -22,29 +22,41 @@ class TargetAssignOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of TargetAssignOp should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("MatchIndices"),
-                   "Input(MatchIndices) of TargetAssignOp should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of TargetAssignOp should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("MatchIndices"), true,
+        platform::errors::InvalidArgument(
+            "Input(MatchIndices) of TargetAssignOp should not be null"));
 
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of TargetAssignOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutWeight"),
-                   "Output(OutWeight) of TargetAssignOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of TargetAssignOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("OutWeight"), true,
+        platform::errors::InvalidArgument(
+            "Output(OutWeight) of TargetAssignOp should not be null."));
 
     auto in_dims = ctx->GetInputDim("X");
     auto mi_dims = ctx->GetInputDim("MatchIndices");
 
-    PADDLE_ENFORCE_EQ(in_dims.size(), 3, "The rank of Input(X) must be 3.");
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(), 3,
+        platform::errors::InvalidArgument("The rank of Input(X) must be 3."));
     PADDLE_ENFORCE_EQ(mi_dims.size(), 2,
-                      "The rank of Input(MatchIndices) must be 2.");
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(MatchIndices) must be 2."));
 
     if (ctx->HasInput("NegIndices")) {
       auto neg_dims = ctx->GetInputDim("NegIndices");
       PADDLE_ENFORCE_EQ(neg_dims.size(), 2,
-                        "The rank of Input(NegIndices) must be 2.");
-      PADDLE_ENFORCE_EQ(neg_dims[1], 1,
-                        "The last dimenstion of Out(NegIndices) must be 1.");
+                        platform::errors::InvalidArgument(
+                            "The rank of Input(NegIndices) must be 2."));
+      PADDLE_ENFORCE_EQ(
+          neg_dims[1], 1,
+          platform::errors::InvalidArgument(
+              "The last dimension of Out(NegIndices) must be 1."));
     }
 
     auto n = mi_dims[0];
@@ -57,8 +69,9 @@ class TargetAssignOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -151,8 +164,10 @@ template struct NegTargetAssignFunctor<platform::CPUDeviceContext, float,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(target_assign, ops::TargetAssignOp, ops::TargetAssignOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    target_assign, ops::TargetAssignOp, ops::TargetAssignOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     target_assign,
     ops::TargetAssignKernel<paddle::platform::CPUDeviceContext, int, float>,

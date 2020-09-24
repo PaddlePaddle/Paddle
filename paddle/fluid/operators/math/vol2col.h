@@ -22,6 +22,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace math {
+
+using DataLayout = framework::DataLayout;
+
 /*
  * \brief Converts the feature data of four dimensions(CDHW) into a colData of
  *        seven dimensions in the Vol2ColFunctor calculation,
@@ -70,8 +73,8 @@ class Vol2ColFunctor {
   void operator()(const DeviceContext& context, const framework::Tensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  framework::Tensor* col) const;
+                  const std::vector<int>& paddings, framework::Tensor* col,
+                  const DataLayout data_layout = DataLayout::kNCHW) const;
 };
 
 template <typename DeviceContext, typename T>
@@ -80,8 +83,8 @@ class Col2VolFunctor {
   void operator()(const DeviceContext& context, const framework::Tensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  framework::Tensor* vol) const;
+                  const std::vector<int>& paddings, framework::Tensor* vol,
+                  const DataLayout data_layout = DataLayout::kNCHW) const;
 };
 
 }  // namespace math

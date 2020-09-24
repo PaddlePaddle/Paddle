@@ -16,7 +16,10 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from op_test import OpTest
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestLRNOp(OpTest):
@@ -60,12 +63,15 @@ class TestLRNOp(OpTest):
             'n': self.n,
             'k': self.k,
             'alpha': self.alpha,
-            'beta': self.beta
+            'beta': self.beta,
+            'data_format': self.data_format
         }
         return attrs
 
     def setUp(self):
         self.op_type = "lrn"
+        self.init_test_case()
+
         self.N = 2
         self.C = 3
         self.H = 5
@@ -77,16 +83,75 @@ class TestLRNOp(OpTest):
         self.beta = 0.75
         self.x = self.get_input()
         self.out, self.mid_out = self.get_out()
+        if self.data_format == 'NHWC':
+            self.x = np.transpose(self.x, [0, 2, 3, 1])
+            self.out = np.transpose(self.out, [0, 2, 3, 1])
+            self.mid_out = np.transpose(self.mid_out, [0, 2, 3, 1])
 
         self.inputs = {'X': self.x}
         self.outputs = {'Out': self.out, 'MidOut': self.mid_out}
         self.attrs = self.get_attrs()
 
+    def init_test_case(self):
+        self.data_format = 'NCHW'
+
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out')
+
+
+class TestLRNOpAttrDataFormat(TestLRNOp):
+    def init_test_case(self):
+        self.data_format = 'NHWC'
+
+
+class TestLRNAPI(unittest.TestCase):
+    def test_case(self):
+        data1 = fluid.data(name='data1', shape=[2, 4, 5, 5], dtype='float32')
+        data2 = fluid.data(name='data2', shape=[2, 5, 5, 4], dtype='float32')
+        out1 = fluid.layers.lrn(data1, data_format='NCHW')
+        out2 = fluid.layers.lrn(data2, data_format='NHWC')
+        data1_np = np.random.random((2, 4, 5, 5)).astype("float32")
+        data2_np = np.transpose(data1_np, [0, 2, 3, 1])
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        results = exe.run(fluid.default_main_program(),
+                          feed={"data1": data1_np,
+                                "data2": data2_np},
+                          fetch_list=[out1, out2],
+                          return_numpy=True)
+
+        self.assertTrue(
+            np.allclose(results[0], np.transpose(results[1], (0, 3, 1, 2))))
+
+    def test_exception(self):
+        input1 = fluid.data(name="input1", shape=[2, 4, 5, 5], dtype="float32")
+        input2 = fluid.data(
+            name="input2", shape=[2, 4, 5, 5, 5], dtype="float32")
+
+        def _attr_data_fromat():
+            out = fluid.layers.lrn(input1, data_format='NDHW')
+
+        def _input_dim_size():
+            out = fluid.layers.lrn(input2)
+
+        self.assertRaises(ValueError, _attr_data_fromat)
+        self.assertRaises(ValueError, _input_dim_size)
+
+
+class TestLRNOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input must be float32
+            in_w = fluid.data(name="in_w", shape=[None, 3, 3, 3], dtype="int64")
+            self.assertRaises(TypeError, fluid.layers.lrn, in_w)
 
 
 if __name__ == "__main__":

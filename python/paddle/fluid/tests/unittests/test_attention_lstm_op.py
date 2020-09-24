@@ -152,7 +152,7 @@ class TestAttentionLSTMOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestAttentionOpNonInit(TestAttentionLSTMOp):

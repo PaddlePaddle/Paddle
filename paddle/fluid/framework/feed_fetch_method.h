@@ -15,16 +15,20 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 
+class LoDTensor;
+class Scope;
+
 void SetFeedVariable(Scope* scope, const LoDTensor& input,
                      const std::string& var_name, size_t index);
 
-LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
+FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
                             size_t index);
 
 LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name);

@@ -13,32 +13,37 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
+
 #include <stdlib.h>
-#include <string>
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-CPUAllocation::CPUAllocation(void *ptr, size_t size)
-    : Allocation(ptr, size, platform::CPUPlace()) {}
-
 bool CPUAllocator::IsAllocThreadSafe() const { return true; }
 
-void CPUAllocator::Free(Allocation *allocation) {
-  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<CPUAllocation *>(allocation));
-  free(allocation->ptr());
+void CPUAllocator::FreeImpl(Allocation *allocation) {
+  void *p = allocation->ptr();
+#ifdef _WIN32
+  _aligned_free(p);
+#else
+  free(p);
+#endif
   delete allocation;
 }
 
-Allocation *CPUAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
-  void *ptr;
-  auto status = posix_memalign(&ptr, kAlignment, size);
-  if (UNLIKELY(status) != 0) {
-    throw BadAlloc(string::Sprintf("Cannot allocate cpu memory %d. Errno is %d",
-                                   size, status));
-  }
-  return new CPUAllocation(ptr, size);
+Allocation *CPUAllocator::AllocateImpl(size_t size) {
+  void *p;
+#ifdef _WIN32
+  p = _aligned_malloc(size, kAlignment);
+#else
+  int error = posix_memalign(&p, kAlignment, size);
+  PADDLE_ENFORCE_EQ(
+      error, 0,
+      platform::errors::ResourceExhausted(
+          "Fail to alloc memory of %ld size, error code is %d.", size, error));
+#endif
+  return new Allocation(p, size, platform::CPUPlace());
 }
 }  // namespace allocation
 }  // namespace memory

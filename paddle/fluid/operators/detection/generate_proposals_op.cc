@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -44,24 +44,36 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Scores"), "Input(Scores) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("BboxDeltas"),
-                   "Input(BboxDeltas) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("ImInfo"), "Input(ImInfo) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Anchors"),
-                   "Input(Anchors) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Variances"),
-                   "Input(Variances) shouldn't be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Scores"), true,
+        platform::errors::NotFound("Input(Scores) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("BboxDeltas"), true,
+        platform::errors::NotFound("Input(BboxDeltas) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("ImInfo"), true,
+        platform::errors::NotFound("Input(ImInfo) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Anchors"), true,
+        platform::errors::NotFound("Input(Anchors) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Variances"), true,
+        platform::errors::NotFound("Input(Variances) shouldn't be null."));
 
     ctx->SetOutputDim("RpnRois", {-1, 4});
     ctx->SetOutputDim("RpnRoiProbs", {-1, 1});
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("RpnRois", std::max(ctx->GetLoDLevel("Scores"), 1));
+      ctx->SetLoDLevel("RpnRoiProbs", std::max(ctx->GetLoDLevel("Scores"), 1));
+    }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Anchors")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Anchors"),
+        ctx.device_context());
   }
 };
 
@@ -247,7 +259,6 @@ static inline Tensor VectorToTensor(const std::vector<T> &selected_indices,
 template <class T>
 static inline Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox,
                          Tensor *scores, T nms_threshold, float eta) {
-  PADDLE_ENFORCE_NOT_NULL(bbox);
   int64_t num_boxes = bbox->dims()[0];
   // 4: [xmin ymin xmax ymax]
   int64_t box_size = bbox->dims()[1];
@@ -292,12 +303,10 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     auto *scores = context.Input<Tensor>("Scores");
     auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
     auto *im_info = context.Input<Tensor>("ImInfo");
-    auto anchors = detail::Ref(context.Input<Tensor>("Anchors"),
-                               "Cannot find input Anchors(%s) in scope",
-                               context.Inputs("Anchors")[0]);
-    auto variances = detail::Ref(context.Input<Tensor>("Variances"),
-                                 "Cannot find input Variances(%s) in scope",
-                                 context.Inputs("Variances")[0]);
+    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"), "Input",
+                                   "Anchors", "GenerateProposals");
+    auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
+                                     "Input", "Variances", "GenerateProposals");
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
@@ -343,6 +352,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     lod0.push_back(0);
     anchors.Resize({anchors.numel() / 4, 4});
     variances.Resize({variances.numel() / 4, 4});
+    std::vector<int> tmp_num;
 
     int64_t num_proposals = 0;
     for (int64_t i = 0; i < num; ++i) {
@@ -364,6 +374,16 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       AppendProposals(rpn_roi_probs, num_proposals, scores);
       num_proposals += proposals.dims()[0];
       lod0.push_back(num_proposals);
+      tmp_num.push_back(proposals.dims()[0]);
+    }
+    if (context.HasOutput("RpnRoisNum")) {
+      auto *rpn_rois_num = context.Output<Tensor>("RpnRoisNum");
+      rpn_rois_num->mutable_data<int>({num}, context.GetPlace());
+      int *num_data = rpn_rois_num->data<int>();
+      for (int i = 0; i < num; i++) {
+        num_data[i] = tmp_num[i];
+      }
+      rpn_rois_num->Resize({num});
     }
     rpn_rois->set_lod(lod);
     rpn_roi_probs->set_lod(lod);
@@ -418,6 +438,16 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 
     Tensor keep;
     FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, &keep);
+    // Handle the case when there is no keep index left
+    if (keep.numel() == 0) {
+      math::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      bbox_sel.mutable_data<T>({1, 4}, ctx.GetPlace());
+      set_zero(ctx, &bbox_sel, static_cast<T>(0));
+      Tensor scores_filter;
+      scores_filter.mutable_data<T>({1, 1}, ctx.GetPlace());
+      set_zero(ctx, &scores_filter, static_cast<T>(0));
+      return std::make_pair(bbox_sel, scores_filter);
+    }
 
     Tensor scores_filter;
     bbox_sel.mutable_data<T>({keep.numel(), 4}, ctx.GetPlace());
@@ -466,6 +496,8 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor), Output proposals with shape (rois_num, 4).");
     AddOutput("RpnRoiProbs",
               "(LoDTensor) Scores of proposals with shape (rois_num, 1).");
+    AddOutput("RpnRoisNum", "(Tensor), The number of Rpn RoIs in each image")
+        .AsDispensable();
     AddAttr<int>("pre_nms_topN",
                  "Number of top scoring RPN proposals to keep before "
                  "applying NMS.");
@@ -493,8 +525,17 @@ boxes.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(generate_proposals, ops::GenerateProposalsOp,
-                  ops::GenerateProposalsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    generate_proposals, ops::GenerateProposalsOp, ops::GenerateProposalsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(generate_proposals, ops::GenerateProposalsKernel<float>,
                        ops::GenerateProposalsKernel<double>);
+REGISTER_OP_VERSION(generate_proposals)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade generate_proposals add a new output [RpnRoisNum])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewOutput(
+            "RpnRoisNum",
+            "The number of Rpn RoIs in each image. RpnRoisNum is "
+            "dispensable."));

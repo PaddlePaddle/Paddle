@@ -16,7 +16,14 @@
 #include <array>
 #include <list>
 #include <map>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
+
+namespace paddle {
+namespace platform {
+class Place;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace memory {
@@ -119,8 +126,8 @@ class BestFitAllocator : public Allocator {
   void InsertFreeNode(const ListIt& it);
 
  protected:
-  void Free(Allocation* allocation) override;
-  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
+  void FreeImpl(Allocation* allocation) override;
+  Allocation* AllocateImpl(size_t size) override;
 
  private:
   Allocation* allocation_;  // not owned

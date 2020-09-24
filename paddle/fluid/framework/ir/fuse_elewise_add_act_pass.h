@@ -14,7 +14,10 @@
 #pragma once
 
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -27,25 +30,24 @@ namespace ir {
 /*
  * Fuse the ElewiseAdd and activation
  */
+class Graph;
+class Node;
+
 class FuseElewiseAddActPass : public FusePassBase {
  public:
   virtual ~FuseElewiseAddActPass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph *graph) const override;
 
-  std::unique_ptr<ir::Graph> FuseElewiseAddAct(
-      std::unique_ptr<ir::Graph> graph,
-      const std::unordered_set<std::string> &act_types) const;
+  ir::Graph *FuseElewiseAddAct(
+      ir::Graph *graph, const std::unordered_set<std::string> &act_types) const;
 
-  std::unique_ptr<ir::Graph> FuseActElewiseAdd(
-      std::unique_ptr<ir::Graph> graph,
-      const std::unordered_set<std::string> &act_types) const;
+  ir::Graph *FuseActElewiseAdd(
+      ir::Graph *graph, const std::unordered_set<std::string> &act_types) const;
 
-  std::unique_ptr<ir::Graph> FuseElewiseAddActInplaceGrad(
-      std::unique_ptr<ir::Graph> graph,
-      const std::unordered_set<std::string> &act_types) const;
+  ir::Graph *FuseElewiseAddActInplaceGrad(
+      ir::Graph *graph, const std::unordered_set<std::string> &act_types) const;
 
   /**
    * Remove the removable intermediate_out.

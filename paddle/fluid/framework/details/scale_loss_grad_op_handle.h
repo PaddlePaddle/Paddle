@@ -15,10 +15,23 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -35,6 +48,8 @@ struct ScaleLossGradOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+  std::vector<Scope *> GetLocalScopes() override { return {scope_}; }
 
  private:
   float coeff_;

@@ -24,30 +24,36 @@ class ProximalGDOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(Param) of ProximalGDOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of ProximalGDOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                   "Input(LearningRate) of ProximalGDOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "ProximalGDOp");
+    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "ProximalGDOp");
+    OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
+                   "ProximalGDOp");
 
-    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                   "Output(ParamOut) of ProximalGDOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "Paramout",
+                   "ProximalGDOp");
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
-                      "Two input of ProximalGD Op's dimension must be same.");
+                      platform::errors::InvalidArgument(
+                          "The shape of Intput(Param) should be equal to the "
+                          "Input(Grad) of ProximalGD Op. But received "
+                          "Input(Param).dimensions=[%s], "
+                          "Input(Grad).dimensions=[%s]",
+                          param_dim, ctx->GetInputDim("Grad")));
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
-                      "Learning Rate should be a scalar.");
+    PADDLE_ENFORCE_EQ(
+        framework::product(lr_dim), 1,
+        platform::errors::InvalidArgument(
+            "Learning Rate should be a scalar. But received dimmensions:[%s]",
+            lr_dim));
 
     ctx->SetOutputDim("ParamOut", param_dim);
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Param")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
   }
 };
 

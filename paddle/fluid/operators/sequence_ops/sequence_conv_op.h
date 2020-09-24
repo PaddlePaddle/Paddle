@@ -39,8 +39,16 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     int context_stride = context.Attr<int>("contextStride");
     bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
-    PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
-                      "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(
+        in->lod().empty(), false,
+        platform::errors::InvalidArgument("Input(X) Tensor of SequenceConvOp "
+                                          "does not contain LoD information."));
+    PADDLE_ENFORCE_EQ(
+        in->lod().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Only support input sequence with lod level equal to 1 at "
+            "present. But received: lod level %u.",
+            in->lod().size()));
 
     const Tensor* padding_data = nullptr;
     if (padding_trainable) {
@@ -49,7 +57,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
 
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
-    int sequence_width = static_cast<int>(in->dims()[1]);
+    auto sequence_width = static_cast<int64_t>(in->dims()[1]);
 
     framework::DDim col_shape = {in->dims()[0],
                                  context_length * sequence_width};
@@ -62,7 +70,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     set_zero(dev_ctx, &col, static_cast<T>(0));
     math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
 
-    seq_project_functor(dev_ctx, *in, *padding_data, padding_trainable,
+    seq_project_functor(dev_ctx, *in, padding_data, padding_trainable,
                         context_start, context_length, context_stride, up_pad,
                         down_pad, &col);
 
@@ -87,13 +95,17 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     int context_stride = context.Attr<int>("contextStride");
     bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
-    PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
-                      "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(
+        in->lod().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Only support input sequence with lod level equal to 1 at "
+            "present. But received: lod level %u.",
+            in->lod().size()));
     auto lod_g_level_0 = in->lod()[0];
 
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
-    int sequence_width = static_cast<int>(in->dims()[1]);
+    auto sequence_width = static_cast<int64_t>(in->dims()[1]);
 
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
@@ -144,7 +156,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
         padding_data = context.Input<Tensor>("PaddingData");
       }
 
-      seq_project_functor(dev_ctx, *in, *padding_data, padding_trainable,
+      seq_project_functor(dev_ctx, *in, padding_data, padding_trainable,
                           context_start, context_length, context_stride, up_pad,
                           down_pad, &col);
 

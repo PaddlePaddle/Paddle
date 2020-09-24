@@ -13,8 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/scope.h"
-#include "glog/logging.h"
+
 #include "gtest/gtest.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 using paddle::framework::Scope;
 using paddle::framework::Variable;
@@ -53,7 +59,9 @@ TEST(Scope, FindScope) {
   Variable* v = s.Var("a");
 
   EXPECT_EQ(&s, s.FindScope(v));
+  EXPECT_EQ(&s, s.FindScope("a"));
   EXPECT_EQ(&s, ss.FindScope(v));
+  EXPECT_EQ(&s, ss.FindScope("a"));
 }
 
 TEST(Scope, GetAllNames) {

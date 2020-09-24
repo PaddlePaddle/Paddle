@@ -12,7 +12,7 @@ There are several demos:
     - Each line contains a single record
     - Each record's format is
     ```
-    <space splitted floats as data>\t<space splitted ints as shape>
+    <space split floats as data>\t<space split ints as shape>
     ```
 
 To build and execute the demos, simply run 

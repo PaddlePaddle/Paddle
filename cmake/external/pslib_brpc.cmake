@@ -1,4 +1,4 @@
-# Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_PSLIB_BRPC})
-  return()
-ENDIF(NOT ${WITH_PSLIB_BRPC})
-
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with PSLIB_BRPC in Paddle yet."
-        "Force WITH_PSLIB_BRPC=OFF")
-    SET(WITH_PSLIB_BRPC OFF CACHE STRING "Disable PSLIB_BRPC package in Windows and MacOS" FORCE)
-    return()
-ENDIF()
-
 INCLUDE(ExternalProject)
 
 SET(PSLIB_BRPC_PROJECT       "extern_pslib_brpc")
@@ -31,7 +19,7 @@ IF((NOT DEFINED PSLIB_BRPC_NAME) OR (NOT DEFINED PSLIB_BRPC_URL))
   MESSAGE(STATUS "use pre defined download url")
   SET(PSLIB_BRPC_VER "0.1.0" CACHE STRING "" FORCE)
   SET(PSLIB_BRPC_NAME "pslib_brpc" CACHE STRING "" FORCE)
-  SET(PSLIB_BRPC_URL "https://raw.githubusercontent.com/PaddlePaddle/Fleet/release/${PSLIB_BRPC_VER}/${PSLIB_BRPC_NAME}.tar.gz" CACHE STRING "" FORCE)
+  SET(PSLIB_BRPC_URL "https://pslib.bj.bcebos.com/pslib_brpc.tar.gz" CACHE STRING "" FORCE)
 ENDIF()
 MESSAGE(STATUS "PSLIB_BRPC_NAME: ${PSLIB_BRPC_NAME}, PSLIB_BRPC_URL: ${PSLIB_BRPC_URL}")
 SET(PSLIB_BRPC_SOURCE_DIR    "${THIRD_PARTY_PATH}/pslib_brpc")

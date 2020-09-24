@@ -18,6 +18,7 @@ import numpy as np
 import argparse
 import time
 import math
+import sys
 
 import paddle
 import paddle.fluid as fluid
@@ -109,11 +110,8 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
     return t
 
 
-from paddle.fluid.transpiler.details import op_to_code
-
-
 def operator_equal(a, b):
-    if op_to_code(a) != op_to_code(b):
+    if a.__str__() != b.__str__():
         raise ValueError("In operator_equal not equal\n")
 
     for k, v in six.iteritems(a.__dict__):
@@ -172,7 +170,8 @@ def program_equal(a, b):
                         k))
                     return False
             assert (len(a.blocks) == len(b.blocks))
-
+        elif k == '_auto_checkpoint_name':
+            continue
         elif (v != b.__dict__[k]):
             raise ValueError("In program_equal not equal:{0}\n".format(k))
 
@@ -180,6 +179,8 @@ def program_equal(a, b):
 
 
 class TestDistMnist(unittest.TestCase):
+    @unittest.skipIf(sys.platform == "win32",
+                     "Windows does not support distribution")
     def test_desc_clone(self):
         get_model(batch_size=20)
 
@@ -194,9 +195,105 @@ class TestDistMnist(unittest.TestCase):
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
         main = pserver_prog.clone()
         startup = startup_prog.clone()
-
         self.assertTrue(program_equal(main, pserver_prog))
         self.assertTrue(program_equal(startup, startup_prog))
+
+
+class TestCloneWithStopGradient(unittest.TestCase):
+    def test_clone_with_stop_gradient(self):
+        train_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            img = fluid.layers.data(name='image', shape=[784])
+            hidden1 = fluid.layers.fc(input=img, size=200, act='relu')
+            hidden1.stop_gradient = True
+            hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.5)
+            loss = fluid.layers.cross_entropy(
+                input=fluid.layers.fc(hidden2, size=10, act='softmax'),
+                label=fluid.layers.data(
+                    name='label', shape=[1], dtype='int64'))
+            avg_loss = fluid.layers.mean(loss)
+            test_program = train_program.clone(for_test=False)
+
+        self.assertEqual(
+            test_program.block(0).var(hidden1.name).stop_gradient, True)
+        self.assertEqual(
+            test_program.block(0).var(hidden2.name).stop_gradient, False)
+
+
+class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
+    def test_clone_with_stop_gradient(self):
+        train_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            img = fluid.layers.data(name='image', shape=[784])
+            true = fluid.layers.ones(shape=[1], dtype="float32")
+            hidden1 = fluid.layers.fc(input=img, size=200, act='relu')
+            hidden1.stop_gradient = True
+
+            cond = fluid.layers.equal(true, true)
+
+            def true_fn():
+                hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.5)
+                hidden2.stop_gradient = True
+                return hidden2
+
+            def false_fn():
+                hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.6)
+                return hidden2
+
+            hidden2 = fluid.layers.cond(cond, true_fn, false_fn)
+
+            loss = fluid.layers.cross_entropy(
+                input=fluid.layers.fc(hidden2, size=10, act='softmax'),
+                label=fluid.layers.data(
+                    name='label', shape=[1], dtype='int64'))
+            avg_loss = fluid.layers.mean(loss)
+            test_program = train_program.clone(for_test=False)
+
+        self.assertEqual(
+            test_program.block(0).var(hidden1.name).stop_gradient, True)
+        for var in test_program.block(1).vars.values():
+            var2 = train_program.block(1).var(var.name)
+            self.assertEqual(var.stop_gradient, var2.stop_gradient)
+        for var in test_program.block(2).vars.values():
+            var2 = train_program.block(2).var(var.name)
+            self.assertEqual(var.stop_gradient, var2.stop_gradient)
+
+
+class TestCloneWithRaise(unittest.TestCase):
+    def test_clone_with_stop_gradient(self):
+        train_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            img = fluid.layers.data(name='image', shape=[784])
+            true = fluid.layers.ones(shape=[1], dtype="float32")
+            hidden1 = fluid.layers.fc(input=img, size=200, act='relu')
+            hidden1.stop_gradient = True
+
+            cond = fluid.layers.equal(true, true)
+
+            def true_fn():
+                hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.5)
+                hidden2.stop_gradient = True
+                return hidden2
+
+            def false_fn():
+                hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.6)
+                return hidden2
+
+            hidden2 = fluid.layers.cond(cond, true_fn, false_fn)
+            loss = fluid.layers.cross_entropy(
+                input=fluid.layers.fc(hidden2, size=10, act='softmax'),
+                label=fluid.layers.data(
+                    name='label', shape=[1], dtype='int64'))
+            avg_loss = fluid.layers.mean(loss)
+            test_program = train_program.clone(for_test=False)
+
+        self.assertRaises(ValueError, train_program._copy_data_info_from,
+                          startup_program)
+        self.assertRaises(TypeError, train_program._copy_data_info_from,
+                          startup_program.block(0))
 
 
 if __name__ == "__main__":
