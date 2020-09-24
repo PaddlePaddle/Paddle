@@ -238,7 +238,10 @@ class TestFleetHeterBase(unittest.TestCase):
         return heter0_proc, heter1_proc, heter0_pipe, heter1_pipe
 
     def _run_cluster(self, model, envs):
-        env = {'GRAD_CLIP': str(self._grad_clip_mode)}
+        env = {
+            'GRAD_CLIP': str(self._grad_clip_mode),
+            'FLAGS_eager_delete_tensor_gb': str(-1)
+        }
         python_path = self._python_interp
         gloo_path = tempfile.mkdtemp()
 
