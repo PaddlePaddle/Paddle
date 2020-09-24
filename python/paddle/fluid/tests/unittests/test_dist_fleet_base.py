@@ -97,7 +97,7 @@ class FleetDistRunnerBase(object):
         self.dump_fields_path = os.getenv("dump_fields_path", "")
         debug = int(os.getenv("Debug", "0"))
         # TODO(update strategy to support dump params)
-        if False:  #debug:
+        if False:  # debug:
             self.strategy.set_debug_opt({
                 "dump_param": self.dump_param,
                 "dump_fields": self.dump_fields,
@@ -313,9 +313,6 @@ class TestFleetBase(unittest.TestCase):
                 "========================Error tr1_err end==========================="
             )
 
-        self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")
-        self.assertEqual(tr1_ret, 0, "something wrong in tr1, please check")
-
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
@@ -326,6 +323,8 @@ class TestFleetBase(unittest.TestCase):
         ps1.terminate()
 
         shutil.rmtree(gloo_path)
+        self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")
+        self.assertEqual(tr1_ret, 0, "something wrong in tr1, please check")
         return 0, 0
 
     def check_with_place(self,
