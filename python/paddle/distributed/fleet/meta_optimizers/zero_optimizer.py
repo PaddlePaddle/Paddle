@@ -19,6 +19,7 @@ from paddle.fluid import unique_name, core
 from paddle.distributed.fleet.meta_optimizers.zero.decorator import decorate as amp_decorate
 import paddle.fluid as fluid
 
+from functools import reduce
 import math
 import re
 
@@ -405,7 +406,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                         non_persistable_input[0]]
 
         params = []
-        for var_name, _ in block.vars.items():
+        for var_name in list(block.vars.keys()):
             if self._is_opti_var(var_name) and \
                 self._var_device_id(var_name) != self.role_maker._worker_index():
                 params.append(var_name)
@@ -734,7 +735,7 @@ class ZeroOptimizer(MetaOptimizerBase):
                       (self.role_maker._worker_index(), op.type))
                 block._remove_op(idx)
                 break
-        for var_name, _ in block.vars.items():
+        for var_name in list(block.vars.keys()):
             var_device_id = self._var_device_id(var_name)
             if var_device_id == -1 or var_device_id == self.role_maker._worker_index(
             ):
