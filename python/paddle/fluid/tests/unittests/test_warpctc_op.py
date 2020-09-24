@@ -484,16 +484,20 @@ class TestWarpCTCOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_label_len_Variable)
 
+    def test_dygraph_errors(self):
         def test_dygraph_with_lod():
+
             logits = np.random.uniform(0.1, 1.0, [20, 15]).astype("float32")
             # labels should not be blank
             labels = np.random.randint(0, 15 - 1, [15, 1], dtype="int32")
             softmax = paddle.to_variable(logits)
             labels = paddle.to_variable(labels)
 
-            fluid.layers.warpctc(input=softmax, label=label)
+            fluid.layers.warpctc(input=softmax, label=labels)
 
-        self.assertRaises(TypeError, test_dygraph_with_lod)
+        paddle.disable_static()
+        self.assertRaises(ValueError, test_dygraph_with_lod)
+        paddle.enable_static()
 
 
 class TestCTCLossAPICase(unittest.TestCase):
