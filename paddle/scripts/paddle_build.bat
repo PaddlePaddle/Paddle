@@ -209,7 +209,7 @@ echo Build third_party the %build_times% time:
 msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
-    if %build_times% GTR 3 (
+    if %build_times% GTR 2 (
         exit /b 7
     ) else (
         echo Build third_party failed, will retry!
@@ -224,7 +224,7 @@ echo Build Paddle the %build_times% time:
 msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
-    if %build_times% GTR 2 (
+    if %build_times% GTR 1 (
         exit /b 7
     ) else (
         echo Build Paddle failed, will retry!
