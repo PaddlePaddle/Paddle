@@ -16,10 +16,7 @@
 #include <set>
 #include <string>
 #include <unordered_set>
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
 namespace framework {

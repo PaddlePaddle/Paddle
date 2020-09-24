@@ -16,8 +16,6 @@
 
 #include <stdlib.h>
 
-#include <string>
-
 namespace paddle {
 namespace memory {
 namespace allocation {

@@ -14,11 +14,7 @@
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-
-#include <memory>
 #include <utility>
-
-#include "paddle/fluid/platform/dynload/nccl.h"
 
 namespace paddle {
 namespace platform {
