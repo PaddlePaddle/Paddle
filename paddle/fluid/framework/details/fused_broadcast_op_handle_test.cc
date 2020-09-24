@@ -17,10 +17,19 @@
 #include <unordered_map>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle_test.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
 namespace details {
+
+struct VarHandle;
 
 struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
   std::vector<std::string> out_varnames_;

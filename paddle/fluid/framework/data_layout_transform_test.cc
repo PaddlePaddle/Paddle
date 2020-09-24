@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/device_context.h"
 
 TEST(DataTransform, DataLayoutFunction) {
   auto place = paddle::platform::CPUPlace();

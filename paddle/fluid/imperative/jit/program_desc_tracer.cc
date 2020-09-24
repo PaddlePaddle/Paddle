@@ -15,7 +15,12 @@
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include <unordered_map>
 #include <unordered_set>
-#include <utility>
+
+namespace paddle {
+namespace imperative {
+class VarBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace imperative {

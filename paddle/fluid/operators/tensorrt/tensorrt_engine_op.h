@@ -32,6 +32,18 @@
 #include "paddle/fluid/inference/tensorrt/helper.h"
 
 namespace paddle {
+namespace inference {
+namespace tensorrt {
+class TRTCalibratorEngine;
+class TRTCalibratorEngineManager;
+class TRTInt8Calibrator;
+}  // namespace tensorrt
+template <typename T>
+struct Singleton;
+}  // namespace inference
+}  // namespace paddle
+
+namespace paddle {
 
 namespace operators {
 

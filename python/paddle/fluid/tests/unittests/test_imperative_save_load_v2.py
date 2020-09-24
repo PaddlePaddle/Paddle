@@ -285,7 +285,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 else:
                     self.base_opti[k] = v
 
-            fluid.save_dygraph(self.opti_dict, "./test_dy_v2")
+            paddle.save(self.opti_dict, "./test_dy_v2.pdopt")
 
             self.state_dict = ptb_model.state_dict()
 
@@ -294,7 +294,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 np_t = v.numpy()
                 self.model_base[k] = np_t
 
-            paddle.save(self.state_dict, "./test_dy_v2")
+            paddle.save(self.state_dict, "./test_dy_v2.pdparams")
 
     def testLoadAndSetVarBase(self):
         self.setUp()
@@ -374,7 +374,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                     self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
 
-            para_state_dict, opti_state_dict = paddle.load("./test_dy_v2")
+            para_state_dict = paddle.load("./test_dy_v2.pdparams")
+            opti_state_dict = paddle.load("./test_dy_v2.pdopt")
             adam.set_state_dict(opti_state_dict)
 
             opti_dict = adam.state_dict()
@@ -905,26 +906,19 @@ class TestDygraphPtbRnn(unittest.TestCase):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy'))
+            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy.pdparams'))
 
-            para_state_dict, opti_state_dict = paddle.load(
-                os.path.join('saved_dy', 'emb_dy'))
-
-            self.assertTrue(opti_state_dict == None)
-
-            para_state_dict, opti_state_dict = paddle.load(
+            para_state_dict = paddle.load(
                 os.path.join('saved_dy', 'emb_dy.pdparams'))
-
-            para_state_dict, opti_state_dict = paddle.load(
-                os.path.join('saved_dy', 'emb_dy.pdopt'))
 
     def test_no_state_in_input_dict(self):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy'))
+            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy.pdparams'))
 
-            para_state_dict, _ = paddle.load(os.path.join('saved_dy', 'emb_dy'))
+            para_state_dict = paddle.load(
+                os.path.join('saved_dy', 'emb_dy.pdparams'))
             para_state_dict.pop('weight')
 
             emb.set_state_dict(para_state_dict)
@@ -933,9 +927,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy'))
+            paddle.save(state_dict, os.path.join('saved_dy', 'emb_dy.pdparams'))
 
-            para_state_dict, _ = paddle.load(os.path.join('saved_dy', 'emb_dy'))
+            para_state_dict = paddle.load(
+                os.path.join('saved_dy', 'emb_dy.pdparams'))
             para_state_dict['weight'] = np.expand_dims(
                 para_state_dict['weight'], axis=-1)
 

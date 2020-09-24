@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <stddef.h>
+
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA

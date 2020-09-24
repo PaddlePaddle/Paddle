@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/monitor.h"
-#include <utility>
 
 namespace paddle {
 namespace platform {}  // namespace platform

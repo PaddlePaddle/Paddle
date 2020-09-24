@@ -12,20 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <cstdlib>
-#include <memory>
-#include <random>
-#include <string>
-#include <vector>
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/elementwise/test_elementwise_op_grad_grad.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
 USE_OP(elementwise_add);
