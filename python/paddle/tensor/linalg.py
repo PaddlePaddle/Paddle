@@ -707,20 +707,14 @@ def cross(x, y, axis=None, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            from paddle import to_variable
-            import numpy as np
-
             paddle.disable_static()
 
-            data_x = np.array([[1.0, 1.0, 1.0],
-                               [2.0, 2.0, 2.0],
-                               [3.0, 3.0, 3.0]])
-            data_y = np.array([[1.0, 1.0, 1.0],
-                               [1.0, 1.0, 1.0],
-                               [1.0, 1.0, 1.0]])
-            x = to_variable(data_x)
-            y = to_variable(data_y)
-
+            x = paddle.to_tensor([[1.0, 1.0, 1.0],
+                                  [2.0, 2.0, 2.0],
+                                  [3.0, 3.0, 3.0]])
+            y = paddle.to_tensor([[1.0, 1.0, 1.0],
+                                  [1.0, 1.0, 1.0],
+                                  [1.0, 1.0, 1.0]])
             z1 = paddle.cross(x, y)
             print(z1.numpy())
             # [[-1. -1. -1.]
