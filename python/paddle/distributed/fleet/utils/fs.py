@@ -97,7 +97,7 @@ class FS(object):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=False):
+    def mv(self, fs_src_path, fs_dst_path, overwrite=False):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -343,14 +343,14 @@ class LocalFS(FS):
                 client.mv("test_mv_src", "test_mv_dst")
                 client.delete("test_mv_dst")
         """
+        if self.is_exist(dst_path):
+            if overwrite:
+                self.delete(dst_path)
+            else:
+                raise FSFileExistsError
+
         if not self.is_exist(src_path):
             raise FSFileNotExistsError
-
-        if overwrite and self.is_exist(dst_path):
-            self.delete(dst_path)
-
-        if self.is_exist(dst_path):
-            raise FSFileExistsError
 
         return self.rename(src_path, dst_path)
 
@@ -838,17 +838,15 @@ class HDFSClient(FS):
                 client = HDFSClient(hadoop_home, configs)
                 client.mv("hdfs:/test_hdfs_client", "hdfs:/test_hdfs_client2")
         """
-        if overwrite and self.is_exist(fs_dst_path):
-            self.delete(fs_dst_path)
-
-        if test_exists:
-            if not self.is_exist(fs_src_path):
-                raise FSFileNotExistsError("{} is not exists".format(
-                    fs_src_path))
-
-            if self.is_exist(fs_dst_path):
+        if self.is_exist(fs_dst_path):
+            if overwrite:
+                self.delete(fs_dst_path)
+            else:
                 raise FSFileExistsError("{} exists already".format(
                     fs_src_path, fs_dst_path, fs_dst_path))
+
+        if not self.is_exist(fs_src_path):
+            raise FSFileNotExistsError("{} is not exists".format(fs_src_path))
 
         return self._try_mv(fs_src_path, fs_dst_path)
 
