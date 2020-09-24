@@ -97,7 +97,7 @@ class FS(object):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def mv(self, fs_src_path, fs_dst_path, overwrite=False):
+    def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=False):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -324,7 +324,7 @@ class LocalFS(FS):
 
         return Path(fs_path).touch(exist_ok=True)
 
-    def mv(self, src_path, dst_path, overwrite=False):
+    def mv(self, src_path, dst_path, overwrite=False, test_exists=False):
         """
         Move a local file or directory from `src_path` to `dst_path` .
 
@@ -343,14 +343,14 @@ class LocalFS(FS):
                 client.mv("test_mv_src", "test_mv_dst")
                 client.delete("test_mv_dst")
         """
-        if self.is_exist(dst_path):
-            if overwrite:
-                self.delete(dst_path)
-            else:
-                raise FSFileExistsError
-
         if not self.is_exist(src_path):
             raise FSFileNotExistsError
+
+        if overwrite and self.is_exist(dst_path):
+            self.delete(dst_path)
+
+        if self.is_exist(dst_path):
+            raise FSFileExistsError
 
         return self.rename(src_path, dst_path)
 
@@ -814,7 +814,7 @@ class HDFSClient(FS):
             if ret != 0:
                 raise ExecuteError(cmd)
 
-    def mv(self, fs_src_path, fs_dst_path, overwrite=False):
+    def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=True):
         """
         Move a remote HDFS file or directory from `fs_src_path` to `fs_dst_path` .
 
@@ -822,6 +822,7 @@ class HDFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption. 
 
         Examples:
 
@@ -838,15 +839,17 @@ class HDFSClient(FS):
                 client = HDFSClient(hadoop_home, configs)
                 client.mv("hdfs:/test_hdfs_client", "hdfs:/test_hdfs_client2")
         """
-        if self.is_exist(fs_dst_path):
-            if overwrite:
-                self.delete(fs_dst_path)
-            else:
+        if overwrite and self.is_exist(fs_dst_path):
+            self.delete(fs_dst_path)
+
+        if test_exists:
+            if not self.is_exist(fs_src_path):
+                raise FSFileNotExistsError("{} is not exists".format(
+                    fs_src_path))
+
+            if self.is_exist(fs_dst_path):
                 raise FSFileExistsError("{} exists already".format(
                     fs_src_path, fs_dst_path, fs_dst_path))
-
-        if not self.is_exist(fs_src_path):
-            raise FSFileNotExistsError("{} is not exists".format(fs_src_path))
 
         return self._try_mv(fs_src_path, fs_dst_path)
 
