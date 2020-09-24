@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <fstream>
+#include <map>
 #include <memory>
 #include <mutex>  // NOLINT
-#include <map>
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
@@ -181,7 +181,7 @@ class HeterXpuTrainer : public TrainerBase {
                    cudaStream_t stream);
 #endif
 #ifdef PADDLE_WITH_XPU
-  void HeterMemCpy(LoDTensor* thread_tensor, LoDTensor *root_tensor,
+  void HeterMemCpy(LoDTensor* thread_tensor, LoDTensor* root_tensor,
                    const paddle::platform::Place& thread_place);
 #endif
   void CreateThreadParam(const ProgramDesc& program, int num);

@@ -184,9 +184,9 @@ void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-void HeterXpuTrainer::HeterMemCpy(
-    LoDTensor *thread_tensor, LoDTensor *root_tensor,
-    const paddle::platform::Place& thread_place) {
+void HeterXpuTrainer::HeterMemCpy(LoDTensor *thread_tensor,
+                                  LoDTensor *root_tensor,
+                                  const paddle::platform::Place& thread_place) {
   T* thread_ptr =
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
