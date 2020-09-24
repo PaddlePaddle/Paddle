@@ -17,11 +17,11 @@
 #include <unordered_map>
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/platform/device_context.h"
-
 namespace paddle {
 namespace framework {
 namespace details {
+struct DummyVarHandle;
+
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 

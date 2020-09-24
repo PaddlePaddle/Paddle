@@ -15,6 +15,7 @@
 #pragma once
 #include <cstddef>
 #include <type_traits>
+
 #include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
