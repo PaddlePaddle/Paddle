@@ -23,7 +23,6 @@ from .strategy_compiler import StrategyCompiler
 from .distributed_strategy import DistributedStrategy
 from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
-from .util_factory import UtilFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 
@@ -120,7 +119,6 @@ class Fleet(object):
         self.strategy_compiler = None
         self._is_collective = False
         self._runtime_handle = None
-        self._util = None
 
     def init(self, role_maker=None, is_collective=False):
         """
@@ -180,6 +178,11 @@ class Fleet(object):
                 raise ValueError(
                     "`role_maker` should be subclass of `RoleMakerBase`, but got {}".
                     format(type(role_maker)))
+        self._role_maker._generate_role()
+
+        import paddle.distributed.fleet as fleet
+        fleet.util._set_role_maker(self._role_maker)
+
         self.strategy_compiler = StrategyCompiler()
         if paddle.fluid.framework.in_dygraph_mode():
             if parallel_helper._is_parallel_ctx_initialized():
@@ -187,7 +190,6 @@ class Fleet(object):
                     "The dygraph parallel environment has been initialized.")
             else:
                 paddle.distributed.init_parallel_env()
-        return None
 
     def is_first_worker(self):
         """
@@ -206,7 +208,7 @@ class Fleet(object):
                 fleet.is_first_worker()
 
         """
-        return self._role_maker.is_first_worker()
+        return self._role_maker._is_first_worker()
 
     def worker_index(self):
         """
@@ -223,7 +225,7 @@ class Fleet(object):
                 fleet.worker_index()
 
         """
-        return self._role_maker.worker_index()
+        return self._role_maker._worker_index()
 
     def worker_num(self):
         """
@@ -240,7 +242,7 @@ class Fleet(object):
                 fleet.worker_num()
 
         """
-        return self._role_maker.worker_num()
+        return self._role_maker._worker_num()
 
     def is_worker(self):
         """
@@ -258,7 +260,7 @@ class Fleet(object):
                 fleet.is_worker()
 
         """
-        return self._role_maker.is_worker()
+        return self._role_maker._is_worker()
 
     def worker_endpoints(self, to_string=False):
         """
@@ -275,13 +277,10 @@ class Fleet(object):
                 fleet.worker_endpoints()
 
         """
-        '''
         if to_string:
-            return ",".join(self._role_maker.get_trainer_endpoints())
+            return ",".join(self._role_maker._get_trainer_endpoints())
         else:
-            return self._role_maker.get_trainer_endpoints()
-        '''
-        return ["127.0.0.1:1001", "127.0.0.1:1002"]
+            return self._role_maker._get_trainer_endpoints()
 
     def server_num(self):
         """
@@ -296,7 +295,7 @@ class Fleet(object):
             fleet.init()
             fleet.server_num()
         """
-        return len(self._role_maker.get_pserver_endpoints())
+        return len(self._role_maker._get_pserver_endpoints())
 
     def server_index(self):
         """
@@ -313,7 +312,7 @@ class Fleet(object):
                 fleet.server_index()
 
         """
-        return self._role_maker.server_index()
+        return self._role_maker._server_index()
 
     def server_endpoints(self, to_string=False):
         """
@@ -332,9 +331,9 @@ class Fleet(object):
         """
 
         if to_string:
-            return ",".join(self._role_maker.get_pserver_endpoints())
+            return ",".join(self._role_maker._get_pserver_endpoints())
         else:
-            return self._role_maker.get_pserver_endpoints()
+            return self._role_maker._get_pserver_endpoints()
 
     def is_server(self):
         """
@@ -352,39 +351,8 @@ class Fleet(object):
                 fleet.is_server()
 
         """
-        return self._role_maker.is_server(
+        return self._role_maker._is_server(
         ) or self._role_maker._is_heter_worker()
-
-    @property
-    def util(self):
-        """
-        Utility functions that can be used under certain runtime
-        return util
-
-        Returns:
-            UtilBase: instance of UtilBase, can use distributed ops/tools easily.
-
-        Examples:
-
-            .. code-block:: python
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                util = fleet.util
-                files = ["1.log", "2.log", "3.log", "4.log"]
-                files = util.get_file_shard()
-
-        """
-        return self._util
-
-    @util.setter
-    def util(self, util):
-        """
-        Set Utility functions for userd-defined runtime
-
-        Returns:
-            None
-        """
-        self._util = util
 
     def barrier_worker(self):
         """
@@ -393,7 +361,7 @@ class Fleet(object):
         Returns:
             None
         """
-        self._role_maker.barrier_worker()
+        self._role_maker._barrier("worker")
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -1112,7 +1080,7 @@ class Fleet(object):
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-        if self._util is None:
-            self._util = UtilFactory()._create_util(context)
+        import paddle.distributed.fleet as fleet
+        fleet.util._set_strategy(context["valid_strategy"])
 
         return optimize_ops, params_grads

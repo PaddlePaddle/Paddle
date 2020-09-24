@@ -521,10 +521,10 @@ class TestCTCLossAPICase(unittest.TestCase):
         loss_np = ctc.forward()
 
         paddle.disable_static()
-        softmax = paddle.to_variable(logits)
-        labels = paddle.to_variable(labels)
-        logits_length = paddle.to_variable(self.logits_length)
-        labels_length = paddle.to_variable(self.labels_length)
+        softmax = paddle.to_tensor(logits)
+        labels = paddle.to_tensor(labels)
+        logits_length = paddle.to_tensor(self.logits_length)
+        labels_length = paddle.to_tensor(self.labels_length)
         loss_pd_mean = F.ctc_loss(
             softmax,
             labels,
@@ -574,10 +574,10 @@ class TestCTCLossAPICase(unittest.TestCase):
         loss_np = ctc.forward()
 
         paddle.disable_static()
-        softmax = paddle.to_variable(logits)
-        labels = paddle.to_variable(labels)
-        logits_length = paddle.to_variable(self.logits_length)
-        labels_length = paddle.to_variable(self.labels_length)
+        softmax = paddle.to_tensor(logits)
+        labels = paddle.to_tensor(labels)
+        logits_length = paddle.to_tensor(self.logits_length)
+        labels_length = paddle.to_tensor(self.labels_length)
 
         loss_pd = paddle.nn.CTCLoss(self.blank, 'none')(
             softmax, labels, logits_length, labels_length)

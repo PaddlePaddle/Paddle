@@ -15,11 +15,10 @@ limitations under the License. */
 
 #include <cuda.h>
 #include <cusolverDn.h>
-
 #include <mutex>  // NOLINT
-#include "paddle/fluid/platform/port.h"
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace platform {

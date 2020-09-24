@@ -55,7 +55,10 @@ launch a process on each of the given gpu card or cpu machine.
 """
 
 from __future__ import print_function
+
+import shutil
 import sys
+import tempfile
 from sys import version
 import subprocess
 import os
@@ -153,7 +156,7 @@ def get_cluster_from_args(args, gpus):
     else:
         start_port = 6070
         if os.environ.get('FLAGS_START_PORT') is not None:
-            start_port = os.environ.get('FLAGS_START_PORT')
+            start_port = int(os.environ.get('FLAGS_START_PORT'))
 
         free_ports = [x for x in range(start_port, start_port + len(gpus))]
 
@@ -178,8 +181,8 @@ def get_gpus(gpus):
             cuda_visible_devices_list = cuda_visible_devices.split(',')
             for x in gpus.split(','):
                 assert x in cuda_visible_devices_list, "Can't find "\
-                "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
-                % (x, cuda_visible_devices)
+                    "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                    % (x, cuda_visible_devices)
             res_gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in gpus.split(',')
@@ -213,12 +216,20 @@ def launch_collective(args):
         cluster, pod = get_cluster_from_args(args, gpus)
         logger.debug("get cluster from args:{}".format(cluster))
 
+    global_envs = copy.copy(os.environ.copy())
+    gloo_rendezvous_dir = tempfile.mkdtemp()
+    # add gloo env
+    global_envs["PADDLE_WITH_GLOO"] = "1"
+    global_envs["PADDLE_GLOO_RENDEZVOUS"] = "2"
+    global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+
     procs = start_local_trainers(
         cluster,
         pod,
         training_script=args.training_script,
         training_script_args=args.training_script_args,
-        log_dir=args.log_dir)
+        log_dir=args.log_dir,
+        envs=global_envs)
 
     while True:
         alive = watch_local_trainers(procs, cluster.trainers_nranks())
@@ -229,6 +240,9 @@ def launch_collective(args):
             break
 
         time.sleep(3)
+
+    if os.path.exists(gloo_rendezvous_dir):
+        shutil.rmtree(gloo_rendezvous_dir)
 
 
 def launch_ps(args):
@@ -315,6 +329,13 @@ def launch_ps(args):
 
     default_env = os.environ.copy()
     current_env = copy.copy(default_env)
+
+    gloo_rendezvous_dir = tempfile.mkdtemp()
+    # add gloo env
+    current_env["PADDLE_WITH_GLOO"] = "1"
+    current_env["PADDLE_GLOO_RENDEZVOUS"] = "2"
+    current_env["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
     procs = []
@@ -327,8 +348,7 @@ def launch_ps(args):
             "PADDLE_PORT": cur_server.endpoint.split(":")[1],
             "TRAINING_ROLE": "PSERVER",
             "PADDLE_TRAINERS_NUM": str(worker_num),
-            "POD_IP": cur_server.endpoint.split(":")[0],
-            "PADDLE_WITH_GLOO": "1"
+            "POD_IP": cur_server.endpoint.split(":")[0]
         }
         current_env.update(proc_env)
 
@@ -367,8 +387,7 @@ def launch_ps(args):
             "PADDLE_TRAINER_ENDPOINTS": worker_endpoints,
             "PADDLE_TRAINERS_NUM": str(worker_num),
             "TRAINING_ROLE": "TRAINER",
-            "PADDLE_TRAINER_ID": str(cur_worker.rank),
-            "PADDLE_WITH_GLOO": "1"
+            "PADDLE_TRAINER_ID": str(cur_worker.rank)
         }
         current_env.update(proc_env)
 
@@ -419,6 +438,9 @@ def launch_ps(args):
         procs[i].proc.terminate()
     print("all parameter server are killed", file=sys.stderr)
 
+    if os.path.exists(gloo_rendezvous_dir):
+        shutil.rmtree(gloo_rendezvous_dir)
+
 
 def launch():
     args = _parse_args()
@@ -439,9 +461,8 @@ def launch():
         cuda_device_num = 0
 
     if len(has_ps_args) > 0 or cuda_device_num == 0:
-        logger.info(
-            "Run parameter-sever cpu mode. pserver arguments:{}, cuda count:{}".
-            format(has_ps_args, cuda_device_num))
+        logger.info("Run parameter-sever cpu mode. pserver arguments:{}".format(
+            has_ps_args))
         launch_ps(args)
     elif len(has_collective_args) > 0:
         logger.info("Run collective gpu mode. gpu arguments:{}, cuda count:{}".
