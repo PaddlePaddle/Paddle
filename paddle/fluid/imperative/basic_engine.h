@@ -18,7 +18,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/engine.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 
@@ -30,8 +29,7 @@ class OpBase;
 
 class BasicEngine : public Engine {
  public:
-  void Init(VarBase* var, const detail::BackwardStrategy& strategy,
-            bool retain_graph = false);
+  void Init(VarBase* var, bool retain_graph = false);
 
   void Execute() override;
 
@@ -46,7 +44,6 @@ class BasicEngine : public Engine {
 
  private:
   std::shared_ptr<GradOpNode> init_node_;
-  detail::BackwardStrategy backward_strategy_;
   std::unordered_map<GradOpNode*, size_t> node_deps_;
   std::unordered_map<VariableWrapper*, std::unique_ptr<GradientAccumulator>>
       accumulators_;

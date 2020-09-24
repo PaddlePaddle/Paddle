@@ -87,7 +87,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role2._all_gather(1)
         role2._all_gather(1)
         role2._barrier_server()
-        role2.all_gather(1)
+        role2._all_gather(1)
         role3 = GeneralRoleMaker(path="./test_gloo_3")
         role3._worker_gather(1)
         role3._worker_gather(1)
@@ -163,10 +163,9 @@ class TestCloudRoleMaker2(unittest.TestCase):
             data = "1 1 1 1\n"
             f.write(data)
 
-        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
-            "InMemoryDataset")
+        dataset = paddle.distributed.InMemoryDataset()
         dataset.set_filelist(["test_fleet_gloo_role_maker_1.txt"])
-        dataset.set_use_var([show, label])
+        dataset._set_use_var([show, label])
         dataset.load_into_memory()
         dataset.get_memory_data_size(fleet)
         dataset.get_shuffle_data_size(fleet)

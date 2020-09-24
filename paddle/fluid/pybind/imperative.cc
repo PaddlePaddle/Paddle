@@ -30,7 +30,6 @@ limitations under the License. */
 
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
-#include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -507,50 +506,6 @@ void BindImperative(py::module *m_ptr) {
         []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
 #endif
 
-  py::class_<imperative::detail::BackwardStrategy> backward_strategy(
-      m, "BackwardStrategy", R"DOC(
-
-    BackwardStrategy is a descriptor of how to run the backward process.
-
-    **Note**:
-        **This API is only available in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **Mode**
-
-    Attribute:
-        **sort_sum_gradient**:
-
-        If framework will sum the gradient by the reverse order of trace. eg. x_var ( :ref:`api_guide_Variable` ) will be the input of multiple OP such as :ref:`api_fluid_layers_scale` , this attr will decide if framework will sum gradient of `x_var` by the reverse order.
-
-        By Default: False
-
-        Examples:
-            .. code-block:: python
-
-                import numpy as np
-                import paddle.fluid as fluid
-
-                x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    x_var = fluid.dygraph.to_variable(x)
-                    sums_inputs = []
-                    # x_var will be multi-scales' input here
-                    for _ in range(10):
-                        sums_inputs.append(fluid.layers.scale(x_var))
-                    ret2 = fluid.layers.sums(sums_inputs)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
-      )DOC");
-  backward_strategy.def(py::init())
-      .def_property("sort_sum_gradient",
-                    [](const imperative::detail::BackwardStrategy &self) {
-                      return self.sorted_sum_gradient_;
-                    },
-                    [](imperative::detail::BackwardStrategy &self,
-                       bool sorted_sum_gradient) {
-                      self.sorted_sum_gradient_ = sorted_sum_gradient;
-                    });
-
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
 
@@ -694,72 +649,55 @@ void BindImperative(py::module *m_ptr) {
              return self.NewVarBase(tensor.place(), false);
            },
            py::return_value_policy::copy, R"DOC(
-        **Notes**:
-            **This API is ONLY available in Dygraph mode**
 
-        Returns a new Variable, detached from the current graph.
+        Returns a new Tensor, detached from the current graph.
 
-        Returns:
-             ( :ref:`api_guide_Variable_en` | dtype is same as current Variable): The detached Variable.
-
+        Returns: The detached Tensor.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
-                import numpy as np
+                import paddle
+                paddle.disable_static()
 
-                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    linear = Linear(32, 64)
-                    data = to_variable(data)
-                    x = linear(data)
-                    y = x.detach()
-
+                linear = Linear(32, 64)
+                data = paddle.uniform(shape=[30, 10, 32], -1, 1)
+                x = linear(data)
+                y = x.detach()
        )DOC")
       .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
 
-        **Notes**:
-        **1. This API is ONLY available in Dygraph mode**
+        Only for Tensor that has gradient, normally we use this for Parameters since other temporary Tensor doesen't has gradient.
 
-        **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
-
-        Clear  (set to ``0`` ) the Gradient of Current Variable
+        The Gradient of current Tensor will be set to ``0`` .
 
         Returns:  None
 
         Examples:
              .. code-block:: python
 
-                import paddle.fluid as fluid
-                import numpy as np
+                import paddle
+                paddle.disable_static()
 
-                x = np.ones([2, 2], np.float32)
-                with fluid.dygraph.guard():
-                    inputs2 = []
-                    for _ in range(10):
-                         tmp = fluid.dygraph.base.to_variable(x)
-                         tmp.stop_gradient=False
-                         inputs2.append(tmp)
-                    ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
-                    backward_strategy = fluid.dygraph.BackwardStrategy()
-                    backward_strategy.sort_sum_gradient = True
-                    loss2.backward(backward_strategy)
-                    print(loss2.gradient())
-                    loss2.clear_gradient()
-                    print("After clear {}".format(loss2.gradient()))
+                inputs = []
+                for _ in range(10):
+                    tmp = paddle.ones([2, 2])
+                    tmp.stop_gradient=False
+                    inputs.append(tmp)
+                ret = paddle.sums(inputs2)
+                loss = paddle.reduce_sum(ret)
+                loss.backward()
+                print("Before clear_gradient {}".format(loss.grad))
+                loss.clear_gradient()
+                print("After clear_gradient {}".format(loss.grad))
       )DOC")
       .def("_run_backward",
-           [](imperative::VarBase &self,
-              const imperative::detail::BackwardStrategy &bckst,
-              const imperative::Tracer &tracer, bool retain_graph) {
+           [](imperative::VarBase &self, const imperative::Tracer &tracer,
+              bool retain_graph) {
              // TODO(jiabin): when we impl more backward execution we can
              // select them
              auto *engine = tracer.GetEngine();
-             engine->Init(&self, bckst, retain_graph);
+             engine->Init(&self, retain_graph);
              VLOG(3) << "Start backward";
              engine->Execute();
              VLOG(3) << "Finish backward";
@@ -1024,13 +962,11 @@ void BindImperative(py::module *m_ptr) {
              &output_targets,
          const std::vector<std::shared_ptr<imperative::VarBase>> &output_grads,
          const std::vector<std::shared_ptr<imperative::VarBase>> &no_grad_vars,
-         const platform::Place &place,
-         const imperative::detail::BackwardStrategy &strategy,
-         bool create_graph, bool retain_graph, bool allow_unused,
-         bool only_inputs) {
+         const platform::Place &place, bool create_graph, bool retain_graph,
+         bool allow_unused, bool only_inputs) {
         imperative::PartialGradEngine engine(
             input_targets, output_targets, output_grads, no_grad_vars, place,
-            strategy, create_graph, retain_graph, allow_unused, only_inputs);
+            create_graph, retain_graph, allow_unused, only_inputs);
         engine.Execute();
         return engine.GetResult();
       },

@@ -251,6 +251,7 @@ void PipelineTrainer::Finalize() {
   }
   root_scope_->DropKids();
   SectionWorker::ResetBatchId();
+  SectionWorker::ResetThreadCompletedFlag();
 }
 
 Scope* PipelineTrainer::GetWorkerScope(int thread_id) {

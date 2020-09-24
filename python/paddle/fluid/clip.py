@@ -129,7 +129,7 @@ class GradientClipBase(object):
     def __str__(self):
         raise NotImplementedError()
 
-    @imperative_base.no_grad()
+    @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
         raise NotImplementedError
 
@@ -258,7 +258,7 @@ class GradientClipByValue(GradientClipBase):
     def __str__(self):
         return "Gradient Clip By Value, min = %f, max=%f" % (self.min, self.max)
 
-    @imperative_base.no_grad()
+    @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
         for p, g in params_grads:
@@ -413,7 +413,7 @@ class GradientClipByNorm(GradientClipBase):
     def __str__(self):
         return "Gradient Clip By Norm, clip_norm=%f" % self.clip_norm
 
-    @imperative_base.no_grad()
+    @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
         for p, g in params_grads:
@@ -565,7 +565,7 @@ class GradientClipByGlobalNorm(GradientClipBase):
     def __str__(self):
         return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
 
-    @imperative_base.no_grad()
+    @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
         sum_square_list = []
@@ -590,7 +590,7 @@ class GradientClipByGlobalNorm(GradientClipBase):
         global_norm_var = layers.reduce_sum(global_norm_var)
         global_norm_var = layers.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
-            shape=[1], dtype='float32', value=self.clip_norm)
+            shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
         clip_var = layers.elementwise_div(
             x=max_global_norm,
             y=layers.elementwise_max(
@@ -635,7 +635,9 @@ class GradientClipByGlobalNorm(GradientClipBase):
                 global_norm_var = layers.sums(sum_square_list)
                 global_norm_var = layers.sqrt(x=global_norm_var)
                 max_global_norm = layers.fill_constant(
-                    shape=[1], dtype="float32", value=self.clip_norm)
+                    shape=[1],
+                    dtype=global_norm_var.dtype,
+                    value=self.clip_norm)
                 scale_var = layers.elementwise_div(
                     x=max_global_norm,
                     y=layers.elementwise_max(
@@ -663,7 +665,7 @@ class GradientClipByGlobalNorm(GradientClipBase):
             context[self.group_name] = []
             context[self.group_name + "_clip_value"] = self.clip_norm
             context[self.group_name + "_clip"] = layers.fill_constant(
-                shape=[1], dtype="float32", value=self.clip_norm)
+                shape=[1], dtype=grad.dtype, value=self.clip_norm)
         else:
             if not self.clip_norm == context[self.group_name + "_clip_value"]:
                 raise ValueError(

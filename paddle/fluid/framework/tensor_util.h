@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/eigen.h"
@@ -30,6 +31,8 @@ namespace framework {
 // If ctx_place and src_place are the same, src_ctx.Wait() is added
 // after memory::Copy; if ctx_place and dst_place are the same,
 // src_ctx.Wait() is added before memory::Copy.
+class Tensor;
+
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst);
 
@@ -183,7 +186,11 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
   dst->resize(src.numel());
   auto dst_ptr = static_cast<void*>(dst->data());
 
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(src.place()), true);
+  PADDLE_ENFORCE_EQ(
+      platform::is_cpu_place(src.place()), true,
+      platform::errors::InvalidArgument(
+          "The input tensor should be CPU device, but actually it is in %s.",
+          src.place()));
 
   memory::Copy(dst_place, dst_ptr,
                BOOST_GET_CONST(platform::CPUPlace, src.place()), src_ptr, size);

@@ -13,6 +13,7 @@ limitations under the License. */
 
 #include <cmath>
 #include <type_traits>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
@@ -22,15 +23,20 @@ namespace operators {
 template <typename T>
 struct PowFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const {
-#ifdef __CUDA_ARCH__
-    // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
-    // it will return a float number like 2.99... , which floor to 2
-    // when cast to int by default and it is wrong.
-    // Use llrint to cast it to the nearest integer, which is 3.
+    // TODO(wujionghao): A potential speed improvement is supporting different
+    // types in C++.
+    // #ifdef __CUDA_ARCH__
+    //     // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
+    //     // it will return a float number like 2.99... , which floor to 2
+    //     // when cast to int by default and it is wrong.
+    //     // Use llrint to cast it to the nearest integer, which is 3.
+    //     if (std::is_integral<T>::value) {
+    //       return std::llrint(std::pow(a, b));
+    //     }
+    // #endif
     if (std::is_integral<T>::value) {
       return std::llrint(std::pow(a, b));
     }
-#endif
     return std::pow(a, b);
   }
 };

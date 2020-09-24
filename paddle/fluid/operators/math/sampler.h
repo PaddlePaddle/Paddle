@@ -19,6 +19,8 @@ limitations under the License. */
 #include <random>
 #include <vector>
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace operators {
 namespace math {
@@ -26,12 +28,15 @@ namespace math {
 // TODO(wanghaoshuang): Support for GPU
 
 /**
-* Sample integers from [0, range).
-*/
+ * Sample integers from [0, range).
+ */
 class Sampler {
  public:
   explicit Sampler(int64_t range, unsigned int seed = 0UL) : range_(range) {
-    //    PADDLE_ENFORCE_GT(range, 0, "Range should be greater than 0.");
+    PADDLE_ENFORCE_GT(
+        range, 0,
+        platform::errors::InvalidArgument(
+            "Range should be greater than 0, but recevied %d.", range));
     if (seed == 0) {
       std::random_device r;
       seed_ = r();
@@ -117,7 +122,7 @@ class CustomSampler : public Sampler {
   const int* alias_;
   const float* probs_;
   const int exceptional_val = -1;
-  std::shared_ptr<std::mt19937> random_engine_;
+  std::shared_ptr<std::mt19937_64> random_engine_;
   std::shared_ptr<std::uniform_real_distribution<>> real_dist_;
   std::shared_ptr<std::uniform_int_distribution<>> int_dist_;
 };

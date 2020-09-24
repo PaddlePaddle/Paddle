@@ -39,6 +39,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/timer.h"
 
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class ProgramDesc;
+class Scope;
+class Tensor;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -441,6 +453,7 @@ class SectionWorker : public DeviceWorker {
     skip_vars_ = skip_vars;
   }
   static void ResetBatchId() { batch_id_ = 0; }
+  static void ResetThreadCompletedFlag() { threads_completed = false; }
 
   static std::atomic<int> cpu_id_;
 

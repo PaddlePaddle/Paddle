@@ -13,8 +13,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/frobenius_norm_op.h"
-#include <memory>
+
 #include <string>
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

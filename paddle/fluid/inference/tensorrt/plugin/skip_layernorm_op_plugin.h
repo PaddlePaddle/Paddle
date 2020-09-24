@@ -54,7 +54,7 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
     auto ptr = new SkipLayerNormPluginDynamic(
         bias_.data(), scale_.data(), bias_size_, scale_size_, eps_, ban_fp16_);
     ptr->bias_gpu_ = bias_gpu_;
-    ptr->scale_gpu_ = bias_gpu_;
+    ptr->scale_gpu_ = scale_gpu_;
     return ptr;
   }
 

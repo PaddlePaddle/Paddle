@@ -46,8 +46,8 @@ class TestLogsumexp(OpTest):
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {
-            'dim': self.axis,
-            'keep_dim': self.keepdim,
+            'axis': self.axis,
+            'keepdim': self.keepdim,
             'reduce_all': self.reduce_all
         }
 

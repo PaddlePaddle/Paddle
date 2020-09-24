@@ -12,9 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "mkldnn.hpp"
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+namespace platform {
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -262,9 +270,11 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto *diff_shift = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     PADDLE_ENFORCE_EQ(diff_y->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Input diff_y tensor");
+                      platform::errors::InvalidArgument(
+                          "Wrong layout set for Input diff_y tensor"));
     PADDLE_ENFORCE_NE(diff_y->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Input diff_y tensor");
+                      platform::errors::InvalidArgument(
+                          "Wrong format set for Input diff_y tensor"));
 
     auto src_tz = paddle::framework::vectorize<int64_t>(x->dims());
     auto scale_tz = paddle::framework::vectorize<int64_t>(scale->dims());
