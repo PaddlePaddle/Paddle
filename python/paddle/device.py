@@ -41,7 +41,7 @@ def is_compiled_with_xpu():
     """
     Whether paddle was built with WITH_XPU=ON to support Baidu Kunlun
 
-    Returns (bool): where paddle was built with WITH_XPU=ON
+    Returns (bool): whether paddle was built with WITH_XPU=ON
 
     Examples:
         .. code-block:: python
