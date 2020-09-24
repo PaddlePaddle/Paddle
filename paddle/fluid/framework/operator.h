@@ -39,6 +39,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
 
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpInfo;
+class Scope;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
 DECLARE_int32(inner_op_parallelism);
 
 namespace paddle {
@@ -105,8 +114,8 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
-class OperatorBase;
 class ExecutionContext;
+class OperatorBase;
 
 class RuntimeContext {
  public:

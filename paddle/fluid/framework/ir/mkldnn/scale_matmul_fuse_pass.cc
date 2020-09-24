@@ -13,14 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn/scale_matmul_fuse_pass.h"
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+class Graph;
 
 using string::PrettyLogDetail;
 

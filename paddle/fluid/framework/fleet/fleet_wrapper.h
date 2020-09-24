@@ -37,6 +37,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 
 // A wrapper class for pslib.h, this class follows Singleton pattern
 // i.e. only initialized once in the current process

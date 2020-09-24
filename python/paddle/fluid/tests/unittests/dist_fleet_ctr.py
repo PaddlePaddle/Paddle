@@ -163,8 +163,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         """
 
         exe = fluid.Executor(fluid.CPUPlace())
-        fleet.init_worker()
+
         exe.run(fluid.default_startup_program())
+        fleet.init_worker()
+
         batch_size = 4
         train_reader = paddle.batch(fake_ctr_reader(), batch_size=batch_size)
         self.reader.decorate_sample_list_generator(train_reader)
@@ -202,8 +204,8 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         exe = fluid.Executor(fluid.CPUPlace())
 
-        fleet.init_worker()
         exe.run(fluid.default_startup_program())
+        fleet.init_worker()
 
         thread_num = 2
         batch_size = 128
