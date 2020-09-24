@@ -88,7 +88,7 @@ class TestSaveLoad(unittest.TestCase):
             batch_size=BATCH_SIZE,
             shuffle=True,
             drop_last=True,
-            num_workers=2)
+            num_workers=0)
 
         # train
         train(layer, loader, loss_fn, adam)
@@ -103,8 +103,8 @@ class TestSaveLoad(unittest.TestCase):
         layer, opt = self.build_and_train_model()
 
         # save
-        layer_save_path = "linear.pdparams"
-        opt_save_path = "linear.pdopt"
+        layer_save_path = "test_paddle_save_load.linear.pdparams"
+        opt_save_path = "test_paddle_save_load.linear.pdopt"
         layer_state_dict = layer.state_dict()
         opt_state_dict = opt.state_dict()
 
@@ -120,7 +120,7 @@ class TestSaveLoad(unittest.TestCase):
 
         # test save load in static mode
         paddle.enable_static()
-        static_save_path = "static_mode_test/linear.pdparams"
+        static_save_path = "static_mode_test/test_paddle_save_load.linear.pdparams"
         paddle.save(layer_state_dict, static_save_path)
         load_static_state_dict = paddle.load(static_save_path)
         self.check_load_state_dict(layer_state_dict, load_static_state_dict)
@@ -133,15 +133,15 @@ class TestSaveLoad(unittest.TestCase):
 
         # 2. test save path format error
         with self.assertRaises(ValueError):
-            paddle.save(layer_state_dict, "linear.model/")
+            paddle.save(layer_state_dict, "test_paddle_save_load.linear.model/")
 
         # 3. test load path not exist error
         with self.assertRaises(ValueError):
-            paddle.load("linear.params")
+            paddle.load("test_paddle_save_load.linear.params")
 
         # 4. test load old save path error
         with self.assertRaises(ValueError):
-            paddle.load("linear")
+            paddle.load("test_paddle_save_load.linear")
 
 
 if __name__ == '__main__':
