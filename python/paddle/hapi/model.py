@@ -626,7 +626,7 @@ class DynamicGraphAdapter(object):
         labels = [to_variable(l) for l in to_list(labels)]
 
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
@@ -635,7 +635,7 @@ class DynamicGraphAdapter(object):
             self.ddp_model.apply_collective_grads()
         else:
             outputs = self.model.network.forward(
-                * [to_variable(x) for x in inputs])
+                *[to_variable(x) for x in inputs])
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
             final_loss = fluid.layers.sum(losses)
@@ -646,7 +646,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -659,7 +659,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
         if self.model._loss:
             losses = self.model._loss(*(to_list(outputs) + labels))
             losses = to_list(losses)
@@ -690,7 +690,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         if self.model._loss and len(metrics):
@@ -966,8 +966,12 @@ class Model(object):
               import numpy as np
               import paddle
               import paddle.nn as nn
+              from paddle.static import InputSpec
 
               device = paddle.set_device('cpu') # or 'gpu'
+              
+              input = InputSpec([None, 784], 'float32', 'x')
+              label = InputSpec([None, 1], 'int64', 'label')
 
               net = nn.Sequential(
                   nn.Linear(784, 200),
@@ -975,7 +979,7 @@ class Model(object):
                   nn.Linear(200, 10),
                   nn.Softmax())
 
-              model = paddle.Model(net)
+              model = paddle.Model(net, input, label)
               model.prepare()
               data = np.random.random(size=(4,784)).astype(np.float32)
               out = model.test_batch([data])
@@ -1087,14 +1091,18 @@ class Model(object):
             
               import paddle
               import paddle.nn as nn
-              
+              from paddle.static import InputSpec
+
               device = paddle.set_device('cpu')
+
+              input = InputSpec([None, 784], 'float32', 'x')
 
               model = paddle.Model(nn.Sequential(
                   nn.Linear(784, 200),
                   nn.Tanh(),
                   nn.Linear(200, 10),
-                  nn.Softmax()))
+                  nn.Softmax()), input)
+
               model.save('checkpoint/test')
               model.load('checkpoint/test')
         """
@@ -1159,11 +1167,15 @@ class Model(object):
 
               import paddle
               import paddle.nn as nn
+              from paddle.static import InputSpec
 
+              input = InputSpec([None, 784], 'float32', 'x')
+              
               model = paddle.Model(nn.Sequential(
                   nn.Linear(784, 200),
                   nn.Tanh(),
-                  nn.Linear(200, 10)))
+                  nn.Linear(200, 10)), input)
+
               params = model.parameters()
         """
         return self._adapter.parameters()
@@ -1572,19 +1584,20 @@ class Model(object):
 
             test_dataset = MnistDataset(mode='test', return_label=False)
 
+            # imperative mode
+            input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
+            model = paddle.Model(paddle.vision.models.LeNet(), input)
+            model.prepare()
+            result = model.predict(test_dataset, batch_size=64)
+            print(len(result[0]), result[0][0].shape)
+
             # declarative mode
+            device = paddle.set_device('cpu')
+            paddle.enable_static(device)
             input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
             model = paddle.Model(paddle.vision.models.LeNet(), input)
             model.prepare()
 
-            result = model.predict(test_dataset, batch_size=64)
-            print(len(result[0]), result[0][0].shape)
-
-            # imperative mode
-            device = paddle.set_device('cpu')
-            paddle.disable_static(device)
-            model = paddle.Model(paddle.vision.models.LeNet())
-            model.prepare()
             result = model.predict(test_dataset, batch_size=64)
             print(len(result[0]), result[0][0].shape)
         """
@@ -1824,10 +1837,6 @@ class Model(object):
 
               import paddle
               from paddle.static import InputSpec
-
-              dynamic = True
-              device = paddle.set_device('cpu')
-              paddle.disable_static(device) if dynamic else None
            
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
