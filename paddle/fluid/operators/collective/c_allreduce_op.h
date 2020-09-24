@@ -150,8 +150,8 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
         break;
 
       default:
-        PADDLE_THROW(platform::errors::InvalidArgumen("Invalid reduce type: %d",
-                                                      red_type));
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Invalid reduce type: %d", red_type));
     }
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
