@@ -835,6 +835,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
       const auto fmt = input->format();
 
       const auto exclude_padding = ctx.Attr<bool>("exclusive");
+      const bool adaptive = context.Attr<bool>("adaptive");
 
       const auto src_md = mkldnn::memory::desc(src_tz, dt, fmt);
       /* create memory descriptor for pooling without specified format
@@ -853,6 +854,15 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
         CorrectOutputSize(src_tz, dst_tz, ksize, paddings, strides,
                           mkldnn_paddings[1]);
       }
+
+      if (adaptive) {
+	PADDLE_ENFORCE_EQ(ksize , std::vector<int64_t>(2,1), 
+	  platform::errors::InvalidArgument(
+          "Not supported ksize for adaptive mode"));
+	ksize[0] = dst_tz[dst_tz.size()-2];  
+	ksize[1] = dst_tz[dst_tz.size()-1];
+      }
+
       this->AcquireForwardPrimitiveDescriptor(
           is_test ? mkldnn::prop_kind::forward_inference
                   : mkldnn::prop_kind::forward_training,
