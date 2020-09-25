@@ -41,6 +41,8 @@ def random_batch_reader():
     def __reader__():
         for _ in range(BATCH_NUM):
             batch_image, batch_label = _get_random_inputs_and_labels()
+            batch_image = paddle.to_tensor(batch_image)
+            batch_label = paddle.to_tensor(batch_label)
             yield batch_image, batch_label
 
     return __reader__
@@ -83,8 +85,7 @@ class TestSaveLoad(unittest.TestCase):
 
         # create data loader
         # TODO: using new DataLoader cause unknown Timeout on windows, replace it
-        loader = paddle.io.DataLoader.from_generator(capacity=4)
-        loader.set_batch_generator(random_batch_reader())
+        loader = random_batch_reader()
 
         # train
         train(layer, loader, loss_fn, adam)
