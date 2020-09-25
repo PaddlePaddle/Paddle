@@ -61,7 +61,8 @@ class SequenceConvOp : public framework::OperatorWithKernel {
     if (ctx->Attrs().Get<bool>("paddingTrainable")) {
       PADDLE_ENFORCE(
           ctx->HasInput("PaddingData"),
-          "Input(PaddingData) of SequenceConvOp should not be null.");
+          platform::errors::InvalidArgument(
+              "Input(PaddingData) of SequenceConvOp should not be null."));
       framework::DDim padding_dim = ctx->GetInputDim("PaddingData");
       int up_pad = std::max(0, -context_start);
       int down_pad = std::max(0, context_start + context_length - 1);
@@ -69,9 +70,9 @@ class SequenceConvOp : public framework::OperatorWithKernel {
       int input_width = static_cast<int>(in_dims[1]);
 
       if (context_start == 0 && context_length == 1) {
-        PADDLE_THROW(
+        PADDLE_THROW(platform::errors::InvalidArgument(
             "If context_start is 0 and context_length is 1, paddingTrainable "
-            "should be false.");
+            "should be false."));
       }
       PADDLE_ENFORCE_EQ(
           padding_dim.size(), 2,
