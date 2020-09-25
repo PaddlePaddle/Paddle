@@ -29,7 +29,6 @@ __all__ = [
 ]
 
 fleet = Fleet()
-_role_maker_ = fleet._role_maker_
 init = fleet.init
 is_first_worker = fleet.is_first_worker
 worker_index = fleet.worker_index
