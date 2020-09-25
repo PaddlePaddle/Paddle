@@ -20,14 +20,55 @@ rem       Paddle CI Task On Windows Platform
 rem =================================================
 
 rem -------clean up environment-----------
-wmic process where name="op_function_generator.exe" call terminate  2>NUL
 set work_dir=%cd%
-mkdir build
+wmic process where name="op_function_generator.exe" call terminate  2>NUL
+
+rem ------initialize common variable------
+if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
+if not defined BRANCH set BRANCH=develop
+if not defined TENSORRT_ROOT set TENSORRT_ROOT="C:/TensorRT-5.1.5.0"
+if not defined WITH_MKL set WITH_MKL=ON
+if not defined WITH_GPU set WITH_GPU=OFF
+if not defined WITH_AVX set WITH_AVX=ON
+if not defined WITH_TESTING set WITH_TESTING=ON
+if not defined WITH_PYTHON set WITH_PYTHON=ON
+if not defined ON_INFER set ON_INFER=ON
+if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
+if not defined WITH_STATIC_LIB set WITH_STATIC_LIB=ON
+if not defined WITH_CACHE set WITH_CACHE=ON
+if not defined WITH_TPCACHE set WITH_TPCACHE=ON
+
+
+rem -------set cache build work directory-----------
+rmdir build\python /s/q
+if "%WITH_CACHE%"=="OFF" (
+    rmdir build /s/q
+    goto :mkbuild
+)
+
+for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+set day_now=%datetime:~6,2%
+set day_before=-1
+set /p day_before=< %work_dir%\..\day.txt
+if %day_now% NEQ %day_before% (
+    echo %day_now% > %work_dir%\..\day.txt
+    type %work_dir%\..\day.txt
+    rmdir build /s/q
+)
+git diff origin/develop --stat --name-only | findstr "cmake CMakeLists.txt paddle_build.bat"
+if %ERRORLEVEL% EQU 0 (
+    rmdir build /s/q
+)
+
+:mkbuild
+if not exist build (
+    mkdir build
+)
 cd /d build
-tree .
+dir .
 dir paddle\fluid\pybind\Release
 
-rem ------initialize the virtual environment------
+rem ------initialize the python environment------
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
 
@@ -38,7 +79,7 @@ rem %PYTHON_EXECUTABLE% -m pip install virtualenv
 rem %PYTHON_EXECUTABLE% -m virtualenv paddle_winci
 rem call paddle_winci\Scripts\activate.bat
 
-rem ------pre install requirement----------
+rem ------pre install python requirement----------
 where python
 where pip
 pip install --upgrade pip --user
@@ -62,15 +103,6 @@ set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 :: set maximum cache size to 20G
 clcache.exe -M 21474836480
 
-rem ------initialize common variable------
-if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0"
-if not defined BRANCH set BRANCH=develop
-if not defined WITH_AVX set WITH_AVX=ON
-if not defined WITH_TESTING set WITH_TESTING=ON
-if not defined WITH_PYTHON set WITH_PYTHON=ON
-if not defined ON_INFER set ON_INFER=ON
-if not defined WITH_INFERENCE_API_TEST set WITH_INFERENCE_API_TEST=ON
-if not defined WITH_TPCACHE set WITH_TPCACHE=ON
 
 rem ------set cache third_party------
 set cache_dir=%work_dir:Paddle=cache%
@@ -111,6 +143,7 @@ exit /b 1
 :CASE_wincheck_mkl
 set WITH_MKL=ON
 set WITH_GPU=OFF
+set MSVC_STATIC_CRT=ON
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
@@ -122,11 +155,13 @@ goto:success
 :CASE_wincheck_openblas
 set WITH_MKL=OFF
 set WITH_GPU=ON
+set MSVC_STATIC_CRT=OFF
 rem Temporarily turn off WITH_INFERENCE_API_TEST on GPU due to compile hang
 set WITH_INFERENCE_API_TEST=OFF
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
+:: call :test_inference || goto test_inference_error
 goto:success
 
 rem "Other configurations are added here"
@@ -145,12 +180,14 @@ set start=%start:~4,10%
 echo cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% ^
 -DON_INFER=%ON_INFER% -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
--DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR%
+-DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
+-DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT%
 
 cmake .. -G "Visual Studio 14 2015 Win64" -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR% ^
 -DON_INFER=%ON_INFER%  -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
--DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR%
+-DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
+-DTENSORRT_ROOT=%TENSORRT_ROOT% -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT%
 goto:eof
 
 :cmake_error
@@ -172,7 +209,7 @@ echo Build third_party the %build_times% time:
 msbuild /m /p:Configuration=Release /verbosity:quiet third_party.vcxproj
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1  
-    if %build_times% GTR 3 (
+    if %build_times% GTR 2 (
         exit /b 7
     ) else (
         echo Build third_party failed, will retry!
@@ -187,7 +224,7 @@ echo Build Paddle the %build_times% time:
 msbuild /m:%PARALLEL_PROJECT_COUNT% /p:TrackFileAccess=false /p:CLToolExe=clcache.exe /p:CLToolPath=%PYTHON_ROOT%\Scripts /p:Configuration=Release /verbosity:minimal paddle.sln
 if %ERRORLEVEL% NEQ 0 (
     set /a build_times=%build_times%+1
-    if %build_times% GTR 2 (
+    if %build_times% GTR 1 (
         exit /b 7
     ) else (
         echo Build Paddle failed, will retry!
@@ -213,10 +250,10 @@ echo    ========================================
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "Build"
-tree /F %cd%\fluid_inference_install_dir\paddle
-%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\fluid_inference_install_dir\paddle\lib > lib_size.txt
+tree /F %cd%\paddle_inference_install_dir\paddle
+%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
 set /p libsize=< lib_size.txt
-for /F %%i in ("%libsize%") do echo "Windows FLuid_Inference Size: %%i"
+for /F %%i in ("%libsize%") do echo "Windows Paddle_Inference Size: %%i"
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
 set /p whlsize=< whl_size.txt
 for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
@@ -255,7 +292,9 @@ dir %THIRD_PARTY_PATH:/=\%\install\mklml\lib
 dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
 
-set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;%THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
+set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
+%THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
+%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;%PATH%
 ctest.exe --output-on-failure -C Release -j 8 --repeat until-pass:4 after-timeout:4
 goto:eof
 
@@ -263,6 +302,7 @@ goto:eof
 call paddle_winci\Scripts\deactivate.bat 2>NUL
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
+call :timestamp "%start%" "%end%" "1 card TestCases Total"
 call :timestamp "%start%" "%end%" "TestCases Total"
 echo Running unit tests failed, will exit!
 exit /b 8
@@ -275,10 +315,11 @@ echo    ========================================
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
+call :timestamp "%start%" "%end%" "1 card TestCases Total"
 call :timestamp "%start%" "%end%" "TestCases Total"
 
 cd %work_dir%\paddle\fluid\inference\api\demo_ci
-%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT%/include %TENSORRT_ROOT%/lib %MSVC_STATIC_CRT%
 goto:eof
 
 :test_inference_error
@@ -307,6 +348,8 @@ echo     ============================================ >>  check_change_of_unitte
 echo EOF>>  check_change_of_unittest.sh
 echo spec_path=$(pwd)/UNITTEST_PR.spec>>  check_change_of_unittest.sh
 echo ctest -N ^| awk -F ':' '{print $2}' ^| sed '/^^$/d' ^| sed '$d' ^> ${spec_path}>>  check_change_of_unittest.sh
+echo num=$(awk 'END{print NR}' ${spec_path})>> check_change_of_unittest.sh
+echo echo "Windows 1 card TestCases count is $num">> check_change_of_unittest.sh
 echo UPSTREAM_URL='https://github.com/PaddlePaddle/Paddle'>>  check_change_of_unittest.sh
 echo origin_upstream_url=`git remote -v ^| awk '{print $1, $2}' ^| uniq ^| grep upstream ^| awk '{print $2}'`>>  check_change_of_unittest.sh
 echo if [ "$origin_upstream_url" == "" ]; then>>  check_change_of_unittest.sh
@@ -417,7 +460,6 @@ taskkill /f /im cvtres.exe 2>NUL
 taskkill /f /im rc.exe 2>NUL
 wmic process where name="op_function_generator.exe" call terminate 2>NUL
 taskkill /f /im python.exe  2>NUL
-call paddle_winci\Scripts\deactivate.bat 2>NUL
 taskkill /f /im python.exe  2>NUL
 echo Windows CI run successfully!
 exit /b 0

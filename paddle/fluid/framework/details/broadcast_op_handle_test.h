@@ -21,12 +21,14 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
-
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
+
+struct DummyVarHandle;
+struct VarHandle;
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;

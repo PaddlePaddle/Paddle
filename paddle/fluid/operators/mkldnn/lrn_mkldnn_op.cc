@@ -12,9 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/lrn_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+
+namespace paddle {
+namespace framework {
+class Tensor;
+}  // namespace framework
+namespace platform {
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

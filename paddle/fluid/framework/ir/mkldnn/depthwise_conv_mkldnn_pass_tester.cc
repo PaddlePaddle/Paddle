@@ -16,6 +16,8 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/framework/op_version_registry.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -68,6 +70,12 @@ ProgramDesc BuildProgramDesc() {
         std::vector<std::string>({"e"}), false);
 
   return prog;
+}
+
+TEST(DepthwiseConvMKLDNNPass, pass_op_version_check) {
+  ASSERT_TRUE(
+      paddle::framework::compatible::PassVersionCheckerRegistrar::GetInstance()
+          .IsPassCompatible("depthwise_conv_mkldnn_pass"));
 }
 
 TEST(DepthwiseConvMKLDNNPass, basic) {

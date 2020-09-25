@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/platform/place.h"
-#include <sstream>
+
 #include "gtest/gtest.h"
 
 TEST(Place, Equality) {

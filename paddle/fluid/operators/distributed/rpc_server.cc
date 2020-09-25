@@ -15,14 +15,22 @@
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 
 #include <fstream>
-#include <iostream>
-#include <limits>
 #include <string>
-#include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+class RequestHandler;
 
 void RPCServer::ShutDown() {
   VLOG(3) << "RPCServer ShutDown ";

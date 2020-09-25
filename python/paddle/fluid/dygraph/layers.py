@@ -91,6 +91,7 @@ class Layer(core.Layer):
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
+        self._init_in_dynamic_mode = framework.in_dygraph_mode()
 
         self._parameters = collections.OrderedDict()
         # Buffers the variable (not parameter) created in layer
@@ -969,12 +970,12 @@ class Layer(core.Layer):
                 
                 paddle.disable_static()
                 
-                emb = paddle.nn.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
 
                 state_dict = emb.state_dict()
-                paddle.save(state_dict, "paddle_dy")
+                paddle.save(state_dict, "paddle_dy.pdparams")
                 
-                para_state_dict, _ = paddle.load("paddle_dy")
+                para_state_dict = paddle.load("paddle_dy.pdparams")
 
                 emb.set_state_dict(para_state_dict)
 
