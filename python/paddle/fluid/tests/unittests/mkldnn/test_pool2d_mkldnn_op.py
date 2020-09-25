@@ -60,6 +60,7 @@ create_test_mkldnn_class(TestCase3)
 create_test_mkldnn_class(TestCase4)
 create_test_mkldnn_class(TestCase5)
 
+
 class TestAvgPoolAdaptive(TestPool2D_Op):
     def init_adaptive(self):
         self.adaptive = True
@@ -73,6 +74,8 @@ class TestAvgPoolAdaptive(TestPool2D_Op):
 
     def init_test_case(self):
         self.ksize = [1, 1]
+        self.strides = [1, 1]
+
 
 class TestAsymPad(TestPool2D_Op):
     def init_test_case(self):
