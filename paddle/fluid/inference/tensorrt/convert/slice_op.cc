@@ -50,7 +50,9 @@ class SliceOpConverter : public OpConverter {
       std::vector<nvinfer1::ITensor*> plugin_inputs;
       // plugin_inputs.emplace_back(trans_layer->getOutput(0));
       plugin_inputs.emplace_back(input);
-      plugin_inputs.emplace_back(engine_->GetITensor("eval_placeholder_2"));
+      plugin_inputs.emplace_back(engine_->GetITensor(
+          engine_->network()->getInput(2)->getName()));  // cu_seqlens,
+                                                         // eval_placeholder_2
 
       // bool ban_fp16 = engine_->disable_trt_plugin_fp16();
       plugin::SpecialSlicePluginDynamic* plugin =

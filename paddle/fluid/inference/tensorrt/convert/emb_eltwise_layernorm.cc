@@ -114,13 +114,17 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
 
       std::vector<nvinfer1::ITensor*> plugin_inputs;
       plugin_inputs.emplace_back(engine_->GetITensor(
-          "eval_placeholder_0"));  // word_embedding, eval_placeholder_0
+          engine_->network()->getInput(0)->getName()));  // word_embedding,
+                                                         // eval_placeholder_0
       plugin_inputs.emplace_back(engine_->GetITensor(
-          "eval_placeholder_1"));  // sent_embedding, eval_placeholder_1
+          engine_->network()->getInput(1)->getName()));  // sent_embedding,
+                                                         // eval_placeholder_1
       plugin_inputs.emplace_back(engine_->GetITensor(
-          "eval_placeholder_2"));  // cu_seqlens, eval_placeholder_2
+          engine_->network()->getInput(2)->getName()));  // cu_seqlens,
+                                                         // eval_placeholder_2
       plugin_inputs.emplace_back(engine_->GetITensor(
-          "eval_placeholder_3"));  // max_seqlen, eval_placeholder_3
+          engine_->network()->getInput(3)->getName()));  // max_seqlen,
+                                                         // eval_placeholder_3
 
       auto creator = GetPluginRegistry()->getPluginCreator(
           "CustomEmbLayerNormPluginDynamic", "2");

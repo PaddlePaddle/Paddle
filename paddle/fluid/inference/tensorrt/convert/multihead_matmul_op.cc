@@ -149,9 +149,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
       plugin_inputs.emplace_back(fc_layer->getOutput(0));
       plugin_inputs.emplace_back(mask_tensor);
       plugin_inputs.emplace_back(engine_->GetITensor(
-          "eval_placeholder_2"));  // cu_seqlens, eval_placeholder_2
+          engine_->network()->getInput(2)->getName()));  // cu_seqlens,
+                                                         // eval_placeholder_2
       plugin_inputs.emplace_back(engine_->GetITensor(
-          "eval_placeholder_3"));  // max_seqlen, eval_placeholder_3
+          engine_->network()->getInput(3)->getName()));  // max_seqlen,
+                                                         // eval_placeholder_3
       auto plugin_layer = engine_->network()->addPluginV2(
           plugin_inputs.data(), plugin_inputs.size(), *plugin);
       layer = plugin_layer;
