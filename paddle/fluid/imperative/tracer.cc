@@ -58,8 +58,8 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     if (!FLAGS_tracer_mkldnn_ops_on.empty()) {
       auto is_on = FLAGS_tracer_mkldnn_ops_on.find(type) != std::string::npos;
       attrs["use_mkldnn"] = is_on;
-    } else {  // if ops_on list is empty all ops are enabled except types from
-              // off_list
+    } else {
+      // if ops_on list is empty all ops are enabled except types from off_list
       auto is_off = FLAGS_tracer_mkldnn_ops_off.find(type) != std::string::npos;
       attrs["use_mkldnn"] = !is_off;
     }
