@@ -187,8 +187,8 @@ class NCCLOpHandleBase : public OpHandleBase {
                       ncclRedOp_t op) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalExterCtx(run_order_);
     PADDLE_ENFORCE_NOT_NULL(
-        nccl_ctxs_,
-        platform::errors::NotFound("Can't get exter %d nccl_ctxs", run_order_));
+        nccl_ctxs_, platform::errors::NotFound(
+                        "Can't get exter %d nccl contexts.", run_order_));
     int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();

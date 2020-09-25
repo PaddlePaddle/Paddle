@@ -187,10 +187,10 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
     PADDLE_ENFORCE_EQ(info->proto_, nullptr,
                       platform::errors::AlreadyExists(
-                          "OpProto of %s has been registered", op_type));
+                          "OpProto of %s has been registered.", op_type));
     PADDLE_ENFORCE_EQ(info->checker_, nullptr,
                       platform::errors::AlreadyExists(
-                          "OpAttrChecker of %s has been registered", op_type));
+                          "OpAttrChecker of %s has been registered.", op_type));
     info->proto_ = new proto::OpProto;
     info->checker_ = new OpAttrChecker();
     T maker;
@@ -199,7 +199,7 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
     PADDLE_ENFORCE_EQ(
         info->proto_->IsInitialized(), true,
         platform::errors::PreconditionNotMet(
-            "Fail to initialize %s's OpProto, because %s is not initialized",
+            "Fail to initialize %s's OpProto, because %s is not initialized.",
             op_type, info->proto_->InitializationErrorString()));
   }
 };

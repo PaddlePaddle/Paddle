@@ -219,15 +219,14 @@ struct TestReduceOpHandle {
               k, rows[k % rows.size()], out_select_rows.rows()[k]));
     }
   }
-}
 
-f::Tensor result_tensor;
-f::TensorCopySync(rt, cpu_place, &result_tensor);
-float *ct = result_tensor.data<float>();
+  f::Tensor result_tensor;
+  f::TensorCopySync(rt, cpu_place, &result_tensor);
+  float *ct = result_tensor.data<float>();
 
-for (int64_t j = 0; j < f::product(result_tensor.dims()); ++j) {
-  ASSERT_NEAR(ct[j], send_vector[j % send_vector.size()], 1e-5);
-}
+  for (int64_t j = 0; j < f::product(result_tensor.dims()); ++j) {
+    ASSERT_NEAR(ct[j], send_vector[j % send_vector.size()], 1e-5);
+  }
 }  // namespace details
 
 void TestReduceLodTensors(size_t output_scope_idx) {
@@ -278,7 +277,7 @@ void TestReduceLodTensors(size_t output_scope_idx) {
     ASSERT_NEAR(ct[j], send_vector[j] * gpu_list_.size(), 1e-5);
   }
 }
-};  // namespace framework
+};  // namespace details
 
 TEST(ReduceTester, TestCPUReduceTestSelectedRows) {
   TestReduceOpHandle test_op;
@@ -313,6 +312,6 @@ TEST(ReduceTester, TestGPUReduceTestLodTensor) {
 }
 #endif
 
-}  // namespace paddle
 }  // namespace framework
+}  // namespace paddle
 }  // namespace paddle
