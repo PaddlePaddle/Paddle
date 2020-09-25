@@ -610,7 +610,6 @@ def cloud_ps_heter_env_set(args):
     assert trainers_num != 0
     environs["PADDLE_TRAINERS_NUM"] = trainers_num
     environs["TRAINERS_NUM"] = trainers_num
-    environs["PADDLE_HETER_TRAINER_DEVICE"] = args.heter_worker_device
 
     # hard code for paddlecloud custom-framework
     environs["PADDLE_HETER_TRAINER_IP_PORT_LIST"] = paddle_trainer_endpoints
@@ -754,7 +753,7 @@ class ParameterServerLauncher(object):
             "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}".
             format(self.node_ips, self.current_node_ip, self.node_rank))
 
-    def start_ps(self, args):
+    def start_ps(self):
         cluster = Cluster(hdfs=None)
         server_rank = 0
         worker_rank = 0
@@ -799,13 +798,13 @@ class ParameterServerLauncher(object):
         self.cmds = {"worker": [], "server": [], "heter_worker": []}
         self.log_fns = {"worker": [], "server": [], "heter_worker": []}
 
-        self.start_pod_server(args, pod)
-        self.start_pod_worker(args, pod)
-        self.start_pod_heter_worker(args, pod)
+        self.start_pod_server(self.args, pod)
+        self.start_pod_worker(self.args, pod)
+        self.start_pod_heter_worker(self.args, pod)
 
         logger.info(
             "Please check servers, workers and heter_worker logs in {}/workerlog.*, {}/serverlog.* and {}/heterlog.*".
-            format(args.log_dir, args.log_dir, args.log_dir))
+            format(self.args.log_dir, self.args.log_dir, self.args.log_dir))
 
         # 4. wait for finish training
         if len(self.procs["worker"]) > 0:
@@ -855,7 +854,6 @@ class ParameterServerLauncher(object):
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
                 "PADDLE_HETER_TRAINER_IP_PORT_LIST":
                 self.heter_worker_endpoints,
-                "PADDLE_HETER_TRAINER_DEVICE": args.heter_worker_device,
                 "PADDLE_PORT": cur_server.endpoint.split(":")[1],
                 "TRAINING_ROLE": "PSERVER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
@@ -905,10 +903,10 @@ class ParameterServerLauncher(object):
 
         heter_device_num = 0
         device_list = []
-        if args.heter_worker_device == "gpu":
+        if fluid.core.is_compiled_with_cuda():
             device_list = get_gpus(args.gpus)
             heter_device_num = len(device_list)
-        elif args.heter_worker_device == "xpu":
+        elif fluid.core.is_compiled_with_xpu():
             heter_device_num = fluid.core.get_xpu_device_count()
             device_list = [str(x) for x in range(0, heter_device_num)]
 
@@ -920,7 +918,6 @@ class ParameterServerLauncher(object):
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "PADDLE_HETER_TRAINER_IP_PORT_LIST":
                 self.heter_worker_endpoints,
-                "PADDLE_HETER_TRAINER_DEVICE": args.heter_worker_device,
                 "TRAINING_ROLE": "TRAINER",
                 "PADDLE_TRAINER_ID": str(cur_worker.rank),
                 "PADDLE_WITH_GLOO": "1",
@@ -972,10 +969,10 @@ class ParameterServerLauncher(object):
 
         heter_device_num = 0
         device_list = []
-        if args.heter_worker_device == "gpu":
+        if fluid.core.is_compiled_with_cuda():
             device_list = get_gpus(args.gpus)
             heter_device_num = len(device_list)
-        elif args.heter_worker_device == "xpu":
+        elif fluid.core.is_compiled_with_xpu():
             heter_device_num = fluid.core.get_xpu_device_count()
             device_list = [str(x) for x in range(0, heter_device_num)]
         assert heter_device_num != 0
@@ -987,7 +984,6 @@ class ParameterServerLauncher(object):
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
                 "PADDLE_HETER_TRAINER_IP_PORT_LIST":
                 self.heter_worker_endpoints,
-                "PADDLE_HETER_TRAINER_DEVICE": args.heter_worker_device,
                 "PADDLE_PORT": cur_heter_worker.endpoint.split(":")[1],
                 "TRAINING_ROLE": "HETER_TRAINER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),

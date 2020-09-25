@@ -94,8 +94,8 @@ class ParameterServerRuntime(RuntimeBase):
                 return False
 
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-                            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-                            var.desc.type() == core.VarDesc.VarType.READER:
+                    var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                    var.desc.type() == core.VarDesc.VarType.READER:
                 return False
             return var.persistable
 
@@ -199,15 +199,20 @@ class ParameterServerRuntime(RuntimeBase):
 
     def _get_executor(self):
         if self.role_maker._is_heter_worker():
-            if self.role_maker._get_heter_worker_device() == "GPU":
+            dist_strategy = self.context["valid_strategy"]
+            heter_worker_device = dist_strategy.a_sync_configs[
+                "heter_worker_device"].upper()
+            if heter_worker_device == "GPU":
                 gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
                 executor = Executor(fluid.CUDAPlace(gpu_id))
-            elif self.role_maker._get_heter_worker_device() == "XPU":
+            elif heter_worker_device == "XPU":
                 xpu_id = int(os.getenv("FLAGS_selected_xpus", "0"))
                 executor = Executor(fluid.XPUPlace(xpu_id))
+            elif heter_worker_device == "CPU":
+                executor = fluid.Executor(fluid.CPUPlace())
             else:
-                raise ValueError("Not Support Device {}".format(
-                    self.role_maker._get_heter_worker_device()))
+                raise ValueError("Heter Worker Not Support Device {}".format(
+                    heter_worker_device))
         else:
             executor = fluid.Executor(fluid.CPUPlace())
         return executor
@@ -312,7 +317,7 @@ class ParameterServerRuntime(RuntimeBase):
         opts = _get_optimize_ops(self.origin_main_program)
         for op in opts:
             if "Param" in op.input_names and \
-                            "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
+                    "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
                 return op
 
     def _save_dense_params(self, executor, dirname, context, main_program):
