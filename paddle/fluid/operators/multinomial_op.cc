@@ -30,6 +30,7 @@ class MultinomialOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "A tensor contains probabilities of categories");
     AddOutput("Out", "The output tensor of multinomial op");
+    // AddOutput("yokiOut", "yoki");
     AddAttr<int>("num_samples", "number of the generated samples")
         .SetDefault(1);
     AddAttr<bool>("replacement", "can a category be sampled more than once")
@@ -49,7 +50,7 @@ class MultinomialOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Multinomial");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Multinomial");
+    // OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Multinomial");
 
     auto x_dim = ctx->GetInputDim("X");
     int64_t x_rank = x_dim.size();
@@ -62,6 +63,7 @@ class MultinomialOp : public framework::OperatorWithKernel {
     out_dims[x_rank - 1] = num_samples;
 
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    // ctx->SetOutputDim("yokiOut", x_dim);
   }
 };
 
@@ -72,11 +74,16 @@ class MultinomialOpKernel<platform::CPUDeviceContext, T>
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto x = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
+    // auto yokiout = ctx.Output<framework::Tensor>("yokiOut");
     const int64_t num_samples = ctx.Attr<int>("num_samples");
     const bool replacement = ctx.Attr<bool>("replacement");
 
     auto *in_data = x->data<T>();
     auto *out_data = out->mutable_data<T>(ctx.GetPlace());
+    /*auto *yokiout_data = yokiout->mutable_data<T>(ctx.GetPlace());
+    for (int i = 0; i < x->numel(); i++) {
+      yokiout_data[i] = in_data[i];
+    }*/
 
     auto in_dims = x->dims();
     int64_t in_rank = in_dims.size();
