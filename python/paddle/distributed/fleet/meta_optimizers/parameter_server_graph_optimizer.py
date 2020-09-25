@@ -31,10 +31,6 @@ class ParameterServerGraphOptimizer(ParameterServerOptimizer):
         if k_steps < 0:
             return False
 
-        device = self.user_defined_strategy.a_sync_configs["worker_device"]
-        if device.upper() != 'CPU':
-            return False
-
         if self.role_maker._is_server():
             return False
 

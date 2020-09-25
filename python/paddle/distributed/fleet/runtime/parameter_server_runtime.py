@@ -94,8 +94,8 @@ class ParameterServerRuntime(RuntimeBase):
                 return False
 
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-                    var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-                    var.desc.type() == core.VarDesc.VarType.READER:
+                            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                            var.desc.type() == core.VarDesc.VarType.READER:
                 return False
             return var.persistable
 
@@ -198,21 +198,16 @@ class ParameterServerRuntime(RuntimeBase):
             warnings.warn("communicator has been initialized, skip")
 
     def _get_executor(self):
-
         if self.role_maker._is_heter_worker():
-            heter_worker_device = self.context["valid_strategy"].a_sync_configs[
-                "heter_worker_device"].upper()
-            if heter_worker_device == "GPU":
+            if self.role_maker._get_heter_worker_device() == "GPU":
                 gpu_id = int(os.getenv("FLAGS_selected_gpus", "0"))
                 executor = Executor(fluid.CUDAPlace(gpu_id))
-            elif heter_worker_device == "XPU":
+            elif self.role_maker._get_heter_worker_device() == "XPU":
                 xpu_id = int(os.getenv("FLAGS_selected_xpus", "0"))
                 executor = Executor(fluid.XPUPlace(xpu_id))
-            elif heter_worker_device == "CPU":
-                fluid.Executor(fluid.CPUPlace())
             else:
-                raise ValueError("Heter Worker Not Support Device {}".format(
-                    heter_worker_device))
+                raise ValueError("Not Support Device {}".format(
+                    self.role_maker._get_heter_worker_device()))
         else:
             executor = fluid.Executor(fluid.CPUPlace())
         return executor
@@ -317,7 +312,7 @@ class ParameterServerRuntime(RuntimeBase):
         opts = _get_optimize_ops(self.origin_main_program)
         for op in opts:
             if "Param" in op.input_names and \
-                    "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
+                            "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
                 return op
 
     def _save_dense_params(self, executor, dirname, context, main_program):
@@ -463,13 +458,13 @@ class ParameterServerRuntime(RuntimeBase):
 
     def _save_distributed_persistables(self, executor, dirname, main_program):
         dense_ctx = self.compiled_strategy.get_communicator_recv_context(
-            recv_type=1, use_origin_program=True)
+            recv_type=1)
 
         sparse_ctx = self.compiled_strategy.get_communicator_recv_context(
-            recv_type=2, use_origin_program=True)
+            recv_type=2)
 
         distributed_ctx = self.compiled_strategy.get_communicator_recv_context(
-            recv_type=3, use_origin_program=True)
+            recv_type=3)
 
         recv_dense_varnames = self._save_dense_params(executor, dirname,
                                                       dense_ctx, main_program)
@@ -521,7 +516,7 @@ class ParameterServerRuntime(RuntimeBase):
             )
 
         if main_program is None:
-            main_program = self.compiled_strategy.get_origin_ps_main_program()
+            main_program = fluid.default_main_program()
 
         if isinstance(main_program, CompiledProgram):
             raise TypeError(

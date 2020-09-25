@@ -107,7 +107,7 @@ class DistributedStrategy(object):
         All of the distributed training configurations can be configured in DistributedStrategy,
         such as automatic mixed precision (AMP), Layer-wise Adaptive Rate Scaling (LARS), 
         asynchronous update parameter server(ASGD), etc.
-
+        
         DistributedStrategy can be serialized into protobuf file or deserialized from protobuf file
 
         Users who run local training usually configure BuildStrategy and ExecutionStrategy, and 
@@ -129,7 +129,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
-
+        
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.dgc = True
@@ -207,7 +207,7 @@ class DistributedStrategy(object):
             build_strategy.fuse_broadcast_ops = True
             build_strategy.fuse_all_optimizer_ops = True
             build_strategy.enable_inplace = True
-
+            
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.build_strategy = build_strategy
         """
@@ -248,7 +248,7 @@ class DistributedStrategy(object):
 
             strategy = fleet.DistributedStrategy()
             strategy.a_sync = True  # by default this is True
-
+            
             # code block for defining loss and local optimizer
             # sgd = fleet.distributed_optimizer(optimizer, strategy)
         """
@@ -259,7 +259,7 @@ class DistributedStrategy(object):
     def a_sync(self, flag):
         if isinstance(flag, bool):
             self.strategy.a_sync = flag
-            self.a_sync_configs = {"k_steps": 0, "worker_device": 'cpu'}
+            self.a_sync_configs = {"k_steps": 0}
         else:
             raise ValueError(
                 "The type of `flag` is invalid, expected type is bool, but received %s".
@@ -472,7 +472,7 @@ class DistributedStrategy(object):
     def sync_batch_norm(self):
         """
         Indicating whether we are using sync_batch_norm to do synchronous batch normalization among all training nodes.
-
+        
         Default value: False
 
         Examples:
@@ -525,7 +525,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
-
+        
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.fuse_grad_size_in_MB = 50
@@ -563,7 +563,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
-
+        
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.nccl_comm_num = 2
@@ -595,7 +595,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
-
+        
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.recompute = True
@@ -621,7 +621,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
-
+        
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.pipeline = True
@@ -656,7 +656,7 @@ class DistributedStrategy(object):
 
         Examples:
           .. code-block:: python
-
+        
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.pipeline = True
@@ -971,7 +971,7 @@ class DistributedStrategy(object):
         [Large Batch Optimization for Deep Learning: Training BERT in 76 minutes](https://arxiv.org/abs/1904.00962).
 
         Default Value: False
-
+        
         Examples:
           .. code-block:: python
 
@@ -1114,7 +1114,7 @@ class DistributedStrategy(object):
 
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(optimizer, strategy)
-
+        
         """
         return self.strategy.conv_workspace_size_limit
 
