@@ -495,7 +495,7 @@ class RoleMakerBase(object):
         Returns:
             string: all heter_trainers'endpoints
         """
-        assert self._heter_trainer_endpoints != []
+        assert self._heter_trainer_endpoints != [], "Heter Worker Endpoints Not initialized"
         return self._heter_trainer_endpoints
 
     def _get_heter_worker_endpoint(self):
@@ -505,9 +505,9 @@ class RoleMakerBase(object):
 
         e.g: if we have 4 cpu-trainer(default), 2 gpu-trainer(heter)
              then No.0 and No.2 cpu-trainer will work with No.0 gpu-trainer
-             and No.1 and No.3 cpu-trainer will work with No.1 gpu-trainerr
+             and No.1 and No.3 cpu-trainer will work with No.1 gpu-trainer
         """
-        assert self._heter_trainer_endpoints != []
+        assert self._heter_trainer_endpoints != [], "Heter Worker Endpoints Not initialized"
         return self._heter_trainer_endpoints[(self._current_id) %
                                              self._heter_worker_num()]
 
