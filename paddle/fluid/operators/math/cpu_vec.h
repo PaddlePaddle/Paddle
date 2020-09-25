@@ -16,6 +16,7 @@ limitations under the License. */
 #include <cmath>
 #include <functional>
 #include <string>
+
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 

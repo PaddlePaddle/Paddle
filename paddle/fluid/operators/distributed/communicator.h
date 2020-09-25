@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <ThreadPool.h>
+#include <stdint.h>
 #include <atomic>
 #include <deque>
 #include <map>
@@ -26,8 +27,8 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"

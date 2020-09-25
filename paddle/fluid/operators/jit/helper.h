@@ -21,6 +21,7 @@
 #include <unordered_map>
 #include <utility>  // for std::move
 #include <vector>
+
 #include "paddle/fluid/operators/jit/gen_base.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/operators/jit/kernel_key.h"
@@ -30,6 +31,8 @@
 namespace paddle {
 namespace operators {
 namespace jit {
+
+class GenBase;
 
 template <typename KernelTuple, typename PlaceType>
 inline typename std::enable_if<

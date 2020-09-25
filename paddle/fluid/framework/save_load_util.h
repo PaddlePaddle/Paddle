@@ -28,6 +28,8 @@
 namespace paddle {
 namespace framework {
 
+class Scope;
+
 bool SaveStaticNameListToDisk(
     const std::string& file_name,
     const std::vector<std::string>& vec_tensor_name_list, const Scope& scope);

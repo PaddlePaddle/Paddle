@@ -18,6 +18,7 @@ extern "C" {
 #include <xxhash.h>
 }
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 

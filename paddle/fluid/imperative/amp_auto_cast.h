@@ -26,6 +26,8 @@ namespace paddle {
 namespace imperative {
 
 // Singleton implementation with C++ 11
+class Tracer;
+
 class AmpOperators {
  public:
   ~AmpOperators();

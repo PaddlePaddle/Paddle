@@ -17,18 +17,25 @@ limitations under the License. */
 #endif
 #include <limits>
 #include <memory>
-#include <thread>  // NOLINT
-
-#include "google/protobuf/io/coded_stream.h"
-#include "google/protobuf/io/zero_copy_stream.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/operators/distributed/grpc/grpc_bytebuffer_stream.h"
+#include "grpcpp/impl/codegen/byte_buffer.h"
+#include "grpcpp/impl/codegen/slice.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/proto_encoder_helper.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+class Variable;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
