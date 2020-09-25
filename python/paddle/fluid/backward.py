@@ -1337,41 +1337,44 @@ def append_backward(loss,
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.nn.functional as F
 
-            x = fluid.data(name='x', shape=[None, 13], dtype='int64')
-            y = fluid.data(name='y', shape=[None, 1], dtype='float32')
-            x_emb = fluid.embedding(x, size=[100, 256])
-            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None, name='my_fc')
-            loss = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_loss = fluid.layers.mean(loss)
+            paddle.enable_static()
+
+            x = paddle.static.data(name='x', shape=[None, 13], dtype='int64')
+            y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
+            x_emb = paddle.static.nn.embedding(x, size=[100, 256])
+            y_predict = paddle.static.nn.fc(input=x_emb, size=1, act=None, name='my_fc')
+            loss = F.square_error_cost(input=y_predict, label=y)
+            avg_loss = paddle.mean(loss)
 
             # Get all weights in main_program, not include bias.
-            all_weights = [param for param in fluid.default_main_program().block(0).all_parameters() if 'w_' in param.name]
+            all_weights = [param for param in paddle.static.default_main_program().block(0).all_parameters() if 'w_' in param.name]
             all_weights_name = [w.name for w in all_weights]
 
             # return all param_grads needed to be updated if parameter_list set default None.
-            p_g_list1 = fluid.backward.append_backward(loss=avg_loss)
+            p_g_list1 = paddle.static.append_backward(loss=avg_loss)
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
 
             # return the param_grads corresponding to parameter_list that can be list of param (Variable).
-            p_g_list2 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights)
+            p_g_list2 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights)
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
 
             # parameter_list can be list of param.name (str).
-            p_g_list3 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights_name)
+            p_g_list3 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights_name)
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
 
             # no_grad_set can be set of Variables that means grad will be cut off from these Variables.
-            p_g_list4 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set([x_emb]))
+            p_g_list4 = paddle.static.append_backward(loss=avg_loss, no_grad_set=set([x_emb]))
             # output: [(my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
 
             # no_grad_set can be set of Variable.name when the Variable is created inside layers and can't be specified explicitly.
-            p_g_list5 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set(['my_fc.b_0']))
+            p_g_list5 = paddle.static.append_backward(loss=avg_loss, no_grad_set=set(['my_fc.b_0']))
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
 
             # return [] because all param_grads are filtered by no_grad_set.
-            p_g_list6 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
+            p_g_list6 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
     check_type(loss, 'loss', framework.Variable,
@@ -1883,16 +1886,17 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.nn.functional as F
 
-            x = fluid.data(name='x', shape=[None,2,8,8], dtype='float32')
+            paddle.enable_static()
+
+            x = paddle.static.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
             x.stop_gradient=False
-            y = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
-            y = fluid.layers.relu(y)
-            y = fluid.layers.conv2d(y, 4, 1, bias_attr=False)
-            y = fluid.layers.relu(y)
-            z = fluid.gradients([y], x)
-            print(z)
+            y = paddle.static.nn.conv2d(x, 4, 1, bias_attr=False)
+            y = F.relu(y)
+            z = paddle.static.gradients([y], x)
+            print(z) # [var x@GRAD : fluid.VarType.LOD_TENSOR.shape(-1L, 2L, 8L, 8L).astype(VarType.FP32)]
     """
     check_type(targets, 'targets', (framework.Variable, list),
                'fluid.backward.gradients')
