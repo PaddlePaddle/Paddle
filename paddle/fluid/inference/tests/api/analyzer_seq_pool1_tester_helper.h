@@ -11,15 +11,20 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
+#pragma once
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+namespace seq_pool1_tester {
 
 // diff: similarity_norm.tmp_0, for speed: fc_4.tmp_1
 static const char out_var_name[] = "reduce_sum_0.tmp_0";
@@ -164,77 +169,7 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   cfg->pass_builder()->InsertPass(2, "seqpool_concat_fuse_pass");
 }
 
-void profile(bool use_mkldnn = false) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg, use_mkldnn);
-
-  std::vector<std::vector<PaddleTensor>> outputs;
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
-}
-
-TEST(Analyzer_seq_pool1, profile) { profile(); }
-
-// Compare result of NativeConfig and AnalysisConfig
-TEST(Analyzer_seq_pool1, compare) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
-}
-
-// Compare Deterministic result
-TEST(Analyzer_seq_pool1, compare_determine) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                       input_slots_all);
-}
-
-// Check the fuse status
-TEST(Analyzer_seq_pool1, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(predictor.get(), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-  ASSERT_TRUE(fuse_statis.count("seqpool_concat_fuse"));
-  ASSERT_TRUE(fuse_statis.count("squared_mat_sub_fuse"));
-  ASSERT_TRUE(fuse_statis.count("repeated_fc_relu_fuse"));
-  ASSERT_EQ(fuse_statis.at("fc_fuse"), 10);
-  EXPECT_EQ(fuse_statis.at("seqpool_concat_fuse"), 2);
-  EXPECT_EQ(fuse_statis.at("squared_mat_sub_fuse"), 2);
-  EXPECT_EQ(fuse_statis.at("repeated_fc_relu_fuse"), 2);
-  LOG(INFO) << "num_ops: " << num_ops;
-  EXPECT_EQ(num_ops, 171);
-}
-
-// Compare result of AnalysisConfig and AnalysisConfig + ZeroCopy
-TEST(Analyzer_seq_pool1, compare_zero_copy) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  AnalysisConfig cfg1;
-  SetConfig(&cfg1);
-
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-  std::vector<std::string> outputs_name;
-  outputs_name.emplace_back(out_var_name);
-  CompareAnalysisAndZeroCopy(reinterpret_cast<PaddlePredictor::Config *>(&cfg),
-                             reinterpret_cast<PaddlePredictor::Config *>(&cfg1),
-                             input_slots_all, outputs_name);
-}
-
+}  // namespace seq_pool1_tester
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

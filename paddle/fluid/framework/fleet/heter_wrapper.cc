@@ -113,30 +113,27 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope,
   if (platform::is_cpu_place(tensor->place())) {
     memcpy(data_ptr, tensor->data<void>(),
            tensor->numel() * SizeOfType(tensor->type()));
-#ifdef PADDLE_WITH_CUDA
   } else {
+#ifdef PADDLE_WITH_CUDA
     memory::Copy(platform::CPUPlace(), data_ptr,
                  BOOST_GET_CONST(platform::CUDAPlace, tensor->place()),
                  tensor->data<void>(),
                  tensor->numel() * SizeOfType(tensor->type()), nullptr);
-  }
-#else
-  }
 #endif
+#ifdef PADDLE_WITH_XPU
+    memory::Copy(platform::CPUPlace(), data_ptr,
+                 BOOST_GET_CONST(platform::XPUPlace, tensor->place()),
+                 tensor->data<void>(),
+                 tensor->numel() * SizeOfType(tensor->type()));
+#endif
+  }
 }
 
-// void HeterWrapper::DeSerializeToTensor(Scope* scope,
-// const HeterRequest* request) {
 #ifdef PADDLE_WITH_CUDA
 void HeterWrapper::DeSerializeToTensor(Scope* scope,
                                        const VariableMessage& req_var,
                                        platform::Place place,
                                        cudaStream_t stream) {
-#else
-void HeterWrapper::DeSerializeToTensor(Scope* scope,
-                                       const VariableMessage& req_var,
-                                       platform::Place place) {
-#endif
   // const VariableMessage& req_var = request->vars();
   auto* var = scope->FindVar(req_var.varname());
   auto* tensor = var->GetMutable<LoDTensor>();
@@ -169,6 +166,45 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
          tensor->numel() * SizeOfType(tensor->type()));
 #endif
 }
+#endif
+
+// void HeterWrapper::DeSerializeToTensor(Scope* scope,
+// const HeterRequest* request) {
+void HeterWrapper::DeSerializeToTensor(Scope* scope,
+                                       const VariableMessage& req_var,
+                                       platform::Place place) {
+  // const VariableMessage& req_var = request->vars();
+  auto* var = scope->FindVar(req_var.varname());
+  auto* tensor = var->GetMutable<LoDTensor>();
+
+  std::vector<int> vec_dim;
+  for (auto& x : req_var.dims()) {
+    vec_dim.push_back(x);
+  }
+  tensor->Resize(make_ddim(vec_dim));
+
+  LoD lod;
+  for (int i = 0; i < req_var.lod_level(); ++i) {
+    framework::Vector<size_t> v;
+    for (int j = 0; j < req_var.lod(i).lod_data_size(); ++j) {
+      v.push_back(req_var.lod(i).lod_data(j));
+    }
+    lod.push_back(v);
+  }
+  tensor->set_lod(lod);
+
+  void* tensor_data =
+      tensor->mutable_data(place, ToVarType(req_var.data_type()));
+
+#ifdef PADDLE_WITH_XPU
+  memory::Copy(BOOST_GET_CONST(platform::XPUPlace, place), tensor_data,
+               platform::CPUPlace(), req_var.data().data(),
+               tensor->numel() * SizeOfType(tensor->type()));
+#else
+  memcpy(tensor_data, req_var.data().data(),
+         tensor->numel() * SizeOfType(tensor->type()));
+#endif
+}
 
 framework::proto::VarType::Type HeterWrapper::ToVarType(
     VariableMessage::Type type) {
@@ -184,7 +220,8 @@ framework::proto::VarType::Type HeterWrapper::ToVarType(
     case VariableMessage::BOOL:
       return framework::proto::VarType::BOOL;  // NOLINT
     default:
-      VLOG(0) << "Not support type " << type;
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "ToVarType:Unsupported type %d", type));
   }
 }
 

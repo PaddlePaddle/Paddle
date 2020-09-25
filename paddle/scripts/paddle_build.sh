@@ -988,11 +988,6 @@ set +x
                 fi
                 read testcase <<< $(echo "$line"|grep -oEi "\w+$")
 
-                if python $PADDLE_ROOT/tools/is_ut_disabled.py $testcase; then
-                    echo $testcase" is disabled."
-                    continue
-                fi
-
                 if [[ "$is_nightly" != "" ]] && [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
                     echo $testcase" will only run at night."
                     continue
