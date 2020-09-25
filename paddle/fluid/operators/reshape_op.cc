@@ -13,8 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
-#include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+struct CPUPlace;
+struct CUDAPlace;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

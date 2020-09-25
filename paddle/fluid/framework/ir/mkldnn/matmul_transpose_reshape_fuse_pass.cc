@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/matmul_transpose_reshape_fuse_pass.h"
 #include <paddle/fluid/string/pretty_log.h>
 #include <vector>
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -98,3 +99,10 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
 
 REGISTER_PASS(matmul_transpose_reshape_fuse_pass,
               paddle::framework::ir::MatmulTransposeReshapeMKLDNNPass);
+
+REGISTER_PASS_CAPABILITY(matmul_transpose_reshape_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("matmul", 0)
+            .EQ("transpose", 0)
+            .EQ("reshape", 0));

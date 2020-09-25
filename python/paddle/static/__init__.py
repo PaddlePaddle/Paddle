@@ -17,8 +17,9 @@ __all__ = [
     'append_backward', 'gradients', 'Executor', 'global_scope', 'scope_guard',
     'BuildStrategy', 'CompiledProgram', 'Print', 'py_func', 'ExecutionStrategy',
     'name_scope', 'ParallelExecutor', 'program_guard', 'WeightNormParamAttr',
-    'default_main_program', 'default_startup_program', 'Program', 'save',
-    'load', 'data', 'InputSpec'
+    'default_main_program', 'default_startup_program', 'Program', 'data',
+    'InputSpec', 'save', 'load', 'save_inference_model', 'load_inference_model',
+    'load_program_state', 'set_program_state'
 ]
 
 from . import nn
@@ -41,5 +42,9 @@ from ..fluid.layers.control_flow import Print  #DEFINE_ALIAS
 from ..fluid.layers.nn import py_func  #DEFINE_ALIAS
 from ..fluid.parallel_executor import ParallelExecutor  #DEFINE_ALIAS
 from ..fluid.param_attr import WeightNormParamAttr  #DEFINE_ALIAS
-from ..tensor.io import save  #DEFINE_ALIAS
-from ..tensor.io import load  #DEFINE_ALIAS
+from ..fluid.io import save  #DEFINE_ALIAS
+from ..fluid.io import load  #DEFINE_ALIAS
+from ..fluid.io import save_inference_model  #DEFINE_ALIAS
+from ..fluid.io import load_inference_model  #DEFINE_ALIAS
+from ..fluid.io import load_program_state  #DEFINE_ALIAS
+from ..fluid.io import set_program_state  #DEFINE_ALIAS

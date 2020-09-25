@@ -28,7 +28,8 @@ import numpy as np
 
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
-from paddle.distributed.fleet.base.util_factory import fleet_util
+
+paddle.enable_static()
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -161,8 +162,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         """
 
         exe = fluid.Executor(fluid.CPUPlace())
-        fleet.init_worker()
+
         exe.run(fluid.default_startup_program())
+        fleet.init_worker()
+
         batch_size = 4
         train_reader = paddle.batch(fake_ctr_reader(), batch_size=batch_size)
         self.reader.decorate_sample_list_generator(train_reader)
@@ -176,13 +179,13 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                                        fetch_list=[self.avg_cost.name])
                     loss_val = np.mean(loss_val)
                     # TODO(randomly fail)
-                    #   reduce_output = fleet_util.all_reduce(
+                    #   reduce_output = fleet.util.all_reduce(
                     #       np.array(loss_val), mode="sum")
-                    #   loss_all_trainer = fleet_util.all_gather(float(loss_val))
+                    #   loss_all_trainer = fleet.util.all_gather(float(loss_val))
                     #   loss_val = float(reduce_output) / len(loss_all_trainer)
                     message = "TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
                                                                       loss_val)
-                    fleet_util.print_on_rank(message, 0)
+                    fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start
             except fluid.core.EOFException:
@@ -200,8 +203,8 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         exe = fluid.Executor(fluid.CPUPlace())
 
-        fleet.init_worker()
         exe.run(fluid.default_startup_program())
+        fleet.init_worker()
 
         thread_num = 2
         batch_size = 128

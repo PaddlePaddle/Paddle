@@ -28,6 +28,8 @@ from paddle import Model, set_device
 from paddle.static import InputSpec as Input
 from paddle.text import *
 
+paddle.enable_static()
+
 
 class ModuleApiTest(unittest.TestCase):
     @classmethod
