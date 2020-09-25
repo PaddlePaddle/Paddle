@@ -13,17 +13,20 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_mkldnn_pass.h"
-#include <algorithm>
-#include <memory>
-#include <string>
-#include <vector>
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
+
+class Graph;
 
 void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,

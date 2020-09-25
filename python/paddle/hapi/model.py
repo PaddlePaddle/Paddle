@@ -814,10 +814,9 @@ class Model(object):
         from paddle.static import InputSpec
 
         device = paddle.set_device('cpu') # or 'gpu'
-        # if use static graph, do not set
-        paddle.disable_static(device)
 
         net = nn.Sequential(
+            nn.Flatten(1),
             nn.Linear(784, 200),
             nn.Tanh(),
             nn.Linear(200, 10))
@@ -833,7 +832,7 @@ class Model(object):
                       paddle.nn.CrossEntropyLoss(),
                       paddle.metric.Accuracy())
         
-        data = paddle.vision.datasets.MNIST(mode='train', chw_format=False)
+        data = paddle.vision.datasets.MNIST(mode='train')
         model.fit(data, epochs=2, batch_size=32, verbose=1)
     """
 
@@ -850,7 +849,8 @@ class Model(object):
 
         if not isinstance(inputs, (list, dict, Input)):
             raise TypeError(
-                "'inputs' must be list or dict, and couldn't be None.")
+                "'inputs' must be list or dict in static graph mode")
+
         self._inputs = self._verify_spec(inputs, True)
         self._labels = self._verify_spec(labels)
 
@@ -885,7 +885,6 @@ class Model(object):
               from paddle.static import InputSpec
 
               device = paddle.set_device('cpu') # or 'gpu'
-              paddle.disable_static(device)
 
               net = nn.Sequential(
                   nn.Linear(784, 200),
@@ -930,7 +929,6 @@ class Model(object):
               from paddle.static import InputSpec
 
               device = paddle.set_device('cpu') # or 'gpu'
-              paddle.disable_static(device)
 
               net = nn.Sequential(
                   nn.Linear(784, 200),
@@ -970,9 +968,12 @@ class Model(object):
               import numpy as np
               import paddle
               import paddle.nn as nn
+              from paddle.static import InputSpec
 
               device = paddle.set_device('cpu') # or 'gpu'
-              paddle.disable_static(device)
+              
+              input = InputSpec([None, 784], 'float32', 'x')
+              label = InputSpec([None, 1], 'int64', 'label')
 
               net = nn.Sequential(
                   nn.Linear(784, 200),
@@ -980,7 +981,7 @@ class Model(object):
                   nn.Linear(200, 10),
                   nn.Softmax())
 
-              model = paddle.Model(net)
+              model = paddle.Model(net, input, label)
               model.prepare()
               data = np.random.random(size=(4,784)).astype(np.float32)
               out = model.test_batch([data])
@@ -1026,6 +1027,7 @@ class Model(object):
                     def __init__(self):
                         super(Mnist, self).__init__()
                         self.net = nn.Sequential(
+                            nn.Flatten(1),
                             nn.Linear(784, 200),
                             nn.Tanh(),
                             nn.Linear(200, 10),
@@ -1045,7 +1047,7 @@ class Model(object):
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
                     parameters=model.parameters())
                 model.prepare(optim, paddle.nn.CrossEntropyLoss())
-                data = paddle.vision.datasets.MNIST(mode='train', chw_format=False)
+                data = paddle.vision.datasets.MNIST(mode='train')
                 model.fit(data, epochs=1, batch_size=32, verbose=0)
                 model.save('checkpoint/test')  # save for training
                 model.save('inference_model', False)  # save for inference
@@ -1092,15 +1094,18 @@ class Model(object):
             
               import paddle
               import paddle.nn as nn
-              
+              from paddle.static import InputSpec
+
               device = paddle.set_device('cpu')
-              paddle.disable_static(device)
+
+              input = InputSpec([None, 784], 'float32', 'x')
 
               model = paddle.Model(nn.Sequential(
                   nn.Linear(784, 200),
                   nn.Tanh(),
                   nn.Linear(200, 10),
-                  nn.Softmax()))
+                  nn.Softmax()), input)
+
               model.save('checkpoint/test')
               model.load('checkpoint/test')
         """
@@ -1165,13 +1170,15 @@ class Model(object):
 
               import paddle
               import paddle.nn as nn
+              from paddle.static import InputSpec
 
-              paddle.disable_static()
-
+              input = InputSpec([None, 784], 'float32', 'x')
+              
               model = paddle.Model(nn.Sequential(
                   nn.Linear(784, 200),
                   nn.Tanh(),
-                  nn.Linear(200, 10)))
+                  nn.Linear(200, 10)), input)
+
               params = model.parameters()
         """
         return self._adapter.parameters()
@@ -1313,7 +1320,7 @@ class Model(object):
               label = InputSpec([None, 1], 'int64', 'label')
            
               model = paddle.Model(
-                  paddle.vision.models.LeNet(classifier_activation=None),
+                  paddle.vision.models.LeNet(),
                   input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())
@@ -1350,7 +1357,7 @@ class Model(object):
               label = InputSpec([None, 1], 'int64', 'label')
            
               model = paddle.Model(
-                  paddle.vision.models.LeNet(classifier_activation=None), input, label)
+                  paddle.vision.models.LeNet(), input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())
               model.prepare(
@@ -1483,7 +1490,7 @@ class Model(object):
 
             # imperative mode
             paddle.disable_static()
-            model = paddle.Model(paddle.vision.models.LeNet())
+            model = paddle.Model(paddle.vision.models.LeNet(), input, label)
             model.prepare(metrics=paddle.metric.Accuracy())
             result = model.evaluate(val_dataset, batch_size=64)
             print(result)
@@ -1580,19 +1587,20 @@ class Model(object):
 
             test_dataset = MnistDataset(mode='test', return_label=False)
 
+            # imperative mode
+            input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
+            model = paddle.Model(paddle.vision.models.LeNet(), input)
+            model.prepare()
+            result = model.predict(test_dataset, batch_size=64)
+            print(len(result[0]), result[0][0].shape)
+
             # declarative mode
+            device = paddle.set_device('cpu')
+            paddle.enable_static()
             input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
             model = paddle.Model(paddle.vision.models.LeNet(), input)
             model.prepare()
 
-            result = model.predict(test_dataset, batch_size=64)
-            print(len(result[0]), result[0][0].shape)
-
-            # imperative mode
-            device = paddle.set_device('cpu')
-            paddle.disable_static(device)
-            model = paddle.Model(paddle.vision.models.LeNet())
-            model.prepare()
             result = model.predict(test_dataset, batch_size=64)
             print(len(result[0]), result[0][0].shape)
         """
@@ -1813,7 +1821,7 @@ class Model(object):
             return logs, outputs
         return logs
 
-    def summary(self, input_size=None, batch_size=None, dtype=None):
+    def summary(self, input_size=None, dtype=None):
         """Prints a string summary of the network.
 
         Args:
@@ -1822,7 +1830,6 @@ class Model(object):
                     one input, input_size can be tuple or InputSpec. if model have multiple 
                     input, input_size must be a list which contain every input's shape. 
                     Default: None.
-            batch_size (int, optional): batch size of input tensor, Default: None.
             dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
 
         Returns:
@@ -1833,15 +1840,11 @@ class Model(object):
 
               import paddle
               from paddle.static import InputSpec
-
-              dynamic = True
-              device = paddle.set_device('cpu')
-              paddle.disable_static(device) if dynamic else None
            
               input = InputSpec([None, 1, 28, 28], 'float32', 'image')
               label = InputSpec([None, 1], 'int64', 'label')
            
-              model = paddle.Model(paddle.vision.LeNet(classifier_activation=None),
+              model = paddle.Model(paddle.vision.LeNet(),
                   input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())
@@ -1859,7 +1862,7 @@ class Model(object):
             _input_size = input_size
         else:
             _input_size = self._inputs
-        return summary(self.network, _input_size, batch_size, dtype)
+        return summary(self.network, _input_size, dtype)
 
     def _verify_spec(self, specs, is_input=False):
         out_specs = []

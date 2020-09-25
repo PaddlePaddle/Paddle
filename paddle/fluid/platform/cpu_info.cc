@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 
 #ifdef PADDLE_WITH_XBYAK
-#include "xbyak/xbyak.h"
 #include "xbyak/xbyak_util.h"
 #endif
 

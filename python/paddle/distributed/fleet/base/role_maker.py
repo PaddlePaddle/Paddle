@@ -598,7 +598,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self._generate_role()
-        return len(self._get_pserver_endpoints())
+        return len(self._get_pserver_endpoints(
+        )) if self._get_pserver_endpoints() is not None else 0
 
     def _node_num(self):
         """

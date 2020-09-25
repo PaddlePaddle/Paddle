@@ -27,6 +27,15 @@
 
 namespace paddle {
 namespace framework {
+class Scope;
+namespace ir {
+class MemOptVarInfo;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 
 // NOTE(paddle-dev): ShareTensorBufferFunctor is responsible for
