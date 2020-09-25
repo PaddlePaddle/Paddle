@@ -32,6 +32,15 @@ logger = logging.getLogger("root")
 logger.propagate = False
 
 
+class DistributeMode:
+    """
+    There are various mode for fleetrun, each of them is designed for different model.
+    """
+    COLLECTIVE = 0
+    PS = 1
+    PS_HETER = 2
+
+
 class Cluster(object):
     def __init__(self, hdfs):
         self.job_server = None
@@ -616,7 +625,9 @@ def cloud_ps_heter_env_set(args):
 
 
 class ParameterServerLauncher(object):
-    def __init__(self, args):
+    def __init__(self, args, distribute_mode):
+        self.args = args
+        self.distribute_mode = distribute_mode
         self.server_num = 0
         self.worker_num = 0
         self.heter_worker_num = 0
@@ -677,7 +688,7 @@ class ParameterServerLauncher(object):
             self.worker_num = len(self.worker_endpoints.split(","))
 
         # get heter worker envs
-        if args.distributed_mode == "ps_heter":
+        if self.distribute_mode == DistributeMode.PS_HETER:
             if args.heter_worker_num:
                 self.heter_worker_num = args.heter_worker_num
                 if args.heter_workers:
@@ -713,7 +724,7 @@ class ParameterServerLauncher(object):
         ]
         self.node_ips = list(
             set(self.server_endpoints_ips + self.worker_endpoints_ips))
-        if args.distributed_mode == "ps_heter":
+        if self.distribute_mode == DistributeMode.PS_HETER:
             self.heter_worker_endpoints_ips = [
                 x.strip().split(":")[0]
                 for x in self.heter_worker_endpoints.split(",")

@@ -92,14 +92,6 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     base_group = parser.add_argument_group("Base Parameters")
 
     base_group.add_argument(
-        "-d",
-        "--distributed_mode",
-        type=str,
-        choices=["collective", "ps", "ps_heter", "ps_gpu", ""],
-        default="",
-        help="Distributed running mode: collective/ps/ps_gpu/ps_heter")
-
-    base_group.add_argument(
         "--log_dir",
         type=str,
         default="log",
@@ -149,13 +141,6 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     ps_group.add_argument("--server_num", type=int, help="number of servers")
     ps_group.add_argument(
         "--heter_worker_num", type=int, help="number of heter_workers")
-
-    ps_group.add_argument(
-        "--heter_worker_device",
-        type=str,
-        default="gpu",
-        choices=["gpu", "xpu"],
-        help="heter worker device")
 
     return parser.parse_args()
 
@@ -244,34 +229,37 @@ def launch_collective(args):
         shutil.rmtree(gloo_rendezvous_dir)
 
 
-def launch_ps(args):
+def launch_ps(args, distribute_mode):
     cloud_flag = cloud_utils.use_paddlecloud()
 
     # for ps-cpu on paddlecloud
-    direct_start_mode = ["ps", ""]
-    if cloud_flag and (args.distributed_mode in direct_start_mode):
+    if cloud_flag and distribute_mode == DistributeMode.PS:
         direct_start(args)
         return
-    elif cloud_flag and args.distributed_mode == "ps_heter":
+    elif cloud_flag and distribute_mode == DistributeMode.PS_HETER:
         cloud_ps_heter_env_set(args)
         args.trainers = os.getenv("PADDLE_TRAINER_ENDPOINTS")
         args.workers = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
         args.heter_workers = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST")
 
-    ps_launcher = ParameterServerLauncher(args)
-    ps_launcher.start_ps(args)
+    ps_launcher = ParameterServerLauncher(args, distribute_mode)
+    ps_launcher.start_ps()
     return
 
 
-def launch():
-    args = _parse_args()
-    logger = get_logger()
-    _print_arguments(args)
+def which_distributed_mode(args):
     ps_args = [
-        '--worker_num', '--server_num', '--heter_worker_num', '--servers',
-        '--workers', '--heter_worrkers', 'heter_worker_device'
+        '--worker_num',
+        '--server_num',
+        '--heter_worker_num',
+        '--servers',
+        '--workers',
+        '--heter_workers',
     ]
-    collective_args = ['--ips', '--gpus']
+    collective_args = ['--ips']
+
+    ps_heter_args = ["--heter_worker_num", "--heter_workers"]
+
     has_ps_args = [
         ps_arg for ps_arg in ps_args if ps_arg in " ".join(sys.argv[1:-1])
     ]
@@ -279,25 +267,45 @@ def launch():
         co_arg for co_arg in collective_args
         if co_arg in " ".join(sys.argv[1:-1])
     ]
+
+    assert (
+        len(has_ps_args) > 1 and len(has_collective_args) > 1
+    ), "Only one mode(Collective or Parameter-Server ) can be selected at the same time, but more than one configuration was received."
+
     if fluid.core.is_compiled_with_cuda():
         cuda_device_num = fluid.core.get_cuda_device_count()
     else:
         cuda_device_num = 0
 
-    ps_mode = ['ps', 'ps_gpu', 'ps_heter']
-    if len(has_ps_args) > 0 or args.distributed_mode in ps_mode:
+    if len(has_ps_args) > 0:
         logger.info(
             "Run parameter-sever mode. pserver arguments:{}, cuda count:{}".
             format(has_ps_args, cuda_device_num))
-        launch_ps(args)
+        has_ps_heter_args = list(set(has_ps_args) & set(ps_heter_args))
+        if len(has_ps_heter_args) > 0:
+            return DistributeMode.PS_HETER
+        else:
+            return DistributeMode.PS
     elif len(has_collective_args) > 0:
         logger.info("Run collective gpu mode. gpu arguments:{}, cuda count:{}".
                     format(has_collective_args, cuda_device_num))
-        launch_collective(args)
+        return DistributeMode.COLLECTIVE
     else:
         logger.warning(
             "Not found distinct arguments. Default use gpu collective mode")
+        return DistributeMode.COLLECTIVE
+
+
+def launch():
+    args = _parse_args()
+    logger = get_logger()
+    _print_arguments(args)
+
+    distribute_mode = which_distributed_mode(args)
+    if distribute_mode == DistributeMode.COLLECTIVE:
         launch_collective(args)
+    else:
+        launch_ps(args, distribute_mode)
 
 
 if __name__ == "__main__":

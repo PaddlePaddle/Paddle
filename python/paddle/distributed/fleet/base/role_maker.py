@@ -511,13 +511,6 @@ class RoleMakerBase(object):
         return self._heter_trainer_endpoints[(self._current_id) %
                                              self._heter_worker_num()]
 
-    def _get_heter_worker_device(self):
-        """
-        Returns:
-            string: heter_trainer's device of current node, e.g: CPU/GPU/XPU
-        """
-        return self._heter_trainer_device.upper()
-
 
 class PaddleCloudRoleMaker(RoleMakerBase):
     def __init__(self, is_collective=False, **kwargs):
@@ -696,8 +689,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         # For heter parameter server env setting
         heter_trainer_eplist = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST",
                                          "")
-        heter_trainer_device = os.getenv("PADDLE_HETER_TRAINER_DEVICE", "")
-        if heter_trainer_eplist != "" and heter_trainer_device != "":
+        if heter_trainer_eplist != "":
             try:
                 heter_trainer_eplist = os.environ[
                     "PADDLE_HETER_TRAINER_IP_PORT_LIST"].split(",")
@@ -708,12 +700,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
             self._is_heter_parameter_server_mode = True
             heter_trainers_num = len(heter_trainer_eplist)
-            current_node_device = heter_trainer_device.upper()
-            if current_node_device not in ["CPU", "GPU", "XPU"]:
-                raise ValueError(
-                    "Heter Trainer doesn't support {} device now, please use CPU / GPU / XPU(KunLun)".
-                    format(heter_trainer_device))
-            self._heter_trainer_device = current_node_device
         else:
             self._is_heter_parameter_server_mode = False
             heter_trainers_num = 0
