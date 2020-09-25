@@ -213,9 +213,6 @@ void ParallelConnectContext::connectFullMesh(
   }
   std::ostringstream storeKey;
   storeKey << rank;
-  for (size_t i = 0; i < allBytes.size(); ++i) {
-    VLOG(0) << int(allBytes[i]);
-  }
   store.set(storeKey.str(), allBytes);
 
   auto total_add_size = kNodeSize * (size - 1);
