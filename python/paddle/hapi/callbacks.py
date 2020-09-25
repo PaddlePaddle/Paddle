@@ -496,9 +496,10 @@ class VisualDL(Callback):
             model.prepare(optimizer=optim,
                         loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
-
-            callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
-            model.fit(train_dataset, eval_dataset, batch_size=64, callbacks=callback)
+            
+            # uncomment following lines to fit model with visualdl callback function
+            # callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
+            # model.fit(train_dataset, eval_dataset, batch_size=64, callbacks=callback)
 
     """
 
