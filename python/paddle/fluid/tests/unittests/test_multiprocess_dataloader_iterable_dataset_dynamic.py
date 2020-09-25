@@ -76,7 +76,6 @@ class TestDygraphDataLoader(unittest.TestCase):
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
             dataloader = DataLoader(
                 dataset,
-                places=places,
                 num_workers=num_workers,
                 batch_size=BATCH_SIZE,
                 drop_last=True)
