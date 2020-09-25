@@ -36,11 +36,12 @@ void NCCLParallelContext::RecvNCCLID(const std::string &ep,
   int opt = 0;
   // creating socket fd
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-    PADDLE_THROW(platform::errors::Unavailable("Create server fd failed."));
+    PADDLE_THROW(
+        platform::errors::Unavailable("Create server file descriptor failed."));
   }
 
   if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
-    PADDLE_THROW(platform::errors::Unavailable("Set socket opt failed."));
+    PADDLE_THROW(platform::errors::Unavailable("Set socket options failed."));
   }
 
   address.sin_family = AF_INET;
@@ -49,24 +50,24 @@ void NCCLParallelContext::RecvNCCLID(const std::string &ep,
 
   if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
     PADDLE_THROW(
-        platform::errors::Unavailable("Binding failed on endpoint: %s.", ep));
+        platform::errors::Unavailable("Bind on endpoint %s failed.", ep));
   }
 
   VLOG(3) << "listening on: " << ep;
   if (listen(server_fd, 3) < 0) {
-    PADDLE_THROW(platform::errors::Unavailable("Listen on server fd failed."));
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Listen on server file descriptor failed."));
   }
 
   if ((new_socket =
            accept(server_fd, reinterpret_cast<struct sockaddr *>(&address),
                   reinterpret_cast<socklen_t *>(&addrlen))) < 0) {
-    PADDLE_THROW(
-        platform::errors::Unavailable("Accept the new socket fd failed."));
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Accept the new socket file descriptor failed."));
   }
 
   if (read(new_socket, buffer, 1024) < 0) {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "reading the ncclUniqueId from socket failed"));
+    PADDLE_THROW(platform::errors::Unavailable("Read from socket failed."));
   }
 
   VLOG(3) << "recevived the ncclUniqueId";
@@ -100,7 +101,7 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
   serv_addr.sin_port = htons(port);
 
   if (inet_pton(AF_INET, host.c_str(), &serv_addr.sin_addr) <= 0) {
-    PADDLE_THROW(platform::errors::Unavailable("Open address: %s failed.", ep));
+    PADDLE_THROW(platform::errors::Unavailable("Open address %s failed.", ep));
   }
 
   int try_times = 0;

@@ -200,7 +200,7 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
 void ProgramDescTracer::InsertVarIfNotExist(
     const std::shared_ptr<VarBase> &new_var, bool is_input) {
   PADDLE_ENFORCE_NOT_NULL(new_var, platform::errors::InvalidArgument(
-                                       "The variable to insert is NULL"));
+                                       "The variable to insert is NULL."));
   if (vars_.count(new_var) != 0) return;
 
   auto new_var_desc = new framework::VarDesc("");
@@ -232,7 +232,7 @@ void ProgramDescTracer::InsertVarIfNotExist(
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Not support variable type %s",
+        "Not support variable type %s.",
         framework::ToTypeName(inner_var.Type())));
   }
 }

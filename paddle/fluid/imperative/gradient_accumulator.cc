@@ -141,9 +141,9 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
   PADDLE_ENFORCE_EQ(
       dst_tensor->numel(), numel,
       platform::errors::PreconditionNotMet(
-          "The number of elements of src tensor and dst tensor should be "
-          "equal, but got the number of elements of src tensor is %zu and the "
-          "number of elements of dst tensor is %zu.",
+          "The number of elements of source tensor and destination tensor "
+          "should be equal, but got the number of elements of source tensor is "
+          "%zu and the number of elements of destination tensor is %zu.",
           numel, dst_tensor->numel()));
 
   auto data_type = src_tensor.type();
