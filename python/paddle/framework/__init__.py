@@ -48,8 +48,8 @@ from paddle.fluid import core  #DEFINE_ALIAS
 from ..fluid.dygraph.base import no_grad  #DEFINE_ALIAS
 from ..fluid.dygraph.base import to_variable  #DEFINE_ALIAS
 from ..fluid.dygraph.base import grad  #DEFINE_ALIAS
-from ..fluid.dygraph.checkpoint import load_dygraph as load  #DEFINE_ALIAS
-from ..fluid.dygraph.checkpoint import save_dygraph as save  #DEFINE_ALIAS
+from .io import save
+from .io import load
 from ..fluid.dygraph.jit import SaveLoadConfig  #DEFINE_ALIAS
 from ..fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS
 

@@ -17,9 +17,17 @@
 #include <map>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+
+namespace paddle {
+namespace framework {
+class OpKernelType;
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"

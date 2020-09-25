@@ -17,10 +17,10 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/framework/trainer.h"
-
 namespace paddle {
 namespace framework {
+
+class TrainerBase;
 
 typedef std::shared_ptr<TrainerBase> (*CreatetrainerFunction)();
 typedef std::unordered_map<std::string, CreatetrainerFunction> trainerMap;

@@ -17,12 +17,14 @@ import random
 import time
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph import to_variable
 
 from yolov3 import cfg, YOLOv3
 
+paddle.enable_static()
 random.seed(0)
 np.random.seed(0)
 
