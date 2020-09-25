@@ -415,9 +415,7 @@ class TestModelFunction(unittest.TestCase):
         # dynamic saving
         device = paddle.set_device('cpu')
         fluid.enable_dygraph(device)
-        inputs = [InputSpec([None, 20], 'float32', 'x')]
-        labels = [InputSpec([None, 1], 'int64', 'label')]
-        model = Model(MyModel(classifier_activation=None), inputs, labels)
+        model = Model(MyModel(classifier_activation=None))
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
