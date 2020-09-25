@@ -19,7 +19,7 @@ from paddle.utils import try_import
 
 from .progressbar import ProgressBar
 
-__all__ = ['Callback', 'ProgBarLogger', 'ModelCheckpoint']
+__all__ = ['Callback', 'ProgBarLogger', 'ModelCheckpoint', 'VisualDL']
 
 
 def config_callbacks(callbacks=None,
@@ -499,7 +499,7 @@ class VisualDL(Callback):
 
             callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
             model.fit(train_dataset, eval_dataset, batch_size=64, callbacks=callback)
-            
+
     """
 
     def __init__(self, log_dir):
