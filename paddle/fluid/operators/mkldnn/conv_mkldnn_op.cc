@@ -396,8 +396,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
     auto dst_dt =
-          GetDstType(is_INT8, is_BFLOAT16, force_fp32_output, fuse_activation,
-                     fuse_residual_conn, residual_param);
+        GetDstType(is_INT8, is_BFLOAT16, force_fp32_output, fuse_activation,
+                   fuse_residual_conn, residual_param);
     if (!is_INT8) {
       if (dst_dt == mkldnn::memory::data_type::f32) {
         ComputeFP32<float>(ctx);
