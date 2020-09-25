@@ -495,7 +495,7 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
       auto *var = scope.FindVar(var_names[i]);
       auto var_tensor = var->Get<framework::LoDTensor>();
       int element_number = var_tensor.numel();
-      int *var_mutable_data = var_tensor.mutable_data<int>(var_tensor.place());
+      const int64_t *var_mutable_data = var_tensor.data<int64_t>();
       auto p3 = GetCurrentUS();
       // insert ids which has not been record
       for (int j = 0; j < element_number; j++) {
@@ -784,6 +784,10 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int ep_idx) {
   ids.assign(var_psrever->Get<framework::SelectedRows>().rows().begin(),
              var_psrever->Get<framework::SelectedRows>().rows().end());
 
+  for (size_t j = 0; j < ids.size(); j++) {
+    ids[j] = ids[j] * pserver_num + ep_idx;
+  }
+
   VLOG(2) << "RecvSparse receive var: " << splited_var_name
           << " ids Size: " << ids.size();
 
@@ -806,11 +810,11 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int ep_idx) {
   auto blas = math::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
 
   for (auto j = 0; j < static_cast<int>(ids.size()); ++j) {
-    auto id = ids[j] * pserver_num + ep_idx;
     blas.VSUB(dims1, t_psrever.data<float>() + j * dims1,
               old_values[j][0]->data(), v_delta.data() + j * dims1);
-    blas.VADD(dims1, t_latest->data<float>() + id * dims1,
-              v_delta.data() + j * dims1, t_latest->data<float>() + id * dims1);
+    blas.VADD(dims1, t_latest->data<float>() + ids[j] * dims1,
+              v_delta.data() + j * dims1,
+              t_latest->data<float>() + ids[j] * dims1);
     blas.VCOPY(dims1, t_psrever.data<float>() + j * dims1,
                old_values[j][0]->data());
   }
