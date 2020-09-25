@@ -209,8 +209,8 @@ class OperatorBase {
                                  const platform::Place& place,
                                  const RuntimeContext& ctx) const {}
 
-  virtual platform::Place GetExecutionPlace(
-      const platform::Place& place) const {
+  platform::Place GetExecutionPlace(
+      const platform::Place& place) const override {
     return place;
   }
 
