@@ -60,6 +60,19 @@ create_test_mkldnn_class(TestCase3)
 create_test_mkldnn_class(TestCase4)
 create_test_mkldnn_class(TestCase5)
 
+class TestAvgPoolAdaptive(TestPool2D_Op):
+    def init_adaptive(self):
+        self.adaptive = True
+
+    def init_pool_type(self):
+        self.pool_type = "avg"
+        self.pool2D_forward_naive = avg_pool2D_forward_naive
+
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+    def init_test_case(self):
+        self.ksize = [1, 1]
 
 class TestAsymPad(TestPool2D_Op):
     def init_test_case(self):
