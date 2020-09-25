@@ -1291,17 +1291,17 @@ def append_backward(loss,
     It will be automatically invoked by the optimizer's `minimize` function.
 
     Parameters:
-        loss( :ref:`api_guide_Variable_en` ): The loss variable of the network.
-        parameter_list(list[Variable|str], optional): List of Parameters or Parameter.names
+        loss(Tensor): The loss Tensor of the network.
+        parameter_list(list[Tensor|str], optional): List of Parameters or Parameter.names
                                            that need to be updated by optimizers.
                                            If it is None, all parameters
                                            will be updated.
                                            Default: None.
-        no_grad_set(set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
-                               should be ignored. All variables with
+        no_grad_set(set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
+                               should be ignored. All Tensors with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
-                               If this parameter is not None, the Variables or Variable.names in this set will be added to the default set.
+                               If this parameter is not None, the Tensors or Tensor.names in this set will be added to the default set.
                                Default: None.
         callbacks(list[callable object], optional): List of callback functions.
                                                The callbacks are used for
@@ -1317,8 +1317,8 @@ def append_backward(loss,
                                                the new gradient operator will
                                                be added to. The 'context' is a
                                                map, whose keys are gradient
-                                               variable names and values are
-                                               corresponding original :ref:`api_guide_Variable_en` .
+                                               Tensor names and values are
+                                               corresponding original :ref:`api_guide_tensor_en` .
                                                In addition to this, the 'context'
                                                has another special key-value pair:
                                                the key is string '__current_op_desc__'
@@ -1328,11 +1328,11 @@ def append_backward(loss,
                                                Default: None.
 
     Returns:
-        list of tuple ( :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` ): Pairs of parameter and its corresponding gradients.
-        The key is the parameter and the value is gradient variable.
+        list of tuple ( :ref:`api_guide_tensor_en` , :ref:`api_guide_tensor_en` ): Pairs of parameter and its corresponding gradients.
+        The key is the parameter and the value is gradient Tensor.
 
     Raises:
-        AssertionError: If `loss` is not an instance of Variable.
+        AssertionError: If `loss` is not an instance of Tensor.
 
     Examples:
         .. code-block:: python
@@ -1730,21 +1730,21 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets(Variable|list[Variable]): The target variables
-        inputs(Variable|list[Variable]): The input variables
-        target_gradients (Variable|list[Variable], optional): The gradient variables
+        targets(Tensor|list[Tensor]): The target Tensors
+        inputs(Tensor|list[Tensor]): The input Tensors
+        target_gradients (Tensor|list[Tensor], optional): The gradient Tensors
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set(set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
-                               should be ignored. All variables with
+        no_grad_set(set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
+                               should be ignored. All Tensors with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
-                               If this parameter is not None, the Variables or Variable.names in this set will be added to the default set.
+                               If this parameter is not None, the Tensors or Tensor.names in this set will be added to the default set.
                                Default: None.
 
     Return:
-        (list[Variable]): A list of gradients for inputs
-        If an input does not affect targets, the corresponding gradient variable
+        (list[Tensor]): A list of gradients for inputs
+        If an input does not affect targets, the corresponding gradient Tensor
         will be None
     """
     targets = _as_list(targets)
@@ -1868,19 +1868,19 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     Backpropagate the gradients of targets to inputs.
 
     Args:
-        targets (Variable|list[Variable]): The target variables.
-        inputs (Variable|list[Variable]): The input variables.
-        target_gradients (Variable|list[Variable], optional): The gradient variables
+        targets (Tensor|list[Tensor]): The target Tensors.
+        inputs (Tensor|list[Tensor]): The input Tensors.
+        target_gradients (Tensor|list[Tensor], optional): The gradient Tensor
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set (set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
-            should be ignored. All variables with `stop_gradient=True` from all blocks will
-            be automatically added into this set. If this parameter is not None, the Variables or Variable.names
+        no_grad_set (set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
+            should be ignored. All Tensors with `stop_gradient=True` from all blocks will
+            be automatically added into this set. If this parameter is not None, the Tensors or Tensor.names
             in this set will be added to the default set. Default: None.
 
     Return:
-        (list[Variable]): A list of gradients for inputs
-        If an input does not affect targets, the corresponding gradient variable
+        (list[Tensor]): A list of gradients for inputs
+        If an input does not affect targets, the corresponding gradient Tensor
         will be None.
 
     Examples:
