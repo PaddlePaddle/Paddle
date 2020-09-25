@@ -816,6 +816,7 @@ class Model(object):
         device = paddle.set_device('cpu') # or 'gpu'
 
         net = nn.Sequential(
+            nn.Flatten(1),
             nn.Linear(784, 200),
             nn.Tanh(),
             nn.Linear(200, 10))
@@ -846,9 +847,11 @@ class Model(object):
         self._optimizer = None
         self._test_dataloader = None
 
-        if not isinstance(inputs, (list, dict, Input)):
-            raise TypeError(
-                "'inputs' must be list or dict, and couldn't be None.")
+        if not in_dygraph_mode():
+            if not isinstance(inputs, (list, dict, Input)):
+                raise TypeError(
+                    "'inputs' must be list or dict in static graph mode")
+
         self._inputs = self._verify_spec(inputs, True)
         self._labels = self._verify_spec(labels)
 
@@ -1025,6 +1028,7 @@ class Model(object):
                     def __init__(self):
                         super(Mnist, self).__init__()
                         self.net = nn.Sequential(
+                            nn.Flatten(1),
                             nn.Linear(784, 200),
                             nn.Tanh(),
                             nn.Linear(200, 10),
