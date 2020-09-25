@@ -17,7 +17,6 @@ from paddle.fluid import core
 import subprocess
 import re
 import platform
-from ..base.private_helper_function import wait_server_ready
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
