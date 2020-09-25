@@ -56,7 +56,10 @@ class TestDygraphGroupNormv2(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
+            result = np.allclose(y1, y2)
+            if not result:
+                print("y1:", y1, "\ty2:", y2)
+            self.assertTrue(result)
             test_weight_bias_false()
 
     def test_static(self):
