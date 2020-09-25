@@ -34,6 +34,7 @@ __all__ = [
     'prelu',
     'row_conv',
     'spectral_norm',
+    'switch_case',
 ]
 
 from ...fluid.layers import fc  #DEFINE_ALIAS
@@ -56,5 +57,6 @@ from ...fluid.layers import nce  #DEFINE_ALIAS
 from ...fluid.layers import prelu  #DEFINE_ALIAS
 from ...fluid.layers import row_conv  #DEFINE_ALIAS
 from ...fluid.layers import spectral_norm  #DEFINE_ALIAS
+from ...fluid.layers import switch_case  #DEFINE_ALIAS
 
 from ...fluid.input import embedding  #DEFINE_ALIAS

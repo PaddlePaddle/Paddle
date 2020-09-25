@@ -17,14 +17,11 @@ from ..fluid.layers import case  #DEFINE_ALIAS
 from ..fluid.layers import cond  #DEFINE_ALIAS
 from ..fluid.layers import while_loop  #DEFINE_ALIAS
 
-from ..fluid.layers import switch_case  #DEFINE_ALIAS
-
 __all__ = [
     'case',
     'cond',
     #       'DynamicRNN',
     #       'StaticRNN',
-    'switch_case',
     'while_loop',
     #       'rnn'
 ]
