@@ -222,6 +222,7 @@ TEST(GatherTester, TestGPUGatherTestSelectedRows) {
   test_op.TestGatherSelectedRows(input_scope_idx);
 }
 #endif
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

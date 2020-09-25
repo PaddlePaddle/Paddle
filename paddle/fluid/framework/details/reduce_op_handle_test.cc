@@ -218,65 +218,64 @@ struct TestReduceOpHandle {
               "the expected, expect %d, but got %d.",
               k, rows[k % rows.size()], out_select_rows.rows()[k]));
     }
+
+    f::Tensor result_tensor;
+    f::TensorCopySync(rt, cpu_place, &result_tensor);
+    float *ct = result_tensor.data<float>();
+
+    for (int64_t j = 0; j < f::product(result_tensor.dims()); ++j) {
+      ASSERT_NEAR(ct[j], send_vector[j % send_vector.size()], 1e-5);
+    }
+  }  // namespace details
+
+  void TestReduceLodTensors(size_t output_scope_idx) {
+    std::vector<float> send_vector(static_cast<size_t>(f::product(kDims)));
+    for (size_t k = 0; k < send_vector.size(); ++k) {
+      send_vector[k] = k;
+    }
+    f::LoD lod{{0, 10, 20}};
+
+    for (size_t input_scope_idx = 0; input_scope_idx < gpu_list_.size();
+         ++input_scope_idx) {
+      auto in_var = param_scopes_[input_scope_idx]->FindVar("input");
+      PADDLE_ENFORCE_NOT_NULL(
+          in_var, platform::errors::NotFound(
+                      "Variable %s is not found in scope.", "input"));
+      auto in_lod_tensor = in_var->GetMutable<f::LoDTensor>();
+      in_lod_tensor->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
+      in_lod_tensor->set_lod(lod);
+
+      paddle::framework::TensorFromVector<float>(
+          send_vector, *(ctxs_[input_scope_idx]), in_lod_tensor);
+    }
+
+    auto out_var = param_scopes_[output_scope_idx]->FindVar("out");
+    PADDLE_ENFORCE_NOT_NULL(out_var,
+                            platform::errors::NotFound(
+                                "Variable %s is not found in scope.", "out"));
+    auto out_lodtensor = out_var->GetMutable<f::LoDTensor>();
+
+    auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
+    auto in_lodtensor = in_var->Get<f::LoDTensor>();
+
+    out_lodtensor->ShareDataWith(in_lodtensor);
+
+    op_handle_->Run(false);
+
+    WaitAll();
+
+    p::CPUPlace cpu_place;
+
+    auto &rt = out_var->Get<f::LoDTensor>();
+
+    f::Tensor result_tensor;
+    f::TensorCopySync(rt, cpu_place, &result_tensor);
+    float *ct = result_tensor.data<float>();
+
+    for (int64_t j = 0; j < f::product(result_tensor.dims()); ++j) {
+      ASSERT_NEAR(ct[j], send_vector[j] * gpu_list_.size(), 1e-5);
+    }
   }
-
-  f::Tensor result_tensor;
-  f::TensorCopySync(rt, cpu_place, &result_tensor);
-  float *ct = result_tensor.data<float>();
-
-  for (int64_t j = 0; j < f::product(result_tensor.dims()); ++j) {
-    ASSERT_NEAR(ct[j], send_vector[j % send_vector.size()], 1e-5);
-  }
-}  // namespace details
-
-void TestReduceLodTensors(size_t output_scope_idx) {
-  std::vector<float> send_vector(static_cast<size_t>(f::product(kDims)));
-  for (size_t k = 0; k < send_vector.size(); ++k) {
-    send_vector[k] = k;
-  }
-  f::LoD lod{{0, 10, 20}};
-
-  for (size_t input_scope_idx = 0; input_scope_idx < gpu_list_.size();
-       ++input_scope_idx) {
-    auto in_var = param_scopes_[input_scope_idx]->FindVar("input");
-    PADDLE_ENFORCE_NOT_NULL(
-        in_var, platform::errors::NotFound("Variable %s is not found in scope.",
-                                           "input"));
-    auto in_lod_tensor = in_var->GetMutable<f::LoDTensor>();
-    in_lod_tensor->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
-    in_lod_tensor->set_lod(lod);
-
-    paddle::framework::TensorFromVector<float>(
-        send_vector, *(ctxs_[input_scope_idx]), in_lod_tensor);
-  }
-
-  auto out_var = param_scopes_[output_scope_idx]->FindVar("out");
-  PADDLE_ENFORCE_NOT_NULL(
-      out_var,
-      platform::errors::NotFound("Variable %s is not found in scope.", "out"));
-  auto out_lodtensor = out_var->GetMutable<f::LoDTensor>();
-
-  auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
-  auto in_lodtensor = in_var->Get<f::LoDTensor>();
-
-  out_lodtensor->ShareDataWith(in_lodtensor);
-
-  op_handle_->Run(false);
-
-  WaitAll();
-
-  p::CPUPlace cpu_place;
-
-  auto &rt = out_var->Get<f::LoDTensor>();
-
-  f::Tensor result_tensor;
-  f::TensorCopySync(rt, cpu_place, &result_tensor);
-  float *ct = result_tensor.data<float>();
-
-  for (int64_t j = 0; j < f::product(result_tensor.dims()); ++j) {
-    ASSERT_NEAR(ct[j], send_vector[j] * gpu_list_.size(), 1e-5);
-  }
-}
 };  // namespace details
 
 TEST(ReduceTester, TestCPUReduceTestSelectedRows) {
@@ -312,6 +311,6 @@ TEST(ReduceTester, TestGPUReduceTestLodTensor) {
 }
 #endif
 
+}  // namespace details
 }  // namespace framework
-}  // namespace paddle
 }  // namespace paddle
