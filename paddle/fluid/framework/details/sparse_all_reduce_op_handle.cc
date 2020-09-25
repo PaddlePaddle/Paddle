@@ -72,11 +72,17 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), places_.size(),
       platform::errors::PreconditionNotMet(
-          "The NoDummyInputSize should be equal to the number of places."));
+          "The number of input variables should be equal to the number of "
+          "places, but got the number of input variables is %zu and the the "
+          "number of places is %zu.",
+          in_var_handles.size(), places_.size()));
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), out_var_handles.size(),
       platform::errors::PreconditionNotMet(
-          "The NoDummyInputSize and NoDummyOutputSize should be equal."));
+          "The number of input variables should be equal to the number of "
+          "output variables, but got the number of input variables is %zu and "
+          "the the number of output variables is %zu.",
+          in_var_handles.size(), out_var_handles.size()));
 
   std::vector<const LoDTensor *> ins;
   std::vector<LoDTensor *> gathers;

@@ -130,7 +130,7 @@ void EagerDeletionOpHandle::RunImpl() {
       }
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "The variable(%s) of type %s is not supported in eager deletion",
+          "The variable(%s) of type %s is not supported in eager deletion.",
           framework::ToTypeName(var->Type()), var_info->Name()));
     }
   }

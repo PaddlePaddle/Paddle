@@ -225,15 +225,15 @@ struct TestBroadcastOpHandle {
     PADDLE_ENFORCE_EQ(selected_rows.height(), height,
                       platform::errors::InvalidArgument(
                           "The height of SelectedRows is not equal to "
-                          "the expected, expect %d, but got %d.",
+                          "the expected, expect %d, but got %ld.",
                           height, selected_rows.height()));
 
     for (size_t k = 0; k < selected_rows.rows().size(); ++k) {
       PADDLE_ENFORCE_EQ(
           selected_rows.rows()[k], rows[k],
           platform::errors::InvalidArgument(
-              "The item at position %d of rows of SelectedRows is not equal to "
-              "the expected, expect %d, but got %d.",
+              "The item at position %zu of rows of SelectedRows "
+              "is not equal to the expected, expect %ld, but got %ld.",
               k, rows[k], selected_rows.rows()[k]));
     }
 

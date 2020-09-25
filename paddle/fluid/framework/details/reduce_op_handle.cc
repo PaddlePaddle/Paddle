@@ -120,7 +120,7 @@ void ReduceOpHandle::GatherSelectedRows(
 
   PADDLE_ENFORCE_EQ(
       client->Gather(vars, &remote, *merged_dev_ctx, scope), true,
-      platform::errors::PreconditionNotMet("Gather() return false."));
+      platform::errors::PreconditionNotMet("Gather SelectedRows failed."));
   PADDLE_ENFORCE_EQ(remote.size(), vars.size(),
                     platform::errors::PreconditionNotMet(
                         "The number of remotes should be equal to the number "
