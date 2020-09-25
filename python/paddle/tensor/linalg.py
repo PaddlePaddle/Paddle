@@ -156,8 +156,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():
-            check_variable_and_dtype(val, name, ['float32', 'float64'],
-                                     'matmul')
+            check_variable_and_dtype(
+                val, name, ['float16', 'float32', 'float64'], 'matmul')
 
     __check_input(x, y)
 

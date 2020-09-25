@@ -421,6 +421,22 @@ void Blas<platform::CUDADeviceContext>::GEMV(bool trans_a, int M, int N,
 }
 
 template <>
+template <>
+inline void Blas<platform::CUDADeviceContext>::GEMV(
+    bool trans_a, int M, int N, platform::float16 alpha,
+    const platform::float16 *A, const platform::float16 *B,
+    platform::float16 beta, platform::float16 *C) const {
+  // Because cublas doesn't support half gemv, we use cublasHgemm to achieve it.
+  if (trans_a) {
+    this->template GEMM<platform::float16>(CblasNoTrans, CblasNoTrans, 1, N, M,
+                                           alpha, B, A, beta, C);
+  } else {
+    this->template GEMM<platform::float16>(CblasNoTrans, CblasNoTrans, M, 1, N,
+                                           alpha, A, B, beta, C);
+  }
+}
+
+template <>
 template <typename T>
 void Blas<platform::CUDADeviceContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
@@ -476,6 +492,19 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
   for (int k = 0; k < batchCount; ++k) {
     this->template GEMM<T>(transA, transB, M, N, K, alpha, A[k], B[k], beta,
                            C[k]);
+  }
+}
+
+template <>
+template <>
+inline void Blas<platform::CUDADeviceContext>::BatchedGEMM(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+    platform::float16 alpha, const platform::float16 **A,
+    const platform::float16 **B, platform::float16 beta, platform::float16 **C,
+    int batchCount) const {
+  for (int k = 0; k < batchCount; ++k) {
+    this->template GEMM<platform::float16>(transA, transB, M, N, K, alpha, A[k],
+                                           B[k], beta, C[k]);
   }
 }
 
