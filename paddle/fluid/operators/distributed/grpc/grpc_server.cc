@@ -20,6 +20,20 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/grpc/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_server.h"
 
+namespace grpc {
+class ChannelArguments;
+}  // namespace grpc
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+namespace operators {
+namespace distributed {
+class GRPCVariableResponse;
+}  // namespace distributed
+}  // namespace operators
+}  // namespace paddle
+
 using ::grpc::ServerAsyncResponseWriter;
 
 DECLARE_bool(rpc_disable_reuse_port);

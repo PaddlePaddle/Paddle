@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 
 #ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);

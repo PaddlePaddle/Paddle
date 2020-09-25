@@ -63,6 +63,46 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, output, static_cast<T>(0));
   }
+#ifdef PADDLE_WITH_CUDA
+  if (!cpu_place) {
+    Tensor length;
+    length.mutable_data<IndexT>(framework::make_ddim({1}),
+                                platform::CPUPlace());
+    IndexT* length_data = length.data<IndexT>();
+    const IndexT* segment_ids = segment->data<IndexT>();
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(length_data, segment_ids + num_indices - 1, sizeof(IndexT),
+                   cudaMemcpyDeviceToHost));
+
+    IndexT length_host = length_data[0];
+    length_host++;
+    PADDLE_ENFORCE_GT(
+        length_host, 0,
+        platform::errors::InvalidArgument(
+            "Segment ids must be >= 0, but got last id %d", length_data[0]));
+    auto dims = input->dims();
+    dims[0] = static_cast<int64_t>(length_host);
+    output->Resize({dims});
+    output->mutable_data<T>(context.GetPlace());
+    T init_value = 0;
+    if (pooltype == "MAX") {
+      init_value = static_cast<T>(-FLT_MAX);
+    } else if (pooltype == "MIN") {
+      init_value = static_cast<T>(FLT_MAX);
+    }
+    math::SetConstant<DeviceContext, T> setconst;
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    setconst(dev_ctx, output, static_cast<T>(init_value));
+    // the gpu kernel of mean pool record the counts of segment_ids
+    if (pooltype == "MEAN") {
+      summed_ids = context.Output<Tensor>("SummedIds");
+      summed_ids->Resize({dims[0], 1});
+      summed_ids->mutable_data<T>(context.GetPlace());
+      setconst(dev_ctx, summed_ids, static_cast<T>(1e-12));
+    }
+  }
+#endif
 
   SegmentPoolFunctor<DeviceContext, T, IndexT> pool;
 

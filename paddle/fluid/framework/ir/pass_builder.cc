@@ -20,6 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Pass;
+
 std::shared_ptr<Pass> PassBuilder::AppendPass(const std::string& pass_type) {
   VLOG(1) << "Append " << pass_type;
   auto pass = ir::PassRegistry::Instance().Get(pass_type);

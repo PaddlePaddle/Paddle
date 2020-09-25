@@ -24,6 +24,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -36,9 +37,17 @@
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace imperative {
 
 class OpBase;
+class GradOpNode;
+class VariableWrapper;
 
 class ThreadSafeNameSet {
  public:

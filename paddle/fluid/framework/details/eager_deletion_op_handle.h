@@ -19,12 +19,23 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 
 namespace paddle {
+namespace platform {
+class CUDADeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 class Scope;
+class GarbageCollector;
+namespace ir {
+class Node;
+}  // namespace ir
 
 namespace ir {
 class MemOptVarInfo;
