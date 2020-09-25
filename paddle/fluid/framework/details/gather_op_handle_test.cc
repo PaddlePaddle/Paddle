@@ -17,6 +17,8 @@
 #include <memory>
 #include <unordered_map>
 
+#include "gtest/gtest.h"
+
 namespace paddle {
 namespace framework {
 namespace details {
