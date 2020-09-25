@@ -78,7 +78,7 @@ class TestXPUSigmoid(TestXPUActivation):
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUTanh(TestXPUSigmoid):
+class TestXPUTanh(TestXPUActivation):
     def setUp(self):
         self.op_type = "tanh"
         self.init_dtype()
@@ -92,7 +92,7 @@ class TestXPUTanh(TestXPUSigmoid):
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUSqrt(TestXPUSigmoid):
+class TestXPUSqrt(TestXPUActivation):
     def setUp(self):
         self.op_type = "sqrt"
         self.init_dtype()
@@ -107,7 +107,7 @@ class TestXPUSqrt(TestXPUSigmoid):
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUAbs(TestXPUSigmoid):
+class TestXPUAbs(TestXPUActivation):
     def setUp(self):
         self.op_type = "abs"
         self.init_dtype()
@@ -127,7 +127,7 @@ class TestXPUAbs(TestXPUSigmoid):
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPURelu(TestXPUSigmoid):
+class TestXPURelu(TestXPUActivation):
     def setUp(self):
         self.op_type = "relu"
         self.init_dtype()
@@ -144,7 +144,7 @@ class TestXPURelu(TestXPUSigmoid):
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUGelu(TestXPUSigmoid):
+class TestXPUGelu(TestXPUActivation):
     def setUp(self):
         self.op_type = "gelu"
         self.init_dtype()
@@ -168,7 +168,7 @@ def gelu(x, approximate):
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPULog(TestXPUSigmoid):
+class TestXPULog(TestXPUActivation):
     def setUp(self):
         self.op_type = "log"
         self.init_dtype()
@@ -183,7 +183,7 @@ class TestXPULog(TestXPUSigmoid):
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUSquare(TestXPUSigmoid):
+class TestXPUSquare(TestXPUActivation):
     def setUp(self):
         self.op_type = "square"
         self.init_dtype()
@@ -198,7 +198,7 @@ class TestXPUSquare(TestXPUSigmoid):
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUPow(TestXPUSigmoid):
+class TestXPUPow(TestXPUActivation):
     def setUp(self):
         self.op_type = "pow"
         self.init_dtype()
