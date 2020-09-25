@@ -245,6 +245,7 @@ class TestPool1d_API(unittest.TestCase):
             self.check_avg_static_results(place)
             self.check_max_dygraph_padding_same(place)
             self.check_avg_dygraph_padding_same(place)
+            self.check_max_dygraph_return_index_results(place)
 
 
 class TestPool2dError_API(unittest.TestCase):
