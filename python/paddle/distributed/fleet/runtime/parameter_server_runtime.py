@@ -25,6 +25,7 @@ from paddle.fluid.parallel_executor import ParallelExecutor
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
 
+
 class ParameterServerRuntime(RuntimeBase):
     def __init__(self):
         super(ParameterServerRuntime, self).__init__()
