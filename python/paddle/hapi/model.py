@@ -847,10 +847,9 @@ class Model(object):
         self._optimizer = None
         self._test_dataloader = None
 
-        if not in_dygraph_mode():
-            if not isinstance(inputs, (list, dict, Input)):
-                raise TypeError(
-                    "'inputs' must be list or dict in static graph mode")
+        if not isinstance(inputs, (list, dict, Input)):
+            raise TypeError(
+                "'inputs' must be list or dict in static graph mode")
 
         self._inputs = self._verify_spec(inputs, True)
         self._labels = self._verify_spec(labels)
