@@ -113,6 +113,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         strategy.a_sync_configs = {"k_steps": 100}
+        strategy.a_sync_configs = {"launch_barrier": False}
 
         if training_role == "TRAINER":
             self.run_trainer(role, strategy)
