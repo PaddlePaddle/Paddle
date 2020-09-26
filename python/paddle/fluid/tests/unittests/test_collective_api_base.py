@@ -32,6 +32,10 @@ import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
 
 
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
 class TestCollectiveAPIRunnerBase(object):
     def get_model(self, train_prog, startup_prog, rank):
         raise NotImplementedError(
@@ -179,6 +183,10 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
+        with open("/tmp/tr0_err.log", "wb") as f:
+            sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
+        with open("/tmp/tr1_err.log", "wb") as f:
+            sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
         return pickle.loads(tr0_out), pickle.loads(
             tr1_out), tr0_proc.pid, tr1_proc.pid
 
@@ -199,7 +207,9 @@ class TestDistBase(unittest.TestCase):
             "GLOG_v": "0",
             "NCCL_P2P_DISABLE": "1",
             "BACKEND": backend,
-            "PATH_ID": path_id
+            "PATH_ID": path_id,
+            "GLOG_logtostderr": "1",
+            "GLOO_LOG_LEVEL": "DEBUG"
         }
         required_envs.update(need_envs)
         if check_error_log:
