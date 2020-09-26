@@ -183,9 +183,9 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
-        with open("/tmp/tr0_err.log", "wb") as f:
+        with open("/tmp/tr0_err.log", "rb") as f:
             sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
-        with open("/tmp/tr1_err.log", "wb") as f:
+        with open("/tmp/tr1_err.log", "rb") as f:
             sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
         return pickle.loads(tr0_out), pickle.loads(
             tr1_out), tr0_proc.pid, tr1_proc.pid
