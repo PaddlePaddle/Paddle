@@ -162,6 +162,7 @@ def init_parallel_env():
         http_server.daemon = True
         http_server_d["running"] = True
         http_server.start()
+    time.sleep(3)
 
     iface = _get_iface_by_ip(ep_rank[0])
     if iface is None:
