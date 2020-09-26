@@ -35,8 +35,10 @@ ParallelStrategy = core.ParallelStrategy
 
 def _start_kv_server(port, http_server_d):
     from paddle.distributed.fleet.utils.http_server import KVServer
+    sys.stderr.write("parallel.py:start_kv_server: to start http_server.")
     http_server = KVServer(int(port))
     http_server.start()
+    sys.stderr.write("parallel.py:start_kv_server: started http_server.")
     wait_seconds = 5
     while http_server_d.get("running", False):
         time.sleep(wait_seconds)
