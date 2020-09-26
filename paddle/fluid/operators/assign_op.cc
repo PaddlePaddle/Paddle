@@ -14,8 +14,22 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/assign_op.h"
 
-#include <memory>
 #include <string>
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+class Variable;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace platform {
+struct CPUPlace;
+struct CUDAPlace;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

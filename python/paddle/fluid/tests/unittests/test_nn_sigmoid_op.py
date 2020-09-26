@@ -56,7 +56,7 @@ class TestNNSigmoidAPI(unittest.TestCase):
 
     def check_dynamic_api(self, place):
         paddle.disable_static(place)
-        x = paddle.to_variable(self.x)
+        x = paddle.to_tensor(self.x)
         mysigmoid = nn.Sigmoid()
         y = mysigmoid(x)
         self.assertTrue(np.allclose(y.numpy(), self.y))
@@ -94,7 +94,7 @@ class TestNNFunctionalSigmoidAPI(unittest.TestCase):
 
     def check_dynamic_api(self):
         paddle.disable_static()
-        x = paddle.to_variable(self.x)
+        x = paddle.to_tensor(self.x)
         y = functional.sigmoid(x)
         self.assertTrue(np.allclose(y.numpy(), self.y))
 

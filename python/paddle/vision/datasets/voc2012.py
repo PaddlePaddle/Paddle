@@ -19,6 +19,7 @@ import tarfile
 import numpy as np
 from PIL import Image
 
+import paddle
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
 
@@ -96,6 +97,8 @@ class VOC2012(Dataset):
         # read dataset into memory
         self._load_anno()
 
+        self.dtype = paddle.get_default_dtype()
+
     def _load_anno(self):
         self.name2mem = {}
         self.data_tar = tarfile.open(self.data_file)
@@ -127,7 +130,7 @@ class VOC2012(Dataset):
         label = np.array(label)
         if self.transform is not None:
             data = self.transform(data)
-        return data, label
+        return data.astype(self.dtype), label.astype(self.dtype)
 
     def __len__(self):
         return len(self.data)

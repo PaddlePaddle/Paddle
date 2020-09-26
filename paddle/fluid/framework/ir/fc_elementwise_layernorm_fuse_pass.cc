@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fc_elementwise_layernorm_fuse_pass.h"
+
 #include <string>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {

@@ -48,8 +48,8 @@ def test_static(x_np, y_np, p=2.0, epsilon=1e-6, keepdim=False):
 
 def test_dygraph(x_np, y_np, p=2.0, epsilon=1e-6, keepdim=False):
     paddle.disable_static()
-    x = paddle.to_variable(x_np)
-    y = paddle.to_variable(y_np)
+    x = paddle.to_tensor(x_np)
+    y = paddle.to_tensor(y_np)
     dist = paddle.nn.layer.distance.PairwiseDistance(
         p=p, epsilon=epsilon, keepdim=keepdim)
     distance = dist(x, y)

@@ -11,11 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#pragma once
+#include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
+namespace analysis {
+namespace transformer_tester {
 
 struct DataRecord {
   std::vector<std::vector<int64_t>> src_word, src_pos, trg_word, init_idx;
@@ -182,57 +187,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   }
 }
 
-// Easy for profiling independently.
-void profile(bool use_mkldnn = false) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-  std::vector<std::vector<PaddleTensor>> outputs;
-  if (use_mkldnn) {
-    cfg.EnableMKLDNN();
-    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-  }
-
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
-}
-
-TEST(Analyzer_Transformer, profile) { profile(); }
-#ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_Transformer, profile_mkldnn) { profile(true); }
-#endif
-
-// Check the fuse status
-TEST(Analyzer_Transformer, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-}
-
-// Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-  if (use_mkldnn) {
-    cfg.EnableMKLDNN();
-    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-  }
-
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-  CompareNativeAndAnalysis(
-      reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
-}
-
-TEST(Analyzer_Transformer, compare) { compare(); }
-#ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_Transformer, compare_mkldnn) { compare(true /* use_mkldnn */); }
-#endif
-
+}  // namespace transformer_tester
+}  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

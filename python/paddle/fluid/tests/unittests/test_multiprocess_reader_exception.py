@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
-from paddle.fluid.io import multiprocess_reader
+from paddle.reader import multiprocess_reader
 import unittest
 import numpy as np
 import six

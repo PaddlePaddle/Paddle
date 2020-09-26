@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 
-#include <algorithm>
-#include <thread>  // NOLINT
-
 #include "gtest/gtest.h"
 
 namespace paddle {

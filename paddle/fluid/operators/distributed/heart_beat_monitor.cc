@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
-#include <chrono>  // NOLINT
+
 #include <ctime>
 
 namespace paddle {

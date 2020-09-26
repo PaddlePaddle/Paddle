@@ -32,6 +32,8 @@ from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.log_helper import get_logger
 
+paddle.enable_static()
+
 os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})

@@ -14,19 +14,16 @@
 
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 
-#include <algorithm>
 #include <memory>
-#include <set>
 #include <string>
-#include <unordered_set>
 #include <utility>
 
-#include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/imperative/variable_wrapper.h"
 
 namespace paddle {
 namespace imperative {
+
+class VarBase;
 
 AmpOperators::AmpOperators()
     : allow_ops_(new std::unordered_set<std::string>()),

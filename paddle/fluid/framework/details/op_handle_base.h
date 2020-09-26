@@ -18,15 +18,28 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 
 class Scope;
+namespace details {
+struct VarHandleBase;
+}  // namespace details
+namespace ir {
+class Node;
+}  // namespace ir
 
 namespace details {
 
@@ -51,6 +64,10 @@ class OpHandleBase {
   std::string DebugString() const;
 
   virtual Priority GetPriority() const { return kNormal; }
+
+  virtual bool GetSkipRunning() const { return skip_running_; }
+
+  virtual void SetSkipRunning(bool skip_runing) { skip_running_ = skip_runing; }
 
   virtual std::string Name() const = 0;
 
@@ -131,6 +148,7 @@ class OpHandleBase {
   std::map<platform::Place, platform::DeviceContext *> dev_ctxes_;
 
   std::vector<Scope *> local_exec_scopes_;
+  bool skip_running_ = false;
 
 #ifdef PADDLE_WITH_CUDA
   std::unordered_map<int, cudaEvent_t> events_;

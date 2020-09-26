@@ -18,8 +18,10 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
+
 namespace paddle {
 namespace memory {
 namespace allocation {
