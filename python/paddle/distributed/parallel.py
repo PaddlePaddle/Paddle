@@ -18,6 +18,7 @@ import warnings
 from multiprocessing import Process, Manager
 import netifaces
 import time
+import sys
 
 from paddle import compat as cpt
 
@@ -161,8 +162,9 @@ def init_parallel_env():
             target=_start_kv_server, args=(int(ep_rank_0[1]), http_server_d))
         http_server.daemon = True
         http_server_d["running"] = True
+        sys.stderr.write("parallel.py: to start http_server.")
         http_server.start()
-    time.sleep(3)
+    time.sleep(20)
 
     iface = _get_iface_by_ip(ep_rank[0])
     if iface is None:
