@@ -209,7 +209,7 @@ class TestDistBase(unittest.TestCase):
             "BACKEND": backend,
             "PATH_ID": path_id,
             "GLOG_logtostderr": "1",
-            "GLOO_LOG_LEVEL": "DEBUG"
+            "GLOO_LOG_LEVEL": "TRACE"
         }
         required_envs.update(need_envs)
         if check_error_log:
