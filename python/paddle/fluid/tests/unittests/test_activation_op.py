@@ -228,7 +228,7 @@ class TestTanhAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        x = paddle.to_variable(self.x_np)
+        x = paddle.to_tensor(self.x_np)
         out1 = F.tanh(x)
         out2 = paddle.tanh(x)
         th = paddle.nn.Tanh()
@@ -573,7 +573,7 @@ class TestHardShrinkAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        x = paddle.to_variable(self.x_np)
+        x = paddle.to_tensor(self.x_np)
         out1 = F.hardshrink(x)
         hd = paddle.nn.Hardshrink()
         out2 = hd(x)
@@ -639,7 +639,7 @@ class TestHardtanhAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        x = paddle.to_variable(self.x_np)
+        x = paddle.to_tensor(self.x_np)
         out1 = F.hardtanh(x)
         m = paddle.nn.Hardtanh()
         out2 = m(x)
@@ -1063,7 +1063,7 @@ class TestLeakyReluAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-        x = paddle.to_variable(self.x_np)
+        x = paddle.to_tensor(self.x_np)
         out1 = F.leaky_relu(x)
         m = paddle.nn.LeakyReLU()
         out2 = m(x)
