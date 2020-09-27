@@ -34,6 +34,7 @@ ParallelStrategy = core.ParallelStrategy
 
 
 def _start_kv_server(port, http_server_d):
+    sys.stderr.write("parallel.py:start_kv_server: before import")
     from paddle.distributed.fleet.utils.http_server import KVServer
     sys.stderr.write("parallel.py:start_kv_server: to start http_server.")
     http_server = KVServer(int(port))

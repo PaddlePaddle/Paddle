@@ -22,12 +22,18 @@ if six.PY2:
     from BaseHTTPServer import HTTPServer
     import SimpleHTTPServer
 else:
-    from http.server import HTTPServer
-    import http.server as SimpleHTTPServer
+    try:
+        from http.server import HTTPServer
+        import http.server as SimpleHTTPServer
+    except:
+        sys.stderr.write(sys.exc_info())
 
-import time
-import threading
-import socket
+try:
+    import time
+    import threading
+    import socket
+except:
+    sys.stderr.write(sys.exc_info())
 
 
 def get_logger(name, level, fmt):
@@ -40,8 +46,11 @@ def get_logger(name, level, fmt):
     return logger
 
 
-_http_server_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+try:
+    _http_server_logger = get_logger(
+        __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+except:
+    sys.stderr.write(sys.exc_info())
 
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
