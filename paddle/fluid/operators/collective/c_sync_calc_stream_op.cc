@@ -11,19 +11,15 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#if defined(PADDLE_WITH_NCCL)
-#include <nccl.h>
-#endif
-
 #include <string>
 
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_NCCL)
-#include "paddle/fluid/platform/collective_helper.h"
-#endif
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

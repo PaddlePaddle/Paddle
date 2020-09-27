@@ -18,7 +18,9 @@ from .graph_execution_optimizer import GraphExecutionOptimizer
 from .parameter_server_optimizer import ParameterServerOptimizer
 from .pipeline_optimizer import PipelineOptimizer
 from .localsgd_optimizer import LocalSGDOptimizer
+from .localsgd_optimizer import AdaptiveLocalSGDOptimizer
 from .lars_optimizer import LarsOptimizer
 from .parameter_server_graph_optimizer import ParameterServerGraphOptimizer
 from .dgc_optimizer import DGCOptimizer
 from .lamb_optimizer import LambOptimizer
+from .fp16_allreduce_optimizer import FP16AllReduceOptimizer

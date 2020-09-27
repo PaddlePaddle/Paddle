@@ -39,6 +39,11 @@ try:
         third_lib_path = current_path + os.sep + '..' + os.sep + 'libs'
         os.environ['path'] = third_lib_path + ';' + os.environ['path']
         sys.path.insert(0, third_lib_path)
+        # Note: from python3.8, PATH will not take effect
+        # https://github.com/python/cpython/pull/12302
+        # Use add_dll_directory to specify dll resolution path
+        if sys.version_info[:2] >= (3, 8):
+            os.add_dll_directory(third_lib_path)
 
 except ImportError as e:
     from .. import compat as cpt

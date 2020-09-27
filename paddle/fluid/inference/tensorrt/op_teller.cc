@@ -15,6 +15,12 @@
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 
 namespace paddle {
+namespace framework {
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -31,6 +37,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("fused_embedding_eltwise_layernorm");
     teller_set.insert("multihead_matmul");
     teller_set.insert("skip_layernorm");
+    teller_set.insert("slice");
 #endif
   }
 

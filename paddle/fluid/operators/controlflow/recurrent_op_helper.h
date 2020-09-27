@@ -27,6 +27,12 @@
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
+namespace framework {
+class ProgramDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 
 using OpVariantSet = std::unordered_set<OpVariant, OpVariant::Hasher>;

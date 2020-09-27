@@ -685,8 +685,9 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                      "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()), true,
+        paddle::platform::errors::PreconditionNotMet("It must use CPUPlace."));
     const Tensor* X = ctx.Input<Tensor>("Input");
     const Tensor* dY = ctx.Input<Tensor>("DOutput");
     const Tensor* ddX = ctx.Input<Tensor>("DDInput");
@@ -982,11 +983,20 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           output->dims()[output->dims().size() - 1] %
               input->dims()[input->dims().size() - 1],
-          0, "The output channels must be a multiple of the input channels");
+          0, platform::errors::InvalidArgument(
+                 "ShapeError: The output channels must be a multiple of the "
+                 "input channels. But receivced output channel number is %d "
+                 "and input channel number is %d",
+                 output->dims()[output->dims().size() - 1],
+                 input->dims()[input->dims().size() - 1]));
     } else {
       PADDLE_ENFORCE_EQ(
           output->dims()[1] % input->dims()[1], 0,
-          "The output channels must be a multiple of the input channels");
+          platform::errors::InvalidArgument(
+              "ShapeError: The output channels must be a multiple of the "
+              "input channels. But receivced output channel number is %d "
+              "and input channel number is %d",
+              output->dims()[1], input->dims()[1]));
     }
     // transform tensor
     Tensor transformed_input(input->type());

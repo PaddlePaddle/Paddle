@@ -55,7 +55,7 @@ class TestSimpleRNN(unittest.TestCase):
         prev_h = np.random.randn(2 * self.num_directions, 4, 32)
 
         y1, h1 = rnn1(x, prev_h)
-        y2, h2 = rnn2(paddle.to_variable(x), paddle.to_variable(prev_h))
+        y2, h2 = rnn2(paddle.to_tensor(x), paddle.to_tensor(prev_h))
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
 
@@ -68,7 +68,7 @@ class TestSimpleRNN(unittest.TestCase):
             x = np.transpose(x, [1, 0, 2])
 
         y1, h1 = rnn1(x)
-        y2, h2 = rnn2(paddle.to_variable(x))
+        y2, h2 = rnn2(paddle.to_tensor(x))
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
 
@@ -83,11 +83,11 @@ class TestSimpleRNN(unittest.TestCase):
 
         y1, h1 = rnn1(x, sequence_length=sequence_length)
 
-        seq_len = paddle.to_variable(sequence_length)
+        seq_len = paddle.to_tensor(sequence_length)
         mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
-        y2, h2 = rnn2(paddle.to_variable(x), sequence_length=seq_len)
+        y2, h2 = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
         y2 = paddle.multiply(y2, mask, axis=0)
 
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
@@ -137,7 +137,7 @@ class TestGRU(unittest.TestCase):
         prev_h = np.random.randn(2 * self.num_directions, 4, 32)
 
         y1, h1 = rnn1(x, prev_h)
-        y2, h2 = rnn2(paddle.to_variable(x), paddle.to_variable(prev_h))
+        y2, h2 = rnn2(paddle.to_tensor(x), paddle.to_tensor(prev_h))
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
 
@@ -150,7 +150,7 @@ class TestGRU(unittest.TestCase):
             x = np.transpose(x, [1, 0, 2])
 
         y1, h1 = rnn1(x)
-        y2, h2 = rnn2(paddle.to_variable(x))
+        y2, h2 = rnn2(paddle.to_tensor(x))
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
 
@@ -165,11 +165,11 @@ class TestGRU(unittest.TestCase):
 
         y1, h1 = rnn1(x, sequence_length=sequence_length)
 
-        seq_len = paddle.to_variable(sequence_length)
+        seq_len = paddle.to_tensor(sequence_length)
         mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
-        y2, h2 = rnn2(paddle.to_variable(x), sequence_length=seq_len)
+        y2, h2 = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
         y2 = paddle.multiply(y2, mask, axis=0)
 
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
@@ -215,8 +215,8 @@ class TestLSTM(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
         y2, (h2, c2) = rnn2(
-            paddle.to_variable(x),
-            (paddle.to_variable(prev_h), paddle.to_variable(prev_c)))
+            paddle.to_tensor(x),
+            (paddle.to_tensor(prev_h), paddle.to_tensor(prev_c)))
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
@@ -230,7 +230,7 @@ class TestLSTM(unittest.TestCase):
             x = np.transpose(x, [1, 0, 2])
 
         y1, (h1, c1) = rnn1(x)
-        y2, (h2, c2) = rnn2(paddle.to_variable(x))
+        y2, (h2, c2) = rnn2(paddle.to_tensor(x))
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
@@ -246,11 +246,11 @@ class TestLSTM(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x, sequence_length=sequence_length)
 
-        seq_len = paddle.to_variable(sequence_length)
+        seq_len = paddle.to_tensor(sequence_length)
         mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
-        y2, (h2, c2) = rnn2(paddle.to_variable(x), sequence_length=seq_len)
+        y2, (h2, c2) = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
         y2 = paddle.multiply(y2, mask, axis=0)
 
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)

@@ -16,8 +16,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/cudnn_lstm_cache.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/utils.h"
-#include "paddle/fluid/platform/cudnn_desc.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+
+namespace paddle {
+namespace platform {
+class CUDADeviceContext;
+struct CUDAPlace;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

@@ -182,23 +182,25 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import paddle   
+                import paddle
+                import paddle.fluid as fluid
 
                 paddle.disable_static()
 
-                emb = paddle.nn.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
 
                 state_dict = emb.state_dict()
-                paddle.save(state_dict, "paddle_dy")
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
-                adam = paddle.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
-                                                parameter_list=emb.parameters())
+                scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
+                    d_model=0.01, warmup_steps=100, verbose=True)
+                adam = paddle.optimizer.Adam(
+                    learning_rate=scheduler,
+                    parameters=emb.parameters())
                 state_dict = adam.state_dict()
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
-                para_state_dict, opti_state_dict = paddle.load("paddle_dy")
-
-                adam.set_state_dict(opti_state_dict)
-
+                para_state_dict, opti_state_dict = fluid.load_dygraph("paddle_dy")
         '''
         from paddle.optimizer.lr_scheduler import _LRScheduler
         if isinstance(self._learning_rate, _LRScheduler):
@@ -3570,8 +3572,10 @@ class ExponentialMovingAverage(object):
                 # bias correction
                 with layers.control_flow.Switch() as switch:
                     with switch.case(global_step > 0):
-                        layers.assign(output=ema, input=ema / (1.0 - decay_pow))
-                layers.assign(input=ema, output=param)
+                        layers.assign(
+                            output=param, input=ema / (1.0 - decay_pow))
+                    with switch.default():
+                        layers.assign(output=param, input=ema)
 
         self.restore_program = Program()
         block = self.restore_program.global_block()

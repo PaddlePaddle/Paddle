@@ -51,8 +51,8 @@ if (WIN32)
     set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
     set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
     set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
+    safe_set_static_flag()
     if (WITH_STATIC_LIB)
-      safe_set_static_flag()
       add_definitions(-DSTATIC_LIB)
     endif()
   endif()
@@ -136,7 +136,7 @@ else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
       glog gflags_static libprotobuf  xxhash ${EXTERNAL_LIB})
-  set(DEPS ${DEPS} libcmt shlwapi.lib)
+  set(DEPS ${DEPS} shlwapi.lib)
 endif(NOT WIN32)
 
 if(WITH_GPU)

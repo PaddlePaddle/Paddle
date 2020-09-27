@@ -19,6 +19,9 @@ import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle
+
+paddle.enable_static()
 
 # For Net
 base_lr = 0.2
@@ -67,15 +70,13 @@ class TestPSPassWithBow(unittest.TestCase):
         q = fluid.layers.data(
             name="query_ids", shape=[1], dtype="int64", lod_level=1)
         # embedding
-        q_emb = fluid.layers.embedding(
+        q_emb = fluid.contrib.layers.sparse_embedding(
             input=q,
-            is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__",
-                learning_rate=emb_lr),
-            is_sparse=is_sparse)
+                learning_rate=emb_lr))
         q_emb = fluid.layers.reshape(q_emb, [-1, emb_dim])
         # vsum
         q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
@@ -94,15 +95,13 @@ class TestPSPassWithBow(unittest.TestCase):
         pt = fluid.layers.data(
             name="pos_title_ids", shape=[1], dtype="int64", lod_level=1)
         # embedding
-        pt_emb = fluid.layers.embedding(
+        pt_emb = fluid.contrib.layers.sparse_embedding(
             input=pt,
-            is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__",
-                learning_rate=emb_lr),
-            is_sparse=is_sparse)
+                learning_rate=emb_lr))
         pt_emb = fluid.layers.reshape(pt_emb, [-1, emb_dim])
         # vsum
         pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
@@ -120,15 +119,13 @@ class TestPSPassWithBow(unittest.TestCase):
         nt = fluid.layers.data(
             name="neg_title_ids", shape=[1], dtype="int64", lod_level=1)
         # embedding
-        nt_emb = fluid.layers.embedding(
+        nt_emb = fluid.contrib.layers.sparse_embedding(
             input=nt,
-            is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__",
-                learning_rate=emb_lr),
-            is_sparse=is_sparse)
+                learning_rate=emb_lr))
         nt_emb = fluid.layers.reshape(nt_emb, [-1, emb_dim])
         # vsum
         nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
@@ -164,7 +161,7 @@ class TestPSPassWithBow(unittest.TestCase):
 
         fleet.init(role)
         loss, acc, _ = self.net()
-        optimizer = fluid.optimizer.SGD(base_lr)
+        optimizer = fluid.optimizer.Adam(base_lr)
         strategy = StrategyFactory.create_async_strategy()
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)
