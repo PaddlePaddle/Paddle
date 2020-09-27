@@ -570,11 +570,11 @@ class TestModelFunction(unittest.TestCase):
                         np.random.random((1, 1, 28, 28)), dtype=np.float32)
                     label = np.array(np.random.rand(1, 1), dtype=np.int64)
                     if initial == "train_batch":
-                        model.train_batch(img, label)
+                        model.train_batch([img], [label])
                     elif initial == "eval_batch":
-                        model.eval_batch(img, label)
+                        model.eval_batch([img], [label])
                     else:
-                        model.test_batch(img)
+                        model.test_batch([img])
 
                 model.save(save_dir, training=False)
                 shutil.rmtree(save_dir)
