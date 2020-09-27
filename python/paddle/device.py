@@ -18,7 +18,7 @@ import re
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.framework import is_compiled_with_cuda
+from paddle.fluid.framework import is_compiled_with_cuda  #DEFINE_ALIAS
 
 __all__ = [
     'get_cudnn_version',
