@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/buffered_allocator.h"
-
-#include <algorithm>
-#include <limits>
 #include <utility>
 
 namespace paddle {

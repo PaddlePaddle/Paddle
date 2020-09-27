@@ -20,25 +20,13 @@ from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import PassVersionChecker
 
 
-class ConvBnFusePassMKLDNNTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 3, 100, 100], dtype="float32")
-            conv_out = fluid.layers.conv2d(
-                data, num_filters=3, filter_size=3, bias_attr=False, act="relu")
-
-        self.feeds = {
-            "data": np.random.random((1, 3, 100, 100)).astype("float32")
-        }
-        self.fetch_list = [conv_out]
-        self.enable_mkldnn = True
-
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
+class SeqConcatFCFusePassTest(InferencePassTest):
+    def test_compatible(self):
+        self.assertTrue(
+            PassVersionChecker.IsCompatible('seq_concat_fc_fuse_pass'))
 
 
 if __name__ == "__main__":

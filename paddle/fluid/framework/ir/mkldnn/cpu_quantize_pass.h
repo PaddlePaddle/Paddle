@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -31,6 +32,9 @@ namespace ir {
  * bool denotes whether quantization of the variable should be done to unsigned
  * type.
  */
+class Graph;
+class Node;
+
 using VarQuantScale =
     std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
 

@@ -16,7 +16,14 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/lod_tensor.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 #define MAX_CONCAT_INPUTS 200
 

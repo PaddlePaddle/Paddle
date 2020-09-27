@@ -20,6 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Graph;
+
 void IsTestPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Sets is_test attrbiute to true and if it is missing, inserts it "
              "for activations and pooling.";

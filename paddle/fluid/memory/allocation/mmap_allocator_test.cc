@@ -16,8 +16,6 @@
 
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 
-#include <sys/types.h>
-
 #include "gtest/gtest.h"
 
 namespace paddle {

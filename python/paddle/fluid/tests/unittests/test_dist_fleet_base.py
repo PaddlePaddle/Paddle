@@ -34,8 +34,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.distributed.fleet.base.util_factory import fleet_util
-from paddle.distributed.fleet import fleet
+import paddle.distributed.fleet as fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
@@ -97,7 +96,7 @@ class FleetDistRunnerBase(object):
         self.dump_fields_path = os.getenv("dump_fields_path", "")
         debug = int(os.getenv("Debug", "0"))
         # TODO(update strategy to support dump params)
-        if False:  #debug:
+        if False:  # debug:
             self.strategy.set_debug_opt({
                 "dump_param": self.dump_param,
                 "dump_fields": self.dump_fields,
@@ -313,9 +312,6 @@ class TestFleetBase(unittest.TestCase):
                 "========================Error tr1_err end==========================="
             )
 
-        self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")
-        self.assertEqual(tr1_ret, 0, "something wrong in tr1, please check")
-
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
@@ -326,6 +322,8 @@ class TestFleetBase(unittest.TestCase):
         ps1.terminate()
 
         shutil.rmtree(gloo_path)
+        self.assertEqual(tr0_ret, 0, "something wrong in tr0, please check")
+        self.assertEqual(tr1_ret, 0, "something wrong in tr1, please check")
         return 0, 0
 
     def check_with_place(self,
@@ -372,8 +370,6 @@ def runtime_main(test_class):
     strategy = model.build_strategy(args)
     avg_cost = model.net(args)
     model.build_optimizer(avg_cost, strategy)
-    fleet_util._set_strategy(strategy)
-    fleet_util._set_role_maker(role)
     if args.role == "pserver":
         model.run_pserver(args)
     else:

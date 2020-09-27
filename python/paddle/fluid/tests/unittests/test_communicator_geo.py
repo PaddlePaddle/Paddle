@@ -83,8 +83,8 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
-        fleet.init_worker()
         exe.run(fluid.default_startup_program())
+        fleet.init_worker()
 
         train_reader = paddle.batch(self.fake_reader(), batch_size=24)
         feeder = fluid.DataFeeder(place=place, feed_list=[x, z, y])
@@ -113,6 +113,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         strategy.a_sync_configs = {"k_steps": 100}
+        strategy.a_sync_configs = {"launch_barrier": False}
 
         if training_role == "TRAINER":
             self.run_trainer(role, strategy)
