@@ -458,12 +458,12 @@ class TestGeneratorSeed(unittest.TestCase):
                 input=x,
                 size=10,
                 param_attr=fluid.initializer.TruncatedNormal(
-                    loc=0.0, scale=2.0))
+                    mean=0.0, std=2.0))
             result_2 = fluid.layers.fc(
                 input=x,
                 size=10,
                 param_attr=fluid.initializer.TruncatedNormal(
-                    loc=0.0, scale=2.0))
+                    mean=0.0, std=2.0))
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(startup_program)

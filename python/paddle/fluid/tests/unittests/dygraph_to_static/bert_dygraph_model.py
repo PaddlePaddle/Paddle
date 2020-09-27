@@ -181,7 +181,7 @@ class BertModelLayer(Layer):
         self._dtype = "float16" if use_fp16 else "float32"
 
         self._param_initializer = fluid.initializer.TruncatedNormal(
-            scale=config['initializer_range'])
+            std=config['initializer_range'])
 
         self._src_emb = Embedding(
             size=[self._voc_size, self._emb_size],
@@ -276,7 +276,7 @@ class PretrainModelLayer(Layer):
 
         self._word_emb_name = "word_embedding"
         self._param_initializer = fluid.initializer.TruncatedNormal(
-            scale=config['initializer_range'])
+            std=config['initializer_range'])
         self._weight_sharing = weight_sharing
         self.use_fp16 = use_fp16
         self._dtype = "float16" if use_fp16 else "float32"

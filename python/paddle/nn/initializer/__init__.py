@@ -20,7 +20,9 @@ from ...fluid.initializer import MSRA  #DEFINE_ALIAS
 from ...fluid.initializer import Normal  #DEFINE_ALIAS
 from ...fluid.initializer import TruncatedNormal  #DEFINE_ALIAS
 from ...fluid.initializer import Uniform  #DEFINE_ALIAS
-from ...fluid.initializer import Xavier  #DEFINE_ALIAS
+from ...fluid.initializer import XavierNormal  #DEFINE_ALIAS
+from ...fluid.initializer import XavierUniform  #DEFINE_ALIAS
+from ...fluid.initializer import NumpyArrayInitializer  #DEFINE_ALIAS
 
 __all__ = [
     'Bilinear',
@@ -29,5 +31,7 @@ __all__ = [
     'Normal',
     'TruncatedNormal',
     'Uniform',
-    'Xavier',
+    'XavierNormal',
+    'XavierUniform'
+    'NumpyArrayInitializer',
 ]

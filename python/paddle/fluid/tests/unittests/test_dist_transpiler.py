@@ -1055,7 +1055,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
             is_sparse=is_sparse,
             size=[3, 3],
             param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
-                scale=1 / math.sqrt(num_total_classes))))
+                std=1 / math.sqrt(num_total_classes))))
 
         cost = fluid.layers.hsigmoid(
             input=emb,

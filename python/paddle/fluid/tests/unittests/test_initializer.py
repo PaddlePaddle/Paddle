@@ -17,10 +17,13 @@ from __future__ import print_function
 import numpy as np
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.initializer as initializer
 from paddle.fluid.core import VarDesc
+
+paddle.enable_static()
 
 DELTA = 0.00001
 
@@ -345,6 +348,98 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertTrue(check_cast_op(block.ops[1]))
 
 
+class TestXavierUniformInitializer(unittest.TestCase):
+    def test_uniform_xavier_initializer(self):
+        """Test Xavier initializer with uniform distribution on
+           for matrix multiply.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        for _ in range(2):
+            param = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="param",
+                initializer=initializer.XavierUniformInitializer())
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'uniform_random')
+        limit = np.sqrt(6.0 / (param.shape[0] + param.shape[1]))
+        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+    def test_uniform_xavier_initializer_conv(self):
+        """Test Xavier initializer with uniform distribution on
+           for convolutions.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        for _ in range(2):
+            param = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10, 15, 20],
+                lod_level=0,
+                name="param",
+                initializer=initializer.XavierUniformInitializer())
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'uniform_random')
+        receptive_field_size = float(15 * 20)
+        limit = np.sqrt(6.0 / (
+            (param.shape[0] + param.shape[1]) * receptive_field_size))
+        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+
+class TestXavierNormalInitializer(unittest.TestCase):
+    def test_normal_xavier_initializer(self):
+        """Test Xavier initializer with normal distribution on
+           for matrix multiply.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        for _ in range(2):
+            param = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="param",
+                initializer=initializer.XavierNormalInitializer())
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'gaussian_random')
+        std = np.sqrt(2.0 / (param.shape[0] + param.shape[1]))
+        self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+    def test_normal_xavier_initializer_conv(self):
+        """Test Xavier initializer with normal distribution on
+           for convolutions.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        for _ in range(2):
+            param = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10, 15, 20],
+                lod_level=0,
+                name="param",
+                initializer=initializer.XavierNormalInitializer())
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'gaussian_random')
+        receptive_field_size = float(15 * 20)
+        std = np.sqrt(2.0 / (
+            (param.shape[0] + param.shape[1]) * receptive_field_size))
+        self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+
 class TestMSRAInitializer(unittest.TestCase):
     def test_uniform_msra_initializer(self):
         """Test MSRA initializer with uniform distribution on
@@ -559,7 +654,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
             initializer.Uniform(
                 low=-0.5, high=0.5),
             bias_init=initializer.Normal(
-                loc=0.0, scale=2.0))
+                mean=0.0, std=2.0))
         with fluid.program_guard(main_prog, startup_prog):
             x = fluid.data(name="x", shape=[1, 3, 32, 32])
             # default initilizer of bias in layers.conv2d is ConstantInitializer

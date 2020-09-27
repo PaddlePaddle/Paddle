@@ -93,7 +93,7 @@ class MNIST(fluid.dygraph.Layer):
             10,
             param_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=scale)),
+                    mean=0.0, std=scale)),
             act="softmax")
 
     def forward(self, inputs):

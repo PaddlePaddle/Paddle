@@ -67,7 +67,7 @@ def cnn_model(data):
         act="softmax",
         param_attr=fluid.param_attr.ParamAttr(
             initializer=fluid.initializer.NormalInitializer(
-                loc=0.0, scale=scale)))
+                mean=0.0, std=scale)))
     return predict
 
 

@@ -87,7 +87,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=400,
                 act="relu",
                 param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
-                    scale=1 / math.sqrt(concated.shape[1]))),
+                    std=1 / math.sqrt(concated.shape[1]))),
                 name="fc1")
 
         with fluid.device_guard("cpu"):
@@ -96,7 +96,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                                   act="relu",
                                   param_attr=fluid.ParamAttr(
                                       initializer=fluid.initializer.Normal(
-                                          scale=1 / math.sqrt(fc1.shape[1]))),
+                                          std=1 / math.sqrt(fc1.shape[1]))),
                                   name="fc2")
 
         with fluid.device_guard("gpu"):
@@ -105,7 +105,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                                   act="relu",
                                   param_attr=fluid.ParamAttr(
                                       initializer=fluid.initializer.Normal(
-                                          scale=1 / math.sqrt(fc2.shape[1]))),
+                                          std=1 / math.sqrt(fc2.shape[1]))),
                                   name="fc3")
 
         with fluid.device_guard("cpu"):
@@ -114,7 +114,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=2,
                 act="softmax",
                 param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
-                    scale=1 / math.sqrt(fc3.shape[1]))), )
+                    std=1 / math.sqrt(fc3.shape[1]))), )
 
         with fluid.device_guard("gpu"):
             labels = fluid.layers.cast(inputs[-1], dtype="int64")

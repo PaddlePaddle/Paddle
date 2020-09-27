@@ -23,10 +23,12 @@ from . import unique_name
 from .data_feeder import check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
-    'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
-    'MSRA', 'ConstantInitializer', 'UniformInitializer', 'NormalInitializer',
-    'TruncatedNormalInitializer', 'XavierInitializer', 'BilinearInitializer',
-    'MSRAInitializer', 'NumpyArrayInitializer', 'set_global_initializer'
+    'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier',
+    'XavierNormal', 'XavierUniform', 'Bilinear', 'MSRA', 'ConstantInitializer',
+    'UniformInitializer', 'NormalInitializer', 'TruncatedNormalInitializer',
+    'XavierInitializer', 'XavierNormalInitializer', 'XavierUniformInitializer',
+    'BilinearInitializer', 'MSRAInitializer', 'NumpyArrayInitializer',
+    'set_global_initializer'
 ]
 
 _global_weight_initializer_ = None
@@ -174,14 +176,21 @@ class UniformInitializer(Initializer):
             which is generally the width of the square matrix.
         diag_val (float): the value of the diagonal element to be initialized,
             default 1.0. It takes effect only if the diag_num is greater than 0.
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[None, 1], dtype='float32')
-            fc = fluid.layers.fc(input=x, size=10,
-    		param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
+            import paddle
+
+            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.Uniform(low=-0.5, high=0.5))
+            bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.Uniform(low=-0.5, high=0.5))
+            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            res = linear(data)
     """
 
     def __init__(self,
@@ -190,7 +199,8 @@ class UniformInitializer(Initializer):
                  seed=0,
                  diag_num=0,
                  diag_step=0,
-                 diag_val=1.0):
+                 diag_val=1.0,
+                 name=None):
         assert low is not None
         assert high is not None
         assert high >= low
@@ -270,31 +280,70 @@ class UniformInitializer(Initializer):
         return op
 
 
-class NormalInitializer(Initializer):
-    """Implements the Random Normal(Gaussian) distribution initializer
+class Uniform(UniformInitializer):
+    """Implements the random uniform distribution initializer
 
     Args:
-        loc (float): mean of the normal distribution
-        scale (float): standard deviation of the normal distribution
+        low (float): lower boundary of the uniform distribution
+        high (float): upper boundary of the uniform distribution
         seed (int): random seed
+        diag_num (int): the number of diagonal elements to initialize.
+            If set to 0, diagonal initialization will be not performed.
+        diag_step (int): Step size between two diagonal elements,
+            which is generally the width of the square matrix.
+        diag_val (float): the value of the diagonal element to be initialized,
+            default 1.0. It takes effect only if the diag_num is greater than 0.
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
+            import paddle
 
+            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.Uniform(low=-0.5, high=0.5))
+            bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.Uniform(low=-0.5, high=0.5))
+            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            res = linear(data)
     """
 
-    def __init__(self, loc=0.0, scale=1.0, seed=0):
-        assert loc is not None
-        assert scale is not None
+    pass
+
+
+class NormalInitializer(Initializer):
+    """Implements the Random Normal(Gaussian) distribution initializer
+
+    Args:
+        mean (float): mean of the normal distribution
+        std (float): standard deviation of the normal distribution
+        seed (int): random seed
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0))
+            bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0))
+            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            res = linear(data)
+    """
+
+    def __init__(self, mean=0.0, std=1.0, seed=0, name=None):
+        assert mean is not None
+        assert std is not None
         assert seed is not None
         super(NormalInitializer, self).__init__()
-        self._mean = loc
-        self._std_dev = scale
+        self._mean = mean
+        self._std_dev = std
         self._seed = seed
 
     def __call__(self, var, block):
@@ -355,30 +404,64 @@ class NormalInitializer(Initializer):
         return op
 
 
-class TruncatedNormalInitializer(Initializer):
-    """Implements the Random TruncatedNormal(Gaussian) distribution initializer
+class Normal(NormalInitializer):
+    """Implements the Random Normal(Gaussian) distribution initializer
 
     Args:
-        loc (float): mean of the normal distribution
-        scale (float): standard deviation of the normal distribution
+        mean (float): mean of the normal distribution
+        std (float): standard deviation of the normal distribution
         seed (int): random seed
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[None, 1], dtype='float32')
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
+            import paddle
+
+            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0))
+            bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0))
+            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            res = linear(data)
     """
 
-    def __init__(self, loc=0.0, scale=1.0, seed=0):
-        assert loc is not None
-        assert scale is not None
+    pass
+
+
+class TruncatedNormalInitializer(Initializer):
+    """Implements the Random TruncatedNormal(Gaussian) distribution initializer
+
+    Args:
+        mean (float): mean of the normal distribution
+        std (float): standard deviation of the normal distribution
+        seed (int): random seed
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0, std=2.0))
+            bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0, std=2.0))
+            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            res = linear(data)
+    """
+
+    def __init__(self, mean=0.0, std=1.0, seed=0, name=None):
+        assert mean is not None
+        assert std is not None
         assert seed is not None
         super(TruncatedNormalInitializer, self).__init__()
-        self._mean = loc
-        self._std_dev = scale
+        self._mean = mean
+        self._std_dev = std
         self._seed = seed
 
     def __call__(self, var, block):
@@ -436,6 +519,33 @@ class TruncatedNormalInitializer(Initializer):
         return op
 
 
+class TruncatedNormal(TruncatedNormalInitializer):
+    """Implements the Random TruncatedNormal(Gaussian) distribution initializer
+
+    Args:
+        mean (float): mean of the normal distribution
+        std (float): standard deviation of the normal distribution
+        seed (int): random seed
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0, std=2.0))
+            bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0, std=2.0))
+            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            res = linear(data)
+    """
+
+    pass
+
+
 class XavierInitializer(Initializer):
     """
     This class implements the Xavier weight initializer from the paper
@@ -478,7 +588,6 @@ class XavierInitializer(Initializer):
             fc = fluid.layers.fc(
                 input=queries, size=10,
                 param_attr=fluid.initializer.Xavier(uniform=False))
-
     """
 
     def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=0):
@@ -568,6 +677,213 @@ class XavierInitializer(Initializer):
         if not framework.in_dygraph_mode():
             var.op = op
         return op
+
+
+class Xavier(XavierInitializer):
+    """
+    This class implements the Xavier weight initializer from the paper
+    `Understanding the difficulty of training deep feedforward neural
+    networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_
+    by Xavier Glorot and Yoshua Bengio.
+
+    This initializer is designed to keep the scale of the gradients
+    approximately same in all the layers. In case of Uniform distribution,
+    the range is [-x, x], where
+
+    .. math::
+
+        x = \sqrt{\\frac{6.0}{fan\_in + fan\_out}}
+
+    In case of Normal distribution, the mean is 0 and the standard deviation
+    is
+
+    .. math::
+
+        \sqrt{\\frac{2.0}{fan\_in + fan\_out}}
+
+
+    Args:
+        uniform (bool,default True): whether to use uniform ,if False use normal distribution
+        fan_in (float,default None): fan_in for Xavier initialization. If None, it is
+                inferred from the variable.
+        fan_out (float,default None): fan_out for Xavier initialization. If None, it is
+                 inferred from the variable.
+        seed (int): random seed
+
+    Note:
+        It is recommended to set fan_in and fan_out to None for most cases.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            queries = fluid.data(name='x', shape=[None,1], dtype='float32')
+            fc = fluid.layers.fc(
+                input=queries, size=10,
+                param_attr=fluid.initializer.Xavier(uniform=False))
+    """
+
+    pass
+
+
+class XavierNormalInitializer(XavierInitializer):
+    """
+    This class implements the Xavier weight initializer from the paper
+    `Understanding the difficulty of training deep feedforward neural
+    networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_
+    by Xavier Glorot and Yoshua Bengio, using a uniform distribution.
+
+    The mean is 0 and the standard deviation is
+
+    .. math::
+
+        \sqrt{\\frac{2.0}{fan\_in + fan\_out}}
+
+
+    Args:
+        seed (int): random seed
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.XavierNormal())
+            bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.XavierNormal())
+            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            res = linear(data)
+    """
+
+    def __init__(self, seed=0, name=None):
+        assert seed is not None
+        super(XavierNormalInitializer, self).__init__()
+        self._uniform = False
+        self._fan_in = None
+        self._fan_out = None
+        self._seed = seed
+
+
+class XavierNormal(XavierNormalInitializer):
+    """
+    This class implements the Xavier weight initializer from the paper
+    `Understanding the difficulty of training deep feedforward neural
+    networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_
+    by Xavier Glorot and Yoshua Bengio, using a uniform distribution.
+
+    The mean is 0 and the standard deviation is
+
+    .. math::
+
+        \sqrt{\\frac{2.0}{fan\_in + fan\_out}}
+
+
+    Args:
+        seed (int): random seed
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.XavierNormal())
+            bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.XavierNormal())
+            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            res = linear(data)
+    """
+
+    pass
+
+
+class XavierUniformInitializer(XavierInitializer):
+    """
+    This class implements the Xavier weight initializer from the paper
+    `Understanding the difficulty of training deep feedforward neural
+    networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_
+    by Xavier Glorot and Yoshua Bengio.
+
+    This initializer is designed to keep the scale of the gradients
+    approximately same in all the layers. In case of Uniform distribution,
+    the range is [-x, x], where
+
+    .. math::
+
+        x = \sqrt{\\frac{6.0}{fan\_in + fan\_out}}
+
+    Args:
+        seed (int): random seed
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle import nn
+
+            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.XavierUniform())
+            bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.XavierUniform())
+            linear = nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            res = linear(data)
+    """
+
+    def __init__(self, seed=0, name=None):
+        assert seed is not None
+        super(XavierUniformInitializer, self).__init__()
+        self._uniform = True
+        self._fan_in = None
+        self._fan_out = None
+        self._seed = seed
+
+
+class XavierUniform(XavierUniformInitializer):
+    """
+    This class implements the Xavier weight initializer from the paper
+    `Understanding the difficulty of training deep feedforward neural
+    networks <http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf>`_
+    by Xavier Glorot and Yoshua Bengio.
+
+    This initializer is designed to keep the scale of the gradients
+    approximately same in all the layers. In case of Uniform distribution,
+    the range is [-x, x], where
+
+    .. math::
+
+        x = \sqrt{\\frac{6.0}{fan\_in + fan\_out}}
+
+    Args:
+        seed (int): random seed
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle import nn
+
+            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.XavierUniform())
+            bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.XavierUniform())
+            linear = nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            res = linear(data)
+    """
+
+    pass
 
 
 class MSRAInitializer(Initializer):
@@ -835,6 +1151,8 @@ class NumpyArrayInitializer(Initializer):
 
     Args:
         value (numpy): numpy array to initialize the variable
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor variable initialized by numpy.
@@ -842,14 +1160,19 @@ class NumpyArrayInitializer(Initializer):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import numpy
-            x = fluid.data(name="x", shape=[2, 1], dtype='float32')
-            fc = fluid.layers.fc(input=x, size=10,
-                param_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))
+            import paddle
+            import numpy as np
+
+            data = paddle.ones(shape=[1, 2], dtype='float32')
+            weight_attr=paddle.framework.ParamAttr(name="linear_weight", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.NumpyArrayInitializer(np.array([2,2])))
+            bias_attr=paddle.framework.ParamAttr(name="linear_bias", learning_rate=1.0,
+                trainable=False, regularizer=None, initializer=paddle.nn.initializer.NumpyArrayInitializer(np.array([2])))
+            linear = paddle.nn.Linear(2,2,weight_attr=weight_attr, bias_attr=bias_attr)
+            res = linear(data)
     """
 
-    def __init__(self, value):
+    def __init__(self, value, name=None):
         import numpy
         assert isinstance(value, numpy.ndarray)
         super(NumpyArrayInitializer, self).__init__()
@@ -1002,9 +1325,11 @@ def _global_bias_initializer():
 #
 # It is no need to add an `Initializer` as the class suffix
 Constant = ConstantInitializer
-Uniform = UniformInitializer
-Normal = NormalInitializer
-TruncatedNormal = TruncatedNormalInitializer
-Xavier = XavierInitializer
+# Uniform = UniformInitializer
+# Normal = NormalInitializer
+# TruncatedNormal = TruncatedNormalInitializer
+# Xavier = XavierInitializer
+# XavierNormal = XavierNormalInitializer
+# XavierUniform = XavierUniformInitializer
 MSRA = MSRAInitializer
 Bilinear = BilinearInitializer

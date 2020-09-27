@@ -329,7 +329,7 @@ class conv2d(fluid.dygraph.Layer):
             use_cudnn=use_cudnn,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=stddev)),
+                    mean=0.0, std=stddev)),
             bias_attr=con_bias_attr)
         # Note(Aurelius84): The calculation of GPU kernel in BN is non-deterministic, 
         # failure rate is 1/100 in Dev but seems incremental in CE platform.
@@ -390,7 +390,7 @@ class DeConv2D(fluid.dygraph.Layer):
             use_cudnn=use_cudnn,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=stddev)),
+                    mean=0.0, std=stddev)),
             bias_attr=de_bias_attr)
         if fluid.is_compiled_with_cuda():
             norm = False
