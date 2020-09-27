@@ -31,4 +31,5 @@ for sub_deb in $DEBS; do
 done
 mv -f usr/include/nccl.h /usr/local/include/
 mv -f usr/lib/x86_64-linux-gnu/libnccl* /usr/local/lib/
+rm /usr/include/nccl.h
 rm -rf $DIR
