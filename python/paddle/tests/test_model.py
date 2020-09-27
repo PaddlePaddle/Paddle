@@ -614,7 +614,6 @@ class TestRaiseError(unittest.TestCase):
         with self.assertRaises(ValueError):
             model = Model(net, inputs, labels)
 
-<<<<<<< HEAD
     def test_export_deploy_model_without_inputs_and_run_in_dygraph(self):
         paddle.disable_static()
         net = MyModel(classifier_activation=None)
@@ -625,15 +624,6 @@ class TestRaiseError(unittest.TestCase):
             model = Model(net)
             model.save(save_dir, training=False)
         paddle.enable_static()
-=======
-    def test_input_without_input_spec(self):
-        for dynamic in [True, False]:
-            paddle.disable_static() if dynamic else None
-            net = MyModel()
-            with self.assertRaises(TypeError):
-                model = Model(net)
-            paddle.enable_static()
->>>>>>> 6b727e08b1f38b3f4acc1708c163ed6ae5df8d58
 
 
 if __name__ == '__main__':
