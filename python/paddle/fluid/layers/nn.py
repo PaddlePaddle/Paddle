@@ -13638,8 +13638,8 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 main_program = paddle.static.default_main_program()
 
                 # Input of the forward function
-                x = paddle.data(name='x', shape=[2,3], dtype='int32')
-                y = paddle.data(name='y', shape=[2,3], dtype='int32')
+                x = paddle.static.data(name='x', shape=[2,3], dtype='int32')
+                y = paddle.static.data(name='y', shape=[2,3], dtype='int32')
 
                 # Output of the forward function, name/dtype/shape must be specified
                 output = create_tmp_var('output','int32', [3,1])
