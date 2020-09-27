@@ -65,7 +65,8 @@ class ClipByNormKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Invalid input variable type, only support LodTensor and "
-          "SelectedRows types."));
+          "SelectedRows types, but got type is %s.",
+          framework::ToTypeName(in_var->Type())));
     }
 
     PADDLE_ENFORCE_NOT_NULL(input,
