@@ -31,7 +31,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class CScatterOpCPUKernel : public framework::OpKernel<T> {
+class ScatterOpV2CPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)

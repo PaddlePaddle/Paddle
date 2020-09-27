@@ -35,32 +35,25 @@ import paddle.fluid.layers as layers
 from functools import reduce
 from test_collective_base import TestCollectiveRunnerBase, runtime_main
 
-paddle.enable_static()
 
-
-class TestCollectiveScatter(TestCollectiveRunnerBase):
+class TestCollectiveGather(TestCollectiveRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
-    def get_model(self, main_prog, startup_program):
+    def get_model(self, main_prog, startup_program, rank=None):
         ring_id = 0
-        rootid = 1
         with fluid.program_guard(main_prog, startup_program):
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32')
-            toutdata = main_prog.current_block().create_var(
-                name="tinout",
-                dtype='float32',
-                type=core.VarDesc.VarType.LOD_TENSOR,
-                persistable=False,
-                stop_gradient=False)
+            toutdata = layers.data(
+                name="toutdata", shape=[20, 1000], dtype='float32')
             main_prog.global_block().append_op(
-                type="scatter_v2",
+                type="gather_v2",
                 inputs={'X': tindata},
+                outputs={'Out': toutdata},
                 attrs={'ring_id': ring_id,
-                       'root': rootid,
-                       'nranks': 2},
-                outputs={'Out': toutdata})
+                       'nranks': 2,
+                       'root': 1})
             main_prog.global_block().append_op(
                 type="c_sync_comm_stream",
                 inputs={'X': toutdata},
@@ -70,4 +63,4 @@ class TestCollectiveScatter(TestCollectiveRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestCollectiveScatter, "scatter", 0)
+    runtime_main(TestCollectiveGather, "gather", 0)

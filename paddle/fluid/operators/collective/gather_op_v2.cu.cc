@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/c_scatter_op.h"
+#include "paddle/fluid/operators/collective/gather_op_v2.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -23,13 +23,13 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class CScatterOpCUDAKernel : public framework::OpKernel<T> {
+class GatherOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
-    int numel = x->numel();
+    int send_numel = x->numel();
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
 
     int nranks = ctx.Attr<int>("nranks");
@@ -45,12 +45,12 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         root_id, 0,
         platform::errors::InvalidArgument(
-            "The root_id (%d) for c_scatter_op must be non-negative.",
+            "The root_id (%d) for gather_op_v2 must be non-negative.",
             root_id));
     PADDLE_ENFORCE_GE(
         ring_id, 0,
         platform::errors::InvalidArgument(
-            "The ring_id (%d) for c_scatter_op must be non-negative.",
+            "The ring_id (%d) for gather_op_v2 must be non-negative.",
             ring_id));
 
     cudaStream_t stream = nullptr;
@@ -63,33 +63,23 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
 
     framework::DDim x_dims = x->dims();
     framework::DDim out_dims(x_dims);
-    framework::Tensor temp;
-    auto out_ptr = temp.mutable_data<T>(out_dims, place);
+    out_dims[0] *= nranks;
+    auto send_buf = x->data<T>();
+    auto offset = 0;
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
+        send_buf, send_numel, dtype, root_id, comm->comm(), stream));
     if (root_id == comm->rank()) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
-          reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), numel, dtype,
-          root_id, comm->comm(), stream));
-
-      framework::TensorCopy(*static_cast<const framework::Tensor*>(x), place,
-                            *platform::DeviceContextPool::Instance().Get(place),
-                            static_cast<framework::Tensor*>(&temp));
-    } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
-          out_ptr, numel, dtype, root_id, comm->comm(), stream));
+      auto recv_buf = out->mutable_data<T>(out_dims, place);
+      for (auto i = 0; i < nranks; ++i) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
+            recv_buf + offset, send_numel, dtype, i, comm->comm(), stream));
+        offset += send_numel;
+      }
     }
-
-    out_dims[0] = out_dims[0] / nranks;
-    auto start_index = out_dims[0] * comm->rank();
-    auto end_index = start_index + out_dims[0];
-    temp = temp.Slice(start_index, end_index);
-    temp.Resize(out_dims);
-    out->mutable_data<T>(out_dims, place);
-    framework::TensorCopySync(*static_cast<const framework::Tensor*>(&temp),
-                              place, static_cast<framework::Tensor*>(out));
-    out->Resize(out_dims);
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
 #else
-    PADDLE_ENFORCE_EQ(
-        true, false,
+    PADDLE_THROW(
         platform::errors::Unavailable("PaddlePaddle should compile with GPU."));
 #endif
   }
@@ -101,8 +91,8 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(c_scatter, ops::CScatterOpCUDAKernel<float>,
-                        ops::CScatterOpCUDAKernel<double>,
-                        ops::CScatterOpCUDAKernel<int>,
-                        ops::CScatterOpCUDAKernel<int64_t>,
-                        ops::CScatterOpCUDAKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(gather_v2, ops::GatherOpV2CUDAKernel<float>,
+                        ops::GatherOpV2CUDAKernel<double>,
+                        ops::GatherOpV2CUDAKernel<int>,
+                        ops::GatherOpV2CUDAKernel<int64_t>,
+                        ops::GatherOpV2CUDAKernel<plat::float16>);
