@@ -552,6 +552,33 @@ class TestModelFunction(unittest.TestCase):
                 shutil.rmtree(save_dir)
             paddle.enable_static()
 
+    def test_export_deploy_model_without_inputs_in_dygraph(self):
+        mnist_data = MnistDataset(mode='train')
+        paddle.disable_static()
+        for initial in ["fit", "train_batch", "eval_batch", "test_batch"]:
+            save_dir = tempfile.mkdtemp()
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+                net = LeNet()
+                model = Model(net)
+                model.prepare(
+                    optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+                if initial == "fit":
+                    model.fit(mnist_data, batch_size=64, verbose=0)
+                else:
+                    img = np.array(
+                        np.random.random((1, 1, 28, 28)), dtype=np.float32)
+                    label = np.array(np.random.rand(1, 1), dtype=np.int64)
+                    if initial == "train_batch":
+                        model.train_batch(img, label)
+                    elif initial == "eval_batch":
+                        model.eval_batch(img, label)
+                    else:
+                        model.test_batch(img)
+
+                model.save(save_dir, training=False)
+                shutil.rmtree(save_dir)
+
 
 class TestRaiseError(unittest.TestCase):
     def test_input_without_name(self):
@@ -562,13 +589,16 @@ class TestRaiseError(unittest.TestCase):
         with self.assertRaises(ValueError):
             model = Model(net, inputs, labels)
 
-    def test_input_without_input_spec(self):
-        for dynamic in [True, False]:
-            paddle.disable_static() if dynamic else None
-            net = MyModel(classifier_activation=None)
-            with self.assertRaises(TypeError):
-                model = Model(net)
-            paddle.enable_static()
+    def test_export_deploy_model_without_inputs_and_run_in_dygraph(self):
+        paddle.disable_static()
+        net = MyModel(classifier_activation=None)
+        save_dir = tempfile.mkdtemp()
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        with self.assertRaises(RuntimeError):
+            model = Model(net)
+            model.save(save_dir, training=False)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

@@ -598,6 +598,7 @@ class DynamicGraphAdapter(object):
             'test_batch': 0
         }
 
+        self._shapes = None
         if self._nranks > 1:
             stradegy = fluid.dygraph.parallel.ParallelStrategy()
             stradegy.nranks = ParallelEnv().nranks
@@ -617,11 +618,13 @@ class DynamicGraphAdapter(object):
 
     # TODO multi device in dygraph mode not implemented at present time
     def train_batch(self, inputs, labels=None):
+
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.model.network.train()
         self.mode = 'train'
         inputs = to_list(inputs)
+        self._shapes = [list(input.shape) for input in inputs]
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
@@ -656,6 +659,7 @@ class DynamicGraphAdapter(object):
         self.model.network.eval()
         self.mode = 'eval'
         inputs = to_list(inputs)
+        self._shapes = [list(input.shape) for input in inputs]
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
@@ -704,6 +708,7 @@ class DynamicGraphAdapter(object):
         self.model.network.eval()
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
+        self._shapes = [list(input.shape) for input in inputs]
         outputs = self.model.network.forward(*inputs)
         if self._nranks > 1 and isinstance(self.model._place, fluid.CUDAPlace):
             outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
@@ -778,7 +783,7 @@ class DynamicGraphAdapter(object):
 
         if not hasattr(self.model._optimizer, 'set_state_dict'):
             warnings.warn(
-                "paddle.fluid.optimizer is deprecated in API 2.0, please use paddle.optimizer instead"
+                "paddle.fluid.optimizer is deprecated in API 2.0, please use paddle.optimizer instead."
             )
             self.model._optimizer.set_dict(converted_state)
         else:
@@ -846,14 +851,18 @@ class Model(object):
         self._loss = None
         self._loss_weights = None
         self._optimizer = None
-        self._optimizer = None
+        self._shapes = None
+        self._is_shape_inferred = False
         self._test_dataloader = None
 
         if not in_dygraph_mode():
             if not isinstance(inputs, (list, dict, Input)):
                 raise TypeError(
                     "'inputs' must be list or dict, and couldn't be None.")
-        self._inputs = self._verify_spec(inputs, True)
+        elif inputs:
+            self._shapes = [list(input.shape) for input in inputs]
+
+        self._inputs = self._verify_spec(inputs, is_input=True)
         self._labels = self._verify_spec(labels)
 
         # init backend
@@ -905,7 +914,12 @@ class Model(object):
               loss = model.train_batch([data], [label])
               print(loss)
         """
-        return self._adapter.train_batch(inputs, labels)
+        loss = self._adapter.train_batch(inputs, labels)
+        if fluid.in_dygraph_mode() and self._shapes is None:
+            self._shapes = self._adapter._shapes
+            self._is_shape_inferred = True
+            self._inputs = self._verify_spec(None, self._shapes, True)
+        return loss
 
     def eval_batch(self, inputs, labels=None):
         """
@@ -951,7 +965,12 @@ class Model(object):
               loss = model.eval_batch([data], [label])
               print(loss)
         """
-        return self._adapter.eval_batch(inputs, labels)
+        loss = self._adapter.eval_batch(inputs, labels)
+        if fluid.in_dygraph_mode() and self._shapes is None:
+            self._shapes = self._adapter._shapes
+            self._is_shape_inferred = True
+            self._inputs = self._verify_spec(None, self._shapes, True)
+        return loss
 
     def test_batch(self, inputs):
         """
@@ -988,7 +1007,12 @@ class Model(object):
               out = model.test_batch([data])
               print(out)
         """
-        return self._adapter.test_batch(inputs)
+        loss = self._adapter.test_batch(inputs)
+        if fluid.in_dygraph_mode() and self._shapes is None:
+            self._shapes = self._adapter._shapes
+            self._is_shape_inferred = True
+            self._inputs = self._verify_spec(None, self._shapes, True)
+        return loss
 
     def save(self, path, training=True):
         """  
@@ -1671,6 +1695,14 @@ class Model(object):
         if fluid.in_dygraph_mode():
             with fluid.framework._dygraph_guard(None):
                 layer = self.network
+                if self._shapes is None:  # No provided or inferred
+                    raise RuntimeError(
+                        "Saving inference model needs `inputs` or running before saving."
+                    )
+                if self._is_shape_inferred:
+                    warnings.warn(
+                        'Saving actual input shapes only if `inputs` is provided, otherwise variable input dimension is immutable.'
+                    )
                 layer.forward = paddle.jit.to_static(
                     layer.forward, input_spec=self._inputs)
 
@@ -1769,6 +1801,7 @@ class Model(object):
             data = flatten(data)
             # LoDTensor.shape is callable, where LoDTensor comes from
             # DataLoader in static graph
+
             batch_size = data[0].shape()[0] if callable(data[
                 0].shape) else data[0].shape[0]
 
@@ -1810,6 +1843,14 @@ class Model(object):
 
             callbacks.on_batch_end(mode, step, logs)
         self._reset_metrics()
+
+        if self._shapes is None and mode == "train":
+            self._shapes = [
+                data[i].shape() if callable(data[i].shape) else data[i].shape
+                for i in range(len(data) - 1)
+            ]
+            self._is_shape_inferred = True
+            self._inputs = self._verify_spec(None, self._shapes, True)
 
         if mode == 'test':
             return logs, outputs
@@ -1862,18 +1903,23 @@ class Model(object):
             _input_size = self._inputs
         return summary(self.network, _input_size, dtype)
 
-    def _verify_spec(self, specs, is_input=False):
+    def _verify_spec(self, specs, shapes=None, is_input=False):
         out_specs = []
 
         if specs is None:
             # Note(Aurelius84): If not specific specs of `Input`, using argument names of `forward` function
             # to generate `Input`. But how can we know the actual shape of each input tensor?
+
             if is_input:
-                out_specs = [
-                    Input(
-                        name=n, shape=[None])
-                    for n in extract_args(self.network.forward) if n != 'self'
-                ]
+                arg_names = extract_args(self.network.forward)[1:]
+                if shapes is not None and fluid.in_dygraph_mode():
+                    out_specs = [
+                        Input(
+                            name=n, shape=shapes[i])
+                        for i, n in enumerate(arg_names)
+                    ]
+                else:
+                    out_specs = [Input(name=n, shape=[None]) for n in arg_names]
             else:
                 out_specs = to_list(specs)
         elif isinstance(specs, dict):
