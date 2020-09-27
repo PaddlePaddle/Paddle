@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
 
-#include <cuda.h>
-#include <cuda_runtime.h>
-
 namespace paddle {
 namespace memory {
 namespace allocation {

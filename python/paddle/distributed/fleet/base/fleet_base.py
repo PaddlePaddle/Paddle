@@ -23,7 +23,6 @@ from .strategy_compiler import StrategyCompiler
 from .distributed_strategy import DistributedStrategy
 from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
-from .util_factory import UtilFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
 
@@ -120,7 +119,6 @@ class Fleet(object):
         self.strategy_compiler = None
         self._is_collective = False
         self._runtime_handle = None
-        self._util = None
 
     def init(self, role_maker=None, is_collective=False):
         """
@@ -181,6 +179,9 @@ class Fleet(object):
                     "`role_maker` should be subclass of `RoleMakerBase`, but got {}".
                     format(type(role_maker)))
         self._role_maker._generate_role()
+
+        import paddle.distributed.fleet as fleet
+        fleet.util._set_role_maker(self._role_maker)
 
         self.strategy_compiler = StrategyCompiler()
         if paddle.fluid.framework.in_dygraph_mode():
@@ -352,29 +353,6 @@ class Fleet(object):
         """
         return self._role_maker._is_server(
         ) or self._role_maker._is_heter_worker()
-
-    def set_util(self, util):
-        self._util = util
-
-    def util(self):
-        """
-        Utility functions that can be used under certain runtime
-        return util
-
-        Returns:
-            UtilBase: instance of UtilBase, can use distributed ops/tools easily.
-
-        Examples:
-
-            .. code-block:: python
-                import paddle.distributed.fleet as fleet
-                fleet.init()
-                util = fleet.util
-                files = ["1.log", "2.log", "3.log", "4.log"]
-                files = util.get_file_shard()
-
-        """
-        return self._util
 
     def barrier_worker(self):
         """
@@ -1103,7 +1081,7 @@ class Fleet(object):
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-        if self._util is None:
-            self._util = UtilFactory()._create_util(context)
+        import paddle.distributed.fleet as fleet
+        fleet.util._set_strategy(context["valid_strategy"])
 
         return optimize_ops, params_grads

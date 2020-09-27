@@ -12,28 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sys/types.h>
 #include <algorithm>
 #include <memory>
-#include <set>
-#include <string>
-#include <vector>
 
-#include "paddle/fluid/operators/distributed/parameter_recv.h"
-
+#include "glog/logging.h"
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/tensor.h"
-
+#include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/rpc_client.h"
-#include "paddle/fluid/operators/distributed/variable_response.h"
-#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/fluid/operators/distributed/parameter_recv.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+class RPCClient;
 
 using LoDTensor = framework::LoDTensor;
 using LoDTensor = framework::LoDTensor;
@@ -176,10 +175,6 @@ void RecvGeoSparseRecords(const CommContext &rpc_ctx,
 
 template <typename T>
 void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto cpu_place = platform::CPUPlace();
-  auto &cpu_ctx = *pool.Get(cpu_place);
-
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
@@ -189,8 +184,13 @@ void RecvLodTensor(const CommContext &rpc_ctx, const framework::Scope &scope) {
   if (rpc_ctx.origin_varnames.size() == 1 &&
       rpc_ctx.splited_varnames.size() == 1) {
     auto varname = rpc_ctx.origin_varnames[0];
-    VLOG(4) << "recv " << varname << " from " << rpc_ctx.epmap[0];
-    rets.push_back(rpc_client->AsyncGetVarNoBarrier(rpc_ctx.epmap[0], cpu_ctx,
+    const auto place =
+        scope.FindVar(varname)->Get<framework::LoDTensor>().place();
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &ctx = *pool.Get(place);
+    VLOG(4) << "recv " << varname << " from " << rpc_ctx.epmap[0] << " in gpu? "
+            << platform::is_gpu_place(place);
+    rets.push_back(rpc_client->AsyncGetVarNoBarrier(rpc_ctx.epmap[0], ctx,
                                                     scope, varname, varname));
 
     for (size_t i = 0; i < rets.size(); i++) {

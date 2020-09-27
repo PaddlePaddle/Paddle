@@ -15,11 +15,18 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <typeindex>
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/platform/enforce.h"
 
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+
+namespace paddle {
+namespace platform {
+struct bfloat16;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

@@ -436,12 +436,12 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         optimizer.minimize(avg_cost)
 
         comm_world = "server"
-        fleet.util().barrier(comm_world)
+        fleet.util.barrier(comm_world)
 
-        gather = fleet.util().all_gather(1, comm_world)
+        gather = fleet.util.all_gather(1, comm_world)
         self.assertEqual(gather[0], 1)
 
-        all_reduce = fleet.util().all_reduce(1, "sum", comm_world)
+        all_reduce = fleet.util.all_reduce(1, "sum", comm_world)
         self.assertEqual(1, all_reduce)
 
         self.clean(tmp)
@@ -752,12 +752,12 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         optimizer.minimize(avg_cost)
 
         comm_world = "server"
-        fleet.util().barrier(comm_world)
+        fleet.util.barrier(comm_world)
 
-        gather = fleet.util().all_gather(1, comm_world)
+        gather = fleet.util.all_gather(1, comm_world)
         self.assertEqual(gather[0], 1)
 
-        all_reduce = fleet.util().all_reduce(1, "sum", comm_world)
+        all_reduce = fleet.util.all_reduce(1, "sum", comm_world)
         self.assertEqual(1, all_reduce)
 
         self.clean(tmp)

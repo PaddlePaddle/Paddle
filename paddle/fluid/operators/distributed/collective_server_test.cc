@@ -13,22 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdlib.h>
-#include <unistd.h>
 #include <memory>
 #include <string>
-#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor_util.h"
-
 #include "paddle/fluid/operators/distributed/collective_client.h"
 #include "paddle/fluid/operators/distributed/collective_server.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
-#include "paddle/fluid/operators/math/math_function.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <time.h>
 #include <atomic>
-
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
 #include <ctime>
@@ -46,6 +45,18 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+
+namespace grpc {
+class Channel;
+}  // namespace grpc
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
