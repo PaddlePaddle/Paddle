@@ -160,9 +160,14 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("RoisNum")) {
       auto* rois_num_t = ctx.Input<Tensor>("RoisNum");
       int rois_batch_size = rois_num_t->numel();
+
       PADDLE_ENFORCE_EQ(
           rois_batch_size, batch_size,
-          "The rois_batch_size and imgs batch_size must be the same.");
+          platform::errors::InvalidArgument(
+              "The batch size of input(ROIs) and input(X) must be the same but "
+              "received batch size of input(ROIs) and input(X) is %d and %d "
+              "respectively.",
+              rois_batch_size, batch_size));
       std::vector<int> rois_num_list(rois_batch_size);
       memory::Copy(cplace, rois_num_list.data(), gplace,
                    rois_num_t->data<int>(), sizeof(int) * rois_batch_size, 0);
@@ -178,10 +183,19 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
       int rois_batch_size = rois_lod.size() - 1;
       PADDLE_ENFORCE_EQ(
           rois_batch_size, batch_size,
-          "The rois_batch_size and imgs batch_size must be the same.");
+          platform::errors::InvalidArgument(
+              "The batch size of input(ROIs) and input(X) must be the same but "
+              "received batch size of input(ROIs) and input(X) is %d and %d "
+              "respectively.",
+              rois_batch_size, batch_size));
+
       int rois_num_with_lod = rois_lod[rois_batch_size];
       PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
-                        "The rois_num from input and lod must be the same.");
+                        platform::errors::InvalidArgument(
+                            "The number of rois from input(ROIs) and its LOD "
+                            "must be the same. Received rois %d of input(ROIs) "
+                            "but the number of rois %d from its LOD is %d",
+                            rois_num, rois_num_with_lod));
       for (int n = 0; n < rois_batch_size; ++n) {
         for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
           roi_batch_id_data[i] = n;
