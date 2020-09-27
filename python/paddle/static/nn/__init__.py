@@ -32,6 +32,7 @@ __all__ = [
     'multi_box_head',
     'nce',
     'prelu',
+    'py_func',
     'row_conv',
     'spectral_norm',
 ]
@@ -54,6 +55,7 @@ from ...fluid.layers import layer_norm  #DEFINE_ALIAS
 from ...fluid.layers import multi_box_head  #DEFINE_ALIAS
 from ...fluid.layers import nce  #DEFINE_ALIAS
 from ...fluid.layers import prelu  #DEFINE_ALIAS
+from ...fluid.layers import py_func  #DEFINE_ALIAS
 from ...fluid.layers import row_conv  #DEFINE_ALIAS
 from ...fluid.layers import spectral_norm  #DEFINE_ALIAS
 
