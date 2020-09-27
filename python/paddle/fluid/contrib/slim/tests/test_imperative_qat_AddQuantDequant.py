@@ -34,6 +34,8 @@ from paddle.nn.layer.activation import ReLU, LeakyReLU
 from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D, BatchNorm
 from paddle.fluid.log_helper import get_logger
 
+paddle.enable_static()
+
 os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
@@ -170,7 +172,6 @@ class TestImperativeAddQuantDequant(unittest.TestCase):
         with fluid.dygraph.guard():
             lenet = ImperativeLenet()
             imperative_qat.quantize(lenet)
-
             adam = AdamOptimizer(
                 learning_rate=0.001, parameter_list=lenet.parameters())
             train_reader = paddle.batch(
@@ -322,7 +323,6 @@ class TestImperativeAddQuantDequant(unittest.TestCase):
             lenet.set_dict(fixed_state)
 
             imperative_qat.quantize(lenet)
-
             adam = AdamOptimizer(
                 learning_rate=lr, parameter_list=lenet.parameters())
             dynamic_loss_rec = []
@@ -396,10 +396,10 @@ class TestImperativeAddQuantDequant(unittest.TestCase):
             scope=scope,
             place=place,
             quantizable_op_type=['pool2d', 'relu', 'leaky_relu'])
-        add_quant_dequant_pass.apply(main_graph)
-        add_quant_dequant_pass.apply(infer_graph)
         transform_pass.apply(main_graph)
         transform_pass.apply(infer_graph)
+        add_quant_dequant_pass.apply(main_graph)
+        add_quant_dequant_pass.apply(infer_graph)
         build_strategy = fluid.BuildStrategy()
         build_strategy.fuse_all_reduce_ops = False
         binary = fluid.CompiledProgram(main_graph.graph).with_data_parallel(
