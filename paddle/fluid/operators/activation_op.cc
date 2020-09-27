@@ -1186,7 +1186,7 @@ REGISTER_OPERATOR(abs_grad, ops::ActivationOpGrad,
 REGISTER_OPERATOR(
     abs_grad_grad,
     ops::ActivationOpDoubleGrad<ops::AbsGradGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
+    ops::ActivationDoubleGradOpInplaceInference);
 
 REGISTER_OP_CPU_KERNEL(abs,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
