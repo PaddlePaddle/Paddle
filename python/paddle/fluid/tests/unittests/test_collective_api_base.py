@@ -32,10 +32,6 @@ import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
 
 
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
-
-
 class TestCollectiveAPIRunnerBase(object):
     def get_model(self, train_prog, startup_prog, rank):
         raise NotImplementedError(
@@ -207,14 +203,13 @@ class TestDistBase(unittest.TestCase):
             "GLOG_v": "0",
             "NCCL_P2P_DISABLE": "1",
             "BACKEND": backend,
-            "PATH_ID": path_id,
-            "GLOG_logtostderr": "1",
-            "GLOO_LOG_LEVEL": "TRACE"
+            "PATH_ID": path_id
         }
         required_envs.update(need_envs)
         if check_error_log:
             required_envs["GLOG_v"] = "3"
             required_envs["GLOG_logtostderr"] = "1"
+            required_envs["GLOO_LOG_LEVEL"] = "TRACE"
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file,
                                                          required_envs)
         np.random.seed(pid0)

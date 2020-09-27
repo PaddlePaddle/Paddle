@@ -14,7 +14,6 @@
 """Http Server."""
 
 import logging
-import sys
 
 import six
 # NOTE: HTTPServer has a different name in python2 and python3
@@ -22,18 +21,12 @@ if six.PY2:
     from BaseHTTPServer import HTTPServer
     import SimpleHTTPServer
 else:
-    try:
-        from http.server import HTTPServer
-        import http.server as SimpleHTTPServer
-    except:
-        sys.stderr.write(sys.exc_info())
+    from http.server import HTTPServer
+    import http.server as SimpleHTTPServer
 
-try:
-    import time
-    import threading
-    import socket
-except:
-    sys.stderr.write(sys.exc_info())
+import time
+import threading
+import socket
 
 
 def get_logger(name, level, fmt):
@@ -46,11 +39,8 @@ def get_logger(name, level, fmt):
     return logger
 
 
-try:
-    _http_server_logger = get_logger(
-        __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
-except:
-    sys.stderr.write(sys.exc_info())
+_http_server_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
@@ -63,7 +53,6 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         """
         get method for kv handler, get value according to key.
         """
-        sys.stderr.write("do_GET")
         log_str = "GET " + self.address_string() + self.path
         paths = self.path.split('/')
         if len(paths) < 3:
@@ -82,14 +71,12 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.send_header("Content-Length", str(len(value)))
             self.end_headers()
             self.wfile.write(value)
-        sys.stderr.write(log_str)
         _http_server_logger.info(log_str)
 
     def do_PUT(self):
         """
         put method for kv handler, set value according to key.
         """
-        sys.stderr.write("do_PUT")
         log_str = "PUT " + self.address_string() + self.path
         paths = self.path.split('/')
         if len(paths) < 3:
@@ -109,7 +96,6 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 self.server.kv[scope] = {}
             self.server.kv[scope][key] = value
         self.send_status_code(200)
-        sys.stderr.write(log_str)
         _http_server_logger.info(log_str)
 
     def do_DELETE(self):
@@ -183,7 +169,6 @@ class KVServer:
         """
         start server until user calls stop to let it quit.
         """
-        sys.stderr.write("KV started")
         self.listen_thread = threading.Thread(
             target=lambda: self.http_server.serve_forever())
         self.listen_thread.start()

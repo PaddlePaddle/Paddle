@@ -34,12 +34,9 @@ ParallelStrategy = core.ParallelStrategy
 
 
 def _start_kv_server(port, http_server_d):
-    sys.stderr.write("parallel.py:start_kv_server: before import")
     from paddle.distributed.fleet.utils.http_server import KVServer
-    sys.stderr.write("parallel.py:start_kv_server: to start http_server.")
     http_server = KVServer(int(port))
     http_server.start()
-    sys.stderr.write("parallel.py:start_kv_server: started http_server.")
     wait_seconds = 5
     while http_server_d.get("running", False):
         time.sleep(wait_seconds)
@@ -161,20 +158,11 @@ def init_parallel_env():
     http_server_d = manager.dict()
     http_server_d["running"] = False
     if ParallelEnv().rank == 0:
-        try:
-            http_server = Process(
-                target=_start_kv_server,
-                args=(int(ep_rank_0[1]), http_server_d))
-            http_server.daemon = True
-            http_server_d["running"] = True
-            sys.stderr.write("parallel.py: to start http_server.")
-            http_server.start()
-        except:
-            sys.stderr.write("Process wrong")
-            sys.stderr.write(sys.exc_info())
-    time.sleep(20)
-    if ParallelEnv().rank == 0:
-        sys.stderr.write("is_alive:{}".format(http_server.is_alive()))
+        http_server = Process(
+            target=_start_kv_server, args=(int(ep_rank_0[1]), http_server_d))
+        http_server.daemon = True
+        http_server_d["running"] = True
+        http_server.start()
 
     iface = _get_iface_by_ip(ep_rank[0])
     if iface is None:
