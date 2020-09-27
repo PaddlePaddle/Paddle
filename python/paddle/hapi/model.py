@@ -854,7 +854,6 @@ class Model(object):
         self._is_shape_inferred = False
         self._test_dataloader = None
 
-<<<<<<< HEAD
         if not in_dygraph_mode():
             if not isinstance(inputs, (list, dict, Input)):
                 raise TypeError(
@@ -863,13 +862,6 @@ class Model(object):
             self._shapes = [list(input.shape) for input in inputs]
 
         self._inputs = self._verify_spec(inputs, is_input=True)
-=======
-        if not isinstance(inputs, (list, dict, Input)):
-            raise TypeError(
-                "'inputs' must be list or dict in static graph mode")
-
-        self._inputs = self._verify_spec(inputs, True)
->>>>>>> 6b727e08b1f38b3f4acc1708c163ed6ae5df8d58
         self._labels = self._verify_spec(labels)
 
         # init backend
