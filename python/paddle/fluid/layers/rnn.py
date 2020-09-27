@@ -531,6 +531,10 @@ def _rnn_dynamic_graph(cell,
     flat_inputs = flatten(inputs)
     time_steps = flat_inputs[0].shape[time_step_index]
 
+    if initial_states is None:
+        initial_states = cell.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
+
     if not time_major:
         inputs = map_structure(_transpose_batch_time, inputs)
 
