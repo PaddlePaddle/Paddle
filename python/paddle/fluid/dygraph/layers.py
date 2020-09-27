@@ -62,10 +62,6 @@ class HookRemoveHelper(object):
 
 class Layer(core.Layer):
     """
-    :alias_main: paddle.nn.Layer
-	:alias: paddle.nn.Layer
-	:old_api: paddle.fluid.dygraph.layers.Layer
-
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
     Parameters:
@@ -149,9 +145,7 @@ class Layer(core.Layer):
 
               import paddle
               import paddle.nn as nn
-              
-              paddle.disable_static()
-              
+
               net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
 
               def init_weights(layer):
@@ -197,34 +191,33 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              import numpy as np
+                import paddle
+                import numpy as np
 
-              # the forward_post_hook change the output of the layer: output = output * 2 
-              def forward_post_hook(layer, input, output):
-                  # user can use layer, input and output for information statistis tasks
+                # the forward_post_hook change the output of the layer: output = output * 2
+                def forward_post_hook(layer, input, output):
+                    # user can use layer, input and output for information statistis tasks
 
-                  # change the output 
-                  return output * 2
+                    # change the output
+                    return output * 2
 
-              with fluid.dygraph.guard():
-                  linear = fluid.Linear(13, 5, dtype="float32")
+                linear = paddle.nn.Linear(13, 5)
 
-                  # register the hook
-                  forward_post_hook_handle = linear.register_forward_post_hook(forward_post_hook)
-                  
-                  value1 = np.arange(26).reshape(2, 13).astype("float32")
-                  in1 = fluid.dygraph.to_variable(value1)
-                  
-                  out0 = linear(in1)
-                  
-                  # remove the hook
-                  forward_post_hook_handle.remove()
+                # register the hook
+                forward_post_hook_handle = linear.register_forward_post_hook(forward_post_hook)
 
-                  out1 = linear(in1)
+                value1 = np.arange(26).reshape(2, 13).astype("float32")
+                in1 = paddle.to_tensor(value1)
 
-                  # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
-                  assert (out0.numpy() == (out1.numpy()) * 2).any()
+                out0 = linear(in1)
+
+                # remove the hook
+                forward_post_hook_handle.remove()
+
+                out1 = linear(in1)
+
+                # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
+                assert (out0.numpy() == (out1.numpy()) * 2).any()
         """
         hook_remove_helper = HookRemoveHelper(self._forward_post_hooks)
         self._forward_post_hooks[hook_remove_helper._hook_id] = hook
@@ -249,36 +242,35 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
-              import numpy as np
+                import paddle
+                import numpy as np
 
-              # the forward_post_hook change the input of the layer: input = input * 2
-              def forward_pre_hook(layer, input):
-                  # user can use layer and input for information statistis tasks
+                # the forward_post_hook change the input of the layer: input = input * 2
+                def forward_pre_hook(layer, input):
+                    # user can use layer and input for information statistis tasks
 
-                  # change the input
-                  input_return = (input[0] * 2)
-                  return input_return
+                    # change the input
+                    input_return = (input[0] * 2)
+                    return input_return
 
-              with fluid.dygraph.guard():
-                  linear = fluid.Linear(13, 5, dtype="float32")
+                linear = paddle.nn.Linear(13, 5)
 
-                  # register the hook
-                  forward_pre_hook_handle = linear.register_forward_pre_hook(forward_pre_hook)
+                # register the hook
+                forward_pre_hook_handle = linear.register_forward_pre_hook(forward_pre_hook)
 
-                  value0 = np.arange(26).reshape(2, 13).astype("float32")
-                  in0 = fluid.dygraph.to_variable(value0)
-                  out0 = linear(in0)
+                value0 = np.arange(26).reshape(2, 13).astype("float32")
+                in0 = paddle.to_tensor(value0)
+                out0 = linear(in0)
 
-                  # remove the hook
-                  forward_pre_hook_handle.remove()
+                # remove the hook
+                forward_pre_hook_handle.remove()
 
-                  value1 = value0 * 2
-                  in1 = fluid.dygraph.to_variable(value1)
-                  out1 = linear(in1)
+                value1 = value0 * 2
+                in1 = paddle.to_tensor(value1)
+                out1 = linear(in1)
 
-                  # hook change the linear's input to input * 2, so out0 is equal to out1.
-                  assert (out0.numpy() == out1.numpy()).any()
+                # hook change the linear's input to input * 2, so out0 is equal to out1.
+                assert (out0.numpy() == out1.numpy()).any()
         """
         hook_remove_helper = HookRemoveHelper(self._forward_pre_hooks)
         self._forward_pre_hooks[hook_remove_helper._hook_id] = hook
@@ -366,16 +358,15 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
 
-                with fluid.dygraph.guard():
-                    fc1 = fluid.Linear(10, 3)
-                    fc2 = fluid.Linear(3, 10, bias_attr=False)
-                    model = fluid.dygraph.Sequential(fc1, fc2)
-                    
-                    layer_list = list(model.children())
+                fc1 = paddle.nn.Linear(10, 3)
+                fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                model = paddle.nn.Sequential(fc1, fc2)
 
-                    print(layer_list)
+                layer_list = list(model.children())
+
+                print(layer_list)
 
         """
         for _, layer in self.named_children():
@@ -391,14 +382,13 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
 
-                with fluid.dygraph.guard():
-                    fc1 = fluid.Linear(10, 3)
-                    fc2 = fluid.Linear(3, 10, bias_attr=False)
-                    model = fluid.dygraph.Sequential(fc1, fc2)
-                    for prefix, layer in model.named_children():
-                        print(prefix, layer)
+                fc1 = paddle.nn.Linear(10, 3)
+                fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                model = paddle.nn.Sequential(fc1, fc2)
+                for prefix, layer in model.named_children():
+                    print(prefix, layer)
 
         """
         memo = set()
@@ -438,14 +428,13 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
 
-                with fluid.dygraph.guard():
-                    fc1 = fluid.Linear(10, 3)
-                    fc2 = fluid.Linear(3, 10, bias_attr=False)
-                    model = fluid.dygraph.Sequential(fc1, fc2)
-                    for name, param in model.named_parameters():
-                        print(name, param)
+                fc1 = paddle.nn.Linear(10, 3)
+                fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                model = paddle.nn.Sequential(fc1, fc2)
+                for name, param in model.named_parameters():
+                    print(name, param)
 
         """
         params_set = set()
@@ -483,14 +472,13 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
 
-                with fluid.dygraph.guard():
-                    fc1 = fluid.Linear(10, 3)
-                    fc2 = fluid.Linear(3, 10, bias_attr=False)
-                    model = fluid.dygraph.Sequential(fc1, fc2)
-                    for prefix, layer in model.named_sublayers():
-                        print(prefix, layer)
+                fc1 = paddle.nn.Linear(10, 3)
+                fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                model = paddle.nn.Sequential(fc1, fc2)
+                for prefix, layer in model.named_sublayers():
+                    print(prefix, layer)
 
         """
         if layers_set is None:
@@ -536,16 +524,15 @@ class Layer(core.Layer):
             .. code-block:: python
 
                 import numpy as np
-                import paddle.fluid as fluid
+                import paddle
 
-                with fluid.dygraph.guard():
-                    linear = fluid.Linear(10, 3)
-                    value = np.array([0]).astype("float32")
-                    buffer = fluid.dygraph.to_variable(value)
-                    linear.register_buffer("buf_name", buffer, persistable=True)
-                    
-                    # get the buffer by attribute.
-                    print(linear.buf_name)
+                linear = paddle.nn.Linear(10, 3)
+                value = np.array([0]).astype("float32")
+                buffer = paddle.to_tensor(value)
+                linear.register_buffer("buf_name", buffer, persistable=True)
+
+                # get the buffer by attribute.
+                print(linear.buf_name)
 
         """
 
@@ -609,25 +596,24 @@ class Layer(core.Layer):
             .. code-block:: python
 
                 import numpy as np
-                import paddle.fluid as fluid
+                import paddle
 
-                with fluid.dygraph.guard():
-                    fc1 = fluid.Linear(10, 3)
-                    buffer1 = fluid.dygraph.to_variable(np.array([0]).astype("float32"))
-                    # register a variable as buffer by specific `persistable`
-                    fc1.register_buffer("buf_name_1", buffer1, persistable=True)
+                fc1 = paddle.nn.Linear(10, 3)
+                buffer1 = paddle.to_tensor(np.array([0]).astype("float32"))
+                # register a variable as buffer by specific `persistable`
+                fc1.register_buffer("buf_name_1", buffer1, persistable=True)
 
-                    fc2 = fluid.Linear(3, 10)
-                    buffer2 = fluid.dygraph.to_variable(np.array([1]).astype("float32"))
-                    # register a buffer by assigning an attribute with Variable.
-                    # The `persistable` can only be False by this way.
-                    fc2.buf_name_2 = buffer2
+                fc2 = paddle.nn.Linear(3, 10)
+                buffer2 = paddle.to_tensor(np.array([1]).astype("float32"))
+                # register a buffer by assigning an attribute with Variable.
+                # The `persistable` can only be False by this way.
+                fc2.buf_name_2 = buffer2
 
-                    model = fluid.dygraph.Sequential(fc1, fc2)
+                model = paddle.nn.Sequential(fc1, fc2)
 
-                    # get all named buffers
-                    for name, buffer in model.named_buffers():
-                        print(name, buffer)
+                # get all named buffers
+                for name, buffer in model.named_buffers():
+                    print(name, buffer)
 
         """
         buffers_set = set()
@@ -654,19 +640,18 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
                 import numpy as np
 
-                with fluid.dygraph.guard():
-                    value = np.arange(26).reshape(2, 13).astype("float32")
-                    a = fluid.dygraph.to_variable(value)
-                    linear = fluid.Linear(13, 5, dtype="float32")
-                    adam = fluid.optimizer.Adam(learning_rate=0.01, 
-                                                parameter_list=linear.parameters())
-                    out = linear(a)
-                    out.backward()
-                    adam.minimize(out)
-                    linear.clear_gradients()
+                value = np.arange(26).reshape(2, 13).astype("float32")
+                a = paddle.to_tensor(value)
+                linear = paddle.nn.Linear(13, 5)
+                adam = paddle.optimizer.Adam(learning_rate=0.01,
+                                            parameters=linear.parameters())
+                out = linear(a)
+                out.backward()
+                adam.minimize(out)
+                linear.clear_gradients()
 
         """
         for p in self.parameters():
@@ -918,12 +903,12 @@ class Layer(core.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                import paddle
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
+                emb = paddle.nn.Embedding(10, 10)
+
+                state_dict = emb.state_dict()
+                paddle.save( state_dict, "paddle_dy")
 
         '''
 
@@ -967,16 +952,12 @@ class Layer(core.Layer):
             .. code-block:: python
 
                 import paddle
-                
-                paddle.disable_static()
-                
+
                 emb = paddle.nn.Embedding(10, 10)
 
                 state_dict = emb.state_dict()
                 paddle.save(state_dict, "paddle_dy.pdparams")
-                
                 para_state_dict = paddle.load("paddle_dy.pdparams")
-
                 emb.set_state_dict(para_state_dict)
 
         '''
