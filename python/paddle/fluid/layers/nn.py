@@ -8558,7 +8558,7 @@ def scatter_nd_add(ref, index, updates, name=None):
 
     if in_dygraph_mode():
         op = getattr(core.ops, 'scatter_nd_add')
-        return op(ref, updates, output)
+        return op(ref, index, updates)
 
     if ref.dtype != updates.dtype:
         raise ValueError("ref and updates must have same data type.")
