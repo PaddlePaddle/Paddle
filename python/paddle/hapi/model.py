@@ -618,7 +618,6 @@ class DynamicGraphAdapter(object):
 
     # TODO multi device in dygraph mode not implemented at present time
     def train_batch(self, inputs, labels=None):
-
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.model.network.train()
@@ -1858,7 +1857,6 @@ class Model(object):
             ]
             self._is_shape_inferred = True
             self._inputs = self._verify_spec(None, self._shapes, True)
-
         if mode == 'test':
             return logs, outputs
         return logs

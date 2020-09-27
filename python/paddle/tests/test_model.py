@@ -515,6 +515,7 @@ class TestModelFunction(unittest.TestCase):
         paddle.summary(nlp_net, (1, 1, 2))
 
     def test_export_deploy_model(self):
+        self.set_seed()
         for dynamic in [True, False]:
             paddle.disable_static() if dynamic else None
             prog_translator = ProgramTranslator()
