@@ -68,7 +68,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   }
 
   flag_partial_push_ = false;
-  for (auto& m : param_.program_config(0).multitask_condtable_map()) {
+  for (auto& m : param_.program_config(0).partial_pushdense_condtable_map()) {
     cond2table_map_[m.key()] = m.value();
     condvalue_set_.insert(m.value());
     flag_partial_push_ = true;
