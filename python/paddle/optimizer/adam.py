@@ -17,6 +17,7 @@ from ..fluid import core
 from ..fluid import framework
 from ..fluid.framework import Variable
 
+import paddle
 from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 __all__ = ["Adam"]
