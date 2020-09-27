@@ -19,9 +19,10 @@ import six
 import logging
 from collections import defaultdict
 
+import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
-import paddle
+from paddle.fluid.dygraph.parallel import scale_loss, apply_collective_grads
 
 from ..fluid import framework
 from ..fluid import layers
@@ -871,6 +872,11 @@ class Optimizer(object):
 
         parameter_list = parameters if parameters \
             else self._parameter_list
+
+        if paddle.distributed.get_world_size() > 1:
+            loss = scale_loss(loss)
+            apply_collective_grads(parameter_list)
+
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
@@ -907,7 +913,9 @@ class Optimizer(object):
                 adam.step()
                 adam.clear_grad()
         """
-        parameter_list = self._parameter_list
+        if paddle.distributed.get_world_size() > 1:
+            apply_collective_grads(self._parameter_list)
+
         self._dtype = None
         params_grads = []
         for param in self._parameter_list:
@@ -917,5 +925,5 @@ class Optimizer(object):
                 grad_var = param._grad_ivar()
                 params_grads.append((param, grad_var))
 
-        optimize_ops = self._apply_optimize(
+        self._apply_optimize(
             loss=None, startup_program=None, params_grads=params_grads)

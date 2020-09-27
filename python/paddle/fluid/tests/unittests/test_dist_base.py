@@ -435,13 +435,7 @@ class TestParallelDyGraphRunnerBase(object):
                         "loss at step %d: %f" % (step_id, loss.numpy()))
                 out_losses.append(loss.numpy())
 
-                # FIXME(Yancey1989): scale the loss inplace
-                if args.update_method == "nccl2":
-                    loss = model.scale_loss(loss)
-
                 loss.backward()
-                if args.update_method == "nccl2":
-                    model.apply_collective_grads()
 
                 opt.minimize(loss)
                 model.clear_gradients()
@@ -477,12 +471,7 @@ class TestParallelDyGraphRunnerBase(object):
             loss = self.run_one_loop(model, opt, data)
             out_losses.append(loss.numpy())
 
-            if args.update_method == "nccl2":
-                loss = model.scale_loss(loss)
-
             loss.backward()
-            if args.update_method == "nccl2":
-                model.apply_collective_grads()
 
             opt.minimize(loss)
             model.clear_gradients()
@@ -521,12 +510,7 @@ class TestParallelDyGraphRunnerBase(object):
             loss = self.run_one_loop(model, opt, data)
             out_losses.append(loss.numpy())
 
-            if args.update_method == "nccl2":
-                loss = model.scale_loss(loss)
-
             loss.backward()
-            if args.update_method == "nccl2":
-                model.apply_collective_grads()
 
             opt.step()
             opt.clear_grad()
