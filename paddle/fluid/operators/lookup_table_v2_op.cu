@@ -31,16 +31,18 @@ __global__ void LookupTableV2(T *output, const T *table, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ENFORCE(
-        id >= 0,
-        "Variable value (input) of OP(fluid.layers.embedding) "
-        "expected >= 0 and < %ld, but got %ld. Please check input value.",
-        N, id);
-    PADDLE_ENFORCE(
-        id < N,
-        "Variable value (input) of OP(fluid.layers.embedding) "
-        "expected >= 0 and < %ld, but got %ld. Please check input value.",
-        N, id);
+    PADDLE_ENFORCE_GE(
+        id, 0,
+        platform::errors::InvalidArgument(
+            "Variable value (input) of OP(fluid.layers.embedding) "
+            "expected >= 0 and < %ld, but got %ld. Please check input value.",
+            N, id));
+    PADDLE_ENFORCE_LT(
+        id, N,
+        platform::errors::InvalidArgument(
+            "Variable value (input) of OP(fluid.layers.embedding) "
+            "expected >= 0 and < %ld, but got %ld. Please check input value.",
+            N, id));
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
@@ -66,16 +68,18 @@ __global__ void LookupTableV2Grad(T *table, const T *output, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ENFORCE(
-        id >= 0,
-        "Variable value (input) of OP(fluid.layers.embedding) "
-        "expected >= 0 and < %ld, but got %ld. Please check input value.",
-        N, id);
-    PADDLE_ENFORCE(
-        id < N,
-        "Variable value (input) of OP(fluid.layers.embedding) "
-        "expected >= 0 and < %ld, but got %ld. Please check input value.",
-        N, id);
+    PADDLE_ENFORCE_GE(
+        id, 0,
+        platform::errors::InvalidArgument(
+            "Variable value (input) of OP(fluid.layers.embedding) "
+            "expected >= 0 and < %ld, but got %ld. Please check input value.",
+            N, id));
+    PADDLE_ENFORCE_LT(
+        id, N,
+        platform::errors::InvalidArgument(
+            "Variable value (input) of OP(fluid.layers.embedding) "
+            "expected >= 0 and < %ld, but got %ld. Please check input value.",
+            N, id));
     const T *out = output + idy * D;
     T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
@@ -191,11 +195,12 @@ class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
       auto d_output_dims_2d =
           framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
-                        "ShapeError: The shape of lookup_table@Grad and "
-                        "output@Grad should be same. "
-                        "But received lookup_table@Grad's shape = [%s], "
-                        "output@Grad's shape = [%s].",
-                        d_table_value->dims(), d_output_dims_2d);
+                        platform::errors::InvalidArgument(
+                            "ShapeError: The shape of lookup_table@Grad and "
+                            "output@Grad should be same. "
+                            "But received lookup_table@Grad's shape = [%s], "
+                            "output@Grad's shape = [%s].",
+                            d_table_value->dims(), d_output_dims_2d));
       memory::Copy(gpu_place, d_table_data, gpu_place, d_output_data,
                    d_output->numel() * sizeof(T), stream);
 
