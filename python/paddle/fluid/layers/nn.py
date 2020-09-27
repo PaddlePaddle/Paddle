@@ -8555,6 +8555,11 @@ def scatter_nd_add(ref, index, updates, name=None):
 
             output = fluid.layers.scatter_nd_add(ref, index, updates)
     """
+
+    if in_dygraph_mode():
+        op = getattr(core.ops, 'scatter_nd_add')
+        return op(ref, updates, output)
+
     if ref.dtype != updates.dtype:
         raise ValueError("ref and updates must have same data type.")
 
@@ -8577,34 +8582,38 @@ def scatter_nd(index, updates, shape, name=None):
     Output is obtained by scattering the :attr:`updates` in a new tensor according
     to :attr:`index` . This op is similar to :code:`scatter_nd_add`, except the
     tensor of :attr:`shape` is zero-initialized. Correspondingly, :code:`scatter_nd(index, updates, shape)`
-    is equal to :code:`scatter_nd_add(fluid.layers.zeros(shape, updates.dtype), index, updates)` .
+    is equal to :code:`scatter_nd_add(paddle.zeros(shape, updates.dtype), index, updates)` .
     If :attr:`index` has repeated elements, then the corresponding updates are accumulated.
     Because of the numerical approximation issues, the different order of repeated elements
     in :attr:`index` may cause different results. The specific calculation method can be
     seen :code:`scatter_nd_add` . This op is the inverse of the :code:`gather_nd` op.
 
     Args:
-        index (Variable): The index input with rank > 1 and index.shape[-1] <= len(shape).
+        index (Tensor): The index input with rank > 1 and index.shape[-1] <= len(shape).
                           Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter_nd op. Its dtype should be float32, float64.
+        updates (Tensor): The updated value of scatter_nd op. Its dtype should be float32, float64.
                             It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
         shape(tuple|list): Shape of output tensor.
-        name (str|None): The output variable name. If set None, the layer will be named automatically.
+        name (str|None): The output Tensor name. If set None, the layer will be named automatically.
 
     Returns:
-        output (Variable): The output is a tensor with the same type as :attr:`updates` .
+        output (Tensor): The output is a tensor with the same type as :attr:`updates` .
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import numpy as np
 
-            index = fluid.data(name='index', shape=[3, 2], dtype='int64')
-            updates = fluid.data(name='update', shape=[3, 9, 10], dtype='float32')
+            index_data = np.array([[1, 1],
+                                   [0, 1],
+                                   [1, 3]]).astype(np.int64)
+            index = paddle.to_tensor(index_data)
+            updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
             shape = [3, 5, 9, 10]
 
-            output = fluid.layers.scatter_nd(index, updates, shape)
+            output = paddle.scatter_nd(index, updates, shape)
     """
     return scatter_nd_add(zeros(shape, updates.dtype), index, updates, name)
 

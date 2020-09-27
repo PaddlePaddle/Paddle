@@ -29,7 +29,6 @@ from ..fluid.layers import strided_slice  #DEFINE_ALIAS
 from ..fluid.layers import transpose  #DEFINE_ALIAS
 from ..fluid.layers import unstack  #DEFINE_ALIAS
 
-from ..fluid.layers import scatter_nd_add  #DEFINE_ALIAS
 from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
 from ..fluid.layers import shard_index  #DEFINE_ALIAS
 from ..fluid.layers import unique_with_counts  #DEFINE_ALIAS
@@ -972,6 +971,78 @@ def scatter(x, index, updates, overwrite=True, name=None):
         attrs={'overwrite': overwrite},
         outputs={"Out": out})
     return out
+
+
+def scatter_nd_add(x, index, updates, name=None):
+    """
+    **Scatter_nd_add Layer**
+
+    Output is obtained by applying sparse addition to a single value
+    or slice in a Tensor.
+
+    :attr:`x` is a Tensor with rank :math:`R`
+    and :attr:`index` is a Tensor with rank :math:`K` . Thus, :attr:`index`
+    has shape :math:`[i_0, i_1, ..., i_{K-2}, Q]` where :math:`Q \leq R` . :attr:`updates`
+    is a Tensor with rank :math:`K - 1 + R - Q` and its
+    shape is :math:`index.shape[:-1] + x.shape[index.shape[-1]:]` .
+
+    According to the :math:`[i_0, i_1, ..., i_{K-2}]` of :attr:`index` ,
+    add the corresponding :attr:`updates` slice to the :attr:`x` slice
+    which is obtained by the last one dimension of :attr:`index` .
+
+    .. code-block:: text
+
+        Given:
+
+        * Case 1:
+            x = [0, 1, 2, 3, 4, 5]
+            index = [[1], [2], [3], [1]]
+            updates = [9, 10, 11, 12]
+
+          we get:
+
+            output = [0, 22, 12, 14, 4, 5]
+
+        * Case 2:
+            x = [[65, 17], [-14, -25]]
+            index = [[], []]
+            updates = [[[-1, -2], [1, 2]],
+                       [[3, 4], [-3, -4]]]
+            x.shape = (2, 2)
+            index.shape = (2, 0)
+            updates.shape = (2, 2, 2)
+
+          we get:
+
+            output = [[67, 19], [-16, -27]]
+
+    Args:
+        x (Tensor): The x input. Its dtype should be float32, float64.
+        index (Tensor): The index input with rank > 1 and index.shape[-1] <= x.rank.
+                          Its dtype should be int32 or int64 as it is used as indexes.
+        updates (Tensor): The updated value of scatter_nd_add op, and it must have the same dtype
+                            as x. It must have the shape index.shape[:-1] + x.shape[index.shape[-1]:].
+        name (str|None): The output tensor name. If set None, the layer will be named automatically.
+
+    Returns:
+        output (Tensor): The output is a tensor with the same shape and dtype as x.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            x = paddle.rand(shape=[3, 5, 9, 10], dtype='float32')
+            updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
+            index_data = np.array([[1, 1],
+                                   [0, 1],
+                                   [1, 3]]).astype(np.int64)
+            index = paddle.to_tensor(index_data)
+            output = paddle.scatter_nd_add(x, index, updates)
+    """
+    return layers.scatter_nd_add(x, index, updates, name=None)
 
 
 def chunk(x, chunks, axis=0, name=None):

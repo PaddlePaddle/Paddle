@@ -284,5 +284,24 @@ class TestScatterNdOpRaise(unittest.TestCase):
         self.assertRaises(ValueError, check_raise_is_test)
 
 
+class TestDygraph(unittest.TestCase):
+    def test_dygraph1(self):
+        paddle.disable_static()
+        index_data = np.array([[1, 1], [0, 1], [1, 3]]).astype(np.int64)
+        index = paddle.to_tensor(index_data)
+        updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
+        shape = [3, 5, 9, 10]
+
+        output = paddle.scatter_nd(index, updates, shape)
+
+    def test_dygraph2(self):
+        paddle.disable_static()
+        x = paddle.rand(shape=[3, 5, 9, 10], dtype='float32')
+        updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
+        index_data = np.array([[1, 1], [0, 1], [1, 3]]).astype(np.int64)
+        index = paddle.to_tensor(index_data)
+        output = paddle.scatter_nd_add(x, index, updates)
+
+
 if __name__ == "__main__":
     unittest.main()
