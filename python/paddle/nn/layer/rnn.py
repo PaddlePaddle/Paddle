@@ -271,10 +271,10 @@ class SimpleRNNCell(RNNCellBase):
     The formula used is as follows:
 
     .. math::
-        h_{t} & = \mathrm{tanh}(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
+        h_{t} & = act(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
         y_{t} & = h_{t}
     
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`act` is for :attr:`activation` , and \* is the elemetwise
     multiplication operator.
 
     Please refer to `Finding Structure in Time 
@@ -1110,10 +1110,10 @@ class SimpleRNN(RNNBase):
 
     .. math::
 
-        h_{t} & = \mathrm{tanh}(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
+        h_{t} & = act(W_{ih}x_{t} + b_{ih} + W_{hh}h{t-1} + b_{hh})
         y_{t} & = h_{t}
     
-    where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
+    where :math:`act` is for :attr:`activation` , and \* is the elemetwise
     multiplication operator.
 
     Using key word arguments to construct is recommended.
