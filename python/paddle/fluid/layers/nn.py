@@ -9304,10 +9304,7 @@ def pad2d(input,
         name (str, optional) : The default value is None.  Normally there is no need for
                     user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
-    Returns: a 4-D Tensor padded according to paddings and mode and data type is same as input.
-
-    Return Type: Tensor
-
+    Returns: Tensor, a 4-D Tensor padded according to paddings and mode and data type is same as input.
 
     Examples:
         .. code-block:: text
