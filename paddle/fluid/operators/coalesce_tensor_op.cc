@@ -94,7 +94,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
         context.Attr<int>("dtype"));
     size_t size_of_dtype = framework::SizeOfType(dtype);
     GetMemSizeAndDtype(in_tensors, in_var_names, &numel, size_of_dtype,
-                       context.GetPlace());
+                       context.GetPlace(), use_align);
 
     // Alloc the continuous space
     auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
