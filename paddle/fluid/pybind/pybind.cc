@@ -1438,13 +1438,13 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
     CPUPlace is a descriptor of a device.
-    It represents a CPU device allocated or to be allocated with Tensor or LoDTensor.
+    It represents a CPU device on which a tensor will be allocated and a model will run.
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          cpu_place = fluid.CPUPlace()
+          import paddle
+          cpu_place = paddle.CPUPlace()
 
         )DOC")
       .def(py::init<>())
@@ -1468,8 +1468,8 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          place = fluid.CUDAPinnedPlace()
+          import paddle
+          place = paddle.CUDAPinnedPlace()
 
         )DOC")
       .def("__init__",
