@@ -175,9 +175,6 @@ def flip(x, axis, name=None):
     return out
 
 
-reverse = flip  #DEFINE_ALIAS
-
-
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
     """
     **Flatten op**
