@@ -489,9 +489,6 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // auto* X = ctx.Input<Tensor>("X");
-    // auto* Y = ctx.Input<Tensor>("Y");
-    // auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
     bool transpose_x = ctx.Attr<bool>("trans_x");
     bool transpose_y = ctx.Attr<bool>("trans_y");
 
@@ -531,7 +528,6 @@ class MatMulV2GradKernel : public framework::OpKernel<T> {
                                  y_dims.cbegin());
     }
 
-    VLOG(0) << "is_broadcast: " << is_broadcast;
     // Case2: no broadcast or no batch size, it aims to speed and it is same as
     // matmul in old version.
     if (!is_broadcast) {
