@@ -161,12 +161,17 @@ def init_parallel_env():
     http_server_d = manager.dict()
     http_server_d["running"] = False
     if ParallelEnv().rank == 0:
-        http_server = Process(
-            target=_start_kv_server, args=(int(ep_rank_0[1]), http_server_d))
-        http_server.daemon = True
-        http_server_d["running"] = True
-        sys.stderr.write("parallel.py: to start http_server.")
-        http_server.start()
+        try:
+            http_server = Process(
+                target=_start_kv_server,
+                args=(int(ep_rank_0[1]), http_server_d))
+            http_server.daemon = True
+            http_server_d["running"] = True
+            sys.stderr.write("parallel.py: to start http_server.")
+            http_server.start()
+        except:
+            sys.stderr.write("Process wrong")
+            sys.stderr.write(sys.exc_info())
     time.sleep(20)
 
     iface = _get_iface_by_ip(ep_rank[0])
