@@ -14,20 +14,17 @@
 
 #pragma once
 
+#include <ThreadPool.h>
 #include <gflags/gflags.h>
-
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
 #include <string>
+#include <thread>  // NOLINT
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
-#include <thread>  // NOLINT
-
-#include <ThreadPool.h>
 
 #include "paddle/fluid/platform/enforce.h"
 

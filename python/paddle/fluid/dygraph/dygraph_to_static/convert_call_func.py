@@ -29,7 +29,7 @@ import six
 
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticLayer
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
 from paddle.fluid.dygraph.layers import Layer
@@ -143,14 +143,14 @@ def convert_call(func):
             #      def foo(x):
             #          return x
             #
-            # `foo` will be converted into a wrapper class, suppose as `StaticLayer`.
-            # And `foo.__globals__['foo']` will still return this `StaticLayer` instead of
-            # `foo` function. So `isinstance(fn, StaticLayer)` is added here. 
+            # `foo` will be converted into a wrapper class, suppose as `StaticFunction`.
+            # And `foo.__globals__['foo']` will still return this `StaticFunction` instead of
+            # `foo` function. So `isinstance(fn, StaticFunction)` is added here. 
             global_functions = set()
             for fn in func.__globals__.values():
                 if inspect.isfunction(fn):
                     global_functions.add(fn)
-                elif isinstance(fn, StaticLayer):
+                elif isinstance(fn, StaticFunction):
                     _, fn = unwrap_decorators(fn)
                     global_functions.add(fn)
 

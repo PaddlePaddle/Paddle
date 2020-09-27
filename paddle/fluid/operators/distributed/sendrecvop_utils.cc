@@ -11,17 +11,20 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#ifdef PADDLE_WITH_NCCL
-#include <nccl.h>
-#endif
 #include <memory>
-#include <thread>  // NOLINT
 
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
-#include "paddle/fluid/operators/distributed/variable_response.h"
-#include "paddle/fluid/platform/port.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+namespace memory {
+namespace allocation {
+class Allocation;
+}  // namespace allocation
+}  // namespace memory
+}  // namespace paddle
 
 DEFINE_bool(rpc_disable_reuse_port, false, "Disable SO_REUSEPORT or not.");
 DEFINE_int32(rpc_retry_bind_port, 3,
