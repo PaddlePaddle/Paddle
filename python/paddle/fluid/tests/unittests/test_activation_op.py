@@ -140,6 +140,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [11, 17])
             out1 = F.log_sigmoid(x)
@@ -163,6 +164,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_fluid_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [11, 17])
             out = paddle.fluid.layers.logsigmoid(x)
@@ -172,6 +174,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
         self.assertTrue(np.allclose(out_ref, res[0]))
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.log_sigmoid, 1)
@@ -215,6 +218,7 @@ class TestTanhAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [10, 12], self.dtype)
             out1 = F.tanh(x)
@@ -239,6 +243,7 @@ class TestTanhAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_fluid_api(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', [10, 12], self.dtype)
             out = fluid.layers.tanh(x)
@@ -248,6 +253,7 @@ class TestTanhAPI(unittest.TestCase):
         self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.tanh, 1)
@@ -473,6 +479,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.tanhshrink(x)
@@ -496,6 +503,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_fluid_api(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out = fluid.layers.tanh_shrink(x)
@@ -505,6 +513,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
         self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.tanhshrink, 1)
@@ -560,6 +569,7 @@ class TestHardShrinkAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [10, 12])
             out1 = F.hardshrink(x)
@@ -590,6 +600,7 @@ class TestHardShrinkAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_fluid_api(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', [10, 12])
             out = fluid.layers.hard_shrink(x)
@@ -599,6 +610,7 @@ class TestHardShrinkAPI(unittest.TestCase):
         self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardshrink, 1)
@@ -626,6 +638,7 @@ class TestHardtanhAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [10, 12])
             out1 = F.hardtanh(x)
@@ -656,6 +669,7 @@ class TestHardtanhAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardtanh, 1)
@@ -703,6 +717,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.softshrink(x, self.threshold)
@@ -726,6 +741,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_fluid_api(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out = fluid.layers.softshrink(x, self.threshold)
@@ -735,6 +751,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
         self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.softshrink, 1)
@@ -960,6 +977,7 @@ class TestReluAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [10, 12])
             out1 = F.relu(x)
@@ -983,6 +1001,7 @@ class TestReluAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.relu, 1)
@@ -1050,6 +1069,7 @@ class TestLeakyReluAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [10, 12])
             out1 = F.leaky_relu(x)
@@ -1080,6 +1100,7 @@ class TestLeakyReluAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_fluid_api(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', [10, 12])
             out = fluid.layers.leaky_relu(x, 0.01)
@@ -1089,6 +1110,7 @@ class TestLeakyReluAPI(unittest.TestCase):
         self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.leaky_relu, 1)
@@ -1155,6 +1177,7 @@ class TestGELUAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [11, 17])
             out1 = F.gelu(x)
@@ -1185,6 +1208,7 @@ class TestGELUAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.gelu, 1)
@@ -1273,6 +1297,7 @@ class TestRelu6API(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.relu6(x)
@@ -1296,6 +1321,7 @@ class TestRelu6API(unittest.TestCase):
         paddle.enable_static()
 
     def test_fluid_api(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out = fluid.layers.relu6(x)
@@ -1305,6 +1331,7 @@ class TestRelu6API(unittest.TestCase):
         self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.relu6, 1)
@@ -1424,11 +1451,13 @@ class TestELU(TestActivation):
 class TestELUAPI(unittest.TestCase):
     # test paddle.nn.ELU, paddle.nn.functional.elu
     def setUp(self):
+        np.random.seed(1024)
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', [10, 12])
             out1 = F.elu(x)
@@ -1459,6 +1488,7 @@ class TestELUAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.elu, 1)
@@ -1747,6 +1777,7 @@ class TestSoftplusAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.softplus(x, self.beta, self.threshold)
@@ -1770,6 +1801,7 @@ class TestSoftplusAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_fluid_api(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out = fluid.layers.softplus(x)
@@ -1779,6 +1811,7 @@ class TestSoftplusAPI(unittest.TestCase):
         self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.softplus, 1)
@@ -1820,6 +1853,7 @@ class TestSoftsignAPI(unittest.TestCase):
             else paddle.CPUPlace()
 
     def test_static_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.data('X', self.x_np.shape, self.x_np.dtype)
             out1 = F.softsign(x)
@@ -1843,6 +1877,7 @@ class TestSoftsignAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_fluid_api(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
             out = fluid.layers.softsign(x)
@@ -1852,6 +1887,7 @@ class TestSoftsignAPI(unittest.TestCase):
         self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_errors(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.softsign, 1)
