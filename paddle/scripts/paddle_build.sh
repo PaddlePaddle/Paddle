@@ -1163,6 +1163,26 @@ EOF
     fi
 }
 
+function parallel_test_base_xpu() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit cpu tests ...
+    ========================================
+EOF
+        ut_startTime_s=`date +%s`
+        ctest -R *xpu 
+        ut_endTime_s=`date +%s`
+        echo "XPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            exit 8;
+        fi
+    fi
+    
+}
+
 function parallel_test() {
     ut_total_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
@@ -1171,7 +1191,11 @@ function parallel_test() {
     if [ "$WITH_GPU" == "ON" ];then
         parallel_test_base_gpu
     else
-        parallel_test_base_cpu ${PROC_RUN:-1}
+        if [ "$WITH_XPU" == "ON" ];then
+            parallel_test_base_xpu
+        else
+            parallel_test_base_cpu ${PROC_RUN:-1}
+        fi
     fi
     ut_total_endTime_s=`date +%s`
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
@@ -1500,6 +1524,7 @@ EOF
     fi
 }
 
+
 function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
@@ -1666,6 +1691,9 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         ;;
+      check_xpu)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        parallel_test
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
         ;;
