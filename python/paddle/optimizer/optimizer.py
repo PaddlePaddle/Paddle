@@ -22,7 +22,7 @@ from collections import defaultdict
 import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
-from paddle.fluid.dygraph.parallel import scale_loss, apply_collective_grads
+from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 from ..fluid import framework
 from ..fluid import layers
@@ -676,8 +676,14 @@ class Optimizer(object):
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
+            parameter_list = parameters if parameters \
+                else self._parameter_list
+
+            if paddle.distributed.get_world_size() > 1:
+                apply_collective_grads(parameter_list)
+
             params_grads = []
-            for param in self._parameter_list:
+            for param in parameter_list:
                 if not param.trainable:
                     continue
                 if param._grad_ivar() is not None:
@@ -872,10 +878,6 @@ class Optimizer(object):
 
         parameter_list = parameters if parameters \
             else self._parameter_list
-
-        if paddle.distributed.get_world_size() > 1:
-            loss = scale_loss(loss)
-            apply_collective_grads(parameter_list)
 
         params_grads = self.backward(
             loss,

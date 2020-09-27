@@ -16,7 +16,7 @@ from .optimizer import Optimizer
 from .adam import Adam
 from ..fluid import framework
 import paddle
-from paddle.fluid.dygraph.parallel import scale_loss, apply_collective_grads
+from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 __all__ = ['AdamW']
 
@@ -188,10 +188,6 @@ class AdamW(Adam):
                  no_grad_set=None):
         parameters = parameters if parameters \
             else self._parameter_list
-
-        if paddle.distributed.get_world_size() > 1:
-            loss = scale_loss(loss)
-            apply_collective_grads(parameter_list)
 
         params_grads = self.backward(
             loss=loss,
