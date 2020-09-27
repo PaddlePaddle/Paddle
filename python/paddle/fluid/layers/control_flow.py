@@ -2497,7 +2497,7 @@ def case(pred_fn_pairs, default=None, name=None):
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable|list(Variable): Tensors returned by the callable from the first pair whose pred is True,
+        Tensor|list(Tensor): Tensors returned by the callable from the first pair whose pred is True,
         or Tensors returned by ``default`` if no pred in ``pred_fn_pairs`` is True and ``default`` is not None,
         or Tensors returned by the last callable in ``pred_fn_pairs``  if no pred in ``pred_fn_pairs`` is True and ``default`` is None.
 
@@ -2505,7 +2505,7 @@ def case(pred_fn_pairs, default=None, name=None):
         TypeError: If the type of ``pred_fn_pairs`` is not list or tuple.
         TypeError: If the type of elements in ``pred_fn_pairs`` is not tuple.
         TypeError: If the size of tuples in ``pred_fn_pairs`` is not 2.
-        TypeError: If the first element of 2-tuple in ``pred_fn_pairs`` is not Variable.
+        TypeError: If the first element of 2-tuple in ``pred_fn_pairs`` is not a Tensor.
         TypeError: If the second element of 2-tuple in ``pred_fn_pairs`` is not callable.
         TypeError: If ``default`` is not None but it is not callable.
 
