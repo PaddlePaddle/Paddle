@@ -16,7 +16,6 @@
 
 #include <ThreadPool.h>
 #include <gflags/gflags.h>
-
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>

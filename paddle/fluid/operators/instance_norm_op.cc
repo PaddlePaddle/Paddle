@@ -520,11 +520,11 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
     //          (np.mean(dy, axis=(h,w)) - dy) + inv_var.pow(3) / HxW *
     //          np.sum(dy,
     //          axis=(h,w)) * (x - mean) *
-    //          (np.mean(ddx, axis=(h,w)) - ddx) + ddr * (dy * inv_var - inv_var
-    //          *
+    //          (np.mean(ddx, axis=(h,w)) - ddx)) + ddr * (dy * inv_var -
+    //          inv_var *
     //          np.mean(dy, axis=(h,w)) -
     //          inv_var.pow(3) * (x - mean) * np.mean(dy * (x - mean),
-    //          axis=(h,w))))
+    //          axis=(h,w)))
 
     Tensor x_sub_mean_mul_invstd;
     x_sub_mean_mul_invstd.Resize({sample_size, NxC});

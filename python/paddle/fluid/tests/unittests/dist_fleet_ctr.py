@@ -28,7 +28,6 @@ import numpy as np
 
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
-from paddle.distributed.fleet.base.util_factory import fleet_util
 
 paddle.enable_static()
 
@@ -180,13 +179,13 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                                        fetch_list=[self.avg_cost.name])
                     loss_val = np.mean(loss_val)
                     # TODO(randomly fail)
-                    #   reduce_output = fleet_util.all_reduce(
+                    #   reduce_output = fleet.util.all_reduce(
                     #       np.array(loss_val), mode="sum")
-                    #   loss_all_trainer = fleet_util.all_gather(float(loss_val))
+                    #   loss_all_trainer = fleet.util.all_gather(float(loss_val))
                     #   loss_val = float(reduce_output) / len(loss_all_trainer)
                     message = "TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
                                                                       loss_val)
-                    fleet_util.print_on_rank(message, 0)
+                    fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start
             except fluid.core.EOFException:

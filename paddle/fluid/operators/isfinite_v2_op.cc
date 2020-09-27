@@ -13,10 +13,31 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/isfinite_v2_op.h"
+
 #include <string>
-#include <vector>
+
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/platform/float16.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+namespace operators {
+template <typename DeviceContext, typename T, typename Functor>
+class OverflowKernel;
+}  // namespace operators
+namespace platform {
+class CPUDeviceContext;
+struct CPUPlace;
+struct float16;
+}  // namespace platform
+}  // namespace paddle
 
 namespace plat = paddle::platform;
 

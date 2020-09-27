@@ -11,30 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Check whether ut is disabled. """
 
-import os
-import sys
-
-
-def check_ut():
-    """ Get disabled unit tests. """
-    disable_ut_file = 'disable_ut'
-    cmd = 'wget -q --no-check-certificate https://sys-p0.bj.bcebos.com/prec/{}'.format(
-        disable_ut_file)
-    os.system(cmd)
-    with open(disable_ut_file) as utfile:
-        for u in utfile:
-            if u.rstrip('\r\n') == sys.argv[1]:
-                exit(0)
-    exit(1)
+from __future__ import print_function
+import unittest
+from test_dist_base import TestDistBase
 
 
-if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        exit(1)
-    try:
-        check_ut()
-    except Exception as e:
-        print(e)
-        exit(1)
+class TestDistMnist2x2FP16AllReduce(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._use_reduce = False
+        self._nccl2_mode = True
+
+    def test_dist_train(self):
+        import paddle.fluid as fluid
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("dist_mnist_fp16_allreduce.py", delta=1e-5)
+
+
+if __name__ == "__main__":
+    unittest.main()

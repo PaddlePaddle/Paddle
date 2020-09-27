@@ -134,7 +134,26 @@ USE_CUDA_ATOMIC(Max, int);
 USE_CUDA_ATOMIC(Max, unsigned int);
 // CUDA API uses unsigned long long int, we cannot use uint64_t here.
 // It because unsigned long long int is not necessarily uint64_t
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 350
 USE_CUDA_ATOMIC(Max, unsigned long long int);  // NOLINT
+#else
+CUDA_ATOMIC_WRAPPER(Max, unsigned long long int) {  // NOLINT
+  if (*address >= val) {
+    return;
+  }
+
+  unsigned long long int old = *address, assumed;  // NOLINT
+
+  do {
+    assumed = old;
+    if (assumed >= val) {
+      break;
+    }
+
+    old = atomicCAS(address, assumed, val);
+  } while (assumed != old);
+}
+#endif
 
 CUDA_ATOMIC_WRAPPER(Max, int64_t) {
   // Here, we check long long int must be int64_t.
@@ -150,7 +169,7 @@ CUDA_ATOMIC_WRAPPER(Max, float) {
     return;
   }
 
-  int *const address_as_i = (int *)address;
+  int *const address_as_i = reinterpret_cast<int *>(address);
   int old = *address_as_i, assumed;
 
   do {
@@ -168,9 +187,9 @@ CUDA_ATOMIC_WRAPPER(Max, double) {
     return;
   }
 
-  unsigned long long int *const address_as_ull =
-      (unsigned long long int *)address;
-  unsigned long long int old = *address_as_ull, assumed;
+  unsigned long long int *const address_as_ull =            // NOLINT
+      reinterpret_cast<unsigned long long int *>(address);  // NOLINT
+  unsigned long long int old = *address_as_ull, assumed;    // NOLINT
 
   do {
     assumed = old;
@@ -187,7 +206,26 @@ USE_CUDA_ATOMIC(Min, int);
 USE_CUDA_ATOMIC(Min, unsigned int);
 // CUDA API uses unsigned long long int, we cannot use uint64_t here.
 // It because unsigned long long int is not necessarily uint64_t
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 350
 USE_CUDA_ATOMIC(Min, unsigned long long int);  // NOLINT
+#else
+CUDA_ATOMIC_WRAPPER(Min, unsigned long long int) {  // NOLINT
+  if (*address <= val) {
+    return;
+  }
+
+  unsigned long long int old = *address, assumed;  // NOLINT
+
+  do {
+    assumed = old;
+    if (assumed <= val) {
+      break;
+    }
+
+    old = atomicCAS(address, assumed, val);
+  } while (assumed != old);
+}
+#endif
 
 CUDA_ATOMIC_WRAPPER(Min, int64_t) {
   // Here, we check long long int must be int64_t.
@@ -203,7 +241,7 @@ CUDA_ATOMIC_WRAPPER(Min, float) {
     return;
   }
 
-  int *const address_as_i = (int *)address;
+  int *const address_as_i = reinterpret_cast<int *>(address);
   int old = *address_as_i, assumed;
 
   do {
@@ -221,9 +259,9 @@ CUDA_ATOMIC_WRAPPER(Min, double) {
     return;
   }
 
-  unsigned long long int *const address_as_ull =
-      (unsigned long long int *)address;
-  unsigned long long int old = *address_as_ull, assumed;
+  unsigned long long int *const address_as_ull =            // NOLINT
+      reinterpret_cast<unsigned long long int *>(address);  // NOLINT
+  unsigned long long int old = *address_as_ull, assumed;    // NOLINT
 
   do {
     assumed = old;
