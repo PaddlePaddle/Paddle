@@ -170,22 +170,40 @@ class CompileTimeStrategy(object):
         return trainer.mode == DistributedMode.ASYNC
 
     def get_role_id(self):
-        return self.role_maker.role_id()
+        try:
+            return self.role_maker._role_id()
+        except Exception:
+            return self.role_maker.role_id()
 
     def get_trainers(self):
-        return self.role_maker.worker_num()
+        try:
+            return self.role_maker._worker_num()
+        except Exception:
+            return self.role_maker.worker_num()
 
     def get_ps_endpoint(self):
-        return self.role_maker.get_pserver_endpoints()[self.get_role_id()]
+        try:
+            return self.role_maker._get_pserver_endpoints()[self.get_role_id()]
+        except Exception:
+            return self.role_maker.get_pserver_endpoints()[self.get_role_id()]
 
     def get_ps_endpoints(self):
-        return self.role_maker.get_pserver_endpoints()
+        try:
+            return self.role_maker._get_pserver_endpoints()
+        except Exception:
+            return self.role_maker.get_pserver_endpoints()
 
     def get_heter_worker_endpoints(self):
-        return self.role_maker._get_heter_worker_endpoints()
+        try:
+            return self.role_maker._get_heter_worker_endpoints()
+        except Exception:
+            return self.role_maker.get_heter_worker_endpoints()
 
     def get_heter_worker_endpoint(self):
-        return self.role_maker._get_heter_worker_endpoint()
+        try:
+            return self.role_maker._get_heter_worker_endpoint()
+        except Exception:
+            return self.role_maker.get_heter_worker_endpoint()
 
     def get_origin_programs(self):
         return self.origin_main_program, self.origin_startup_program

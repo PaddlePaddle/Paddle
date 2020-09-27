@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-
 #include <string>
 #include <unordered_set>
 

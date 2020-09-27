@@ -17,6 +17,13 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 
+namespace paddle {
+namespace framework {
+class ExecutionContext;
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
+
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif

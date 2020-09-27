@@ -520,11 +520,11 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
     //          (np.mean(dy, axis=(h,w)) - dy) + inv_var.pow(3) / HxW *
     //          np.sum(dy,
     //          axis=(h,w)) * (x - mean) *
-    //          (np.mean(ddx, axis=(h,w)) - ddx) + ddr * (dy * inv_var - inv_var
-    //          *
+    //          (np.mean(ddx, axis=(h,w)) - ddx)) + ddr * (dy * inv_var -
+    //          inv_var *
     //          np.mean(dy, axis=(h,w)) -
     //          inv_var.pow(3) * (x - mean) * np.mean(dy * (x - mean),
-    //          axis=(h,w))))
+    //          axis=(h,w)))
 
     Tensor x_sub_mean_mul_invstd;
     x_sub_mean_mul_invstd.Resize({sample_size, NxC});
@@ -595,9 +595,13 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
 
         first_grad_arr +=
             inv_var_tile_data *
-            (dy_arr - dy_arr.colwise().sum() / sample_size -
+            (dy_arr -
+             dy_arr.colwise().sum().replicate(sample_size, 1) / sample_size -
              x_sub_mean_mul_invstd_arr *
-                 (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
+                 (dy_arr * x_sub_mean_mul_invstd_arr)
+                     .colwise()
+                     .sum()
+                     .replicate(sample_size, 1) /
                  sample_size);
         first_grad_arr = first_grad_arr * ddx_arr;
         for (int nc = 0; nc < NxC; ++nc) {

@@ -37,6 +37,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/platform/profiler.h"
 
+namespace grpc {
+class ServerCompletionQueue;
+}  // namespace grpc
+
 namespace paddle {
 namespace operators {
 namespace distributed {

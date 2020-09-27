@@ -664,7 +664,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
     uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
 
     auto* data_ptr = tensor.data<void>();
-    PADDLE_ENFORCE_LT(size, std::numeric_limits<std::streamsize>::max(),
+    PADDLE_ENFORCE_LT(size, (std::numeric_limits<std::streamsize>::max)(),
                       platform::errors::ResourceExhausted(
                           "tensor size %d overflow when writing tensor", size));
     if (platform::is_gpu_place(tensor.place())) {

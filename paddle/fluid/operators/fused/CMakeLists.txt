@@ -8,7 +8,8 @@ register_operators(EXCLUDES
     multihead_matmul_op
     fused_embedding_eltwise_layernorm_op
     fusion_group_op
-    fusion_gru_op)
+    fusion_gru_op
+    fused_bn_add_activation_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
@@ -46,5 +47,10 @@ if (WITH_GPU)
         op_library(fusion_group_op DEPS device_code)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fusion_group);\n")
         cc_test(test_fusion_group_op SRCS fusion_group_op_test.cc DEPS fusion_group_op)
+    endif()
+    # fused_bn_add_activation
+    if (NOT ${CUDNN_VERSION} VERSION_LESS 7401)
+    op_library(fused_bn_add_activation_op)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_bn_add_activation);\n")
     endif()
 endif()
