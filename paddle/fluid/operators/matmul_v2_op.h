@@ -432,7 +432,7 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {
-    out->Resize({std::max(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
+    out->Resize({(std::max)(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
                  mat_dim_x.height_, mat_dim_y.width_});
   }
 
