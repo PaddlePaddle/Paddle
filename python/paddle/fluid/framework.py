@@ -350,13 +350,13 @@ def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
 
-    Returns (bool): support gpu or not.
+    Returns (bool): `True` if CUDA is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            support_gpu = fluid.is_compiled_with_cuda()
+            import paddle
+            support_gpu = paddle.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
 

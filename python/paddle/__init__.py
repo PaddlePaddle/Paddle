@@ -258,6 +258,7 @@ from .tensor.stat import numel  #DEFINE_ALIAS
 from .device import get_cudnn_version
 from .device import set_device
 from .device import get_device
+from .device import is_compiled_with_cuda
 # from .tensor.tensor import Tensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensorArray        #DEFINE_ALIAS
