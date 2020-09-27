@@ -158,11 +158,6 @@ class FSTestBase(unittest.TestCase):
         assert fs.need_upload_download()
 
         fs.download(src_file, dst_file)
-        try:
-            fs.download(src_file, dst_file)
-            self.assertFalse(True)
-        except FSFileExistsError as e:
-            pass
 
         self.assertTrue(fs.is_exist(dst_file))
         fs.delete(dst_file)
