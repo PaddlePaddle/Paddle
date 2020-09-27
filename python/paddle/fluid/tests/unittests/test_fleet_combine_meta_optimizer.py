@@ -22,7 +22,7 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 paddle.enable_static()
 
 
-class TestFleetDGCOptimizer(unittest.TestCase):
+class TestFleetCombineOptimizer(unittest.TestCase):
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "1"
         os.environ[
@@ -58,46 +58,64 @@ class TestFleetDGCOptimizer(unittest.TestCase):
                 }
         return avg_cost, strategy
 
-    def test_dgc_optimizer(self):
-        startup_prog = fluid.Program()
+    def optimizer(self, loss, strategy, train_prog, startup_prog):
+        with fluid.program_guard(train_prog, startup_prog):
+            with fluid.unique_name.guard():
+                optimizer = paddle.fluid.optimizer.Momentum(
+                    learning_rate=0.01, momentum=0.9)
+                optimizer = fleet.distributed_optimizer(
+                    optimizer, strategy=strategy)
+                optimizer.minimize(loss)
+
+    def set_strategy(self, strategy, name):
+        if name == 'amp':
+            strategy.amp = True
+        elif name == 'dgc':
+            strategy.dgc = True
+        elif name == 'recompute':
+            strategy.recompute = True
+            strategy.recompute_configs = {
+                "checkpoints": ["fc_0.tmp_2", "fc_1.tmp_2"]
+            }
+
+    def test_dgc_recompute_optimizer(self):
         train_prog = fluid.Program()
+        startup_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.fluid.optimizer.Momentum(
-            learning_rate=0.01, momentum=0.9)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-        optimizer.minimize(avg_cost)
+
+        self.set_strategy(strategy, 'dgc')
+        self.set_strategy(strategy, 'recompute')
+
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
 
         ops = [op.type for op in avg_cost.block.ops]
+        outs = [
+            op.output('Out')[0] for op in avg_cost.block.ops if op.type == 'mul'
+        ]
         self.assertIn('dgc', ops)
         self.assertIn('dgc_momentum', ops)
 
-    def test_dgc_not_apply_with_adam(self):
-        startup_prog = fluid.Program()
+        self.assertIn('subprog', ''.join(outs))
+
+    def test_amp_recompute_optimizer(self):
         train_prog = fluid.Program()
+        startup_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-        optimizer.minimize(avg_cost)
+
+        self.set_strategy(strategy, 'amp')
+        self.set_strategy(strategy, 'recompute')
+
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
 
         ops = [op.type for op in avg_cost.block.ops]
-        self.assertNotIn('dgc', ops)
-        self.assertNotIn('dgc_momentum', ops)
+        outs = [
+            op.output('Out')[0] for op in avg_cost.block.ops if op.type == 'mul'
+        ]
+        print(train_prog)
+        self.assertIn('cast', ops)
+        self.assertIn('check_finite_and_unscale', ops)
 
-    def test_dgc_not_apply_with_one_worker(self):
-        os.environ["PADDLE_TRAINER_ID"] = "0"
-        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
-
-        startup_prog = fluid.Program()
-        train_prog = fluid.Program()
-        avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.fluid.optimizer.Momentum(
-            learning_rate=0.01, momentum=0.9)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
-        optimizer.minimize(avg_cost)
-
-        ops = [op.type for op in avg_cost.block.ops]
-        self.assertNotIn('dgc', ops)
-        self.assertNotIn('dgc_momentum', ops)
+        self.assertIn('subprog', ''.join(outs))
 
 
 if __name__ == "__main__":
