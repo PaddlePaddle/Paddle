@@ -180,14 +180,12 @@ def require_version(min_version, max_version=None):
 
 def in_dygraph_mode():
     """
-    :alias_main: paddle.in_dygraph_mode
-	:alias: paddle.in_dygraph_mode
-	:old_api: paddle.fluid.framework.in_dygraph_mode
-
     This function checks whether the program runs in dynamic graph mode or not.
-    You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
-    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
-    and :ref:`api_fluid_dygraph_disable` api .
+    Starting with paddle2.0, the dynamic graph mode the default mode.
+
+    **Note**:
+        ``paddle.in_dynamic_mode`` is the alias of ``fluid.in_dygraph_mode``, and
+        ``paddle.in_dynamic_mode`` is recommended to use.
 
     Returns:
         bool: Whether the program is running in dynamic graph mode.
@@ -195,12 +193,11 @@ def in_dygraph_mode():
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
-            fluid.enable_dygraph()  # Now we are in dygragh mode
-            print(fluid.in_dygraph_mode())  # True
-            fluid.disable_dygraph()
-            print(fluid.in_dygraph_mode())  # False
+            print(paddle.in_dynamic_mode())  # True
+            paddle.enable_static()
+            print(paddle.in_dynamic_mode())  # False
     """
     return _dygraph_tracer_ is not None
 
