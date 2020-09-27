@@ -1258,9 +1258,6 @@ broadcast_to = expand
 
 def reshape(x, shape, name=None):
     """
-    :alias_main: paddle.reshape
-	:alias: paddle.reshape,paddle.tensor.reshape,paddle.tensor.manipulation.reshape
-
     This operator changes the shape of ``x`` without changing its data.
 
     Some tricks exist when specifying the target shape.
@@ -1308,8 +1305,6 @@ def reshape(x, shape, name=None):
 
             import numpy as np
             import paddle
-
-            paddle.disable_static()
 
             data = np.random.random([2, 4, 6]).astype("float32")
             x = paddle.to_tensor(data)
