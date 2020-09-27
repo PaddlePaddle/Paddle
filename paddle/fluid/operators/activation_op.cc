@@ -711,10 +711,28 @@ class ActivationOpDoubleGrad2 : public framework::OperatorWithKernel {
   }
 };
 
-//
+// AbsGrad: dx=dy if x >=0 else -dy
+// AbsDoubleGrad: ddy = ddx if x >=0 else -ddx
+template <typename T>
+class AbsDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("abs_grad_grad");
+    // input1: x
+    op->SetInput("X", this->Input("X"));
+    // input2: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
+    // output: ddy
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
 // ReluGrad: dx = dy if y >= 0 else 0
 // ReluGradGrad: ddy = ddx if y >= 0 else 0
-//
 template <typename T>
 class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
  public:
@@ -1162,7 +1180,13 @@ REGISTER_OPERATOR(
     std::conditional<ops::CanInplaceAct<ops::AbsGradFunctor<float>>(),
                      ops::ActFwdInplaceInferer, void>::type);
 REGISTER_OPERATOR(abs_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInference);
+                  ops::ActivationGradOpInplaceInference,
+                  ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    abs_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::AbsGradGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInference);
 
 REGISTER_OP_CPU_KERNEL(abs,
                        ops::ActivationKernel<paddle::platform::CPUDeviceContext,
@@ -1182,4 +1206,16 @@ REGISTER_OP_CPU_KERNEL(
                               ops::AbsGradFunctor<int>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                               ops::AbsGradFunctor<int64_t>>);
+REGISTER_OP_CPU_KERNEL(
+    abs_grad_grad,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::AbsGradGradFunctor<float>>,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::AbsGradGradFunctor<double>>,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::AbsGradGradFunctor<plat::float16>>,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::AbsGradGradFunctor<int>>,
+    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
+                                    ops::AbsGradGradFunctor<int64_t>>);
 /* ========================================================================== */
