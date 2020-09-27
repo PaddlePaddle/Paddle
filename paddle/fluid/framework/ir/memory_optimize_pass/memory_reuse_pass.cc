@@ -16,10 +16,15 @@
 
 #include <functional>
 #include <map>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
+
+namespace paddle {
+namespace framework {
+namespace details {
+class ComputationOpHandle;
+class ShareTensorBufferOpHandle;
+}  // namespace details
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

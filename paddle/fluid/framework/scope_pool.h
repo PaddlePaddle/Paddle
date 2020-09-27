@@ -14,12 +14,15 @@
 
 #pragma once
 
+#include <memory>
 #include <mutex>  // NOLINT
 #include <unordered_set>
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
+
+class Scope;
 
 class ScopePool {
  public:

@@ -21,6 +21,12 @@
 
 namespace paddle {
 namespace framework {
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 
 template <typename DeviceContext>

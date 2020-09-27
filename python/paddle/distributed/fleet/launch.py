@@ -181,8 +181,8 @@ def get_gpus(gpus):
             cuda_visible_devices_list = cuda_visible_devices.split(',')
             for x in gpus.split(','):
                 assert x in cuda_visible_devices_list, "Can't find "\
-                "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
-                % (x, cuda_visible_devices)
+                    "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                    % (x, cuda_visible_devices)
             res_gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in gpus.split(',')
@@ -348,8 +348,7 @@ def launch_ps(args):
             "PADDLE_PORT": cur_server.endpoint.split(":")[1],
             "TRAINING_ROLE": "PSERVER",
             "PADDLE_TRAINERS_NUM": str(worker_num),
-            "POD_IP": cur_server.endpoint.split(":")[0],
-            "PADDLE_WITH_GLOO": "1"
+            "POD_IP": cur_server.endpoint.split(":")[0]
         }
         current_env.update(proc_env)
 
@@ -388,8 +387,7 @@ def launch_ps(args):
             "PADDLE_TRAINER_ENDPOINTS": worker_endpoints,
             "PADDLE_TRAINERS_NUM": str(worker_num),
             "TRAINING_ROLE": "TRAINER",
-            "PADDLE_TRAINER_ID": str(cur_worker.rank),
-            "PADDLE_WITH_GLOO": "1"
+            "PADDLE_TRAINER_ID": str(cur_worker.rank)
         }
         current_env.update(proc_env)
 
@@ -463,9 +461,8 @@ def launch():
         cuda_device_num = 0
 
     if len(has_ps_args) > 0 or cuda_device_num == 0:
-        logger.info(
-            "Run parameter-sever cpu mode. pserver arguments:{}, cuda count:{}".
-            format(has_ps_args, cuda_device_num))
+        logger.info("Run parameter-sever cpu mode. pserver arguments:{}".format(
+            has_ps_args))
         launch_ps(args)
     elif len(has_collective_args) > 0:
         logger.info("Run collective gpu mode. gpu arguments:{}, cuda count:{}".

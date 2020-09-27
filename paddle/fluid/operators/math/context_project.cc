@@ -15,6 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/context_project.h"
 
 namespace paddle {
+namespace platform {
+class CPUDeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 namespace math {
 

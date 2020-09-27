@@ -14,19 +14,17 @@ limitations under the License. */
 #if defined(PADDLE_WITH_NCCL)
 #include <nccl.h>
 #endif
-#include <stdint.h>
-#include <ostream>
 #include <string>
 
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/request_handler_impl.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
 namespace paddle {

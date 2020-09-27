@@ -70,6 +70,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
+namespace paddle {
+namespace platform {
+class ErrorSummary;
+}  // namespace platform
+}  // namespace paddle
+
 DECLARE_int32(call_stack_level);
 
 namespace paddle {

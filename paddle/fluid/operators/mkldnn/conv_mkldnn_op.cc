@@ -12,11 +12,15 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include <unordered_map>
 #include "paddle/fluid/framework/data_layout_transform.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+
+namespace paddle {
+namespace platform {
+class MKLDNNDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -51,12 +55,12 @@ inline MKLDNNMemoryFormat GetWeightsFormat(const MKLDNNMemoryFormat format,
   }
 }
 
-static mkldnn::memory::data_type GetDstType(bool is_int8,
+static mkldnn::memory::data_type GetDstType(bool is_int8, bool is_bfloat16,
                                             bool force_fp32_output,
                                             std::string fuse_activation,
                                             bool fuse_residual_conn,
                                             const Tensor* residual_param) {
-  auto dst_dt = mkldnn::memory::data_type::f32;  // uint8_t, int8_t, float
+  auto dst_dt = mkldnn::memory::data_type::f32;
   if (is_int8) {
     dst_dt = (fuse_activation == "relu" || fuse_activation == "relu6")
                  ? mkldnn::memory::data_type::u8
@@ -67,6 +71,13 @@ static mkldnn::memory::data_type GetDstType(bool is_int8,
     if (fuse_residual_conn && residual_param) {
       auto residual_dt = framework::ToMKLDNNDataType(residual_param->type());
       if (dst_dt != residual_dt) dst_dt = residual_dt;
+    }
+  } else {
+    if (!force_fp32_output && is_bfloat16) {
+      dst_dt = mkldnn::memory::data_type::bf16;
+      if (fuse_residual_conn && residual_param) {
+        dst_dt = framework::ToMKLDNNDataType(residual_param->type());
+      }
     }
   }
   return dst_dt;
@@ -220,12 +231,15 @@ class ConvMKLDNNHandlerT
               src_tz.size(), chosen_memory_format);
         }
       }
+      auto data_type = mkldnn::memory::data_type::f32;
+      if (ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16" ||
+          std::is_same<T_out, platform::bfloat16>::value)
+        data_type = mkldnn::memory::data_type::bf16;
 
-      const auto src_md = platform::MKLDNNMemDesc(
-          src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-      const auto weights_md =
-          platform::MKLDNNMemDesc(weights_tz, platform::MKLDNNGetDataType<T>(),
-                                  MKLDNNMemoryFormat::any);
+      const auto src_md =
+          platform::MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
+      const auto weights_md = platform::MKLDNNMemDesc(weights_tz, data_type,
+                                                      MKLDNNMemoryFormat::any);
       const auto dst_md = platform::MKLDNNMemDesc(
           dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
 
@@ -237,8 +251,8 @@ class ConvMKLDNNHandlerT
 
       if (bias) {
         auto bias_tz = framework::vectorize(bias->dims());
-        auto bias_md = platform::MKLDNNMemDesc(
-            bias_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::x);
+        auto bias_md =
+            platform::MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
 
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr, fwd_prop_kind, dnnl::algorithm::convolution_direct,
@@ -380,15 +394,21 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                           "Operator DNNL Conv must use CPUPlace"));
     bool is_INT8 =
         std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+    bool is_BFLOAT16 = ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16";
+    auto residual_param = ctx.Input<Tensor>("ResidualData");
+    bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
+    std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
+    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+    auto dst_dt =
+        GetDstType(is_INT8, is_BFLOAT16, force_fp32_output, fuse_activation,
+                   fuse_residual_conn, residual_param);
     if (!is_INT8) {
-      ComputeFP32<float>(ctx);
+      if (dst_dt == mkldnn::memory::data_type::f32) {
+        ComputeFP32<float>(ctx);
+      } else if (dst_dt == mkldnn::memory::data_type::bf16) {
+        ComputeFP32<platform::bfloat16>(ctx);
+      }
     } else {
-      std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
-      bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
-      bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-      auto residual_param = ctx.Input<Tensor>("ResidualData");
-      auto dst_dt = GetDstType(true, force_fp32_output, fuse_activation,
-                               fuse_residual_conn, residual_param);
       if (dst_dt == mkldnn::memory::data_type::f32) {
         ComputeINT8<float>(ctx);
       } else if (dst_dt == mkldnn::memory::data_type::u8) {
@@ -1098,6 +1118,10 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, FP32,
                                     ops::kConvMKLDNNFP32,
                                     ops::ConvMKLDNNOpKernel<float, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
+    conv2d, MKLDNN, ::paddle::platform::CPUPlace, BF16, ops::kConvMKLDNNFP32,
+    ops::ConvMKLDNNOpKernel<paddle::platform::bfloat16, float>);
 
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN,
                                     ::paddle::platform::CPUPlace, U8,
