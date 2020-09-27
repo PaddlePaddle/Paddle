@@ -407,7 +407,9 @@
         "TransformerDecoder.prepare_incremental_cache",
         "LinearChainCRF.forward",
         "CRFDecoding.forward",
-        "SequenceTagging.forward"
+        "SequenceTagging.forward",
+        "XPUPlace",
+        "is_compiled_with_xpu"
     ],
     "gpu_not_white":[
         "deformable_conv",
