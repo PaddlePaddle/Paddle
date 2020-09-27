@@ -207,6 +207,7 @@ RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/
     cd binutils-2.27 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
 
+RUN pip --no-cache-dir install -U netifaces==0.10.9
 
 # Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
 # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa

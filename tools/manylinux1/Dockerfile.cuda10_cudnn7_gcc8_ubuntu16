@@ -221,6 +221,7 @@ RUN wget -q https://paddle-ci.gz.bcebos.com/binutils_2.27.orig.tar.gz && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
 
 RUN apt-get install libprotobuf-dev -y
+RUN pip --no-cache-dir install -U netifaces==0.10.9 
 
 # ccache 3.7.9
 RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
