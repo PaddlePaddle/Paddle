@@ -62,7 +62,7 @@ struct LoDTensorToArrayFunctor : public boost::static_visitor<void> {
       Apply(static_cast<platform::CUDADeviceContext *>(dev_ctx));
 #else
       PADDLE_THROW(
-          platform::errors::Unavailable("Place is not compiled with CUDA"));
+          platform::errors::Unavailable("Paddle is not compiled with CUDA."));
 #endif
     }
   }

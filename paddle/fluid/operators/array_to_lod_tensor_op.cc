@@ -49,7 +49,7 @@ struct ArrayToLoDFunctor : public boost::static_visitor<void> {
       Apply(static_cast<platform::CUDADeviceContext *>(pool.Get(place)));
 #else
       PADDLE_THROW(
-          platform::errors::Unavailable("Paddle is not compiled with CUDA"));
+          platform::errors::Unavailable("Paddle is not compiled with CUDA."));
 #endif
     }
   }
