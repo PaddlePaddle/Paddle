@@ -301,10 +301,11 @@ class ProgBarLogger(Callback):
 
             train_dataset = paddle.vision.datasets.MNIST(mode='train')
 
-            model = paddle.Model(paddle.vision.LeNet(classifier_activation=None),
+            lenet = paddle.vision.LeNet()
+            model = paddle.Model(lenet,
                 inputs, labels)
 
-            optim = paddle.optimizer.Adam(0.001)
+            optim = paddle.optimizer.Adam(0.001, parameters=lenet.parameters())
             model.prepare(optimizer=optim,
                         loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
@@ -436,10 +437,11 @@ class ModelCheckpoint(Callback):
 
             train_dataset = paddle.vision.datasets.MNIST(mode='train')
 
-            model = paddle.Model(paddle.vision.LeNet(classifier_activation=None),
+            lenet = paddle.vision.LeNet()
+            model = paddle.Model(lenet,
                 inputs, labels)
 
-            optim = paddle.optimizer.Adam(0.001)
+            optim = paddle.optimizer.Adam(0.001, parameters=lenet.parameters())
             model.prepare(optimizer=optim,
                         loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())

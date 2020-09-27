@@ -77,6 +77,7 @@ from .tensor.creation import triu  #DEFINE_ALIAS
 from .tensor.creation import tril  #DEFINE_ALIAS
 from .tensor.creation import meshgrid  #DEFINE_ALIAS
 from .tensor.creation import empty  #DEFINE_ALIAS
+from .tensor.creation import empty_like  #DEFINE_ALIAS
 from .tensor.linalg import matmul  #DEFINE_ALIAS
 from .tensor.linalg import dot  #DEFINE_ALIAS
 # from .tensor.linalg import einsum        #DEFINE_ALIAS
@@ -89,6 +90,7 @@ from .tensor.linalg import cholesky  #DEFINE_ALIAS
 # from .tensor.linalg import tensordot        #DEFINE_ALIAS
 from .tensor.linalg import bmm  #DEFINE_ALIAS
 from .tensor.linalg import histogram  #DEFINE_ALIAS
+from .tensor.linalg import mv  #DEFINE_ALIAS
 from .tensor.logic import equal  #DEFINE_ALIAS
 from .tensor.logic import greater_equal  #DEFINE_ALIAS
 from .tensor.logic import greater_than  #DEFINE_ALIAS
@@ -202,7 +204,6 @@ from .tensor.math import prod  #DEFINE_ALIAS
 from .tensor.random import standard_normal
 from .tensor.random import normal
 from .tensor.random import uniform  #DEFINE_ALIAS
-from .tensor.random import shuffle  #DEFINE_ALIAS
 from .tensor.random import randn  #DEFINE_ALIAS
 from .tensor.random import rand  #DEFINE_ALIAS
 from .tensor.random import randint  #DEFINE_ALIAS
@@ -229,7 +230,6 @@ from .framework import CPUPlace  #DEFINE_ALIAS
 from .framework import CUDAPlace  #DEFINE_ALIAS
 from .framework import CUDAPinnedPlace  #DEFINE_ALIAS
 
-from .framework import to_variable  #DEFINE_ALIAS
 from .framework import grad  #DEFINE_ALIAS
 from .framework import no_grad  #DEFINE_ALIAS
 from .framework import save  #DEFINE_ALIAS
@@ -275,3 +275,5 @@ from .hapi import callbacks
 from .hapi import summary
 import paddle.text
 import paddle.vision
+
+disable_static()

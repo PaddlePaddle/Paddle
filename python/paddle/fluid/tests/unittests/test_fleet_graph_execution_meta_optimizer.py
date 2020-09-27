@@ -17,6 +17,8 @@ import paddle
 import os
 from launch_function_helper import launch_func, wait, _find_free_port
 
+paddle.enable_static()
+
 
 class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
     def setUp(self):

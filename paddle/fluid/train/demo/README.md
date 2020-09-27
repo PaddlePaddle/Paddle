@@ -7,7 +7,7 @@
 # WITH_MKLDNN=ON|OFF
 
 PADDLE_LIB=/paddle/lib/dir
-cmake .. -DFLUID_INSTALL_DIR=$PADDLE_LIB \
+cmake .. -DPADDLE_INSTALL_DIR=$PADDLE_LIB \
          -DCMAKE_BUILD_TYPE=Release \
          -DWITH_GPU=OFF \
          -DWITH_STYLE_CHECK=OFF \
@@ -41,7 +41,7 @@ cd build
 # WITH_MKLDNN=ON|OFF
 PADDLE_LIB=/paddle/lib/dir
 
-# PADDLE_LIB is the same with FLUID_INSTALL_DIR when building the lib
+# PADDLE_LIB is the same with PADDLE_INSTALL_DIR when building the lib
 cmake .. -DPADDLE_LIB=$PADDLE_LIB \
          -DWITH_MKLDNN=OFF \
          -DWITH_MKL=OFF

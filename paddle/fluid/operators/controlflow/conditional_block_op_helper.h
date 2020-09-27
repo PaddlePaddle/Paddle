@@ -16,8 +16,15 @@
 
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
+
+namespace paddle {
+namespace framework {
+class ProgramDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

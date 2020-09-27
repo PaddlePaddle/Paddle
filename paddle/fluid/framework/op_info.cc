@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_info.h"
 #include <set>
-#include <string>
-#include <vector>
 
 namespace paddle {
 namespace framework {
