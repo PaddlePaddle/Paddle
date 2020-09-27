@@ -5399,6 +5399,7 @@ def program_guard(main_program, startup_program=None):
        .. code-block:: python
        
           import paddle
+
           paddle.enable_static()
           main_program = paddle.static.Program()
           startup_program = paddle.static.Program()
