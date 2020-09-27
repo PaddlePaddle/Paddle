@@ -18,6 +18,8 @@ import unittest
 import paddle
 import os
 
+paddle.enable_static()
+
 
 class TestFleetAMPOptimizer(unittest.TestCase):
     def setUp(self):
