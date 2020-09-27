@@ -45,13 +45,11 @@ from .control_flow import cond  #DEFINE_ALIAS
 from .control_flow import switch_case  #DEFINE_ALIAS
 from .control_flow import while_loop  #DEFINE_ALIAS
 # from .control_flow import rnn        #DEFINE_ALIAS
-from .decode import BeamSearchDecoder  #DEFINE_ALIAS
 # from .decode import Decoder        #DEFINE_ALIAS
 from .decode import beam_search  #DEFINE_ALIAS
 from .decode import beam_search_decode  #DEFINE_ALIAS
 # from .decode import crf_decoding        #DEFINE_ALIAS
 # from .decode import ctc_greedy_decoder        #DEFINE_ALIAS
-from .decode import dynamic_decode  #DEFINE_ALIAS
 from .decode import gather_tree  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 from .layer.activation import ELU

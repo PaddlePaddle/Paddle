@@ -858,8 +858,6 @@ class Decoder(object):
 
 class BeamSearchDecoder(Decoder):
     """
-	:api_attr: Static Graph
-
     Decoder with beam search decoding strategy. It wraps a cell to get probabilities,
     and follows a beam search step to calculate scores and select candidate
     token ids for each decoding step.
@@ -1571,8 +1569,6 @@ def dynamic_decode(decoder,
                    return_length=False,
                    **kwargs):
     """
-	:api_attr: Static Graph
-
     Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
     Tensor indicating finished status contains all True values or the number of
     decoding step reaches to :attr:`max_step_num`.
