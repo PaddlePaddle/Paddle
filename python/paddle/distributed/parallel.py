@@ -174,7 +174,7 @@ def init_parallel_env():
             sys.stderr.write(sys.exc_info())
     time.sleep(20)
     if ParallelEnv().rank == 0:
-        sys.stderr.write("is_alive:", http_server.is_alive())
+        sys.stderr.write("is_alive:{}".format(http_server.is_alive()))
 
     iface = _get_iface_by_ip(ep_rank[0])
     if iface is None:
