@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/cudnn_lstm_op.h"
 #include <memory>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
@@ -154,6 +155,9 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
               "is_bidirec is False"
               "and When is_bidirect is True, the shape will be (num_layers*2 x "
               "batch_size x hidden_size*2)");
+    AddAttr<std::string>("cell_type",
+                         "The cell type of RNN, it must be the lstm, rnn, gru")
+        .SetDefault("lstm");
     AddAttr<float>(
         "dropout_prob",
         "dropout prob of the dropout op"
@@ -288,5 +292,9 @@ REGISTER_OPERATOR(cudnn_lstm, ops::CudnnLSTMOp, ops::CudnnLSTMOpMaker,
                   ops::CudnnLSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
 
-REGISTER_OP_CPU_KERNEL(cudnn_lstm, ops::NotImpleKernel<float>);
-REGISTER_OP_CPU_KERNEL(cudnn_lstm_grad, ops::NotImpleKernel<float>);
+REGISTER_OP_CPU_KERNEL(
+    cudnn_lstm,
+    ops::CudnnLSTMCPUKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CudnnLSTMCPUKernel<paddle::platform::CPUDeviceContext, double>);
+// REGISTER_OP_CPU_KERNEL(cudnn_lstm_grad, ops::CudnnLSTMCPUGradKernel<float>,
+//                        ops::CudnnLSTMCPUGradKernel<double>);
