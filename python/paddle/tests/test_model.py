@@ -66,34 +66,6 @@ class LeNetDygraph(paddle.nn.Layer):
         return x
 
 
-class LeNetDeclarative(fluid.dygraph.Layer):
-    def __init__(self, num_classes=10):
-        super(LeNetDeclarative, self).__init__()
-        self.num_classes = num_classes
-        self.features = Sequential(
-            Conv2d(
-                1, 6, 3, stride=1, padding=1),
-            ReLU(),
-            Pool2D(2, 'max', 2),
-            Conv2d(
-                6, 16, 5, stride=1, padding=0),
-            ReLU(),
-            Pool2D(2, 'max', 2))
-
-        if num_classes > 0:
-            self.fc = Sequential(
-                Linear(400, 120), Linear(120, 84), Linear(84, 10))
-
-    @declarative
-    def forward(self, inputs):
-        x = self.features(inputs)
-
-        if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
-            x = self.fc(x)
-        return x
-
-
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True, sample_num=None):
         super(MnistDataset, self).__init__(mode=mode)
@@ -577,32 +549,34 @@ class TestModelFunction(unittest.TestCase):
                 shutil.rmtree(save_dir)
             paddle.enable_static()
 
-    def test_export_deploy_model_without_inputs_in_dygraph(self):
+    def test_dygraph_export_deploy_model_without_inputs(self):
         mnist_data = MnistDataset(mode='train')
         paddle.disable_static()
         for initial in ["fit", "train_batch", "eval_batch", "test_batch"]:
             save_dir = tempfile.mkdtemp()
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
-                net = LeNet()
-                model = Model(net)
-                model.prepare(
-                    optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
-                if initial == "fit":
-                    model.fit(mnist_data, batch_size=64, verbose=0)
+            net = LeNet()
+            model = Model(net)
+            optim = fluid.optimizer.Adam(
+                learning_rate=0.001, parameter_list=model.parameters())
+            model.prepare(
+                optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
+            if initial == "fit":
+                model.fit(mnist_data, batch_size=64, verbose=0)
+            else:
+                img = np.array(
+                    np.random.random((1, 1, 28, 28)), dtype=np.float32)
+                label = np.array(np.random.rand(1, 1), dtype=np.int64)
+                if initial == "train_batch":
+                    model.train_batch([img], [label])
+                elif initial == "eval_batch":
+                    model.eval_batch([img], [label])
                 else:
-                    img = np.array(
-                        np.random.random((1, 1, 28, 28)), dtype=np.float32)
-                    label = np.array(np.random.rand(1, 1), dtype=np.int64)
-                    if initial == "train_batch":
-                        model.train_batch([img], [label])
-                    elif initial == "eval_batch":
-                        model.eval_batch([img], [label])
-                    else:
-                        model.test_batch([img])
+                    model.test_batch([img])
 
-                model.save(save_dir, training=False)
-                shutil.rmtree(save_dir)
+            model.save(save_dir, training=False)
+            shutil.rmtree(save_dir)
 
 
 class TestRaiseError(unittest.TestCase):
@@ -614,7 +588,7 @@ class TestRaiseError(unittest.TestCase):
         with self.assertRaises(ValueError):
             model = Model(net, inputs, labels)
 
-    def test_export_deploy_model_without_inputs_and_run_in_dygraph(self):
+    def test_save_infer_model_without_inputs_and_run_in_dygraph(self):
         paddle.disable_static()
         net = MyModel()
         save_dir = tempfile.mkdtemp()
