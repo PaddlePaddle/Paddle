@@ -3794,18 +3794,34 @@ def is_empty(x, name=None):
 	:alias: paddle.is_empty,paddle.tensor.is_empty,paddle.tensor.logic.is_empty
 	:old_api: paddle.fluid.layers.is_empty
 
-    Test whether a Variable is empty.
+    Test whether a Tensor is empty.
 
     Args:
-        x (Variable): The Variable to be tested.
+        x (Tensor): The Tensor to be tested.
         name (str, optional): The default value is ``None`` . Normally users
                             don't have to set this parameter. For more information,
                             please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A bool scalar. True if 'x' is an empty Variable.
+        Tensor: A bool scalar. True if 'x' is an empty Tensor.
 
     Examples:
+        .. code-block:: python
+
+            # dygraph_mode
+            import paddle
+
+            input = paddle.rand(shape=[4, 32, 32], dtype='float32')
+            res = paddle.is_empty(x=input)
+            print("res:", res)
+            # ('res:', Tensor: eager_tmp_1
+            #    - place: CPUPlace
+            #    - shape: [1]
+            #    - layout: NCHW
+            #    - dtype: bool
+            #    - data: [0])
+
+
         .. code-block:: python
 
             # static mode
@@ -3822,27 +3838,8 @@ def is_empty(x, name=None):
             print("is_empty: ", out)
             # ('out:', [array([False])])
 
-
-        .. code-block:: python
-
-            # dygraph_mode
-            import paddle
-
-            input = paddle.rand(shape=[4, 32, 32], dtype='float32')
-            res = paddle.is_empty(x=input)
-            print("res:", res)
-            # ('res:', Tensor: eager_tmp_1
-            #    - place: CPUPlace
-            #    - shape: [1]
-            #    - layout: NCHW
-            #    - dtype: bool
-            #    - data: [0])
-
     """
     if in_dygraph_mode():
-        assert isinstance(
-            x, Variable
-        ), "The input data 'x' in is_empty must be Variable in dygraph mode"
         return core.ops.is_empty(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
