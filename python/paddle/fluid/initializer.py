@@ -875,18 +875,17 @@ class NumpyArrayInitializer(Initializer):
         self._value = value
 
     def __call__(self, var, block=None):
-        """Add constant initialization ops for a variable
+        """Initialize the input tensor with Numpy array.
 
         Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
+            var(Tensor): Tensor that needs to be initialized.
+            block(Block, optional): The block in which initialization ops
+                   should be added. Used in static graph only, default None.
 
         Returns:
-            the initialization op
+            The initialization op
         """
-        if block is None:
-            block = default_main_program().global_block()
+        block = self._check_block(block)
 
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
