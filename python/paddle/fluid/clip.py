@@ -56,25 +56,25 @@ class ErrorClipByValue(BaseErrorClipAttr):
 
     Examples:
         .. code-block:: python
+            import paddle
 
-            import paddle.fluid as fluid
             BATCH_SIZE = 128
             CLIP_MAX = 2e-6
             CLIP_MIN = -1e-6
-            prog = fluid.framework.Program()
+            prog = paddle.framework.Program()
             with fluid.program_guard(main_program=prog):
-                image = fluid.layers.data(
+                image = paddle.static.data(
                     name='x', shape=[784], dtype='float32')
-                hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
-                hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
-                predict = fluid.layers.fc(
+                hidden1 = paddle.static.nn.fc(input=image, size=128, act='relu')
+                hidden2 = paddle.static.nn.fc(input=hidden1, size=64, act='relu')
+                predict = paddle.static.nn.fc(
                     input=hidden2, size=10, act='softmax')
-                label = fluid.layers.data(name='y', shape=[1], dtype='int64')
-                cost = fluid.layers.cross_entropy(input=predict, label=label)
-                avg_cost = fluid.layers.mean(cost)
+                label = paddle.static.data(name='y', shape=[1], dtype='int64')
+                cost = paddle.static.nn.cross_entropy(input=predict, label=label)
+                avg_cost = paddle.mean(cost)
             prog_clip = prog.clone()
             prog_clip.block(0).var(hidden1.name)._set_error_clip(
-                fluid.clip.ErrorClipByValue(
+                paddle.nn.ErrorClipByValue(
                     max=CLIP_MAX, min=CLIP_MIN)
     """
 
@@ -163,33 +163,33 @@ class GradientClipByValue(GradientClipBase):
 	:old_api: paddle.fluid.clip.GradientClipByValue
 
     Limit the value of multi-dimensional Tensor :math:`X` to the range [min, max].
-    
+
     - Any values less than min are set to ``min``.
-    
+
     - Any values greater than max are set to ``max``.
 
     The multi-dimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters in ``Program`` . If ``need_clip``
     is not None, then only part of gradients can be selected for gradient clipping.
-    
-    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
+
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer``
     (for example: :ref:`api_fluid_optimizer_SGDOptimizer`).
-    
+
     Args:
         max (float): The maximum value to clip by.
-        min (float, optional): The minimum value to clip by. if not set by user, it will be set to ``-max`` 
+        min (float, optional): The minimum value to clip by. if not set by user, it will be set to ``-max``
             automatically. In this case, ``max`` must be greater than 0.
-        need_clip (function, optional): Type: function. This function accepts a ``Parameter`` and returns ``bool`` 
-            (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None, 
+        need_clip (function, optional): Type: function. This function accepts a ``Parameter`` and returns ``bool``
+            (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None,
             and gradients of all parameters in the network will be clipped.
 
     Examples:
         .. code-block:: python
-        
+
             # use for Static mode
             import paddle
             import paddle.fluid as fluid
             import numpy as np
-                        
+
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(
@@ -198,10 +198,10 @@ class GradientClipByValue(GradientClipBase):
                     name='x', shape=[-1, 2], dtype='float32')
                 predict = fluid.layers.fc(input=image, size=3, act='relu') # Trainable parameters: fc_0.w.0, fc_0.b.0
                 loss = fluid.layers.mean(predict)
-                
+
                 # Clip all parameters in network:
                 clip = fluid.clip.GradientClipByValue(min=-1, max=1)
-                
+
                 # Clip a part of parameters in network: (e.g. fc_0.w_0)
                 # pass a function(fileter_func) to need_clip, and fileter_func receive a Parameter, and return bool
                 # def fileter_func(Parameter):
@@ -217,12 +217,12 @@ class GradientClipByValue(GradientClipBase):
             x = np.random.uniform(-100, 100, (10, 2)).astype('float32')
             exe.run(startup_prog)
             out = exe.run(main_prog, feed={'x': x}, fetch_list=loss)
-        
+
 
             # use for Dygraph mode
             import paddle
             import paddle.fluid as fluid
-            
+
             with fluid.dygraph.guard():
                 linear = fluid.dygraph.Linear(10, 10)  # Trainable parameters:: linear_0.w.0, linear_0.b.0
                 inputs = fluid.layers.uniform_random([32, 10]).astype('float32')
@@ -305,17 +305,17 @@ class GradientClipByNorm(GradientClipBase):
 	:old_api: paddle.fluid.clip.GradientClipByNorm
 
     Limit the l2 norm of multi-dimensional Tensor :math:`X` to ``clip_norm`` .
-    
+
     - If the l2 norm of :math:`X` is greater than ``clip_norm`` , :math:`X` will be compressed by a ratio.
-    
+
     - If the l2 norm of :math:`X` is less than or equal to ``clip_norm`` , nothing will be done.
-    
+
     The multidimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters in ``Program`` . If ``need_clip``
     is not None, then only part of gradients can be selected for gradient clipping.
-    
-    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
+
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer``
     (for example: :ref:`api_fluid_optimizer_SGDOptimizer`).
-    
+
     The clipping formula is:
 
     .. math::
@@ -335,18 +335,18 @@ class GradientClipByNorm(GradientClipBase):
 
     Args:
         clip_norm(float): The maximum norm value.
-        need_clip (function, optional): Type: function. This function accepts a ``Parameter`` and returns ``bool`` 
-            (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None, 
+        need_clip (function, optional): Type: function. This function accepts a ``Parameter`` and returns ``bool``
+            (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None,
             and gradients of all parameters in the network will be clipped.
 
     Examples:
         .. code-block:: python
-        
+
             # use for Static mode
             import paddle
             import paddle.fluid as fluid
             import numpy as np
-                        
+
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(
@@ -355,10 +355,10 @@ class GradientClipByNorm(GradientClipBase):
                     name='x', shape=[-1, 2], dtype='float32')
                 predict = fluid.layers.fc(input=image, size=3, act='relu') # Trainable parameters: fc_0.w.0, fc_0.b.0
                 loss = fluid.layers.mean(predict)
-                
+
                 # Clip all parameters in network:
                 clip = fluid.clip.GradientClipByNorm(clip_norm=1.0)
-                
+
                 # Clip a part of parameters in network: (e.g. linear_0.w_0)
                 # pass a function(fileter_func) to need_clip, and fileter_func receive a Parameter, and return bool
                 # def fileter_func(Parameter):
@@ -374,13 +374,13 @@ class GradientClipByNorm(GradientClipBase):
             x = np.random.uniform(-100, 100, (10, 2)).astype('float32')
             exe.run(startup_prog)
             out = exe.run(main_prog, feed={'x': x}, fetch_list=loss)
-            
+
 
 
             # use for Dygraph mode
             import paddle
             import paddle.fluid as fluid
-            
+
             with fluid.dygraph.guard():
                 linear = fluid.dygraph.Linear(10, 10)  # Trainable: linear_0.w.0, linear_0.b.0
                 inputs = fluid.layers.uniform_random([32, 10]).astype('float32')
@@ -459,17 +459,17 @@ class GradientClipByGlobalNorm(GradientClipBase):
 	:alias: paddle.nn.GradientClipByGlobalNorm,paddle.nn.clip.GradientClipByGlobalNorm
 	:old_api: paddle.fluid.clip.GradientClipByGlobalNorm
 
-    Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in 
+    Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in
     :math:`t\_list` , and limit it to ``clip_norm`` .
-    
+
     - If the global norm is greater than ``clip_norm`` , all elements of :math:`t\_list` will be compressed by a ratio.
-    
+
     - If the global norm is less than or equal to ``clip_norm`` , nothing will be done.
-    
+
     The list of Tensor :math:`t\_list` is not passed from this class, but the gradients of all parameters in ``Program`` . If ``need_clip``
     is not None, then only part of gradients can be selected for gradient clipping.
-    
-    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
+
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer``
     (for example: :ref:`api_fluid_optimizer_SGDOptimizer`).
 
     The clipping formula is:
@@ -487,18 +487,18 @@ class GradientClipByGlobalNorm(GradientClipBase):
     Args:
         clip_norm (float): The maximum norm value.
         group_name (str, optional): The group name for this clip. Default value is ``default_group``
-        need_clip (function, optional): Type: function. This function accepts a ``Parameter`` and returns ``bool`` 
-            (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None, 
+        need_clip (function, optional): Type: function. This function accepts a ``Parameter`` and returns ``bool``
+            (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None,
             and gradients of all parameters in the network will be clipped.
 
     Examples:
         .. code-block:: python
-        
+
             # use for Static mode
             import paddle
             import paddle.fluid as fluid
             import numpy as np
-                        
+
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(
@@ -507,10 +507,10 @@ class GradientClipByGlobalNorm(GradientClipBase):
                     name='x', shape=[-1, 2], dtype='float32')
                 predict = fluid.layers.fc(input=image, size=3, act='relu') # Trainable parameters: fc_0.w.0, fc_0.b.0
                 loss = fluid.layers.mean(predict)
-                
+
                 # Clip all parameters in network:
                 clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
-                
+
                 # Clip a part of parameters in network: (e.g. fc_0.w_0)
                 # pass a function(fileter_func) to need_clip, and fileter_func receive a ParamBase, and return bool
                 # def fileter_func(Parameter):
@@ -706,23 +706,23 @@ class GradientClipByGlobalNorm(GradientClipBase):
 def set_gradient_clip(clip, param_list=None, program=None):
     """
     :api_attr: Static Graph
-    
+
     Warning:
-    
-        This API must be used after building network, and before ``minimize`` , 
-        and it may be removed in future releases, so it is not recommended. 
+
+        This API must be used after building network, and before ``minimize`` ,
+        and it may be removed in future releases, so it is not recommended.
         It is recommended to set ``grad_clip`` when initializing the ``optimizer`` ,
         this is a better method to clip gradient. There are three clipping strategies:
-         :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+         :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
          :ref:`api_fluid_clip_GradientClipByValue` .
-        
+
     To specify parameters that require gradient clip.
 
     Args:
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default value: None, and there is no 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default value: None, and there is no
             gradient clipping.
         param_list (list(Variable), optional): Parameters that require gradient clip.
                 It can be a list of parameter or a list of parameter's name.
@@ -776,7 +776,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
                     param_list=[param_var1, param_var2])
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
-            
+
             # network 4: use 'set_gradient_clip' and 'optimize(grad_clip=clip)' together
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 loss = network()
@@ -787,10 +787,10 @@ def set_gradient_clip(clip, param_list=None, program=None):
                 # Set the gradient clipping strategy: clip2
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3, grad_clip=clip2)
                 sgd.minimize(loss)
-                # 'set_gradient_clip' will not take effect when setting has a conflict, 
+                # 'set_gradient_clip' will not take effect when setting has a conflict,
                 # and the gradient clipping strategy will be 'clip2'
-            
-            
+
+
     """
     warnings.warn("Caution! 'set_gradient_clip' is not recommended "
                   "and may be deprecated in future! "
@@ -859,7 +859,7 @@ def append_gradient_clip_ops(param_grads):
 
 
 # change wrong mapping relation between param & grad in clip op
-# Note: This function is sensitive to the time cost of the network with gradient clipping 
+# Note: This function is sensitive to the time cost of the network with gradient clipping
 # and should not be changed easily. If you must change, please test the time cost.
 def _correct_clip_op_role_var(params_grads, param_new_grad_name_dict):
     block_id_list = []
