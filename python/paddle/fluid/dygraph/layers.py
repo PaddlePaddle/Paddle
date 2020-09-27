@@ -856,24 +856,23 @@ class Layer(core.Layer):
         Return a list. Get all parameters, buffers(non-parameter variables), sublayers, method and attr of Layer.
 
         Examples:
-            import paddle.fluid as fluid
-            import numpy as np
+            .. code-block:: python
+                import paddle
+                import numpy as np
 
-            fluid.dygraph.enable_dygraph()
+                class Mylayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(Mylayer, self).__init__()
+                        self.linear1 = paddle.nn.Linear(10, 10)
+                        self.linear2 = paddle.nn.Linear(5, 5)
+                        self.conv2d = paddle.nn.Conv2d(3, 2, 3)
+                        self.embedding = paddle.nn.Embedding(128, 16)
+                        self.h_0 = paddle.to_tensor(np.zeros([10, 10]).astype('float32'))
 
-            class Mylayer(fluid.dygraph.Layer):
-                def __init__(self):
-                    super(Mylayer, self).__init__()
-                    self.linear1 = fluid.dygraph.Linear(10, 10)
-                    self.linear2 = fluid.dygraph.Linear(5, 5)
-                    self.conv2d = fluid.dygraph.Conv2D(3, 2, 3)
-                    self.embedding = fluid.dygraph.Embedding(size=[128, 16])
-                    self.h_0 = fluid.dygraph.to_variable(np.zeros([10, 10]).astype('float32'))
-
-            mylayer = Mylayer()
-            print(dir(mylayer))
-            # only parts are shown, because of list have too much content
-            # ['__call__', '__class__',  ... , 'conv2d', 'embedding', 'h_0', 'linear1', 'linear2', ... , 'sublayers', 'train']
+                mylayer = Mylayer()
+                print(dir(mylayer))
+                # only parts are shown, because of list have too much content
+                # ['__call__', '__class__',  ... , 'conv2d', 'embedding', 'h_0', 'linear1', 'linear2', ... , 'sublayers', 'train']
 
         """
         method = dir(self.__class__)
