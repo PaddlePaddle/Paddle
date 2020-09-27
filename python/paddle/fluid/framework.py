@@ -520,6 +520,7 @@ def name_scope(prefix=None):
         .. code-block:: python
 
           import paddle
+          paddle.enable_static()
           with paddle.static.name_scope("s1"):
              a = paddle.data(name='data', shape=[None, 1], dtype='int32')
              b = a + 1
@@ -528,7 +529,7 @@ def name_scope(prefix=None):
              with paddle.static.name_scope("s3"):
                 d = c / 1
           with paddle.static.name_scope("s1"):
-                f = fluid.layers.pow(d, 2.0)
+                f = paddle.tensor.pow(d, 2.0)
           with paddle.static.name_scope("s4"):
                 g = f - 1
 
