@@ -3610,18 +3610,18 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     This operator is like a C++ switch/case statement.
 
     Args:
-        branch_index(Variable): A Tensor with shape [1] to specify which branch to execute. The data type is ``int32``, ``int64`` or ``uint8``.
+        branch_index(Tensor): A Tensor with shape [1] to specify which branch to execute. The data type is ``int32``, ``int64`` or ``uint8``.
         branch_fns(dict|list|tuple): If it's a list or tuple, the elements in it could be pairs of (int, callable) or simple callables whose actual index will be used as the index of callable. If it's a dict, its key is a python integer and the value is a callable. All callables return the same structure of Tensors.
         default(callable, optional): Callable that returns a structure of Tensors.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable|list(Variable): Tensors returned by the callable specified by ``branch_index`` in ``branch_fns``,
+        Tensor|list(Tensor): Tensors returned by the callable specified by ``branch_index`` in ``branch_fns``,
         or Tensors returned by ``default`` if ``default`` is not None and no index matches in ``branch_fns``,
         or Tensors returned by the callable with the max index in ``branch_fns`` if ``default`` is None and no index matches in ``branch_fns``.
 
     Raises:
-        TypeError: If the type of ``branch_index`` is not Variable.
+        TypeError: If the type of ``branch_index`` is not Tensor.
         TypeError: If the data type of ``branch_index`` is not ``int32``, ``int64`` or ``uint8``.
         TypeError: If the type of ``branch_fns`` is not dict, list or tuple.
         TypeError: If the elements of ``branch_fns`` is not 2-tuple.
