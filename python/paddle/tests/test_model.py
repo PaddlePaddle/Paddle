@@ -516,6 +516,7 @@ class TestModelFunction(unittest.TestCase):
 
     def test_export_deploy_model(self):
         self.set_seed()
+        np.random.seed(2020)
         for dynamic in [True, False]:
             paddle.disable_static() if dynamic else None
             prog_translator = ProgramTranslator()
@@ -588,6 +589,12 @@ class TestRaiseError(unittest.TestCase):
         labels = [InputSpec([None, 1], 'int64', 'label')]
         with self.assertRaises(ValueError):
             model = Model(net, inputs, labels)
+
+    def test_static_without_inputs(self):
+        paddle.enable_static()
+        net = MyModel()
+        with self.assertRaises(TypeError):
+            model = Model(net)
 
     def test_save_infer_model_without_inputs_and_run_in_dygraph(self):
         paddle.disable_static()
