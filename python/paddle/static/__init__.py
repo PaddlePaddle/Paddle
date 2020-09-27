@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 from . import nn
-from .fluid import Scope  #DEFINE_ALIAS
+from ..fluid import Scope  #DEFINE_ALIAS
 from .input import data  #DEFINE_ALIAS
 from .input import InputSpec  #DEFINE_ALIAS
 from ..fluid.executor import Executor  #DEFINE_ALIAS
