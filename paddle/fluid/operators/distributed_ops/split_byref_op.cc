@@ -24,8 +24,8 @@ class SplitByrefOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "Ids", "SplitOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SplitOp");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "Ids", "SplitByrefOp");
+    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "SplitByrefOp");
 
     auto in_dims = ctx->GetInputDim("X");
     auto outs_names = ctx->Outputs("Out");
