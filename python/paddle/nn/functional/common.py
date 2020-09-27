@@ -1482,3 +1482,83 @@ def linear(x, weight, bias=None, name=None):
         else:
             res = tmp
         return res
+
+
+def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
+    """
+    Label smoothing is a mechanism to regularize the classifier layer and is called
+    label-smoothing regularization (LSR).
+
+    Label smoothing is proposed to encourage the model to be less confident,
+    since optimizing the log-likelihood of the correct label directly may
+    cause overfitting and reduce the ability of the model to adapt. Label
+    smoothing replaces the ground-truth label :math:`y` with the weighted sum
+    of itself and some fixed distribution :math:`\mu`. For class :math:`k`,
+    i.e.
+
+    .. math::
+
+        \\tilde{y_k} = (1 - \epsilon) * y_k + \epsilon * \mu_k,
+
+    where :math:`1 - \epsilon` and :math:`\epsilon` are the weights
+    respectively, and :math:`\\tilde{y}_k` is the smoothed label. Usually
+    uniform distribution is used for :math:`\mu`.
+
+    See more details about label smoothing in https://arxiv.org/abs/1512.00567.
+
+    Parameters:
+        label(Tensor): The input variable containing the label data. The
+                        label data should use one-hot representation. It's
+                        a multidimensional tensor with a shape of
+                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float32" and "float64".
+        prior_dist(Tensor, optional): The prior distribution to be used to smooth
+                        labels. If not provided, an uniform distribution
+                        is used. It's a multidimensional tensor with a shape of
+                        :math:`[1, class\_num]` . The default value is None.
+        epsilon(float, optional): The weight used to mix up the original ground-truth
+                        distribution and the fixed distribution. The default value is
+                        0.1.
+        name(str, optional): The default value is None. Normally there is no need for user
+                        to set this property. For more information, please refer to
+                        :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The tensor containing the smoothed labels.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            
+            x_data = np.array([[[0, 1, 0],
+                                [ 1,  0, 1]]]).astype("float32")
+            print(x_data.shape)
+            paddle.disable_static()
+            x = paddle.to_tensor(x_data, stop_gradient=False)
+            output = paddle.nn.functional.label_smooth(x)
+            print(output.numpy())
+            
+            #[[[0.03333334 0.93333334 0.03333334]
+            #  [0.93333334 0.03333334 0.93333334]]]
+    """
+    if epsilon > 1. or epsilon < 0.:
+        raise ValueError("The value of epsilon must be between 0 and 1.")
+
+    if in_dygraph_mode():
+        return core.ops.label_smooth(label, prior_dist, 'epsilon',
+                                     float(epsilon))
+
+    check_variable_and_dtype(label, 'label', ['float32', 'float64'],
+                             'label_smooth')
+
+    helper = LayerHelper("label_smooth", **locals())
+    label.stop_gradient = True
+    smooth_label = helper.create_variable_for_type_inference(label.dtype)
+    helper.append_op(
+        type="label_smooth",
+        inputs={"X": label,
+                "PriorDist": prior_dist} if prior_dist else {"X": label},
+        outputs={"Out": smooth_label},
+        attrs={"epsilon": float(epsilon)})
+    return smooth_label
