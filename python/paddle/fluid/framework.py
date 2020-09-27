@@ -5398,13 +5398,13 @@ def program_guard(main_program, startup_program=None):
     Examples:
        .. code-block:: python
        
-         import paddle.fluid as fluid
-
-         main_program = fluid.Program()
-         startup_program = fluid.Program()
-         with fluid.program_guard(main_program, startup_program):
-             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-             hidden = fluid.layers.fc(input=data, size=10, act='relu')
+          import paddle
+          paddle.enable_static()
+          main_program = paddle.static.Program()
+          startup_program = paddle.static.Program()
+          with paddle.static.program_guard(main_program, startup_program):
+              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+              hidden = paddle.static.nn.fc(input=data, size=10, act='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
     to construct either of startup program or main program.
@@ -5412,12 +5412,13 @@ def program_guard(main_program, startup_program=None):
     Examples:
        .. code-block:: python
 
-         import paddle.fluid as fluid
+          import paddle
 
-         main_program = fluid.Program()
-         # does not care about startup program. Just pass a temporary value.
-         with fluid.program_guard(main_program, fluid.Program()):
-             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+           paddle.enable_static()
+           main_program = paddle.static.Program()
+           # does not care about startup program. Just pass a temporary value.
+           with paddle.static.program_guard(main_program, paddle.static.Program()):
+               data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
     
     """
     from .data_feeder import check_type
