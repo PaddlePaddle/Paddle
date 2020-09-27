@@ -248,7 +248,7 @@ class Conv1d(_ConvNd):
         padding = 0
         if self._padding_mode != "zeros":
             x = F.pad(x,
-                      self._padding,
+                      self._reversed_padding_repeated_twice,
                       mode=self._padding_mode,
                       data_format=self._data_format)
         else:
