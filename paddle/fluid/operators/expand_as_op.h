@@ -61,7 +61,8 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     switch (rank) {
       REP_EXPAND_AS_TEMPLATE(MAX_RANK_SUPPORTED)
       default:
-        PADDLE_THROW("Only support tensor with rank being between 1 and 6.");
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Only support tensor with rank being between 1 and 6."));
     }
   }
 
@@ -77,13 +78,16 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     auto x_dims = in0->dims();
     auto y_dims = target_tensor->dims();
     for (int i = 0; i < y_dims.size(); ++i) {
-      PADDLE_ENFORCE_NE(x_dims[i], 0, "X(input) should not have 0 dim");
+      PADDLE_ENFORCE_NE(x_dims[i], 0UL, platform::errors::InvalidArgument(
+                                            "X(input) should not have 0 dim"));
       bcast_dims[i] = y_dims[i] / x_dims[i];
       bcast_dims_remainder += y_dims[i] % x_dims[i];
     }
-    PADDLE_ENFORCE_EQ(bcast_dims_remainder, 0,
-                      "X(input) could not be broadcast together with remapped "
-                      "shape(expand tensor's shape)");
+    PADDLE_ENFORCE_EQ(
+        bcast_dims_remainder, 0UL,
+        platform::errors::InvalidArgument(
+            "X(input) could not be broadcast together with remapped "
+            "shape(expand tensor's shape)"));
     framework::DDim out_dims(in_dims);
     for (size_t i = 0; i < bcast_dims.size(); ++i) {
       out_dims[i] *= bcast_dims[i];
@@ -137,7 +141,8 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
       switch (dims) {
         REP_EXPAND_AS_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
         default:
-          PADDLE_THROW("Only support tensor with rank being between 1 and 6.");
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Only support tensor with rank being between 1 and 6."));
       }
     }
   }
@@ -150,11 +155,13 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
     size_t reshape_size = reshape_dims_vec.size();
     size_t reduce_size = reduce_dims_vec.size();
     PADDLE_ENFORCE_EQ(reshape_size, reshape_dims_vec.size(),
-                      "Inconsistent size between template Dims and "
-                      "reshape dimensions.");
+                      platform::errors::InvalidArgument(
+                          "Inconsistent size between template Dims and "
+                          "reshape dimensions."));
     PADDLE_ENFORCE_EQ(reduce_size, reduce_dims_vec.size(),
-                      "Inconsistent size between template Dims and "
-                      "reduce dimensions.");
+                      platform::errors::InvalidArgument(
+                          "Inconsistent size between template Dims and "
+                          "reduce dimensions."));
     auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
     out0->mutable_data<T>(context.GetPlace());
