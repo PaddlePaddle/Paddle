@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import sys
+sys.path.append("..")
 import paddle.fluid.core as core
 import unittest
 import numpy as np
@@ -103,17 +105,46 @@ class Generator(object):
 
     def test_check_output(self):
         self.check_output()
+        if paddle.is_compiled_with_xpu() and len(self.inputs['X'].shape) == len(
+                self.inputs['Y'].shape) and self.inputs['X'].shape[
+                    0] == self.inputs['Y'].shape[0]:
+            place = paddle.XPUPlace(0)
+            self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-3)
+        if paddle.is_compiled_with_xpu() and len(self.inputs['X'].shape) == len(
+                self.inputs['Y'].shape) and self.inputs['X'].shape[
+                    0] == self.inputs['Y'].shape[0]:
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Y'], 'Out', max_relative_error=5e-2)
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'], 'Out', max_relative_error=1e-3, no_grad_set=set("X"))
+        if paddle.is_compiled_with_xpu() and len(self.inputs['X'].shape) == len(
+                self.inputs['Y'].shape) and self.inputs['X'].shape[
+                    0] == self.inputs['Y'].shape[0]:
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ['Y'],
+                'Out',
+                max_relative_error=5e-2,
+                no_grad_set=set("X"))
 
     def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set('Y'))
+        if paddle.is_compiled_with_xpu() and len(self.inputs['X'].shape) == len(
+                self.inputs['Y'].shape) and self.inputs['X'].shape[
+                    0] == self.inputs['Y'].shape[0]:
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, ['X'],
+                'Out',
+                max_relative_error=5e-2,
+                no_grad_set=set('Y'))
 
 
 class TestMatmulOpError(unittest.TestCase):
