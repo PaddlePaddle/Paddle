@@ -225,16 +225,13 @@ class TestJitSaveLoad(unittest.TestCase):
         paddle.manual_seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
-    def train_and_save_model(self, model_path=None, configs=None):
+    def train_and_save_model(self, model_path=None):
         layer = LinearNet(784, 1)
         example_inputs, layer, _ = train(layer)
         final_model_path = model_path if model_path else self.model_path
         orig_input_types = [type(x) for x in example_inputs]
         fluid.dygraph.jit.save(
-            layer=layer,
-            model_path=final_model_path,
-            input_spec=example_inputs,
-            configs=configs)
+            layer=layer, model_path=final_model_path, input_spec=example_inputs)
         new_input_types = [type(x) for x in example_inputs]
         self.assertEqual(orig_input_types, new_input_types)
         return layer
@@ -314,7 +311,6 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
                 [None, 8], name='x')])
 
         model_path = "model.input_spec.output_spec"
-        configs = fluid.dygraph.jit.SaveLoadConfig()
         # check inputs and outputs
         self.assertTrue(len(net.forward.inputs) == 1)
         input_x = net.forward.inputs[0]
@@ -322,11 +318,11 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         self.assertTrue(input_x.name == 'x')
 
         # 1. prune loss
-        configs.output_spec = net.forward.outputs[:1]
-        fluid.dygraph.jit.save(net, model_path, configs=configs)
+        output_spec = net.forward.outputs[:1]
+        fluid.dygraph.jit.save(net, model_path, output_spec=output_spec)
 
         # 2. load to infer
-        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
+        infer_layer = fluid.dygraph.jit.load(model_path)
         x = fluid.dygraph.to_variable(
             np.random.random((4, 8)).astype('float32'))
         pred = infer_layer(x)
@@ -335,7 +331,6 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         net = LinearNetMultiInput(8, 8)
 
         model_path = "model.multi_inout.output_spec1"
-        configs = fluid.dygraph.jit.SaveLoadConfig()
         # 1. check inputs and outputs
         self.assertTrue(len(net.forward.inputs) == 2)
         input_x = net.forward.inputs[0]
@@ -344,11 +339,11 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         self.assertTrue(input_y.shape == (-1, 8))
 
         # 2. prune loss
-        configs.output_spec = net.forward.outputs[:2]
-        fluid.dygraph.jit.save(net, model_path, configs=configs)
+        output_spec = net.forward.outputs[:2]
+        fluid.dygraph.jit.save(net, model_path, output_spec=output_spec)
 
         # 3. load to infer
-        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
+        infer_layer = fluid.dygraph.jit.load(model_path)
         x = fluid.dygraph.to_variable(
             np.random.random((4, 8)).astype('float32'))
         y = fluid.dygraph.to_variable(
@@ -358,10 +353,11 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
 
         # 1. prune y and loss
         model_path = "model.multi_inout.output_spec2"
-        configs.output_spec = net.forward.outputs[:1]
-        fluid.dygraph.jit.save(net, model_path, [input_x], configs)
+        output_spec = net.forward.outputs[:1]
+        fluid.dygraph.jit.save(
+            net, model_path, [input_x], output_spec=output_spec)
         # 2. load again
-        infer_layer2 = fluid.dygraph.jit.load(model_path, configs=configs)
+        infer_layer2 = fluid.dygraph.jit.load(model_path)
         # 3. predict
         pred_xx = infer_layer2(x)
 
@@ -377,16 +373,16 @@ class TestJitSaveLoadConfig(unittest.TestCase):
         paddle.manual_seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
-    def basic_save_load(self, layer, model_path, configs):
+    def basic_save_load(self, layer, model_path, **configs):
         # 1. train & save
         example_inputs, train_layer, _ = train(layer)
         fluid.dygraph.jit.save(
             layer=train_layer,
             model_path=model_path,
             input_spec=example_inputs,
-            configs=configs)
+            **configs)
         # 2. load 
-        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
+        infer_layer = fluid.dygraph.jit.load(model_path, **configs)
         train_layer.eval()
         # 3. inference & compare
         x = fluid.dygraph.to_variable(
@@ -397,23 +393,18 @@ class TestJitSaveLoadConfig(unittest.TestCase):
     def test_model_filename(self):
         layer = LinearNet(784, 1)
         model_path = "model.save_load_config.output_spec"
-        configs = fluid.dygraph.jit.SaveLoadConfig()
-        configs.model_filename = "__simplenet__"
-        self.basic_save_load(layer, model_path, configs)
+
+        self.basic_save_load(layer, model_path, model_filename="__simplenet__")
 
     def test_params_filename(self):
         layer = LinearNet(784, 1)
         model_path = "model.save_load_config.params_filename"
-        configs = fluid.dygraph.jit.SaveLoadConfig()
-        configs.params_filename = "__params__"
-        self.basic_save_load(layer, model_path, configs)
+        self.basic_save_load(layer, model_path, params_filename="__params__")
 
     def test_separate_params(self):
         layer = LinearNet(784, 1)
         model_path = "model.save_load_config.separate_params"
-        configs = fluid.dygraph.jit.SaveLoadConfig()
-        configs.separate_params = True
-        self.basic_save_load(layer, model_path, configs)
+        self.basic_save_load(layer, model_path, separate_params=True)
 
     def test_output_spec(self):
         train_layer = LinearNetReturnLoss(8, 8)
@@ -428,16 +419,15 @@ class TestJitSaveLoadConfig(unittest.TestCase):
             train_layer.clear_gradients()
 
         model_path = "model.save_load_config.output_spec"
-        configs = fluid.dygraph.jit.SaveLoadConfig()
-        configs.output_spec = [out]
+        output_spec = [out]
         fluid.dygraph.jit.save(
             layer=train_layer,
             model_path=model_path,
             input_spec=[x],
-            configs=configs)
+            output_spec=output_spec)
 
         train_layer.eval()
-        infer_layer = fluid.dygraph.jit.load(model_path, configs=configs)
+        infer_layer = fluid.dygraph.jit.load(model_path)
         x = fluid.dygraph.to_variable(
             np.random.random((4, 8)).astype('float32'))
         self.assertTrue(
@@ -494,13 +484,12 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
             adam.minimize(loss)
             train_layer.clear_gradients()
 
-        configs = fluid.dygraph.jit.SaveLoadConfig()
-        configs.output_spec = [hidden]
+        output_spec = [hidden]
         fluid.dygraph.jit.save(
             layer=train_layer,
             model_path=self.model_path,
             input_spec=[x],
-            configs=configs)
+            output_spec=output_spec)
 
         return train_layer
 
@@ -617,8 +606,6 @@ class TestJitSaveMultiCases(unittest.TestCase):
         out = train_with_label(layer)
 
         model_path = "test_prune_to_static_after_train"
-        configs = paddle.SaveLoadConfig()
-        configs.output_spec = [out]
         paddle.jit.save(
             layer,
             model_path,
@@ -626,7 +613,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
                 InputSpec(
                     shape=[None, 784], dtype='float32', name="image")
             ],
-            configs=configs)
+            output_spec=[out])
 
         self.verify_inference_correctness(layer, model_path, True)
 
@@ -634,10 +621,9 @@ class TestJitSaveMultiCases(unittest.TestCase):
         layer = LinerNetWithLabel(784, 1)
 
         model_path = "test_prune_to_static_no_train"
-        configs = paddle.SaveLoadConfig()
         # TODO: no train, cannot get output_spec var here
         # now only can use index
-        configs.output_spec = layer.forward.outputs[:1]
+        output_spec = layer.forward.outputs[:1]
         paddle.jit.save(
             layer,
             model_path,
@@ -645,7 +631,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
                 InputSpec(
                     shape=[None, 784], dtype='float32', name="image")
             ],
-            configs=configs)
+            output_spec=output_spec)
 
         self.verify_inference_correctness(layer, model_path, True)
 
@@ -676,10 +662,8 @@ class TestJitSaveMultiCases(unittest.TestCase):
         train(layer)
 
         model_path = "test_not_prune_output_spec_name_warning"
-        configs = paddle.SaveLoadConfig()
         out = paddle.to_tensor(np.random.random((1, 1)).astype('float'))
-        configs.output_spec = [out]
-        paddle.jit.save(layer, model_path, configs=configs)
+        paddle.jit.save(layer, model_path, output_spec=[out])
 
         self.verify_inference_correctness(layer, model_path)
 
@@ -708,9 +692,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
         train_with_label(layer)
 
         model_path = "test_prune_to_static_after_train"
-        configs = paddle.SaveLoadConfig()
         out = paddle.to_tensor(np.random.random((1, 1)).astype('float'))
-        configs.output_spec = [out]
         with self.assertRaises(ValueError):
             paddle.jit.save(
                 layer,
@@ -719,7 +701,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
                     InputSpec(
                         shape=[None, 784], dtype='float32', name="image")
                 ],
-                configs=configs)
+                output_spec=[out])
 
 
 class TestJitSaveLoadEmptyLayer(unittest.TestCase):

@@ -498,13 +498,11 @@ def do_train(args, to_static):
                 step += 1
         # save inference model
         if to_static:
-            configs = fluid.dygraph.jit.SaveLoadConfig()
-            configs.output_spec = [crf_decode]
             fluid.dygraph.jit.save(
                 layer=model,
                 model_path=args.model_save_dir,
                 input_spec=[words, length],
-                configs=configs)
+                output_spec=[crf_decode])
         else:
             fluid.dygraph.save_dygraph(model.state_dict(), args.dy_param_path)
 

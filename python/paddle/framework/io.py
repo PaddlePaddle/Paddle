@@ -26,6 +26,7 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer
+from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers, EXTRA_VAR_INFO_FILENAME
 
 __all__ = [
@@ -116,6 +117,29 @@ def _load_state_dict_from_save_params(model_path):
     return load_param_dict
 
 
+def _parse_load_config(configs):
+    supported_configs = [
+        'model_filename', 'params_filename', 'separate_params',
+        'keep_name_table'
+    ]
+
+    # input check
+    for key in configs:
+        if key not in supported_configs:
+            raise ValueError(
+                "The additional config (%s) of `paddle.load` is not supported."
+                % key)
+
+    # construct inner config
+    inner_config = _SaveLoadConfig()
+    inner_config.model_filename = configs.get('model_filename', None)
+    inner_config.params_filename = configs.get('params_filename', None)
+    inner_config.separate_params = configs.get('separate_params', None)
+    inner_config.keep_name_table = configs.get('keep_name_table', None)
+
+    return inner_config
+
+
 def save(obj, path):
     '''
     Save an object to the specified path.
@@ -178,7 +202,7 @@ def save(obj, path):
         pickle.dump(saved_obj, f, protocol=2)
 
 
-def load(path, config=None):
+def load(path, **configs):
     '''
     Load an object can be used in paddle from specified path.
 
@@ -197,10 +221,20 @@ def load(path, config=None):
         path(str) : The path to load the target object. Generally, the path is the target 
             file path, when compatible with loading the saved results of 
             ``paddle.jit.save/paddle.static.save_inference_model`` , the path is a directory. 
-        config (SaveLoadConfig, optional): :ref:`api_imperative_jit_saveLoadConfig`
-            object that specifies additional configuration options, these options 
-            are for compatibility with ``paddle.jit.save/paddle.static.save_inference_model`` 
-            formats. Default None.
+        configs (dict, optional): other save configuration options for compatibility. We do not 
+            recommend using these configurations, if not necessary, DO NOT use them. Default None.
+            The following options are currently supported:
+            (1) model_filename (string): The filename to load the translated program of target Layer.
+            Default filename is :code:`__model__` . 
+            (2) params_filename (string): The filename to load all persistable variables in target Layer. 
+            Default file name is :code:`__variables__` .
+            (3) separate_params (bool): Configure whether to load the Layer parameters from separete files.
+            If True, each parameter will be loaded from a file separately, the file name is the parameter name,
+            and the params_filename configuration will not take effect. Default False.
+            (4) keep_name_table (bool): Configures whether keep ``structured_name -> parameter_name`` dict in 
+            loaded state dict. This dict is the debugging information saved when call ``paddle.save`` . 
+            It is generally only used for debugging and does not affect the actual training or inference. 
+            By default, it will not be retained in ``paddle.load`` result. Default: False.
 
     Returns:
         Object(Object): a target object can be used in paddle
@@ -242,8 +276,7 @@ def load(path, config=None):
                 "`paddle.load('model')`."
         raise ValueError(error_msg % path)
 
-    if config is None:
-        config = paddle.SaveLoadConfig()
+    config = _parse_load_config(configs)
 
     # 2. load target
     load_result = None

@@ -383,10 +383,10 @@ def train(train_reader, to_static):
                 step_idx += 1
                 if step_idx == STEP_NUM:
                     if to_static:
-                        configs = fluid.dygraph.jit.SaveLoadConfig()
-                        configs.output_spec = [pred]
-                        fluid.dygraph.jit.save(se_resnext, MODEL_SAVE_PATH,
-                                               [img], configs)
+                        fluid.dygraph.jit.save(
+                            se_resnext,
+                            MODEL_SAVE_PATH, [img],
+                            output_spec=[pred])
                     else:
                         fluid.dygraph.save_dygraph(se_resnext.state_dict(),
                                                    DY_STATE_DICT_SAVE_PATH)

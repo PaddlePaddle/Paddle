@@ -218,13 +218,11 @@ class TestMNISTWithToStatic(TestMNIST):
     def check_jit_save_load(self, model, inputs, input_spec, to_static, gt_out):
         if to_static:
             infer_model_path = "./test_mnist_inference_model_by_jit_save"
-            configs = fluid.dygraph.jit.SaveLoadConfig()
-            configs.output_spec = [gt_out]
             fluid.dygraph.jit.save(
                 layer=model,
                 model_path=infer_model_path,
                 input_spec=input_spec,
-                configs=configs)
+                output_spec=[gt_out])
             # load in static mode
             static_infer_out = self.jit_load_and_run_inference_static(
                 infer_model_path, inputs)

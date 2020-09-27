@@ -39,7 +39,7 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
     'TracedLayer', 'declarative', 'dygraph_to_static_func', 'set_code_level',
-    'set_verbosity', 'save', 'load', 'SaveLoadConfig'
+    'set_verbosity', 'save', 'load'
 ]
 
 
@@ -228,73 +228,7 @@ def declarative(function=None, input_spec=None):
     return decorated
 
 
-class SaveLoadConfig(object):
-    """
-    The additional configuration options may be used in function 
-    ``paddle.jit.save/load`` and ``paddle.load`` .
-    
-    Examples:
-        1. Using ``SaveLoadConfig`` when saving model
-
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn as nn
-            import paddle.optimizer as opt
-
-            class SimpleNet(nn.Layer):
-                def __init__(self, in_size, out_size):
-                    super(SimpleNet, self).__init__()
-                    self._linear = nn.Linear(in_size, out_size)
-
-                @paddle.jit.to_static
-                def forward(self, x):
-                    y = self._linear(x)
-                    z = self._linear(y)
-                    return z
-
-            # enable dygraph mode
-            paddle.disable_static() 
-
-            # train model
-            net = SimpleNet(8, 8)
-            adam = opt.Adam(learning_rate=0.1, parameters=net.parameters())
-            x = paddle.randn([4, 8], 'float32')
-            for i in range(10):
-                out = net(x)
-                loss = paddle.tensor.mean(out)
-                loss.backward()
-                adam.step()
-                adam.clear_grad()
-
-            # use SaveLoadconfig when saving model
-            model_path = "simplenet.example.model"
-            config = paddle.SaveLoadConfig()
-            config.model_filename = "__simplenet__"
-            paddle.jit.save(
-                layer=net,
-                model_path=model_path,
-                config=config)
-
-        2. Using ``SaveLoadConfig`` when loading model
-
-        .. code-block:: python
-
-            import paddle
-
-            # enable dygraph mode
-            paddle.disable_static() 
-
-            # use SaveLoadconfig when loading model
-            model_path = "simplenet.example.model"
-            config = paddle.SaveLoadConfig()
-            config.model_filename = "__simplenet__"
-            infer_net = paddle.jit.load(model_path, config=config)
-            # inference
-            x = paddle.randn([4, 8], 'float32')
-            pred = infer_net(x)
-    """
-
+class _SaveLoadConfig(object):
     def __init__(self):
         self._output_spec = None
         self._model_filename = None
@@ -316,207 +250,53 @@ class SaveLoadConfig(object):
 
     @property
     def output_spec(self):
-        """
-        Selects the output targets of the saved model ( ``paddle.jit.TranslatedLayer`` ).
-        By default, all return variables of original Layer's forward function
-        are kept as the output of the saved TranslatedLayer.
-
-        The ``output_spec`` type should be list[Variable]. If the provided ``output_spec``
-        list is not all output variables, the saved model will be pruned according to the
-        given ``output_spec`` list.
-
-        .. note::
-            The ``output_spec`` is only used when saving model.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                import paddle.nn as nn
-                import paddle.optimizer as opt
-
-                class SimpleNet(nn.Layer):
-                    def __init__(self, in_size, out_size):
-                        super(SimpleNet, self).__init__()
-                        self._linear = nn.Linear(in_size, out_size)
-
-                    @paddle.jit.to_static
-                    def forward(self, x):
-                        y = self._linear(x)
-                        z = self._linear(y)
-                        loss = paddle.tensor.mean(z)
-                        return z, loss
-
-                # enable dygraph mode
-                paddle.disable_static() 
-
-                # train model
-                net = SimpleNet(8, 8)
-                adam = opt.Adam(learning_rate=0.1, parameters=net.parameters())
-                x = paddle.randn([4, 8], 'float32')
-                for i in range(10):
-                    out, loss = net(x)
-                    loss.backward()
-                    adam.step()
-                    adam.clear_grad()
-
-                # use SaveLoadconfig.output_spec
-                model_path = "simplenet.example.model.output_spec"
-                config = paddle.SaveLoadConfig()
-                config.output_spec = [out]
-                paddle.jit.save(
-                    layer=net,
-                    model_path=model_path,
-                    config=config)
-
-                infer_net = paddle.jit.load(model_path)
-                x = paddle.randn([4, 8], 'float32')
-                pred = infer_net(x)
-        """
         return self._output_spec
 
     @output_spec.setter
     def output_spec(self, spec):
+        if spec is None:
+            return
         if not isinstance(spec, list):
             raise TypeError(
-                "The SaveLoadConfig.output_spec should be 'list', but received input type is %s."
+                "The config `output_spec` should be 'list', but received input type is %s."
                 % type(input))
             for var in spec:
                 if not isinstance(var, core.VarBase):
                     raise TypeError(
-                        "The element in SaveLoadConfig.output_spec list should be 'Variable', but received element's type is %s."
+                        "The element in config `output_spec` list should be 'Variable', but received element's type is %s."
                         % type(var))
         self._output_spec = spec
 
     @property
     def model_filename(self):
-        """
-        The name of file to save the translated program of target Layer.
-        Default filename is :code:`__model__` .
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                import paddle.nn as nn
-                import paddle.optimizer as opt
-
-                class SimpleNet(nn.Layer):
-                    def __init__(self, in_size, out_size):
-                        super(SimpleNet, self).__init__()
-                        self._linear = nn.Linear(in_size, out_size)
-
-                    @paddle.jit.to_static
-                    def forward(self, x):
-                        y = self._linear(x)
-                        z = self._linear(y)
-                        return z
-
-                # enable dygraph mode
-                paddle.disable_static() 
-
-                # train model
-                net = SimpleNet(8, 8)
-                adam = opt.Adam(learning_rate=0.1, parameters=net.parameters())
-                x = paddle.randn([4, 8], 'float32')
-                for i in range(10):
-                    out = net(x)
-                    loss = paddle.tensor.mean(out)
-                    loss.backward()
-                    adam.step()
-                    adam.clear_grad()
-
-                # saving with configs.model_filename
-                model_path = "simplenet.example.model.model_filename"
-                config = paddle.SaveLoadConfig()
-                config.model_filename = "__simplenet__"
-                paddle.jit.save(
-                    layer=net,
-                    model_path=model_path,
-                    config=config)
-
-                # loading with configs.model_filename
-                infer_net = paddle.jit.load(model_path, config=config)
-                x = paddle.randn([4, 8], 'float32')
-                pred = infer_net(x)
-        """
         return self._model_filename
 
     @model_filename.setter
     def model_filename(self, filename):
+        if filename is None:
+            return
         if not isinstance(filename, six.string_types):
             raise TypeError(
-                "The SaveLoadConfig.model_filename should be str, but received input's type is %s."
+                "The config `model_filename` should be str, but received input's type is %s."
                 % type(filename))
         if len(filename) == 0:
-            raise ValueError(
-                "The SaveLoadConfig.model_filename is empty string.")
+            raise ValueError("The config `model_filename` is empty string.")
         self._model_filename = filename
 
     @property
     def params_filename(self):
-        """
-        The name of file to save all persistable variables in target Layer. 
-        Default file name is :code:`__variables__` .
-        
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                import paddle.nn as nn
-                import paddle.optimizer as opt
-
-                class SimpleNet(nn.Layer):
-                    def __init__(self, in_size, out_size):
-                        super(SimpleNet, self).__init__()
-                        self._linear = nn.Linear(in_size, out_size)
-
-                    @paddle.jit.to_static
-                    def forward(self, x):
-                        y = self._linear(x)
-                        z = self._linear(y)
-                        return z
-
-                # enable dygraph mode
-                paddle.disable_static() 
-
-                # train model
-                net = SimpleNet(8, 8)
-                adam = opt.Adam(learning_rate=0.1, parameters=net.parameters())
-                x = paddle.randn([4, 8], 'float32')
-                for i in range(10):
-                    out = net(x)
-                    loss = paddle.tensor.mean(out)
-                    loss.backward()
-                    adam.step()
-                    adam.clear_grad()
-
-                model_path = "simplenet.example.model.params_filename"
-                config = paddle.SaveLoadConfig()
-                config.params_filename = "__params__"
-
-                # saving with configs.params_filename
-                paddle.jit.save(
-                    layer=net,
-                    model_path=model_path,
-                    config=config)
-
-                # loading with configs.params_filename
-                infer_net = paddle.jit.load(model_path, config=config)
-                x = paddle.randn([4, 8], 'float32')
-                pred = infer_net(x)
-        """
         return self._params_filename
 
     @params_filename.setter
     def params_filename(self, filename):
+        if filename is None:
+            return
         if not isinstance(filename, six.string_types):
             raise TypeError(
-                "The SaveLoadConfig.params_filename should be str, but received input's type is %s."
+                "The config `params_filename` should be str, but received input's type is %s."
                 % type(filename))
         if len(filename) == 0:
-            raise ValueError(
-                "The SaveLoadConfig.params_filename is empty string.")
+            raise ValueError("The config `params_filename` is empty string.")
         self._params_filename = filename
 
     # NOTE: [why not use params_filename=None control params saved separately]
@@ -527,122 +307,72 @@ class SaveLoadConfig(object):
     # separately can makes the concept clearer.
     @property
     def separate_params(self):
-        """
-        Configure whether to save the Layer parameters as separete files.
-        (In order to be compatible with the behavior of ``paddle.static.save_inference_model`` )
-
-        If True, each parameter will be saved to a file separately, the file name is the parameter name,
-        and the SaveLoadConfig.params_filename configuration will not take effect. Default False.
-
-        .. note::
-            Only used for ``paddle.jit.save`` .
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                import paddle.nn as nn
-                import paddle.optimizer as opt
-
-                class SimpleNet(nn.Layer):
-                    def __init__(self, in_size, out_size):
-                        super(SimpleNet, self).__init__()
-                        self._linear = nn.Linear(in_size, out_size)
-
-                    @paddle.jit.to_static
-                    def forward(self, x):
-                        y = self._linear(x)
-                        z = self._linear(y)
-                        return z
-
-                # enable dygraph mode
-                paddle.disable_static() 
-
-                # train model
-                net = SimpleNet(8, 8)
-                adam = opt.Adam(learning_rate=0.1, parameters=net.parameters())
-                x = paddle.randn([4, 8], 'float32')
-                for i in range(10):
-                    out = net(x)
-                    loss = paddle.tensor.mean(out)
-                    loss.backward()
-                    adam.step()
-                    adam.clear_grad()
-
-                model_path = "simplenet.example.model.separate_params"
-                config = paddle.SaveLoadConfig()
-                config.separate_params = True
-
-                # saving with configs.separate_params
-                paddle.jit.save(
-                    layer=net,
-                    model_path=model_path,
-                    config=config)
-                # [result] the saved model directory contains:
-                # linear_0.b_0  linear_0.w_0  __model__  __variables.info__
-
-                # loading with configs.params_filename
-                infer_net = paddle.jit.load(model_path, config=config)
-                x = paddle.randn([4, 8], 'float32')
-                pred = infer_net(x)
-        """
         return self._separate_params
 
     @separate_params.setter
     def separate_params(self, value):
+        if value is None:
+            return None
         if not isinstance(value, bool):
             raise TypeError(
-                "The SaveLoadConfig.separate_params should be bool value, but received input's type is %s."
+                "The config `separate_params` should be bool value, but received input's type is %s."
                 % type(value))
         self._separate_params = value
 
     @property
     def keep_name_table(self):
-        """
-        Configures whether keep ``structured_name -> parameter_name`` dict in loaded state dict.
-        This dict is the debugging information saved when call ``paddle.save`` . 
-        It is generally only used for debugging and does not affect the actual training or inference. 
-        By default, it will not be retained in ``paddle.load`` result. Default: False.
-        
-        .. note::
-            Only used for ``paddle.load`` .
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-            
-                paddle.disable_static()
-
-                linear = paddle.nn.Linear(5, 1)
-
-                state_dict = linear.state_dict()
-                paddle.save(state_dict, "paddle_dy.pdparams")
-
-                config = paddle.SaveLoadConfig()
-                config.keep_name_table = True
-                para_state_dict = paddle.load("paddle_dy.pdparams", config)
-
-                print(para_state_dict)
-                # the name_table is 'StructuredToParameterName@@'
-                # {'bias': array([0.], dtype=float32), 
-                #  'StructuredToParameterName@@': 
-                #     {'bias': u'linear_0.b_0', 'weight': u'linear_0.w_0'}, 
-                #  'weight': array([[ 0.04230034],
-                #     [-0.1222527 ],
-                #     [ 0.7392676 ],
-                #     [-0.8136974 ],
-                #     [ 0.01211023]], dtype=float32)}
-        """
         return self._keep_name_table
 
     @keep_name_table.setter
     def keep_name_table(self, value):
+        if value is None:
+            return
         if not isinstance(value, bool):
             raise TypeError(
-                "The SaveLoadConfig.keep_name_table should be bool value, but received input's type is %s."
+                "The config `keep_name_table` should be bool value, but received input's type is %s."
                 % type(value))
         self._keep_name_table = value
+
+
+def _parse_save_configs(configs):
+    supported_configs = [
+        'output_spec', 'model_filename', 'params_filename', 'separate_params'
+    ]
+
+    # input check
+    for key in configs:
+        if key not in supported_configs:
+            raise ValueError(
+                "The additional config (%s) of `paddle.jit.save` is not supported."
+                % (key))
+
+    # construct inner config
+    inner_config = _SaveLoadConfig()
+    inner_config.output_spec = configs.get('output_spec', None)
+    inner_config.model_filename = configs.get('model_filename', None)
+    inner_config.params_filename = configs.get('params_filename', None)
+    inner_config.separate_params = configs.get('separate_params', None)
+
+    return inner_config
+
+
+def _parse_load_config(configs):
+    supported_configs = ['model_filename', 'params_filename', 'separate_params']
+
+    # input check
+    for key in configs:
+        if key not in supported_configs:
+            raise ValueError(
+                "The additional config (%s) of `paddle.jit.load` is not supported."
+                % (key))
+
+    # construct inner config
+    inner_config = _SaveLoadConfig()
+    inner_config.model_filename = configs.get('model_filename', None)
+    inner_config.params_filename = configs.get('params_filename', None)
+    inner_config.separate_params = configs.get('separate_params', None)
+
+    return inner_config
 
 
 def _get_input_var_names(inputs, input_spec):
@@ -712,21 +442,8 @@ def _get_output_vars(outputs, output_spec):
     return result_list
 
 
-# NOTE(chenweihang): change jit.save/load argument `configs` to `config`
-def deprecate_save_load_configs(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        if 'configs' in kwargs:
-            kwargs['config'] = kwargs['configs']
-            kwargs.pop('configs')
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
-@deprecate_save_load_configs
 @switch_to_static_graph
-def save(layer, model_path, input_spec=None, config=None):
+def save(layer, model_path, input_spec=None, **configs):
     """
     Saves input declarative Layer as :ref:`api_imperative_TranslatedLayer` 
     format model, which can be used for inference or fine-tuning after loading.
@@ -747,12 +464,25 @@ def save(layer, model_path, input_spec=None, config=None):
     Args:
         layer (Layer): the Layer to be saved. The Layer should be decorated by `@declarative`.
         model_path (str): the directory to save the model.
-        input_spec (list[Variable], optional): Describes the input of the saved model. 
+        input_spec (list[InputSpec|Tensor], optional): Describes the input of the saved model. 
             It is the example inputs that will be passed to saved TranslatedLayer's forward
             function. If None, all input variables of the original Layer's forward function
             would be the inputs of the saved model. Default None.
-        config (SaveLoadConfig, optional): :ref:`api_imperative_jit_saveLoadConfig` object
-            that specifies additional configuration options. Default None.
+        configs (dict, optional): other save configuration options for compatibility. We do not 
+            recommend using these configurations, if not necessary, DO NOT use them. Default None.
+            The following options are currently supported:
+            (1) output_spec (list[Tensor]): Selects the output targets of the saved model.
+            By default, all return variables of original Layer's forward function are kept as the 
+            output of the saved model. If the provided ``output_spec`` list is not all output variables, 
+            the saved model will be pruned according to the given ``output_spec`` list. 
+            (2) model_filename (string): The name of file to save the translated program of target Layer.
+            Default filename is :code:`__model__` . 
+            (3) params_filename (string): The name of file to save all persistable variables in target Layer. 
+            Default file name is :code:`__variables__` .
+            (4) separate_params (bool): Configure whether to save the Layer parameters as separete files.
+            If True, each parameter will be saved to a file separately, the file name is the parameter name,
+            and the params_filename configuration will not take effect. Default False.
+
     Returns:
         None
 
@@ -843,9 +573,7 @@ def save(layer, model_path, input_spec=None, config=None):
             "The input layer of paddle.jit.save should be 'Layer', but received layer type is %s."
             % type(layer))
 
-    configs = config
-    if configs is None:
-        configs = SaveLoadConfig()
+    configs = _parse_save_configs(configs)
 
     # avoid change user given input_spec
     inner_input_spec = None
@@ -964,9 +692,8 @@ def save(layer, model_path, input_spec=None, config=None):
             pickle.dump(extra_var_info, f, protocol=2)
 
 
-@deprecate_save_load_configs
 @dygraph_only
-def load(model_path, config=None):
+def load(model_path, **configs):
     """
     :api_attr: imperative
 
@@ -983,8 +710,17 @@ def load(model_path, config=None):
 
     Args:
         model_path (str): The directory path where the model is saved.
-        config (SaveLoadConfig, optional): :ref:`api_imperative_jit_saveLoadConfig` object that specifies 
-            additional configuration options. Default None.
+        configs (dict, optional): other save configuration options for compatibility. We do not 
+            recommend using these configurations, if not necessary, DO NOT use them. Default None.
+            The following options are currently supported:
+            (1) model_filename (string): The filename to load the translated program of target Layer.
+            Default filename is :code:`__model__` . 
+            (2) params_filename (string): The filename to load all persistable variables in target Layer. 
+            Default file name is :code:`__variables__` .
+            (3) separate_params (bool): Configure whether to load the Layer parameters from separete files.
+            If True, each parameter will be loaded from a file separately, the file name is the parameter name,
+            and the params_filename configuration will not take effect. Default False.
+
 
     Returns:
         TranslatedLayer: A Layer object can run saved translated model.
@@ -1179,6 +915,7 @@ def load(model_path, config=None):
                     print("Epoch {} batch {}: loss = {}".format(
                         epoch_id, batch_id, np.mean(loss.numpy())))
     """
+    config = _parse_load_config(configs)
     return TranslatedLayer._construct(model_path, config)
 
 
