@@ -97,6 +97,7 @@ message AsyncConfig {
   optional int32 thread_pool_size = 6 [ default = 1 ];
   optional int32 send_wait_times = 7 [ default = 1 ];
   optional bool runtime_split_send_recv = 8 [ default = false ];
+  optional bool launch_barrier = 9 [ default = true ];
 }
 
 message PipelineConfig { optional int32 micro_batch = 1 [ default = 1 ]; }
