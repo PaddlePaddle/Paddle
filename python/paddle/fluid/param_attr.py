@@ -236,9 +236,10 @@ class WeightNormParamAttr(ParamAttr):
             optimizer is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
             Default 1.0.
         regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are
-            two method: :ref:`api_paddle_regularizer_L1Decay` , :ref:`api_paddle_regularizer_L2Decay`.
+            two method: :ref:`api_paddle_fluid_regularizer_L1Decay` ,
+            :ref:`api_paddle_fluid_regularizer_L2DecayRegularizer`.
             If regularizer isralso set in ``optimizer``
-            (such as :ref:`api_paddle_optimizer_SGD` ), that regularizer setting in
+            (such as :ref:`api_paddle_optimizer_SGDOptimizer` ), that regularizer setting in
             optimizer will be ignored. Default None, meaning there is no regularization.
         trainable(bool, optional): Whether this parameter is trainable. Default True.
         do_model_average(bool, optional): Whether this parameter should do model average.
