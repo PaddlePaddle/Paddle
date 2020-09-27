@@ -36,9 +36,11 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
 
     const auto ids_vars = ctx.MultiInputVar("Ids");
 
-    PADDLE_ENFORCE_GT(platform::errors::InvalidArgument(
-        ids_vars.size(), 0, "The number of Ids expected > 0, but got %d",
-        ids_vars.size()));
+    PADDLE_ENFORCE_GT(
+        ids_vars.size(), 0,
+        platform::errors::InvalidArgument(
+            ids_vars.size(), 0, "The number of Ids expected > 0, but got %d",
+            ids_vars.size()));
     auto *ids_var = ids_vars[0];
 
     if (ids_var->IsType<framework::LoDTensor>()) {

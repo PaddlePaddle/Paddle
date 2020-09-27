@@ -59,7 +59,7 @@ class SplitIdsOp : public framework::OperatorWithKernel {
     auto ids_dims = ctx->GetInputsDim("Ids");
     if (ids_var_type == framework::proto::VarType::LOD_TENSOR) {
       PADDLE_ENFORCE_EQ(
-          ids_dims[0], 2,
+          ids_dims[0].size(), 2,
           platform::errors::InvalidArgument(
               "ShapeError: The dimensions of the 'split_ids' must be 2. "
               "But received split_ids's dimensions = %d, "
