@@ -6103,7 +6103,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-
+            paddle.enable_static()
             # example 1:
             # attr shape is a list which doesn't contain Tensors.
             data_1 = fluid.data(
