@@ -9340,9 +9340,35 @@ def pad2d(input,
     Code Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-            result = fluid.layers.pad2d(input=data, paddings=[0, 1, 2, 3], mode='reflect')
+            import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+
+            paddle.disable_static()
+
+            # example 1
+            x_shape = (1, 1, 3, 4)
+            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
+            tensor_x = paddle.to_tensor(x)
+            y = F.pad2d(tensor_x, paddings=[1, 2, 2, 1], pad_value=1, mode='constant')
+            print(y.numpy())
+            # [[[[ 1.  1.  1.  1.  1.  1.  1.]
+            #    [ 1.  1.  1.  2.  3.  4.  1.]
+            #    [ 1.  1.  5.  6.  7.  8.  1.]
+            #    [ 1.  1.  9. 10. 11. 12.  1.]
+            #    [ 1.  1.  1.  1.  1.  1.  1.]
+            #    [ 1.  1.  1.  1.  1.  1.  1.]]]]
+
+            # example 2
+            x_shape = (1, 1, 2, 3)
+            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
+            tensor_x = paddle.to_tensor(x)
+            y = F.pad2d(tensor_x, paddings=[1, 1, 1, 1], mode='reflect')
+            print(y.numpy())
+            # [[[[5. 4. 5. 6. 5.]
+            #    [2. 1. 2. 3. 2.]
+            #    [5. 4. 5. 6. 5.]
+            #    [2. 1. 2. 3. 2.]]]]
     """
     check_variable_and_dtype(
         input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
