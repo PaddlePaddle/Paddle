@@ -52,8 +52,8 @@ class SplitIdsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Ids"), "Input", "Ids", "SplitIdsOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SplitIdsOp");
+    OP_INOUT_CHECK(ctx->HasInputs("Ids"), "Input", "Ids", "SplitIdsOp");
+    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out", "SplitIdsOp");
 
     auto ids_var_type = ctx->GetInputsVarType("Ids").front();
     auto ids_dims = ctx->GetInputsDim("Ids");
