@@ -9344,8 +9344,6 @@ def pad2d(input,
             import paddle
             import paddle.nn.functional as F
 
-            paddle.disable_static()
-
             # example 1
             x_shape = (1, 1, 3, 4)
             x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
