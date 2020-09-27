@@ -213,7 +213,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             Out.shape = (3 * 100 * 100 * 4)
 
     Args:
-        x (Variable): A tensor of number of dimentions >= axis. A tensor with data type float32,
+        x (Tensor): A tensor of number of dimentions >= axis. A tensor with data type float32,
                       float64, int8, int32, int64.
         start_axis (int): the start axis to flatten
         stop_axis (int): the stop axis to flatten
@@ -221,12 +221,12 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
                         Generally, no setting is required. Default: None.
 
     Returns:
-        Variable: A tensor with the contents of the input tensor, with input \
+        Tensor: A tensor with the contents of the input tensor, with input \
                   axes flattened by indicated start axis and end axis. \
                   A Tensor with data type same as input x.
 
     Raises:
-        ValueError: If x is not a Variable.
+        ValueError: If x is not a Tensor.
         ValueError: If start_axis or stop_axis is illegal.
 
     Examples:
@@ -234,20 +234,16 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            paddle.disable_static()
 
             image_shape=(2, 3, 4, 4)
-            x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3]).reshape(image_shape) / 100.
-            x = x.astype('float32')
+            x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
+            img = paddle.reshape(x, image_shape) / 100
             
-            img = paddle.to_tensor(x)
             out = paddle.flatten(img, start_axis=1, stop_axis=2)
             # out shape is [2, 12, 4]
     """
     if not (isinstance(x, Variable)):
-        raise ValueError("The input x should be a Variable")
+        raise ValueError("The input x should be a Tensor")
 
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
@@ -297,20 +293,18 @@ def roll(x, shifts, axis=None, name=None):
     the tensor will be flattened before rolling and then restored to the original shape.
 
     Args:
-        x (Variable): The x tensor variable as input.
+        x (Tensor): The x tensor variable as input.
         shifts (int|list|tuple): The number of places by which the elements
                            of the `x` tensor are shifted.
         axis (int|list|tuple|None): axis(axes) along which to roll.
 
     Returns:
-        Variable: A Tensor with same data type as `x`.
+        Tensor: A Tensor with same data type as `x`.
 
     Examples:
         .. code-block:: python
             import paddle
-            import paddle.fluid as fluid
 
-            paddle.disable_static()
             x = paddle.to_tensor([[1.0, 2.0, 3.0],
                                   [4.0, 5.0, 6.0],
                                   [7.0, 8.0, 9.0]])

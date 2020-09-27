@@ -931,31 +931,24 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
 
     Args:
-        input (Variable): The input Tensor/LoDTensor to be added to the final result.
-        x (Variable): The first input Tensor/LoDTensor for matrix multiplication.
-        y (Variable): The second input Tensor/LoDTensor for matrix multiplication.
+        input (Tensor): The input Tensor to be added to the final result.
+        x (Tensor): The first input Tensor for matrix multiplication.
+        y (Tensor): The second input Tensor for matrix multiplication.
         beta (float): Coefficient of $input$.
         alpha (float): Coefficient of $x*y$.
         name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of addmm op.
+        Tensor: The output Tensor of addmm op.
 
     Examples:
         ..  code-block:: python
-
-            import numpy as np
+            
             import paddle
 
-            data_x = np.ones((2, 2)).astype(np.float32)
-            data_y = np.ones((2, 2)).astype(np.float32)
-            data_input = np.ones((2, 2)).astype(np.float32)
-
-            paddle.disable_static()
-
-            x = paddle.to_tensor(data_x)
-            y = paddle.to_tensor(data_y)
-            input = paddle.to_tensor(data_input)
+            x = paddle.ones([2,2])
+            y = paddle.ones([2,2])
+            input = paddle.ones([2,2])
 
             out = paddle.tensor.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
 
