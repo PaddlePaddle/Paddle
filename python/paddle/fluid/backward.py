@@ -1312,16 +1312,16 @@ def append_backward(loss,
                                                new gradient operator is added
                                                into the program. The callable
                                                object must have two input
-                                               parameters: 'block' and 'context'.
-                                               The 'block' is the :ref:`api_guide_Block_en` which
+                                               parameters: ``block`` and ``context`` .
+                                               The ``block`` is the :ref:`api_guide_Block_en` which
                                                the new gradient operator will
-                                               be added to. The 'context' is a
+                                               be added to. The ``context`` is a
                                                map, whose keys are gradient
                                                Tensor names and values are
                                                corresponding original :ref:`api_guide_tensor_en` .
-                                               In addition to this, the 'context'
+                                               In addition to this, the ``context``
                                                has another special key-value pair:
-                                               the key is string '__current_op_desc__'
+                                               the key is string ``__current_op_desc__``
                                                and the value is the op_desc of the
                                                gradient operator who has just
                                                triggered the callable object.
@@ -1332,7 +1332,7 @@ def append_backward(loss,
         The key is the parameter and the value is gradient Tensor.
 
     Raises:
-        AssertionError: If `loss` is not an instance of Tensor.
+        AssertionError: If ``loss`` is not an instance of Tensor.
 
     Examples:
         .. code-block:: python
@@ -1357,7 +1357,7 @@ def append_backward(loss,
             p_g_list1 = paddle.static.append_backward(loss=avg_loss)
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
 
-            # return the param_grads corresponding to parameter_list that can be list of param (Variable).
+            # return the param_grads corresponding to parameter_list that can be list of param (Tensor).
             p_g_list2 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights)
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
 
@@ -1365,11 +1365,11 @@ def append_backward(loss,
             p_g_list3 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights_name)
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
 
-            # no_grad_set can be set of Variables that means grad will be cut off from these Variables.
+            # no_grad_set can be set of Tensors that means grad will be cut off from these Tensors.
             p_g_list4 = paddle.static.append_backward(loss=avg_loss, no_grad_set=set([x_emb]))
             # output: [(my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
 
-            # no_grad_set can be set of Variable.name when the Variable is created inside layers and can't be specified explicitly.
+            # no_grad_set can be set of Tensor.name when the Tensor is created inside layers and can't be specified explicitly.
             p_g_list5 = paddle.static.append_backward(loss=avg_loss, no_grad_set=set(['my_fc.b_0']))
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
 
@@ -1874,7 +1874,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             of targets which has the same shape with targets, If None, ones will
             be created for them.
         no_grad_set (set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
-            should be ignored. All Tensors with `stop_gradient=True` from all blocks will
+            should be ignored. All Tensors with ``stop_gradient=True`` from all blocks will
             be automatically added into this set. If this parameter is not None, the Tensors or Tensor.names
             in this set will be added to the default set. Default: None.
 

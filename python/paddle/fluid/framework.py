@@ -5384,13 +5384,13 @@ def program_guard(main_program, startup_program=None):
     """
     :api_attr: Static Graph
 
-    Change the global main program and startup program with `"with"` statement.
-    Layer functions in the Python `"with"` block will append operators and
+    Change the global main program and startup program with ``with`` statement.
+    Layer functions in the Python ``with`` block will append operators and
     Tensors to the new main programs.
 
     Args:
-        main_program(Program): New main program inside `"with"` statement.
-        startup_program(Program, optional): New startup program inside `"with"` 
+        main_program(Program): New main program inside ``with`` statement.
+        startup_program(Program, optional): New startup program inside ``with`` 
             statement. :code:`None` means not changing startup program, 
             default_startup_program is still used.
             Default: None.
