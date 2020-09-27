@@ -616,7 +616,7 @@ class TestRaiseError(unittest.TestCase):
 
     def test_export_deploy_model_without_inputs_and_run_in_dygraph(self):
         paddle.disable_static()
-        net = MyModel(classifier_activation=None)
+        net = MyModel()
         save_dir = tempfile.mkdtemp()
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
