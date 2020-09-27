@@ -251,9 +251,10 @@
         "BilinearTensorProduct",
         "GroupNorm",
         "SpectralNorm",
-        "TreeConv",
+        "TreeConv"
+    ],
+    "wlist_temp":[
         "prroi_pool",
-        "to_tensor",
         "ChunkEvaluator",
         "EditDistance",
         "ErrorClipByValue",
