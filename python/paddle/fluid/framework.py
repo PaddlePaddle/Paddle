@@ -5386,7 +5386,7 @@ def program_guard(main_program, startup_program=None):
 
     Change the global main program and startup program with `"with"` statement.
     Layer functions in the Python `"with"` block will append operators and
-    variables to the new main programs.
+    Tensors to the new main programs.
 
     Args:
         main_program(Program): New main program inside `"with"` statement.
@@ -5422,11 +5422,12 @@ def program_guard(main_program, startup_program=None):
     
     """
     from .data_feeder import check_type
-    check_type(main_program, 'main_program', Program, 'fluid.program_guard')
+    check_type(main_program, 'main_program', Program,
+               'paddle.static.program_guard')
     main_program = switch_main_program(main_program)
     if startup_program is not None:
         check_type(startup_program, 'startup_program', Program,
-                   'fluid.program_guard')
+                   'paddle.static.program_guard')
         startup_program = switch_startup_program(startup_program)
     try:
         yield

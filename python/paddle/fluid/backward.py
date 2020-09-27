@@ -1378,7 +1378,7 @@ def append_backward(loss,
 
     """
     check_type(loss, 'loss', framework.Variable,
-               'fluid.backward.append_backward')
+               'paddle.static.append_backward')
 
     if loss.op is None:
         # the loss is from a cloned program. Find loss op manually.
@@ -1390,7 +1390,7 @@ def append_backward(loss,
 
     if callbacks is not None:
         check_type(callbacks, 'callbacks', list,
-                   'fluid.backward.append_backward')
+                   'paddle.static.append_backward')
 
     program = loss.block.program
     root_block = program.block(0)
@@ -1899,11 +1899,11 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             print(z) # [var x@GRAD : fluid.VarType.LOD_TENSOR.shape(-1L, 2L, 8L, 8L).astype(VarType.FP32)]
     """
     check_type(targets, 'targets', (framework.Variable, list),
-               'fluid.backward.gradients')
+               'paddle.static.gradients')
     check_type(inputs, 'inputs', (framework.Variable, list),
-               'fluid.backward.gradients')
+               'paddle.static.gradients')
     check_type(target_gradients, 'target_gradients', (
-        framework.Variable, list, type(None)), 'fluid.backward.gradients')
+        framework.Variable, list, type(None)), 'paddle.static.gradients')
 
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)
