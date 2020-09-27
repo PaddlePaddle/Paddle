@@ -904,8 +904,8 @@ class RNNBase(LayerList):
                  hidden_size,
                  num_layers=1,
                  direction="forward",
-                 dropout=0.,
                  time_major=False,
+                 dropout=0.,
                  weight_ih_attr=None,
                  weight_hh_attr=None,
                  bias_ih_attr=None,
@@ -1116,18 +1116,21 @@ class SimpleRNN(RNNBase):
     where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
     multiplication operator.
 
+    Using key word arguments to construct is recommended.
+
     Arguments:
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        activation (str, optional): The activation in each SimpleRNN cell. It can be 
-            `tanh` or `relu`. Defaults to `tanh`.
         direction (str, optional): The direction of the network. It can be "forward", 
-            "backward" and "bidirectional". Defaults to "forward".
-        dropout (float, optional): The droput probability. Dropout is applied to the 
-            input of each layer except for the first layer. Defaults to 0.
+            "backward" and "bidirectional". When "bidirectional", the way to merge
+            outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input means the
             time steps. Defaults to False.
+        dropout (float, optional): The droput probability. Dropout is applied to the 
+            input of each layer except for the first layer. Defaults to 0.
+        activation (str, optional): The activation in each SimpleRNN cell. It can be 
+            `tanh` or `relu`. Defaults to `tanh`.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
             `weight_ih` of each cell. Defaults to None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
@@ -1144,7 +1147,7 @@ class SimpleRNN(RNNBase):
             If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`,
             else, the shape is `[batch_size, time_steps, hidden_size]`.
         initial_states (Tensor, optional): the initial state. The shape is
-            `[num_lauers * num_directions, batch_size, hidden_size]`. 
+            `[num_layers * num_directions, batch_size, hidden_size]`. 
             If initial_state is not given, zero initial states are used.
         sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
             or int32. The valid lengths of input sequences. Defaults to None.
@@ -1162,7 +1165,7 @@ class SimpleRNN(RNNBase):
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
         final_states (Tensor): final states. The shape is
-            `[num_lauers * num_directions, batch_size, hidden_size]`.
+            `[num_layers * num_directions, batch_size, hidden_size]`.
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
 
@@ -1185,10 +1188,10 @@ class SimpleRNN(RNNBase):
                  input_size,
                  hidden_size,
                  num_layers=1,
-                 activation="tanh",
                  direction="forward",
-                 dropout=0.,
                  time_major=False,
+                 dropout=0.,
+                 activation="tanh",
                  weight_ih_attr=None,
                  weight_hh_attr=None,
                  bias_ih_attr=None,
@@ -1201,10 +1204,9 @@ class SimpleRNN(RNNBase):
         else:
             raise ValueError("Unknown activation '{}'".format(activation))
         self.activation = activation
-        super(SimpleRNN,
-              self).__init__(mode, input_size, hidden_size, num_layers,
-                             direction, dropout, time_major, weight_ih_attr,
-                             weight_hh_attr, bias_ih_attr, bias_hh_attr)
+        super(SimpleRNN, self).__init__(
+            mode, input_size, hidden_size, num_layers, direction, time_major,
+            dropout, weight_ih_attr, weight_hh_attr, bias_ih_attr, bias_hh_attr)
 
 
 class LSTM(RNNBase):
@@ -1231,16 +1233,19 @@ class LSTM(RNNBase):
     where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
     multiplication operator.
 
+    Using key word arguments to construct is recommended.
+
     Arguments:
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        direction (str, optional): The direction of the network. It can be 
-            "forward", "backward" and "bidirectional". Defaults to "forward".
-        dropout (float, optional): The droput probability. Dropout is applied 
-            to the input of each layer except for the first layer. Defaults to 0.
+        direction (str, optional): The direction of the network. It can be "forward", 
+            "backward" and "bidirectional". When "bidirectional", the way to merge
+            outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
             means the time steps. Defaults to False.
+        dropout (float, optional): The droput probability. Dropout is applied 
+            to the input of each layer except for the first layer. Defaults to 0.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
             `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
@@ -1257,7 +1262,7 @@ class LSTM(RNNBase):
             If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`,
             else, the shape is `[batch_size, time_steps, hidden_size]`.
         initial_states (tuple, optional): the initial state, a tuple of (h, c), 
-            the shape of each is `[num_lauers * num_directions, batch_size, hidden_size]`. 
+            the shape of each is `[num_layers * num_directions, batch_size, hidden_size]`. 
             If initial_state is not given, zero initial states are used.
         sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
             or int32. The valid lengths of input sequences. Defaults to None.
@@ -1276,7 +1281,7 @@ class LSTM(RNNBase):
             else 1. 
         final_states (Tensor): the final state, a tuple of two tensors, h and c. 
             The shape of each is 
-            `[num_lauers * num_directions, batch_size, hidden_size]`. 
+            `[num_layers * num_directions, batch_size, hidden_size]`. 
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
 
@@ -1301,17 +1306,16 @@ class LSTM(RNNBase):
                  hidden_size,
                  num_layers=1,
                  direction="forward",
-                 dropout=0.,
                  time_major=False,
+                 dropout=0.,
                  weight_ih_attr=None,
                  weight_hh_attr=None,
                  bias_ih_attr=None,
                  bias_hh_attr=None,
                  name=None):
-        super(LSTM,
-              self).__init__("LSTM", input_size, hidden_size, num_layers,
-                             direction, dropout, time_major, weight_ih_attr,
-                             weight_hh_attr, bias_ih_attr, bias_hh_attr)
+        super(LSTM, self).__init__(
+            "LSTM", input_size, hidden_size, num_layers, direction, time_major,
+            dropout, weight_ih_attr, weight_hh_attr, bias_ih_attr, bias_hh_attr)
 
 
 class GRU(RNNBase):
@@ -1336,16 +1340,19 @@ class GRU(RNNBase):
     where :math:`\sigma` is the sigmoid fucntion, and \* is the elemetwise 
     multiplication operator.
 
+    Using key word arguments to construct is recommended.
+
     Arguments:
         input_size (int): The input size for the first layer's cell.
         hidden_size (int): The hidden size for each layer's cell.
         num_layers (int, optional): Number of layers. Defaults to 1.
-        direction (str, optional): The direction of the network. It can be 
-            "forward", "backward" and "bidirectional". Defaults to "forward".
-        dropout (float, optional): The droput probability. Dropout is applied 
-            to the input of each layer except for the first layer. Defaults to 0.
+        direction (str, optional): The direction of the network. It can be "forward", 
+            "backward" and "bidirectional". When "bidirectional", the way to merge
+            outputs of forward and backward is concatenating. Defaults to "forward".
         time_major (bool, optional): Whether the first dimension of the input 
             means the time steps. Defaults to False.
+        dropout (float, optional): The droput probability. Dropout is applied 
+            to the input of each layer except for the first layer. Defaults to 0.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for 
             `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for 
@@ -1362,7 +1369,7 @@ class GRU(RNNBase):
             If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`,
             else, the shape is `[batch_size, time_steps, hidden_size]`.
         initial_states (Tensor, optional): the initial state. The shape is
-            `[num_lauers * num_directions, batch_size, hidden_size]`. 
+            `[num_layers * num_directions, batch_size, hidden_size]`. 
             If initial_state is not given, zero initial states are used. 
             Defaults to None.
         sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64 
@@ -1381,7 +1388,7 @@ class GRU(RNNBase):
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
         final_states (Tensor): final states. The shape is
-            `[num_lauers * num_directions, batch_size, hidden_size]`.
+            `[num_layers * num_directions, batch_size, hidden_size]`.
             Note that `num_directions` is 2 if direction is "bidirectional" 
             else 1.
 
@@ -1405,14 +1412,13 @@ class GRU(RNNBase):
                  hidden_size,
                  num_layers=1,
                  direction="forward",
-                 dropout=0.,
                  time_major=False,
+                 dropout=0.,
                  weight_ih_attr=None,
                  weight_hh_attr=None,
                  bias_ih_attr=None,
                  bias_hh_attr=None,
                  name=None):
-        super(GRU,
-              self).__init__("GRU", input_size, hidden_size, num_layers,
-                             direction, dropout, time_major, weight_ih_attr,
-                             weight_hh_attr, bias_ih_attr, bias_hh_attr)
+        super(GRU, self).__init__(
+            "GRU", input_size, hidden_size, num_layers, direction, time_major,
+            dropout, weight_ih_attr, weight_hh_attr, bias_ih_attr, bias_hh_attr)
