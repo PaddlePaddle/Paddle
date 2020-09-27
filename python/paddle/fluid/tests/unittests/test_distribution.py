@@ -408,7 +408,8 @@ class NormalTest(unittest.TestCase):
             entropy, np_entropy, rtol=tolerance, atol=tolerance)
         np.testing.assert_allclose(
             log_prob, np_lp, rtol=log_tolerance, atol=log_tolerance)
-        np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(
+            probs, np_p, rtol=log_tolerance, atol=log_tolerance)
         np.testing.assert_allclose(kl, np_kl, rtol=tolerance, atol=tolerance)
 
     def test_normal_distribution_dygraph(self, sample_shape=7, tolerance=1e-6):
