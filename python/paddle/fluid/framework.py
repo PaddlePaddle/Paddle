@@ -3946,7 +3946,7 @@ class IrGraph(object):
 class Program(object):
     """
     Create Python Program.  It has at least one :ref:`api_guide_Block_en`, when the
-    control flow op like conditional_block, while :ref:`api_fluid_layers_While` is included,
+    control flow op like conditional_block, while :ref:`api_paddle_fluid_layers_While` is included,
     it will contain nested block.
 
     Please reference the
@@ -3963,9 +3963,9 @@ class Program(object):
     backward ops and vars.
 
     **Notes**:
-        **we have** :ref:`api_fluid_default_startup_program` **and** :ref:`api_fluid_default_main_program`
-        **by default, a pair of them will shared the parameters. The** :ref:`api_fluid_default_startup_program` **only run once to initialize parameters,**
-        :ref:`api_fluid_default_main_program` **run in every mini batch and adjust the weights.**
+        **we have** :ref:`api_paddle_fluid_framework_default_startup_program` **and** :ref:`api_paddle_fluid_framework_default_main_program`
+        **by default, a pair of them will shared the parameters. The** :ref:`api_paddle_fluid_framework_default_startup_program` **only run once to initialize parameters,**
+        :ref:`api_paddle_fluid_framework_default_main_program` **run in every mini batch and adjust the weights.**
 
     Returns:
         Program: An empty Program.
@@ -4303,17 +4303,15 @@ class Program(object):
 
     def clone(self, for_test=False):
         """
-        **Notes**:
-            **1.** :code:`Program.clone()` **method DOES NOT clone** :ref:`api_fluid_io_DataLoader` .
-
-            **2. Recommend you to use** :code:`clone` **before using** :code:`Opimizer.minimize`.
-
-            **3. This API has no effect in Dygraph Mode**
+        .. note:::
+            1.** :code:`Program.clone()` **method DOES NOT clone** :ref:`api_paddle_io_DataLoader` . 
+            2. Recommend you to use** :code:`clone` **before using** :code:`Opimizer.minimize` . 
+            3. This API has no effect in Dygraph Mode** 
 
         Create a new Program with forward content of original one when ``for_test=True``.
         Create a new Program as same as the original one when ``for_test=False``.
 
-        Some operators, e.g., :ref:`api_fluid_layers_batch_norm` , behave differently between
+        Some operators, e.g., :ref:`api_paddle_fluid_layers_batch_norm` , behave differently between
         training and testing. They have an attribute, :code:`is_test`, to
         control this behaviour. This method will change the :code:`is_test`
         attribute of them to :code:`True` when :code:`for_test=True`.
@@ -4347,28 +4345,30 @@ class Program(object):
 
         Examples:
 
-        **Notes: The Program's order maybe different after** :code:`clone` **and
-        this will not affect your training or testing progress. In the following
-        example we give you an simple method** :code:`print_prog(program)` **to
-        print Program Descs inorder to make sure you have same print result
-        after** :code:`clone`:
-            .. code-block:: python
+            .. note::
+                The Program's order maybe different after :code:`clone` and
+                this will not affect your training or testing progress. In the following
+                example we give you an simple method :code:`print_prog(program)` to
+                print Program Descs inorder to make sure you have same print result
+                after :code:`clone`:
 
-                import six
+                .. code-block:: python
 
-                def print_prog(prog):
-                    for name, value in sorted(six.iteritems(prog.block(0).vars)):
-                        print(value)
-                    for op in prog.block(0).ops:
-                        print("op type is {}".format(op.type))
-                        print("op inputs are {}".format(op.input_arg_names))
-                        print("op outputs are {}".format(op.output_arg_names))
-                        for key, value in sorted(six.iteritems(op.all_attrs())):
-                            if key not in ['op_callstack', 'op_role_var']:
-                                print(" [ attrs: {}:   {} ]".format(key, value))
+                    import six
+
+                    def print_prog(prog):
+                        for name, value in sorted(six.iteritems(prog.block(0).vars)):
+                            print(value)
+                        for op in prog.block(0).ops:
+                            print("op type is {}".format(op.type))
+                            print("op inputs are {}".format(op.input_arg_names))
+                            print("op outputs are {}".format(op.output_arg_names))
+                            for key, value in sorted(six.iteritems(op.all_attrs())):
+                                if key not in ['op_callstack', 'op_role_var']:
+                                    print(" [ attrs: {}:   {} ]".format(key, value))
 
 
-        1. To clone a test program, the sample code is:
+            1. To clone a test program, the sample code is:
                 .. code-block:: python
 
                     import six
@@ -4421,7 +4421,7 @@ class Program(object):
                             sgd.minimize(avg_loss)
 
 
-        2. The clone method can be avoid if you create program for training and program for testing individually.
+            2. The clone method can be avoid if you create program for training and program for testing individually.
                 .. code-block:: python
 
                     import six
@@ -4467,7 +4467,7 @@ class Program(object):
                             avg_loss = network()
                     print_prog(test_program_2)
 
-        The two code snippets above will generate and print same programs.
+            The two code snippets above will generate and print same programs.
         """
 
         #NOTE(zhiqiu): we sync the original program first, since its program may diff with
@@ -4674,10 +4674,9 @@ class Program(object):
     @staticmethod
     def parse_from_string(binary_str):
         """
-        **Notes**:
-            **1. All information about parameters will be lost after serialization**
-
-            **2. This API has no effect in Dygraph mode**
+        .. note::
+            1. All information about parameters will be lost after serialization; 
+            2. This API has no effect in Dygraph mode.
 
         Deserialize a Program from  `protobuf <https://en.wikipedia.org/wiki/Protocol_Buffers>`_  binary string.
         This method always use to save and load model
@@ -4741,7 +4740,8 @@ class Program(object):
         The default random seed for random operators in Program. ``0`` means get
         the random seed from random device.
 
-        **Notes: It must be set before the operators have been added.**
+        .. note:: 
+            It must be set before the operators have been added.
 
         Returns:
             int64: Random seed in current Program
@@ -4778,7 +4778,8 @@ class Program(object):
         """
         The number of :ref:`api_guide_Block_en`  in this Program.
 
-        **Notes: This API has no effect in Dygraph mode**
+        .. note:: 
+            This API has no effect in Dygraph mode.
 
         Returns:
             int(Platform-dependent size): num of :ref:`api_guide_Block_en`  in current Program
@@ -4811,8 +4812,8 @@ class Program(object):
 
     def global_block(self):
         """
-        **Notes**:
-            **This API has no effect in Dygraph mode**
+        .. note::
+            This API has no effect in Dygraph mode.
 
         Get the first :ref:`api_guide_Block_en` of this Program.
 
@@ -4837,8 +4838,8 @@ class Program(object):
 
     def block(self, index):
         """
-        **Notes**:
-            **This API has no effect in Dygraph mode**
+        .. note::
+            This API has no effect in Dygraph mode.
 
         Get the :code:`index`  :ref:`api_guide_Block_en`  of this Program
 
@@ -4864,8 +4865,8 @@ class Program(object):
 
     def current_block(self):
         """
-        **Notes**:
-            **This API has no effect in Dygraph mode**
+        .. note::
+            This API has no effect in Dygraph mode.
 
         Get the current  :ref:`api_guide_Block_en` . The :code:`current`  :ref:`api_guide_Block_en`
         is the  :ref:`api_guide_Block_en`  to append operators.
