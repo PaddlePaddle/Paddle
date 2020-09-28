@@ -88,6 +88,7 @@ from .dygraph.base import enable_dygraph, disable_dygraph, enable_imperative, di
 from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
+from .core import _cuda_synchronize
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
@@ -128,7 +129,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'install_check',
         'save',
         'load',
-        'VarBase'
+        'VarBase',
+        '_cuda_synchronize'
     ]
 
 
