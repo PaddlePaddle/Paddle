@@ -302,9 +302,6 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 
 def square_error_cost(input, label):
     """
-    :alias_main: paddle.nn.functional.square_error_cost
-	:alias: paddle.nn.functional.square_error_cost,paddle.nn.functional.loss.square_error_cost
-	:old_api: paddle.fluid.layers.square_error_cost
 
     This op accepts input predictions and target label and returns the
     squared error cost.
@@ -332,7 +329,7 @@ def square_error_cost(input, label):
             import paddle
             input = paddle.to_tensor([1.1, 1.9])
             label = paddle.to_tensor([1.0, 2.0])
-            output = paddle.fluid.layers.square_error_cost(input, label)
+            output = paddle.nn.functional.square_error_cost(input, label)
             print(output.numpy())
             # [0.01, 0.01]
 
