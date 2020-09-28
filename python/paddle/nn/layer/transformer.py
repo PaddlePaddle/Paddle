@@ -1182,12 +1182,12 @@ class Transformer(Layer):
         Generate a square mask for the sequence.
 
         Parameters:
-            length (int): The length of sequence.
+            length (int|Tensor): The length of sequence.
 
         Returns:
             Tensor: Generated square mask according to the given length.
         """
         return paddle.tensor.triu(
-            -(paddle.ones(
-                (length, length), dtype=paddle.get_default_dtype()) * np.inf),
+            (paddle.ones(
+                (length, length), dtype=paddle.get_default_dtype()) * -np.inf),
             1)
