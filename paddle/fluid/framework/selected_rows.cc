@@ -15,6 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 
 namespace paddle {
+namespace platform {
+class DeviceContext;
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
 namespace framework {
 
 struct ReAllocateVisitor {

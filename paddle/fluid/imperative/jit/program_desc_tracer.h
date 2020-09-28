@@ -21,11 +21,18 @@
 #include <tuple>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/imperative/jit/op_desc_meta.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/macros.h"
+
+namespace paddle {
+namespace imperative {
+class VarBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace imperative {

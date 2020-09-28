@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
@@ -22,11 +23,16 @@ limitations under the License. */
 #include <vector>
 
 #include "gflags/gflags.h"
-
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
+
+namespace paddle {
+namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
