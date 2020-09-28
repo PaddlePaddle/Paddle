@@ -4304,9 +4304,9 @@ class Program(object):
     def clone(self, for_test=False):
         """
         .. note:::
-            1.** :code:`Program.clone()` **method DOES NOT clone** :ref:`api_paddle_io_DataLoader` . 
-            2. Recommend you to use** :code:`clone` **before using** :code:`Opimizer.minimize` . 
-            3. This API has no effect in Dygraph Mode** 
+            1. :code:`Program.clone()` method DOES NOT clone :ref:`api_paddle_io_DataLoader` . 
+            2. Recommend you to use :code:`clone` before using :code:`Opimizer.minimize` . 
+            3. This API has no effect in Dygraph Mode.
 
         Create a new Program with forward content of original one when ``for_test=True``.
         Create a new Program as same as the original one when ``for_test=False``.
@@ -4325,13 +4325,17 @@ class Program(object):
         For Example:
           ::
 
-            import paddle.fluid as fluid
-            img = fluid.layers.data(name='image', shape=[784])
-            pred = fluid.layers.fc(input=img, size=10, act='relu')
-            loss = fluid.layers.mean(pred)
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            img = static.data(name='image', shape=[None, 784])
+            pred = static.nn.fc(input=img, size=10, act='relu')
+            loss = paddle.mean(pred)
             # Here we use clone before Momentum
-            test_program = fluid.default_main_program().clone(for_test=True)
-            optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+            test_program = static.default_main_program().clone(for_test=True)
+            optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
             optimizer.minimize(loss)
 
         Args:
@@ -4352,20 +4356,20 @@ class Program(object):
                 print Program Descs inorder to make sure you have same print result
                 after :code:`clone`:
 
-                .. code-block:: python
+            .. code-block:: python
 
-                    import six
+                import six
 
-                    def print_prog(prog):
-                        for name, value in sorted(six.iteritems(prog.block(0).vars)):
-                            print(value)
-                        for op in prog.block(0).ops:
-                            print("op type is {}".format(op.type))
-                            print("op inputs are {}".format(op.input_arg_names))
-                            print("op outputs are {}".format(op.output_arg_names))
-                            for key, value in sorted(six.iteritems(op.all_attrs())):
-                                if key not in ['op_callstack', 'op_role_var']:
-                                    print(" [ attrs: {}:   {} ]".format(key, value))
+                def print_prog(prog):
+                    for name, value in sorted(six.iteritems(prog.block(0).vars)):
+                        print(value)
+                    for op in prog.block(0).ops:
+                        print("op type is {}".format(op.type))
+                        print("op inputs are {}".format(op.input_arg_names))
+                        print("op outputs are {}".format(op.output_arg_names))
+                        for key, value in sorted(six.iteritems(op.all_attrs())):
+                            if key not in ['op_callstack', 'op_role_var']:
+                                print(" [ attrs: {}:   {} ]".format(key, value))
 
 
             1. To clone a test program, the sample code is:
