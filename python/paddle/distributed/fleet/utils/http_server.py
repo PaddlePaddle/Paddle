@@ -181,7 +181,7 @@ class KVServer:
         self.listen_thread.join()
         self.http_server.server_close()
 
-    def should_stop(self):
+    def shoud_stop(self):
         """
         return whether the server should stop.
 
