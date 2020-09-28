@@ -980,10 +980,10 @@ def scatter_nd_add(x, index, updates, name=None):
     Output is obtained by applying sparse addition to a single value
     or slice in a Tensor.
 
-    :attr:`x` is a Tensor with rank :math:`R`
-    and :attr:`index` is a Tensor with rank :math:`K` . Thus, :attr:`index`
+    :attr:`x` is a Tensor with ndim :math:`R`
+    and :attr:`index` is a Tensor with ndim :math:`K` . Thus, :attr:`index`
     has shape :math:`[i_0, i_1, ..., i_{K-2}, Q]` where :math:`Q \leq R` . :attr:`updates`
-    is a Tensor with rank :math:`K - 1 + R - Q` and its
+    is a Tensor with ndim :math:`K - 1 + R - Q` and its
     shape is :math:`index.shape[:-1] + x.shape[index.shape[-1]:]` .
 
     According to the :math:`[i_0, i_1, ..., i_{K-2}]` of :attr:`index` ,
@@ -1018,7 +1018,7 @@ def scatter_nd_add(x, index, updates, name=None):
 
     Args:
         x (Tensor): The x input. Its dtype should be float32, float64.
-        index (Tensor): The index input with rank > 1 and index.shape[-1] <= x.rank.
+        index (Tensor): The index input with ndim > 1 and index.shape[-1] <= x.ndim.
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Tensor): The updated value of scatter_nd_add op, and it must have the same dtype
                             as x. It must have the shape index.shape[:-1] + x.shape[index.shape[-1]:].
