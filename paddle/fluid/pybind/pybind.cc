@@ -2097,26 +2097,26 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-            import os
-            import numpy as np
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.static as static
 
-            os.environ["CPU_NUM"] = '2'
-            places = fluid.cpu_places()
+            paddle.enable_static()
 
-            data = fluid.layers.data(name="x", shape=[1], dtype="float32")
-            hidden = fluid.layers.fc(input=data, size=10)
-            loss = fluid.layers.mean(hidden)
-            fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+            places = [paddle.CPUPlace(), paddle.CPUPlace()]
 
-            build_strategy = fluid.BuildStrategy()
+            data = static.data(name="x", shape=[None, 1], dtype="float32")
+            hidden = static.nn.fc(input=data, size=10)
+            loss = paddle.mean(hidden)
+            paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+            build_strategy = static.BuildStrategy()
             build_strategy.enable_inplace = True
             build_strategy.memory_optimize = True
-            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
-            program = fluid.compiler.CompiledProgram(fluid.default_main_program())
+            build_strategy.reduce_strategy = static.BuildStrategy.ReduceStrategy.Reduce
+            program = static.CompiledProgram(static.default_main_program())
             program = program.with_data_parallel(loss_name=loss.name,
-                                                 build_strategy=build_strategy,
-                                                 places=places)
+                                                  build_strategy=build_strategy,
+                                                  places=places)
 )DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
@@ -2151,9 +2151,13 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
-                        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.reduce_strategy = static.BuildStrategy.ReduceStrategy.Reduce
                   )DOC")
       .def_property(
           "gradient_scale_strategy",
@@ -2237,10 +2241,13 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
-                        build_strategy.debug_graphviz_path = "./graph"
+                        import paddle
+                        import paddle.static as static
 
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.debug_graphviz_path = "./graph"
                     )DOC")
       .def_property(
           "enable_sequential_execution",
@@ -2260,8 +2267,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.enable_sequential_execution = True
           )DOC")
       .def_property(
@@ -2282,8 +2293,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.remove_unnecessary_lock = True
           )DOC")
       .def_property(
@@ -2348,8 +2363,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.fuse_elewise_add_act_ops = True
                      )DOC")
       .def_property(
@@ -2369,8 +2388,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.fuse_bn_act_ops = True
                      )DOC")
       .def_property(
@@ -2391,8 +2414,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.enable_auto_fusion = True
                     )DOC")
       .def_property(
@@ -2416,8 +2443,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.fuse_relu_depthwise_conv = True
           )DOC")
       .def_property("fuse_broadcast_ops",
@@ -2442,8 +2473,12 @@ All parameter, weight, gradient are variables in Paddle.
                       Examples:
                           .. code-block:: python
 
-                              import paddle.fluid as fluid
-                              build_strategy = fluid.BuildStrategy()
+                              import paddle
+                              import paddle.static as static
+
+                              paddle.enable_static()
+
+                              build_strategy = static.BuildStrategy()
                               build_strategy.fuse_broadcast_ops = True
                     )DOC")
       .def_property("fuse_all_optimizer_ops",
@@ -2478,8 +2513,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.sync_batch_norm = True
                 )DOC")
       .def_property(
@@ -2509,7 +2548,20 @@ All parameter, weight, gradient are variables in Paddle.
                 Default None. None means framework would choose to use or not use 
                 this strategy automatically. Currently, None means that it is 
                 enabled when GC is disabled, and disabled when GC is enabled. 
-                True means enabling and False means disabling. Default is None.)DOC")
+                True means enabling and False means disabling. Default is None.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.memory_optimize = True
+                
+                )DOC")
       .def_property(
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
