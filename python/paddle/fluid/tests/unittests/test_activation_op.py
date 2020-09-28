@@ -50,6 +50,7 @@ class TestActivation(OpTest):
         self.init_dtype()
         self.init_kernel_type()
 
+        np.random.seed(2048)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.exp(x)
 
@@ -99,6 +100,7 @@ class TestSigmoid(TestActivation):
         self.op_type = "sigmoid"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = 1 / (1 + np.exp(-x))
 
@@ -120,6 +122,7 @@ class TestLogSigmoid(TestActivation):
         self.op_type = "logsigmoid"
         self.init_dtype()
 
+        np.random.seed(2048)
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = np.log(1 / (1 + np.exp(-x)))
 
@@ -135,6 +138,7 @@ class TestLogSigmoid(TestActivation):
 class TestLogSigmoidAPI(unittest.TestCase):
     # test paddle.nn.LogSigmoid, paddle.nn.functional.log_sigmoid
     def setUp(self):
+        np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
@@ -191,6 +195,7 @@ class TestTanh(TestActivation, TestParameter):
         paddle.enable_static()
         self.op_type = "tanh"
         self.init_dtype()
+        np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.tanh(x)
 
@@ -213,6 +218,7 @@ class TestTanhAPI(unittest.TestCase):
     # test paddle.tanh, paddle.nn.tanh, paddle.nn.functional.tanh
     def setUp(self):
         self.dtype = 'float32'
+        np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
@@ -271,6 +277,7 @@ class TestAtan(TestActivation, TestParameter):
         self.op_type = "atan"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.arctan(x)
 
@@ -308,6 +315,7 @@ class TestSinh(TestActivation):
         self.op_type = "sinh"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.sinh(x)
 
@@ -381,6 +389,7 @@ class TestCosh(TestActivation):
         self.op_type = "cosh"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.cosh(x)
 
@@ -459,6 +468,7 @@ class TestTanhshrink(TestActivation):
         self.op_type = "tanh_shrink"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(10, 20, [10, 17]).astype(self.dtype)
         out = ref_tanhshrink(x)
 
@@ -474,6 +484,7 @@ class TestTanhshrink(TestActivation):
 class TestTanhshrinkAPI(unittest.TestCase):
     # test paddle.nn.Tanhshrink, paddle.nn.functional.tanhshrink
     def setUp(self):
+        np.random.seed(1024)
         self.x_np = np.random.uniform(10, 20, [10, 17]).astype(np.float64)
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
@@ -539,6 +550,7 @@ class TestHardShrink(TestActivation):
 
         self.threshold = 0.5
         self.set_attrs()
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype) * 10
         out = ref_hardshrink(x, self.threshold)
 
@@ -564,6 +576,7 @@ class TestHardShrinkAPI(unittest.TestCase):
     # test paddle.nn.Hardshrink, paddle.nn.functional.hardshrink
     def setUp(self):
         paddle.enable_static()
+        np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
@@ -633,6 +646,7 @@ def ref_hardtanh(x, min=-1.0, max=1.0):
 class TestHardtanhAPI(unittest.TestCase):
     # test paddle.nn.Hardtanh, paddle.nn.functional.hardtanh
     def setUp(self):
+        np.random.seed(1024)
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
@@ -696,6 +710,7 @@ class TestSoftshrink(TestActivation):
 
         threshold = 0.8
 
+        np.random.seed(1023)
         x = np.random.uniform(0.25, 10, [10, 12]).astype(self.dtype)
         out = ref_softshrink(x, threshold)
         self.inputs = {'X': x}
@@ -712,6 +727,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
     # test paddle.nn.Softshrink, paddle.nn.functional.softshrink
     def setUp(self):
         self.threshold = 0.8
+        np.random.seed(1024)
         self.x_np = np.random.uniform(0.25, 10, [10, 12]).astype(np.float64)
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
@@ -772,6 +788,7 @@ class TestSqrt(TestActivation, TestParameter):
         self.op_type = "sqrt"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.sqrt(x)
 
@@ -790,6 +807,7 @@ class TestRsqrt(TestActivation):
         self.op_type = "rsqrt"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [10, 12]).astype(self.dtype) * 10
         out = 1.0 / np.sqrt(x)
 
@@ -808,6 +826,7 @@ class TestAbs(TestActivation):
         self.op_type = "abs"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [4, 25]).astype(self.dtype)
         # Because we set delta = 0.005 in calculating numeric gradient,
         # if x is too small, such as 0.002, x_neg will be -0.003
@@ -831,6 +850,7 @@ class TestCeil(TestActivation):
         self.op_type = "ceil"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = np.ceil(x)
 
@@ -848,6 +868,7 @@ class TestFloor(TestActivation):
         self.op_type = "floor"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = np.floor(x)
 
@@ -867,6 +888,7 @@ class TestCos(TestActivation):
         self.op_type = "cos"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = np.cos(x)
 
@@ -885,6 +907,7 @@ class TestAcos(TestActivation):
         self.op_type = "acos"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-0.95, 0.95, [10, 12]).astype(self.dtype)
         out = np.arccos(x)
 
@@ -903,6 +926,7 @@ class TestSin(TestActivation, TestParameter):
         self.op_type = "sin"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = np.sin(x)
 
@@ -921,6 +945,7 @@ class TestAsin(TestActivation):
         self.op_type = "asin"
         self.init_dtype()
 
+        np.random.seed(2048)
         x = np.random.uniform(-0.95, 0.95, [10, 12]).astype(self.dtype)
         out = np.arcsin(x)
 
@@ -939,6 +964,7 @@ class TestRound(TestActivation):
         self.op_type = "round"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = np.round(x)
 
@@ -955,6 +981,7 @@ class TestRelu(TestActivation):
         self.op_type = "relu"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         # The same reason with TestAbs
         x[np.abs(x) < 0.005] = 0.02
@@ -972,6 +999,7 @@ class TestRelu(TestActivation):
 class TestReluAPI(unittest.TestCase):
     # test paddle.nn.ReLU, paddle.nn.functional.relu
     def setUp(self):
+        np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
@@ -1029,7 +1057,7 @@ class TestLeakyRelu(TestActivation):
         self.init_dtype()
         alpha = self.get_alpha()
 
-        np.random.seed(10)
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         # The same reason with TestAbs
         x[np.abs(x) < 0.005] = 0.05
@@ -1064,6 +1092,7 @@ class TestLeakyReluAPI(unittest.TestCase):
     # test paddle.nn.LeakyReLU, paddle.nn.functional.leaky_relu,
     # fluid.layers.leaky_relu
     def setUp(self):
+        np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
@@ -1137,6 +1166,7 @@ class TestGeluApproximate(TestActivation):
         self.op_type = "gelu"
         self.init_dtype()
         approximate = True
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = gelu(x, approximate)
 
@@ -1156,6 +1186,7 @@ class TestGelu(TestActivation):
         self.op_type = "gelu"
         self.init_dtype()
         approximate = False
+        np.random.seed(2048)
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = gelu(x, approximate)
 
@@ -1172,6 +1203,7 @@ class TestGelu(TestActivation):
 class TestGELUAPI(unittest.TestCase):
     # test paddle.nn.GELU, paddle.nn.functional.gelu
     def setUp(self):
+        np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
@@ -1226,6 +1258,7 @@ class TestBRelu(TestActivation):
         self.op_type = "brelu"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-5, 10, [10, 12]).astype(self.dtype)
         t_min = 1.0
         t_max = 4.0
@@ -1274,6 +1307,7 @@ class TestRelu6(TestActivation):
         self.op_type = "relu6"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
         x[np.abs(x) < 0.005] = 0.02
         out = ref_relu6(x)
@@ -1291,6 +1325,7 @@ class TestRelu6(TestActivation):
 class TestRelu6API(unittest.TestCase):
     # test paddle.nn.ReLU6, paddle.nn.functional.relu6
     def setUp(self):
+        np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 10, [10, 12]).astype(np.float64)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
@@ -1349,6 +1384,7 @@ class TestHardSwish(TestActivation):
         self.op_type = 'hard_swish'
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-6, 6, [10, 12]).astype(self.dtype)
         threshold = 6.0
         scale = 6.0
@@ -1388,6 +1424,7 @@ class TestSoftRelu(TestActivation):
         self.op_type = "soft_relu"
         self.init_dtype()
 
+        np.random.seed(4096)
         x = np.random.uniform(-3, 3, [4, 4]).astype(self.dtype)
         threshold = 2.0
         # The same reason with TestAbs
@@ -1433,6 +1470,7 @@ class TestELU(TestActivation):
         self.op_type = "elu"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-3, 3, [10, 12]).astype(self.dtype)
         alpha = 1.
         out = elu(x, alpha)
@@ -1506,6 +1544,7 @@ class TestReciprocal(TestActivation):
         self.op_type = "reciprocal"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
         out = np.reciprocal(x)
 
@@ -1524,6 +1563,7 @@ class TestLog(TestActivation):
         self.op_type = "log"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.log(x)
 
@@ -1551,6 +1591,7 @@ class TestLog1p(TestActivation):
         self.op_type = "log1p"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.log1p(x)
 
@@ -1596,6 +1637,7 @@ class TestSquare(TestActivation):
         self.op_type = "square"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.square(x)
 
@@ -1614,6 +1656,7 @@ class TestPow(TestActivation):
         self.op_type = "pow"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
         out = np.power(x, 3)
 
@@ -1633,6 +1676,7 @@ class TestPow_factor_tensor(TestActivation):
         self.op_type = "pow"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
         out = np.power(x, 3)
 
@@ -1710,6 +1754,7 @@ class TestSTanh(TestActivation):
         self.op_type = "stanh"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         scale_a = 2.0 / 3.0
         scale_b = 1.7159
@@ -1755,6 +1800,7 @@ class TestSoftplus(TestActivation):
         beta = 2
         threshold = 15
 
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = ref_softplus(x, beta, threshold)
         self.inputs = {'X': x}
@@ -1772,6 +1818,7 @@ class TestSoftplusAPI(unittest.TestCase):
     def setUp(self):
         self.beta = 2
         self.threshold = 15
+        np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
@@ -1834,6 +1881,7 @@ class TestSoftsign(TestActivation):
         self.op_type = "softsign"
         self.init_dtype()
 
+        np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = ref_softsign(x)
         self.inputs = {'X': x}
@@ -1848,6 +1896,7 @@ class TestSoftsign(TestActivation):
 class TestSoftsignAPI(unittest.TestCase):
     # test paddle.nn.Softsign, paddle.nn.functional.softsign
     def setUp(self):
+        np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
         self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
@@ -1907,6 +1956,7 @@ class TestThresholdedRelu(TestActivation):
 
         threshold = 0.25
         self.delta = 0.005
+        np.random.seed(1024)
         X = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
 
         # Same reason as TestAbs
@@ -1943,6 +1993,7 @@ class TestHardSigmoid(TestActivation):
         self.op_type = "hard_sigmoid"
         self.init_dtype()
 
+        np.random.seed(1024)
         X = np.random.uniform(-5, 5, [10, 12]).astype("float32")
         slope = 0.2
         offset = 0.5
@@ -1987,6 +2038,7 @@ class TestSwish(TestActivation):
         self.op_type = "swish"
         self.init_dtype()
 
+        np.random.seed(1024)
         X = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         beta = 2.3
         out = X * expit(beta * X)
