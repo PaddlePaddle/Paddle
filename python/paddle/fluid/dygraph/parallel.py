@@ -107,7 +107,7 @@ class ParallelEnv(object):
             loss = loss_fn(outputs, labels)
             
             loss.backward()
-s
+
             adam.step()
             adam.clear_grad()
 
