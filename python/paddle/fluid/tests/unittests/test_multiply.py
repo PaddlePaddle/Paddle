@@ -26,6 +26,7 @@ class TestMultiplyAPI(unittest.TestCase):
 
     def __run_static_graph_case(self, x_data, y_data, axis=-1):
         with program_guard(Program(), Program()):
+            paddle.enable_static()
             x = paddle.static.data(
                 name='x', shape=x_data.shape, dtype=x_data.dtype)
             y = paddle.static.data(
@@ -47,6 +48,12 @@ class TestMultiplyAPI(unittest.TestCase):
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
         res = paddle.multiply(x, y, axis=axis)
+        return res.numpy()
+
+    def __run_dynamic_graph_case_with_numpy_input(self, x_data, y_data,
+                                                  axis=-1):
+        paddle.disable_static()
+        res = paddle.multiply(x_data, y_data, axis=axis)
         return res.numpy()
 
     def test_multiply(self):
@@ -83,16 +90,34 @@ class TestMultiplyAPI(unittest.TestCase):
         res = self.__run_dynamic_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
+        # test dynamic numpy input computation graph: 1-d array
+        x_data = np.random.rand(200)
+        y_data = np.random.rand(200)
+        res = self.__run_dynamic_graph_case_with_numpy_input(x_data, y_data)
+        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+
         # test dynamic computation graph: 2-d array
         x_data = np.random.rand(20, 50)
         y_data = np.random.rand(20, 50)
         res = self.__run_dynamic_graph_case(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
+        # test dynamic numpy input computation graph: 1-d array
+        x_data = np.random.rand(20, 50)
+        y_data = np.random.rand(20, 50)
+        res = self.__run_dynamic_graph_case_with_numpy_input(x_data, y_data)
+        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+
         # test dynamic computation graph: broadcast
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(500)
         res = self.__run_dynamic_graph_case(x_data, y_data)
+        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+
+        # test dynamic computation graph: broadcast
+        x_data = np.random.rand(2, 500)
+        y_data = np.random.rand(500)
+        res = self.__run_dynamic_graph_case_with_numpy_input(x_data, y_data)
         self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
 
         # test dynamic computation graph: broadcast with axis

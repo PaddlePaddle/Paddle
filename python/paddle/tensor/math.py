@@ -478,6 +478,10 @@ def multiply(x, y, axis=-1, name=None):
             % (x.dtype, y.dtype))
 
     if in_dygraph_mode():
+        if not isinstance(x, (paddle.Tensor)):
+            x = paddle.to_tensor(x)
+        if not isinstance(y, (paddle.Tensor)):
+            y = paddle.to_tensor(y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
 
