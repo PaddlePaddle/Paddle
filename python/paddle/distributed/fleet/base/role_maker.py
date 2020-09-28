@@ -169,8 +169,7 @@ class Gloo(object):
             http_server = KVServer(port, size_d)
             http_server.start()
             wait_seconds = 5
-            while http_server_d.get("running",
-                                    False) and not http_server.shoud_stop():
+            while http_server_d.get("running", False):
                 time.sleep(wait_seconds)
             http_server.stop()
 

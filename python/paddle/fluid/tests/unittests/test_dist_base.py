@@ -406,7 +406,7 @@ class TestParallelDyGraphRunnerBase(object):
             fluid.default_main_program().random_seed = seed
             np.random.seed(seed)
             import random
-            random.seed = seed
+            random.seed(seed)
             model, train_reader, opt = self.get_model()
             nranks = len(args.endpoints.split(",")) if args.endpoints else 1
 
@@ -456,7 +456,7 @@ class TestParallelDyGraphRunnerBase(object):
         paddle.static.default_startup_program().random_seed = seed
         paddle.static.default_main_program().random_seed = seed
         np.random.seed(seed)
-        random.seed = seed
+        random.seed(seed)
         # get trainer id
         args.trainer_id = paddle.distributed.get_rank()
 
@@ -499,7 +499,7 @@ class TestParallelDyGraphRunnerBase(object):
         paddle.static.default_startup_program().random_seed = seed
         paddle.static.default_main_program().random_seed = seed
         np.random.seed(seed)
-        random.seed = seed
+        random.seed(seed)
         # get trainer id
         args.trainer_id = paddle.distributed.get_rank()
 
