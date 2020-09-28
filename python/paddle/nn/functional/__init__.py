@@ -62,7 +62,7 @@ from .common import dropout3d  #DEFINE_ALIAS
 from .common import alpha_dropout  #DEFINE_ALIAS
 # from .common import embedding        #DEFINE_ALIAS
 # from .common import fc  #DEFINE_ALIAS
-from .common import label_smooth  #DEFINE_ALIAS
+from .common import label_smooth
 from .common import one_hot  #DEFINE_ALIAS
 from .common import pad  #DEFINE_ALIAS
 from .common import pad_constant_like  #DEFINE_ALIAS

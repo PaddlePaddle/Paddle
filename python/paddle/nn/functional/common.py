@@ -20,7 +20,6 @@ from paddle.fluid.layers.tensor import Variable, fill_constant, zeros, concat
 from ...fluid.layers import core
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
-from ...fluid.layers import label_smooth  #DEFINE_ALIAS
 from ...fluid import one_hot  #DEFINE_ALIAS
 from ...fluid.layers import pad2d  #DEFINE_ALIAS
 from ...fluid.layers import unfold  #DEFINE_ALIAS
