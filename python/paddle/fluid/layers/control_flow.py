@@ -3800,12 +3800,11 @@ def is_empty(x, name=None):
                             please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Tensor: A bool scalar. True if 'x' is an empty Tensor.
+        Tensor: A bool scalar Tensor. True if 'x' is an empty Tensor.
 
     Examples:
         .. code-block:: python
 
-            # dygraph_mode
             import paddle
 
             input = paddle.rand(shape=[4, 32, 32], dtype='float32')
