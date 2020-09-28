@@ -410,7 +410,8 @@ class NormalTest(unittest.TestCase):
             log_prob, np_lp, rtol=log_tolerance, atol=log_tolerance)
         np.testing.assert_allclose(
             probs, np_p, rtol=log_tolerance, atol=log_tolerance)
-        np.testing.assert_allclose(kl, np_kl, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(
+            kl, np_kl, rtol=log_tolerance, atol=log_tolerance)
 
     def test_normal_distribution_dygraph(self, sample_shape=7, tolerance=1e-6):
         paddle.disable_static(self.place)
