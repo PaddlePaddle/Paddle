@@ -21,7 +21,7 @@ class L1Decay(fluid.regularizer.L1Decay):
     """
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
     
-    It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
+    It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
     When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
     ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has 
     higher priority than ``optimizer`` , which means that for a trainable parameter, if regularizer is defined 
@@ -85,7 +85,7 @@ class L2Decay(fluid.regularizer.L2Decay):
     """
     Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
     
-    It can be set in :ref:`api_fluid_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
+    It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
     When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
     ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has 
     higher priority than ``optimizer`` , which means that for a trainable parameter, if regularizer is defined 
