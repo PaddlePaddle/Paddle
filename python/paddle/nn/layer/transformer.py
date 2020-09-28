@@ -1179,13 +1179,34 @@ class Transformer(Layer):
 
     def generate_square_subsequent_mask(self, length):
         """
-        Generate a square mask for the sequence.
+        Generate a square mask for the sequence. The mask ensures that the
+        predictions for position i can depend only on the known outputs at
+        positions less than i.
 
         Parameters:
             length (int|Tensor): The length of sequence.
 
         Returns:
             Tensor: Generated square mask according to the given length.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.nn.layer.transformer import Transformer
+                length = 5
+                d_model, n_head, dim_feedforward = 8, 4, 64
+                transformer_paddle = Transformer(
+                    d_model, n_head, dim_feedforward=dim_feedforward)
+                mask = transformer_paddle.generate_square_subsequent_mask(length)
+                print(mask.numpy())
+
+                # [[  0. -inf -inf -inf -inf]
+                # [  0.   0. -inf -inf -inf]
+                # [  0.   0.   0. -inf -inf]
+                # [  0.   0.   0.   0. -inf]
+                # [  0.   0.   0.   0.   0.]]
+
         """
         return paddle.tensor.triu(
             (paddle.ones(
