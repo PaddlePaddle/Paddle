@@ -3222,7 +3222,6 @@ def data_norm(input,
               summary_decay_rate=0.9999999,
               enable_scale_and_shift=False):
     """
-    :alias_main: paddle.static.nn.data_norm
     :api_attr: Static Graph
 
     **Data Normalization Layer**
