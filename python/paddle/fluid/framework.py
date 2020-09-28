@@ -5396,13 +5396,13 @@ def program_guard(main_program, startup_program=None):
     """
     :api_attr: Static Graph
 
-    Change the global main program and startup program with `"with"` statement.
-    Layer functions in the Python `"with"` block will append operators and
-    variables to the new main programs.
+    Change the global main program and startup program with ``with`` statement.
+    Layer functions in the Python ``with`` block will append operators and
+    Tensors to the new main programs.
 
     Args:
-        main_program(Program): New main program inside `"with"` statement.
-        startup_program(Program, optional): New startup program inside `"with"` 
+        main_program(Program): New main program inside ``with`` statement.
+        startup_program(Program, optional): New startup program inside ``with`` 
             statement. :code:`None` means not changing startup program, 
             default_startup_program is still used.
             Default: None.
@@ -5410,13 +5410,14 @@ def program_guard(main_program, startup_program=None):
     Examples:
        .. code-block:: python
        
-         import paddle.fluid as fluid
+          import paddle
 
-         main_program = fluid.Program()
-         startup_program = fluid.Program()
-         with fluid.program_guard(main_program, startup_program):
-             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-             hidden = fluid.layers.fc(input=data, size=10, act='relu')
+          paddle.enable_static()
+          main_program = paddle.static.Program()
+          startup_program = paddle.static.Program()
+          with paddle.static.program_guard(main_program, startup_program):
+              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+              hidden = paddle.static.nn.fc(input=data, size=10, act='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
     to construct either of startup program or main program.
@@ -5424,20 +5425,22 @@ def program_guard(main_program, startup_program=None):
     Examples:
        .. code-block:: python
 
-         import paddle.fluid as fluid
+          import paddle
 
-         main_program = fluid.Program()
-         # does not care about startup program. Just pass a temporary value.
-         with fluid.program_guard(main_program, fluid.Program()):
-             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+          paddle.enable_static()
+          main_program = paddle.static.Program()
+          # does not care about startup program. Just pass a temporary value.
+          with paddle.static.program_guard(main_program, paddle.static.Program()):
+              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
     
     """
     from .data_feeder import check_type
-    check_type(main_program, 'main_program', Program, 'fluid.program_guard')
+    check_type(main_program, 'main_program', Program,
+               'paddle.static.program_guard')
     main_program = switch_main_program(main_program)
     if startup_program is not None:
         check_type(startup_program, 'startup_program', Program,
-                   'fluid.program_guard')
+                   'paddle.static.program_guard')
         startup_program = switch_startup_program(startup_program)
     try:
         yield
