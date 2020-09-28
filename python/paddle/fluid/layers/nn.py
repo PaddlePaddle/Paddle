@@ -13177,12 +13177,10 @@ def add_position_encoding(input, alpha, beta, name=None):
     Examples:
         .. code-block:: python
 
-          import numpy as np
           import paddle
           import paddle.nn.functional as F
 
-          tensor = np.random.randn(16, 32, 64) 
-          tensor = paddle.to_tensor(tensor)
+          tensor = paddle.randn([16, 32, 64])
           position_tensor = F.add_position_encoding(
                 input=tensor, alpha=1.0, beta=1.0)
 
