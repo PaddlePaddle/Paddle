@@ -744,7 +744,7 @@ class DistributedStrategy(object):
             strategy.adaptive_localsgd = True # by default this is false
 
         """
-        return self.strategy.localsgd
+        return self.strategy.adaptive_localsgd
 
     @adaptive_localsgd.setter
     @is_strict_auto
