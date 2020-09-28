@@ -27,6 +27,7 @@ from paddle.fluid import core
 from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 
 __all__ = ["init_parallel_env"]
 
@@ -163,6 +164,7 @@ def init_parallel_env():
         http_server.daemon = True
         http_server_d["running"] = True
         http_server.start()
+    wait_server_ready([ParallelEnv().trainer_endpoints[0]])
 
     iface = _get_iface_by_ip(ep_rank[0])
     if iface is None:
