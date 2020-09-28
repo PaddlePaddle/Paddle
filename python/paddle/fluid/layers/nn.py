@@ -9287,8 +9287,8 @@ def pad2d(input,
     than height-1. And the width dimension has the same condition.
 
     Parameters:
-        input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format, which is a 4-D Tensor with data type float32.
-        paddings (Variable | List[int32]): The padding size. If padding is a List, it must
+        input (Tensor): The input image with [N, C, H, W] format or [N, H, W, C] format, which is a 4-D Tensor with data type float32.
+        paddings (Tensor | List[int32]): The padding size. If padding is a List, it must
             contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
             Otherwise, it is a 1-D Tensor with shape [4]. Data type is int32.
             Default is [0, 0, 0, 0].
@@ -9304,10 +9304,7 @@ def pad2d(input,
         name (str, optional) : The default value is None.  Normally there is no need for
                     user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
-    Returns: a 4-D Tensor padded according to paddings and mode and data type is same as input.
-
-    Return Type: Variable
-
+    Returns: Tensor, a 4-D Tensor padded according to paddings and mode and data type is same as input.
 
     Examples:
         .. code-block:: text
@@ -9340,9 +9337,33 @@ def pad2d(input,
     Code Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-            result = fluid.layers.pad2d(input=data, paddings=[0, 1, 2, 3], mode='reflect')
+            import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+
+            # example 1
+            x_shape = (1, 1, 3, 4)
+            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
+            tensor_x = paddle.to_tensor(x)
+            y = F.pad2d(tensor_x, paddings=[1, 2, 2, 1], pad_value=1, mode='constant')
+            print(y.numpy())
+            # [[[[ 1.  1.  1.  1.  1.  1.  1.]
+            #    [ 1.  1.  1.  2.  3.  4.  1.]
+            #    [ 1.  1.  5.  6.  7.  8.  1.]
+            #    [ 1.  1.  9. 10. 11. 12.  1.]
+            #    [ 1.  1.  1.  1.  1.  1.  1.]
+            #    [ 1.  1.  1.  1.  1.  1.  1.]]]]
+
+            # example 2
+            x_shape = (1, 1, 2, 3)
+            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
+            tensor_x = paddle.to_tensor(x)
+            y = F.pad2d(tensor_x, paddings=[1, 1, 1, 1], mode='reflect')
+            print(y.numpy())
+            # [[[[5. 4. 5. 6. 5.]
+            #    [2. 1. 2. 3. 2.]
+            #    [5. 4. 5. 6. 5.]
+            #    [2. 1. 2. 3. 2.]]]]
     """
     check_variable_and_dtype(
         input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],

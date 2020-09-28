@@ -167,6 +167,8 @@ class TestFleetDygraph(unittest.TestCase):
         state_dict = adam.state_dict()
         adam.set_state_dict(state_dict)
 
+        final_strategy = fleet._final_strategy()
+
 
 class TestFleetBaseSingleRunCollective(unittest.TestCase):
     def setUp(self):
