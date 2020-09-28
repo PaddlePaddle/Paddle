@@ -13177,16 +13177,20 @@ def add_position_encoding(input, alpha, beta, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import numpy as np
+          import paddle
+          import paddle.nn.functional as F
 
-          tensor = fluid.data(
-              name='tensor',
-              shape=[None, 64, 512],
-              dtype='float32')
-          position_tensor = fluid.layers.add_position_encoding(
-              input=tensor, alpha=1.0, beta=1.0)
+          tensor = np.random.randn(16, 32, 64) 
+          tensor = paddle.to_tensor(tensor)
+          position_tensor = F.add_position_encoding(
+                input=tensor, alpha=1.0, beta=1.0)
 
     """
+    if in_dygraph_mode():
+        return core.ops.add_position_encoding(input, "alpha", alpha, "beta",
+                                              beta)
+
     helper = LayerHelper('add_position_encoding', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              "add_position_encoding")
