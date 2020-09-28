@@ -164,13 +164,41 @@ def distributed_ops_pass(program, config):
     return program
 
 
-def append_send_ops_pass(program, config, merge=False):
+def append_send_ops_pass(program, config):
     mode = config.get_distributed_mode()
     trainer_id = config.get_role_id()
     pserver_endpoints = config.get_ps_endpoints()
 
-    def _append_send_op():
+    def _append_grad_send_op(union_vars, queue):
 
+        if queue == STEP_COUNTER:
+            send_input_vars = []
+        else:
+            send_input_vars = [
+                program.global_block().vars[union_var]
+                for union_var in union_vars
+            ]
+
+        dummy_output = []
+        if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
+            dummy_output = program.global_block().create_var(
+                name=framework.generate_control_dev_var_name())
+
+        program.global_block().append_op(
+            type="send",
+            inputs={"X": send_input_vars},
+            outputs={"Out": dummy_output},
+            attrs={
+                "send_varnames": [queue],
+                "merge_add": True,
+                "use_send_handler": False,
+                "endpoints": pserver_endpoints,
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            })
+
+        return dummy_output
+
+    def _append_sparse_ids_send_op():
         sparse_var = []
         sparse_tables = []
         unique_sparse_var = {}
@@ -223,11 +251,11 @@ def append_send_ops_pass(program, config, merge=False):
 
     sends = config.get_trainer_send_context()
 
-    if merge:
+    if mode == DistributedMode.GEO:
         dummys.append(_append_send_op())
     else:
         for merged_name, send in sends.items():
-            dummys.append(_append_send_op())
+            dummys.append(_append_send_op(send.origin_varnames(), merged_name))
 
     if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
         _append_barrier_op(dummys)
