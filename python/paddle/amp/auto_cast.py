@@ -37,16 +37,16 @@ def auto_cast(enable=True, custom_white_list=None, custom_black_list=None):
 
         import paddle
 
-        conv2d = paddle.nn.Conv2D(3, 2, 3)
+        conv2d = paddle.nn.Conv2d(3, 2, 3, bias_attr=False)
         data = paddle.rand([10, 3, 32, 32])
 
         with paddle.amp.auto_cast():
             conv = conv2d(data)
-            print(conv.dtype) # float16
+            print(conv.dtype) # FP16
 
         with paddle.amp.auto_cast(enable=False):
             conv = conv2d(data)
-            print(conv.dtype) # float32
+            print(conv.dtype) # FP32
 
     """
     return amp_guard(enable, custom_white_list, custom_black_list)

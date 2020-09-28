@@ -50,8 +50,8 @@ class GradScaler(AmpScaler):
 
         import paddle
 
-        model = paddle.nn.Conv2D(3, 2, 3)
-        optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameter_list=model.parameters())
+        model = paddle.nn.Conv2d(3, 2, 3, bias_attr=True)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
         data = paddle.rand([10, 3, 32, 32])
         with paddle.amp.auto_cast():
@@ -70,10 +70,10 @@ class GradScaler(AmpScaler):
                  incr_every_n_steps=1000,
                  decr_every_n_nan_or_inf=1,
                  use_dynamic_loss_scaling=True):
-        super(AmpScaler,
-              self).__init__(enable, init_loss_scaling, incr_ratio, decr_ratio,
-                             incr_every_n_steps, decr_every_n_nan_or_inf,
-                             use_dynamic_loss_scaling)
+        super(GradScaler, self).__init__(enable, init_loss_scaling, incr_ratio,
+                                         decr_ratio, incr_every_n_steps,
+                                         decr_every_n_nan_or_inf,
+                                         use_dynamic_loss_scaling)
 
     def scale(self, var):
         """
@@ -83,15 +83,15 @@ class GradScaler(AmpScaler):
         Args:
             var (Tensor):  The tensor to scale.
         Returns:
-            The scaled tensor or original variable.
+            The scaled tensor or original tensor.
         
         Examples:
             .. code-block:: python
 
             import paddle
 
-            model = paddle.nn.Conv2D(3, 2, 3)
-            optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameter_list=model.parameters())
+            model = paddle.nn.Conv2d(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             data = paddle.rand([10, 3, 32, 32])
             with paddle.amp.auto_cast():
@@ -101,7 +101,7 @@ class GradScaler(AmpScaler):
                 scaled.backward()            # do backward
                 scaler.minimize(optimizer, scaled)  # update parameters  
         """
-        return super(AmpScaler, self).scale(var)
+        return super(GradScaler, self).scale(var)
 
     def minimize(self, optimizer, *args, **kwargs):
         """
@@ -122,8 +122,8 @@ class GradScaler(AmpScaler):
 
             import paddle
 
-            model = paddle.nn.Conv2D(3, 2, 3)
-            optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameter_list=model.parameters())
+            model = paddle.nn.Conv2d(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             data = paddle.rand([10, 3, 32, 32])
             with paddle.amp.auto_cast():
@@ -133,4 +133,4 @@ class GradScaler(AmpScaler):
                 scaled.backward()            # do backward
                 scaler.minimize(optimizer, scaled)  # update parameters  
         """
-        return super(AmpScaler, self).minimize(optimizer, args, kwargs)
+        return super(GradScaler, self).minimize(optimizer, *args, **kwargs)
