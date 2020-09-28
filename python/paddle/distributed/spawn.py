@@ -366,7 +366,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
         device = get_device()
         if device == 'cpu':
             # TODO: not supports cpu parallel now
-            nprocs = _cpu_num
+            nprocs = _cpu_num()
         else:
             nprocs = core.get_cuda_device_count()
 
