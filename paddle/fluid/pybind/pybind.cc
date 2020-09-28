@@ -1663,13 +1663,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
-  m.def("_cuda_synchronize", [](const platform::XPUPlace &place) {
-    platform::DeviceContextPool::Instance().Get(place)->Wait();
-  });
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
-    platform::DeviceContextPool::Instance().Get(place)->Wait();
-  });
-  m.def("_cuda_synchronize", [](const platform::CPUPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
   });
 
