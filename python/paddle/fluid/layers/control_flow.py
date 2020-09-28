@@ -3790,9 +3790,6 @@ def reorder_lod_tensor_by_rank(x, rank_table):
 
 def is_empty(x, name=None):
     """
-    :alias_main: paddle.is_empty
-	:alias: paddle.is_empty,paddle.tensor.is_empty,paddle.tensor.logic.is_empty
-	:old_api: paddle.fluid.layers.is_empty
 
     Test whether a Tensor is empty.
 
@@ -3820,23 +3817,6 @@ def is_empty(x, name=None):
             #    - layout: NCHW
             #    - dtype: bool
             #    - data: [0])
-
-
-        .. code-block:: python
-
-            # static mode
-            import numpy as np
-            import paddle
-
-            paddle.enable_static()
-            input = paddle.static.data(name="input", shape=[4, 32, 32], dtype="float32")
-            res = paddle.is_empty(x=input)
-
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            data = np.ones((4, 32, 32)).astype(np.float32)
-            out = exe.run(feed={'input':data}, fetch_list=[res])
-            print("is_empty: ", out)
-            # ('out:', [array([False])])
 
     """
     if in_dygraph_mode():
