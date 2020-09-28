@@ -194,3 +194,4 @@ from .stat import numel  #DEFINE_ALIAS
 # from .tensor import Tensor        #DEFINE_ALIAS
 # from .tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor import LoDTensorArray        #DEFINE_ALIAS
+from .print import *

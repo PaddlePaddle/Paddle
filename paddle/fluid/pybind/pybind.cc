@@ -45,6 +45,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/version.h"
@@ -425,6 +426,27 @@ PYBIND11_MODULE(core_noavx, m) {
     framework::OpCompatibleMap op_compatible_map;
     op_compatible_map.InitOpCompatibleMap();
     return op_compatible_map.ConvertToProto(desc.OpCompatibleMap());
+  });
+
+  m.def("set_printoptions", [](const py::kwargs &kwargs) {
+    auto &print_opt = framework::PrintOptions::Instance();
+    if (kwargs.contains("precision")) {
+      print_opt.precision = kwargs["precision"].cast<int>();
+    }
+    if (kwargs.contains("threshold")) {
+      print_opt.threshold = kwargs["threshold"].cast<int>();
+    }
+    if (kwargs.contains("edgeitems")) {
+      print_opt.edgeitems = kwargs["edgeitems"].cast<int>();
+    }
+    if (kwargs.contains("linewidth")) {
+      print_opt.linewidth = kwargs["linewidth"].cast<int>();
+    }
+
+    VLOG(4) << "Set printoptions: precision=" << print_opt.precision
+            << ", threshold=" << print_opt.threshold
+            << ", edgeitems=" << print_opt.edgeitems
+            << ", linewidth=" << print_opt.linewidth;
   });
 
   m.def(
