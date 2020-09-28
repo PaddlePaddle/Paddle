@@ -13424,6 +13424,10 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
     if not isinstance(seg_num, int):
         raise TypeError("seg_num must be int type.")
 
+    if in_dygraph_mode():
+        return core.ops.temporal_shift(x, 'seg_num', seg_num, 'shift_ratio',
+                                       shift_ratio)
+
     helper.append_op(
         type="temporal_shift",
         inputs={"X": x},
