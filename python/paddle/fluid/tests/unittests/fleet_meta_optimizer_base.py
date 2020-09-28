@@ -19,10 +19,8 @@ import os
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 
-paddle.enable_static()
 
-
-class TestFleetCombineOptimizer(unittest.TestCase):
+class TestFleetMetaOptimizer(unittest.TestCase):
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "1"
         os.environ[
@@ -50,19 +48,21 @@ class TestFleetCombineOptimizer(unittest.TestCase):
                 avg_cost = paddle.fluid.layers.mean(x=cost)
 
                 strategy = paddle.distributed.fleet.DistributedStrategy()
-                strategy.dgc = True
-                strategy.dgc_configs = {
-                    "rampup_begin_step": 128,
-                    "rampup_step": 100,
-                    "sparsity": [0.996, 0.999]
-                }
         return avg_cost, strategy
 
-    def optimizer(self, loss, strategy, train_prog, startup_prog):
+    def optimizer(self,
+                  loss,
+                  strategy,
+                  train_prog,
+                  startup_prog,
+                  name='momentum'):
         with fluid.program_guard(train_prog, startup_prog):
             with fluid.unique_name.guard():
-                optimizer = paddle.fluid.optimizer.Momentum(
-                    learning_rate=0.01, momentum=0.9)
+                if name == 'momentum':
+                    optimizer = paddle.fluid.optimizer.Momentum(
+                        learning_rate=0.01, momentum=0.9)
+                elif name == 'adam':
+                    optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
                 optimizer = fleet.distributed_optimizer(
                     optimizer, strategy=strategy)
                 optimizer.minimize(loss)
@@ -70,53 +70,41 @@ class TestFleetCombineOptimizer(unittest.TestCase):
     def set_strategy(self, strategy, name):
         if name == 'amp':
             strategy.amp = True
+            strategy.amp_configs = {
+                "init_loss_scaling": 32768,
+                "decr_every_n_nan_or_inf": 2,
+                "incr_every_n_steps": 1000,
+                "incr_ratio": 2.0,
+                "use_dynamic_loss_scaling": True,
+                "decr_ratio": 0.5,
+                "custom_white_list": ['softmax'],
+                "custom_black_list": ['tanh'],
+            }
         elif name == 'dgc':
             strategy.dgc = True
+            strategy.dgc_configs = {
+                "rampup_begin_step": 128,
+                "rampup_step": 100,
+                "sparsity": [0.996, 0.999]
+            }
         elif name == 'recompute':
             strategy.recompute = True
             strategy.recompute_configs = {
                 "checkpoints": ["fc_0.tmp_2", "fc_1.tmp_2"]
             }
-
-    def test_dgc_recompute_optimizer(self):
-        train_prog = fluid.Program()
-        startup_prog = fluid.Program()
-        avg_cost, strategy = self.net(train_prog, startup_prog)
-
-        self.set_strategy(strategy, 'dgc')
-        self.set_strategy(strategy, 'recompute')
-
-        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
-
-        ops = [op.type for op in avg_cost.block.ops]
-        outs = [
-            op.output('Out')[0] for op in avg_cost.block.ops if op.type == 'mul'
-        ]
-        self.assertIn('dgc', ops)
-        self.assertIn('dgc_momentum', ops)
-
-        self.assertIn('subprog', ''.join(outs))
-
-    def test_amp_recompute_optimizer(self):
-        train_prog = fluid.Program()
-        startup_prog = fluid.Program()
-        avg_cost, strategy = self.net(train_prog, startup_prog)
-
-        self.set_strategy(strategy, 'amp')
-        self.set_strategy(strategy, 'recompute')
-
-        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
-
-        ops = [op.type for op in avg_cost.block.ops]
-        outs = [
-            op.output('Out')[0] for op in avg_cost.block.ops if op.type == 'mul'
-        ]
-        print(train_prog)
-        self.assertIn('cast', ops)
-        self.assertIn('check_finite_and_unscale', ops)
-
-        self.assertIn('subprog', ''.join(outs))
-
-
-if __name__ == "__main__":
-    unittest.main()
+        elif name == 'lars':
+            strategy.lars = True
+            strategy.lars_configs = {
+                "lars_coeff": 0.001,
+                "lars_weight_decay": 0.0005,
+                "epsilon": 0,
+                "exclude_from_weight_decay": ["batch_norm", ".b"],
+            }
+        elif name == 'lamb':
+            strategy.lamb = True
+            strategy.lamb_configs = {
+                'lamb_weight_decay': 0.01,
+                'exclude_from_weight_decay': [],
+            }
+        else:
+            raise NotImplementedError()

@@ -46,7 +46,7 @@ class AMPOptimizer(MetaOptimizerBase):
         custom_white_list = set(config['custom_white_list'])
         custom_black_list = set(config['custom_black_list'])
         custom_black_varnames = set(config['custom_black_varnames'])
-        self.amp_lists = mixed_precision.AutoMixedPrecisionLists(
+        amp_lists = mixed_precision.AutoMixedPrecisionLists(
             custom_white_list, custom_black_list, custom_black_varnames)
 
         self.wrapped_opt = mixed_precision.decorate(
