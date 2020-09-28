@@ -497,7 +497,7 @@ class VisualDL(Callback):
                         loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
             
-            # uncomment following lines to fit model with visualdl callback function
+            ## uncomment following lines to fit model with visualdl callback function
             # callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
             # model.fit(train_dataset, eval_dataset, batch_size=64, callbacks=callback)
 

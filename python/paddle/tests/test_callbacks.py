@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 import time
 import random
@@ -104,9 +105,8 @@ class TestCallbacks(unittest.TestCase):
         self.run_callback()
 
     def test_visualdl_callback(self):
-        try:
-            import visualdl
-        except:
+        # visualdl not support python3
+        if sys.version_info < (3, ):
             return
 
         inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
