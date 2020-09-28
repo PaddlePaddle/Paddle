@@ -705,7 +705,6 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_GLOO_HTTP_PORT"] = ""
 
         role = role_maker.PaddleCloudRoleMaker()
-        self.assertRaises(ValueError, role._generate_role)
 
     def test_fs_gloo8(self):
         plats = platform.platform()
