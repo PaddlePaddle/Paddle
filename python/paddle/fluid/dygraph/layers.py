@@ -79,7 +79,7 @@ class Layer(core.Layer):
         None
     """
 
-    def __init__(self, name_scope=None, dtype=core.VarDesc.VarType.FP32):
+    def __init__(self, name_scope=None, dtype="float32"):
         self.training = True
         if name_scope is None:
             name_scope = _convert_camel_to_snake(self.__class__.__name__)
@@ -279,7 +279,7 @@ class Layer(core.Layer):
     def create_parameter(self,
                          shape,
                          attr=None,
-                         dtype=None,
+                         dtype="float32",
                          is_bias=False,
                          default_initializer=None):
         """Create parameters for this layer.
@@ -304,11 +304,10 @@ class Layer(core.Layer):
         return self._helper.create_parameter(temp_attr, shape, dtype, is_bias,
                                              default_initializer)
 
-    # TODO: Add more parameter list when we need them
     def create_variable(self,
                         name=None,
                         persistable=None,
-                        dtype=None,
+                        dtype="float32",
                         type=core.VarDesc.VarType.LOD_TENSOR):
         """Create Variable for this layer.
 
