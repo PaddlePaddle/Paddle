@@ -15,6 +15,10 @@
 import os
 import six
 import warnings
+from multiprocessing import Process, Manager
+import netifaces
+import time
+import sys
 
 from paddle import compat as cpt
 
@@ -27,6 +31,39 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 __all__ = ["init_parallel_env"]
 
 ParallelStrategy = core.ParallelStrategy
+
+
+def _start_kv_server(port, http_server_d):
+    from paddle.distributed.fleet.utils.http_server import KVServer
+    http_server = KVServer(int(port))
+    http_server.start()
+    wait_seconds = 5
+    while http_server_d.get("running", False):
+        time.sleep(wait_seconds)
+    http_server.stop()
+
+
+def _get_iface_by_ip(ip_address):
+    """
+    Get network interface name by its ip address.
+
+    Args:
+        ip_address (string): ip address
+    
+    Returns:
+        Name of the network interface which has the ip address 'ip_address',
+        or None if the ip_address is not found.
+    """
+    nicfaces = netifaces.interfaces()
+    for nicface in nicfaces:
+        message = netifaces.ifaddresses(nicface)
+        iface_info = message.get(netifaces.AF_INET)
+        if iface_info:
+            iface_dict = iface_info[0]
+            ipaddr = iface_dict.get('addr')
+            if ipaddr == ip_address:
+                return nicface
+    return None
 
 
 def init_parallel_env():
@@ -110,7 +147,44 @@ def init_parallel_env():
     _check_var_exists("PADDLE_TRAINERS_NUM")
     _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
-    # 3. init NCCL ParallelStrategy
+    if ParallelEnv().world_size < 2:
+        return
+
+    # 3: init gloo context
+    ep_rank_0 = ParallelEnv().trainer_endpoints[0].split(":")
+    ep_rank = ParallelEnv().trainer_endpoints[ParallelEnv().rank].split(":")
+    manager = Manager()
+    # glboal dict to store status
+    http_server_d = manager.dict()
+    http_server_d["running"] = False
+    if ParallelEnv().rank == 0:
+        http_server = Process(
+            target=_start_kv_server, args=(int(ep_rank_0[1]), http_server_d))
+        http_server.daemon = True
+        http_server_d["running"] = True
+        http_server.start()
+
+    iface = _get_iface_by_ip(ep_rank[0])
+    if iface is None:
+        raise ValueError("No network interface associated with the "
+                         "ip address: {}.".format(ep_rank_0[0]))
+    gloo_strategy = core.GlooParallelStrategy()
+    gloo_strategy.rank = ParallelEnv().rank
+    gloo_strategy.rank_num = ParallelEnv().world_size
+    gloo_strategy.ip_address = ep_rank_0[0]
+    gloo_strategy.ip_port = int(ep_rank_0[1])
+    gloo_strategy.iface = iface
+    default_init_timeout_seconds = 3600
+    default_run_timeout_seconds = 9999999
+    gloo_strategy.init_seconds = default_init_timeout_seconds
+    gloo_strategy.run_seconds = default_run_timeout_seconds
+    gloo = core.GlooParallelContext(gloo_strategy)
+    gloo.init()
+    if ParallelEnv().rank == 0:
+        http_server_d["running"] = False
+        http_server.join()
+
+    # 4. init NCCL ParallelStrategy
     strategy = ParallelStrategy()
     if parallel_helper._is_parallel_ctx_initialized():
         warnings.warn("The parallel environment has been initialized.")
@@ -118,8 +192,7 @@ def init_parallel_env():
     strategy.local_rank = ParallelEnv().rank
     strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
     strategy.current_endpoint = ParallelEnv().current_endpoint
-    if strategy.nranks < 2:
-        return
+
     # NOTE(chenweihang): [ why config global place here? ]
     # the dygraph mode will be set to default mode, 
     # users will not call `dygraph.guard` or `enable_dygraph`
