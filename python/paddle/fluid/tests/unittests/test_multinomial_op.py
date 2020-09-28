@@ -166,7 +166,7 @@ class TestMultinomialApi(unittest.TestCase):
             x = paddle.rand([5])
             out = paddle.multinomial(x, num_samples=10, replacement=False)
 
-        self.assertRaises(OutOfRangeError, test_error) # not OutOfRangeError
+        self.assertRaises(paddle.fluid.core.EnforceNotMet, test_error)
     """
 
 

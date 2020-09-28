@@ -93,7 +93,7 @@ __device__ int binarySearchFunctor(T* cumdist, T* dist, int size, T val) {
 
 template <typename T>
 __global__ void sampleMultinomialWithReplacement(
-    T* rng_data, const int64_t num_samples, T* out_data,
+    T* rng_data, const int64_t num_samples, int64_t* out_data,
     const int64_t num_distributions, const int64_t num_categories,
     T* cumulative_probs, T* norm_probs_data) {
   // At the moment, each warp computes one sample value in the binary
@@ -142,7 +142,7 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
     const bool replacement = ctx.Attr<bool>("replacement");
 
     auto* in_data = x->data<T>();
-    auto* out_data = out->mutable_data<T>(ctx.GetPlace());
+    int64_t* out_data = out->mutable_data<int64_t>(ctx.GetPlace());
 
     auto in_dims = x->dims();
     int64_t in_rank = in_dims.size();
@@ -154,7 +154,7 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
       int out_data_numel = out->numel();
 
       T* cpu_in_data = new T[in_data_numel];
-      T* cpu_out_data = new T[out_data_numel];
+      int64_t* cpu_out_data = new int64_t[out_data_numel];
 
       cudaMemcpy(cpu_in_data, in_data, in_data_numel * sizeof(T),
                  cudaMemcpyDeviceToHost);
