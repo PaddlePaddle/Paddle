@@ -30,6 +30,7 @@ __all__ = [
 ]
 
 fleet = Fleet()
+_final_strategy = fleet._final_strategy
 init = fleet.init
 is_first_worker = fleet.is_first_worker
 worker_index = fleet.worker_index
