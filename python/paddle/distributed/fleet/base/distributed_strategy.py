@@ -17,6 +17,7 @@ from paddle.distributed.fleet.proto import distributed_strategy_pb2
 from paddle.fluid.framework import Variable, set_flags, core
 from paddle.fluid.wrapped_decorator import wrap_decorator
 import google.protobuf.text_format
+import google.protobuf
 
 __all__ = ["DistributedStrategy"]
 
@@ -706,11 +707,7 @@ class DistributedStrategy(object):
 
         **Notes**:
             k_steps(int) The local steps for training before parameter synchronization. Default 1.
-
-            If strategy.auto is set True, the local steps will be calculated automatically during training.
-            The algorithm is referenced in this paper: 
-            `Adaptive Communication Strategies to Achieve the Best Error-Runtime Trade-off in Local-Update SGD <https://arxiv.org/pdf/1810.08313.pdf>`_.
-            In this case, k_steps indicates the first local steps which is suggested setting to 1.
+            begin_step(int) The step of begining training by localsgd. Default 1.
 
         Examples:
           .. code-block:: python
@@ -718,7 +715,8 @@ class DistributedStrategy(object):
             import paddle.distributed.fleet as fleet
             strategy = fleet.DistributedStrategy()
             strategy.localsgd = True
-            strategy.localsgd_configs = {"k_steps": 4}
+            strategy.localsgd_configs = {"k_steps": 4,
+                                         "begin_step": 30}
         """
 
         return get_msg_dict(self.strategy.localsgd_configs)
@@ -729,6 +727,63 @@ class DistributedStrategy(object):
         check_configs_key(self.strategy.localsgd_configs, configs,
                           "localsgd_configs")
         assign_configs_value(self.strategy.localsgd_configs, configs)
+
+    @property
+    def adaptive_localsgd(self):
+        """
+        Indicating whether we are using Adaptive Local SGD training. Default Value: False
+        For more details, please refer to `Adaptive Communication Strategies to Achieve 
+        the Best Error-Runtime Trade-off in Local-Update SGD <https://arxiv.org/pdf/1810.08313.pdf>`_.
+
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.adaptive_localsgd = True # by default this is false
+
+        """
+        return self.strategy.localsgd
+
+    @adaptive_localsgd.setter
+    @is_strict_auto
+    def adaptive_localsgd(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.localsgd = flag
+        else:
+            print("WARNING: adaptive_localsgd should have value of bool type")
+
+    @property
+    def adaptive_localsgd_configs(self):
+        """
+        Set AdaptiveLocalSGD training configurations. AdaptiveLocalSGD has a configurable
+        setting that can be configured through a dict.
+
+        **Notes**:
+            init_k_steps(int) The initial steps for training before adaptive localsgd.
+                              Then, the adaptive localsgd method will modify init_k_steps automatically.
+                              Default 1.
+            begin_step(int) The step of begining training by adaptive localsgd. Default 1.
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.adaptive_localsgd = True
+            strategy.adaptive_localsgd_configs = {"init_k_steps": 1,
+                                                  "begin_step": 30}
+        """
+
+        return get_msg_dict(self.strategy.adaptive_localsgd_configs)
+
+    @adaptive_localsgd_configs.setter
+    @is_strict_auto
+    def adaptive_localsgd_configs(self, configs):
+        check_configs_key(self.strategy.adaptive_localsgd_configs, configs,
+                          "adaptive_localsgd_configs")
+        assign_configs_value(self.strategy.adaptive_localsgd_configs, configs)
 
     @property
     def dgc(self):
@@ -789,6 +844,29 @@ class DistributedStrategy(object):
     def dgc_configs(self, configs):
         check_configs_key(self.strategy.dgc_configs, configs, "dgc_configs")
         assign_configs_value(self.strategy.dgc_configs, configs)
+
+    @property
+    def fp16_allreduce(self):
+        """
+        Indicating whether we are using fp16 gradient allreduce training
+        Default Value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fp16_allreduce = True # by default this is false
+
+        """
+        return self.strategy.fp16_allreduce
+
+    @fp16_allreduce.setter
+    @is_strict_auto
+    def fp16_allreduce(self, flag):
+        if not isinstance(flag, bool):
+            raise TypeError('fp16_allreduce must be value of bool type')
+        self.strategy.fp16_allreduce = flag
 
     @property
     def gradient_merge(self):
@@ -1133,7 +1211,90 @@ class DistributedStrategy(object):
         return False
 
     def __repr__(self):
+        spacing = 2
+        max_k = 38
+        max_v = 38
+
+        length = max_k + max_v + spacing
+
+        h1_format = "    " + "|{{:^{}s}}|\n".format(length)
+        h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(max_k, " " *
+                                                               spacing, max_v)
+
+        border = "    +" + "".join(["="] * length) + "+"
+        line = "    +" + "".join(["-"] * length) + "+"
+
+        draws = border + "\n"
+        draws += h1_format.format("")
+        draws += h1_format.format("DistributedStrategy Overview")
+        draws += h1_format.format("")
+
         fields = self.strategy.DESCRIPTOR.fields
+        str_res = ""
+
+        env_draws = line + "\n"
         for f in fields:
-            print("{}: {}".format(f.name, f.default_value))
-        return str(self.strategy)
+            if "build_strategy" in f.name or "execution_strategy" in f.name:
+                continue
+            if "_configs" in f.name:
+                continue
+            else:
+                if isinstance(getattr(self.strategy, f.name), bool):
+                    if hasattr(self.strategy, f.name + "_configs"):
+                        if getattr(self.strategy, f.name):
+                            draws += border + "\n"
+                            draws += h1_format.format(
+                                "{}=True <-> {}_configs".format(f.name, f.name))
+                            draws += line + "\n"
+                            my_configs = getattr(self.strategy,
+                                                 f.name + "_configs")
+                            config_fields = my_configs.DESCRIPTOR.fields
+                            for ff in config_fields:
+                                if isinstance(
+                                        getattr(my_configs, ff.name),
+                                        google.protobuf.pyext._message.
+                                        RepeatedScalarContainer):
+                                    values = getattr(my_configs, ff.name)
+                                    for i, v in enumerate(values):
+                                        if i == 0:
+                                            draws += h2_format.format(ff.name,
+                                                                      str(v))
+                                        else:
+                                            draws += h2_format.format("",
+                                                                      str(v))
+                                else:
+                                    draws += h2_format.format(
+                                        ff.name,
+                                        str(getattr(my_configs, ff.name)))
+                    else:
+                        env_draws += h2_format.format(
+                            f.name, str(getattr(self.strategy, f.name)))
+                else:
+                    env_draws += h2_format.format(
+                        f.name, str(getattr(self.strategy, f.name)))
+
+        result_res = draws + border + "\n" + h1_format.format(
+            "Environment Flags, Communication Flags")
+        result_res += env_draws
+
+        build_strategy_str = border + "\n"
+        build_strategy_str += h1_format.format("Build Strategy")
+        build_strategy_str += line + "\n"
+
+        fields = self.strategy.build_strategy.DESCRIPTOR.fields
+        for f in fields:
+            build_strategy_str += h2_format.format(
+                f.name, str(getattr(self.strategy.build_strategy, f.name)))
+        build_strategy_str += border + "\n"
+
+        execution_strategy_str = h1_format.format("Execution Strategy")
+        execution_strategy_str += line + "\n"
+
+        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
+        for f in fields:
+            execution_strategy_str += h2_format.format(
+                f.name, str(getattr(self.strategy.execution_strategy, f.name)))
+        execution_strategy_str += border + "\n"
+
+        result_res += build_strategy_str + execution_strategy_str
+        return result_res

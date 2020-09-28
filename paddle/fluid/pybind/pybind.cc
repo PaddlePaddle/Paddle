@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
+
 #include <algorithm>
 #include <cstdlib>
 #include <map>
@@ -22,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
@@ -60,6 +62,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
+#include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -2528,6 +2531,10 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.enable_inplace_; },
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
       .def_property(
+          "enable_addto",
+          [](const BuildStrategy &self) { return self.enable_addto_; },
+          [](BuildStrategy &self, bool b) { self.enable_addto_ = b; })
+      .def_property(
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) {
             return self.fuse_all_reduce_ops_ == true ||
@@ -2619,6 +2626,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);
+  BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
 #ifdef PADDLE_WITH_CRYPTO

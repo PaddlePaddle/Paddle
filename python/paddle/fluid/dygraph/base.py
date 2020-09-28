@@ -23,8 +23,8 @@ from paddle.fluid import framework
 from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
-import objgraph
 from ..data_feeder import convert_dtype
+import warnings
 
 __all__ = [
     'no_grad', 'no_grad_', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph',
@@ -363,26 +363,8 @@ def guard(place=None):
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
             with framework._dygraph_guard(tracer):
-                with framework._dygraph_place_guard(place):
+                with framework._dygraph_place_guard(expected_place):
                     yield
-
-
-def _print_debug_msg(parameter_list, limit=5, is_test=False):
-    if not core._is_dygraph_debug_enabled():
-        logging.warn(
-            'Debug mode is not enabled. Please set FLAGS_dygraph_debug=1 to enable debug'
-        )
-        return
-    unique_name_size = len(framework.unique_name.generator.ids)
-    tracer_var_size = len(parameter_list)
-    alive_cpp_var_size = len(core.VarBase._alive_vars())
-    if not is_test:
-        logging.warn(
-            'unique_name num: {}, tracer vars num: {}, alive cpp vars num: {}'
-            .format(unique_name_size, tracer_var_size, alive_cpp_var_size))
-        objgraph.show_growth(limit=limit)
-    else:
-        return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
 @framework.dygraph_only
@@ -609,10 +591,10 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             uint8, uint16, complex64, complex128}.
         name(str, optional): The default value is None. Normally there is no 
             need for user to set this property. For more information, please 
-            refer to :ref:`api_guide_Name` .
+            refer to :ref:`api_guide_Name` . 
         zero_copy(bool, optional): Whether to share memory with the input numpy 
             array. This parameter only works with CPUPlace and will be set to 
-            True when it is None. Default: None.
+            True when it is None. Default: None. (Note: zero_copy is discarded temporally for some reason.)
         dtype(str, optional): The desired data type of returned ``Variable`` .
             Can be 'bool' , 'float16' , 'float32' , 'float64' , 'int8' , 'int16' , 
             'int32' , 'int64' , 'uint8' . Default: None.
@@ -665,8 +647,17 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
     else:
         if isinstance(framework._current_expected_place(),
                       framework.core.CPUPlace):
-            if zero_copy is None:
-                zero_copy = True
+            #TODO(zhiqiu): we found two problems when enable zero_copy on CPUPlace.
+            # (1): eigen requires 16-bytes alignments, but the data of numpy array may not statisfy. 
+            # Details: https://eigen.tuxfamily.org/dox/group__TopicUnalignedArrayAssert.html
+            # (2): when used in flask framework, it may result in hang.
+            # Details: https://github.com/PaddlePaddle/Paddle/issues/26635
+            # So, we temporally diable the zero_copy strategy.
+            if zero_copy == True:
+                warnings.warn(
+                    "Currently, zero_copy is not supported, and it will be discarded."
+                )
+                zero_copy = False
         else:
             assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
 

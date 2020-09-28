@@ -182,23 +182,25 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import paddle   
+                import paddle
+                import paddle.fluid as fluid
 
                 paddle.disable_static()
 
-                emb = paddle.nn.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
 
                 state_dict = emb.state_dict()
-                paddle.save(state_dict, "paddle_dy")
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
-                adam = paddle.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
-                                                parameter_list=emb.parameters())
+                scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
+                    d_model=0.01, warmup_steps=100, verbose=True)
+                adam = paddle.optimizer.Adam(
+                    learning_rate=scheduler,
+                    parameters=emb.parameters())
                 state_dict = adam.state_dict()
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
-                para_state_dict, opti_state_dict = paddle.load("paddle_dy")
-
-                adam.set_state_dict(opti_state_dict)
-
+                para_state_dict, opti_state_dict = fluid.load_dygraph("paddle_dy")
         '''
         from paddle.optimizer.lr_scheduler import _LRScheduler
         if isinstance(self._learning_rate, _LRScheduler):
@@ -1604,7 +1606,7 @@ class LarsMomentumOptimizer(Optimizer):
         & local\_learning\_rate = learning\_rate * lars\_coeff * \\
           \\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}
 
-        & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param)
+        & velocity = mu * velocity + local\_learning\_rate * (gradient + lars\_weight\_decay * param + epsilon)
 
         & param = param - velocity
 
@@ -1628,7 +1630,9 @@ class LarsMomentumOptimizer(Optimizer):
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
-
+        exclude_from_weight_decay (list[str], optional): Name string of layers which will be exclude from lars weight decay. Default is None.
+        epsilon (float, optional): Epsilon to avoid Division by Zero when calculate local lr. Default is 0.
+        
     Examples:
         .. code-block:: python
 
@@ -1659,7 +1663,9 @@ class LarsMomentumOptimizer(Optimizer):
                  parameter_list=None,
                  regularization=None,
                  grad_clip=None,
-                 name=None):
+                 name=None,
+                 exclude_from_weight_decay=None,
+                 epsilon=0):
         assert learning_rate is not None
         assert momentum is not None
         super(LarsMomentumOptimizer, self).__init__(
@@ -1672,6 +1678,11 @@ class LarsMomentumOptimizer(Optimizer):
         self._momentum = momentum
         self._lars_coeff = float(lars_coeff)
         self._lars_weight_decay = float(lars_weight_decay)
+        self._epsilon = float(epsilon)
+        if exclude_from_weight_decay is None:
+            self._exclude_from_weight_decay = []
+        else:
+            self._exclude_from_weight_decay = exclude_from_weight_decay
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -1681,6 +1692,14 @@ class LarsMomentumOptimizer(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+
+        _lars_weight_decay = self._lars_weight_decay
+        param_name = param_and_grad[0].name
+        if len(self._exclude_from_weight_decay) > 0:
+            for name in self._exclude_from_weight_decay:
+                if name in param_name:
+                    _lars_weight_decay = 0.0
+                    break
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
@@ -1700,7 +1719,8 @@ class LarsMomentumOptimizer(Optimizer):
             attrs={
                 "mu": self._momentum,
                 "lars_coeff": self._lars_coeff,
-                "lars_weight_decay": self._lars_weight_decay
+                "lars_weight_decay": _lars_weight_decay,
+                "epsilon": self._epsilon
             },
             stop_gradient=True)
 
@@ -3552,8 +3572,10 @@ class ExponentialMovingAverage(object):
                 # bias correction
                 with layers.control_flow.Switch() as switch:
                     with switch.case(global_step > 0):
-                        layers.assign(output=ema, input=ema / (1.0 - decay_pow))
-                layers.assign(input=ema, output=param)
+                        layers.assign(
+                            output=param, input=ema / (1.0 - decay_pow))
+                    with switch.default():
+                        layers.assign(output=param, input=ema)
 
         self.restore_program = Program()
         block = self.restore_program.global_block()

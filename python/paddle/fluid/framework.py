@@ -217,7 +217,16 @@ def _dygraph_not_support_(func):
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
         assert in_dygraph_mode(
-        ), "We Only support %s in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative Mode" % func.__name__
+        ), "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode." % func.__name__
+        return func(*args, **kwargs)
+
+    return __impl__
+
+
+def _static_only_(func):
+    def __impl__(*args, **kwargs):
+        assert not in_dygraph_mode(
+        ), "We only support '%s()' in static graph mode, please call 'paddle.enable_static()' to enter static graph mode." % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -260,6 +269,7 @@ def deprecate_stat_dict(func):
 
 dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
+static_only = wrap_decorator(_static_only_)
 fake_interface_only = wrap_decorator(_fake_interface_only_)
 
 
@@ -603,7 +613,9 @@ def convert_np_dtype_to_dtype_(np_dtype):
     elif dtype == np.bool:
         return core.VarDesc.VarType.BOOL
     elif dtype == np.uint16:
-        return core.VarDesc.VarType.INT16
+        # since there is still no support for bfloat16 in NumPy,
+        # uint16 is used for casting bfloat16
+        return core.VarDesc.VarType.BF16
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
     elif dtype == np.int8:
@@ -5384,13 +5396,13 @@ def program_guard(main_program, startup_program=None):
     """
     :api_attr: Static Graph
 
-    Change the global main program and startup program with `"with"` statement.
-    Layer functions in the Python `"with"` block will append operators and
-    variables to the new main programs.
+    Change the global main program and startup program with ``with`` statement.
+    Layer functions in the Python ``with`` block will append operators and
+    Tensors to the new main programs.
 
     Args:
-        main_program(Program): New main program inside `"with"` statement.
-        startup_program(Program, optional): New startup program inside `"with"` 
+        main_program(Program): New main program inside ``with`` statement.
+        startup_program(Program, optional): New startup program inside ``with`` 
             statement. :code:`None` means not changing startup program, 
             default_startup_program is still used.
             Default: None.
@@ -5398,13 +5410,14 @@ def program_guard(main_program, startup_program=None):
     Examples:
        .. code-block:: python
        
-         import paddle.fluid as fluid
+          import paddle
 
-         main_program = fluid.Program()
-         startup_program = fluid.Program()
-         with fluid.program_guard(main_program, startup_program):
-             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-             hidden = fluid.layers.fc(input=data, size=10, act='relu')
+          paddle.enable_static()
+          main_program = paddle.static.Program()
+          startup_program = paddle.static.Program()
+          with paddle.static.program_guard(main_program, startup_program):
+              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+              hidden = paddle.static.nn.fc(input=data, size=10, act='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
     to construct either of startup program or main program.
@@ -5412,20 +5425,22 @@ def program_guard(main_program, startup_program=None):
     Examples:
        .. code-block:: python
 
-         import paddle.fluid as fluid
+          import paddle
 
-         main_program = fluid.Program()
-         # does not care about startup program. Just pass a temporary value.
-         with fluid.program_guard(main_program, fluid.Program()):
-             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+          paddle.enable_static()
+          main_program = paddle.static.Program()
+          # does not care about startup program. Just pass a temporary value.
+          with paddle.static.program_guard(main_program, paddle.static.Program()):
+              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
     
     """
     from .data_feeder import check_type
-    check_type(main_program, 'main_program', Program, 'fluid.program_guard')
+    check_type(main_program, 'main_program', Program,
+               'paddle.static.program_guard')
     main_program = switch_main_program(main_program)
     if startup_program is not None:
         check_type(startup_program, 'startup_program', Program,
-                   'fluid.program_guard')
+                   'paddle.static.program_guard')
         startup_program = switch_startup_program(startup_program)
     try:
         yield

@@ -18,6 +18,7 @@ import os
 import pickle
 import warnings
 import functools
+from collections import OrderedDict
 
 import six
 import paddle
@@ -25,8 +26,9 @@ from paddle.fluid import core
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import set_code_level, set_verbosity
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticLayer, unwrap_decorators
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, StaticFunction, unwrap_decorators
 from paddle.fluid.dygraph.io import EXTRA_VAR_INFO_FILENAME, VARIABLE_FILENAME, TranslatedLayer
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
@@ -118,8 +120,8 @@ def _dygraph_to_static_func_(dygraph_func):
     # TODO: remove this decorator after we finalize training API
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
-        if in_dygraph_mode() or not program_translator.enable_declarative:
-            warnings.warn(
+        if in_dygraph_mode() or not program_translator.enable_to_static:
+            logging_utils.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
                 "dygraph mode or set ProgramTranslator.enable to False. "
                 "We will just return dygraph output.")
@@ -139,7 +141,7 @@ def copy_decorator_attrs(original_func, decorated_obj):
 
     Args:
         original_func(callable): the original decorated function.
-        decorated_obj(StaticLayer): the target decorated StaticLayer object.
+        decorated_obj(StaticFunction): the target decorated StaticFunction object.
     """
     decorator_name = "declarative"
 
@@ -196,7 +198,7 @@ def declarative(function=None, input_spec=None):
 
     def decorated(python_func):
         """
-        Decorates a python function into a StaticLayer object.
+        Decorates a python function into a StaticFunction object.
         """
         # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
@@ -204,14 +206,23 @@ def declarative(function=None, input_spec=None):
         # Step 2. copy some attributes from original python function.
         static_layer = copy_decorator_attrs(
             original_func=python_func,
-            decorated_obj=StaticLayer(
+            decorated_obj=StaticFunction(
                 function=python_func, input_spec=input_spec))
 
         return static_layer
 
     # for usage: `declarative(foo, ...)`
     if function is not None:
-        return decorated(function)
+        if isinstance(function, Layer):
+            if isinstance(function.forward, StaticFunction):
+                class_name = function.__class__.__name__
+                logging_utils.warn(
+                    "`{}.forward` has already been decorated somewhere. It will be redecorated to replace previous one.".
+                    format(class_name))
+            function.forward = decorated(function.forward)
+            return function
+        else:
+            return decorated(function)
 
     # for usage: `@declarative`
     return decorated
@@ -220,9 +231,7 @@ def declarative(function=None, input_spec=None):
 class SaveLoadConfig(object):
     """
     The additional configuration options may be used in function 
-    :ref:`api_imperative_jit_save` that save :ref:`api_imperative_TranslatedLayer` 
-    or used in function :ref:`api_imperative_jit_load` that 
-    load :ref:`api_imperative_TranslatedLayer` .
+    ``paddle.jit.save/load`` and ``paddle.load`` .
     
     Examples:
         1. Using ``SaveLoadConfig`` when saving model
@@ -308,7 +317,7 @@ class SaveLoadConfig(object):
     @property
     def output_spec(self):
         """
-        Selects the output targets of the saved model ( :ref:`api_imperative_TranslatedLayer` ).
+        Selects the output targets of the saved model ( ``paddle.jit.TranslatedLayer`` ).
         By default, all return variables of original Layer's forward function
         are kept as the output of the saved TranslatedLayer.
 
@@ -520,10 +529,13 @@ class SaveLoadConfig(object):
     def separate_params(self):
         """
         Configure whether to save the Layer parameters as separete files.
-        (In order to be compatible with the behavior of :ref:`api_fluid_io_save_inference_model` )
+        (In order to be compatible with the behavior of ``paddle.static.save_inference_model`` )
 
         If True, each parameter will be saved to a file separately, the file name is the parameter name,
         and the SaveLoadConfig.params_filename configuration will not take effect. Default False.
+
+        .. note::
+            Only used for ``paddle.jit.save`` .
 
         Examples:
             .. code-block:: python
@@ -558,7 +570,7 @@ class SaveLoadConfig(object):
                     adam.clear_grad()
 
                 model_path = "simplenet.example.model.separate_params"
-                config = paddle.jit.SaveLoadConfig()
+                config = paddle.SaveLoadConfig()
                 config.separate_params = True
 
                 # saving with configs.separate_params
@@ -588,12 +600,12 @@ class SaveLoadConfig(object):
     def keep_name_table(self):
         """
         Configures whether keep ``structured_name -> parameter_name`` dict in loaded state dict.
-        This dict is the debugging information saved when call `paddle.save`. 
+        This dict is the debugging information saved when call ``paddle.save`` . 
         It is generally only used for debugging and does not affect the actual training or inference. 
-        By default, it will not be retained in `paddle.load` result. Default: False.
+        By default, it will not be retained in ``paddle.load`` result. Default: False.
         
         .. note::
-            Only used for ``paddle.load``.
+            Only used for ``paddle.load`` .
 
         Examples:
             .. code-block:: python
@@ -605,11 +617,11 @@ class SaveLoadConfig(object):
                 linear = paddle.nn.Linear(5, 1)
 
                 state_dict = linear.state_dict()
-                paddle.save(state_dict, "paddle_dy")
+                paddle.save(state_dict, "paddle_dy.pdparams")
 
-                configs = paddle.SaveLoadConfig()
-                configs.keep_name_table = True
-                para_state_dict, _ = paddle.load("paddle_dy", configs)
+                config = paddle.SaveLoadConfig()
+                config.keep_name_table = True
+                para_state_dict = paddle.load("paddle_dy.pdparams", config)
 
                 print(para_state_dict)
                 # the name_table is 'StructuredToParameterName@@'
@@ -631,6 +643,73 @@ class SaveLoadConfig(object):
                 "The SaveLoadConfig.keep_name_table should be bool value, but received input's type is %s."
                 % type(value))
         self._keep_name_table = value
+
+
+def _get_input_var_names(inputs, input_spec):
+    name_none_error = "The %s's name is None. " \
+        "When using jit.save, please set InputSepc's name in " \
+        "to_static(input_spec=[]) and jit.save(input_spec=[]) " \
+        "and make sure they are consistent."
+    name_no_exists_error = "The tensor `%s` does not exists. " \
+        "Please make sure the name of InputSpec or example Tensor " \
+        "in input_spec is the same as the name of InputSpec in " \
+        "`to_static` decorated on the Layer.forward method."
+    result_list = []
+    input_var_names = [var.name for var in inputs if isinstance(var, Variable)]
+    if input_spec is None:
+        # no prune
+        result_list = input_var_names
+    elif input_spec is not None and len(input_spec) == len(input_var_names):
+        # no prune
+        result_list = input_var_names
+        # if input spec name not in input_var_names, only raise warning 
+        for spec in input_spec:
+            if spec.name is None:
+                warnings.warn(name_none_error % spec)
+            elif spec.name not in input_var_names:
+                warnings.warn(name_no_exists_error % spec.name)
+            else:
+                # do nothing
+                pass
+    else:
+        # prune
+        for spec in input_spec:
+            if spec.name is None:
+                # name is None, the input_spec only can be InputSpec
+                raise ValueError(name_none_error % spec)
+            elif spec.name not in input_var_names:
+                # the input_spec can be `InputSpec` or `VarBase`
+                raise ValueError(name_no_exists_error % spec.name)
+            else:
+                result_list.append(spec.name)
+
+    return result_list
+
+
+def _get_output_vars(outputs, output_spec):
+    name_no_exists_error = "The tensor `%s` does not exists. " \
+        "Please make sure the name of example Tensor " \
+        "in configs.output_spec is the output tensor of " \
+        "Layer.forward method."
+    result_list = []
+    output_vars_dict = OrderedDict()
+    for var in outputs:
+        if isinstance(var, Variable):
+            output_vars_dict[var.name] = var
+    if output_spec is None:
+        result_list = output_vars_dict.values()
+    elif output_spec is not None and len(output_spec) == len(output_vars_dict):
+        result_list = output_vars_dict.values()
+        for var in output_spec:
+            if var.name not in output_vars_dict:
+                warnings.warn(name_no_exists_error % var.name)
+    else:
+        for var in output_spec:
+            if var.name not in output_vars_dict:
+                raise ValueError(name_no_exists_error % var.name)
+            else:
+                result_list.append(output_vars_dict[var.name])
+    return result_list
 
 
 # NOTE(chenweihang): change jit.save/load argument `configs` to `config`
@@ -753,31 +832,11 @@ def save(layer, model_path, input_spec=None, config=None):
             paddle.jit.save(layer, model_path)
     """
 
-    def get_inout_spec(all_vars, target_vars, return_name=False):
-        result_list = []
-        valid_var_dict = {}
-        valid_vars = [var for var in all_vars if isinstance(var, Variable)]
-        for var in valid_vars:
-            valid_var_dict[var.name] = var
-        if target_vars:
-            for i, var in enumerate(target_vars):
-                # check target var whether exists
-                if var.name not in valid_var_dict:
-                    raise RuntimeError(
-                        "The variable to feed/fetch are not exist.")
-                result_list.append(valid_var_dict[var.name])
-        else:
-            result_list = valid_vars
-        if return_name:
-            result_list = [var.name for var in result_list]
-
-        return result_list
-
     # 1. input check
     prog_translator = ProgramTranslator()
-    if not prog_translator.enable:
+    if not prog_translator.enable_to_static:
         raise RuntimeError(
-            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable=False."
+            "The paddle.jit.save doesn't work when setting ProgramTranslator.enable to False."
         )
     if not isinstance(layer, Layer):
         raise TypeError(
@@ -788,25 +847,58 @@ def save(layer, model_path, input_spec=None, config=None):
     if configs is None:
         configs = SaveLoadConfig()
 
+    # avoid change user given input_spec
+    inner_input_spec = None
     if input_spec is not None:
         if not isinstance(input_spec, list):
             raise TypeError(
                 "The input input_spec should be 'list', but received input_spec's type is %s."
                 % type(input_spec))
+        inner_input_spec = []
         for var in input_spec:
-            if not isinstance(var, (core.VarBase, Variable,
-                                    paddle.static.InputSpec)):
+            if isinstance(var, paddle.static.InputSpec):
+                inner_input_spec.append(var)
+            elif isinstance(var, (core.VarBase, Variable)):
+                inner_input_spec.append(
+                    paddle.static.InputSpec.from_tensor(var))
+            else:
                 raise TypeError(
                     "The element in input_spec list should be 'Variable' or `paddle.static.InputSpec`, but received element's type is %s."
                     % type(var))
 
-    # 2. get program of declarative Layer.forward
-    if not isinstance(layer.forward, StaticLayer):
-        raise RuntimeError(
-            "layer.forward need to be decorated by `@declarative`.")
-    concrete_program = layer.forward.concrete_program
+    # 2. get program from Layer
+    # TODO(chenweihang): add support for other method, not only forward
+    if isinstance(layer.forward, StaticFunction):
+        concrete_program = layer.forward.concrete_program
+    else:
+        # transform in jit.save, if input_spec is incomplete, declarative will throw error
+        static_forward = declarative(layer.forward, input_spec=inner_input_spec)
+        concrete_program = static_forward.concrete_program
+        # the input_spec has been used in declarative, which is equal to 
+        # @declarative with input_spec and jit.save without input_spec,
+        # avoid needless warning
+        inner_input_spec = None
 
-    # NOTE: we maintain the mapping of variable name to
+    # 3. build input & output of save_infernece_model
+    # NOTE(chenweihang): [ Get input variables name ]
+    # There are two cases, whether to prune the inputs or not
+    # - not prune inputs (recommend):
+    #   - the len(input_spec) == len((concrete_program.inputs) - 1
+    #   - here can use concrete_program.inputs directly
+    # - prune inputs:
+    #   - the input_spec length < len((concrete_program.inputs) - 1
+    #   - the input_spec's name should be in concrete_program.inputs
+    input_var_names = _get_input_var_names(concrete_program.inputs,
+                                           inner_input_spec)
+
+    # NOTE(chenweihang): [ Get output variables ]
+    # the rule is like [ Get input variables name ]. For output var, 
+    # we only support VarBase spec, and actually, we only need the 
+    # var name of output, and we don't recommended to use output_spec
+    output_vars = _get_output_vars(concrete_program.outputs,
+                                   configs.output_spec)
+
+    # NOTE(chenweihang): we maintain the mapping of variable name to
     # structured name, the buffer variable (non-persistable)
     # saved to inference program may not need by dygraph Layer, 
     # we only record the state_dict variable's structured name
@@ -814,7 +906,7 @@ def save(layer, model_path, input_spec=None, config=None):
     for structured_name, var in six.iteritems(layer.state_dict()):
         state_names_dict[var.name] = structured_name
 
-    # 3. share parameters from Layer to scope & record var info
+    # 4. share parameters from Layer to scope & record var info
     scope = core.Scope()
     extra_var_info = dict()
     for param_or_buffer in concrete_program.parameters:
@@ -831,10 +923,6 @@ def save(layer, model_path, input_spec=None, config=None):
         if isinstance(param_or_buffer, ParamBase):
             extra_info_dict['trainable'] = param_or_buffer.trainable
         extra_var_info[param_or_buffer.name] = extra_info_dict
-
-    # 4. build input & output spec
-    input_var_names = get_inout_spec(concrete_program.inputs, input_spec, True)
-    output_vars = get_inout_spec(concrete_program.outputs, configs.output_spec)
 
     # 5. save inference model
     from paddle.fluid.io import save_inference_model
@@ -856,7 +944,7 @@ def save(layer, model_path, input_spec=None, config=None):
             export_for_deployment=configs._export_for_deployment,
             program_only=configs._program_only)
 
-        # NOTE: [ Save extra variable info ]
+        # NOTE(chenweihang): [ Save extra variable info ]
         # save_inference_model will lose some important variable information, including:
         #   - Variable name and correspondence (when saved variables as one file)
         #   - Variable.stop_gradient information

@@ -13,9 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/math/pooling.h"
 #include <algorithm>
-#include <string>
-#include <vector>
-#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {

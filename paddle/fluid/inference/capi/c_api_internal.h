@@ -18,7 +18,6 @@
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/capi/paddle_c_api.h"
-#include "paddle/fluid/platform/enforce.h"
 
 using PD_PaddleDType = paddle::PaddleDType;
 using PD_ACPrecision = paddle::AnalysisConfig::Precision;

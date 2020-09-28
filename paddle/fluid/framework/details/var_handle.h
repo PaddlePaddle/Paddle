@@ -26,6 +26,14 @@
 
 namespace paddle {
 namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 class OpHandleBase;
 
@@ -54,8 +62,10 @@ struct VarHandleBase {
 
   void AddOutput(OpHandleBase* out, ir::Node* node) {
     if (pending_ops_.find(out) == pending_ops_.end()) {
-      PADDLE_ENFORCE(out != nullptr, "The output of %s should not be nullptr",
-                     this->Node()->Name());
+      PADDLE_ENFORCE_NOT_NULL(out,
+                              platform::errors::InvalidArgument(
+                                  "The output added to VarHandle %s is NULL.",
+                                  this->Node()->Name()));
       pending_ops_.insert(out);
       node_->outputs.push_back(node);
     }
@@ -120,7 +130,10 @@ struct VarHandle : public VarHandleBase {
   bool HasEvent() { return has_event_; }
 
   const cudaEvent_t& GetEvent() {
-    PADDLE_ENFORCE(HasEvent(), "The event is not set.");
+    PADDLE_ENFORCE_EQ(
+        HasEvent(), true,
+        platform::errors::PreconditionNotMet(
+            "The cuda event is not set, maybe InitCUDA() is not called."));
     return event_;
   }
 

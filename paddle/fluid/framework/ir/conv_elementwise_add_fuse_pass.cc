@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/ir/conv_elementwise_add_fuse_pass.h"
 #include <string>
 
-#include "paddle/fluid/framework/ir/conv_elementwise_add_fuse_pass.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -89,3 +90,8 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(conv_elementwise_add_fuse_pass,
               paddle::framework::ir::ConvElementwiseAddFusePass);
+REGISTER_PASS_CAPABILITY(conv_elementwise_add_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("conv2d", 0)
+            .EQ("elementwise_add", 0));

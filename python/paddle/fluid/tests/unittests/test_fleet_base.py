@@ -24,10 +24,10 @@ import numpy as np
 class TestFleetBase(unittest.TestCase):
     def setUp(self):
         os.environ["POD_IP"] = "127.0.0.1"
-        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36000"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-                       "127.0.0.1:36001,127.0.0.2:36001"
+            "127.0.0.1:36001,127.0.0.2:36002"
 
     def test_init(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
@@ -58,37 +58,56 @@ class TestFleetBase(unittest.TestCase):
     def test_worker_endpoints(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        print(fleet.worker_endpoints(to_string=True))
+        self.assertEqual(
+            "127.0.0.1:36000", fleet.worker_endpoints(to_string=True))
+        self.assertEqual(["127.0.0.1:36000"], fleet.worker_endpoints())
 
     def test_server_num(self):
-        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+
+        role = role_maker.PaddleCloudRoleMaker()
         fleet.init(role)
-        if fleet.is_server():
-            print("fleet server num: {}".format(fleet.server_num()))
+        os.environ["PADDLE_TRAINERS_NUM"] = "2"
+        self.assertEqual(2, fleet.server_num())
 
     def test_server_index(self):
-        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+
+        role = role_maker.PaddleCloudRoleMaker()
         fleet.init(role)
-        if fleet.is_server():
-            print("fleet server index: {}".format(fleet.server_index()))
+        self.assertEqual(0, fleet.server_index())
 
     def test_server_endpoints(self):
-        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+
+        role = role_maker.PaddleCloudRoleMaker()
         fleet.init(role)
         if fleet.is_server():
-            print("fleet server index: {}".format(
-                fleet.server_endpoints(to_string=True)))
+            self.assertEqual(
+                "127.0.0.1:36001,127.0.0.2:36002",
+                fleet.server_endpoints(to_string=True))
+            self.assertEqual(["127.0.0.1:36001", "127.0.0.2:36002"],
+                             fleet.server_endpoints())
 
     def test_is_server(self):
-        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        os.environ["TRAINING_ROLE"] = "PSERVER"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["POD_IP"] = "127.0.0.1"
+
+        role = role_maker.PaddleCloudRoleMaker()
         fleet.init(role)
-        if fleet.is_server():
-            print("test fleet is server")
+        self.assertTrue(fleet.is_server())
 
     def test_util(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        self.assertEqual(fleet.util, None)
+        self.assertNotEqual(fleet.util, None)
 
     def test_barrier_worker(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
@@ -99,20 +118,17 @@ class TestFleetBase(unittest.TestCase):
     def test_init_worker(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        if fleet.is_worker():
-            fleet.init_worker()
 
-    def test_run_server(self):
-        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-        fleet.init(role)
-        if fleet.is_worker():
-            fleet.run_worker()
+        with self.assertRaises(ValueError):
+            if fleet.is_worker():
+                fleet.init_worker()
 
     def test_stop_worker(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        if fleet.is_worker():
-            fleet.stop_worker()
+        with self.assertRaises(ValueError):
+            if fleet.is_worker():
+                fleet.stop_worker()
 
     def test_distributed_optimizer(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
@@ -150,6 +166,8 @@ class TestFleetDygraph(unittest.TestCase):
         assert (lr == cur_lr)
         state_dict = adam.state_dict()
         adam.set_state_dict(state_dict)
+
+        final_strategy = fleet._final_strategy()
 
 
 class TestFleetBaseSingleRunCollective(unittest.TestCase):

@@ -21,7 +21,6 @@ import numpy as np
 class TestImperativeUsingNonZeroGpu(unittest.TestCase):
     def run_main(self, np_arr, place):
         with guard(place):
-            embedding = Embedding(size=[10, 10])
             var = to_variable(np_arr)
             self.assertTrue(np.array_equal(np_arr, var.numpy()))
 
@@ -30,7 +29,6 @@ class TestImperativeUsingNonZeroGpu(unittest.TestCase):
             return
 
         np_arr = np.random.random([11, 13]).astype('float32')
-        self.run_main(np_arr, fluid.CUDAPlace(1))
         self.run_main(np_arr, fluid.CUDAPlace(0))
 
 

@@ -60,7 +60,7 @@ class StrategyCompiler(StrategyCompilerBase):
 
     def _get_valid_strategy(self, dist_strategy, can_not_apply_optimizer_list):
         import copy
-        valid_strategy = copy.copy(dist_strategy)
+        valid_strategy = copy.deepcopy(dist_strategy)
         invalid_optimizers = []
         for candidate in self._meta_optimizer_candidates:
             is_valid = False

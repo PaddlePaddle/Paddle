@@ -780,10 +780,10 @@ def kl_div(input, label, reduction='mean', name=None):
             input = np.random.uniform(-10, 10, shape).astype('float32')
             target = np.random.uniform(-10, 10, shape).astype('float32')
 
-            # 'batchmean' reduction, loss shape will be [N]
+            # 'batchmean' reduction, loss shape will be [1]
             pred_loss = F.kl_div(paddle.to_tensor(input),
                                  paddle.to_tensor(target), reduction='batchmean')
-            # shape=[5]
+            # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
             pred_loss = F.kl_div(paddle.to_tensor(input),
@@ -933,7 +933,7 @@ def ctc_loss(log_probs,
     is interated to the Warp-CTC library to normalize values for each row of the input tensor.
 
     Parameters:
-        log_probs (Tensor): The unscaled probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type must be float32.
+        log_probs (Tensor): The unscaled probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type should be float32 or float64.
         labels (Tensor): The ground truth sequence with padding, which must be a 3-D Tensor. The tensor shape is [batch_size, max_label_length], where max_label_length is the longest length of label sequence. The data type must be int32.
         input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
@@ -1009,8 +1009,7 @@ def ctc_loss(log_probs,
     loss_out = fluid.layers.squeeze(loss_out, [-1])
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
-        loss_out = paddle.mean(loss_out / paddle.cast(label_lengths,
-                                                      loss_out.dtype))
+        loss_out = paddle.mean(loss_out / label_lengths)
     elif reduction == 'sum':
         loss_out = paddle.sum(loss_out)
     return loss_out
@@ -1094,7 +1093,7 @@ def cross_entropy(input,
             " 'none', but received %s, which is not allowed." % reduction)
 
     #step 1. log_softmax
-    log_softmax_out = paddle.nn.functional.log_softmax(input)
+    log_softmax_out = paddle.nn.functional.log_softmax(input, axis=1)
     if weight is not None and not isinstance(weight, Variable):
         raise ValueError(
             "The weight' is not a Variable, please convert to Variable.")

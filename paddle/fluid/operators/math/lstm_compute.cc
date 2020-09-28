@@ -13,8 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/lstm_compute.h"
+
 #include "paddle/fluid/operators/math/detail/lstm_cpu_kernel.h"
 #include "paddle/fluid/operators/math/detail/lstm_kernel.h"
+
+namespace paddle {
+namespace platform {
+class CPUDeviceContext;
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

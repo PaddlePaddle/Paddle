@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/fleet/nccl_wrapper.h"
-#include <utility>
-#include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
@@ -25,7 +22,7 @@ bool NCCLWrapper::is_initialized_ = false;
 
 void NCCLWrapper::InitNCCL() {
 #if defined(PADDLE_WITH_NCCL)
-  PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
       &(nccl_info_.comm_), nccl_info_.global_ranks_, nccl_info_.nccl_id_,
       nccl_info_.my_global_rank_));
 #endif
@@ -41,7 +38,8 @@ void NCCLWrapper::SetNCCLId(const NCCLInfo& nccl_info) {
 
 NCCLInfo NCCLWrapper::GetNCCLId() {
 #if defined(PADDLE_WITH_NCCL)
-  PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(&(nccl_info_.nccl_id_)));
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      platform::dynload::ncclGetUniqueId(&(nccl_info_.nccl_id_)));
 #endif
   return nccl_info_;
 }
@@ -52,8 +50,8 @@ void NCCLWrapper::SetRankInfo(const int local_rank, const int global_rank,
   nccl_info_.local_rank_ = local_rank;
   nccl_info_.my_global_rank_ = global_rank;
   nccl_info_.global_ranks_ = ranks;
-  PADDLE_ENFORCE(cudaSetDevice(local_rank));
-  PADDLE_ENFORCE(cudaStreamCreate(&(nccl_info_.stream_)));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(local_rank));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&(nccl_info_.stream_)));
 #endif
   return;
 }
@@ -65,7 +63,7 @@ void NCCLWrapper::SyncVar(const int root_rank, const Scope& scope,
     auto var = scope.FindVar(name);
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int32_t total_size = tensor->numel();
-    PADDLE_ENFORCE(platform::dynload::ncclBcast(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
         reinterpret_cast<void*>(tensor->data<float>()), total_size, ncclFloat,
         root_rank, nccl_info_.comm_, nccl_info_.stream_));
     cudaStreamSynchronize(nccl_info_.stream_);
