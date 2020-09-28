@@ -28,7 +28,7 @@
 # TODO: define normalization api  
 
 import six
-from ...fluid.dygraph.nn import InstanceNorm
+#from ...fluid.dygraph.nn import InstanceNorm
 
 from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
 #from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
@@ -53,9 +53,9 @@ import warnings
 from ...fluid.dygraph.base import no_grad
 
 __all__ = [
-    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'InstanceNorm',
-    'BatchNorm1d', 'BatchNorm2d', 'BatchNorm3d', 'InstanceNorm1d',
-    'InstanceNorm2d', 'InstanceNorm3d', 'SyncBatchNorm'
+    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'BatchNorm1d',
+    'BatchNorm2d', 'BatchNorm3d', 'InstanceNorm1d', 'InstanceNorm2d',
+    'InstanceNorm3d', 'SyncBatchNorm'
 ]
 
 

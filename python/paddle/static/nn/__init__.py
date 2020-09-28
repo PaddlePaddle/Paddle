@@ -26,7 +26,6 @@ __all__ = [
     'crf_decoding',
     'data_norm',
     'deformable_conv',
-    'group_norm',
     'hsigmoid',
     'instance_norm',
     'layer_norm',
@@ -50,7 +49,7 @@ from ...fluid.layers import create_parameter  #DEFINE_ALIAS
 from ...fluid.layers import crf_decoding  #DEFINE_ALIAS
 from ...fluid.layers import data_norm  #DEFINE_ALIAS
 from ...fluid.layers import deformable_conv  #DEFINE_ALIAS
-from ...fluid.layers import group_norm  #DEFINE_ALIAS
+#from ...fluid.layers import group_norm  #DEFINE_ALIAS
 from ...fluid.layers import hsigmoid  #DEFINE_ALIAS
 from ...fluid.layers import instance_norm  #DEFINE_ALIAS
 from ...fluid.layers import layer_norm  #DEFINE_ALIAS
