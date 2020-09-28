@@ -861,7 +861,7 @@ class Model(object):
             if isinstance(inputs, list):
                 self._shapes = [list(input.shape) for input in inputs]
             elif isinstance(inputs, dict):
-                self._shapes = [list(inputs[name]) for name in inputs]
+                self._shapes = [list(inputs[name].shape) for name in inputs]
 
         self._inputs = self._verify_spec(inputs, is_input=True)
         self._labels = self._verify_spec(labels)
@@ -1853,13 +1853,6 @@ class Model(object):
             callbacks.on_batch_end(mode, step, logs)
         self._reset_metrics()
 
-        if self._shapes is None and mode == "train":
-            self._shapes = [
-                data[i].shape() if callable(data[i].shape) else data[i].shape
-                for i in range(len(data) - 1)
-            ]
-            self._is_shape_inferred = True
-            self._inputs = self._verify_spec(None, self._shapes, True)
         if mode == 'test':
             return logs, outputs
         return logs
