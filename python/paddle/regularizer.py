@@ -28,11 +28,11 @@ class L1Decay(fluid.regularizer.L1Decay):
     in its ParamAttr, then the regularizer in Optimizer will be ignored. Otherwise the  regularizer
     in Optimizer will be used.
     
-    In the implementation, the formula of L1 Weight Decay Regularization is as follows:
+    In the implementation, the penalty of L1 Weight Decay Regularization is as follows:
 	
     .. math::
 
-        L1WeightDecay = reg\_coeff * sign(parameter)
+        loss = coeff * reduce\_sum(abs(x))
 
     Args:
         coeff(float, optional): regularization coeff. Default:0.0.
@@ -45,9 +45,8 @@ class L1Decay(fluid.regularizer.L1Decay):
             from paddle.regularizer import L1Decay
             import numpy as np
             paddle.disable_static()
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
+            inp = paddle.rand(shape=[10, 10], dtype="float32")
             out = linear(inp)
             loss = paddle.mean(out)
             beta1 = paddle.to_tensor([0.9], dtype="float32")
@@ -92,11 +91,11 @@ class L2Decay(fluid.regularizer.L2Decay):
     in its ParamAttr, then the regularizer in Optimizer will be ignored. Otherwise the  regularizer
     in Optimizer will be used.
     
-    In the implementation, the formula of L2 Weight Decay Regularization is as follows:
+    In the implementation, the penalty of L2 Weight Decay Regularization is as follows:
 
     .. math::
 
-        L2WeightDecay = reg\_coeff * parameter
+        loss = coeff * reduce\_sum(square(x))
 
     Args:
         regularization_coeff(float, optional): regularization coeff. Default:0.0
@@ -109,9 +108,8 @@ class L2Decay(fluid.regularizer.L2Decay):
             from paddle.regularizer import L2Decay
             import numpy as np
             paddle.disable_static()
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
+            inp = paddle.rand(shape=[10, 10], dtype="float32")
             out = linear(inp)
             loss = paddle.mean(out)
             beta1 = paddle.to_tensor([0.9], dtype="float32")
