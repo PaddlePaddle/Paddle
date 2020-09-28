@@ -195,10 +195,10 @@ class OptimizerWithMixedPrecision(object):
 
         return optimize_ops
 
-    def apply_optimize(self, loss, startup_program, param_grads):
+    def apply_optimize(self, loss, startup_program, params_grads):
         program = loss.block.program
         with program_guard(program, startup_program):
-            optimize_ops = self.apply_gradients(param_grads)
+            optimize_ops = self.apply_gradients(params_grads)
         return optimize_ops
 
     def minimize(self,

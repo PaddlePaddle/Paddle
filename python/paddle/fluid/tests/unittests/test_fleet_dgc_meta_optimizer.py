@@ -17,13 +17,67 @@ import paddle
 from paddle import fluid
 import os
 import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+from paddle.distributed.fleet.meta_optimizers import DGCOptimizer
+import paddle.distributed.fleet.base.role_maker as role_maker
 
 paddle.enable_static()
 
 
 class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
+    def test_dgc_optimizer_backward(self):
+        """ test dgc optimizer backward """
+        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        avg_cost, strategy = self.net(train_prog, startup_prog)
+
+        self.set_strategy(strategy, 'dgc')
+        opt = fluid.optimizer.MomentumOptimizer(
+            learning_rate=0.001, momentum=0.9)
+        dgc_opt = DGCOptimizer(opt)
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        dgc_opt._set_basic_info(avg_cost, role, opt, strategy)
+        params_grads = dgc_opt.backward(avg_cost, startup_prog)
+
+        ops = [op.type for op in avg_cost.block.ops]
+        self.assertNotIn('dgc', ops)
+
+    def test_dgc_optimizer_gradients(self):
+        """ test dgc optimizer backward + gradients """
+        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        avg_cost, strategy = self.net(train_prog, startup_prog)
+
+        self.set_strategy(strategy, 'dgc')
+        opt = fluid.optimizer.MomentumOptimizer(
+            learning_rate=0.001, momentum=0.9)
+        dgc_opt = DGCOptimizer(opt)
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        dgc_opt._set_basic_info(avg_cost, role, opt, strategy)
+        params_grads = dgc_opt.backward(avg_cost, startup_prog)
+        with fluid.program_guard(train_prog, startup_prog):
+            dgc_opt.apply_gradients(params_grads)
+
+        ops = [op.type for op in avg_cost.block.ops]
+        self.assertIn('dgc', ops)
+        self.assertIn('dgc_momentum', ops)
+
+    def test_dgc_optimizer_optimize(self):
+        """ test dgc optimizer backward + optimize """
+        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        avg_cost, strategy = self.net(train_prog, startup_prog)
+
+        self.set_strategy(strategy, 'dgc')
+        opt = fluid.optimizer.MomentumOptimizer(
+            learning_rate=0.001, momentum=0.9)
+        dgc_opt = DGCOptimizer(opt)
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        dgc_opt._set_basic_info(avg_cost, role, opt, strategy)
+        params_grads = dgc_opt.backward(avg_cost, startup_prog)
+        dgc_opt.apply_optimize(avg_cost, startup_prog, params_grads)
+
+        ops = [op.type for op in avg_cost.block.ops]
+        self.assertIn('dgc', ops)
+        self.assertIn('dgc_momentum', ops)
+
     def test_dgc_optimizer(self):
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
@@ -71,6 +125,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         self.assertIn('dgc', ops)
         self.assertIn('dgc_momentum', ops)
 
+        # recompute
         self.assertIn('subprog', ''.join(outs))
 
 

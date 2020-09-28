@@ -106,5 +106,17 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                 'lamb_weight_decay': 0.01,
                 'exclude_from_weight_decay': [],
             }
+        elif name == 'localsgd':
+            strategy.localsgd = True
+            strategy.localsgd_configs = {
+                'k_steps': 1,
+                'begin_step': 1,
+            }
+        elif name == 'adaptive_localsgd':
+            strategy.adaptive_localsgd = True
+            strategy.adaptive_localsgd_configs = {
+                'init_k_steps': 1,
+                'begin_step': 1,
+            }
         else:
             raise NotImplementedError()
