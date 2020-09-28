@@ -3973,14 +3973,17 @@ class Program(object):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.static as static
 
-            main_program = fluid.Program()
-            startup_program = fluid.Program()
-            with fluid.program_guard(main_program=main_program, startup_program=startup_program):
-                x = fluid.layers.data(name="x", shape=[-1, 784], dtype='float32')
-                y = fluid.layers.data(name="y", shape=[-1, 1], dtype='int32')
-                z = fluid.layers.fc(name="fc", input=x, size=10, act="relu")
+            paddle.enable_static()
+
+            main_program = static.Program()
+            startup_program = static.Program()
+            with static.program_guard(main_program=main_program, startup_program=startup_program):
+                x = static.data(name="x", shape=[-1, 784], dtype='float32')
+                y = static.data(name="y", shape=[-1, 1], dtype='int32')
+                z = static.nn.fc(name="fc", input=x, size=10, act="relu")
 
             print("main program is: {}".format(main_program))
             print("start up program is: {}".format(startup_program))
@@ -4048,15 +4051,18 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
+                paddle.enable_static()
+
+                prog = static.default_main_program()
                 print(prog.random_seed)
                 ## 0
                 ## the default random seed is 0
 
                 prog.global_seed(102)
-                prog1 = fluid.default_main_program()
+                prog1 = static.default_main_program()
                 print(prog1.random_seed)
                 ## 102
                 ## the random seed is 102
@@ -4249,11 +4255,14 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
-                x = fluid.layers.data(name="X", shape=[2,3], dtype="float32", append_batch_size=False)
-                pred = fluid.layers.fc(x, size=3)
+                paddle.enable_static()
+
+                prog = static.default_main_program()
+                x = static.data(name="X", shape=[2,3], dtype="float32")
+                pred = static.nn.fc(x, size=3)
                 prog_string = prog.to_string(throw_on_error=True, with_details=False)
                 prog_string_with_details = prog.to_string(throw_on_error=False, with_details=True)
                 print("program string without detail: {}".format(prog_string))
@@ -4345,7 +4354,6 @@ class Program(object):
         after** :code:`clone`:
             .. code-block:: python
 
-                import paddle.fluid as fluid
                 import six
 
                 def print_prog(prog):
@@ -4363,8 +4371,13 @@ class Program(object):
         1. To clone a test program, the sample code is:
                 .. code-block:: python
 
-                    import paddle.fluid as fluid
                     import six
+                    import paddle
+                    import paddle.static as static
+                    import paddle.utils as utils
+                    import paddle.nn.functional as F
+
+                    paddle.enable_static()
 
                     def print_prog(prog):
                         for name, value in sorted(six.iteritems(prog.block(0).vars)):
@@ -4377,20 +4390,20 @@ class Program(object):
                                 if key not in ['op_callstack', 'op_role_var']:
                                     print(" [ attrs: {}:   {} ]".format(key, value))
 
-                    train_program = fluid.Program()
-                    startup_program = fluid.Program()
+                    train_program = static.Program()
+                    startup_program = static.Program()
 
                     # startup_program is used to do some parameter init work,
                     # and main program is used to hold the network
-                    with fluid.program_guard(train_program, startup_program):
-                        with fluid.unique_name.guard():
-                            img = fluid.layers.data(name='image', shape=[784])
-                            hidden = fluid.layers.fc(input=img, size=200, act='relu')
-                            hidden = fluid.layers.dropout(hidden, dropout_prob=0.5)
-                            loss = fluid.layers.cross_entropy(
-                                                      input=fluid.layers.fc(hidden, size=10, act='softmax'),
-                                        label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
-                            avg_loss = fluid.layers.mean(loss)
+                    with static.program_guard(train_program, startup_program):
+                        with utils.unique_name.guard():
+                            img = static.data(name='image', shape=[None, 784])
+                            hidden = static.nn.fc(input=img, size=200, act='relu')
+                            hidden = F.dropout(hidden, p=0.5)
+                            loss = F.cross_entropy(
+                                input=static.nn.fc(hidden, size=10, act='softmax'),
+                                label=static.data(name='label', shape=[1], dtype='int64'))
+                            avg_loss = paddle.mean(loss)
                             test_program = train_program.clone(for_test=True)
                     print_prog(test_program)
 
@@ -4402,17 +4415,22 @@ class Program(object):
                     # that's why we need to use startup program of train. And for startup program of test, it has nothing,
                     # since it is a new program.
 
-                    with fluid.program_guard(train_program, startup_program):
-                        with fluid.unique_name.guard():
-                            sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                    with static.program_guard(train_program, startup_program):
+                        with utils.unique_name.guard():
+                            sgd = paddle.optimizer.SGD(learning_rate=1e-3)
                             sgd.minimize(avg_loss)
 
 
         2. The clone method can be avoid if you create program for training and program for testing individually.
                 .. code-block:: python
 
-                    import paddle.fluid as fluid
                     import six
+                    import paddle
+                    import paddle.static as static
+                    import paddle.utils as utils
+                    import paddle.nn.functional as F
+
+                    paddle.enable_static()
 
                     def print_prog(prog):
                         for name, value in sorted(six.iteritems(prog.block(0).vars)):
@@ -4424,28 +4442,28 @@ class Program(object):
                             for key, value in sorted(six.iteritems(op.all_attrs())):
                                 if key not in ['op_callstack', 'op_role_var']:
                                     print(" [ attrs: {}:   {} ]".format(key, value))
-                    
+
                     def network():
-                        img = fluid.layers.data(name='image', shape=[784])
-                        hidden = fluid.layers.fc(input=img, size=200, act='relu')
-                        hidden = fluid.layers.dropout(hidden, dropout_prob=0.5)
-                        loss = fluid.layers.cross_entropy(
-                            input=fluid.layers.fc(hidden, size=10, act='softmax'),
-                            label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
-                        avg_loss = fluid.layers.mean(loss)
+                        img = static.data(name='image', shape=[None, 784])
+                        hidden = static.nn.fc(input=img, size=200, act='relu')
+                        hidden = F.dropout(hidden, p=0.5)
+                        loss = F.cross_entropy(
+                            input=static.nn.fc(hidden, size=10, act='softmax'),
+                            label=static.data(name='label', shape=[1], dtype='int64'))
+                        avg_loss = paddle.mean(loss)
                         return avg_loss
 
-                    train_program_2 = fluid.Program()
-                    startup_program_2 = fluid.Program()
-                    test_program_2 = fluid.Program()
-                    with fluid.program_guard(train_program_2, startup_program_2):
-                        with fluid.unique_name.guard():
+                    train_program_2 = static.Program()
+                    startup_program_2 = static.Program()
+                    test_program_2 = static.Program()
+                    with static.program_guard(train_program_2, startup_program_2):
+                        with utils.unique_name.guard():
                             avg_loss = network()
-                            sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                            sgd = paddle.optimizer.SGD(learning_rate=1e-3)
                             sgd.minimize(avg_loss)
                     # the test startup program is not used.
-                    with fluid.program_guard(test_program_2, startup_program_2):
-                        with fluid.unique_name.guard():
+                    with static.program_guard(test_program_2, startup_program_2):
+                        with utils.unique_name.guard():
                             avg_loss = network()
                     print_prog(test_program_2)
 
@@ -4674,23 +4692,24 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                startup_prog = fluid.Program()
-                main_prog = fluid.Program()
-                with fluid.program_guard(startup_prog, main_prog):
-                    x = fluid.layers.data(
-                        name='X', shape=[1000, 784], dtype='float32', append_batch_size=False)
+                paddle.enable_static()
 
-                    y = fluid.layers.data(
-                        name='Y', shape=[784, 100], dtype='float32', append_batch_size=False)
+                startup_prog = static.Program()
+                main_prog = static.Program()
+                with static.program_guard(startup_prog, main_prog):
+                    x = static.data(name='X', shape=[1000, 784], dtype='float32')
 
-                    z = fluid.layers.mul(x=x, y=y)
+                    y = static.data(name='Y', shape=[784, 100], dtype='float32')
 
-                    binary_str = fluid.default_main_program().desc.serialize_to_string()
-                    prog_restored = fluid.default_main_program().parse_from_string(binary_str)
+                    z = paddle.matmul(x=x, y=y)
 
-                    print(fluid.default_main_program())
+                    binary_str = static.default_main_program().desc.serialize_to_string()
+                    prog_restored = static.default_main_program().parse_from_string(binary_str)
+
+                    print(static.default_main_program())
                     print(prog_restored)
         """
         p = Program()
@@ -4731,18 +4750,22 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
+                import paddle.nn.functional as F
 
-                prog = fluid.default_main_program()
+                paddle.enable_static()
+
+                prog = static.default_main_program()
                 random_seed = prog.random_seed
-                x_var = fluid.layers.data(name="X", shape=[3,3], dtype="float32", append_batch_size=False)
+                x_var = static.data(name="X", shape=[3,3], dtype="float32")
                 print(random_seed)
                 ## 0
                 ## the default random seed is 0
 
                 # Here we need to set random seed before we use fluid.layers.dropout
                 prog.random_seed = 1
-                z_var = fluid.layers.dropout(x_var, 0.7)
+                z_var = F.dropout(x_var, 0.7)
 
                 print(prog.random_seed)
                 ## 1
@@ -4764,13 +4787,14 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
+                paddle.enable_static()
+
+                prog = static.default_main_program()
                 num_blocks = prog.num_blocks
                 print(num_blocks)
-
-
         """
         return self.desc.num_blocks()
 
@@ -4799,9 +4823,12 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
+                paddle.enable_static()
+
+                prog = static.default_main_program()
                 gb_block = prog.global_block()
                 print(gb_block)
 
@@ -4824,9 +4851,12 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
+                paddle.enable_static()
+
+                prog = static.default_main_program()
                 block_0 = prog.block(0)
                 print(block_0)
         """
@@ -4846,9 +4876,12 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
+                paddle.enable_static()
+
+                prog = static.default_main_program()
                 current_blk = prog.current_block()
                 print(current_blk)
         """
@@ -4982,21 +5015,27 @@ class Program(object):
 
     def list_vars(self):
         """
-        Get all :ref:`api_guide_Variable_en` from this Program. A iterable object is returned.
+        Get all Tensors from this Program. A iterable object is returned.
 
         Returns:
-            iterable :ref:`api_guide_Variable_en`: The Generator will yield every variable in this program.
+            iterable Tensors: The Generator will yield every Tensor in this program.
 
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                prog = fluid.default_main_program()
-                img = fluid.layers.data(name='img', shape=[1,28,28], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[128,1], dtype='int64')
+                paddle.enable_static()
+
+                prog = static.default_main_program()
+                img = static.data(name='img', shape=[None, 1,28,28], dtype='float32')
+                label = static.data(name='label', shape=[None,1], dtype='int64')
                 for var in prog.list_vars():
                     print(var)
+                
+                # var img : fluid.VarType.LOD_TENSOR.shape(-1, 1, 28, 28).astype(VarType.FP32)
+                # var label : fluid.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)
         """
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
@@ -5026,30 +5065,8 @@ class Program(object):
                 # Here will print all parameters in current program, in this example,
                 # the result is like:
                 #
-                # name: "fc_0.w_0"
-                # type {
-                #   type: LOD_TENSOR
-                #   lod_tensor {
-                #     tensor {
-                #       data_type: FP32
-                #       dims: 13
-                #       dims: 10
-                #     }
-                #   }
-                # }
-                # persistable: true
-                #
-                # name: "fc_0.b_0"
-                # type {
-                # type: LOD_TENSOR
-                # lod_tensor {
-                #     tensor {
-                #       data_type: FP32
-                #       dims: 10
-                #     }
-                #   }
-                # }
-                # persistable: true
+                # persist trainable param fc_0.w_0 : fluid.VarType.LOD_TENSOR.shape(13, 10).astype(VarType.FP32)
+                # persist trainable param fc_0.b_0 : fluid.VarType.LOD_TENSOR.shape(10,).astype(VarType.FP32)
                 #
                 # Here print(param) will print out all the properties of a parameter,
                 # including name, type and persistable, you can access to specific
