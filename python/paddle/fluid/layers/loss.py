@@ -1731,8 +1731,6 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
         import paddle
         import numpy as np
         
-        paddle.disable_static()
-        
         DATATYPE = "float32"
         anchor_data = np.random.rand(18, 6).astype(DATATYPE)
         positive_data = np.random.rand(18, 6).astype(DATATYPE)
