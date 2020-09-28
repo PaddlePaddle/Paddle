@@ -105,7 +105,7 @@ class Gloo(object):
             if not ip or not port:
                 raise ValueError(self._err_type)
             self._init_http(ip, port, self._prefix, self._start_http_server)
-            ep = ":".join(ip, port)
+            ep = ":".join([ip, port])
             wait_server_ready([ep])
 
         else:
