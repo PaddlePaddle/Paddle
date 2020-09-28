@@ -94,7 +94,7 @@ class L2Decay(fluid.regularizer.L2Decay):
 
     .. math::
 
-        loss = coeff * reduce\_sum(square(x))
+        loss = 0.5 * coeff * reduce\_sum(square(x))
 
     Args:
         regularization_coeff(float, optional): regularization coeff. Default:0.0
