@@ -878,19 +878,21 @@ def histogram(input, bins=100, min=0, max=0):
 
             import paddle
             import numpy as np
+            
             startup_program = paddle.static.Program()
             train_program = paddle.static.Program()
             with paddle.static.program_guard(train_program, startup_program):
                 inputs = paddle.data(name='input', dtype='int32', shape=[2,3])
                 output = paddle.histogram(inputs, bins=5, min=1, max=5)
-                place = paddle.CPUPlace()
-                exe = paddle.static.Executor(place)
-                exe.run(startup_program)
-                inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
-                res = exe.run(train_program,
-                              feed={'input': inputs_np},
-                              fetch_list=[output])
-                print(np.array(res[0])) # [0, 3, 0, 2, 1]
+
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_program)
+            img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
+            res = exe.run(train_program,
+                          feed={'input': img},
+                          fetch_list=[output])
+            print(np.array(res[0])) # [0, 3, 0, 2, 1]
 
     Code Example 2:
         .. code-block:: python
