@@ -832,24 +832,6 @@ def meshgrid(*args, **kwargs):
           #the shape of res_1 is (100, 200)
           #the shape of res_2 is (100, 200)
 
-      .. code-block:: python
-
-          #example 2: in dygraph mode
-
-          import paddle
-          import numpy as np
-          
-          paddle.disable_static()
-
-          input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
-          input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
-          tensor_3 = paddle.to_tensor(input_3)
-          tensor_4 = paddle.to_tensor(input_4)
-          grid_x, grid_y = paddle.tensor.meshgrid(tensor_3, tensor_4)
-
-          #the shape of grid_x is (100, 200)
-          #the shape of grid_y is (100, 200)
-
     """
 
     if len(args) == 1 and isinstance(args[0], (list, tuple)):

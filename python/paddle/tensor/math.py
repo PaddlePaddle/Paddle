@@ -950,7 +950,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             y = paddle.ones([2,2])
             input = paddle.ones([2,2])
 
-            out = paddle.tensor.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
+            out = paddle.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
 
             print( out.numpy() )
             # [[10.5 10.5]
