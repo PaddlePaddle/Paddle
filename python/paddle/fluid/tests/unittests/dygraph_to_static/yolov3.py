@@ -90,7 +90,7 @@ cfg.ignore_thresh = .7
 # SOLVER options
 #
 # batch size
-cfg.batch_size = 4
+cfg.batch_size = 4 if fluid.is_compiled_with_cuda() else 2
 # derived learning rate the to get the final learning rate.
 cfg.learning_rate = 0.001
 # maximum number of iterations
