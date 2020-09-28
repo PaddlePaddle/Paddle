@@ -50,7 +50,7 @@ class TestActivation(OpTest):
         self.init_dtype()
         self.init_kernel_type()
 
-        np.random.seed(2048)
+        np.random.seed(2049)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.exp(x)
 
