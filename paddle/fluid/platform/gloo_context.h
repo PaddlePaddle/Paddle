@@ -25,11 +25,12 @@ struct GlooParallelStrategy {
   int rank{0};
   int rank_num{1};
   std::string iface;
+  std::string prefix;
   int init_seconds{9999999};
   int run_seconds{9999999};
-  std::string ip_address;
-  int ip_port;
-  std::string scope{"worker"};
+  std::string path;
+  std::string fs_name;
+  std::string fs_ugi;
 };
 
 class GlooParallelContext {
