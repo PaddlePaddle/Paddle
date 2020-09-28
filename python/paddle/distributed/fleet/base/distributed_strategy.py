@@ -750,7 +750,7 @@ class DistributedStrategy(object):
     @is_strict_auto
     def adaptive_localsgd(self, flag):
         if isinstance(flag, bool):
-            self.strategy.localsgd = flag
+            self.strategy.adaptive_localsgd = flag
         else:
             print("WARNING: adaptive_localsgd should have value of bool type")
 
