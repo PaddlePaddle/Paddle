@@ -23,17 +23,17 @@ class RecvOpV2 : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CRecv");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Recv_V2");
     int peer = ctx->Attrs().Get<int>("peer");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
         peer, 0,
         platform::errors::InvalidArgument(
-            "The peer (%d) for send_op_v2 must be non-negative.", peer));
+            "The peer (%d) for recv_v2 op must be non-negative.", peer));
     PADDLE_ENFORCE_GE(
         ring_id, 0,
         platform::errors::InvalidArgument(
-            "The ring_id (%d) for send_op_v2 must be non-negative.", ring_id));
+            "The ring_id (%d) for recv_v2 op must be non-negative.", ring_id));
     auto out_shape = ctx->Attrs().Get<std::vector<int>>("out_shape");
     PADDLE_ENFORCE_GE(out_shape.size(), 1,
                       platform::errors::InvalidArgument(
@@ -46,7 +46,6 @@ class RecvOpV2 : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    VLOG(0) << "wow1";
     int dtype = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type =
         framework::proto::VarType::Type(data_type);
@@ -61,8 +60,7 @@ class RecvOpV2Maker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("peer", "(int default 0) rank id for sender.").SetDefault(0);
-    AddAttr<int>("dtype",
-                 "(std::string default 5(float32)) data type of tensor.")
+    AddAttr<int>("dtype", "(int default 5('float32')) data type of tensor.")
         .SetDefault(5);
     AddAttr<std::vector<int>>("out_shape", "shape of the output tensor.")
         .SetDefault(std::vector<int>());

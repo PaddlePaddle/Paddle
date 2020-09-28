@@ -22,13 +22,13 @@ class AllToAllOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CAllToAll");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CAllToAll");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AllToAll");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "AllToAll");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
         ring_id, 0,
         platform::errors::InvalidArgument(
-            "The ring_id (%d) for alltoall_op must be non-negative.", ring_id));
+            "The ring_id (%d) for alltoall op must be non-negative.", ring_id));
     framework::DDim dim = ctx->GetInputDim("X");
     if (dim[0] < 0) dim[0] = -1;
     ctx->SetOutputDim("Out", dim);
@@ -55,7 +55,7 @@ class AllToAllOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddComment(R"DOC(
 AllToAll Operator
-Gather tensors from all participators to all participators.
+Scatter tensors from all participators to all participators.
 )DOC");
   }
 };

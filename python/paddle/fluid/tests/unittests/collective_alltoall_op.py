@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ class TestCollectiveAllToAll(TestCollectiveRunnerBase):
             toutdata = layers.data(
                 name="toutdata", shape=[10, 1000], dtype='float32')
             main_prog.global_block().append_op(
-                type="c_alltoall",
+                type="alltoall",
                 inputs={'X': tindata},
                 outputs={'Out': toutdata},
                 attrs={'ring_id': ring_id})

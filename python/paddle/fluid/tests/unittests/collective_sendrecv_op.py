@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
                 name="tindata", shape=[10, 1000], dtype='float32')
             if rank == 0:
                 main_prog.global_block().append_op(
-                    type="c_recv",
+                    type="recv_v2",
                     outputs={'Out': tindata},
                     attrs={
                         'ring_id': ring_id,
@@ -57,7 +57,7 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
                     })
             else:
                 main_prog.global_block().append_op(
-                    type="c_send",
+                    type="send_v2",
                     inputs={'X': tindata},
                     attrs={'ring_id': ring_id,
                            'peer': 0})

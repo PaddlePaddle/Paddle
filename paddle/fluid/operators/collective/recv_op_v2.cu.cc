@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/send_op_v2.h"
+#include "paddle/fluid/operators/collective/recv_op_v2.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -34,7 +34,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     ncclDataType_t dtype = platform::ToNCCLDataType(type);
 
     auto out_dims = out->dims();
-    // Recv the number of element first
+    // Recv the number of element to receive first
     int numel = 0;
     int *numel_ptr = nullptr;
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaMalloc(&numel_ptr, sizeof(int)));

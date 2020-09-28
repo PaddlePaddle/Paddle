@@ -22,17 +22,17 @@ class SendOpV2 : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CSend");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SendV2");
     int peer = ctx->Attrs().Get<int>("peer");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
         peer, 0,
         platform::errors::InvalidArgument(
-            "The peer (%d) for send_op_v2 must be non-negative.", peer));
+            "The peer (%d) for send_v2 op must be non-negative.", peer));
     PADDLE_ENFORCE_GE(
         ring_id, 0,
         platform::errors::InvalidArgument(
-            "The ring_id (%d) for send_op_v2 must be non-negative.", ring_id));
+            "The ring_id (%d) for send_v2 op must be non-negative.", ring_id));
   }
 
  protected:
