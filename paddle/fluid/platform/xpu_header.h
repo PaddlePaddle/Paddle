@@ -15,9 +15,36 @@
 #pragma once
 
 #ifdef PADDLE_WITH_XPU
+#include <string>
+#include <unordered_map>
+
+#include "paddle/fluid/platform/errors.h"
 #include "xpu/api.h"
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 
 namespace xpu = baidu::xpu::api;
+
+class XPUActHelper {
+ public:
+  // Convert string to activation type in xpu
+  static xpu::Activation_t ConvertToXpuActType(
+      const std::string& act_type_str) {
+    static std::unordered_map<std::string, xpu::Activation_t> str2act = {
+        {"linear", xpu::Activation_t::LINEAR},
+        {"relu", xpu::Activation_t::RELU},
+        {"sigmoid", xpu::Activation_t::SIGMOID},
+        {"tanh", xpu::Activation_t::TANH},
+        {"gelu", xpu::Activation_t::GELU},
+        {"leaky_relu", xpu::Activation_t::LEAKY_RELU},
+        {"sqrt", xpu::Activation_t::SQRT},
+        {"square", xpu::Activation_t::SQUARE}};
+
+    auto res = str2act.find(act_type_str);
+    PADDLE_ENFORCE_NE(res, str2act.end(),
+                      paddle::platform::errors::InvalidArgument(
+                          "Invalid activation type(%s) in XPU", act_type_str));
+    return res->second;
+  }
+};
 #endif

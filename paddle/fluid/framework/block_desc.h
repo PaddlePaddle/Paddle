@@ -30,6 +30,8 @@ namespace paddle {
 namespace framework {
 
 class ProgramDesc;
+class OpDesc;
+class VarDesc;
 
 // Each Protobuf Message, we provide a XXXBind class. In that class, we optimize
 // read/write speed. Only when we want the protobuf message, the local changes

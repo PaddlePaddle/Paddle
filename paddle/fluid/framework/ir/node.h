@@ -19,9 +19,17 @@ limitations under the License. */
 #include <typeindex>
 #include <typeinfo>
 #include <vector>
+
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
+
+namespace paddle {
+namespace framework {
+class OpDesc;
+class VarDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {

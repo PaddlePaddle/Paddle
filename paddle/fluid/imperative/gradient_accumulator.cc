@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/gradient_accumulator.h"
+
 #include <algorithm>
 #include <memory>
 #include <utility>
+
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
@@ -136,9 +138,13 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
     return;
   }
 
-  PADDLE_ENFORCE_EQ(dst_tensor->numel() == numel, true,
-                    "dst_numel %d vs. src_numel %d", dst_tensor->numel(),
-                    numel);
+  PADDLE_ENFORCE_EQ(
+      dst_tensor->numel(), numel,
+      platform::errors::PreconditionNotMet(
+          "The number of elements of source tensor and destination tensor "
+          "should be equal, but got the number of elements of source tensor is "
+          "%zu and the number of elements of destination tensor is %zu.",
+          numel, dst_tensor->numel()));
 
   auto data_type = src_tensor.type();
   auto place = src_tensor.place();
