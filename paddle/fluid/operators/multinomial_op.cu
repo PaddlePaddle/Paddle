@@ -26,69 +26,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-/*
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-*/
-
-/*
-template <class T>
-__global__ void SumArrayCUDAKernel(T **in, T *out, size_t in_size) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  // T total(read_dst ? out[id] : static_cast<T>(0));
-  T total(static_cast<T>(0))
-  for (int i = 0; i < in_size; ++i) {
-    const T *tmp = in[i];
-    if (tmp) {
-      total += tmp[id];
-    }
-  }
-  out[id] = total;
-  id += blockDim.x * gridDim.x;
-}*/
-
-/*
-template <typename T>
-__global__ void NormalizeProbability(T* probs, int64_t rows, int64_t cols) {
-  extern __shared__ std::vector<T> sum_rows(rows);
-  T val;
-  for (int64_t i = blockId.x; i < rows; i += gridDim.x) {
-    T sum = static_cast<T>(0);
-    for (int64_t j = threadIdx.x; j < cols; j += blockDim.x) {
-      val = probs[i * cols + j];
-      sum += val;
-    }
-
-  }
-}*/
-
 template <typename T>
 __global__ void NormalizeProbability(T* norm_probs, const T* in_data,
                                      T* sum_rows) {
-  // int id = blockIdx.x * blockDim.x + threadIdx.x;
-  // int id = threadIdx.x;
   int id = threadIdx.x + blockIdx.x * blockDim.x +
            blockIdx.y * gridDim.x * blockDim.x;
   norm_probs[id] = in_data[id] / sum_rows[blockIdx.y];
 }
 
 template <typename T>
-__global__ void yokiFunc(const T* in_data, T* out) {
-  // int id = blockIdx.x * blockDim.x + threadIdx.x;
-  // int id = threadIdx.x;
-  int id = threadIdx.x + blockIdx.x * blockDim.x +
-           blockIdx.y * gridDim.x * blockDim.x;
-  out[id] = in_data[id];
-}
-
-template <typename T>
 __global__ void Cumsum(T* norm_probs_data, int64_t num_distributions,
                        int64_t num_categories, T* cumulative_probs) {
-  // int id = blockIdx.x;
   for (int id = blockIdx.x; id < num_distributions; id += gridDim.x) {
     thrust::inclusive_scan(thrust::device,
                            norm_probs_data + id * num_categories,
@@ -111,52 +59,43 @@ struct RandomGeneratorCudaFunctor {
   }
 };
 
-/*
 template <typename T>
-class MultinomialCudaFunctor(T* out_data, const T* in_data,
-                        const int64_t num_samples, const bool replacement,
-                        const int64_t num_categories,
-                        const int64_t num_distributions) {
-
-}*/
-
-template <typename T>
-__device__ int binarySearchForMultinomial(T* cumdist, T* dist, int size,
-                                          T val) {
-  int start = 0;
-  int end = size;
+__device__ int binarySearchFunctor(T* cumdist, T* dist, int size, T val) {
+  int left = 0;
+  int right = size;
   // cumdist[size - 1] = 0 => all zero prob dist
   // CUDA_KERNEL_ASSERT(cumdist[size - 1] > static_cast<T>(0));
 
-  while (end - start > 0) {
-    int mid = start + (end - start) / 2;
+  while (right - left > 0) {
+    int mid = left + (right - left) / 2;
 
     T midVal = cumdist[mid];
     if (midVal < val) {
-      start = mid + 1;
+      left = mid + 1;
     } else {
-      end = mid;
+      right = mid;
     }
   }
 
-  if (start == size) {
+  if (left == size) {
     // No probability mass or precision problems; just return the
-    // first non-zero element by setting start to size-1 here,
+    // first non-zero element by setting left to size-1 here,
     // the code below will move it to the last non-zero probability
     // this actually can happen when the random number is 1
     // (github pytorch issue #4858).
-    start = size - 1;
+    left = size - 1;
   }
 
-  while (start >= 1 && dist[start] == 0) start--;
+  while (left >= 1 && dist[left] == 0) left--;
 
-  return start;
+  return left;
 }
 
 template <typename T>
 __global__ void sampleMultinomialWithReplacement(
-    T* rng, const int64_t totalSamples, T* dest, const int64_t distributions,
-    const int64_t categories, T* normDistPrefixSum, T* normDist) {
+    T* rng_data, const int64_t num_samples, T* out_data,
+    const int64_t num_distributions, const int64_t num_categories,
+    T* cumulative_probs, T* norm_probs_data) {
   // At the moment, each warp computes one sample value in the binary
   // search due to divergence. It seems possible to compute multiple
   // values and limit divergence though later on.
@@ -170,22 +109,23 @@ __global__ void sampleMultinomialWithReplacement(
   int idx = threadIdx.x + blockIdx.x * blockDim.x +
             blockIdx.y * gridDim.x * blockDim.x;
 
-  for (int curDist = blockIdx.y; curDist < distributions;
+  for (int curDist = blockIdx.y; curDist < num_distributions;
        curDist += gridDim.y) {
     for (int sample = blockIdx.x * blockDim.x + threadIdx.x;
-         sample < totalSamples; sample += blockDim.x * gridDim.x) {
+         sample < num_samples; sample += blockDim.x * gridDim.x) {
       // we are losing 3 out of 4 generated numbers but it's ok
       // this kernel is not very efficient anyway
 
       // T uniform_random = dist(rng);
-      T uniform_random = rng[sample + curDist * totalSamples];
+      T uniform_random = rng_data[sample + curDist * num_samples];
 
       // Find the bucket that a uniform sample lies in
-      int choice = binarySearchForMultinomial<T>(
-          normDistPrefixSum + curDist * categories,
-          normDist + curDist * categories, categories, uniform_random);
+      int choice =
+          binarySearchFunctor<T>(cumulative_probs + curDist * num_categories,
+                                 norm_probs_data + curDist * num_categories,
+                                 num_categories, uniform_random);
 
-      dest[sample + curDist * totalSamples] = choice;
+      out_data[sample + curDist * num_samples] = choice;
     }
   }
 }
@@ -198,14 +138,11 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
     const auto x = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
-    // auto yokiout = ctx.Output<framework::Tensor>("yokiOut");
-
     const int64_t num_samples = ctx.Attr<int>("num_samples");
     const bool replacement = ctx.Attr<bool>("replacement");
 
     auto* in_data = x->data<T>();
     auto* out_data = out->mutable_data<T>(ctx.GetPlace());
-    // auto* yokiout_data = yokiout->mutable_data<T>(ctx.GetPlace());
 
     auto in_dims = x->dims();
     int64_t in_rank = in_dims.size();
@@ -215,20 +152,12 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
     if (!replacement) {
       int in_data_numel = x->numel();
       int out_data_numel = out->numel();
-      // std::vector<T> cpu_in_data(in_data_numel);
-      // std::vector<T> cpu_out_data(out_data_numel);
-      // T cpu_in_data[in_data_numel];
-      // T cpu_out_data[out_data_numel];
 
       T* cpu_in_data = new T[in_data_numel];
       T* cpu_out_data = new T[out_data_numel];
 
       cudaMemcpy(cpu_in_data, in_data, in_data_numel * sizeof(T),
                  cudaMemcpyDeviceToHost);
-
-      VLOG(3) << "Print cpu_in_data " << cpu_in_data[0] << "\n";
-      VLOG(3) << "Print in_data_numel " << in_data_numel << "\n";
-      VLOG(3) << "Print out_data_numel " << out_data_numel << "\n";
 
       MultinomialFunctor<T>(cpu_out_data, cpu_in_data, num_samples, replacement,
                             num_categories, num_distributions);
@@ -240,21 +169,9 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
       return;
     }
 
-    // std::vector<T> sum_rows(num_distributions);
-    // SumArrayCUDAKernel<T>(in_data, sum_rows,)
-
-    VLOG(3) << "Print num_distributions " << num_distributions << "\n";
-
-    VLOG(3) << "Print num_categories " << num_categories << "\n";
-
-    VLOG(3) << "Print in_rank " << in_rank << "\n";
-
     framework::Tensor sum_rows_t;
     auto* sum_rows_data =
         sum_rows_t.mutable_data<T>({num_distributions}, ctx.GetPlace());
-    // auto* sum_rows_data =
-    // sum_rows_t->mutable_data<T>(framework::make_ddim({num_distributions}),
-    // ctx.GetPlace());
 
     auto& place = *ctx.template device_context<platform::CUDADeviceContext>()
                        .eigen_device();
@@ -262,29 +179,19 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
     if (num_distributions == 1) {
       auto eigen_input = framework::EigenVector<T>::Flatten(*x);
       auto eigen_sum_rows = framework::EigenVector<T>::From(sum_rows_t);
-      // auto eigen_sum_rows = framework::EigenScalar<T>::From(sum_rows_t);
       eigen_sum_rows.device(place) =
           eigen_input.sum(Eigen::DSizes<int, 1>(1))
               .eval()
               .reshape(Eigen::DSizes<int, 1>(sum_rows_t.dims()[0]));
     } else {
       auto eigen_input = framework::EigenMatrix<T>::From(*x);
-      // auto eigen_sum_rows = framework::EigenVector<T>::From(sum_rows_t);
       auto eigen_sum_rows = framework::EigenVector<T>::From(sum_rows_t);
       eigen_sum_rows.device(place) = eigen_input.sum(Eigen::DSizes<int, 1>(1));
-      //        .eval()
-      //        .reshape(Eigen::DSizes<int, 1>(sum_rows_t.dims()[0]));
-      // eigen_sum_rows.device(place) =
-      // eigen_input.sum().eval().reshape(Eigen::DSizes<int, 1>(1));
     }
 
-    // std::vector<T> in_data_norm(num_categories);
     framework::Tensor norm_probs_t;
     auto* norm_probs_data = norm_probs_t.mutable_data<T>(
         {num_distributions, num_categories}, ctx.GetPlace());
-
-    // dim3 grid(num_distributions);
-    // dim3 block(num_categories);
 
     dim3 block(num_categories < 512 ? num_categories : 512);
     dim3 grid((num_categories - 1) / block.x + 1, num_distributions);
@@ -292,27 +199,13 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
         T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
         norm_probs_data, in_data, sum_rows_data);
 
-    // num_distributions can only be 1.
-    // std::vector<T> cumulative_probs(num_categories);
     framework::Tensor cumulative_probs_t;
     auto* cumulative_probs = cumulative_probs_t.mutable_data<T>(
         {num_distributions, num_categories}, ctx.GetPlace());
-    // T cumulative_probs[num_categories];
     dim3 block1(1);
     dim3 grid1(num_distributions);
     Cumsum<T><<<grid1, block1, 0, ctx.cuda_device_context().stream()>>>(
         norm_probs_data, num_distributions, num_categories, cumulative_probs);
-
-    /*
-    dim3 block2(num_categories < 512 ? num_categories : 512);
-    dim3 grid2((num_categories-1)/block2.x+1, num_distributions);
-    yokiFunc<T><<<grid2, block2, 0, ctx.cuda_device_context().stream()>>>(
-        cumulative_probs, yokiout_data);*/
-
-    // int64_t size = num_categories;
-    // thrust::inclusive_scan(thrust::device, norm_probs_data,
-    //                        norm_probs_data + num_categories,
-    //                        cumulative_probs);
 
     VLOG(3) << "Print cumsum " << cumulative_probs << "\n";
 
@@ -336,24 +229,11 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
             index_sequence_begin + num_distributions * num_samples, rng_data,
             RandomGeneratorCudaFunctor<T>(seed));
 
-      VLOG(3) << "Print enter\n";
-      // VLOG(3) << "Print size in_data " <<
-      // sizeof(in_data)/sizeof(in_data[num_categories-1]) << "\n";
-      // VLOG(3) << "Print norm_probs_data0 " <<
-      // sizeof(norm_probs_data[num_categories-1]) << "\n";
-
       sampleMultinomialWithReplacement<
           T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
           rng_data, num_samples, out_data, num_distributions, num_categories,
           cumulative_probs, norm_probs_data);
-
-      VLOG(3) << "Print end\n" << out_data;
     }
-
-    VLOG(3) << "Print final end\n";
-
-    // MultinomialCudaFunctor<T>(out_data, in_data, num_samples, replacement,
-    //                    num_categories, num_distributions);
   }
 };
 
