@@ -846,6 +846,29 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.dgc_configs, configs)
 
     @property
+    def fp16_allreduce(self):
+        """
+        Indicating whether we are using fp16 gradient allreduce training
+        Default Value: False
+
+        Examples:
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fp16_allreduce = True # by default this is false
+
+        """
+        return self.strategy.fp16_allreduce
+
+    @fp16_allreduce.setter
+    @is_strict_auto
+    def fp16_allreduce(self, flag):
+        if not isinstance(flag, bool):
+            raise TypeError('fp16_allreduce must be value of bool type')
+        self.strategy.fp16_allreduce = flag
+
+    @property
     def gradient_merge(self):
         """
         Gradient Merge, also called as Gradient Accumulation,
@@ -1221,8 +1244,7 @@ class DistributedStrategy(object):
                         if getattr(self.strategy, f.name):
                             draws += border + "\n"
                             draws += h1_format.format(
-                                "{} = True, please check {}_configs".format(
-                                    f.name, f.name))
+                                "{}=True <-> {}_configs".format(f.name, f.name))
                             draws += line + "\n"
                             my_configs = getattr(self.strategy,
                                                  f.name + "_configs")

@@ -11,30 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Check whether ut is disabled. """
 
-import os
 import sys
+import os
+import paddle
+import re
+import collections
+import time
+import paddle.distributed.fleet as fleet
 
 
-def check_ut():
-    """ Get disabled unit tests. """
-    disable_ut_file = 'disable_ut'
-    cmd = 'wget -q --no-check-certificate https://sys-p0.bj.bcebos.com/prec/{}'.format(
-        disable_ut_file)
-    os.system(cmd)
-    with open(disable_ut_file) as utfile:
-        for u in utfile:
-            if u.rstrip('\r\n') == sys.argv[1]:
-                exit(0)
-    exit(1)
+class MyDataset(fleet.MultiSlotDataGenerator):
+    def generate_sample(self, line):
+        def data_iter():
+            elements = line.strip().split()[0:]
+            output = [("show", [int(elements[0])]),
+                      ("click", [int(elements[1])]),
+                      ("slot1", [int(elements[2])])]
+            yield output
+
+        return data_iter
 
 
-if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        exit(1)
-    try:
-        check_ut()
-    except Exception as e:
-        print(e)
-        exit(1)
+if __name__ == "__main__":
+    d = MyDataset()
+    d.run_from_stdin()

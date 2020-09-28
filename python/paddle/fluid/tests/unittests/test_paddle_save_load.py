@@ -29,19 +29,23 @@ IMAGE_SIZE = 784
 CLASS_NUM = 10
 
 
-# define a random dataset
-class RandomDataset(paddle.io.Dataset):
-    def __init__(self, num_samples):
-        self.num_samples = num_samples
-
-    def __getitem__(self, idx):
+def random_batch_reader():
+    def _get_random_inputs_and_labels():
         np.random.seed(SEED)
-        image = np.random.random([IMAGE_SIZE]).astype('float32')
-        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+        image = np.random.random([BATCH_SIZE, IMAGE_SIZE]).astype('float32')
+        label = np.random.randint(0, CLASS_NUM - 1, (
+            BATCH_SIZE,
+            1, )).astype('int64')
         return image, label
 
-    def __len__(self):
-        return self.num_samples
+    def __reader__():
+        for _ in range(BATCH_NUM):
+            batch_image, batch_label = _get_random_inputs_and_labels()
+            batch_image = paddle.to_tensor(batch_image)
+            batch_label = paddle.to_tensor(batch_label)
+            yield batch_image, batch_label
+
+    return __reader__
 
 
 class LinearNet(nn.Layer):
@@ -66,8 +70,7 @@ def train(layer, loader, loss_fn, opt):
 class TestSaveLoad(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
-        self.place = paddle.CPUPlace()
-        paddle.disable_static(self.place)
+        paddle.disable_static()
 
         # config seed
         paddle.manual_seed(SEED)
@@ -81,14 +84,8 @@ class TestSaveLoad(unittest.TestCase):
         adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
 
         # create data loader
-        dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-        loader = paddle.io.DataLoader(
-            dataset,
-            places=self.place,
-            batch_size=BATCH_SIZE,
-            shuffle=True,
-            drop_last=True,
-            num_workers=2)
+        # TODO: using new DataLoader cause unknown Timeout on windows, replace it
+        loader = random_batch_reader()
 
         # train
         train(layer, loader, loss_fn, adam)
@@ -103,8 +100,8 @@ class TestSaveLoad(unittest.TestCase):
         layer, opt = self.build_and_train_model()
 
         # save
-        layer_save_path = "linear.pdparams"
-        opt_save_path = "linear.pdopt"
+        layer_save_path = "test_paddle_save_load.linear.pdparams"
+        opt_save_path = "test_paddle_save_load.linear.pdopt"
         layer_state_dict = layer.state_dict()
         opt_state_dict = opt.state_dict()
 
@@ -120,7 +117,7 @@ class TestSaveLoad(unittest.TestCase):
 
         # test save load in static mode
         paddle.enable_static()
-        static_save_path = "static_mode_test/linear.pdparams"
+        static_save_path = "static_mode_test/test_paddle_save_load.linear.pdparams"
         paddle.save(layer_state_dict, static_save_path)
         load_static_state_dict = paddle.load(static_save_path)
         self.check_load_state_dict(layer_state_dict, load_static_state_dict)
@@ -133,15 +130,15 @@ class TestSaveLoad(unittest.TestCase):
 
         # 2. test save path format error
         with self.assertRaises(ValueError):
-            paddle.save(layer_state_dict, "linear.model/")
+            paddle.save(layer_state_dict, "test_paddle_save_load.linear.model/")
 
         # 3. test load path not exist error
         with self.assertRaises(ValueError):
-            paddle.load("linear.params")
+            paddle.load("test_paddle_save_load.linear.params")
 
         # 4. test load old save path error
         with self.assertRaises(ValueError):
-            paddle.load("linear")
+            paddle.load("test_paddle_save_load.linear")
 
 
 if __name__ == '__main__':

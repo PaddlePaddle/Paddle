@@ -252,7 +252,7 @@ def _coalesce_tensors(var_groups):
             g_var_shapes.append(g_var.shape)
             flattened_vars.append(
                 nn.reshape(
-                    x=g_var, shape=[np.prod(g_var.shape)], inplace=True))
+                    x=g_var, shape=[np.prod(g_var.shape)]))
         coalesced_grad = nn.concat(flattened_vars)
         coalesced_grads_and_grad_vars.append(
             [coalesced_grad, grad_vars, g_var_shapes])
@@ -449,7 +449,8 @@ class DataParallel(layers.Layer):
         since="2.0.0", reason="This method does not need to be called anymore.")
     def scale_loss(self, loss):
         """
-        Deprecated method, now ``scale_loss`` is an empty method.
+        Deprecated method, now ``scale_loss`` is an empty method,  
+        keep this method just for compatibility.
         """
         return loss
 
@@ -457,7 +458,8 @@ class DataParallel(layers.Layer):
         since="2.0.0", reason="This method does not need to be called anymore.")
     def apply_collective_grads(self):
         """
-        Deprecated method, now ``apply_collective_grads`` is an empty method.
+        Deprecated method, now ``apply_collective_grads`` is an empty method, 
+        keep this method just for compatibility.
         """
         return
 
