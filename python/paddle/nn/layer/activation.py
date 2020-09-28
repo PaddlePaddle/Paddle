@@ -26,6 +26,7 @@ __all__ = [
     'SELU',
     'LeakyReLU',
     'Sigmoid',
+    'Hardsigmoid',
     'Softmax',
     'Softplus',
     'Softshrink',
@@ -678,6 +679,46 @@ class Sigmoid(layers.Layer):
 
     def forward(self, x):
         return F.sigmoid(x, self.name)
+
+
+class Hardsigmoid(layers.Layer):
+    """
+    this interface is used to construct a callable object of the ``Hardsigmoid`` class. This layer calcluate the `hardsigmoid` of input x.
+    
+    .. math::
+
+        Hardsigmoid(x)= \\begin{cases}
+                        0, \\text{if } x \\leq -3 \\\\
+                        1, \\text{if } x \\geq 3 \\\\
+                        x/6 + 1/2,  \\text{otherwise}
+                        \\end{cases}
+    
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        x: N-D tensor, available dtype is float32, float64.
+
+    Returns:
+        A callable object of Hardsigmoid.
+    
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+
+          m = paddle.nn.Sigmoid()
+          x = paddle.to_tensor([-4., 5., 1.])
+          out = m(x) # [0., 1, 0.666667]
+    """
+
+    def __init__(self, name=None):
+        super(Hardsigmoid, self).__init__()
+        self.name = name
+
+    def forward(self, x):
+        return F.hardsigmoid(x, self.name)
 
 
 class Softplus(layers.Layer):

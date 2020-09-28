@@ -13,9 +13,7 @@
 # limitations under the License.
 
 # TODO: define activation functions of neural network
-from ...fluid.layers import brelu  #DEFINE_ALIAS
 from ...fluid.layers import erf  #DEFINE_ALIAS
-from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
 from ...fluid.layers import hard_swish  #DEFINE_ALIAS
 from ...fluid.layers import maxout  #DEFINE_ALIAS
 from ...fluid.layers import soft_relu  #DEFINE_ALIAS
@@ -25,13 +23,12 @@ from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
 from ...tensor.math import tanh  #DEFINE_ALIAS
 
 __all__ = [
-    'brelu',
     'elu',
     'erf',
     'gelu',
     'hardshrink',
     'hardtanh',
-    'hard_sigmoid',
+    'hardsigmoid',
     'hard_swish',
     'hsigmoid',
     'leaky_relu',
@@ -262,6 +259,54 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
         outputs={'Out': out},
         attrs={'t_min': min,
                't_max': max})
+    return out
+
+
+def hardsigmoid(x, name=None):
+    """
+    hardsigmoid activation
+
+    .. math::
+
+        hardsigmoid(x)= \\begin{cases}
+                        0, \\text{if } x \\leq -3 \\\\
+                        1, \\text{if } x \\geq 3 \\\\
+                        x/6 + 1/2,  \\text{otherwise}
+                        \\end{cases}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            x = paddle.to_tensor([-4., 5., 1.])
+            out = F.hardsigmoid(x) # [0., 1, 0.666667]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.hard_sigmoid(x, 'slope', 0.1666666666666667, 'offset',
+                                     0.5)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hardsigmoid')
+
+    helper = LayerHelper('hardsigmoid', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='hard_sigmoid',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'slope': 0.1666666666666667,
+               'offset': 0.5})
     return out
 
 
