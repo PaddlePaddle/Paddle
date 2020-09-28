@@ -1244,8 +1244,7 @@ class DistributedStrategy(object):
                         if getattr(self.strategy, f.name):
                             draws += border + "\n"
                             draws += h1_format.format(
-                                "{} = True, please check {}_configs".format(
-                                    f.name, f.name))
+                                "{}=True <-> {}_configs".format(f.name, f.name))
                             draws += line + "\n"
                             my_configs = getattr(self.strategy,
                                                  f.name + "_configs")
