@@ -1977,6 +1977,9 @@ All parameter, weight, gradient are variables in Paddle.
     ExecutionStrategy allows the user to more preciously control how to run
     the program in ParallelExecutor by setting the property.
 
+    Returns:
+        ExecutionStrategy: An ExecutionStrategy object.
+
     Examples:
         .. code-block:: python
 
@@ -2002,7 +2005,6 @@ All parameter, weight, gradient are variables in Paddle.
           train_exe = static.ParallelExecutor(use_cuda=False,
                                               loss_name=avg_loss.name,
                                               exec_strategy=exec_strategy)
-
         )DOC");
 
   exec_strategy.def(py::init())
@@ -2025,6 +2027,7 @@ All parameter, weight, gradient are variables in Paddle.
 
             Examples:
                 .. code-block:: python
+
                     import paddle
                     import paddle.static as static
 
@@ -2064,13 +2067,24 @@ All parameter, weight, gradient are variables in Paddle.
                 many iterations to clean up the temp variables which
                 is generated during execution. It may make the execution faster,
                 because the temp variable's shape maybe the same between two iterations.
-                Default 1.
+                Default 100.
 
-                NOTES:
-                    1. If you fetch data when calling the 'run', the ParallelExecutor
-                       will clean up the temp variables at the end of the current iteration.
-                    2. In some NLP model, it may cause the GPU memory is insufficient,
-                       in this case, you should reduce `num_iteration_per_drop_scope`.
+                .. note::
+                    1. If you fetch data when calling the 'run', the ParallelExecutor 
+                    will clean up the temp variables at the end of the current iteration. 
+                    2. In some NLP model, it may cause the GPU memory is insufficient, 
+                    in this case, you should reduce `num_iteration_per_drop_scope`.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        exec_strategy = static.ExecutionStrategy()
+                        exec_strategy.num_iteration_per_drop_scope = 10
               )DOC")
       .def_property(
           "num_iteration_per_run",
@@ -2081,7 +2095,18 @@ All parameter, weight, gradient are variables in Paddle.
             self.num_iteration_per_run_ = num_iteration_per_run;
           },
           R"DOC(This config that how many iteration the executor will run when
-                user call exe.run() in python
+                user call exe.run() in python。Default: 1.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        exec_strategy = static.ExecutionStrategy()
+                        exec_strategy.num_iteration_per_run = 10
               )DOC")
       .def_property(
           "use_thread_barrier",
@@ -2110,6 +2135,9 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy", R"DOC(
     BuildStrategy allows the user to more preciously control how to
     build the SSA Graph in ParallelExecutor by setting the property.
+
+    Returns:
+        BuildStrategy: An BuildStrategy object.
 
     Examples:
         .. code-block:: python
