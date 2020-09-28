@@ -5055,13 +5055,16 @@ class Program(object):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle
+                import paddle.static as static
 
-                program = fluid.default_main_program()
-                data = fluid.data(name='x', shape=[None, 13], dtype='float32')
-                hidden = fluid.layers.fc(input=data, size=10)
-                loss = fluid.layers.mean(hidden)
-                fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+                paddle.enable_static()
+
+                program = static.default_main_program()
+                data = static.data(name='x', shape=[None, 13], dtype='float32')
+                hidden = static.nn.fc(input=data, size=10)
+                loss = paddle.mean(hidden)
+                paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
                 for param in program.all_parameters():
                     print(param)
