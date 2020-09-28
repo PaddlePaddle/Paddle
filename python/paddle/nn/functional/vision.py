@@ -34,7 +34,6 @@ from ...fluid.layers import distribute_fpn_proposals  #DEFINE_ALIAS
 from ...fluid.layers import generate_mask_labels  #DEFINE_ALIAS
 from ...fluid.layers import generate_proposal_labels  #DEFINE_ALIAS
 from ...fluid.layers import generate_proposals  #DEFINE_ALIAS
-from ...fluid.layers import grid_sampler  #DEFINE_ALIAS
 from ...fluid.layers import image_resize  #DEFINE_ALIAS
 from ...fluid.layers import prior_box  #DEFINE_ALIAS
 from ...fluid.layers import prroi_pool  #DEFINE_ALIAS
@@ -74,7 +73,7 @@ __all__ = [
     'generate_mask_labels',
     'generate_proposal_labels',
     'generate_proposals',
-    'grid_sampler',
+    'grid_sample',
     'image_resize',
     'image_resize_short',
     #       'multi_box_head',
@@ -304,13 +303,13 @@ def grid_sample(x,
             #    [ 0.596  0.38   0.52   0.24 ]]]]
     """
     helper = LayerHelper("grid_sample", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sampler')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sample')
     check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
-                             'grid_sampler')
+                             'grid_sample')
     if not isinstance(x, Variable):
-        raise ValueError("The x should be a Variable")
+        raise ValueError("The x should be a Tensor")
     if not isinstance(grid, Variable):
-        raise ValueError("The grid should be a Variable")
+        raise ValueError("The grid should be a Tensor")
     _modes = ['bilinear', 'nearest']
     _padding_modes = ['zeros', 'reflection', 'border']
     if mode not in _modes:
