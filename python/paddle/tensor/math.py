@@ -1499,6 +1499,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
     - If offset = 0, it is the main diagonal.
     - If offset > 0, it is above the main diagonal.
     - If offset < 0, it is below the main diagonal.
+    - Note that if offset is out of input's shape indicated by axis1 and axis2, 0 will be returned.
 
     Args:
         x(Variable): The input tensor x. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
