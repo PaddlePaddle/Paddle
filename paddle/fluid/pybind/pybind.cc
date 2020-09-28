@@ -1980,23 +1980,28 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-          y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-          y_predict = fluid.layers.fc(input=x, size=1, act=None)
+          import paddle
+          import paddle.static as static
+          import paddle.nn.functional as F
 
-          cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-          avg_loss = fluid.layers.mean(cost)
+          paddle.enable_static()
 
-          sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+          x = static.data(name='x', shape=[None, 13], dtype='float32')
+          y = static.data(name='y', shape=[None, 1], dtype='float32')
+          y_predict = static.nn.fc(input=x, size=1, act=None)
+
+          cost = F.square_error_cost(input=y_predict, label=y)
+          avg_loss = paddle.mean(cost)
+
+          sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
           sgd_optimizer.minimize(avg_loss)
 
-          exec_strategy = fluid.ExecutionStrategy()
+          exec_strategy = static.ExecutionStrategy()
           exec_strategy.num_threads = 4
 
-          train_exe = fluid.ParallelExecutor(use_cuda=False,
-                                             loss_name=avg_loss.name,
-                                             exec_strategy=exec_strategy)
+          train_exe = static.ParallelExecutor(use_cuda=False,
+                                              loss_name=avg_loss.name,
+                                              exec_strategy=exec_strategy)
 
         )DOC");
 
@@ -2007,7 +2012,8 @@ All parameter, weight, gradient are variables in Paddle.
           [](ExecutionStrategy &self, size_t num_threads) {
             self.num_threads_ = num_threads;
           },
-          R"DOC(The type is INT, num_threads represents the size of thread pool that
+          R"DOC(
+            The type is INT, num_threads represents the size of thread pool that
             used to run the operators of the current program in ParallelExecutor.
             If :math:`num\_threads=1`, all the operators will execute one by one,
             but the order maybe difference between iterations.
@@ -2015,7 +2021,18 @@ All parameter, weight, gradient are variables in Paddle.
             device type and device count, for GPU, :math:`num\_threads=device\_count*4`, for CPU,
             :math:`num\_threads=CPU\_NUM*4`, the explanation of:math:`CPU\_NUM` is in ParallelExecutor.
             if it is not set, ParallelExecutor will get the cpu count by calling
-            `multiprocessing.cpu_count()`. Default 0.)DOC")
+            `multiprocessing.cpu_count()`. Default 0.
+
+            Examples:
+                .. code-block:: python
+                    import paddle
+                    import paddle.static as static
+
+                    paddle.enable_static()
+
+                    exec_strategy = static.ExecutionStrategy()
+                    exec_strategy.num_threads = 4
+            )DOC")
       .def_property(
           "use_cuda",
           [](const ExecutionStrategy &self) { return self.use_cuda_; },
@@ -2097,12 +2114,14 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+            import os
             import paddle
             import paddle.static as static
 
             paddle.enable_static()
 
-            places = [paddle.CPUPlace(), paddle.CPUPlace()]
+            os.environ['CPU_NUM'] = str(2)
+            places = static.cpu_places()
 
             data = static.data(name="x", shape=[None, 1], dtype="float32")
             hidden = static.nn.fc(input=data, size=10)
@@ -2179,50 +2198,51 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        import paddle.fluid.compiler as compiler
                         import numpy
                         import os
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
 
                         use_cuda = True
-                        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-                        exe = fluid.Executor(place)
+                        place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                        exe = static.Executor(place)
 
                         # NOTE: If you use CPU to run the program, you need
-                        # to specify the CPU_NUM, otherwise, fluid will use
+                        # to specify the CPU_NUM, otherwise, paddle will use
                         # all the number of the logic core as the CPU_NUM,
                         # in that case, the batch size of the input should be
                         # greater than CPU_NUM, if not, the process will be
                         # failed by an exception.
                         if not use_cuda:
                             os.environ['CPU_NUM'] = str(2)
-                            places = fluid.cpu_places()
+                            places = static.cpu_places()
                         else:
-                            places = places = fluid.cuda_places()
+                            places = static.cuda_places()
 
-                        data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-                        hidden = fluid.layers.fc(input=data, size=10)
-                        loss = fluid.layers.mean(hidden)
-                        fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+                        data = static.data(name='X', shape=[None, 1], dtype='float32')
+                        hidden = static.nn.fc(input=data, size=10)
+                        loss = paddle.mean(hidden)
+                        paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-                        fluid.default_startup_program().random_seed=1
-                        exe.run(fluid.default_startup_program())
+                        exe.run(static.default_startup_program())
 
-                        build_strategy = fluid.BuildStrategy()
+                        build_strategy = static.BuildStrategy()
                         build_strategy.gradient_scale_strategy = \
-                                 fluid.BuildStrategy.GradientScaleStrategy.Customized
-                        compiled_prog = compiler.CompiledProgram(
-                                 fluid.default_main_program()).with_data_parallel(
+                                  static.BuildStrategy.GradientScaleStrategy.Customized
+                        compiled_prog = static.CompiledProgram(
+                                  static.default_main_program()).with_data_parallel(
                                           loss_name=loss.name, build_strategy=build_strategy,
-                                          places = places)
+                                          places=places)
 
                         dev_count =  len(places)
                         x = numpy.random.random(size=(10, 1)).astype('float32')
                         loss_grad = numpy.ones((dev_count)).astype("float32") * 0.01
                         loss_grad_name = loss.name+"@GRAD"
                         loss_data = exe.run(compiled_prog,
-                                             feed={"X": x, loss_grad_name : loss_grad},
-                                             fetch_list=[loss.name, loss_grad_name])
+                                              feed={"X": x, loss_grad_name : loss_grad},
+                                              fetch_list=[loss.name, loss_grad_name])
                    )DOC")
       .def_property(
           "debug_graphviz_path",
