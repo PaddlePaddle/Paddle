@@ -44,7 +44,6 @@ class L1Decay(fluid.regularizer.L1Decay):
             import paddle
             from paddle.regularizer import L1Decay
             import numpy as np
-            paddle.disable_static()
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.rand(shape=[10, 10], dtype="float32")
             out = linear(inp)
@@ -107,7 +106,6 @@ class L2Decay(fluid.regularizer.L2Decay):
             import paddle
             from paddle.regularizer import L2Decay
             import numpy as np
-            paddle.disable_static()
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.rand(shape=[10, 10], dtype="float32")
             out = linear(inp)
