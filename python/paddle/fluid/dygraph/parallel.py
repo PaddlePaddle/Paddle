@@ -61,55 +61,38 @@ def prepare_context(strategy=None):
 
 class ParallelEnv(object):
     """
+    ... note::
+        This API is not recommended, if you need to get rank and world_size, 
+        it is recommended to use ``paddle.distributed.get_rank()`` and 
+        ``paddle.distributed.get_world_size()`` .
+
     This class is used to obtain the environment variables required for 
     the parallel execution of ``paddle.nn.Layer`` in dynamic mode.
 
     The parallel execution in dynamic mode needs to be started using ``paddle.distributed.launch`` 
-    or ``paddle.distributed.spawn`` . By default, the related environment variable is automatically 
-    configured by this module.
-
-    This class is generally used in with `paddle.DataParallel` to configure ``paddle.nn.Layer``  
-    to run in parallel.
+    or ``paddle.distributed.spawn`` .
 
     Examples:
       .. code-block:: python
 
         import paddle
-        import paddle.nn as nn
-        import paddle.optimizer as opt
         import paddle.distributed as dist
-
-        class LinearNet(nn.Layer):
-            def __init__(self):
-                super(LinearNet, self).__init__()
-                self._linear1 = nn.Linear(10, 10)
-                self._linear2 = nn.Linear(10, 1)
-                
-            def forward(self, x):
-                return self._linear2(self._linear1(x))
 
         def train():
             # 1. initialize parallel environment
             dist.init_parallel_env()
 
-            # 2. create data parallel layer & optimizer
-            layer = LinearNet()
-            dp_layer = paddle.DataParallel(layer)
+            # 2. get current ParallelEnv
+            parallel_env = dist.ParallelEnv()
+            print("rank: ", parallel_env.rank)
+            print("world_size: ", parallel_env.world_size)
 
-            loss_fn = nn.MSELoss()
-            adam = opt.Adam(
-                learning_rate=0.001, parameters=dp_layer.parameters())
-
-            # 3. run layer
-            inputs = paddle.randn([10, 10], 'float32')
-            outputs = dp_layer(inputs)
-            labels = paddle.randn([10, 1], 'float32')
-            loss = loss_fn(outputs, labels)
-            
-            loss.backward()
-
-            adam.step()
-            adam.clear_grad()
+            # print result in process 1:
+            # rank: 1
+            # world_size: 2
+            # print result in process 2:
+            # rank: 2
+            # world_size: 2
 
         if __name__ == '__main__':
             # 1. start by ``paddle.distributed.spawn`` (default)

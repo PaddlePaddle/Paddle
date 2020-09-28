@@ -4796,6 +4796,9 @@ class Program(object):
                 prog = static.default_main_program()
                 num_blocks = prog.num_blocks
                 print(num_blocks)
+
+                # print result:
+                # 1
         """
         return self.desc.num_blocks()
 

@@ -116,7 +116,7 @@ class CompiledProgram(object):
 
             paddle.enable_static()
 
-            place = paddle.CUDAPlace(0) # fluid.CPUPlace()
+            place = paddle.CUDAPlace(0) # paddle.CPUPlace()
             exe = static.Executor(place)
 
             data = static.data(name='X', shape=[None, 1], dtype='float32')
