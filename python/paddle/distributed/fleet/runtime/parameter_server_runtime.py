@@ -69,7 +69,97 @@ class ParameterServerRuntime(RuntimeBase):
             self.async_strategy, self.role_maker)
         return compiled_config
 
-    def _load_sparse_params(self, dirname, varnames):
+    def _load_sparse_params(self,
+                            executor,
+                            dirname,
+                            varnames,
+                            main_program=None):
+        assert vars != None
+        check_vars = []
+        load_prog = Program()
+        load_block = load_prog.global_block()
+
+        def _in_varnames(var):
+            return var.name in varnames
+
+        load_vars = list(
+            filter(_in_varnames, fluid.default_main_program().list_vars()))
+        print("load sparse params: load_vars: {}".format(load_vars))
+        if main_program is None:
+            main_program = self.origin_main_program
+
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_varname_parts
+        for each_var in load_vars:
+            assert isinstance(each_var, Variable)
+
+            origin_varname, _, _ = _get_varname_parts(each_var.name)
+
+            new_var = fluid.io._clone_var_in_block_(load_block, each_var)
+            var_path = os.path.join(dirname, origin_varname)
+            if not os.path.exists(var_path):
+                raise ValueError("SelectedRows var {} can not find at {}".
+                                 format(new_var.name, var_path))
+
+            if os.path.isfile(var_path):
+                load_block.append_op(
+                    type='sparse_load',
+                    inputs={},
+                    outputs={'Out': [new_var]},
+                    attrs={
+                        'file_path': os.path.join(dirname, origin_varname),
+                        'node_index': self.role_maker._server_index(),
+                        'node_num': self.role_maker._server_num(),
+                        'shape': each_var.shape
+                    })
+            else:
+                blocks = []
+                block_paths = os.listdir(var_path)
+
+                for block in block_paths:
+                    if block.startswith(new_var.name):
+                        blocks.append(block)
+
+                slices = []
+                for block in blocks:
+                    slice = load_block.create_var(
+                        name=block,
+                        type=new_var.type,
+                        shape=new_var.shape,
+                        dtype=new_var.dtype,
+                        persistable=False)
+                    slices.append(slice)
+
+                    file_path = os.path.join(var_path, block, "Param")
+                    load_block.append_op(
+                        type='load',
+                        inputs={},
+                        outputs={'Out': [slice]},
+                        attrs={'file_path': file_path})
+
+                load_block.append_op(
+                    type='lookup_sparse_table_merge',
+                    inputs={'X': slices},
+                    outputs={'Out': new_var},
+                    attrs={})
+            check_vars.append(each_var)
+
+        executor.run(load_prog)
+        # check var shape
+        for each_var in check_vars:
+            if not isinstance(each_var, Parameter):
+                continue
+            var_temp = paddle.fluid.global_scope().find_var(each_var.name)
+            assert var_temp != None, "can't not find var: " + each_var.name
+            new_shape = (np.array(var_temp.get_tensor())).shape
+            assert each_var.name in orig_para_shape, each_var.name + "MUST in var list"
+            orig_shape = orig_para_shape.get(each_var.name)
+            if new_shape != orig_shape:
+                raise RuntimeError(
+                    "Variable's shape does not match, the Program requires a parameter with the shape of ({}), "
+                    "while the loaded parameter (namely [ {} ]) has a shape of  ({}).".
+                    format(orig_shape, each_var.name, new_shape))
+
+    def _load_distributed_params(self, dirname, varnames):
         from paddle.fluid.communicator import LargeScaleKV
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_varname_parts
 
@@ -247,28 +337,48 @@ class ParameterServerRuntime(RuntimeBase):
         if not os.path.isdir(model_dirname):
             raise ValueError("There is no directory named '%s'", model_dirname)
 
-        sparse_varnames = self.compiled_strategy.get_sparse_varname_on_ps(True)
-
+        sparse_varnames = self.compiled_strategy.get_sparse_varname_on_ps(False)
+        sparse_related_optimize_varnames = []
+        for var_name in sparse_varnames:
+            sparse_related_optimize_varnames += self.compiled_strategy.get_optimize_varname_on_ps(
+                var_name)
+        sparse_related_optimize_varnames = list(
+            set(sparse_related_optimize_varnames))
         distribtued_varnames = self.compiled_strategy.get_sparse_varname_on_ps(
-            False)
+            True)
+        distributed_related_optimize_varnames = []
+        for var_name in distribtued_varnames:
+            distributed_related_optimize_varnames += self.compiled_strategy.get_optimize_varname_on_ps(
+                var_name)
+        distributed_related_optimize_varnames = list(
+            set(distributed_related_optimize_varnames))
 
         remaining_vars = list(
             filter(
-                ParameterServerRuntime.__exclude_vars(sparse_varnames +
-                                                      distribtued_varnames),
+                ParameterServerRuntime.__exclude_vars(
+                    sparse_varnames + distribtued_varnames +
+                    sparse_related_optimize_varnames +
+                    distributed_related_optimize_varnames),
                 fluid.default_main_program().list_vars()))
 
+        # load dense
         fluid.io.load_vars(
             executor,
             main_program=fluid.default_main_program(),
             dirname=model_dirname,
             vars=remaining_vars)
 
+        # load sparse
         self._load_sparse_params(
-            dirname=model_dirname, varnames=sparse_varnames)
+            executor=executor,
+            dirname=model_dirname,
+            varnames=sparse_varnames + sparse_related_optimize_varnames)
 
-        # todo(tangwei12) load distributed vars
-        # self._load_sparse_params(dirname=model_dir, varnames=distribtued_varnames)
+        # load large scale
+        self._load_distributed_params(
+            dirname=model_dirname,
+            varnames=distribtued_varnames +
+            distributed_related_optimize_varnames)
 
     def _run_server(self):
         executor = self._get_executor()

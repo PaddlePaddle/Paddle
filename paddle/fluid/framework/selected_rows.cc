@@ -143,6 +143,56 @@ void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
   TensorFromStream(is, selected_rows->mutable_value(), dev_ctx);
 }
 
+void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
+                           const platform::DeviceContext& dev_ctx,
+                           const int64_t& node_index, const int64_t& node_num,
+                           const std::vector<int64_t>& shape) {
+  {
+    // the 1st field, unit32_t version for SelectedRows
+    uint32_t version;
+    is.read(reinterpret_cast<char*>(&version), sizeof(version));
+    PADDLE_ENFORCE_EQ(version, 0U,
+                      platform::errors::InvalidArgument(
+                          "Only version 0 SelectedRows is supported."));
+  }
+  {
+    // the 2st field, rows information
+    uint64_t size;
+    is.read(reinterpret_cast<char*>(&size), sizeof(size));
+    auto& rows = *selected_rows->mutable_rows();
+    PADDLE_ENFORCE_GE(
+        size, shape[0],
+        platform::errors::InvalidArgument(
+            "Load variable's first dim [%s] must greater than [%s].", size,
+            shape[0]));
+    rows.resize(shape[0]);
+    size_t row_index = 0;
+    char* temp_row;
+    for (uint64_t line_index = 0; line_index < size; ++line_index) {
+      is.read(temp_row, sizeof(int64_t));
+      if (static_cast<int64_t>(line_index) % node_num == node_index) {
+        memcpy(reinterpret_cast<char*>(&rows[row_index]), temp_row,
+               sizeof(int64_t));
+        row_index += 1;
+      }
+    }
+  }
+  {
+    // the 3st field, the height of the SelectedRows
+    int64_t height;
+    is.read(reinterpret_cast<char*>(&height), sizeof(int64_t));
+    PADDLE_ENFORCE_GE(
+        height, shape[0],
+        platform::errors::InvalidArgument(
+            "Load variable's first dim [%s] must greater than [%s].", height,
+            shape[0]));
+    selected_rows->set_height(shape[0]);
+  }
+  // the 4st field, tensor which contains the data
+  TensorFromStream(is, selected_rows->mutable_value(), dev_ctx, node_index,
+                   node_num, shape);
+}
+
 bool SelectedRows::HasKey(int64_t key) const {
   return std::find(rows_.begin(), rows_.end(), key) == rows_.end() ? false
                                                                    : true;

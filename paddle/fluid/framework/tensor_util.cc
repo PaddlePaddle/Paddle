@@ -795,6 +795,88 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
 }
 
 void TensorFromStream(std::istream& is, Tensor* tensor,
+                      const platform::DeviceContext& dev_ctx,
+                      const int64_t& node_index, const int64_t& node_num,
+                      const std::vector<int64_t>& shape) {
+  uint32_t version;
+  is.read(reinterpret_cast<char*>(&version), sizeof(version));
+
+  PADDLE_ENFORCE_EQ(
+      version, 0U,
+      platform::errors::InvalidArgument(
+          "tensor version %u is not supported, Only version 0 is supported",
+          version));
+
+  proto::VarType::TensorDesc desc;
+  {  // int32_t size
+    // proto buffer
+    int32_t size;
+    is.read(reinterpret_cast<char*>(&size), sizeof(size));
+    std::unique_ptr<char[]> buf(new char[size]);
+    is.read(reinterpret_cast<char*>(buf.get()), size);
+    PADDLE_ENFORCE_EQ(
+        desc.ParseFromArray(buf.get(), size), true,
+        platform::errors::InvalidArgument("Cannot parse tensor desc"));
+  }
+  {  // read tensor
+    tensor->Resize(framework::make_ddim(shape));
+
+    void* buf;
+    auto ctx = platform::CPUDeviceContext();
+    if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
+        platform::is_xpu_place(dev_ctx.GetPlace())) {
+#if defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU
+      Tensor cpu_tensor;
+      cpu_tensor.Resize(framework::make_ddim(shape));
+      framework::VisitDataType(
+          desc.data_type(),
+          DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
+      auto line_size = framework::SizeOfType(desc.data_type());
+      auto total_line = tensor->numel();
+      char* cur_buf = static_cast<char*>(buf);
+      size_t last_line_index = 0;
+      for (size_t line_index = 0; line_index < total_line; ++line_index) {
+        if (static_cast<int64_t>(line_index) % node_num == node_index) {
+          size_t seekg = (line_index - last_line_index) * line_size;
+          is.seekg(seekg, is.cur);
+          last_line_index = line_index;
+          is.read(static_cast<char*>(cur_buf), line_size);
+          cur_buf += line_size;
+        }
+      }
+      auto dst_place = dev_ctx.GetPlace();
+      framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
+#else
+      if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "CUDAPlace is not supported when not compiled with CUDA"));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "XPUPlace is not supported when not compiled with XPU"));
+      }
+#endif
+    } else {
+      framework::VisitDataType(
+          desc.data_type(),
+          DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
+      auto line_size = framework::SizeOfType(desc.data_type());
+      auto total_line = tensor->numel();
+      char* cur_buf = static_cast<char*>(buf);
+      size_t last_line_index = 0;
+      for (size_t line_index = 0; line_index < total_line; ++line_index) {
+        if (static_cast<int64_t>(line_index) % node_num == node_index) {
+          size_t seekg = (line_index - last_line_index) * line_size;
+          is.seekg(seekg, is.cur);
+          last_line_index = line_index;
+          is.read(static_cast<char*>(cur_buf), line_size);
+          cur_buf += line_size;
+        }
+      }
+    }
+  }
+}
+
+void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx) {
   uint32_t version;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));

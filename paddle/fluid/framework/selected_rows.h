@@ -172,6 +172,9 @@ void SerializeToStream(std::ostream& os, const SelectedRows& selected_rows,
                        const platform::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
                            const platform::DeviceContext& dev_ctx);
-
+void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
+                           const platform::DeviceContext& dev_ctx,
+                           const int64_t& node_index, const int64_t& node_num,
+                           const std::vector<int64_t>& shape);
 }  // namespace framework
 }  // namespace paddle
