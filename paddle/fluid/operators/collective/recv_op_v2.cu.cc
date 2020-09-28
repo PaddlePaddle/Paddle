@@ -58,6 +58,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
+#if NCCL_VERSION_CODE >= 2703
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::ncclRecv(static_cast<void *>(numel_ptr), 1, ncclInt,
                                     peer, comm->comm(), stream));
@@ -73,6 +74,10 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclRecv(
         out->data<T>(), numel, dtype, peer, comm->comm(), stream));
+#else
+    PADDLE_THROW(
+        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+#endif
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
     VLOG(3) << "rank " << comm->rank() << " recv "
             << framework::product(out->dims()) << " from " << peer;

@@ -58,10 +58,15 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         cudaMemcpy(numel_ptr, &numel, sizeof(int), cudaMemcpyHostToDevice));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupStart());
+#if NCCL_VERSION_CODE >= 2703
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
         numel_ptr, 1, ncclInt, peer, comm->comm(), stream));
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclSend(
         x->data<T>(), numel, dtype, peer, comm->comm(), stream));
+#else
+    PADDLE_THROW(
+        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+#endif
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
     VLOG(3) << "rank " << comm->rank() << " send "
             << framework::product(x->dims()) << " to " << peer;
