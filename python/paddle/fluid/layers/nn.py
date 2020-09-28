@@ -9569,10 +9569,6 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 @templatedoc()
 def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
     """
-    :alias_main: paddle.nn.functional.hard_sigmoid
-	:alias: paddle.nn.functional.hard_sigmoid,paddle.nn.functional.activation.hard_sigmoid
-	:old_api: paddle.fluid.layers.hard_sigmoid
-
     ${comment}
     Parameters:
         x (${x_type}): ${x_comment}
@@ -9779,10 +9775,6 @@ def prelu(x, mode, param_attr=None, name=None):
 @templatedoc()
 def brelu(x, t_min=0.0, t_max=24.0, name=None):
     """
-    :alias_main: paddle.nn.functional.brelu
-	:alias: paddle.nn.functional.brelu,paddle.nn.functional.activation.brelu
-	:old_api: paddle.fluid.layers.brelu
-
     ${comment}
     Args:
         x(${x_type}): ${x_comment}
@@ -14833,10 +14825,6 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
 @templatedoc()
 def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
     """
-    :alias_main: paddle.nn.functional.hard_swish
-	:alias: paddle.nn.functional.hard_swish,paddle.nn.functional.activation.hard_swish
-	:old_api: paddle.fluid.layers.hard_swish
-
     This operator implements the hard_swish activation function.
     Hard_swish is proposed in MobileNetV3, and performs better in computational stability and efficiency compared to swish function.
     For more details please refer to: https://arxiv.org/pdf/1905.02244.pdf
