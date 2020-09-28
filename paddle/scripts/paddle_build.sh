@@ -246,6 +246,7 @@ function cmake_base() {
         -DWITH_GRPC=${grpc_flag}
 	    -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
+        -DWITH_XPU=${WITH_XPU:-OFF}
         -DLITE_GIT_TAG=develop
     ========================================
 EOF
@@ -277,6 +278,7 @@ EOF
         -DWITH_GRPC=${grpc_flag} \
 	    -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=develop \
+        -DWITH_XPU=${WITH_XPU:-OFF} \
         -DWITH_LITE=${WITH_LITE:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -1176,16 +1178,29 @@ function parallel_test_base_xpu() {
     Running unit cpu tests ...
     ========================================
 EOF
+
+set +x
         ut_startTime_s=`date +%s`
-        exclusive_tests=$(ctest -N |grep "_xpu")        # cases list which would be run exclusively
-        card_test $exclusive_tests 1
+        test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            if [[ "$single_card_tests" == "" ]]; then
+                single_card_tests="^$testcase$"
+            else
+                single_card_tests="$single_card_tests|^$testcase$"
+            fi
+        done <<< "$test_cases";
+        card_test "$single_card_tests" 1
+set -x
         ut_endTime_s=`date +%s`
         echo "XPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
-    fi
-    
+    fi   
 }
 
 function parallel_test() {
