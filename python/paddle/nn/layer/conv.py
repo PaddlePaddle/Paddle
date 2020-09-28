@@ -854,7 +854,7 @@ class Conv3d(_ConvNd):
           import paddle
           import paddle.nn as nn
 
-          x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max1.)
+          x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
           
           conv = nn.Conv3d(4, 6, (3, 3, 3))
           y_var = conv(x_var)
