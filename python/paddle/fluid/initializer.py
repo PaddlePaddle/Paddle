@@ -94,15 +94,10 @@ class ConstantInitializer(Initializer):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            import paddle.nn as nn
-
-            paddle.disable_static()
-            linear = nn.Linear(32, 64, weight_attr=nn.initializer.Constant(value=2.0))
-            data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
-            data = paddle.to_tensor ( data )
-            res = linear(data)
+    	    import paddle.fluid as fluid
+            x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
+	    fc = fluid.layers.fc(input=x, size=10,
+    		param_attr=fluid.initializer.Constant(value=2.0))
 
     """
     def __init__(self, value=0.0, force_cpu=False):
@@ -596,14 +591,10 @@ class MSRAInitializer(Initializer):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            import paddle.nn as nn
-            paddle.disable_static()
-            linear = nn.Linear(32, 64,weight_attr=nn.initializer.MSRA(uniform=False))
-            data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
-            data = paddle.to_tensor ( data )
-            res = linear(data)
+            import paddle.fluid as fluid
+            x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.MSRA(uniform=False))
 
     """
     def __init__(self, uniform=True, fan_in=None, seed=0):
@@ -701,27 +692,36 @@ class BilinearInitializer(Initializer):
 
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            from paddle.regularizer import L2Decay
+            import paddle.fluid as fluid
             import math
-            import paddle.nn as nn
-            paddle.disable_static()
             factor = 2
-            w_attr = paddle.ParamAttr (
-                learning_rate=0.,
-                regularizer=L2Decay(0.),
-                #regularizer=fluid.regularizer.L2Decay(1.0),
-                initializer=nn.initializer.Bilinear()
-            )
-            data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
-            data = paddle.to_tensor ( data )
-            conv_up = nn.ConvTranspose2d ( 4, 6, (3,3),
+            C = 2
+            B = 8
+            H = W = 32
+            w_attr = fluid.param_attr.ParamAttr(
+                learning_rate=0., 
+                regularizer=fluid.regularizer.L2Decay(0.),
+                initializer=fluid.initializer.Bilinear())
+            x = fluid.data(name="data", shape=[B, 3, H, W], 
+                                  dtype="float32")
+            conv_up = fluid.layers.conv2d_transpose(
+                input=x,
+                num_filters=C,
+                output_size=None,
+                filter_size=2 * factor - factor % 2,
                 padding=int(math.ceil((factor - 1) / 2.)),
                 stride=factor,
-                weight_attr = w_attr,
-                bias_attr=False
-            )
+                groups=C,
+                param_attr=w_attr,
+                bias_attr=False)
+
+    Where, `num_filters=C` and `groups=C` means this is channel-wise transposed
+    convolution. The filter shape will be (C, 1, K, K) where K is `filer_size`,
+    This initializer will set a (K, K) interpolation kernel for every channel
+    of the filter identically. The resulting shape of the output feature map
+    will be (B, C, factor * H, factor * W). Note that the learning rate and the
+    weight decay are set to 0 in order to keep coefficient values of bilinear
+    interpolation unchanged during training.
 
     """
     def __init__(self):
