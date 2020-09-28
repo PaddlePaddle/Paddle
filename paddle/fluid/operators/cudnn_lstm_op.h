@@ -79,19 +79,76 @@ struct BidirLayer {
   void operator()(const Tensor* input, const TensorList& vec,
                   const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
                   Tensor* last_c, Tensor* output, const int& layer_idx,
-                  const int& init_offset) {
-    // TODO(wawltor)
-  }
+                  const int& init_offset) {}
   Cell<T> cell_;
 };
 
 template <typename T>
-std::vector<TensorList> parameter_split(const Tensor* weight,
-                                        const int& gate_num,
-                                        const int& layers_num) {
+std::vector<TensorList> parameter_split(
+    const Tensor* weight, const int& gate_num, const int& layers_num,
+    const int& input_size, const int& hidden_size, const int& is_bidirec) {
+  // if the weight of RNN is flatten, we need to convert the
+  // the flattened weight to single split tensor
   std::vector<TensorList> params_vec;
+  /*
   params_vec.reserve(layers_num);
-  // TODO(wawltor)
+
+  const auto& weight_numel = weight->numel();
+  // resize the weight tensor, could slice tensor directly
+  const auto& mem_block_size = gate_num * hidden_size;
+  weight->Resize(framework::make_ddim({static_cast<int64_t>(
+      weight_numel/mem_block_size), mem_block_size});
+
+  // the calcluate the offset of tensor
+  const int& direction_num = is_bidirec ? 2 : 1;
+  const int& first_input_w_stride = input_size;
+  const int& other_input_w_stride = hidden_size * direction_num;
+  const int& hidden_w_stride = hidden_size;
+  const int& bias_offset = direction_num * (first_input_w_stride +
+  hidden_w_stride +
+            (layers_num - 1) * (other_input_w_stride + hidden_w_stride));
+
+  for (int i = 0; i < layers_num; ++i) {
+    TensorList tensor_list;
+    // parameter for the w_hi, w_hh, bias_hi, bias_hh
+    const int& weight_size = 4 * direction_num;
+    tensor_list.reserve(weight_size);
+    for (int j = 0; j < weight_size; ++j) {
+      const int& section = j / 4;
+      int k = j % 4;
+      if (k < 2) {
+        int start_idx = 0;
+        int end_idx = 0;
+        if (i == 0) {
+           start_idx = section * (hidden_w_stride + first_input_w_stride)  +  (k
+  % 2) * first_input_w_stride;
+           end_idx = start_idx + (k == 0 ? first_input_w_stride :
+  hidden_w_stride);
+        } else {
+           start_idx = direction_num * (hidden_w_stride + first_input_w_stride)
+  +
+              (i - 1) * direction_num * (hidden_w_stride + other_input_w_stride)
+  +
+              section * (hidden_w_stride + other_input_w_stride) + (k % 2) *
+  other_input_w_stride;
+           end_idx = start_idx + (k == 0 ? other_input_w_stride :
+  hidden_w_stride);
+        }
+        const auto& tmp_tensor = weight->Slice(start_idx, end_idx);
+        tmp_tensor.Resize(framework::make_ddim({tmp_tensor.dims()[1],
+  tmp_tensor.dims()[0]}));
+        tensor_list.emplace_back(tmp_tensor);
+      } else {
+        const auto& start_idx = bias_offset + i * 2 * direction_num + section *
+  2 + k % 2;
+        const auto& tmp_tensor = weight->Slice(start_idx, start_idx + 1);
+        tmp_tensor.Resize(framework::make_ddim({tmp_tensor.dims()[1],
+  tmp_tensor.dims()[0]}));
+        tensor_list.emplace_back(tmp_tensor);
+      }
+    }
+    params_vec.emplace_back(tensor_list);
+  }*/
   return params_vec;
 }
 
@@ -101,6 +158,7 @@ void CacluateLSTMLayer(const Tensor* input, const Tensor* weight,
                        const Tensor* init_h, const Tensor* init_c,
                        Tensor* last_h, Tensor* last_c, Tensor* output,
                        const int& num_layers, const int& gate_num,
+                       const int& input_size, const int& hidden_size,
                        const bool& is_bidirec, const std::string& cell_type) {
   // check the dim message of init state
   const auto& init_h_dims = init_h->dims();
@@ -117,11 +175,10 @@ void CacluateLSTMLayer(const Tensor* input, const Tensor* weight,
                         "first dim of cell state hidden, but received"
                         " num_layers:%d, dim:%d",
                         num_layers, init_h_dims[0]));
-
   CellType cell;
   const int& init_offset = init_h->numel() / num_layers;
-  const std::vector<TensorList>& parameter_lists =
-      parameter_split<T>(weight, gate_num, num_layers);
+  const std::vector<TensorList>& parameter_lists = parameter_split<T>(
+      weight, gate_num, num_layers, input_size, hidden_size, is_bidirec);
   for (int i = 0; i < num_layers; i++) {
     if (is_bidirec) {
       BidirLayerT<T> layer(cell);
@@ -139,6 +196,8 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
     const std::string& cell_type = ctx.Attr<std::string>("cell_type");
     const int& num_layers = ctx.Attr<int>("num_layers");
     const bool& is_bidirec = ctx.Attr<bool>("is_bidirec");
+    const int& input_size = ctx.Attr<int>("input_size");
+    const int& hidden_size = ctx.Attr<int>("hidden_size");
 
     // get the input and weight tensor for the cacluate rnn cell
     auto* input = ctx.Input<Tensor>("Input");
@@ -154,7 +213,7 @@ class CudnnLSTMCPUKernel : public framework::OpKernel<T> {
     if (cell_type == "lstm") {
       CacluateLSTMLayer<LSTMCell<T>, SingleLayer, BidirLayer, T>(
           input, weight, init_h, init_c, last_h, last_c, output, num_layers, 4,
-          is_bidirec, cell_type);
+          input_size, hidden_size, is_bidirec, cell_type);
     }
   }
 };
