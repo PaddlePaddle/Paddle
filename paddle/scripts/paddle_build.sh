@@ -895,7 +895,11 @@ function card_test() {
     case_count $1 $2
     ut_startTime_s=`date +%s` 
     # get the CUDA device count
-    CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+    if [ "${WITH_XPU}" == "ON" ];then
+        CUDA_DEVICE_COUNT=$(xpu_smi -m 2 | wc -l)
+    else
+        CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+    fi
 
     testcases=$1
     if (( $# > 1 )); then
@@ -1173,7 +1177,8 @@ function parallel_test_base_xpu() {
     ========================================
 EOF
         ut_startTime_s=`date +%s`
-        ctest -R *xpu 
+        exclusive_tests=$(ctest -N |grep "_xpu")        # cases list which would be run exclusively
+        card_test $exclusive_tests 1
         ut_endTime_s=`date +%s`
         echo "XPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
