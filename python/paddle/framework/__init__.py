@@ -24,11 +24,6 @@ __all__ += [
     'no_grad', 'DataParallel'
 ]
 
-__all__ += [
-    'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay',
-    'InverseTimeDecay', 'PolynomialDecay', 'CosineDecay'
-]
-
 from . import random
 from .random import manual_seed
 from .framework import get_default_dtype
@@ -52,11 +47,3 @@ from .io import save
 from .io import load
 from ..fluid.dygraph.jit import SaveLoadConfig  #DEFINE_ALIAS
 from ..fluid.dygraph.parallel import DataParallel  #DEFINE_ALIAS
-
-from ..fluid.dygraph.learning_rate_scheduler import NoamDecay  #DEFINE_ALIAS
-from ..fluid.dygraph.learning_rate_scheduler import PiecewiseDecay  #DEFINE_ALIAS
-from ..fluid.dygraph.learning_rate_scheduler import NaturalExpDecay  #DEFINE_ALIAS
-from ..fluid.dygraph.learning_rate_scheduler import ExponentialDecay  #DEFINE_ALIAS
-from ..fluid.dygraph.learning_rate_scheduler import InverseTimeDecay  #DEFINE_ALIAS
-from ..fluid.dygraph.learning_rate_scheduler import PolynomialDecay  #DEFINE_ALIAS
-from ..fluid.dygraph.learning_rate_scheduler import CosineDecay  #DEFINE_ALIAS

@@ -164,7 +164,7 @@ class NoamLR(_LRScheduler):
             import paddle
             import numpy as np
 
-            # train on default dygraph mode
+            # train on default dynamic graph mode
             paddle.disable_static()
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
@@ -176,11 +176,11 @@ class NoamLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.minimize(loss)
-                    linear.clear_gradients()
+                    sgd.step()
+                    sgd.clear_gradients()
                 scheduler.step()
 
-            # train on static mode
+            # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -262,7 +262,7 @@ class PiecewiseLR(_LRScheduler):
             import paddle
             import numpy as np
 
-            # train on default dygraph mode
+            # train on default dynamic graph mode
             paddle.disable_static()
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
@@ -274,11 +274,11 @@ class PiecewiseLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.minimize(loss)
-                    linear.clear_gradients()
+                    sgd.step()
+                    sgd.clear_gradients()
                 scheduler.step()
 
-            # train on static mode
+            # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -328,7 +328,7 @@ class NaturalExpLR(_LRScheduler):
 
     .. math::
 
-        new\_learning\_rate = learning\_rate * e^{- gama * epoch}
+        new\_learning\_rate = learning\_rate * e^{- gamma * epoch}
 
     Args:
         learning_rate (float): The initial learning rate. It is a python float number.
@@ -346,7 +346,7 @@ class NaturalExpLR(_LRScheduler):
             import paddle
             import numpy as np
 
-            # train on default dygraph mode
+            # train on default dynamic graph mode
             paddle.disable_static()
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
@@ -358,11 +358,11 @@ class NaturalExpLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.minimize(loss)
-                    linear.clear_gradients()
+                    sgd.step()
+                    sgd.clear_gradients()
                 scheduler.step()
 
-            # train on static mode
+            # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -425,7 +425,7 @@ class InverseTimeLR(_LRScheduler):
             import paddle
             import numpy as np
 
-            # train on default dygraph mode
+            # train on default dynamic graph mode
             paddle.disable_static()
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
@@ -437,11 +437,11 @@ class InverseTimeLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.minimize(loss)
-                    linear.clear_gradients()
+                    sgd.step()
+                    sgd.clear_gradients()
                 scheduler.step()
 
-            # train on static mode
+            # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -521,7 +521,7 @@ class PolynomialLR(_LRScheduler):
             import paddle
             import numpy as np
 
-            # train on default dygraph mode
+            # train on default dynamic graph mode
             paddle.disable_static()
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
@@ -533,11 +533,11 @@ class PolynomialLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.minimize(loss)
-                    linear.clear_gradients()
+                    sgd.step()
+                    sgd.clear_gradients()
                 scheduler.step()
 
-            # train on static mode
+            # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -616,7 +616,7 @@ class LinearLrWarmup(_LRScheduler):
     
             lr = learning_rate
     
-    where lr is float or any subclass of ``_LRScheduler`` .
+    where ``learning_rate`` is float or any subclass of ``_LRScheduler`` .
 
     Args:
         learning_rate (float|_LRScheduler): The learning rate after warm-up. It is a python float number or any subclass of ``_LRScheduler`` .
@@ -636,7 +636,7 @@ class LinearLrWarmup(_LRScheduler):
             import paddle
             import numpy as np
 
-            # train on default dygraph mode
+            # train on default dynamic graph mode
             paddle.disable_static()
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
@@ -649,11 +649,11 @@ class LinearLrWarmup(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.minimize(loss)
-                    linear.clear_gradients()
+                    sgd.step()
+                    sgd.clear_gradients()
                 scheduler.step()
 
-            # train on static mode
+            # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -678,7 +678,7 @@ class LinearLrWarmup(_LRScheduler):
                             'y': np.random.randn(3, 4, 5).astype('float32')
                         },
                         fetch_list=loss.name)
-                scheduler.step()      
+                scheduler.step()
     """
 
     def __init__(self,
@@ -742,7 +742,7 @@ class ExponentialLR(_LRScheduler):
             import paddle
             import numpy as np
 
-            # train on default dygraph mode
+            # train on default dynamic graph mode
             paddle.disable_static()
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
@@ -754,11 +754,11 @@ class ExponentialLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.minimize(loss)
-                    linear.clear_gradients()
+                    sgd.step()
+                    sgd.clear_gradients()
                 scheduler.step()
 
-            # train on static mode
+            # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -795,7 +795,7 @@ class ExponentialLR(_LRScheduler):
 
 class MultiStepLR(_LRScheduler):
     """
-    Update the learning rate by ``gama`` once ``epoch`` reaches one of the milestones.
+    Update the learning rate by ``gamma`` once ``epoch`` reaches one of the milestones.
 
     The algorithm can be described as the code below. 
 
@@ -830,7 +830,7 @@ class MultiStepLR(_LRScheduler):
             import paddle
             import numpy as np
 
-            # train on default dygraph mode
+            # train on default dynamic graph mode
             paddle.disable_static()
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
@@ -842,11 +842,11 @@ class MultiStepLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.minimize(loss)
-                    linear.clear_gradients()
+                    sgd.step()
+                    sgd.clear_gradients()
                 scheduler.step()
 
-            # train on static mode
+            # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -939,7 +939,7 @@ class StepLR(_LRScheduler):
             import paddle
             import numpy as np
 
-            # train on default dygraph mode
+            # train on default dynamic graph mode
             paddle.disable_static()
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
@@ -951,11 +951,11 @@ class StepLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.minimize(loss)
-                    linear.clear_gradients()
+                    sgd.step()
+                    sgd.clear_gradients()
                 scheduler.step()
 
-            # train on static mode
+            # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -1035,7 +1035,7 @@ class LambdaLR(_LRScheduler):
             import paddle
             import numpy as np
 
-            # train on default dygraph mode
+            # train on default dynamic graph mode
             paddle.disable_static()
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
@@ -1047,11 +1047,11 @@ class LambdaLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.minimize(loss)
-                    linear.clear_gradients()
+                    sgd.step()
+                    sgd.clear_gradients()
                 scheduler.step()
 
-            # train on static mode
+            # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -1135,7 +1135,7 @@ class ReduceLROnPlateau(_LRScheduler):
             import paddle
             import numpy as np
 
-            # train on default dygraph mode
+            # train on default dynamic graph mode
             paddle.disable_static()
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
@@ -1147,11 +1147,11 @@ class ReduceLROnPlateau(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.minimize(loss)
-                    linear.clear_gradients()
+                    sgd.step()
+                    sgd.clear_gradients()
                 scheduler.step(loss)
 
-            # train on static mode
+            # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
@@ -1258,7 +1258,7 @@ class ReduceLROnPlateau(_LRScheduler):
         else:
             self.last_epoch = epoch
 
-        # loss must be 1-D Tensor with shape [1]
+        # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
         if isinstance(metrics, (Tensor, numpy.ndarray)):
             assert len(metrics.shape) == 1 and metrics.shape[0] == 1, "the metrics.shape " \
                 "should be (1L,), but the current metrics.shape is {}. Maybe that "  \
@@ -1309,16 +1309,7 @@ class CosineAnnealingLR(_LRScheduler):
 
     Set the learning rate using a cosine annealing schedule, where :math:`\eta_{max}` is set to 
     the initial learning_rate. :math:`T_{cur}` is the number of epochs since the last restart in 
-    SGDR:
-
-        \begin{aligned}
-            \eta_t & = \eta_{min} + \frac{1}{2}(\eta_{max} - \eta_{min})\left(1
-            + \cos\left(\frac{T_{cur}}{T_{max}}\pi\right)\right),
-            & T_{cur} \neq (2k+1)T_{max}; \\
-            \eta_{t+1} & = \eta_{t} + \frac{1}{2}(\eta_{max} - \eta_{min})
-            \left(1 - \cos\left(\frac{1}{T_{max}}\pi\right)\right),
-            & T_{cur} = (2k+1)T_{max}.
-        \end{aligned}
+    SGDR.
 
     The algorithm can be described as following.
 
@@ -1352,8 +1343,7 @@ class CosineAnnealingLR(_LRScheduler):
             import paddle
             import numpy as np
 
-            # train on default dygraph mode
-            paddle.disable_static()
+            # train on default dynamic graph mode
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
             scheduler = paddle.optimizer.lr_scheduler.CosineAnnealingLR(learning_rate=0.5, T_max=10, verbose=True)
@@ -1364,11 +1354,11 @@ class CosineAnnealingLR(_LRScheduler):
                     out = linear(x)
                     loss = paddle.reduce_mean(out)
                     loss.backward()
-                    sgd.minimize(loss)
-                    linear.clear_gradients()
+                    sgd.step()
+                    sgd.clear_gradients()
                 scheduler.step()
 
-            # train on static mode
+            # train on static graph mode
             paddle.enable_static()
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
