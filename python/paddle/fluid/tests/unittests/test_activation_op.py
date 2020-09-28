@@ -788,7 +788,7 @@ class TestSqrt(TestActivation, TestParameter):
         self.op_type = "sqrt"
         self.init_dtype()
 
-        np.random.seed(1024)
+        np.random.seed(1023)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.sqrt(x)
 
