@@ -65,41 +65,6 @@ class UniformNumpy(DistributionNumpy):
         return np.log(self.high - self.low)
 
 
-class NormalNumpy(DistributionNumpy):
-    def __init__(self, loc, scale):
-        self.loc = np.array(loc)
-        self.scale = np.array(scale)
-        if str(self.loc.dtype) not in ['float32', 'float64']:
-            self.loc = self.loc.astype('float32')
-            self.scale = self.scale.astype('float32')
-
-    def sample(self, shape):
-        shape = tuple(shape) + (self.loc + self.scale).shape
-        return self.loc + (np.random.randn(*shape) * self.scale)
-
-    def log_prob(self, value):
-        var = self.scale * self.scale
-        log_scale = np.log(self.scale)
-        return -((value - self.loc) * (value - self.loc)) / (
-            2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
-
-    def probs(self, value):
-        var = self.scale * self.scale
-        return np.exp(-1. * ((value - self.loc) * (value - self.loc)) /
-                      (2. * var)) / (math.sqrt(2 * math.pi) * self.scale)
-
-    def entropy(self):
-        return 0.5 + 0.5 * np.log(
-            np.array(2. * math.pi).astype(self.loc.dtype)) + np.log(self.scale)
-
-    def kl_divergence(self, other):
-        var_ratio = (self.scale / other.scale)
-        var_ratio = var_ratio * var_ratio
-        t1 = ((self.loc - other.loc) / other.scale)
-        t1 = (t1 * t1)
-        return 0.5 * (var_ratio + t1 - 1 - np.log(var_ratio))
-
-
 class UniformTest(unittest.TestCase):
     def setUp(self, use_gpu=False, batch_size=5, dims=6):
         self.use_gpu = use_gpu
@@ -317,6 +282,41 @@ class UniformTest8(UniformTest):
                 name='high', shape=[dims], dtype='float64')
             self.static_values = layers.data(
                 name='values', shape=[dims], dtype='float32')
+
+
+class NormalNumpy(DistributionNumpy):
+    def __init__(self, loc, scale):
+        self.loc = np.array(loc)
+        self.scale = np.array(scale)
+        if str(self.loc.dtype) not in ['float32', 'float64']:
+            self.loc = self.loc.astype('float32')
+            self.scale = self.scale.astype('float32')
+
+    def sample(self, shape):
+        shape = tuple(shape) + (self.loc + self.scale).shape
+        return self.loc + (np.random.randn(*shape) * self.scale)
+
+    def log_prob(self, value):
+        var = self.scale * self.scale
+        log_scale = np.log(self.scale)
+        return -((value - self.loc) * (value - self.loc)) / (
+            2. * var) - log_scale - math.log(math.sqrt(2. * math.pi))
+
+    def probs(self, value):
+        var = self.scale * self.scale
+        return np.exp(-1. * ((value - self.loc) * (value - self.loc)) /
+                      (2. * var)) / (math.sqrt(2 * math.pi) * self.scale)
+
+    def entropy(self):
+        return 0.5 + 0.5 * np.log(
+            np.array(2. * math.pi).astype(self.loc.dtype)) + np.log(self.scale)
+
+    def kl_divergence(self, other):
+        var_ratio = (self.scale / other.scale)
+        var_ratio = var_ratio * var_ratio
+        t1 = ((self.loc - other.loc) / other.scale)
+        t1 = (t1 * t1)
+        return 0.5 * (var_ratio + t1 - 1 - np.log(var_ratio))
 
 
 class NormalTest(unittest.TestCase):
@@ -786,6 +786,286 @@ class DistributionTestName(unittest.TestCase):
         p = uniform1.probs(value_tensor)
         self.assertEqual(self.get_prefix(p.name), name + '_probs')
 
+
+class CategoricalNumpy(DistributionNumpy):
+    def __init__(self, logits):
+        self.logits = np.array(logits).astype('float32')
+
+    def entropy(self):
+        logits = self.logits - np.max(self.logits, axis=-1, keepdims=True)
+        e_logits = np.exp(logits)
+        z = np.sum(e_logits, axis=-1, keepdims=True)
+        prob = e_logits / z
+        return -1. * np.sum(prob * (logits - np.log(z)), axis=-1, keepdims=True)
+
+    def kl_divergence(self, other):
+        logits = self.logits - np.max(self.logits, axis=-1, keepdims=True)
+        other_logits = other.logits - np.max(
+            other.logits, axis=-1, keepdims=True)
+        e_logits = np.exp(logits)
+        other_e_logits = np.exp(other_logits)
+        z = np.sum(e_logits, axis=-1, keepdims=True)
+        other_z = np.sum(other_e_logits, axis=-1, keepdims=True)
+        prob = e_logits / z
+        return np.sum(prob * (logits - np.log(z) - other_logits \
+            + np.log(other_z)), axis=-1, keepdims=True)
+
+
+class CategoricalTest(unittest.TestCase):
+    def setUp(self, use_gpu=False, batch_size=2, dims=3):
+        self.use_gpu = use_gpu
+        if not use_gpu:
+            self.place = fluid.CPUPlace()
+            self.gpu_id = -1
+        else:
+            self.place = fluid.CUDAPlace(0)
+            self.gpu_id = 0
+
+    #     self.init_numpy_data(batch_size, dims)
+
+    #     paddle.disable_static(self.place)
+    #     self.init_dynamic_data(batch_size, dims)
+
+    #     paddle.enable_static()
+    #     self.test_program = fluid.Program()
+    #     self.executor = fluid.Executor(self.place)
+    #     self.init_static_data(batch_size, dims)
+
+    # def init_numpy_data(batch_size, dims):
+
+    def test_categorical_distribution_dygraph(self,
+                                              batch_size=3,
+                                              dims=5,
+                                              tolerance=1e-6):
+        paddle.disable_static()
+
+        logits_np = np.random.randn(batch_size, dims).astype('float32')
+        other_logits_np = np.random.randn(batch_size, dims).astype('float32')
+
+        categorical = Categorical(logits_np)
+        other_categorical = Categorical(other_logits_np)
+
+        output_entropy = categorical.entropy().numpy()
+        output_kl = categorical.kl_divergence(other_categorical).numpy()
+
+        np_categorical = CategoricalNumpy(logits_np)
+        np_other_categorical = CategoricalNumpy(other_logits_np)
+        np_entropy = np_categorical.entropy()
+        np_kl = np_categorical.kl_divergence(np_other_categorical)
+
+        np.testing.assert_allclose(
+            output_entropy, np_entropy, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(
+            output_kl, np_kl, rtol=tolerance, atol=tolerance)
+
+        shape = [2, 3]
+        output_sample = categorical.sample(shape).numpy().shape
+        np.testing.assert_equal(output_sample, shape + [batch_size])
+
+        value_np = [2, 1, 3]
+        value = paddle.to_tensor(value_np)
+        output_probs = categorical.probs(value).numpy()
+        output_log_prob = categorical.log_prob(value).numpy()
+
+        sum_dist = np.sum(logits_np, axis=-1, keepdims=True)
+        probs = logits_np / sum_dist
+        np_probs = np.zeros([batch_size, len(value_np)])
+        for i in range(batch_size):
+            for j in range(len(value_np)):
+                np_probs[i][j] = probs[i][value_np[j]]
+        np.testing.assert_allclose(
+            output_probs, np_probs, rtol=tolerance, atol=tolerance)
+
+        np_log_prob = np.log(np_probs)
+        np.testing.assert_allclose(
+            output_log_prob, np_log_prob, rtol=tolerance, atol=tolerance)
+
+    def test_categorical_distribution_static(self,
+                                             batch_size=3,
+                                             dims=5,
+                                             tolerance=1e-6):
+        paddle.enable_static()
+        test_program = fluid.Program()
+        place = fluid.CUDAPlace(0)
+        self.executor = fluid.Executor(place)
+
+        logits_np = np.random.randn(batch_size, dims).astype('float32')
+        other_logits_np = np.random.randn(batch_size, dims).astype('float32')
+        shape = [2, 3]
+        dist_shape = [batch_size]
+        value_np = np.array([2, 1, 3])
+        value_shape = [3]
+
+        with fluid.program_guard(test_program):
+            logits = fluid.data(
+                name='logits', shape=[batch_size, dims], dtype='float32')
+            other_logits = fluid.data(
+                name='other_logits', shape=[batch_size, dims], dtype='float32')
+            value = fluid.data(name='value', shape=value_shape, dtype='int64')
+
+            categorical = Categorical(logits)
+            other_categorical = Categorical(other_logits)
+
+            entropy_np = categorical.entropy()
+            kl_np = categorical.kl_divergence(other_categorical)
+
+            sample = categorical.sample(shape)
+
+            probs = categorical.probs(value)
+            log_prob = categorical.log_prob(value)
+
+        self.executor.run(fluid.default_main_program())
+
+        np_categorical = CategoricalNumpy(logits_np)
+        np_other_categorical = CategoricalNumpy(other_logits_np)
+        np_entropy = np_categorical.entropy()
+        np_kl = np_categorical.kl_divergence(np_other_categorical)
+
+        # result calculated by paddle
+        [
+            output_entropy, output_kl, output_sample, output_probs,
+            output_log_prob
+        ] = self.executor.run(
+            program=test_program,
+            feed={
+                'logits': logits_np,
+                'other_logits': other_logits_np,
+                'value': value_np
+            },
+            fetch_list=[entropy_np, kl_np, sample, probs, log_prob])
+        np.testing.assert_allclose(
+            output_entropy, np_entropy, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(
+            output_kl, np_kl, rtol=tolerance, atol=tolerance)
+
+        np.testing.assert_equal(output_sample.shape, shape + dist_shape)
+
+        sum_dist = np.sum(logits_np, axis=-1, keepdims=True)
+        probs = logits_np / sum_dist
+        np_probs = np.zeros([batch_size, len(value_np)])
+        for i in range(batch_size):
+            for j in range(len(value_np)):
+                np_probs[i][j] = probs[i][value_np[j]]
+        np.testing.assert_allclose(
+            output_probs, np_probs, rtol=tolerance, atol=tolerance)
+        np_log_prob = np.log(np_probs)
+        np.testing.assert_allclose(
+            output_log_prob, np_log_prob, rtol=tolerance, atol=tolerance)
+
+
+"""
+class NormalTest(unittest.TestCase):
+    def setUp(self, use_gpu=False, batch_size=2, dims=3):
+        self.use_gpu = use_gpu
+        if not use_gpu:
+            self.place = fluid.CPUPlace()
+            self.gpu_id = -1
+        else:
+            self.place = fluid.CUDAPlace(0)
+            self.gpu_id = 0
+
+        self.init_numpy_data(batch_size, dims)
+
+        paddle.disable_static(self.place)
+        self.init_dynamic_data(batch_size, dims)
+
+        paddle.enable_static()
+        self.test_program = fluid.Program()
+        self.executor = fluid.Executor(self.place)
+        self.init_static_data(batch_size, dims)
+
+    def init_numpy_data(self, batch_size, dims):
+        # loc ans scale are 'float'
+        self.loc_np = (np.random.ranf() - 0.5) * 4
+        self.scale_np = (np.random.ranf() - 0.5) * 4
+        while self.scale_np < 0:
+            self.scale_np = (np.random.ranf() - 0.5) * 4
+        # used to construct another Normal object to calculate kl_divergence
+        self.other_loc_np = (np.random.ranf() - 0.5) * 4
+        self.other_scale_np = (np.random.ranf() - 0.5) * 4
+        while self.other_scale_np < 0:
+            self.other_scale_np = (np.random.ranf() - 0.5) * 4
+        self.values_np = np.random.ranf(1).astype('float32')
+
+    def init_dynamic_data(self, batch_size, dims):
+        self.dynamic_loc = self.loc_np
+        self.dynamic_scale = self.scale_np
+        self.dynamic_other_loc = self.other_loc_np
+        self.dynamic_other_scale = self.other_scale_np
+        self.dynamic_values = paddle.to_tensor(self.values_np)
+
+    def init_static_data(self, batch_size, dims):
+        self.static_loc = self.loc_np
+        self.static_scale = self.scale_np
+        self.static_other_loc = self.other_loc_np
+        self.static_other_scale = self.other_scale_np
+        with fluid.program_guard(self.test_program):
+            self.static_values = layers.data(
+                name='values', shape=[], dtype='float32')
+
+    def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-6):
+        sample, entropy, log_prob, probs, kl = fetch_list
+
+        np_normal = NormalNumpy(self.loc_np, self.scale_np)
+        np_sample = np_normal.sample([sample_shape])
+        np_entropy = np_normal.entropy()
+        np_lp = np_normal.log_prob(self.values_np)
+        np_p = np_normal.probs(self.values_np)
+        np_other_normal = NormalNumpy(self.other_loc_np, self.other_scale_np)
+        np_kl = np_normal.kl_divergence(np_other_normal)
+
+        np.testing.assert_equal(sample.shape, np_sample.shape)
+        np.testing.assert_allclose(
+            entropy, np_entropy, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(
+            log_prob, np_lp, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(probs, np_p, rtol=tolerance, atol=tolerance)
+        np.testing.assert_allclose(kl, np_kl, rtol=tolerance, atol=tolerance)
+
+    def test_normal_distribution_dygraph(self, sample_shape=7, tolerance=1e-6):
+        paddle.disable_static(self.place)
+        normal = Normal(self.dynamic_loc, self.dynamic_scale)
+
+        sample = normal.sample([sample_shape]).numpy()
+        entropy = normal.entropy().numpy()
+        log_prob = normal.log_prob(self.dynamic_values).numpy()
+        probs = normal.probs(self.dynamic_values).numpy()
+        other_normal = Normal(self.dynamic_other_loc, self.dynamic_other_scale)
+        kl = normal.kl_divergence(other_normal).numpy()
+
+        fetch_list = [sample, entropy, log_prob, probs, kl]
+        self.compare_with_numpy(fetch_list)
+
+    def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-6):
+        paddle.enable_static()
+        with fluid.program_guard(self.test_program):
+            normal = Normal(self.static_loc, self.static_scale)
+
+            sample = normal.sample([sample_shape])
+            entropy = normal.entropy()
+            log_prob = normal.log_prob(self.static_values)
+            probs = normal.probs(self.static_values)
+            other_normal = Normal(self.static_other_loc,
+                                  self.static_other_scale)
+            kl = normal.kl_divergence(other_normal)
+
+            fetch_list = [sample, entropy, log_prob, probs, kl]
+
+        feed_vars = {
+            'loc': self.loc_np,
+            'scale': self.scale_np,
+            'values': self.values_np,
+            'other_loc': self.other_loc_np,
+            'other_scale': self.other_scale_np
+        }
+
+        self.executor.run(fluid.default_startup_program())
+        fetch_list = self.executor.run(program=self.test_program,
+                                       feed=feed_vars,
+                                       fetch_list=fetch_list)
+
+        self.compare_with_numpy(fetch_list)
+"""
 
 if __name__ == '__main__':
     unittest.main()

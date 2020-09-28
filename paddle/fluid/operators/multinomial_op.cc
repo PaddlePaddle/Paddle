@@ -79,7 +79,7 @@ class MultinomialOpKernel<platform::CPUDeviceContext, T>
     const bool replacement = ctx.Attr<bool>("replacement");
 
     auto *in_data = x->data<T>();
-    auto *out_data = out->mutable_data<T>(ctx.GetPlace());
+    int64_t *out_data = out->mutable_data<int64_t>(ctx.GetPlace());
     /*auto *yokiout_data = yokiout->mutable_data<T>(ctx.GetPlace());
     for (int i = 0; i < x->numel(); i++) {
       yokiout_data[i] = in_data[i];

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import paddle
+import paddle.fluid as fluid
 from op_test import OpTest
 import numpy as np
 
@@ -125,6 +126,84 @@ class TestMultinomialApi(unittest.TestCase):
             np.allclose(
                 sample_prob, prob, rtol=0, atol=0.01),
             "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+
+    def test_dygraph2(self):
+        paddle.disable_static()
+        x = paddle.rand([3, 4])
+        out = paddle.multinomial(x, num_samples=100000, replacement=True)
+        x_numpy = x.numpy()
+
+        out_list = np.split(out.numpy(), 3, axis=0)
+        count_array = [0] * 3
+        for i in range(3):
+            count_array[i] = np.unique(
+                out_list[i], return_counts=True)[1].astype("float32")
+        sample_prob = np.stack(count_array, axis=0)
+        sample_prob /= sample_prob.sum(axis=-1, keepdims=True)
+
+        prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
+        self.assertTrue(
+            np.allclose(
+                sample_prob, prob, rtol=0, atol=0.01),
+            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        paddle.enable_static()
+
+    def test_dygraph3(self):
+        paddle.disable_static()
+        x = paddle.rand([1000])
+        out = paddle.multinomial(x, num_samples=100, replacement=False)
+        x_numpy = x.numpy()
+
+        unique_out = np.unique(out.numpy())
+        self.assertEqual(
+            len(unique_out), 100,
+            "replacement is False. categories can't be sampled repeatedly")
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+        startup_program = fluid.Program()
+        train_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            x = fluid.data('x', shape=[4], dtype='float32')
+            out = paddle.multinomial(x, num_samples=100000, replacement=True)
+
+            place = fluid.CPUPlace()
+            if fluid.core.is_compiled_with_cuda():
+                place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+
+        exe.run(startup_program)
+        x_np = np.random.rand(4).astype('float32')
+        out = exe.run(train_program, feed={'x': x_np}, fetch_list=[out])
+
+        sample_prob = np.unique(out, return_counts=True)[1].astype("float32")
+        sample_prob /= sample_prob.sum()
+
+        prob = x_np / x_np.sum(axis=-1, keepdims=True)
+        self.assertTrue(
+            np.allclose(
+                sample_prob, prob, rtol=0, atol=0.01),
+            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+
+    """
+    def test_replacement_error(self):
+        def test_error():
+            paddle.disable_static()
+            x = paddle.rand([5])
+            out = paddle.multinomial(x, num_samples=10, replacement=False)
+
+        self.assertRaises(paddle.fluid.core.EnforceNotMet, test_error)
+    """
+
+
+class TestMultinomialAlias(unittest.TestCase):
+    def test_alias(self):
+        paddle.disable_static()
+        x = paddle.rand([4])
+        paddle.multinomial(x, num_samples=10, replacement=True)
+        paddle.tensor.multinomial(x, num_samples=10, replacement=True)
+        paddle.tensor.random.multinomial(x, num_samples=10, replacement=True)
 
 
 if __name__ == "__main__":
