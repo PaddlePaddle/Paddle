@@ -35,6 +35,7 @@ __all__ = [
     'Tanhshrink',
     'LogSigmoid',
     'LogSoftmax',
+    'Maxout',
     'HSigmoid',
 ]
 
@@ -52,18 +53,18 @@ class ELU(layers.Layer):
     ELU Activation.
 
     .. math::
-    
+
         ELU(x) = max(0, x) + min(0, \\alpha * (e^{x}-1))
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Shape:
         - input: Tensor with any shape.
         - output: Tensor with the same shape as input.
-    
+
     Examples:
         .. code-block:: python
 
@@ -108,11 +109,11 @@ class GELU(layers.Layer):
         approximate (bool, optional): Wether to enable approximation. Default is False.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Shape:
         - input: Tensor with any shape.
         - output: Tensor with the same shape as input.
-    
+
     Examples:
         .. code-block:: python
 
@@ -122,7 +123,7 @@ class GELU(layers.Layer):
             paddle.disable_static()
 
             x = paddle.to_tensor(np.array([[-1, 0.5],[1, 1.5]]))
-            
+
             m = paddle.nn.GELU()
             out = m(x) # [-0.158655 0.345731 0.841345 1.39979]
 
@@ -281,11 +282,11 @@ class Hardtanh(layers.Layer):
         max (float, optional): The value of max for Hardtanh. Default is 1.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Shape:
         - input: Tensor with any shape.
         - output: Tensor with the same shape as input.
-    
+
     Examples:
         .. code-block:: python
 
@@ -315,7 +316,7 @@ class HSigmoid(layers.Layer):
 	:alias: paddle.nn.HSigmoid,paddle.nn.layer.HSigmoid,paddle.nn.layer.activation.HSigmoid
 
     Hierarchical Sigmoid Layer.
-    
+
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
     and speed up the model training, especially the training of language model.
     Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
@@ -350,7 +351,7 @@ class HSigmoid(layers.Layer):
             is set to False, no bias will be added. If it is set to None or one attribute of ParamAttr,
             hsigmoid will create a ParamAttr as bias_attr. If the Initializer of the bias_attr is not
             set, the bias is initialized zero. Default: None.
-        is_custom (bool, optional): Whether use custom binary tree. If it's True, `path_table` and 
+        is_custom (bool, optional): Whether use custom binary tree. If it's True, `path_table` and
             `path_code` should be passed to its forward method, otherwise `path_table` and `path_code`
             should not be passed to its forward method. Default: False.
         is_sparse (bool, optional): Whether use sparse updating instead of dense updating, if it's True, the
@@ -455,19 +456,19 @@ class PReLU(layers.Layer):
 
     Parameters:
         num_parameters (int, optional): Number of `weight` to learn. The supported values are:
-            1 - a single parameter `alpha` is used for all input channels; 
+            1 - a single parameter `alpha` is used for all input channels;
             Number of channels - a seperate `alpha` is used for each input channel.
             Default is 1.
         init (float, optional): Init value of learnable `weight`. Default is 0.25.
-        weight_attr(ParamAttr, optional): The parameter attribute for the learnable `weight`. 
+        weight_attr(ParamAttr, optional): The parameter attribute for the learnable `weight`.
             Default is None. For more information, please refer to :ref:`api_fluid_ParamAttr`.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Shape:
         - input: Tensor with any shape. Default dtype is float32.
         - output: Tensor with the same shape as input.
-    
+
     Examples:
         .. code-block:: python
 
@@ -528,7 +529,7 @@ class ReLU(layers.Layer):
     Shape:
         - input: Tensor with any shape.
         - output: Tensor with the same shape as input.
-    
+
     Examples:
         .. code-block:: python
 
@@ -654,11 +655,11 @@ class LeakyReLU(layers.Layer):
             :math:`x < 0` . Default is 0.01.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Shape:
         - input: Tensor with any shape.
         - output: Tensor with the same shape as input.
-    
+
     Examples:
         .. code-block:: python
 
@@ -684,11 +685,11 @@ class LeakyReLU(layers.Layer):
 class Sigmoid(layers.Layer):
     """
     this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calcluate the `sigmoid` of input x.
-    
+
     .. math::
 
         Sigmoid(x) = \frac{1}{1 + e^{-x}}
-    
+
     Parameters:
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -697,7 +698,7 @@ class Sigmoid(layers.Layer):
 
     Returns:
         A callable object of Sigmoid.
-    
+
     Examples:
 
         .. code-block:: python
@@ -724,7 +725,7 @@ class Sigmoid(layers.Layer):
 class Hardsigmoid(layers.Layer):
     """
     this interface is used to construct a callable object of the ``Hardsigmoid`` class. This layer calcluate the `hardsigmoid` of input x.
-    
+
     .. math::
 
         Hardsigmoid(x)= \\begin{cases}
@@ -732,7 +733,7 @@ class Hardsigmoid(layers.Layer):
                         1, \\text{if } x \\geq 3 \\\\
                         x/6 + 1/2,  \\text{otherwise}
                         \\end{cases}
-    
+
     Parameters:
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -741,7 +742,7 @@ class Hardsigmoid(layers.Layer):
 
     Returns:
         A callable object of Hardsigmoid.
-    
+
     Examples:
 
         .. code-block:: python
@@ -923,7 +924,7 @@ class Tanhshrink(layers.Layer):
 class LogSigmoid(layers.Layer):
     """
     LogSigmoid Activation.
-    
+
     .. math::
 
         LogSigmoid(x) = log \\frac{1}{1 + e^{-x}}
@@ -932,11 +933,11 @@ class LogSigmoid(layers.Layer):
         x (Tensor): The input Tensor with data type float32, or float64.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Shape:
         - input: Tensor with any shape.
         - output: Tensor with the same shape as input.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1042,7 +1043,7 @@ class Softmax(layers.Layer):
             :math:`axis + D` . Default is -1.
         dtype (str|np.dtype|core.VarDesc.VarType, optional): The desired data
             type of the output tensor. If dtype is specified, ``x`` is casted
-            to ``dtype`` before the operation is performed. This is useful for 
+            to ``dtype`` before the operation is performed. This is useful for
             preventing data type overflows. Supported dtype: float32, float64.
             If ``dtype`` is None, the output Tensor has the same dtype as x.
             Default is None.
@@ -1094,7 +1095,7 @@ class LogSoftmax(layers.Layer):
 
     .. math::
 
-        Out[i, j] = log(softmax(x)) 
+        Out[i, j] = log(softmax(x))
                   = log(\\frac{\exp(X[i, j])}{\\sum_j(exp(X[i, j])})
 
     Parameters:
@@ -1104,7 +1105,7 @@ class LogSoftmax(layers.Layer):
             same way as :math:`axis + D` . Default is -1.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
- 
+
     Shape:
         - input: Tensor with any shape.
         - output: Tensor with the same shape as input.
@@ -1141,3 +1142,60 @@ class LogSoftmax(layers.Layer):
 
     def forward(self, x):
         return F.log_softmax(x, self._axis)
+
+
+class Maxout(layers.Layer):
+    """
+    Maxout Activation.
+
+    .. math::
+
+        &out_{si+j} = \max_{k} x_{gsi + sk + j} \\\\
+        &g = groups \\\\
+        &s = \\frac{input.size}{num\\_channels} \\\\
+        &0 \\le i < \\frac{num\\_channels}{groups} \\\\
+        &0 \\le j < s \\\\
+        &0 \\le k < groups
+
+    Parameters:
+        groups (int, optional): The groups number of maxout. `groups` specifies the
+            index of channel dimension where maxout will be performed. This must be
+            a factor of number of features. Default is 1.
+        axis (int, optional): The axis along which to perform maxout calculations.
+            It should be 1 when data format is NCHW, be -1 or 3 when data format
+            is NHWC. If ``axis`` < 0, it works the same way as :math:`axis + D` ,
+            where D is the dimensions of ``x`` . Default is 1.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: :math:`(N, C_{in}, H_{in}, W_{in})`
+        - output: :math:`(N, C_{out}, H_{out}, W_{out})`
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand([1,2,3,4])
+            # [[[[0.5002636  0.22272532 0.17402348 0.2874594 ]
+            #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
+            #    [0.02879342 0.88725346 0.61093384 0.38833922]]
+            #   [[0.5231306  0.03807496 0.91661984 0.15602879]
+            #    [0.666127   0.616567   0.30741522 0.24044901]
+            #    [0.7142536  0.7351477  0.31588817 0.23782359]]]]
+            m = paddle.nn.Maxout(groups=2)
+            out = m(x)
+            # [[[[0.5231306  0.22272532 0.91661984 0.2874594 ]
+            #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
+            #    [0.7142536  0.88725346 0.61093384 0.38833922]]]]
+    """
+
+    def __init__(self, groups, axis=1, name=None):
+        super(Maxout, self).__init__()
+        self._groups = groups
+        self._axis = axis
+        self._name = name
+
+    def forward(self, x):
+        return F.maxout(x, self._groups, self._axis, self._name)

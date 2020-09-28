@@ -70,10 +70,10 @@ def elu(x, alpha=1.0, name=None):
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         A Tensor with the same data type and shape as ``x`` .
-    
+
     Examples:
         .. code-block:: python
 
@@ -84,7 +84,7 @@ def elu(x, alpha=1.0, name=None):
             paddle.disable_static()
 
             x = paddle.to_tensor(np.array([[-1,6],[1,15.6]]))
-            out = F.elu(x, alpha=0.2) 
+            out = F.elu(x, alpha=0.2)
             # [[-0.12642411  6.        ]
             #  [ 1.          15.6      ]]
     """
@@ -118,16 +118,16 @@ def gelu(x, approximate=False, name=None):
     .. math::
 
         gelu(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
-    
+
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         approximate (bool, optional): Wether to enable approximation. Default is False.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         A Tensor with the same data type and shape as ``x`` .
-    
+
     Examples:
         .. code-block:: python
 
@@ -266,11 +266,14 @@ def hardsigmoid(x, name=None):
 
     .. math::
 
-        hardsigmoid(x)= \\begin{cases}
-                        0, \\text{if } x \\leq -3 \\\\
-                        1, \\text{if } x \\geq 3 \\\\
-                        x/6 + 1/2,  \\text{otherwise}
-                        \\end{cases}
+        hardsigmoid(x)=
+            \\left\\{
+            \\begin{aligned}
+            &0, & & \\text{if } x \\leq -3 \\\\
+            &1, & & \\text{if } x \\geq 3 \\\\
+            &x/6 + 1/2, & & \\text{otherwise}
+            \\end{aligned}
+            \\right.
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -314,11 +317,14 @@ def hardswish(x, name=None):
 
     .. math::
 
-        hardswish(x)= \\begin{cases}
-                        0, \\text{if } x \\leq -3 \\\\
-                        x, \\text{if } x \\geq 3 \\\\
-                        \\frac{x(x+3)}{6},  \\text{otherwise}
-                        \\end{cases}
+        hardswish(x)=
+            \\left\\{
+            \\begin{aligned}
+            &0, & & \\text{if } x \\leq -3 \\\\
+            &x, & & \\text{if } x \\geq 3 \\\\
+            &\\frac{x(x+3)}{6}, & & \\text{otherwise}
+            \\end{aligned}
+            \\right.
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
@@ -574,7 +580,7 @@ def prelu(x, weight, name=None):
     assert len(weight.shape
                ) == 1, "The dim count of weight shape should be 1 in prelu()."
 
-    # NOTE(): The input of this API should be ``N,C,...`` format, 
+    # NOTE(): The input of this API should be ``N,C,...`` format,
     # which means x.shape[0] is batch_size and x.shape[0] is channel.
     mode = 'all'
     if weight.shape[0] > 1:
@@ -644,15 +650,15 @@ def log_sigmoid(x, name=None):
     .. math::
 
         log\\_sigmoid(x) = log \\frac{1}{1 + e^{-x}}
-    
+
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         A Tensor with the same data type and shape as ``x`` .
-    
+
     Examples:
         .. code-block:: python
 
@@ -682,36 +688,61 @@ def maxout(x, groups, axis=1, name=None):
 
     .. math::
 
-        log\\_sigmoid(x) = log \\frac{1}{1 + e^{-x}}
-    
+        &out_{si+j} = \max_{k} x_{gsi + sk + j} \\\\
+        &g = groups \\\\
+        &s = \\frac{input.size}{num\\_channels} \\\\
+        &0 \\le i < \\frac{num\\_channels}{groups} \\\\
+        &0 \\le j < s \\\\
+        &0 \\le k < groups
+
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C], the data type
+            of input is float32 or float64.
+        groups (int, optional): The groups number of maxout. `groups` specifies the
+            index of channel dimension where maxout will be performed. This must be
+            a factor of number of features. Default is 1.
+        axis (int, optional): The axis along which to perform maxout calculations.
+            It should be 1 when data format is NCHW, be -1 or 3 when data format
+            is NHWC. If ``axis`` < 0, it works the same way as :math:`axis + D` ,
+            where D is the dimensions of ``x`` . ``axis`` only supports 1, 3 or -1.
+            Default is 1.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
-        A Tensor with the same data type and shape as ``x`` .
-    
+        A Tensor with the same data type as ``x`` .
+
     Examples:
         .. code-block:: python
 
             import paddle
             import paddle.nn.functional as F
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            out = F.log_sigmoid(x) # [-0.313262 -0.126928 -0.0485874 -0.0181499]
+            x = paddle.rand([1,2,3,4])
+            # [[[[0.5002636  0.22272532 0.17402348 0.2874594 ]
+            #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
+            #    [0.02879342 0.88725346 0.61093384 0.38833922]]
+            #   [[0.5231306  0.03807496 0.91661984 0.15602879]
+            #    [0.666127   0.616567   0.30741522 0.24044901]
+            #    [0.7142536  0.7351477  0.31588817 0.23782359]]]]
+            out = F.maxout(x, groups=2)
+            # [[[[0.5231306  0.22272532 0.91661984 0.2874594 ]
+            #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
+            #    [0.7142536  0.88725346 0.61093384 0.38833922]]]]
     """
 
     if in_dygraph_mode():
-        return core.ops.logsigmoid(x)
+        return core.ops.maxout(x, 'groups', groups, 'axis', axis)
 
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                             'log_sigmoid')
-    helper = LayerHelper("log_sigmoid", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
+    helper = LayerHelper('maxout', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(type='logsigmoid', inputs={'X': x}, outputs={'Out': out})
+    helper.append_op(
+        type='maxout',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'groups': groups,
+               'axis': axis})
     return out
 
 
@@ -902,7 +933,7 @@ def softmax(x, axis=-1, dtype=None, name=None):
             :math:`axis + D` . Default is -1.
         dtype (str|np.dtype|core.VarDesc.VarType, optional): The desired data
             type of the output tensor. If dtype is specified, ``x`` is casted
-            to ``dtype`` before the operation is performed. This is useful for 
+            to ``dtype`` before the operation is performed. This is useful for
             preventing data type overflows. Supported dtype: float32, float64.
             If ``dtype`` is None, the output Tensor has the same dtype as x.
             Default is None.
@@ -1175,13 +1206,13 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
             :math:`axis + D` . Default is -1.
         dtype (str|np.dtype|core.VarDesc.VarType, optional): The desired data
             type of the output tensor. If dtype is specified, ``x`` is casted
-            to ``dtype`` before the operation is performed. This is useful for 
+            to ``dtype`` before the operation is performed. This is useful for
             preventing data type overflows. Supported dtype: float32, float64.
             If ``dtype`` is None, the output Tensor has the same dtype as x.
             Default is None.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
- 
+
     Returns:
         A Tensor with the same shape and data type (use ``dtype`` if it is
         specified) as x.

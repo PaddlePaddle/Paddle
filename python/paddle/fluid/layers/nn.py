@@ -12531,10 +12531,6 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 @templatedoc()
 def maxout(x, groups, name=None, axis=1):
     """
-    :alias_main: paddle.nn.functional.maxout
-	:alias: paddle.nn.functional.maxout,paddle.nn.functional.activation.maxout
-	:old_api: paddle.fluid.layers.maxout
-
     ${comment}
 
     Args:
