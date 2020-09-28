@@ -839,6 +839,28 @@ class SquareDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   }
 };
 
+// log Grad: dx = dout / x
+// log Grad Grad: ddout = ddx / x; dx = -(dout / x) * (ddx / x)
+template <typename T>
+class LogDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("log_grad_grad");
+    op->SetInput("X", this->Input("X"));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    op->SetAttrMap(this->Attrs());
+    // X@GRAD: dx
+    op->SetOutput("DX", this->InputGrad("X"));
+    // Out@GRAD@GRAD: ddy
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
 DECLARE_INPLACE_OP_INFERER(ActivationGradOpInplaceInference,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
@@ -1218,4 +1240,33 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::AbsGradGradFunctor<int>>,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
                                     ops::AbsGradGradFunctor<int64_t>>);
+/* ========================================================================== */
+
+/* ==========================  Log register ==================================*/
+REGISTER_OPERATOR(
+    log, ops::ActivationOp, ops::LogOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<ops::LogGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::LogGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(log_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInference,
+                  ops::LogDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::LogDoubleGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(
+    log_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::LogGradGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInference);
+
+REGISTER_ACTIVATION_CPU_KERNEL(log, Log, LogFunctor, LogGradFunctor);
+
+REGISTER_OP_CPU_KERNEL(
+    log_grad_grad, ops::LogDoubleGradKernel<plat::CPUDeviceContext,
+                                            ops::LogGradGradFunctor<float>>,
+    ops::LogDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::LogGradGradFunctor<double>>,
+    ops::LogDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::LogGradGradFunctor<plat::float16>>);
 /* ========================================================================== */

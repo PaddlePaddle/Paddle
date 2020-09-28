@@ -123,6 +123,30 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestLogDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 1e-6
+        dtype = np.float64
+
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+        y = layers.log(x)
+
+        x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 class TestSquareDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
