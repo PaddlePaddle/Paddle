@@ -200,6 +200,15 @@ def prepare_distributed_context(place=None):
     return strategy
 
 
+def _update_input_shapes(inputs):
+    shapes = None
+    if isinstance(inputs, list):
+        shapes = [list(input.shape) for input in inputs]
+    elif isinstance(inputs, dict):
+        shapes = [list(inputs[name].shape) for name in inputs]
+    return shapes
+
+
 class StaticGraphAdapter(object):
     """
     Model traning/inference with a static graph.
@@ -598,7 +607,7 @@ class DynamicGraphAdapter(object):
             'test_batch': 0
         }
 
-        self._shapes = None
+        self._input_shapes = None
         if self._nranks > 1:
             stradegy = fluid.dygraph.parallel.ParallelStrategy()
             stradegy.nranks = ParallelEnv().nranks
@@ -623,7 +632,7 @@ class DynamicGraphAdapter(object):
         self.model.network.train()
         self.mode = 'train'
         inputs = to_list(inputs)
-        self._shapes = [list(input.shape) for input in inputs]
+        self._input_shapes = _update_input_shapes(inputs)
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
@@ -658,7 +667,7 @@ class DynamicGraphAdapter(object):
         self.model.network.eval()
         self.mode = 'eval'
         inputs = to_list(inputs)
-        self._shapes = [list(input.shape) for input in inputs]
+        self._input_shapes = _update_input_shapes(inputs)
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
@@ -707,7 +716,7 @@ class DynamicGraphAdapter(object):
         self.model.network.eval()
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
-        self._shapes = [list(input.shape) for input in inputs]
+        self._input_shapes = _update_input_shapes(inputs)
         outputs = self.model.network.forward(*inputs)
         if self._nranks > 1 and isinstance(self.model._place, fluid.CUDAPlace):
             outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
@@ -849,7 +858,7 @@ class Model(object):
         self._loss = None
         self._loss_weights = None
         self._optimizer = None
-        self._shapes = None
+        self._input_shapes = None
         self._is_shape_inferred = False
         self._test_dataloader = None
 
@@ -858,10 +867,7 @@ class Model(object):
                 raise TypeError(
                     "'inputs' must be list or dict, and couldn't be None.")
         elif inputs:
-            if isinstance(inputs, list):
-                self._shapes = [list(input.shape) for input in inputs]
-            elif isinstance(inputs, dict):
-                self._shapes = [list(inputs[name].shape) for name in inputs]
+            self._input_shapes = _update_input_shapes(inputs)
 
         self._inputs = self._verify_spec(inputs, is_input=True)
         self._labels = self._verify_spec(labels)
@@ -915,10 +921,10 @@ class Model(object):
               print(loss)
         """
         loss = self._adapter.train_batch(inputs, labels)
-        if fluid.in_dygraph_mode() and self._shapes is None:
-            self._shapes = self._adapter._shapes
+        if fluid.in_dygraph_mode() and self._input_shapes is None:
+            self._input_shapes = self._adapter._input_shapes
             self._is_shape_inferred = True
-            self._inputs = self._verify_spec(None, self._shapes, True)
+            self._inputs = self._verify_spec(None, self._input_shapes, True)
         return loss
 
     def eval_batch(self, inputs, labels=None):
@@ -965,10 +971,10 @@ class Model(object):
               print(loss)
         """
         loss = self._adapter.eval_batch(inputs, labels)
-        if fluid.in_dygraph_mode() and self._shapes is None:
-            self._shapes = self._adapter._shapes
+        if fluid.in_dygraph_mode() and self._input_shapes is None:
+            self._input_shapes = self._adapter._input_shapes
             self._is_shape_inferred = True
-            self._inputs = self._verify_spec(None, self._shapes, True)
+            self._inputs = self._verify_spec(None, self._input_shapes, True)
         return loss
 
     def test_batch(self, inputs):
@@ -1010,10 +1016,10 @@ class Model(object):
               print(out)
         """
         loss = self._adapter.test_batch(inputs)
-        if fluid.in_dygraph_mode() and self._shapes is None:
-            self._shapes = self._adapter._shapes
+        if fluid.in_dygraph_mode() and self._input_shapes is None:
+            self._input_shapes = self._adapter._input_shapes
             self._is_shape_inferred = True
-            self._inputs = self._verify_spec(None, self._shapes, True)
+            self._inputs = self._verify_spec(None, self._input_shapes, True)
         return loss
 
     def save(self, path, training=True):
@@ -1704,14 +1710,14 @@ class Model(object):
         if fluid.in_dygraph_mode():
             with fluid.framework._dygraph_guard(None):
                 layer = self.network
-                if self._shapes is None:  # No provided or inferred
+                if self._input_shapes is None:  # No provided or inferred
                     raise RuntimeError(
-                        "Saving inference model needs `inputs` or running before saving."
+                        "Saving inference model needs 'inputs' or running before saving. Please specify 'inputs' in Model initialization or input training zqqdata and perform a training for shape derivation."
                     )
                 if self._is_shape_inferred:
                     warnings.warn(
-                        'Saving actual input shapes only if `inputs` is provided, otherwise variable input dimension is immutable.'
-                    )
+                        "'inputs' was not specified when Model initialization, so the input shape to be saved will be the shape derived from the user's actual inputs. The input shape to be saved is %s. For saving correct input shapes, please provide 'inputs' for Model initialization."
+                        % self._input_shapes)
                 layer.forward = paddle.jit.to_static(
                     layer.forward, input_spec=self._inputs)
 
