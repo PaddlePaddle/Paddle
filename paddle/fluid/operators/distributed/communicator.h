@@ -253,8 +253,6 @@ class Communicator {
   std::unordered_map<std::string, std::string> envs;
 };
 
-using SparseIdsMap =
-    std::unordered_map<std::string, std::vector<std::unordered_set<int64_t>>>;
 class AsyncCommunicator : public Communicator {
  public:
   AsyncCommunicator() : Communicator() {}
@@ -428,10 +426,12 @@ class GeoCommunicator : public AsyncCommunicator {
             const std::vector<std::string> &var_tables,
             const framework::Scope &scope) override;
 
-  // void SendByCommunicator(int batches) override;
+  void SendByCommunicator(int batches) { return; }
+
+  std::vector<int64_t> MergeSparseIds(const std::string &send_varname);
 
   void SendSparse(const std::string &varname, int ep_idx,
-                  const std::vector<SparseIdsMap> &ids_send_vec);
+                  const std::vector<int64_t> &sparse_ids);
 
   void SendDense(const std::string &varname);
 
@@ -464,9 +464,11 @@ class GeoCommunicator : public AsyncCommunicator {
 
   int send_var_nums_ = 0;
   std::unordered_map<std::string, std::shared_ptr<SparseValue>> old_sparses_;
-  std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>>
-      need_push_queue_;
-  std::vector<SparseIdsMap> ids_send_vec_;
+
+  std::unordered_map<
+      std::string,
+      std::shared_ptr<BlockingQueue<std::shared_ptr<std::vector<int64_t>>>>>
+      sparse_id_queues_;
 };
 
 }  // namespace distributed

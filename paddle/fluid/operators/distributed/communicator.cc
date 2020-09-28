@@ -435,6 +435,16 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
       if (!send_ctx.is_sparse) {
         continue;
       }
+      int pserver_num = static_cast<int>(send_ctx.epmap.size());
+      for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
+        sparse_id_queues_.insert(
+            std::pair<std::string, std::shared_ptr<BlockingQueue<
+                                       std::shared_ptr<std::vector<int64_t>>>>>(
+                send_ctx.splited_varnames[ep_idx],
+                std::make_shared<
+                    BlockingQueue<std::shared_ptr<std::vector<int64_t>>>>(
+                    send_queue_size_)));
+      }
     }
   }
   send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
@@ -443,9 +453,6 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     VLOG(0) << "nothing need to be received, will not start recv_thread";
   } else {
     recv_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
-    need_push_queue_ =
-        std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(
-            send_queue_size_);
   }
 
   delta_scope_.reset(new Scope());
@@ -460,38 +467,29 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const framework::Scope &scope) {
   waiting_ = false;
 
-  // PADDLE_ENFORCE_EQ(
-  //     var_tables.size(), 1,
-  //     platform::errors::InvalidArgument("var_tables.size() == 1 is
-  //     permitted"));
   auto before_send = GetCurrentUS();
-  std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
+  std::unordered_map<std::string, std::unordered_set<int64_t>> ids_table;
+
   for (size_t i = 0; i < var_tables.size(); i++) {
     auto table_name = var_tables[i];
     if (table_name == STEP_COUNTER) {
       continue;
-      // auto &queue = send_varname_to_queue_.at(table_name);
-
-      // auto tmp_var = std::make_shared<Variable>();
-      // auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
-      // tensor->Resize(framework::make_ddim({1}));
-      // auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
-      // out_d[0] = 1;
-      // VLOG(3) << "send to " << table_name << " with queue size "
-      //         << queue->Size();
-      // queue->Push(tmp_var);
     } else {
       auto p1 = GetCurrentUS();
-      auto splited_var_nums =
-          recv_varname_to_ctx_[table_name].splited_varnames.size();
-      if (ids_table->find(table_name) == ids_table->end()) {
-        // create empty set for new sparse var
-        ids_table->insert(
-            std::pair<std::string, std::vector<std::unordered_set<int64_t>>>(
-                table_name,
-                std::vector<std::unordered_set<int64_t>>{splited_var_nums}));
+      size_t splited_var_nums =
+          send_varname_to_ctx_[table_name].splited_varnames.size();
+
+      for (size_t j = 0; j < splited_var_nums; j++) {
+        if (ids_table.find(
+                send_varname_to_ctx_[table_name].splited_varnames[j]) ==
+            ids_table.end()) {
+          ids_table.insert(std::pair<std::string, std::unordered_set<int64_t>>(
+              send_varname_to_ctx_[table_name].splited_varnames[j],
+              std::unordered_set<int64_t>()));
+        }
       }
       auto p2 = GetCurrentUS();
+
       auto *var = scope.FindVar(var_names[i]);
       auto var_tensor = var->Get<framework::LoDTensor>();
       int element_number = var_tensor.numel();
@@ -500,16 +498,24 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
       // insert ids which has not been record
       for (int j = 0; j < element_number; j++) {
         auto ep_idx = var_mutable_data[j] % splited_var_nums;
-        ids_table->at(table_name)[ep_idx].insert(var_mutable_data[j]);
+        ids_table.at(send_varname_to_ctx_[table_name].splited_varnames[ep_idx])
+            .insert(var_mutable_data[j]);
       }
-
       auto p4 = GetCurrentUS();
       VLOG(1) << "table_name: " << table_name << "; p1-2: " << (p2 - p1)
               << "; p2-3: " << (p3 - p2) << "; p3-4: " << (p4 - p3);
     }
   }
   auto before_push = GetCurrentUS();
-  need_push_queue_->Push(ids_table);
+  for (auto &iter : ids_table) {
+    auto &key = iter.first;
+    auto &sparse_ids_set = iter.second;
+    auto sparse_ids_vec = std::make_shared<std::vector<int64_t>>();
+    sparse_ids_vec->assign(sparse_ids_set.begin(), sparse_ids_set.end());
+    sparse_id_queues_.at(key)->Push(sparse_ids_vec);
+    VLOG(1) << "push " << sparse_ids_vec->size() << " ids to " << key
+            << "'s queue";
+  }
   auto after_send = GetCurrentUS();
   VLOG(1) << "run send_op finish. using " << (before_push - before_send) << "; "
           << (after_send - before_push);
@@ -527,139 +533,96 @@ void GeoCommunicator::MainThread() {
     std::vector<std::future<void>> tasks;
     tasks.reserve(send_var_nums_);
 
-    auto before_send_by_communicator = GetCurrentUS();
-    size_t wait_times = 0;
-
-    while (ids_send_vec_.size() < static_cast<size_t>(max_merge_var_num_)) {
-      VLOG(1) << "ids_send_vec_ Size: " << ids_send_vec_.size();
-      if (need_push_queue_->Size() > 0) {
-        wait_times = 0;
-        ids_send_vec_.push_back(*(need_push_queue_->Pop()));
-        VLOG(1) << "ids_send_vec_ pushed";
-      } else if (need_push_queue_->Size() == 0) {
-        VLOG(1) << "wait_times -> " << wait_times;
-        if (wait_times >= static_cast<size_t>(send_wait_times_)) {
-          break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        wait_times++;
-        continue;
-      }
-    }
-
-    if (ids_send_vec_.size() >= static_cast<size_t>(max_merge_var_num_)) {
-      auto before_send_global_step = GetCurrentUS();
-      VLOG(1) << "finish ins_send_vec using time "
-              << (before_send_global_step - before_send_by_communicator)
-              << "; send_var_nums_ = " << send_var_nums_;
-      SendGlobalStep(max_merge_var_num_);
-      auto after_send_global_step = GetCurrentUS();
-      VLOG(1) << "finish send global_step using "
-              << (after_send_global_step - before_send_global_step);
-      for (auto &iter : send_varname_to_ctx_) {
-        VLOG(2) << "debug " << iter.first;
-        auto &var_name = iter.first;
-        auto &send_ctx = iter.second;
-        int pserver_num = static_cast<int>(send_ctx.epmap.size());
-
-        if (send_ctx.is_sparse) {
-          if (var_name == STEP_COUNTER) {
-            continue;
-          }
-
-          for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
-            auto send_recv_task = [this, ep_idx, &var_name] {
-              auto before_send_sparse = GetCurrentUS();
-              if (var_name == STEP_COUNTER) {
-                return;
-              }
-              SendSparse(var_name, ep_idx, ids_send_vec_);
-              auto after_send_sparse = GetCurrentUS();
-              RecvSparse(var_name, ep_idx);
-              auto after_recv_sparse = GetCurrentUS();
-              VLOG(1)
-                  << "send recv "
-                  << send_varname_to_ctx_.at(var_name).splited_varnames[ep_idx]
-                  << " finish, using "
-                  << (after_send_sparse - before_send_sparse) << " and "
-                  << (after_recv_sparse - after_send_sparse)
-                  << "; total = " << (after_recv_sparse - before_send_sparse);
-            };
-            tasks.emplace_back(
-                send_threadpool_->enqueue(std::move(send_recv_task)));
-            //      tasks[tasks.size() - 1].wait();
-          }
-        } else {
-          auto send_recv_task = [this, &var_name, &send_ctx] {
+    for (auto &iter : send_varname_to_ctx_) {
+      VLOG(2) << "debug " << iter.first;
+      auto &var_name = iter.first;
+      auto &send_ctx = iter.second;
+      int pserver_num = static_cast<int>(send_ctx.epmap.size());
+      if (send_ctx.is_sparse) {
+        for (int ep_idx = 0; ep_idx < pserver_num; ep_idx++) {
+          auto send_recv_task = [this, ep_idx, &var_name] {
+            auto before_send_sparse = GetCurrentUS();
             if (var_name == STEP_COUNTER) {
               return;
             }
-            VLOG(1) << "send dense " << var_name << " begin";
-            SendDense(var_name);
-            VLOG(1) << "send dense " << var_name << " done";
-            VLOG(1) << "recv dense " << var_name << " begin";
-            RecvDense(var_name);
-            VLOG(1) << "recv dense " << var_name << " done";
+            auto send_varname =
+                send_varname_to_ctx_.at(var_name).splited_varnames[ep_idx];
+            auto sparse_ids = MergeSparseIds(send_varname);
+            if (sparse_ids.size() == 0) {
+              return;
+            }
+            SendSparse(var_name, ep_idx, sparse_ids);
+            auto after_send_sparse = GetCurrentUS();
+            RecvSparse(var_name, ep_idx);
+            auto after_recv_sparse = GetCurrentUS();
+            VLOG(1)
+                << "send recv "
+                << send_varname_to_ctx_.at(var_name).splited_varnames[ep_idx]
+                << " finish, using " << (after_send_sparse - before_send_sparse)
+                << " and " << (after_recv_sparse - after_send_sparse)
+                << "; total = " << (after_recv_sparse - before_send_sparse);
           };
           tasks.emplace_back(
               send_threadpool_->enqueue(std::move(send_recv_task)));
         }
+      } else {
+        auto send_recv_task = [this, &var_name, &send_ctx] {
+          if (var_name == STEP_COUNTER) {
+            return;
+          }
+          VLOG(1) << "send dense " << var_name << " begin";
+          SendDense(var_name);
+          VLOG(1) << "send dense " << var_name << " done";
+          VLOG(1) << "recv dense " << var_name << " begin";
+          RecvDense(var_name);
+          VLOG(1) << "recv dense " << var_name << " done";
+        };
+        tasks.emplace_back(
+            send_threadpool_->enqueue(std::move(send_recv_task)));
       }
-
-      for (auto &task : tasks) {
-        task.wait();
-      }
-
-      ids_send_vec_.clear();
-      auto finish_one_comm = GetCurrentUS();
-      VLOG(1) << "Finish SendByCommunicator "
-              << (finish_one_comm - after_send_global_step);
+    }
+    for (auto &task : tasks) {
+      task.wait();
     }
   }
 }
 
-void GeoCommunicator::SendSparse(
-    const std::string &varname, int ep_idx,
-    const std::vector<SparseIdsMap> &ids_send_vec) {
-  std::unordered_set<int64_t> ids_set;
-  auto debug1 = GetCurrentUS();
+std::vector<int64_t> GeoCommunicator::MergeSparseIds(
+    const std::string &send_varname) {
+  size_t merge_num = 0, wait_times = 0;
+  std::unordered_set<int64_t> sparse_ids;
+  while (merge_num < static_cast<size_t>(max_merge_var_num_)) {
+    VLOG(1) << "Merge Number of " << send_varname << " = " << merge_num;
+    if (sparse_id_queues_.at(send_varname)->Size() > 0) {
+      wait_times = 0;
+      std::shared_ptr<std::vector<int64_t>> pop_ids =
+          sparse_id_queues_.at(send_varname)->Pop();
+      for (size_t j = 0; j < pop_ids->size(); j++) {
+        sparse_ids.insert(pop_ids->at(j));
+      }
+      merge_num += 1;
+      VLOG(1) << "sparse_id_queues_(" << send_varname << ") pushed";
+    } else if (sparse_id_queues_.at(send_varname)->Size() == 0) {
+      VLOG(1) << "wait_times -> " << wait_times;
+      if (wait_times >= static_cast<size_t>(send_wait_times_)) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      wait_times++;
+      continue;
+    }
+  }
+  std::vector<int64_t> res;
+  res.assign(sparse_ids.begin(), sparse_ids.end());
+  return res;
+}
+void GeoCommunicator::SendSparse(const std::string &varname, int ep_idx,
+                                 const std::vector<int64_t> &sparse_ids) {
   auto &rpc_ctx = send_varname_to_ctx_.at(varname);
-  VLOG(2) << rpc_ctx.print();
   auto send_varname = rpc_ctx.splited_varnames[ep_idx];
   auto trainer_id = rpc_ctx.trainer_id;
   auto endpoint = rpc_ctx.epmap[ep_idx];
   auto pserver_num = rpc_ctx.epmap.size();
-
-  int64_t vector_size = 0;
-  for (auto ids_map : ids_send_vec) {
-    for (auto id : ids_map[varname][ep_idx]) {
-      ids_set.insert(id);
-      vector_size += 1;
-    }
-  }
-
-  auto debug2 = GetCurrentUS();
-  VLOG(1) << "vector_size: " << vector_size
-          << "; ids_set_size: " << ids_set.size() << "; using time "
-          << (debug2 - debug1);
-
-  auto size = ids_set.size();
-
-  if (size == 0) {
-    LOG(WARNING) << "WARNING: GEO has nothing to send, return directly ";
-    return;
-  }
-
-  std::vector<int64_t> new_rows;
-  new_rows.insert(new_rows.begin(), ids_set.begin(), ids_set.end());
-
-  //  std::stringstream list_str;
-  //  for (uint64_t i = 0; i < ids.size(); i++) {
-  //    list_str << ids[i] << ",";
-  //  }
-  auto debug3 = GetCurrentUS();
-  VLOG(1) << "SendSparse receive var: " << send_varname
-          << " set: " << ids_set.size() << ", using time " << (debug3 - debug1);
 
   auto *var_latest = recv_scope_->FindVar(varname);
 
@@ -676,18 +639,18 @@ void GeoCommunicator::SendSparse(
 
   auto *t_value = t_delta->mutable_value();
   t_value->mutable_data<float>(
-      framework::make_ddim({static_cast<int64_t>(new_rows.size()), dims1}),
+      framework::make_ddim({static_cast<int64_t>(sparse_ids.size()), dims1}),
       cpu_ctx.GetPlace());
 
   std::vector<std::vector<std::vector<float> *>> values;
   auto *ins = distributed::LargeScaleKV::GetInstance();
-  ins->Get(varname)->Get(new_rows, {"Param"}, &values);
+  ins->Get(varname)->Get(sparse_ids, {"Param"}, &values);
 
   auto blas = math::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
   float coefficient = 1.0 / static_cast<float>(trainers_);
 
-  for (auto j = 0; j < static_cast<int>(new_rows.size()); ++j) {
-    blas.VSUB(dims1, t_latest.data<float>() + new_rows[j] * dims1,
+  for (auto j = 0; j < static_cast<int>(sparse_ids.size()); ++j) {
+    blas.VSUB(dims1, t_latest.data<float>() + sparse_ids[j] * dims1,
               values[j][0]->data(), t_value->data<float>() + j * dims1);
     blas.SCAL(dims1, coefficient, t_value->data<float>() + j * dims1);
     blas.VADD(dims1, values[j][0]->data(), t_value->data<float>() + j * dims1,
@@ -695,8 +658,8 @@ void GeoCommunicator::SendSparse(
   }
 
   std::vector<int64_t> send_rows;
-  send_rows.reserve(new_rows.size());
-  for (auto idx : new_rows) {
+  send_rows.reserve(sparse_ids.size());
+  for (auto idx : sparse_ids) {
     send_rows.push_back(idx / pserver_num);
   }
   t_delta->set_height(rpc_ctx.height_sections[ep_idx]);
