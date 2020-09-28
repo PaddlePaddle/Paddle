@@ -329,12 +329,12 @@ def square_error_cost(input, label):
 
         .. code-block:: python
 
-        import paddle
-        input = paddle.to_tensor([1.1, 1.9])
-        label = paddle.to_tensor([1.0, 2.0])
-        output = paddle.fluid.layers.square_error_cost(input, label)
-        print(output.numpy())
-        # [0.01, 0.01]
+            import paddle
+            input = paddle.to_tensor([1.1, 1.9])
+            label = paddle.to_tensor([1.0, 2.0])
+            output = paddle.fluid.layers.square_error_cost(input, label)
+            print(output.numpy())
+            # [0.01, 0.01]
 
     """
     check_variable_and_dtype(input, "input", ['float32', 'float64'],
@@ -1775,12 +1775,12 @@ def mse_loss(input, label):
     Examples:
         .. code-block:: python
 
-        import paddle
-        input = paddle.to_tensor([1.1, 1.9])
-        label = paddle.to_tensor([1.0, 2.0])
-        output = paddle.fluid.layers.mse_loss(input, label)
-        print(output.numpy())
-        # [0.01]
+            import paddle
+            input = paddle.to_tensor([1.1, 1.9])
+            label = paddle.to_tensor([1.0, 2.0])
+            output = paddle.fluid.layers.mse_loss(input, label)
+            print(output.numpy())
+            # [0.01]
     """
     check_variable_and_dtype(input, "input", ['float32', 'float64'], 'mse_loss')
     check_variable_and_dtype(label, "label", ['float32', 'float64'], 'mse_loss')
