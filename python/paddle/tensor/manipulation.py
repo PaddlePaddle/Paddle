@@ -236,6 +236,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             import paddle
 
             image_shape=(2, 3, 4, 4)
+            
             x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
             img = paddle.reshape(x, image_shape)
             
