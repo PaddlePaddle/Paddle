@@ -28,7 +28,7 @@ class L1Decay(fluid.regularizer.L1Decay):
     in its ParamAttr, then the regularizer in Optimizer will be ignored. Otherwise the  regularizer
     in Optimizer will be used.
     
-    In the implementation, the penalty of L1 Weight Decay Regularization is as follows:
+    In the implementation, the loss function of L1 Weight Decay Regularization is as follows:
 	
     .. math::
 
@@ -90,7 +90,7 @@ class L2Decay(fluid.regularizer.L2Decay):
     in its ParamAttr, then the regularizer in Optimizer will be ignored. Otherwise the  regularizer
     in Optimizer will be used.
     
-    In the implementation, the penalty of L2 Weight Decay Regularization is as follows:
+    In the implementation, the loss function of L2 Weight Decay Regularization is as follows:
 
     .. math::
 
