@@ -506,11 +506,12 @@ def name_scope(prefix=None):
     """
     :api_attr: Static Graph
 
-    Generate hierarchical name prefix for the operators.
+    Generate hierarchical name prefix for the operators in Static Graph.
 
     Note: 
         This should only used for debugging and visualization purpose.
         Don't use it for serious analysis such as graph/program transformations.
+        Don't use it in dygraph, since it will cause memory leak.
 
     Args:
         prefix(str, optional): prefix. Default is none.
@@ -518,21 +519,22 @@ def name_scope(prefix=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          with fluid.name_scope("s1"):
-             a = fluid.data(name='data', shape=[None, 1], dtype='int32')
+          import paddle
+          paddle.enable_static()
+          with paddle.static.name_scope("s1"):
+             a = paddle.data(name='data', shape=[None, 1], dtype='int32')
              b = a + 1
-             with fluid.name_scope("s2"):
+             with paddle.static.name_scope("s2"):
                 c = b * 1
-             with fluid.name_scope("s3"):
+             with paddle.static.name_scope("s3"):
                 d = c / 1
-          with fluid.name_scope("s1"):
-                f = fluid.layers.pow(d, 2.0)
-          with fluid.name_scope("s4"):
+          with paddle.static.name_scope("s1"):
+                f = paddle.tensor.pow(d, 2.0)
+          with paddle.static.name_scope("s4"):
                 g = f - 1
 
           # Op are created in the default main program.  
-          for op in fluid.default_main_program().block(0).ops:
+          for op in paddle.static.default_main_program().block(0).ops:
               # elementwise_add is created in /s1/
               if op.type == 'elementwise_add':
                   assert op.desc.attr("op_namescope") == '/s1/'
