@@ -19,6 +19,7 @@ import warnings
 from multiprocessing import Process, Manager
 
 import paddle.fluid as fluid
+from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 
 
 class Role:
@@ -69,6 +70,7 @@ class Gloo(object):
              worker_num,
              server_num,
              need_init_all=False,
+             start_http_server=False,
              kwargs=None):
 
         self._rendezvous = rendezvous
@@ -77,7 +79,8 @@ class Gloo(object):
         self._worker_num = worker_num
         self._server_num = server_num
         self._need_init_all = need_init_all
-        self._iface = self.__get_default_iface()
+        self._start_http_server = start_http_server
+        self._iface = ""
         self._prefix = kwargs.get("store.prefix", "")
 
         if self._rendezvous == Gloo.RENDEZVOUS.HDFS:
@@ -102,7 +105,9 @@ class Gloo(object):
 
             if not ip or not port:
                 raise ValueError(self._err_type)
-            self._init_http(ip, port, self._prefix)
+            self._init_http(ip, port, self._prefix, self._start_http_server)
+            ep = ":".join(ip, port)
+            wait_server_ready([ep])
 
         else:
             raise ValueError(self._err_type)
@@ -163,7 +168,7 @@ class Gloo(object):
             gloo = init(rank, nodes, "ALL")
             self._nodes_comm = gloo
 
-    def _init_http(self, ip, port, prefix):
+    def _init_http(self, ip, port, prefix, start_http_server):
         def __start_kv_server(http_server_d, size_d):
             from paddle.distributed.fleet.utils.http_server import KVServer
             http_server = KVServer(port, size_d)
@@ -202,7 +207,7 @@ class Gloo(object):
 
         port = int(port)
 
-        if self._role == Role.SERVER and self._role_id == 0:
+        if start_http_server:
             init_kv_server()
 
         if self._role == Role.WORKER:
@@ -791,12 +796,21 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 "store.prefix": prefix,
             }
         elif rendezvous_type == Gloo.RENDEZVOUS.HTTP:
-            ip = os.getenv("PADDLE_GLOO_HTTP_HOST", "")
-            port = os.getenv("PADDLE_GLOO_HTTP_PORT", "")
+            start_http_server = False
+            if self._is_collective:
+                ep_rank_0 = self._worker_endpoints[0]
+                if self._is_first_worker():
+                    start_http_server = True
+            else:
+                ep_rank_0 = self._server_endpoints[0]
+                if self._is_first_server():
+                    start_http_server = True
+            ip, port = ep_rank_0.split(':')
             kwargs = {
                 "http.host": ip,
                 "http.port": port,
                 "store.prefix": prefix,
+                'start_http_server': start_http_server,
             }
         else:
             dfs_path = os.getenv("PADDLE_GLOO_FS_PATH", "")
