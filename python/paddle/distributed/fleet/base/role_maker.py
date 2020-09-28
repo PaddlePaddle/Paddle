@@ -532,8 +532,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._kwargs = kwargs
         self._role_is_generated = False
 
-        self._server_endpoints = None
-        self._worker_endpoints = None
+        self._server_endpoints = []
+        self._worker_endpoints = []
 
         self._gloo = Gloo()  # gloo instance
 
