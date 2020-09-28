@@ -18,10 +18,13 @@ limitations under the License. */
 #include <thrust/scatter.h>
 #include <thrust/unique.h>
 #include <iostream>
-#include "paddle/fluid/operators/unique_op.h"  // TransComute
+#include <vector>
+#include "paddle/fluid/framework/tensor_util.h"  // TensorToVector()
+#include "paddle/fluid/operators/unique_op.h"    // TransComute()
 
 namespace paddle {
 namespace operators {
+
 using Tensor = framework::Tensor;
 
 // Binary function 'less than'
@@ -88,6 +91,70 @@ struct BinaryNotEqual {
     return 0;
   }
 };
+
+// index_select() function for Tensor
+template <typename InT>
+void IndexSelect(const framework::ExecutionContext& context,
+                 const Tensor& input, const Tensor& index, Tensor* output,
+                 int dim) {
+  auto input_dim = input.dims();
+  auto input_dim_size = input_dim.size();
+  auto output_dim = output->dims();
+
+  auto slice_size = 1;
+  for (auto i = dim + 1; i < input_dim_size; i++) {
+    slice_size *= input_dim[i];
+  }
+
+  auto input_width = slice_size * input_dim[dim];
+  auto output_width = slice_size * output_dim[dim];
+
+  auto outer_nums = 1;
+  for (auto i = 0; i < dim; i++) {
+    outer_nums *= input_dim[i];
+  }
+
+  auto index_size = index.dims()[0];
+
+  std::vector<InT> input_vec;
+  std::vector<int32_t> index_vec;
+  TensorToVector(input, context.device_context(), &input_vec);
+  TensorToVector(index, context.device_context(), &index_vec);
+  std::vector<InT> out_vec(output->numel());
+
+  for (int i = 0; i < index_size; i++) {
+    PADDLE_ENFORCE_GE(
+        index_vec[i], 0,
+        platform::errors::InvalidArgument(
+            "Variable value (index) of OP(index_select) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value.",
+            input_dim[dim], index_vec[i]));
+    PADDLE_ENFORCE_LT(
+        index_vec[i], input_dim[dim],
+        platform::errors::InvalidArgument(
+            "Variable value (index) of OP(index_select) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value.",
+            input_dim[dim], index_vec[i]));
+  }
+
+  for (auto i = 0; i < outer_nums; i++) {
+    auto input_start_offset = i * input_width;
+    auto output_start_offset = i * output_width;
+
+    for (auto j = 0; j < index_size; j++) {
+      int32_t index_value = index_vec[j];
+      for (auto k = 0; k < slice_size; k++) {
+        out_vec[output_start_offset + j * slice_size + k] =
+            input_vec[input_start_offset + index_value * slice_size + k];
+      }
+    }
+  }
+  output->mutable_data<InT>(context.GetPlace());
+  framework::TensorFromVector(out_vec, context.device_context(), output);
+  output->Resize(output_dim);
+}
 
 ///  The core logic of computing Unique
 template <typename InT, typename equal_T, typename not_equal_T>
@@ -178,10 +245,11 @@ static void ComputeUniqueFlatten(const framework::ExecutionContext& context,
 template <typename InT, typename equal_T, typename not_equal_T>
 static void ComputeUniqueDims(const framework::ExecutionContext& context,
                               framework::Tensor* sorted_indices,
-                              InT* sorted_indices_data, framework::Tensor* out,
-                              bool return_index, bool return_inverse,
-                              bool return_counts, equal_T equal,
-                              not_equal_T not_equal, int64_t row) {
+                              int32_t* sorted_indices_data,
+                              framework::Tensor* out, bool return_index,
+                              bool return_inverse, bool return_counts,
+                              equal_T equal, not_equal_T not_equal,
+                              int64_t row) {
   // 1. inverse indices: 'inverse'
   Tensor* inverse = context.Output<Tensor>("Index");
   inverse->Resize(framework::make_ddim({row}));  /// in.shape[0]
@@ -212,18 +280,15 @@ static void ComputeUniqueDims(const framework::ExecutionContext& context,
       sorted_indices_data;
   thrust::device_ptr<int32_t> range_data_ptr_dev(range_data_ptr);
   range_data_ptr_dev[num_out] = row;
+  sorted_indices->Resize(framework::make_ddim({num_out}));
 
   // 3. counts: 'counts'
   Tensor* counts = context.Output<Tensor>("Counts");
-  counts->Resize(framework::make_ddim({row}));
+  counts->Resize(framework::make_ddim({num_out}));
   auto count_data = counts->mutable_data<int32_t>(context.GetPlace());
   thrust::fill(thrust::device, count_data, count_data + row, 0);
   thrust::adjacent_difference(thrust::device, range_data_ptr + 1,
                               range_data_ptr + row + 1, count_data);
-
-  /**
-    * TODO(ashburnlee) implement index_select() to get 'out' and reshape back
-    */
 }
 
 // Calculate unique when 'dim' is not set
@@ -244,7 +309,7 @@ static void UniqueDimsCUDATensor(const framework::ExecutionContext& context,
                                  framework::Tensor* out, bool return_index,
                                  bool return_inverse, bool return_counts,
                                  int axis) {
-  // Transpose & reshape
+  // 1. Transpose & reshape
   // Transpose tensor: eg. axis=1, [dim0, dim1, dim2] -> [dim1, dim0, dim2]
   std::vector<int> permute(in.dims().size());
   std::iota(permute.begin(), permute.end(), 0);
@@ -258,60 +323,53 @@ static void UniqueDimsCUDATensor(const framework::ExecutionContext& context,
   in_trans.Resize(in_trans_dims);
   in_trans.mutable_data<InT>(context.GetPlace());
   auto& dev_ctx = context.cuda_device_context();
-  TransCompute<DeviceContext, InT>(in.dims().size(),  // 维度个数
-                                   dev_ctx,           // 设备
-                                   in,                // 原始tensor
-                                   &in_trans,  // Reshape 后的tensor 被修改
-                                   permute);   // axis 的索引
+  TransCompute<DeviceContext, InT>(in.dims().size(),  // num of dims
+                                   dev_ctx,           // device
+                                   in,                // original Tensor
+                                   &in_trans,         // Tensor after reshape
+                                   permute);          // index of axis
 
   // Reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
   framework::DDim in_trans_flat_dims =
       framework::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
 
-  // in_trans 2D
-  // in_trans(unsorted) as 'in'
+  // now 'in_trans  is 2D
   int64_t col = in_trans.dims()[1];
   int64_t row = in_trans.dims()[0];
-  const InT* in_trans_data = in_trans.data<InT>();
+  const InT* in_trans_data = in_trans.data<InT>();  // read only
 
-  // Tensor in_trans_hat;
-  // framework::TensorCopy(in_trans, context.GetPlace(), &in_trans_hat);
-  auto in_trans_data = in_trans.mutable_data<InT>(context.GetPlace());
   Tensor* sorted_indices = context.Output<Tensor>("Indices");
   sorted_indices->Resize(framework::make_ddim({row}));
   auto sorted_indices_data =
       sorted_indices->mutable_data<int32_t>(context.GetPlace());
 
+  // 2. Calculate 'sorted_indices', 'inverse', 'counts'
   // Init index and sort
   thrust::sequence(thrust::device, sorted_indices_data,
                    sorted_indices_data + row);
   thrust::sort(thrust::device, sorted_indices_data, sorted_indices_data + row,
                LessThan<InT>(col, in_trans_data));
-
   ComputeUniqueDims<InT>(context, sorted_indices, sorted_indices_data, out,
                          return_index, return_inverse, return_counts,
                          BinaryEqual<InT>(col, in_trans_data),
                          BinaryNotEqual<InT>(col, in_trans_data), row);
 
-  /**
-    * NOTE: If index_select() is implemented and called in ComputeUniqueDims(),
-    * the code below can be deleted.
-    */
-
-  // Reshape 'out' back
-  std::vector<framework::Tensor> in_trans_unbind = Unbind(in_trans_hat);
-  math::ConcatFunctor<DeviceContext, InT> concat_functor;
+  // 3. Select indices and reshape back to get 'out'
   framework::Tensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
-  out_trans_dims_vec[0] = in_trans_unbind.size();
+  out_trans_dims_vec[0] = sorted_indices->numel();
   out_trans.Resize(framework::make_ddim(out_trans_dims_vec));
   out_trans.mutable_data<InT>(context.GetPlace());
+
+  IndexSelect<InT>(context, in_trans, *sorted_indices, &out_trans, 0);
+
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
   out->Resize(framework::make_ddim(out_trans_dims_vec));
   out->mutable_data<InT>(context.GetPlace());
-
-  concat_functor(dev_ctx, in_trans_unbind, 0, &out_trans);
+  std::vector<framework::Tensor> out_trans_unbind = Unbind(out_trans);
+  math::ConcatFunctor<DeviceContext, InT> concat_functor;
+  concat_functor(dev_ctx, out_trans_unbind, 0, &out_trans);
   TransCompute<DeviceContext, InT>(out_trans.dims().size(), dev_ctx, out_trans,
                                    out, permute);
 }
@@ -353,7 +411,6 @@ class UniqueKernel<platform::CUDADeviceContext, InT>
                                     return_inverse, return_counts);
     } else {
       int axis = axis_vec[0];
-      //  已指明 DeviceContext 为 CUDADeviceContext, 写法正确
       UniqueDimsCUDATensor<platform::CUDADeviceContext, InT>(
           context, *x, out, return_index, return_inverse, return_counts, axis);
     }
