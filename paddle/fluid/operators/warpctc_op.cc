@@ -103,13 +103,13 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
              "Target sequence length for Label when Label is a 2-D tensor.")
         .AsDispensable();
     AddOutput("WarpCTCGrad",
-              "(Tensor, default: Tensor<float>), a temporary "
+              "(Tensor), a temporary "
               "output Tensor to store the gradients of warp-ctc, which is "
               "computed with loss together in one call. It is a 3-D Tensor of "
               "the shape [max_sequence_length, batch_size, num_classes + 1].")
         .AsIntermediate();
     AddOutput("Loss",
-              "(Tensor, default: Tensor<float>), the Connectionist "
+              "(Tensor), the Connectionist "
               "Temporal Classification (CTC) loss, which is a 2-D Tensor of "
               "the shape [batch_size, 1]");
     AddAttr<int>("blank",
@@ -197,7 +197,9 @@ REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
 REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp,
                   ops::WarpCTCGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
-    warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>);
+    warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     warpctc_grad,
-    ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::WarpCTCGradKernel<paddle::platform::CPUDeviceContext, double>);

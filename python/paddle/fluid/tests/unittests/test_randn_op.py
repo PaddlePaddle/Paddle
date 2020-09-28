@@ -63,7 +63,7 @@ class TestRandnOpForDygraph(unittest.TestCase):
         dim_2 = paddle.fill_constant([1], "int32", 50)
         x3 = paddle.randn(shape=[dim_1, dim_2, 784])
 
-        var_shape = paddle.to_variable(np.array(shape))
+        var_shape = paddle.to_tensor(np.array(shape))
         x4 = paddle.randn(var_shape)
 
         for out in [x1, x2, x3, x4]:
