@@ -204,7 +204,7 @@ class TestMeanAPI(unittest.TestCase):
         paddle.disable_static(self.place)
 
         def test_case(x, axis=None, keepdim=False):
-            x_tensor = paddle.to_variable(x)
+            x_tensor = paddle.to_tensor(x)
             out = paddle.mean(x_tensor, axis, keepdim)
             if isinstance(axis, list):
                 axis = tuple(axis)

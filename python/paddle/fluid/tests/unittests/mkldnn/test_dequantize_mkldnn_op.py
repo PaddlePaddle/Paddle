@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 
 class TestDeQuantizeOp(OpTest):
@@ -32,6 +32,9 @@ class TestDeQuantizeOp(OpTest):
             input = (np.random.randint(0, 100, self.input_size) - 50
                      ).astype(self.data_type)
             output = (input * (1 / self.scale)).astype('float')
+        elif self.data_type == 'uint16':
+            output = np.random.random(self.input_size).astype(np.float32)
+            input = convert_float_to_uint16(output)
         else:
             input = (np.random.randint(0, 100,
                                        self.input_size)).astype(self.data_type)
@@ -68,6 +71,14 @@ class TestDeQuantizeOp2(TestDeQuantizeOp):
 
     def set_data_type(self):
         self.data_type = 'uint8'
+
+
+class TestDeQuantizeOpBf16(TestDeQuantizeOp):
+    def set_scale(self):
+        self.scale = 1.0
+
+    def set_data_type(self):
+        self.data_type = 'uint16'
 
 
 if __name__ == '__main__':

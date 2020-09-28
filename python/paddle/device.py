@@ -18,21 +18,55 @@ import re
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.framework import is_compiled_with_cuda  #DEFINE_ALIAS
 
 __all__ = [
     'get_cudnn_version',
     'set_device',
-    'get_device'
+    'get_device',
+    'XPUPlace',
+    'is_compiled_with_xpu'
     #            'cpu_places',
     #            'CPUPlace',
     #            'cuda_pinned_places',
     #            'cuda_places',
     #            'CUDAPinnedPlace',
     #            'CUDAPlace',
-    #            'is_compiled_with_cuda'
+    'is_compiled_with_cuda'
 ]
 
 _cudnn_version = None
+
+
+def is_compiled_with_xpu():
+    """
+    Whether paddle was built with WITH_XPU=ON to support Baidu Kunlun
+
+    Returns (bool): whether paddle was built with WITH_XPU=ON
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_xpu = paddle.device.is_compiled_with_xpu()
+    """
+    return core.is_compiled_with_xpu()
+
+
+def XPUPlace(dev_id):
+    """
+    Return a Baidu Kunlun Place
+
+    Parameters:
+        dev_id(int): Baidu Kunlun device id
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            place = paddle.device.XPUPlace(0)
+    """
+    return core.XPUPlace(dev_id)
 
 
 def get_cudnn_version():

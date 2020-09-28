@@ -22,7 +22,6 @@ import paddle.dataset.cifar
 import paddle.dataset.movielens
 import paddle.dataset.conll05
 import paddle.dataset.uci_housing
-import paddle.dataset.sentiment
 import paddle.dataset.wmt14
 import paddle.dataset.wmt16
 import paddle.dataset.mq2007
@@ -37,7 +36,6 @@ __all__ = [
     'cifar',
     'movielens',
     'conll05',
-    'sentiment',
     'uci_housing',
     'wmt14',
     'wmt16',
