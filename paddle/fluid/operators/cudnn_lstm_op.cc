@@ -15,6 +15,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -303,3 +304,13 @@ REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
 
 REGISTER_OP_CPU_KERNEL(cudnn_lstm, ops::NotImpleKernel<float>);
 REGISTER_OP_CPU_KERNEL(cudnn_lstm_grad, ops::NotImpleKernel<float>);
+
+// TODO(Shixiaowei02) Add ModifyInput support
+REGISTER_OP_VERSION(cudnn_lstm)
+    .AddCheckpoint(
+        R"ROC(
+              Upgrade cudnn_lstm add a new input [WeightList] and modify input [W] to dispensable.)ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "WeightList",
+            "The WeightList stores weight and bias data. WeightList is "
+            "dispensable."));
