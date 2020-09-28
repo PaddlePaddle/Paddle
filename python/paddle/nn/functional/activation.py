@@ -262,7 +262,10 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
 
 def hardsigmoid(x, name=None):
     """
-    hardsigmoid activation
+    hardsigmoid activation.
+
+    A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
+    which is much faster than sigmoid.
 
     .. math::
 
@@ -315,6 +318,10 @@ def hardswish(x, name=None):
     """
     hardswish activation
 
+    hardswish is proposed in MobileNetV3, and performs better in computational stability
+    and efficiency compared to swish function. For more details please refer
+    to: https://arxiv.org/pdf/1905.02244.pdf
+
     .. math::
 
         hardswish(x)=
@@ -341,7 +348,7 @@ def hardswish(x, name=None):
             import paddle.nn.functional as F
 
             x = paddle.to_tensor([-4., 5., 1.])
-            out = F.hardsiwsh(x) # [0., 5., 0.666667]
+            out = F.hardswish(x) # [0., 5., 0.666667]
     """
 
     if in_dygraph_mode():
@@ -686,9 +693,13 @@ def maxout(x, groups, axis=1, name=None):
     """
     maxout activation.
 
+    Assumed the input shape is (N, Ci, H, W).
+    The output shape is (N, Co, H, W).
+    Then Co = Ci/groups and the operator formula is as follows:
+
     .. math::
 
-        &out_{si+j} = \max_{k} x_{gsi + sk + j} \\\\
+        &out_{si+j} = \\max_{k} x_{gsi + sk + j} \\\\
         &g = groups \\\\
         &s = \\frac{input.size}{num\\_channels} \\\\
         &0 \\le i < \\frac{num\\_channels}{groups} \\\\
@@ -718,7 +729,7 @@ def maxout(x, groups, axis=1, name=None):
             import paddle
             import paddle.nn.functional as F
 
-            x = paddle.rand([1,2,3,4])
+            x = paddle.rand([1, 2, 3, 4])
             # [[[[0.5002636  0.22272532 0.17402348 0.2874594 ]
             #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
             #    [0.02879342 0.88725346 0.61093384 0.38833922]]

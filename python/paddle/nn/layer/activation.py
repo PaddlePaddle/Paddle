@@ -189,7 +189,11 @@ class Hardshrink(layers.Layer):
 
 class Hardswish(layers.Layer):
     """
-    Hardswish Activation
+    Hardswish activation
+
+    Hardswish is proposed in MobileNetV3, and performs better in computational stability
+    and efficiency compared to swish function. For more details please refer
+    to: https://arxiv.org/pdf/1905.02244.pdf
 
     .. math::
 
@@ -724,7 +728,11 @@ class Sigmoid(layers.Layer):
 
 class Hardsigmoid(layers.Layer):
     """
-    this interface is used to construct a callable object of the ``Hardsigmoid`` class. This layer calcluate the `hardsigmoid` of input x.
+    This interface is used to construct a callable object of the ``Hardsigmoid`` class.
+    This layer calcluate the `hardsigmoid` of input x.
+
+    A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
+    which is much faster than sigmoid.
 
     .. math::
 
@@ -1148,6 +1156,10 @@ class Maxout(layers.Layer):
     """
     Maxout Activation.
 
+    Assumed the input shape is (N, Ci, H, W).
+    The output shape is (N, Co, H, W).
+    Then Co = Ci/groups and the operator formula is as follows:
+
     .. math::
 
         &out_{si+j} = \max_{k} x_{gsi + sk + j} \\\\
@@ -1177,7 +1189,7 @@ class Maxout(layers.Layer):
 
             import paddle
 
-            x = paddle.rand([1,2,3,4])
+            x = paddle.rand([1, 2, 3, 4])
             # [[[[0.5002636  0.22272532 0.17402348 0.2874594 ]
             #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
             #    [0.02879342 0.88725346 0.61093384 0.38833922]]
