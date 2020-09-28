@@ -182,6 +182,7 @@ class LayerList(Layer):
 
     Examples:
         .. code-block:: python
+
             import paddle
             import numpy as np
 
@@ -238,6 +239,7 @@ class LayerList(Layer):
 
         Examples:
             .. code-block:: python
+
                 import paddle
 
                 linears = paddle.nn.LayerList([paddle.nn.Linear(10, 10) for i in range(10)])
@@ -258,6 +260,7 @@ class LayerList(Layer):
 
         Examples:
             .. code-block:: python
+
                 import paddle
 
                 linears = paddle.nn.LayerList([paddle.nn.Linear(10, 10) for i in range(10)])
@@ -281,6 +284,7 @@ class LayerList(Layer):
 
         Examples:
             .. code-block:: python
+
                 import paddle
 
                 linears = paddle.nn.LayerList([paddle.nn.Linear(10, 10) for i in range(10)])
