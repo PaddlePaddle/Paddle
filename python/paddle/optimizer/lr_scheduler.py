@@ -25,11 +25,53 @@ __all__ = [
 
 
 class _LRScheduler(object):
-    """LRScheduler Base class.
+    """
+    LRScheduler Base class.
 
-    Define the common interface of an LRScheduler.
-    User can 'form paddle.optimizer.lr_scheduler import _LRScheduler'
-    And inherit from it to have a custom implementation of get_lr().
+    Define the common interface of an learning rate scheduler.
+
+    User can import it by ``form paddle.optimizer.lr_scheduler import _LRScheduler`` ,
+
+    then overload it for your subclass and have a custom implementation of ``get_lr()`` .
+
+    Args:
+        learning_rate (float): The initial learning rate. It is a python float number.
+        last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
+        verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
+
+    Returns:
+        instance to schedule learning rate.
+
+    Examples:
+        Here is an example of a simple ``StepLR`` implementation. 
+        
+        .. code-block:: python
+            
+            import paddle
+            form paddle.optimizer.lr_scheduler import _LRScheduler
+
+            class StepLR(_LRScheduler):
+                def __init__(self,
+                            learning_rate,
+                            step_size,
+                            gamma=0.1,
+                            last_epoch=-1,
+                            verbose=False):
+                    if not isinstance(step_size, int):
+                        raise TypeError(
+                            "The type of 'step_size' must be 'int', but received %s." %
+                            type(step_size))
+                    if gamma >= 1.0:
+                        raise ValueError('gamma should be < 1.0.')
+
+                    self.step_size = step_size
+                    self.gamma = gamma
+                    super(StepLR, self).__init__(learning_rate, last_epoch, verbose)
+
+                def get_lr(self):
+                    i = self.last_epoch // self.step_size
+                    return self.base_lr * (self.gamma**i)
+
     """
 
     def __init__(self, learning_rate=0.1, last_epoch=-1, verbose=False):
@@ -47,14 +89,14 @@ class _LRScheduler(object):
 
     def __call__(self):
         """ 
-        Return last computed learning rate on current epoch.
+        Return lastest computed learning rate on current epoch.
         """
         return self.last_lr
 
     def step(self, epoch=None):
         """
-        'step' should be called after 'minimize' . It will update the learning rate in optimizer according to 'epoch'.  
-        The new learning rate will take effect on next epoch.
+        ``step`` should be called after ``optimizer.step`` . It will update the learning rate in optimizer according to current ``epoch`` .  
+        The new learning rate will take effect on next ``optimizer.step`` .
 
         Args:
             epoch (int, None): specify current epoch. Default: None. Auto-increment from last_epoch=-1.
@@ -63,7 +105,27 @@ class _LRScheduler(object):
             None
         
         Examples:
-            Please refer to the example of current _LRScheduler. 
+            Please refer to the subclass of ``_LRScheduler`` (Base Class). ``MultiStepLR`` is used as an example here.
+            
+            .. code-block:: python
+                import paddle
+                import numpy as np
+
+                # train on default dynamic graph mode
+                paddle.disable_static()
+                x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
+                linear = paddle.nn.Linear(10, 10)
+                scheduler = paddle.optimizer.lr_scheduler.StepLR(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
+                sgd = paddle.optimizer.SGD(learning_rate=scheduler, parameter_list=linear.parameters())
+                for epoch in range(20):
+                    for batch_id in range(2):
+                        x = paddle.to_tensor(x)
+                        out = linear(x)
+                        loss = paddle.reduce_mean(out)
+                        loss.backward()
+                        sgd.step()
+                        sgd.clear_gradients()
+                    scheduler.step()
         """
         if epoch is None:
             self.last_epoch += 1
@@ -105,7 +167,10 @@ class _LRScheduler(object):
     # (Note): you can change it for your subclass.
     def _state_keys(self):
         """
-        set the keys in self.__dict__ that are needed to be saved.
+        For those subclass who overload ``_LRScheduler`` (Base Class), "last_epoch, last_lr" will be saved by default.
+
+        User can change it by define a dict ``self.keys = ['last_epoch', 'last_lr']`` .
+
         """
         self.keys = ['last_epoch', 'last_lr']
 
@@ -130,6 +195,11 @@ class _LRScheduler(object):
     set_dict = set_state_dict
 
     def get_lr(self):
+        """
+        For those subclass who overload ``_LRScheduler`` (Base Class), User should have a custom implementation of ``get_lr()`` .
+
+        Otherwise, an exception will be thrown.
+        """
         # calculate by python float
         raise NotImplementedError
 

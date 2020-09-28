@@ -14,20 +14,24 @@
 
 __all__ = [
     'Adadelta', 'AdadeltaOptimizer', 'Adagrad', 'AdagradOptimizer', 'Adam',
-    'Adamax', 'AdamW', 'DecayedAdagrad', 'DecayedAdagradOptimizer', 'Dpsgd',
-    'DpsgdOptimizer', 'ExponentialMovingAverage', 'Ftrl', 'FtrlOptimizer',
-    'LookaheadOptimizer', 'ModelAverage', 'Momentum', 'MomentumOptimizer',
-    'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer', '_LRScheduler', 'NoamLR',
-    'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR', 'PolynomialLR',
-    'LinearLrWarmup', 'ExponentialLR', 'MultiStepLR', 'StepLR', 'LambdaLR',
-    'ReduceLROnPlateau', 'CosineAnnealingLR'
+    'Adamax', 'AdamW', 'DecayedAdagrad', 'DecayedAdagradOptimizer',
+    'DGCMomentumOptimizer', 'Dpsgd', 'DpsgdOptimizer',
+    'ExponentialMovingAverage', 'Ftrl', 'FtrlOptimizer', 'LambOptimizer',
+    'LarsMomentum', 'LarsMomentumOptimizer', 'LookaheadOptimizer',
+    'ModelAverage', 'Momentum', 'MomentumOptimizer', 'PipelineOptimizer',
+    'RecomputeOptimizer', 'RMSProp', 'SGD', 'SGDOptimizer', 'Optimizer',
+    '_LRScheduler', 'NoamLR', 'PiecewiseLR', 'NaturalExpLR', 'InverseTimeLR',
+    'PolynomialLR', 'LinearLrWarmup', 'ExponentialLR', 'MultiStepLR', 'StepLR',
+    'LambdaLR', 'ReduceLROnPlateau', 'CosineAnnealingLR'
 ]
 
 
 from ..fluid.optimizer import Momentum, Adagrad, Dpsgd, DecayedAdagrad, Ftrl,\
-            AdagradOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, \
-            FtrlOptimizer, AdadeltaOptimizer, ModelAverage, \
-            ExponentialMovingAverage, LookaheadOptimizer
+            AdagradOptimizer,DpsgdOptimizer,\
+            DecayedAdagradOptimizer,FtrlOptimizer,AdadeltaOptimizer, \
+            ModelAverage, LarsMomentum, DGCMomentumOptimizer, LambOptimizer,\
+            ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, \
+            RecomputeOptimizer, LarsMomentumOptimizer
 
 from .optimizer import Optimizer
 from .adam import Adam
@@ -39,5 +43,3 @@ from .sgd import SGD
 from .momentum import Momentum
 
 from . import lr_scheduler
-from .lr_scheduler import _LRScheduler, NoamLR, PiecewiseLR, NaturalExpLR, InverseTimeLR, PolynomialLR, \
-            LinearLrWarmup, ExponentialLR, MultiStepLR, StepLR, LambdaLR, ReduceLROnPlateau, CosineAnnealingLR
