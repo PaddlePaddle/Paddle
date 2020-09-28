@@ -166,11 +166,21 @@ struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
 void set_constant(const platform::DeviceContext& context,
                   framework::Tensor* tensor, float value) {
   TensorSetConstantWithPlace func(context, tensor, value);
-#ifdef PADDLE_WITH_CUDA
-  tensor->place().apply_visitor(func);
-#else
-  func(platform::CPUPlace());
+  if (is_cpu_place(tensor->place())) {
+    func(platform::CPUPlace());
+#ifdef PADDLE_WITH_XPU
+  } else if (is_xpu_place(tensor->place())) {
+    int dev_id = -1;
+    xpu_current_device(&dev_id);
+    func(platform::XPUPlace(dev_id));
 #endif
+#ifdef PADDLE_WITH_CUDA
+  } else if (is_gpu_place(tensor->place())) {
+    tensor->place().apply_visitor(func);
+#endif
+  } else {
+    PADDLE_THROW("error place!");
+  }
 }
 
 template <typename T>
