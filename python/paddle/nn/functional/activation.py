@@ -14,7 +14,6 @@
 
 # TODO: define activation functions of neural network
 from ...fluid.layers import erf  #DEFINE_ALIAS
-from ...fluid.layers import hard_swish  #DEFINE_ALIAS
 from ...fluid.layers import maxout  #DEFINE_ALIAS
 from ...fluid.layers import soft_relu  #DEFINE_ALIAS
 from ...fluid.layers import swish  #DEFINE_ALIAS
@@ -29,7 +28,7 @@ __all__ = [
     'hardshrink',
     'hardtanh',
     'hardsigmoid',
-    'hard_swish',
+    'hardswish',
     'hsigmoid',
     'leaky_relu',
     'log_sigmoid',
@@ -289,7 +288,7 @@ def hardsigmoid(x, name=None):
             import paddle.nn.functional as F
 
             x = paddle.to_tensor([-4., 5., 1.])
-            out = F.hardsigmoid(x) # [0., 1, 0.666667]
+            out = F.hardsigmoid(x) # [0., 1., 0.666667]
     """
 
     if in_dygraph_mode():
@@ -307,6 +306,48 @@ def hardsigmoid(x, name=None):
         outputs={'Out': out},
         attrs={'slope': 0.1666666666666667,
                'offset': 0.5})
+    return out
+
+
+def hardswish(x, name=None):
+    """
+    hardswish activation
+
+    .. math::
+
+        hardswish(x)= \\begin{cases}
+                        0, \\text{if } x \\leq -3 \\\\
+                        x, \\text{if } x \\geq 3 \\\\
+                        \\frac{x(x+3)}{6},  \\text{otherwise}
+                        \\end{cases}
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            x = paddle.to_tensor([-4., 5., 1.])
+            out = F.hardsiwsh(x) # [0., 5., 0.666667]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.hard_swish(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hardswish')
+
+    helper = LayerHelper('hardswish', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='hard_swish', inputs={'X': x}, outputs={'Out': out})
     return out
 
 

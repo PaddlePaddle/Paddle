@@ -18,6 +18,7 @@ __all__ = [
     'ELU',
     'GELU',
     'Hardshrink',
+    'Hardswish',
     'Tanh',
     'Hardtanh',
     'PReLU',
@@ -183,6 +184,45 @@ class Hardshrink(layers.Layer):
 
     def forward(self, x):
         return F.hardshrink(x, self._threshold, self._name)
+
+
+class Hardswish(layers.Layer):
+    """
+    Hardswish Activation
+
+    .. math::
+
+        Hardswish(x)= \\begin{cases}
+                        0, \\text{if } x \\leq -3 \\\\
+                        x, \\text{if } x \\geq 3 \\\\
+                        \\frac{x(x+3)}{6},  \\text{otherwise}
+                        \\end{cases}
+
+    Parameters:
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: Tensor with any shape.
+        - output: Tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-4., 5., 1.])
+            m = paddle.nn.Hardswish()
+            out = m(x) # [0., 5., 0.666667]
+    """
+
+    def __init__(self, name=None):
+        super(Hardswish, self).__init__()
+        self._name = name
+
+    def forward(self, x):
+        return F.hardswish(x, self._name)
 
 
 class Tanh(layers.Layer):

@@ -35,7 +35,7 @@ from .activation import gelu  #DEFINE_ALIAS
 from .activation import hardshrink  #DEFINE_ALIAS
 from .activation import hardtanh  #DEFINE_ALIAS
 from .activation import hardsigmoid  #DEFINE_ALIAS
-from .activation import hard_swish  #DEFINE_ALIAS
+from .activation import hardswish  #DEFINE_ALIAS
 from .activation import hsigmoid  #DEFINE_ALIAS
 from .activation import leaky_relu  #DEFINE_ALIAS
 from .activation import log_sigmoid  #DEFINE_ALIAS
