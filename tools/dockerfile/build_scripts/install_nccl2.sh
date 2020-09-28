@@ -2,17 +2,12 @@
 VERSION=$(nvcc --version | grep release | grep -oEi "release ([0-9]+)\.([0-9])"| sed "s/release //")
 if [ "$VERSION" == "10.0" ]; then
   DEB="nccl-repo-ubuntu1604-2.4.7-ga-cuda10.0_1-1_amd64.deb"
-elif [ "$VERSION" == "11.0" ]; then
-  DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda11.0_1-1_amd64.deb"
-elif [ "$VERSION" == "10.2" ]; then
-  DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda10.2_1-1_amd64.deb"
 elif [ "$VERSION" == "10.1" ]; then
-  DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda10.1_1-1_amd64.deb"
+  DEB="nccl-repo-ubuntu1604-2.4.7-ga-cuda10.0_1-1_amd64.deb"
 elif [ "$VERSION" == "9.0" ]; then
   DEB="nccl-repo-ubuntu1604-2.3.7-ga-cuda9.0_1-1_amd64.deb"
 else
-  echo "nccl not found"
-  exit 2
+  DEB="nccl-repo-ubuntu1604-2.1.15-ga-cuda8.0_1-1_amd64.deb"
 fi
 
 URL="http://nccl2-deb.gz.bcebos.com/$DEB"
@@ -31,5 +26,4 @@ for sub_deb in $DEBS; do
 done
 mv -f usr/include/nccl.h /usr/local/include/
 mv -f usr/lib/x86_64-linux-gnu/libnccl* /usr/local/lib/
-rm /usr/include/nccl.h
 rm -rf $DIR
