@@ -315,7 +315,7 @@ class GradientClipByNorm(GradientClipBase):
     is not None, then only part of gradients can be selected for gradient clipping.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
-    (for example: :ref:`api_fluid_optimizer_SGDOptimizer`).
+    (for example: :ref:`api_paddle_optimizer_SDG`).
     
     The clipping formula is:
 
@@ -469,7 +469,7 @@ class GradientClipByGlobalNorm(GradientClipBase):
     is not None, then only part of gradients can be selected for gradient clipping.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
-    (for example: :ref:`api_fluid_optimizer_SGDOptimizer`).
+    (for example: :ref:`api_paddle_optimizer_SDG`).
 
     The clipping formula is:
 
