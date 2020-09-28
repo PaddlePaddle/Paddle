@@ -33,7 +33,7 @@ class FCOp : public framework::OperatorWithKernel {
         w_dims.size(), 2,
         platform::errors::InvalidArgument(
             "The input Weight of fc is expected to be a 2-D tensor. "
-            "But received the size of Weight's dimension is %d, "
+            "But received the number of Weight's dimensions is %d, "
             "Weight's shape is %s.",
             w_dims.size(), w_dims));
 
@@ -45,15 +45,16 @@ class FCOp : public framework::OperatorWithKernel {
           bias_dims.size(), 2,
           platform::errors::InvalidArgument(
               "The input Bias of fc is expected to be a 1-D or 2-D tensor. But "
-              "received the size of Bias's shape is %d, Bias's shape is %s.",
+              "received the number of Bias's dimensions is %d, "
+              "Bias's shape is %s.",
               bias_dims.size(), bias_dims));
 
       PADDLE_ENFORCE_EQ(
           bias_dims[bias_dims.size() - 1], w_dims1,
           platform::errors::InvalidArgument(
-              "The last dimension of input Bias's shape is expected be equal "
+              "The last dimension of input Bias is expected be equal "
               "to the actual width of input Weight. But received the last "
-              "dimension of Bias's shape is %d, Bias's shape is %s; "
+              "dimension of Bias is %d, Bias's shape is %s; "
               "the actual width of Weight is %d, Weight's shape is %s.",
               bias_dims[bias_dims.size() - 1], bias_dims, w_dims1, w_dims));
 
@@ -61,8 +62,8 @@ class FCOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             bias_dims[0], 1,
             platform::errors::InvalidArgument(
-                "The first dimension of input Bias's shape is expected "
-                "to be 1, but received %d, Bias's shape is %s.",
+                "The first dimension of input Bias is expected to be 1, "
+                "but received %d, Bias's shape is %s.",
                 bias_dims[0], bias_dims));
       }
     }
@@ -73,9 +74,9 @@ class FCOp : public framework::OperatorWithKernel {
         in_num_col_dims, in_dims.size(),
         platform::errors::InvalidArgument(
             "The attribute in_num_col_dims used to flatten Input to "
-            "a 2-D tensor, is expected to be less than the size of "
-            "Input's shape. But recieved in_num_col_dims is %d, "
-            "the size of Input's shape is %d, Input's shape is %s.",
+            "a 2-D tensor, is expected to be less than the number of "
+            "Input's dimensions. But recieved in_num_col_dims is %d, "
+            "the number of Input's dimensions is %d, Input's shape is %s.",
             in_num_col_dims, in_dims.size(), in_dims));
 
     auto& activation_type = ctx->Attrs().Get<std::string>("activation_type");
@@ -92,8 +93,8 @@ class FCOp : public framework::OperatorWithKernel {
           in_dims.size() >= 2 && in_dims.size() <= 4, true,
           platform::errors::Unimplemented(
               "The Input of fc is expected to be a 2-D, 3-D or 4-D tensor when "
-              "use_mkldnn is set. But recieved the size of Input's shape is "
-              "%d, Input's shape is %s.",
+              "use_mkldnn is set. But recieved the number of Input's "
+              "dimensions is %d, Input's shape is %s.",
               in_dims.size(), in_dims));
     }
 
