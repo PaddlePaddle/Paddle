@@ -96,6 +96,7 @@ def scope_guard(scope):
 
             import paddle
             import numpy
+            paddle.enable_static()
 
             new_scope = paddle.static.Scope()
             with paddle.static.scope_guard(new_scope):

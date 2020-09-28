@@ -62,13 +62,13 @@ class ParamAttr(object):
         .. code-block:: python
 
             import paddle
+            paddle.enable_static()
 
             w_param_attrs = paddle.ParamAttr(name="fc_weight",
                                              learning_rate=0.5,
                                              regularizer=paddle.regularizer.L2Decay(1.0),
                                              trainable=True)
             print(w_param_attrs.name) # "fc_weight"
-            paddle.enable_static()
             x = paddle.static.data(name='X', shape=[None, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(input=x, size=10, param_attr=w_param_attrs)
     """
