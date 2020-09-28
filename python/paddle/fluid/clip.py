@@ -172,7 +172,7 @@ class GradientClipByValue(GradientClipBase):
     is not None, then only part of gradients can be selected for gradient clipping.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
-    (for example: :ref:`api_fluid_optimizer_SGDOptimizer`).
+    (for example: :ref:`api_paddle_optimizer_SDG`).
     
     Args:
         max (float): The maximum value to clip by.
@@ -182,69 +182,70 @@ class GradientClipByValue(GradientClipBase):
             (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None, 
             and gradients of all parameters in the network will be clipped.
 
-    Examples:
+    Code Example (DyGraph Mode):
         .. code-block:: python
         
-            # use for Static mode
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
+
+            paddle.disable_static()
+
+            in_np = np.random.uniform(-1, 1, [10, 10]).astype("float32")
+            x = paddle.to_tensor(in_np)
+            linear = paddle.nn.Linear(10, 10)
+            out = linear(x)
+            loss = paddle.mean(out)
+            loss.backward()
+
+            # clip all parameters in network:
+            clip = paddle.nn.GradientClipByValue(min=-1, max=1)
+
+            # clip a part of parameters in network: (e.g. linear_0.w_0)
+            # pass a function(fileter_func) to need_clip, and fileter_func receive a ParamBase, and return bool
+            # def fileter_func(ParamBase):
+            # # It can be easily filtered by ParamBase.name(name can be set in paddle.ParamAttr, and the default name is linear_0.w_0, linear_0.b_0)
+            #   return ParamBase.name == "linear_0.w_0"
+            # # Note: linear.weight and linear.bias can return the weight and bias of dygraph.Linear, respectively, and can be used to filter
+            #   return ParamBase.name == linear.weight.name
+            # clip = paddle.nn.GradientClipByValue(min=-1, max=1, need_clip=fileter_func)
+
+            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
+            sdg.minimize(loss)
+
+
+    Code Example (Static Mode):
+        .. code-block:: python
+        
+            import paddle
+            import numpy as np
+
+            paddle.enable_static()
                         
-            main_prog = fluid.Program()
-            startup_prog = fluid.Program()
-            with fluid.program_guard(
-                    main_program=main_prog, startup_program=startup_prog):
-                image = fluid.data(
-                    name='x', shape=[-1, 2], dtype='float32')
-                predict = fluid.layers.fc(input=image, size=3, act='relu') # Trainable parameters: fc_0.w.0, fc_0.b.0
-                loss = fluid.layers.mean(predict)
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+                out = paddle.static.nn.fc(x, 100)
+                loss = paddle.mean(out)
                 
                 # Clip all parameters in network:
-                clip = fluid.clip.GradientClipByValue(min=-1, max=1)
+                clip = paddle.nn.GradientClipByValue(min=-1, max=1)
                 
                 # Clip a part of parameters in network: (e.g. fc_0.w_0)
                 # pass a function(fileter_func) to need_clip, and fileter_func receive a Parameter, and return bool
                 # def fileter_func(Parameter):
-                # # It can be easily filtered by Parameter.name (name can be set in fluid.ParamAttr, and the default name is fc_0.w_0, fc_0.b_0)
+                # # It can be easily filtered by Parameter.name (name can be set in paddle.ParamAttr, and the default name is fc_0.w_0, fc_0.b_0)
                 #   return Parameter.name=="fc_0.w_0"
-                # clip = fluid.clip.GradientClipByValue(min=-1, max=1, need_clip=fileter_func)
+                # clip = paddle.nn.GradientClipByValue(min=-1, max=1, need_clip=fileter_func)
 
-                sgd_optimizer = fluid.optimizer.SGDOptimizer(learning_rate=0.1, grad_clip=clip)
-                sgd_optimizer.minimize(loss)
+                sdg = paddle.optimizer.SGD(learning_rate=0.1, grad_clip=clip)
+                sdg.minimize(loss)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            x = np.random.uniform(-100, 100, (10, 2)).astype('float32')
-            exe.run(startup_prog)
-            out = exe.run(main_prog, feed={'x': x}, fetch_list=loss)
-        
-
-            # use for Dygraph mode
-            import paddle
-            import paddle.fluid as fluid
-            
-            with fluid.dygraph.guard():
-                linear = fluid.dygraph.Linear(10, 10)  # Trainable parameters:: linear_0.w.0, linear_0.b.0
-                inputs = fluid.layers.uniform_random([32, 10]).astype('float32')
-                out = linear(fluid.dygraph.to_variable(inputs))
-                loss = fluid.layers.reduce_mean(out)
-                loss.backward()
-
-                # Clip all parameters in network:
-                clip = fluid.clip.GradientClipByValue(min=-1, max=1)
-
-                # Clip a part of parameters in network: (e.g. linear_0.w_0)
-                # pass a function(fileter_func) to need_clip, and fileter_func receive a ParamBase, and return bool
-                # def fileter_func(ParamBase):
-                # # It can be easily filtered by ParamBase.name(name can be set in fluid.ParamAttr, and the default name is linear_0.w_0, linear_0.b_0)
-                #   return ParamBase.name == "linear_0.w_0"
-                # # Note: linear.weight and linear.bias can return the weight and bias of dygraph.Linear, respectively, and can be used to filter
-                #   return ParamBase.name == linear.weight.name
-                # clip = fluid.clip.GradientClipByValue(min=-1, max=1, need_clip=fileter_func)
-
-                sgd_optimizer = fluid.optimizer.SGD(
-                    learning_rate=0.1, parameter_list=linear.parameters(), grad_clip=clip)
-                sgd_optimizer.minimize(loss)
+            exe = paddle.static.Executor(place=paddle.CPUPlace())
+            exe.run(start_prog)
+            out = exe.run(main_prog, 
+                          feed={'x': np.random.uniform(-100, 100, (10, 2)).astype('float32')}, 
+                          fetch_list=loss)
     """
 
     def __init__(self, max, min=None, need_clip=None):
@@ -339,71 +340,69 @@ class GradientClipByNorm(GradientClipBase):
             (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None, 
             and gradients of all parameters in the network will be clipped.
 
-    Examples:
+    Code Example (DyGraph Mode)
         .. code-block:: python
         
-            # use for Static mode
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
+
+            paddle.disable_static()
+
+            in_np = np.random.uniform(-1, 1, [10, 10]).astype("float32")
+            x = paddle.to_tensor(in_np)
+            linear = paddle.nn.Linear(10, 10)
+            out = linear(x)
+            loss = paddle.mean(out)
+            loss.backward()
+
+            # clip all parameters in network:
+            clip = paddle.nn.GradientClipByNorm(clip_norm=1.0)
+
+            # clip a part of parameters in network: (e.g. linear_0.w_0)
+            # pass a function(fileter_func) to need_clip, and fileter_func receive a ParamBase, and return bool
+            # def fileter_func(ParamBase):
+            # # It can be easily filtered by ParamBase.name(name can be set in paddle.ParamAttr, and the default name is linear_0.w_0, linear_0.b_0)
+            #   return ParamBase.name == "linear_0.w_0"
+            # # Note: linear.weight and linear.bias can return the weight and bias of dygraph.Linear, respectively, and can be used to filter
+            #   return ParamBase.name == linear.weight.name
+            # clip = paddle.nn.GradientClipByNorm(clip_norm=1.0, need_clip=fileter_func)
+
+            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
+            sdg.minimize(loss)
+
+    Code Example (Static Mode):
+        .. code-block:: python
+        
+            import paddle
+            import numpy as np
+
+            paddle.enable_static()
                         
-            main_prog = fluid.Program()
-            startup_prog = fluid.Program()
-            with fluid.program_guard(
-                    main_program=main_prog, startup_program=startup_prog):
-                image = fluid.data(
-                    name='x', shape=[-1, 2], dtype='float32')
-                predict = fluid.layers.fc(input=image, size=3, act='relu') # Trainable parameters: fc_0.w.0, fc_0.b.0
-                loss = fluid.layers.mean(predict)
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+                out = paddle.static.nn.fc(x, 100)
+                loss = paddle.mean(out)
                 
                 # Clip all parameters in network:
-                clip = fluid.clip.GradientClipByNorm(clip_norm=1.0)
+                clip = paddle.nn.GradientClipByNorm(clip_norm=1.0)
                 
-                # Clip a part of parameters in network: (e.g. linear_0.w_0)
+                # Clip a part of parameters in network: (e.g. fc_0.w_0)
                 # pass a function(fileter_func) to need_clip, and fileter_func receive a Parameter, and return bool
                 # def fileter_func(Parameter):
-                # # It can be easily filtered by Parameter.name (name can be set in fluid.ParamAttr, and the default name is fc_0.w_0, fc_0.b_0)
+                # # It can be easily filtered by Parameter.name (name can be set in paddle.ParamAttr, and the default name is fc_0.w_0, fc_0.b_0)
                 #   return Parameter.name=="fc_0.w_0"
-                # clip = fluid.clip.GradientClipByNorm(clip_norm=1.0, need_clip=fileter_func)
+                # clip = paddle.nn.GradientClipByNorm(clip_norm=1.0, need_clip=fileter_func)
 
-                sgd_optimizer = fluid.optimizer.SGDOptimizer(learning_rate=0.1, grad_clip=clip)
-                sgd_optimizer.minimize(loss)
+                sdg = paddle.optimizer.SGD(learning_rate=0.1, grad_clip=clip)
+                sdg.minimize(loss)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            x = np.random.uniform(-100, 100, (10, 2)).astype('float32')
-            exe.run(startup_prog)
-            out = exe.run(main_prog, feed={'x': x}, fetch_list=loss)
-            
-
-
-            # use for Dygraph mode
-            import paddle
-            import paddle.fluid as fluid
-            
-            with fluid.dygraph.guard():
-                linear = fluid.dygraph.Linear(10, 10)  # Trainable: linear_0.w.0, linear_0.b.0
-                inputs = fluid.layers.uniform_random([32, 10]).astype('float32')
-                out = linear(fluid.dygraph.to_variable(inputs))
-                loss = fluid.layers.reduce_mean(out)
-                loss.backward()
-
-                # Clip all parameters in network:
-                clip = fluid.clip.GradientClipByNorm(clip_norm=1.0)
-
-                # Clip a part of parameters in network: (e.g. linear_0.w_0)
-                # pass a function(fileter_func) to need_clip, and fileter_func receive a ParamBase, and return bool
-                # def fileter_func(ParamBase):
-                # # It can be easily filtered by ParamBase.name(name can be set in fluid.ParamAttr, and the default name is linear_0.w_0, linear_0.b_0)
-                #   return ParamBase.name == "linear_0.w_0"
-                # # Note: linear.weight and linear.bias can return the weight and bias of dygraph.Linear, respectively, and can be used to filter
-                #   return ParamBase.name == linear.weight.name
-                # clip = fluid.clip.GradientClipByNorm(clip_norm=1.0, need_clip=fileter_func)
-
-                sgd_optimizer = fluid.optimizer.SGD(
-                    learning_rate=0.1, parameter_list=linear.parameters(), grad_clip=clip)
-                sgd_optimizer.minimize(loss)
-
+            exe = paddle.static.Executor(place=paddle.CPUPlace())
+            exe.run(start_prog)
+            out = exe.run(main_prog, 
+                          feed={'x': np.random.uniform(-100, 100, (10, 2)).astype('float32')}, 
+                          fetch_list=loss)
     """
 
     def __init__(self, clip_norm, need_clip=None):
@@ -491,70 +490,70 @@ class GradientClipByGlobalNorm(GradientClipBase):
             (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None, 
             and gradients of all parameters in the network will be clipped.
 
-    Examples:
+    Code Example (DyGraph Mode):
         .. code-block:: python
         
-            # use for Static mode
             import paddle
-            import paddle.fluid as fluid
             import numpy as np
+
+            paddle.disable_static()
+
+            in_np = np.random.uniform(-1, 1, [10, 10]).astype("float32")
+            x = paddle.to_tensor(in_np)
+            linear = paddle.nn.Linear(10, 10)
+            out = linear(x)
+            loss = paddle.mean(out)
+            loss.backward()
+
+            # clip all parameters in network:
+            clip = paddle.nn.GradientClipByGlobalNorm(clip_norm=1.0)
+
+            # clip a part of parameters in network: (e.g. linear_0.w_0)
+            # pass a function(fileter_func) to need_clip, and fileter_func receive a ParamBase, and return bool
+            # def fileter_func(ParamBase):
+            # # It can be easily filtered by ParamBase.name(name can be set in paddle.ParamAttr, and the default name is linear_0.w_0, linear_0.b_0)
+            #   return ParamBase.name == "linear_0.w_0"
+            # # Note: linear.weight and linear.bias can return the weight and bias of dygraph.Linear, respectively, and can be used to filter
+            #   return ParamBase.name == linear.weight.name
+            # clip = paddle.nn.GradientClipByGlobalNorm(clip_norm=1.0, need_clip=fileter_func)
+
+            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
+            sdg.minimize(loss)
+
+
+    Code Example (Static Mode):
+        .. code-block:: python
+        
+            import paddle
+            import numpy as np
+
+            paddle.enable_static()
                         
-            main_prog = fluid.Program()
-            startup_prog = fluid.Program()
-            with fluid.program_guard(
-                    main_program=main_prog, startup_program=startup_prog):
-                image = fluid.data(
-                    name='x', shape=[-1, 2], dtype='float32')
-                predict = fluid.layers.fc(input=image, size=3, act='relu') # Trainable parameters: fc_0.w.0, fc_0.b.0
-                loss = fluid.layers.mean(predict)
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+                out = paddle.static.nn.fc(x, 100)
+                loss = paddle.mean(out)
                 
                 # Clip all parameters in network:
-                clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
+                clip = paddle.nn.GradientClipByGlobalNorm(clip_norm=1.0)
                 
                 # Clip a part of parameters in network: (e.g. fc_0.w_0)
-                # pass a function(fileter_func) to need_clip, and fileter_func receive a ParamBase, and return bool
+                # pass a function(fileter_func) to need_clip, and fileter_func receive a Parameter, and return bool
                 # def fileter_func(Parameter):
-                # # It can be easily filtered by Parameter.name (name can be set in fluid.ParamAttr, and the default name is fc_0.w_0, fc_0.b_0)
+                # # It can be easily filtered by Parameter.name (name can be set in paddle.ParamAttr, and the default name is fc_0.w_0, fc_0.b_0)
                 #   return Parameter.name=="fc_0.w_0"
-                # clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0, need_clip=fileter_func)
+                # clip = paddle.nn.GradientClipByGlobalNorm(clip_norm=1.0, need_clip=fileter_func)
 
-                sgd_optimizer = fluid.optimizer.SGDOptimizer(learning_rate=0.1, grad_clip=clip)
-                sgd_optimizer.minimize(loss)
+                sdg = paddle.optimizer.SGD(learning_rate=0.1, grad_clip=clip)
+                sdg.minimize(loss)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            x = np.random.uniform(-100, 100, (10, 2)).astype('float32')
-            exe.run(startup_prog)
-            out = exe.run(main_prog, feed={'x': x}, fetch_list=loss)
-
-
-            # use for Dygraph mode
-            import paddle
-            import paddle.fluid as fluid
-
-            with fluid.dygraph.guard():
-                linear = fluid.dygraph.Linear(10, 10)  # Trainable: linear_0.w.0, linear_0.b.0
-                inputs = fluid.layers.uniform_random([32, 10]).astype('float32')
-                out = linear(fluid.dygraph.to_variable(inputs))
-                loss = fluid.layers.reduce_mean(out)
-                loss.backward()
-
-                # Clip all parameters in network:
-                clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
-
-                # Clip a part of parameters in network: (e.g. linear_0.w_0)
-                # pass a function(fileter_func) to need_clip, and fileter_func receive a ParamBase, and return bool
-                # def fileter_func(ParamBase):
-                # # It can be easily filtered by ParamBase.name(name can be set in fluid.ParamAttr, and the default name is linear_0.w_0, linear_0.b_0)
-                #   return ParamBase.name == "linear_0.w_0"
-                # # Note: linear.weight and linear.bias can return the weight and bias of dygraph.Linear, respectively, and can be used to filter
-                #   return ParamBase.name == linear.weight.name
-                # clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0, need_clip=fileter_func)
-
-                sgd_optimizer = fluid.optimizer.SGD(
-                    learning_rate=0.1, parameter_list=linear.parameters(), grad_clip=clip)
-                sgd_optimizer.minimize(loss)
-
+            exe = paddle.static.Executor(place=paddle.CPUPlace())
+            exe.run(start_prog)
+            out = exe.run(main_prog, 
+                          feed={'x': np.random.uniform(-100, 100, (10, 2)).astype('float32')}, 
+                          fetch_list=loss)
     """
 
     def __init__(self, clip_norm, group_name="default_group", need_clip=None):
