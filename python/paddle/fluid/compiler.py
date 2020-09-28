@@ -172,10 +172,13 @@ class CompiledProgram(object):
         exec_strategy to set some optimizations that can be applied during the construction
         and computation of the Graph, such as reducing the number of AllReduce operations,
         specifying the size of the thread pool used in the computation Graph running the model,
-        and so on. **Note: If build_strategy is specified when building CompiledProgram and calling
-        with_data_parallel, build_strategy in CompiledProgram will be overwritten, therefore,
-        if it is data parallel training, it is recommended to set build_strategy when calling
-        with_data_parallel interface.**
+        and so on. 
+        
+        .. note::
+            If build_strategy is specified when building CompiledProgram and calling 
+            with_data_parallel, build_strategy in CompiledProgram will be overwritten, therefore, 
+            if it is data parallel training, it is recommended to set build_strategy when calling 
+            with_data_parallel interface.
 
         Args:
             loss_name (str): This parameter is the name of the loss Tensor of the model.

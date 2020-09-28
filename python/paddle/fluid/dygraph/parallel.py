@@ -61,7 +61,7 @@ def prepare_context(strategy=None):
 
 class ParallelEnv(object):
     """
-    ... note::
+    .. note::
         This API is not recommended, if you need to get rank and world_size, 
         it is recommended to use ``paddle.distributed.get_rank()`` and 
         ``paddle.distributed.get_world_size()`` .
