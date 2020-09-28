@@ -62,6 +62,12 @@ void BindGlooContext(py::module *m) {
           [](platform::GlooParallelStrategy &self, const std::string &iface) {
             self.iface = iface;
           })
+      .def_property("prefix",
+                    [](const platform::GlooParallelStrategy &self) {
+                      return self.prefix;
+                    },
+                    [](platform::GlooParallelStrategy &self,
+                       const std::string &prefix) { self.prefix = prefix; })
       .def_property("init_seconds",
                     [](const platform::GlooParallelStrategy &self) {
                       return self.init_seconds;
@@ -77,19 +83,23 @@ void BindGlooContext(py::module *m) {
                       self.run_seconds = run_seconds;
                     })
       .def_property(
-          "ip_address",
-          [](const platform::GlooParallelStrategy &self) {
-            return self.ip_address;
-          },
-          [](platform::GlooParallelStrategy &self,
-             const std::string &ip_address) { self.ip_address = ip_address; })
-      .def_property("ip_port",
+          "path",
+          [](const platform::GlooParallelStrategy &self) { return self.path; },
+          [](platform::GlooParallelStrategy &self, const std::string &path) {
+            self.path = path;
+          })
+      .def_property("fs_name",
                     [](const platform::GlooParallelStrategy &self) {
-                      return self.ip_port;
+                      return self.fs_name;
                     },
-                    [](platform::GlooParallelStrategy &self, int ip_port) {
-                      self.ip_port = ip_port;
-                    });
+                    [](platform::GlooParallelStrategy &self,
+                       const std::string &fs_name) { self.fs_name = fs_name; })
+      .def_property("fs_ugi",
+                    [](const platform::GlooParallelStrategy &self) {
+                      return self.fs_ugi;
+                    },
+                    [](platform::GlooParallelStrategy &self,
+                       const std::string &fs_ugi) { self.fs_ugi = fs_ugi; });
 
   py::class_<platform::GlooParallelContext> gloo_ctx(*m, "GlooParallelContext");
   gloo_ctx.def(py::init<const platform::GlooParallelStrategy &>())

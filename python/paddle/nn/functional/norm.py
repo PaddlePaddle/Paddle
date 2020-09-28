@@ -19,7 +19,6 @@ from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, core
 from ...framework import create_parameter
-from ...fluid.layers import l2_normalize  #DEFINE_ALIAS
 from ...fluid.layers import lrn  #DEFINE_ALIAS
 from ...fluid.initializer import Constant
 from ...fluid.param_attr import ParamAttr
@@ -29,7 +28,6 @@ __all__ = [
     'batch_norm',
     #       'data_norm',
     'instance_norm',
-    'l2_normalize',
     'layer_norm',
     'lrn',
     'normalize',

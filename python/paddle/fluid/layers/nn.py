@@ -6101,15 +6101,17 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     Examples:
         .. code-block:: python
-
+            
+            import paddle
             import paddle.fluid as fluid
-
+            paddle.enable_static()
+            
             # example 1:
             # attr shape is a list which doesn't contain Tensors.
             data_1 = fluid.data(
               name='data_1', shape=[2, 4, 6], dtype='float32')
             reshaped_1 = fluid.layers.reshape(
-              x=data_1, shape=[-1, 0, 3, 2], inplace=True)
+              x=data_1, shape=[-1, 0, 3, 2])
             # the shape of reshaped_1 is [2,4,3,2].
 
             # example 2:
@@ -13177,16 +13179,20 @@ def add_position_encoding(input, alpha, beta, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import numpy as np
+          import paddle
+          import paddle.nn.functional as F
 
-          tensor = fluid.data(
-              name='tensor',
-              shape=[None, 64, 512],
-              dtype='float32')
-          position_tensor = fluid.layers.add_position_encoding(
-              input=tensor, alpha=1.0, beta=1.0)
+          tensor = np.random.randn(16, 32, 64) 
+          tensor = paddle.to_tensor(tensor)
+          position_tensor = F.add_position_encoding(
+                input=tensor, alpha=1.0, beta=1.0)
 
     """
+    if in_dygraph_mode():
+        return core.ops.add_position_encoding(input, "alpha", alpha, "beta",
+                                              beta)
+
     helper = LayerHelper('add_position_encoding', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              "add_position_encoding")
