@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -90,23 +91,25 @@ std::vector<TensorList> parameter_split(
   // if the weight of RNN is flatten, we need to convert the
   // the flattened weight to single split tensor
   std::vector<TensorList> params_vec;
-  /*
   params_vec.reserve(layers_num);
 
   const auto& weight_numel = weight->numel();
   // resize the weight tensor, could slice tensor directly
   const auto& mem_block_size = gate_num * hidden_size;
-  weight->Resize(framework::make_ddim({static_cast<int64_t>(
-      weight_numel/mem_block_size), mem_block_size});
+  Tensor weight_shared;
+  weight_shared.ShareDataWith(*weight);
+  weight_shared.Resize(framework::make_ddim(
+      {static_cast<int64_t>(weight_numel / mem_block_size), mem_block_size}));
 
   // the calcluate the offset of tensor
   const int& direction_num = is_bidirec ? 2 : 1;
   const int& first_input_w_stride = input_size;
   const int& other_input_w_stride = hidden_size * direction_num;
   const int& hidden_w_stride = hidden_size;
-  const int& bias_offset = direction_num * (first_input_w_stride +
-  hidden_w_stride +
-            (layers_num - 1) * (other_input_w_stride + hidden_w_stride));
+  const int& bias_offset =
+      direction_num *
+      (first_input_w_stride + hidden_w_stride +
+       (layers_num - 1) * (other_input_w_stride + hidden_w_stride));
 
   for (int i = 0; i < layers_num; ++i) {
     TensorList tensor_list;
@@ -120,35 +123,34 @@ std::vector<TensorList> parameter_split(
         int start_idx = 0;
         int end_idx = 0;
         if (i == 0) {
-           start_idx = section * (hidden_w_stride + first_input_w_stride)  +  (k
-  % 2) * first_input_w_stride;
-           end_idx = start_idx + (k == 0 ? first_input_w_stride :
-  hidden_w_stride);
+          start_idx = section * (hidden_w_stride + first_input_w_stride) +
+                      (k % 2) * first_input_w_stride;
+          end_idx =
+              start_idx + (k == 0 ? first_input_w_stride : hidden_w_stride);
         } else {
-           start_idx = direction_num * (hidden_w_stride + first_input_w_stride)
-  +
-              (i - 1) * direction_num * (hidden_w_stride + other_input_w_stride)
-  +
-              section * (hidden_w_stride + other_input_w_stride) + (k % 2) *
-  other_input_w_stride;
-           end_idx = start_idx + (k == 0 ? other_input_w_stride :
-  hidden_w_stride);
+          start_idx = direction_num * (hidden_w_stride + first_input_w_stride) +
+                      (i - 1) * direction_num *
+                          (hidden_w_stride + other_input_w_stride) +
+                      section * (hidden_w_stride + other_input_w_stride) +
+                      (k % 2) * other_input_w_stride;
+          end_idx =
+              start_idx + (k == 0 ? other_input_w_stride : hidden_w_stride);
         }
-        const auto& tmp_tensor = weight->Slice(start_idx, end_idx);
-        tmp_tensor.Resize(framework::make_ddim({tmp_tensor.dims()[1],
-  tmp_tensor.dims()[0]}));
+        auto tmp_tensor = weight_shared.Slice(start_idx, end_idx);
+        tmp_tensor.Resize(
+            framework::make_ddim({tmp_tensor.dims()[1], tmp_tensor.dims()[0]}));
         tensor_list.emplace_back(tmp_tensor);
       } else {
-        const auto& start_idx = bias_offset + i * 2 * direction_num + section *
-  2 + k % 2;
-        const auto& tmp_tensor = weight->Slice(start_idx, start_idx + 1);
-        tmp_tensor.Resize(framework::make_ddim({tmp_tensor.dims()[1],
-  tmp_tensor.dims()[0]}));
+        const auto& start_idx =
+            bias_offset + i * 2 * direction_num + section * 2 + k % 2;
+        auto tmp_tensor = weight_shared.Slice(start_idx, start_idx + 1);
+        tmp_tensor.Resize(
+            framework::make_ddim({tmp_tensor.dims()[1], tmp_tensor.dims()[0]}));
         tensor_list.emplace_back(tmp_tensor);
       }
     }
     params_vec.emplace_back(tensor_list);
-  }*/
+  }
   return params_vec;
 }
 
