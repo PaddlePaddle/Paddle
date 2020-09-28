@@ -12,22 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
+import sys
 import os
-import logging
-import tarfile
-
-import random
-
 import paddle
+import re
+import collections
+import time
 import paddle.distributed.fleet as fleet
 
-logging.basicConfig()
-logger = logging.getLogger("paddle")
-logger.setLevel(logging.INFO)
 
-
-class DatasetSimnetReader(fleet.MultiSlotDataGenerator):
+class MyDataset(fleet.MultiSlotDataGenerator):
     def generate_sample(self, line):
-        pass
+        def data_iter():
+            elements = line.strip().split()[0:]
+            output = [("show", [int(elements[0])]),
+                      ("click", [int(elements[1])]),
+                      ("slot1", [int(elements[2])])]
+            yield output
+
+        return data_iter
+
+
+if __name__ == "__main__":
+    d = MyDataset()
+    d.run_from_stdin()
