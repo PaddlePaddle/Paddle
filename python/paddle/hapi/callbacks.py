@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import numbers
 
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.utils import try_import
