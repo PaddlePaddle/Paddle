@@ -310,7 +310,14 @@ REGISTER_OP_VERSION(cudnn_lstm)
     .AddCheckpoint(
         R"ROC(
               Upgrade cudnn_lstm add a new input [WeightList] and modify input [W] to dispensable.)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewInput(
-            "WeightList",
-            "The WeightList stores weight and bias data. WeightList is "
-            "dispensable."));
+        paddle::framework::compatible::OpVersionDesc()
+            .NewInput(
+                "WeightList",
+                "The WeightList stores weight and bias data. WeightList is "
+                "dispensable.")
+            .NewInput("SequenceLength",
+                      "When the input data is padding, set this parameter. "
+                      "SequenceLength is dispensable.")
+            .NewOutput("StateOut", "Store the global drop state when training")
+            .NewOutput("Reserve",
+                       "A temporary output Tensor to store the reserve_data"));
