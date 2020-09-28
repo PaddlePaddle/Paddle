@@ -1195,6 +1195,7 @@ set +x
             fi
         done <<< "$test_cases";
         card_test "$single_card_tests" 1
+        collect_failed_tests
 set -x
         ut_endTime_s=`date +%s`
         echo "XPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
