@@ -70,7 +70,6 @@ class Gloo(object):
              worker_num,
              server_num,
              need_init_all=False,
-             start_http_server=False,
              kwargs=None):
 
         self._rendezvous = rendezvous
@@ -79,7 +78,7 @@ class Gloo(object):
         self._worker_num = worker_num
         self._server_num = server_num
         self._need_init_all = need_init_all
-        self._start_http_server = start_http_server
+        self._start_http_server = kwargs.get("start_http_server", False)
         self._iface = ""
         self._prefix = kwargs.get("store.prefix", "")
 
