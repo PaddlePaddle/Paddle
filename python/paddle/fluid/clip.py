@@ -168,7 +168,7 @@ class GradientClipByValue(GradientClipBase):
     is not None, then only part of gradients can be selected for gradient clipping.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
-    (for example: :ref:`api_optimizer_SGD`).
+    (for example: :ref:`api_paddle_optimizer_SGD`).
     
     Args:
         max (float): The maximum value to clip by.
@@ -205,7 +205,7 @@ class GradientClipByValue(GradientClipBase):
             # clip = paddle.nn.GradientClipByValue(min=-1, max=1, need_clip=fileter_func)
 
             sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
-            sdg.minimize(loss)
+            sdg.step()
     """
 
     def __init__(self, max, min=None, need_clip=None):
@@ -271,7 +271,7 @@ class GradientClipByNorm(GradientClipBase):
     is not None, then only part of gradients can be selected for gradient clipping.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
-    (for example: :ref:`api_optimizer_SGD`).
+    (for example: :ref:`api_paddle_optimizer_SGD`).
     
     The clipping formula is:
 
@@ -323,7 +323,7 @@ class GradientClipByNorm(GradientClipBase):
             # clip = paddle.nn.GradientClipByNorm(clip_norm=1.0, need_clip=fileter_func)
 
             sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
-            sdg.minimize(loss)
+            sdg.step()
     """
 
     def __init__(self, clip_norm, need_clip=None):
@@ -386,7 +386,7 @@ class GradientClipByGlobalNorm(GradientClipBase):
     is not None, then only part of gradients can be selected for gradient clipping.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
-    (for example: :ref:`api_optimizer_SGD`).
+    (for example: :ref:`api_paddle_optimizer_SGD`).
 
     The clipping formula is:
 
@@ -434,7 +434,7 @@ class GradientClipByGlobalNorm(GradientClipBase):
             # clip = paddle.nn.GradientClipByGlobalNorm(clip_norm=1.0, need_clip=fileter_func)
 
             sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
-            sdg.minimize(loss)
+            sdg.step()
     """
 
     def __init__(self, clip_norm, group_name="default_group", need_clip=None):
