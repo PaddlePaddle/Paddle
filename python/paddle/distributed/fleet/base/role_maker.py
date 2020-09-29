@@ -858,6 +858,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
         if rendezvous_type == Gloo.RENDEZVOUS.HTTP:
             http_server_d['running'] = False
+        if self._role == Role.WORKER:
+            self._gloo.barrier('worker')
 
     def _generate_role(self):
         """
