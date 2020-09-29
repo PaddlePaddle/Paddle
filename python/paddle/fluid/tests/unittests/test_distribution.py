@@ -924,10 +924,7 @@ class CategoricalTest6(CategoricalTest):
         # value used in probs and log_prob method has the same number of batches with input
         self.logits_np = np.random.rand(3, 5).astype('float32')
         self.other_logits_np = np.random.rand(3, 5).astype('float32')
-        self.value_np = np.array([[
-            2,
-            1,
-        ], [0, 3], [2, 3]])
+        self.value_np = np.array([[2, 1], [0, 3], [2, 3]])
 
         self.logits_shape = [3, 5]
         self.dist_shape = [3]
@@ -1046,6 +1043,17 @@ class DistributionTestError(unittest.TestCase):
         # type of other must be an instance of Categorical
         self.assertRaises(TypeError, categorical.kl_divergence,
                           categorical_other)
+
+        def test_shape_not_match_error():
+            # shape of value must match shape of logits
+            # value_shape[:-1] == logits_shape[:-1]
+            paddle.disable_static()
+            logits = paddle.rand([3, 5])
+            cat = Categorical(logits)
+            value = paddle.to_tensor([[2, 1, 3], [3, 2, 1]])
+            cat.log_prob(value)
+
+        self.assertRaises(ValueError, test_shape_not_match_error)
 
 
 class DistributionTestName(unittest.TestCase):

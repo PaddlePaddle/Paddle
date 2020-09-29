@@ -667,18 +667,15 @@ class Categorical(Distribution):
     Examples:
         .. code-block:: python
 
-          import numpy as np
           import paddle
           from paddle.distribution import Categorical
 
-          paddle.disable_static()
-
           x = paddle.rand([6])
-          x.numpy()
+          print(x.numpy())
           # [0.32564053, 0.99334985, 0.99034804,
           #  0.09053693, 0.30820143, 0.19095989]
           y = paddle.rand([6])
-          y.numpy()
+          print(y.numpy())
           # [0.6365463 , 0.7278677 , 0.90260243, 
           # 0.5226815 , 0.35837543, 0.13981032]
 
@@ -735,6 +732,23 @@ class Categorical(Distribution):
 
         Returns:
           Tensor: A tensor with prepended dimensions shape.
+        
+        Examples:
+        .. code-block:: python
+
+          import paddle
+          from paddle.distribution import Categorical
+
+          x = paddle.rand([6])
+          print(x.numpy())
+          # [0.32564053, 0.99334985, 0.99034804,
+          #  0.09053693, 0.30820143, 0.19095989]
+
+          cat = Categorical(x)
+
+          cat.sample([2,3])
+          # [[5, 1, 1],
+          # [0, 1, 2]]
 
         """
         name = self.name + '_sample'
@@ -763,6 +777,27 @@ class Categorical(Distribution):
 
         Returns:
             Variable: kl-divergence between two Categorical distributions.
+        
+        Examples:
+        .. code-block:: python
+
+          import paddle
+          from paddle.distribution import Categorical
+
+          x = paddle.rand([6])
+          print(x.numpy())
+          # [0.32564053, 0.99334985, 0.99034804,
+          #  0.09053693, 0.30820143, 0.19095989]
+          y = paddle.rand([6])
+          print(y.numpy())
+          # [0.6365463 , 0.7278677 , 0.90260243, 
+          # 0.5226815 , 0.35837543, 0.13981032]
+
+          cat = Categorical(x)
+          cat2 = Categorical(y)
+
+          cat.kl_divergence(cat2)
+          # [0.0278455]
 
         """
         name = self.name + '_kl_divergence'
@@ -790,6 +825,22 @@ class Categorical(Distribution):
 
         Returns:
           Variable: Shannon entropy of Categorical distribution. The data type is float32.
+        
+        Examples:
+        .. code-block:: python
+
+          import paddle
+          from paddle.distribution import Categorical
+
+          x = paddle.rand([6])
+          print(x.numpy())
+          # [0.32564053, 0.99334985, 0.99034804,
+          #  0.09053693, 0.30820143, 0.19095989]
+
+          cat = Categorical(x)
+
+          cat.entropy()
+          # [1.71887]
 
         """
         name = self.name + '_entropy'
@@ -818,6 +869,23 @@ class Categorical(Distribution):
 
         Returns:
           Tensor: probability according to the category index.
+        
+        Examples:
+        .. code-block:: python
+
+          import paddle
+          from paddle.distribution import Categorical
+
+          x = paddle.rand([6])
+          print(x.numpy())
+          # [0.32564053, 0.99334985, 0.99034804,
+          #  0.09053693, 0.30820143, 0.19095989]
+
+          cat = Categorical(x)
+
+          value = paddle.to_tensor([2,1,3])
+          cat.probs(value)
+          # [0.341613 0.342648 0.03123]
 
         """
         name = self.name + '_probs'
@@ -839,7 +907,10 @@ class Categorical(Distribution):
                 value = nn.expand(value, [num_dist])
                 value_shape = shape[:-1] + value_shape
             index_value = nn.reshape(value, [num_dist, -1, 1])
-            # assert(num_dist == np.prod(value_shape[:-1]), 'dist shape should be the same')
+            if shape[:-1] != value_shape[:-1]:
+                raise ValueError(
+                    "shape of value {} must match shape of logits {}".format(
+                        str(value_shape[:-1]), str(shape[:-1])))
 
             index_prefix = nn.unsqueeze(arange(num_dist), axes=-1)
             index_prefix = nn.expand(index_prefix, [1, num_value_in_one_dist])
@@ -849,7 +920,6 @@ class Categorical(Distribution):
 
         # value is the category index to search for the corresponding probability.
         select_prob = gather_nd(prob, index)
-        print(name)
         return nn.reshape(select_prob, value_shape, name=name)
 
     def log_prob(self, value):
@@ -860,6 +930,24 @@ class Categorical(Distribution):
 
         Returns:
           Tensor: Log probability.
+        
+        Examples:
+        .. code-block:: python
+
+          import paddle
+          from paddle.distribution import Categorical
+
+          x = paddle.rand([6])
+          print(x.numpy())
+          # [0.32564053, 0.99334985, 0.99034804,
+          #  0.09053693, 0.30820143, 0.19095989]
+
+          cat = Categorical(x)
+
+          value = paddle.to_tensor([2,1,3])
+
+          cat.log_prob(value)
+          # [-1.07408 -1.07105 -3.46638]
 
         """
         name = self.name + '_log_prob'
