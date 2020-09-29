@@ -158,10 +158,6 @@ class GradientClipBase(object):
 
 class GradientClipByValue(GradientClipBase):
     """
-    :alias_main: paddle.nn.GradientClipByValue
-	:alias: paddle.nn.GradientClipByValue,paddle.nn.clip.GradientClipByValue
-	:old_api: paddle.fluid.clip.GradientClipByValue
-
     Limit the value of multi-dimensional Tensor :math:`X` to the range [min, max].
     
     - Any values less than min are set to ``min``.
@@ -172,7 +168,7 @@ class GradientClipByValue(GradientClipBase):
     is not None, then only part of gradients can be selected for gradient clipping.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
-    (for example: :ref:`api_fluid_optimizer_SGD`).
+    (for example: :ref:`api_optimizer_SGD`).
     
     Args:
         max (float): The maximum value to clip by.
@@ -182,7 +178,7 @@ class GradientClipByValue(GradientClipBase):
             (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None, 
             and gradients of all parameters in the network will be clipped.
 
-    Code Example (DyGraph Mode):
+    Examples:
         .. code-block:: python
         
             import paddle
@@ -190,8 +186,7 @@ class GradientClipByValue(GradientClipBase):
 
             paddle.disable_static()
 
-            in_np = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-            x = paddle.to_tensor(in_np)
+            x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
             linear = paddle.nn.Linear(10, 10)
             out = linear(x)
             loss = paddle.mean(out)
@@ -211,41 +206,6 @@ class GradientClipByValue(GradientClipBase):
 
             sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
             sdg.minimize(loss)
-
-
-    Code Example (Static Mode):
-        .. code-block:: python
-        
-            import paddle
-            import numpy as np
-
-            paddle.enable_static()
-                        
-            main_prog = paddle.static.Program()
-            start_prog = paddle.static.Program()
-            with paddle.static.program_guard(main_prog, start_prog):
-                x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
-                out = paddle.static.nn.fc(x, 100)
-                loss = paddle.mean(out)
-                
-                # Clip all parameters in network:
-                clip = paddle.nn.GradientClipByValue(min=-1, max=1)
-                
-                # Clip a part of parameters in network: (e.g. fc_0.w_0)
-                # pass a function(fileter_func) to need_clip, and fileter_func receive a Parameter, and return bool
-                # def fileter_func(Parameter):
-                # # It can be easily filtered by Parameter.name (name can be set in paddle.ParamAttr, and the default name is fc_0.w_0, fc_0.b_0)
-                #   return Parameter.name=="fc_0.w_0"
-                # clip = paddle.nn.GradientClipByValue(min=-1, max=1, need_clip=fileter_func)
-
-                sdg = paddle.optimizer.SGD(learning_rate=0.1, grad_clip=clip)
-                sdg.minimize(loss)
-
-            exe = paddle.static.Executor(place=paddle.CPUPlace())
-            exe.run(start_prog)
-            out = exe.run(main_prog, 
-                          feed={'x': np.random.uniform(-100, 100, (10, 2)).astype('float32')}, 
-                          fetch_list=loss)
     """
 
     def __init__(self, max, min=None, need_clip=None):
@@ -301,10 +261,6 @@ class GradientClipByValue(GradientClipBase):
 
 class GradientClipByNorm(GradientClipBase):
     """
-    :alias_main: paddle.nn.GradientClipByNorm
-	:alias: paddle.nn.GradientClipByNorm,paddle.nn.clip.GradientClipByNorm
-	:old_api: paddle.fluid.clip.GradientClipByNorm
-
     Limit the l2 norm of multi-dimensional Tensor :math:`X` to ``clip_norm`` .
     
     - If the l2 norm of :math:`X` is greater than ``clip_norm`` , :math:`X` will be compressed by a ratio.
@@ -315,7 +271,7 @@ class GradientClipByNorm(GradientClipBase):
     is not None, then only part of gradients can be selected for gradient clipping.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
-    (for example: :ref:`api_fluid_optimizer_SGD`).
+    (for example: :ref:`api_optimizer_SGD`).
     
     The clipping formula is:
 
@@ -340,7 +296,7 @@ class GradientClipByNorm(GradientClipBase):
             (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None, 
             and gradients of all parameters in the network will be clipped.
 
-    Code Example (DyGraph Mode)
+    Examples:
         .. code-block:: python
         
             import paddle
@@ -348,8 +304,7 @@ class GradientClipByNorm(GradientClipBase):
 
             paddle.disable_static()
 
-            in_np = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-            x = paddle.to_tensor(in_np)
+            x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
             linear = paddle.nn.Linear(10, 10)
             out = linear(x)
             loss = paddle.mean(out)
@@ -369,40 +324,6 @@ class GradientClipByNorm(GradientClipBase):
 
             sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
             sdg.minimize(loss)
-
-    Code Example (Static Mode):
-        .. code-block:: python
-        
-            import paddle
-            import numpy as np
-
-            paddle.enable_static()
-                        
-            main_prog = paddle.static.Program()
-            start_prog = paddle.static.Program()
-            with paddle.static.program_guard(main_prog, start_prog):
-                x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
-                out = paddle.static.nn.fc(x, 100)
-                loss = paddle.mean(out)
-                
-                # Clip all parameters in network:
-                clip = paddle.nn.GradientClipByNorm(clip_norm=1.0)
-                
-                # Clip a part of parameters in network: (e.g. fc_0.w_0)
-                # pass a function(fileter_func) to need_clip, and fileter_func receive a Parameter, and return bool
-                # def fileter_func(Parameter):
-                # # It can be easily filtered by Parameter.name (name can be set in paddle.ParamAttr, and the default name is fc_0.w_0, fc_0.b_0)
-                #   return Parameter.name=="fc_0.w_0"
-                # clip = paddle.nn.GradientClipByNorm(clip_norm=1.0, need_clip=fileter_func)
-
-                sdg = paddle.optimizer.SGD(learning_rate=0.1, grad_clip=clip)
-                sdg.minimize(loss)
-
-            exe = paddle.static.Executor(place=paddle.CPUPlace())
-            exe.run(start_prog)
-            out = exe.run(main_prog, 
-                          feed={'x': np.random.uniform(-100, 100, (10, 2)).astype('float32')}, 
-                          fetch_list=loss)
     """
 
     def __init__(self, clip_norm, need_clip=None):
@@ -454,10 +375,6 @@ class GradientClipByNorm(GradientClipBase):
 
 class GradientClipByGlobalNorm(GradientClipBase):
     """
-    :alias_main: paddle.nn.GradientClipByGlobalNorm
-	:alias: paddle.nn.GradientClipByGlobalNorm,paddle.nn.clip.GradientClipByGlobalNorm
-	:old_api: paddle.fluid.clip.GradientClipByGlobalNorm
-
     Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in 
     :math:`t\_list` , and limit it to ``clip_norm`` .
     
@@ -469,7 +386,7 @@ class GradientClipByGlobalNorm(GradientClipBase):
     is not None, then only part of gradients can be selected for gradient clipping.
     
     Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
-    (for example: :ref:`api_fluid_optimizer_SGD`).
+    (for example: :ref:`api_optimizer_SGD`).
 
     The clipping formula is:
 
@@ -490,7 +407,7 @@ class GradientClipByGlobalNorm(GradientClipBase):
             (True: the gradient of this ``Parameter`` need to be clipped, False: not need). Default: None, 
             and gradients of all parameters in the network will be clipped.
 
-    Code Example (DyGraph Mode):
+    Examples:
         .. code-block:: python
         
             import paddle
@@ -498,8 +415,7 @@ class GradientClipByGlobalNorm(GradientClipBase):
 
             paddle.disable_static()
 
-            in_np = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-            x = paddle.to_tensor(in_np)
+            x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
             linear = paddle.nn.Linear(10, 10)
             out = linear(x)
             loss = paddle.mean(out)
@@ -519,41 +435,6 @@ class GradientClipByGlobalNorm(GradientClipBase):
 
             sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
             sdg.minimize(loss)
-
-
-    Code Example (Static Mode):
-        .. code-block:: python
-        
-            import paddle
-            import numpy as np
-
-            paddle.enable_static()
-                        
-            main_prog = paddle.static.Program()
-            start_prog = paddle.static.Program()
-            with paddle.static.program_guard(main_prog, start_prog):
-                x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
-                out = paddle.static.nn.fc(x, 100)
-                loss = paddle.mean(out)
-                
-                # Clip all parameters in network:
-                clip = paddle.nn.GradientClipByGlobalNorm(clip_norm=1.0)
-                
-                # Clip a part of parameters in network: (e.g. fc_0.w_0)
-                # pass a function(fileter_func) to need_clip, and fileter_func receive a Parameter, and return bool
-                # def fileter_func(Parameter):
-                # # It can be easily filtered by Parameter.name (name can be set in paddle.ParamAttr, and the default name is fc_0.w_0, fc_0.b_0)
-                #   return Parameter.name=="fc_0.w_0"
-                # clip = paddle.nn.GradientClipByGlobalNorm(clip_norm=1.0, need_clip=fileter_func)
-
-                sdg = paddle.optimizer.SGD(learning_rate=0.1, grad_clip=clip)
-                sdg.minimize(loss)
-
-            exe = paddle.static.Executor(place=paddle.CPUPlace())
-            exe.run(start_prog)
-            out = exe.run(main_prog, 
-                          feed={'x': np.random.uniform(-100, 100, (10, 2)).astype('float32')}, 
-                          fetch_list=loss)
     """
 
     def __init__(self, clip_norm, group_name="default_group", need_clip=None):
