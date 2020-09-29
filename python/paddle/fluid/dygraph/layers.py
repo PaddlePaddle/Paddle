@@ -111,13 +111,24 @@ class Layer(core.Layer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
+
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        self._dropout = paddle.nn.Dropout(p=0.5)
+
+                    def forward(self, input):
+                        temp = self._linear(input)
+                        temp = self._dropout(temp)
+                        return temp
 
                 x = paddle.randn([10, 1], 'float32')
-
-                linear = paddle.nn.Linear(1,1)
-                linear.train()  # the default mode is train
-                out = linear(x)
+                mylayer = MyLayer()
+                mylayer.eval()  # set mylayer._dropout to eval mode
+                out = mylayer(x)
+                mylayer.train()  # set mylayer._dropout to train mode
+                out = mylayer(x)
 
         """
         # global setting
@@ -356,34 +367,20 @@ class Layer(core.Layer):
 
                 import paddle
 
-                class MyLinear(paddle.nn.Layer):
-                    def __init__(self,
-                                in_features,
-                                out_features):
-                        super(MyLinear, self).__init__()
-                        self.weight = self.create_parameter(
-                            shape=[in_features, out_features],
-                            is_bias=False)
-                        self.bias = self.create_parameter(
-                            shape=[out_features],
-                            is_bias=True)
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        w_tmp = self.create_parameter([1,1])
+                        self.add_parameter("w_tmp", w_tmp)
 
                     def forward(self, input):
-                        inputs = {'X': [input], 'Y': [self.weight]}
-                        attrs = {
-                            'transpose_X': False,
-                            'transpose_Y': False,
-                            'alpha': 1,
-                        }
-                        tmp = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
-                        paddle.fluid.default_main_program().current_block().append_op(
-                            type='matmul', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
+                        return self._linear(input)
 
-                        return tmp
                 x = paddle.randn([10, 1], 'float32')
-                mylinear = MyLinear(1,1)
-                out = mylinear(x)
-                print(out)
+                mylayer = MyLayer()
+                for name, param in mylayer.named_parameters():
+                    print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
 
         """
         temp_attr = copy.deepcopy(attr)
@@ -422,29 +419,15 @@ class Layer(core.Layer):
                                 in_features,
                                 out_features):
                         super(MyLinear, self).__init__()
-                        self.weight = self.create_parameter(
-                            shape=[in_features, out_features],
-                            is_bias=False)
-                        self.bias = self.create_parameter(
-                            shape=[out_features],
-                            is_bias=True)
-
+                        self.linear = paddle.nn.Linear( 10, 10)
+                            
+                        self.back_var = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
+                    
                     def forward(self, input):
-                        inputs = {'X': [input], 'Y': [self.weight]}
-                        attrs = {
-                            'transpose_X': False,
-                            'transpose_Y': False,
-                            'alpha': 1,
-                        }
-                        tmp = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
-                        paddle.fluid.default_main_program().current_block().append_op(
-                            type='matmul', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
-
-                        return tmp
-                x = paddle.randn([10, 1], 'float32')
-                mylinear = MyLinear(1,1)
-                out = mylinear(x)
-                print(out)
+                        out = self.linear(input)
+                        paddle.assign( out, self.back_var)
+                        
+                        return out
 
         """
         if name is not None:
@@ -492,9 +475,9 @@ class Layer(core.Layer):
 
                 import paddle
 
-                fc1 = paddle.nn.Linear(10, 3)
-                fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
-                model = paddle.nn.Sequential(fc1, fc2)
+                linear1 = paddle.nn.Linear(10, 3)
+                linear2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                model = paddle.nn.Sequential(linear1, linear2)
 
                 layer_list = list(model.children())
 
@@ -925,11 +908,20 @@ class Layer(core.Layer):
 
                 import paddle
 
-                linear = paddle.nn.Linear(1, 1)
-                w_tmp = linear.create_parameter([1,1])
-                linear.add_parameter("w_tmp", w_tmp)
-                for name, param in linear.named_parameters():
-                    print(name, param)
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        w_tmp = self.create_parameter([1,1])
+                        self.add_parameter("w_tmp", w_tmp)
+
+                    def forward(self, input):
+                        return self._linear(input)
+
+                x = paddle.randn([10, 1], 'float32')
+                mylayer = MyLayer()
+                for name, param in mylayer.named_parameters():
+                    print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
 
         """
         if '_parameters' not in self.__dict__:
@@ -1111,7 +1103,7 @@ class Layer(core.Layer):
                 emb = paddle.nn.Embedding(10, 10)
 
                 state_dict = emb.state_dict()
-                paddle.save( state_dict, "paddle_dy")
+                paddle.save( state_dict, "paddle_dy.pdparams")
 
         '''
 
