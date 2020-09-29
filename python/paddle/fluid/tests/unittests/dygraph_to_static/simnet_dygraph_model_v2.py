@@ -180,7 +180,7 @@ class ElementwiseSubLayer(object):
         """
         operation
         """
-        sub = paddle.fluid.layers.elementwise_sub(x, y)
+        sub = paddle.elementwise_sub(x, y)
         return sub
 
 
@@ -289,17 +289,6 @@ class FC(paddle.nn.Layer):
     Returns:
         None
     
-    Examples:
-        .. code-block:: python
-          from paddle.fluid.dygraph.base import to_variable
-          import paddle.fluid as fluid
-          from paddle.fluid.dygraph import FC
-          import numpy as np
-          data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-          with fluid.dygraph.guard():
-              fc = FC("fc", 64, num_flatten_dims=2)
-              data = to_variable(data)
-              conv = fc(data)
     """
 
     def __init__(self,
@@ -469,7 +458,7 @@ class BOW(paddle.nn.Layer):
         self.bow_layer_po = FCLayer(self.bow_dim, None, "fc").ops()
         self.softmax_layer = FCLayer(2, "softmax", "cos_sim").ops()
 
-    @paddle.fluid.dygraph.declarative
+    @paddle.jit.to_static
     def forward(self, left, right):
         """
         Forward network
@@ -478,9 +467,9 @@ class BOW(paddle.nn.Layer):
         # embedding layer
         left_emb = self.emb_layer(left)
         right_emb = self.emb_layer(right)
-        left_emb = paddle.fluid.layers.reshape(
+        left_emb = paddle.reshape(
             left_emb, shape=[-1, self.seq_len, self.bow_dim])
-        right_emb = paddle.fluid.layers.reshape(
+        right_emb = paddle.reshape(
             right_emb, shape=[-1, self.seq_len, self.bow_dim])
 
         bow_left = paddle.reduce_sum(left_emb, dim=1)

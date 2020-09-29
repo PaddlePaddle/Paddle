@@ -100,7 +100,7 @@ def train(conf_dict, to_static):
     program_translator.enable(to_static)
 
     # Get device
-    if paddle.fluid.is_compiled_with_cuda():
+    if paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     else:
         place = paddle.CPUPlace()
@@ -121,7 +121,7 @@ def train(conf_dict, to_static):
         epsilon=1e-08,
         parameters=net.parameters())
 
-    metric = paddle.fluid.metrics.Auc(name="auc")
+    metric = paddle.metric.Auc(name="auc")
 
     global_step = 0
     losses = []
@@ -134,9 +134,9 @@ def train(conf_dict, to_static):
             get_train_examples, batch_size=args.batch_size), place)
 
     for left, pos_right, neg_right in train_loader():
-        left = paddle.fluid.layers.reshape(left, shape=[-1, 1])
-        pos_right = paddle.fluid.layers.reshape(pos_right, shape=[-1, 1])
-        neg_right = paddle.fluid.layers.reshape(neg_right, shape=[-1, 1])
+        left = paddle.reshape(left, shape=[-1, 1])
+        pos_right = paddle.reshape(pos_right, shape=[-1, 1])
+        neg_right = paddle.reshape(neg_right, shape=[-1, 1])
         net.train()
         global_step += 1
         left_feat, pos_score = net(left, pos_right)
@@ -153,7 +153,7 @@ def train(conf_dict, to_static):
 
 class TestSimnet(unittest.TestCase):
     def test_dygraph_static_same_loss(self):
-        if paddle.fluid.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             paddle.fluid.set_flags({"FLAGS_cudnn_deterministic": True})
         conf_dict = create_conf_dict()
         dygraph_loss = train(conf_dict, to_static=False)
