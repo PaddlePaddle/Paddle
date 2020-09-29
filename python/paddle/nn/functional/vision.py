@@ -286,7 +286,7 @@ def grid_sample(x,
                             [ 0.7,  0.4],
                             [ 0.2,  0.8]]]]).astype("float64")
             
-            paddle.disable_static()
+            
             x = paddle.to_tensor(x)
             grid = paddle.to_tensor(grid)
             y_t = F.grid_sample(
