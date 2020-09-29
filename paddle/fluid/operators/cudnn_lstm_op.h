@@ -49,15 +49,15 @@ struct LSTMCell : Cell<T> {
 template <typename T>
 struct Layer {
   virtual ~Layer() {}
-  virtual void operator()(const Tensor* input) const = 0;
+  virtual void operator()(Tensor* input) const = 0;
 };
 
 template <typename T>
 struct SingleLayer {
   explicit SingleLayer(Cell<T>& cell) : cell_(cell) {}
-  void operator()(const Tensor* input, const TensorList& vec,
-                  const Tensor* init_h, const Tensor* init_c, Tensor* last_h,
-                  Tensor* last_c, Tensor* output, const int& layer_idx,
+  void operator()(Tensor* input, const TensorList& vec, const Tensor* init_h,
+                  const Tensor* init_c, Tensor* last_h, Tensor* last_c,
+                  Tensor* output, const int& layer_idx,
                   const int& init_offset) {
     const int& time_step = input->dims()[0];
     TensorList output_tensors;
@@ -236,27 +236,54 @@ void CacluateLSTMLayer(const framework::ExecutionContext& ctx,
                         "first dim of cell state hidden, but received"
                         " num_layers:%d, dim:%d",
                         num_layers, init_h_dims[0]));
+  // define the swap function to swap the pointer
+  auto SwapPoniter = [](Tensor* a, Tensor* b) {
+    Tensor* c;
+    c = a;
+    a = b;
+    b = c;
+  };
+
   CellType cell;
   const int& init_offset = init_h->numel() / num_layers;
   const std::vector<TensorList>& parameter_lists = parameter_split<T>(
       weight, gate_num, num_layers, input_size, hidden_size, is_bidirec);
+  Tensor* input_holder;
+  Tensor* output_holder = output;
+  Tensor temp;
+  bool has_allocate_mem = false;
   for (int i = 0; i < num_layers; i++) {
+    if (i > 0) {
+      if (!has_allocate_mem) {
+        temp.Resize(output->dims());
+        temp.mutable_data<T>(ctx.GetPlace());
+        input_holder = &temp;
+        has_allocate_mem = true;
+      }
+      SwapPoniter(output, input_holder);
+      if (dropout_prob != 0 && (!is_test)) {
+        // only train mode just need dropout
+        dropout_cpu_function_inplace<T>(ctx, input_holder, dropout_mask,
+                                        dropout_prob, seed,
+                                        true /*upscale_in_train*/, is_test);
+      }
+    }
     if (is_bidirec) {
       BidirLayerT<T> layer(cell);
-      layer(input, parameter_lists[i], init_h, init_c, last_h, last_c, output,
-            i, init_offset);
-
-    } else {
+      if (i == 0) {
+        layer(input, parameter_lists[i], init_h, init_c, last_h, last_c,
+              output_holder, i, init_offset);
+      } else {
+        layer(input_holder, parameter_lists[i], init_h, init_c, last_h, last_c,
+              output_holder, i, init_offset);
+      }
     }
-    Tensor* input_temp = output;
-    input_temp->Resize(output->dims());
-    if (dropout_prob != 0 && (!is_test) && (i < num_layers - 1)) {
-      // only train mode just need dropout
-      dropout_cpu_function_inplace<T>(ctx, input_temp, dropout_mask,
-                                      dropout_prob, seed,
-                                      true /*upscale_in_train*/, is_test);
-    }
-    input = input_temp;
+  }
+  if (num_layers % 2 == 0) {
+    // the final result is in output_holder, must copy the data to output
+    framework::TensorCopy(
+        *output_holder, ctx.GetPlace(),
+        ctx.template device_context<platform::CPUDeviceContext>(), output);
   }
 }
 
