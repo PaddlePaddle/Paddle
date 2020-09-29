@@ -541,7 +541,7 @@ def warpctc(input,
          (not including the blank label). When it is a 3-D Tensor, its shape 
          is `[max_logit_length, batch_size, num_classes + 1]`,
          where `max_logit_length` is the longest length of
-         input logit sequence. The data type must be float32.
+         input logit sequence. The data type should be float32 or float64.
        label (Variable): The ground truth of variable-length sequence,
          which must be a 2-D Tensor with LoD information or a 3-D Tensor without
          LoD information, needs to be consistent with the coressponding input. 
@@ -571,6 +571,7 @@ def warpctc(input,
         .. code-block:: python
 
             # using LoDTensor
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
@@ -581,6 +582,7 @@ def warpctc(input,
             # class num
             class_num = 5
 
+            paddle.enable_static()
             logits = fluid.data(name='logits',shape=[None, class_num+1],
                                  dtype='float32',lod_level=1)
             label = fluid.data(name='label', shape=[None, 1],
@@ -602,6 +604,7 @@ def warpctc(input,
         .. code-block:: python
 
             # using Tensor
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
@@ -613,6 +616,7 @@ def warpctc(input,
             batch_size = 16
             # class num
             class_num = 5
+            paddle.enable_static()
             logits = fluid.data(name='logits',
                            shape=[max_seq_length, batch_size, class_num+1],
                            dtype='float32')
@@ -637,8 +641,23 @@ def warpctc(input,
                                   fetch_list=[cost.name])
             print(output)
     """
+    if in_dygraph_mode():
+        if input_length is None or label_length is None:
+            raise ValueError(
+                "input_length and label_length must not be None in dygraph mode!"
+            )
+        grad, loss_out = core.ops.warpctc(
+            input,
+            label,
+            input_length,
+            label_length,
+            'blank',
+            blank,
+            'norm_by_times',
+            norm_by_times, )
+        return loss_out
     helper = LayerHelper('warpctc', **locals())
-    check_variable_and_dtype(input, 'input', ['float32'], "warpctc")
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], "warpctc")
     check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
     this_inputs = {'Logits': [input], 'Label': [label]}
     if input_length is not None and label_length is not None:
@@ -1736,7 +1755,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     Beta = 0.25
     batch_size = labels.shape[0]
 
-    labels = nn.reshape(labels, shape=[batch_size, 1], inplace=True)
+    labels = nn.reshape(labels, shape=[batch_size, 1])
     labels = nn.expand(labels, expand_times=[1, batch_size])
 
     labels = equal(labels, nn.transpose(labels, perm=[1, 0])).astype('float32')

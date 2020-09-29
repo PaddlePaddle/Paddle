@@ -360,13 +360,13 @@ def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
 
-    Returns (bool): support gpu or not.
+    Returns (bool): `True` if CUDA is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            support_gpu = fluid.is_compiled_with_cuda()
+            import paddle
+            support_gpu = paddle.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
 
@@ -506,11 +506,12 @@ def name_scope(prefix=None):
     """
     :api_attr: Static Graph
 
-    Generate hierarchical name prefix for the operators.
+    Generate hierarchical name prefix for the operators in Static Graph.
 
     Note: 
         This should only used for debugging and visualization purpose.
         Don't use it for serious analysis such as graph/program transformations.
+        Don't use it in dygraph, since it will cause memory leak.
 
     Args:
         prefix(str, optional): prefix. Default is none.
@@ -518,21 +519,22 @@ def name_scope(prefix=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          with fluid.name_scope("s1"):
-             a = fluid.data(name='data', shape=[None, 1], dtype='int32')
+          import paddle
+          paddle.enable_static()
+          with paddle.static.name_scope("s1"):
+             a = paddle.data(name='data', shape=[None, 1], dtype='int32')
              b = a + 1
-             with fluid.name_scope("s2"):
+             with paddle.static.name_scope("s2"):
                 c = b * 1
-             with fluid.name_scope("s3"):
+             with paddle.static.name_scope("s3"):
                 d = c / 1
-          with fluid.name_scope("s1"):
-                f = fluid.layers.pow(d, 2.0)
-          with fluid.name_scope("s4"):
+          with paddle.static.name_scope("s1"):
+                f = paddle.tensor.pow(d, 2.0)
+          with paddle.static.name_scope("s4"):
                 g = f - 1
 
           # Op are created in the default main program.  
-          for op in fluid.default_main_program().block(0).ops:
+          for op in paddle.static.default_main_program().block(0).ops:
               # elementwise_add is created in /s1/
               if op.type == 'elementwise_add':
                   assert op.desc.attr("op_namescope") == '/s1/'
@@ -5276,32 +5278,32 @@ def default_startup_program():
     """
     Get default/global startup program.
 
-    The layer function in :ref:`api_fluid_layers` will create parameters, :ref:`api_paddle_data_reader_reader` ,
-    `NCCL <https://developer.nvidia.com/nccl>`_ handles as global variables. The :code:`startup_program` will
-    initialize them by the OPs in startup  :ref:`api_fluid_Program` . The  :ref:`api_fluid_layers`  function will
-    append these initialization operators into startup program.
+    The :code:`paddle.nn` function will append the initialization operators into startup program.
+    The :code:`startup_program` will initialize the parameters by the OPs. 
+  
+    This method will return the default or the current startup program. Users can use
+    :ref:`api_paddle_fluid_framework_program_guard`  to switch :ref:`api_paddle_fluid_framework_Program` .
 
-    This method will return the :code:`default` or the :code:`current` startup
-    program. Users can use  :ref:`api_fluid_program_guard`  to switch :ref:`api_fluid_Program` .
+    Returns:
+        Program: current default startup program.
 
-    Returns: current default startup :ref:`api_fluid_Program`
-
-    Returns type: :ref:`api_fluid_Program`
+    Returns type: 
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
-            main_program = fluid.Program()
-            startup_program = fluid.Program()
-            with fluid.program_guard(main_program=main_program, startup_program=startup_program):
-                x = fluid.layers.data(name="x", shape=[-1, 784], dtype='float32')
-                y = fluid.layers.data(name="y", shape=[-1, 1], dtype='int32')
-                z = fluid.layers.fc(name="fc", input=x, size=10, act="relu")
+            paddle.enable_static()
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program=main_program, startup_program=startup_program):
+                x = paddle.data(name="x", shape=[-1, 784], dtype='float32')
+                y = paddle.data(name="y", shape=[-1, 1], dtype='int32')
+                z = paddle.static.nn.fc(name="fc", input=x, size=10, act="relu")
 
-                print("main program is: {}".format(fluid.default_main_program()))
-                print("start up program is: {}".format(fluid.default_startup_program()))
+                print("main program is: {}".format(paddle.static.default_main_program()))
+                print("start up program is: {}".format(paddle.static.default_startup_program()))
     """
     return _startup_program_
 
@@ -5309,52 +5311,53 @@ def default_startup_program():
 def default_main_program():
     """
     This API can be used to get ``default main program`` which store the 
-    descriptions of ``op`` and ``variable``.
+    descriptions of Ops and tensors.
     
-    For example ``z = fluid.layers.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
-    ``op`` and a new ``z`` ``variable``, and they will be recorded in ``default main program`` 
+    For example ``z = paddle.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
+    Op and a new ``z`` tensor, and they will be recorded in ``default main program`` . 
 
-    The ``default_main_program`` is the default value for ``Program`` parameter in 
-    a lot of ``fluid`` APIs. For example, the :code:`Executor.run()` will execute the
+    The ``default main program`` is the default value for ``Program`` parameter in 
+    a lot of APIs. For example, the :code:`Executor.run()` will execute the
     :code:`default_main_program` when the program is not specified.
 
-    If you want to replace the ``default main program``, you can use :ref:`api_fluid_program_guard`
+    If you want to switch the ``default main program``, you can use :ref:`api_paddle_fluid_framework_program_guard` .
     
     Returns:
-        :ref:`api_fluid_Program`: a ``Program`` which holding the descriptions of ops and variables in the network.
+        Program: A ``Program`` which holding the descriptions of OPs and tensors in the network.
 
     Examples:
         ..  code-block:: python
 
-            import paddle.fluid as fluid
-
+            import paddle
+            
+            paddle.enable_static()
             # Sample Network:
-            data = fluid.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            data = paddle.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
+            label = paddle.data(name='label', shape=[None, 1], dtype='int64')
             
-            conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
-            bn1 = fluid.layers.batch_norm(conv1, act='relu')
-            pool1 = fluid.layers.pool2d(bn1, 2, 'max', 2)
-            conv2 = fluid.layers.conv2d(pool1, 16, 5, 1, act=None)
-            bn2 = fluid.layers.batch_norm(conv2, act='relu')
-            pool2 = fluid.layers.pool2d(bn2, 2, 'max', 2)
+            conv1 = paddle.static.nn.conv2d(data, 4, 5, 1, act=None)
+            bn1 = paddle.static.nn.batch_norm(conv1, act='relu')
+            pool1 = paddle.nn.functional.pool2d(bn1, 2, 'max', 2)
+            conv2 = paddle.static.nn.conv2d(pool1, 16, 5, 1, act=None)
+            bn2 = paddle.static.nn.batch_norm(conv2, act='relu')
+            pool2 = paddle.nn.functional.pool2d(bn2, 2, 'max', 2)
             
-            fc1 = fluid.layers.fc(pool2, size=50, act='relu')
-            fc2 = fluid.layers.fc(fc1, size=102, act='softmax')
+            fc1 = paddle.static.nn.fc(pool2, size=50, act='relu')
+            fc2 = paddle.static.nn.fc(fc1, size=102, act='softmax')
             
-            loss = fluid.layers.cross_entropy(input=fc2, label=label)
-            loss = fluid.layers.mean(loss)
-            opt = fluid.optimizer.Momentum(
+            loss = paddle.nn.functional.loss.cross_entropy(input=fc2, label=label)
+            loss = paddle.mean(loss)
+            opt = paddle.optimizer.Momentum(
                 learning_rate=0.1,
                 momentum=0.9,
-                regularization=fluid.regularizer.L2Decay(1e-4))
+                weight_decay=paddle.regularizer.L2Decay(1e-4))
             opt.minimize(loss)
             
             #print the number of blocks in the program, 1 in this case
-            print(fluid.default_main_program().num_blocks)
+            print(paddle.static.default_main_program().num_blocks) #[1]
 
             #print the description of variable 'image'
-            print(fluid.default_main_program().blocks[0].var('image'))
+            print(paddle.static.default_main_program())
 
     """
     return _main_program_
@@ -5396,13 +5399,13 @@ def program_guard(main_program, startup_program=None):
     """
     :api_attr: Static Graph
 
-    Change the global main program and startup program with `"with"` statement.
-    Layer functions in the Python `"with"` block will append operators and
-    variables to the new main programs.
+    Change the global main program and startup program with ``with`` statement.
+    Layer functions in the Python ``with`` block will append operators and
+    Tensors to the new main programs.
 
     Args:
-        main_program(Program): New main program inside `"with"` statement.
-        startup_program(Program, optional): New startup program inside `"with"` 
+        main_program(Program): New main program inside ``with`` statement.
+        startup_program(Program, optional): New startup program inside ``with`` 
             statement. :code:`None` means not changing startup program, 
             default_startup_program is still used.
             Default: None.
@@ -5410,13 +5413,14 @@ def program_guard(main_program, startup_program=None):
     Examples:
        .. code-block:: python
        
-         import paddle.fluid as fluid
+          import paddle
 
-         main_program = fluid.Program()
-         startup_program = fluid.Program()
-         with fluid.program_guard(main_program, startup_program):
-             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-             hidden = fluid.layers.fc(input=data, size=10, act='relu')
+          paddle.enable_static()
+          main_program = paddle.static.Program()
+          startup_program = paddle.static.Program()
+          with paddle.static.program_guard(main_program, startup_program):
+              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
+              hidden = paddle.static.nn.fc(input=data, size=10, act='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
     to construct either of startup program or main program.
@@ -5424,20 +5428,22 @@ def program_guard(main_program, startup_program=None):
     Examples:
        .. code-block:: python
 
-         import paddle.fluid as fluid
+          import paddle
 
-         main_program = fluid.Program()
-         # does not care about startup program. Just pass a temporary value.
-         with fluid.program_guard(main_program, fluid.Program()):
-             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+          paddle.enable_static()
+          main_program = paddle.static.Program()
+          # does not care about startup program. Just pass a temporary value.
+          with paddle.static.program_guard(main_program, paddle.static.Program()):
+              data = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
     
     """
     from .data_feeder import check_type
-    check_type(main_program, 'main_program', Program, 'fluid.program_guard')
+    check_type(main_program, 'main_program', Program,
+               'paddle.static.program_guard')
     main_program = switch_main_program(main_program)
     if startup_program is not None:
         check_type(startup_program, 'startup_program', Program,
-                   'fluid.program_guard')
+                   'paddle.static.program_guard')
         startup_program = switch_startup_program(startup_program)
     try:
         yield

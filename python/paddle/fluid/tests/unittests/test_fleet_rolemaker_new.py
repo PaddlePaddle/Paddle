@@ -70,12 +70,6 @@ class TestCloudRoleMaker(unittest.TestCase):
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["PADDLE_TRAINER_ID"] = "0"
 
-        try:
-            import netifaces
-        except:
-            print("warning: no netifaces, skip test_tr_rolemaker")
-            return
-
         ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
         self.assertTrue(ro._is_worker())
         ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
@@ -110,12 +104,6 @@ class TestCloudRoleMaker(unittest.TestCase):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
 
-        try:
-            import netifaces
-        except:
-            print("warning: no netifaces, skip test_ps_rolemaker")
-            return
-
         ro = role_maker.PaddleCloudRoleMaker(
             is_collective=False, init_gloo=False)
         self.assertEqual(ro._server_index(), 0)
@@ -131,11 +119,6 @@ class TestCloudRoleMaker(unittest.TestCase):
     def test_traing_role(self):
         """Test training role."""
         os.environ["TRAINING_ROLE"] = "TEST"
-        try:
-            import netifaces
-        except:
-            print("warning: no netifaces, skip test_training_role")
-            return
 
         ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
         self.assertRaises(ValueError, ro._generate_role)
@@ -150,11 +133,6 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
         pass
 
     def test_ps_rolemaker(self):
-        try:
-            import netifaces
-        except:
-            print("warning: no netifaces, skip test_ps_rolemaker")
-            return
 
         ro = role_maker.UserDefinedRoleMaker(
             is_collective=False,
@@ -169,12 +147,6 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
         self.assertEqual(ro._role_id(), 0)
 
     def test_tr_rolemaker(self):
-        try:
-            import netifaces
-        except:
-            print("warning: no netifaces, skip test_tr_rolemaker")
-            return
-
         ro = role_maker.UserDefinedRoleMaker(
             is_collective=False,
             init_gloo=False,
