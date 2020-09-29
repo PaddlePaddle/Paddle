@@ -288,7 +288,7 @@ def predict_dygraph(data):
 def predict_static(data):
     exe = paddle.static.Executor(place)
     [inference_program, feed_target_names,
-     fetch_targets] = paddle.io.load_inference_model(
+     fetch_targets] = paddle.static.load_inference_model(
          MODEL_SAVE_PATH,
          executor=exe,
          params_filename=paddle.fluid.dygraph.io.VARIABLE_FILENAME)
