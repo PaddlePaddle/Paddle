@@ -830,19 +830,27 @@ class Categorical(Distribution):
         e_logits = ops.exp(logits)
         z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
         prob = e_logits / z
-        entropy = -1.0 * nn.reduce_sum(
-            prob * (logits - nn.log(z)), dim=-1, keep_dim=True, name=name)
 
+        neg_entropy = nn.reduce_sum(
+            prob * (logits - nn.log(z)), dim=-1, keep_dim=True)
+        entropy = nn.scale(neg_entropy, scale=-1.0, name=name)
         return entropy
 
     def probs(self, value):
-        """Probabilities of the given category.
+        """Probabilities of the given category (``value``).
+
+        If ``logits`` is 2-D or higher dimension, the last dimension will be regarded as 
+        category, and the others represents the different distributions.
+        At the same time, if ``vlaue`` is 1-D Tensor, ``value`` will be broadcast to the 
+        same number of distributions as ``logits``.
+        If ``value`` is not 1-D Tensor, ``value`` should have the same number distributions
+        with ``logits. That is, ``value[:-1] = logits[:-1]``.
 
         Args:
           value (Tensor): The input tensor represents the selected category index.
 
         Returns:
-          Tensor: probability.
+          Tensor: probability according to the category index.
 
         """
         name = self.name + '_probs'
@@ -870,9 +878,14 @@ class Categorical(Distribution):
             index_prefix = nn.expand(index_prefix, [1, num_value_in_one_dist])
             index_prefix = nn.unsqueeze(index_prefix, axes=-1)
 
+            # print("xxxxxxxxxxxx", index_prefix.dtype)
+            # print("yyyyyyyyyyyyy", index_value.dtype)
+
             index = concat([index_prefix, index_value], axis=-1)
 
+        # value is the category index to search for the corresponding probability.
         select_prob = gather_nd(prob, index)
+        print(name)
         return nn.reshape(select_prob, value_shape, name=name)
 
     def log_prob(self, value):
@@ -885,4 +898,6 @@ class Categorical(Distribution):
           Tensor: Log probability.
 
         """
-        return nn.log(self.probs(value))
+        name = self.name + '_log_prob'
+
+        return nn.log(self.probs(value), name=name)
