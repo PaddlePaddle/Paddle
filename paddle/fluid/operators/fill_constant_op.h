@@ -103,7 +103,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
               tensor, static_cast<T>(value));
     }
 #endif
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_XPU
     if (ctx.GetPlace() == platform::XPUPlace()) {
       tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::XPUDeviceContext, T> functor;
