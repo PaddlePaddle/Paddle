@@ -377,7 +377,6 @@ class Layer(core.Layer):
                     def forward(self, input):
                         return self._linear(input)
 
-                x = paddle.randn([10, 1], 'float32')
                 mylayer = MyLayer()
                 for name, param in mylayer.named_parameters():
                     print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
@@ -539,7 +538,6 @@ class Layer(core.Layer):
                         temp = self._dropout(temp)
                         return temp
 
-                x = paddle.randn([10, 1], 'float32')
                 mylayer = MyLayer()
                 print(mylayer.sublayers())  # [<paddle.nn.layer.common.Linear object at 0x7f44b58977d0>, <paddle.nn.layer.common.Dropout object at 0x7f44b58978f0>]
 
@@ -920,7 +918,6 @@ class Layer(core.Layer):
                     def forward(self, input):
                         return self._linear(input)
 
-                x = paddle.randn([10, 1], 'float32')
                 mylayer = MyLayer()
                 for name, param in mylayer.named_parameters():
                     print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
