@@ -14,19 +14,21 @@
 
 from __future__ import print_function
 
-import os
 import collections
+import os
 import pickle
-import six
 import warnings
 
-import paddle
+import six
 
+import paddle
 # deprecated module import
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer
-from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers, EXTRA_VAR_INFO_FILENAME
+from paddle.fluid.dygraph.io import (EXTRA_VAR_INFO_FILENAME,
+                                     _construct_params_and_buffers,
+                                     _construct_program_holders)
+from paddle.fluid.framework import Variable, _dygraph_tracer, _varbase_creator
 
 __all__ = [
     'save',
