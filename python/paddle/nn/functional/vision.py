@@ -306,10 +306,7 @@ def grid_sample(x,
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sample')
     check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
                              'grid_sample')
-    if not isinstance(x, Variable):
-        raise ValueError("The x should be a Tensor")
-    if not isinstance(grid, Variable):
-        raise ValueError("The grid should be a Tensor")
+
     _modes = ['bilinear', 'nearest']
     _padding_modes = ['zeros', 'reflection', 'border']
     if mode not in _modes:
