@@ -151,7 +151,7 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
 
       MultinomialFunctor<T>(cpu_out_data, cpu_in_data, num_samples, replacement,
                             num_categories, num_distributions);
-      cudaMemcpy(out_data, cpu_out_data, out_data_numel * sizeof(T),
+      cudaMemcpy(out_data, cpu_out_data, out_data_numel * sizeof(int64_t),
                  cudaMemcpyHostToDevice);
 
       delete[] cpu_in_data;
