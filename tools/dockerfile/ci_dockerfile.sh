@@ -4,7 +4,7 @@ function make_ubuntu_dockerfile(){
   sed 's/<baseimg>/10.1-cudnn7-devel-ubuntu16.04/g' ./Dockerfile.ubuntu >${dockerfile_name}
   sed -i 's#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g' ${dockerfile_name} 
   dockerfile_line=`wc -l ${dockerfile_name}|awk '{print $1}'`
-  sed -i "${dockerfile_line}i RUN wget --no-check-certificate  -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
+  sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name} 
   sed -i 's#<install_gcc>#WORKDIR /usr/bin \
       COPY tools/dockerfile/build_scripts /build_scripts \
@@ -27,8 +27,14 @@ function make_centos_dockerfile(){
   sed -i "${dockerfile_line}i RUN ln -s /usr/lib64/libz.so /usr/local/lib/libz.so && \
      ln -s /usr/local/lib/libnccl.so /usr/local/cuda/lib64/ && \
      rm -rf /usr/include/NvInfer*" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN wget --no-check-certificate  -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
+  sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-2.7.8-1+cuda10.2.x86_64.rpm && \
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm && \
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm && \
+    rpm -ivh libnccl-2.7.8-1+cuda10.2.x86_64.rpm && \
+    rpm -ivh libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm && \
+    rpm -ivh libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm && rm -f /usr/local/include/nccl.h " ${dockerfile_name}
   sed -i 's#<install_gcc>#WORKDIR /usr/bin \
       COPY tools/dockerfile/build_scripts /build_scripts \
       RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \
