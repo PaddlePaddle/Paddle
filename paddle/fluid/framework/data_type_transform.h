@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <utility>
+
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -22,6 +23,9 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+class OpKernelType;
+class Tensor;
 
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 

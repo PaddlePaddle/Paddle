@@ -1650,12 +1650,11 @@ def cumsum(x, axis=None, dtype=None, name=None):
         .. code-block:: python
             
             import paddle
-            from paddle import to_variable
             import numpy as np
 
             paddle.disable_static()
             data_np = np.arange(12).reshape(3, 4)
-            data = to_variable(data_np)
+            data = paddle.to_tensor(data_np)
 
             y = paddle.cumsum(data)
             print(y.numpy())

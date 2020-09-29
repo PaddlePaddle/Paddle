@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 from . import convert_operators
+from .convert_operators import *
 
 from . import convert_call_func
 from .convert_call_func import *
@@ -23,5 +24,6 @@ from . import variable_trans_func
 from .variable_trans_func import *
 
 __all__ = []
+__all__ += convert_operators.__all__
 __all__ += convert_call_func.__all__
 __all__ += variable_trans_func.__all__

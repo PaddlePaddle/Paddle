@@ -19,10 +19,12 @@ from paddle.fluid import core, Variable
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.fluid.framework import static_only
 
 __all__ = ['data', 'InputSpec']
 
 
+@static_only
 def data(name, shape, dtype=None, lod_level=0):
     """
     **Data Layer**

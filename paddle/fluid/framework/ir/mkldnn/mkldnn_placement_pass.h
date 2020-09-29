@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_set>
+
 #include "paddle/fluid/framework/ir/placement_pass_base.h"
 
 namespace paddle {

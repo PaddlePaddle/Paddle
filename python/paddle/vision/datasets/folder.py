@@ -15,6 +15,7 @@
 import os
 import sys
 
+import paddle
 from paddle.io import Dataset
 from paddle.utils import try_import
 
@@ -142,6 +143,8 @@ class DatasetFolder(Dataset):
         self.class_to_idx = class_to_idx
         self.samples = samples
         self.targets = [s[1] for s in samples]
+
+        self.dtype = paddle.get_default_dtype()
 
     def _find_classes(self, dir):
         """

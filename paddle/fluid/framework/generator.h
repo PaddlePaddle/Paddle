@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <stdint.h>
-
 #include <atomic>
 #include <deque>
 #include <iostream>  // temp for debug

@@ -13,11 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/dataset_factory.h"
-#include <memory>
 #include <string>
 #include <unordered_map>
-
-#include "paddle/fluid/framework/data_set.h"
 
 namespace paddle {
 namespace framework {

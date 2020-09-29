@@ -21,6 +21,7 @@ import numpy as np
 import textwrap
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
@@ -77,7 +78,7 @@ class StaticCode1():
             x_v = x_v + 1
             return x_v
 
-        x_v = paddle.jit.dygraph_to_static.convert_operators.convert_ifelse(
+        x_v = paddle.jit.dy2static.convert_ifelse(
             fluid.layers.mean(x_v)[0] > 5, true_fn_0, false_fn_0, (x_v, ),
             (x_v, ), (x_v, ))
 
@@ -91,11 +92,10 @@ class StaticCode1():
         def false_fn_1(__return_0, __return_value_0):
             return __return_0, __return_value_0
 
-        __return_0, __return_value_0 = (
-            paddle.jit.dygraph_to_static.convert_operators.convert_ifelse(
-                label is not None, true_fn_1, false_fn_1,
-                (__return_0, __return_value_0, label, x_v),
-                (__return_0, __return_value_0), (__return_0, __return_value_0)))
+        __return_0, __return_value_0 = (paddle.jit.dy2static.convert_ifelse(
+            label is not None, true_fn_1, false_fn_1,
+            (__return_0, __return_value_0, label, x_v),
+            (__return_0, __return_value_0), (__return_0, __return_value_0)))
 
         def true_fn_2(__return_1, __return_value_0, x_v):
             __return_1 = paddle.fill_constant(
@@ -106,12 +106,10 @@ class StaticCode1():
         def false_fn_2(__return_1, __return_value_0):
             return __return_1, __return_value_0
 
-        __return_1, __return_value_0 = (
-            paddle.jit.dygraph_to_static.convert_operators.convert_ifelse(
-                paddle.jit.dygraph_to_static.convert_operators.
-                convert_logical_not(__return_0), true_fn_2, false_fn_2,
-                (__return_1, __return_value_0, x_v),
-                (__return_1, __return_value_0), (__return_1, __return_value_0)))
+        __return_1, __return_value_0 = (paddle.jit.dy2static.convert_ifelse(
+            paddle.jit.dy2static.convert_logical_not(__return_0), true_fn_2,
+            false_fn_2, (__return_1, __return_value_0, x_v),
+            (__return_1, __return_value_0), (__return_1, __return_value_0)))
         return __return_value_0
 
 
@@ -132,7 +130,7 @@ class StaticCode2():
             x_v = x_v + 1
             return x_v
 
-        x_v = paddle.jit.dygraph_to_static.convert_operators.convert_ifelse(
+        x_v = paddle.jit.dy2static.convert_ifelse(
             fluid.layers.mean(x_v)[0] > 5, true_fn_3, false_fn_3, (x_v, ),
             (x_v, ), (x_v, ))
 
@@ -146,11 +144,10 @@ class StaticCode2():
         def false_fn_4(__return_2, __return_value_1):
             return __return_2, __return_value_1
 
-        __return_2, __return_value_1 = (
-            paddle.jit.dygraph_to_static.convert_operators.convert_ifelse(
-                label is not None, true_fn_4, false_fn_4,
-                (__return_2, __return_value_1, label, x_v),
-                (__return_2, __return_value_1), (__return_2, __return_value_1)))
+        __return_2, __return_value_1 = (paddle.jit.dy2static.convert_ifelse(
+            label is not None, true_fn_4, false_fn_4,
+            (__return_2, __return_value_1, label, x_v),
+            (__return_2, __return_value_1), (__return_2, __return_value_1)))
 
         def true_fn_5(__return_3, __return_value_1, x_v):
             __return_3 = paddle.fill_constant(
@@ -161,12 +158,10 @@ class StaticCode2():
         def false_fn_5(__return_3, __return_value_1):
             return __return_3, __return_value_1
 
-        __return_3, __return_value_1 = (
-            paddle.jit.dygraph_to_static.convert_operators.convert_ifelse(
-                paddle.jit.dygraph_to_static.convert_operators.
-                convert_logical_not(__return_2), true_fn_5, false_fn_5,
-                (__return_3, __return_value_1, x_v),
-                (__return_3, __return_value_1), (__return_3, __return_value_1)))
+        __return_3, __return_value_1 = (paddle.jit.dy2static.convert_ifelse(
+            paddle.jit.dy2static.convert_logical_not(__return_2), true_fn_5,
+            false_fn_5, (__return_3, __return_value_1, x_v),
+            (__return_3, __return_value_1), (__return_3, __return_value_1)))
         return __return_value_1
 
 
@@ -273,6 +268,34 @@ class TestEnableDeclarative(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     static_output.numpy(), dygraph_output.numpy(), atol=1e-4))
+
+
+class Net(fluid.dygraph.layers.Layer):
+    def __init__(self):
+        super(Net, self).__init__()
+
+    def forward(self, x):
+        return x + 1
+
+
+class TestErrorWithInitFromStaticMode(unittest.TestCase):
+    def setUp(self):
+        self.program_translator = ProgramTranslator()
+        self.x = np.random.randn(10, 32).astype('float32')
+
+    def test_raise_error(self):
+        # disable imperative
+        paddle.enable_static()
+        net = Net()
+
+        self.program_translator.enable(True)
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            self.program_translator.get_output(net.forward, self.x)
+
+        with self.assertRaisesRegexp(RuntimeError,
+                                     "only available in dynamic mode"):
+            self.program_translator.get_program(net.forward, self.x)
 
 
 if __name__ == '__main__':
