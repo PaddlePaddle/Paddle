@@ -1592,31 +1592,34 @@ def huber_loss(input, label, delta):
 
 
     Args:
-        input (Tensor): Predicted data, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32.
-        label (Tensor): Ground truth label, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32.
+        input (Variable): Predicted data, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32.
+        label (Variable): Ground truth label, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32.
         delta (float): The threshold for Huber loss, which is used to control the balance between the linear error and square error. The data type should be float32.
 
     Returns:
-        A tensor with the same shape and data type as input.
+        Variable: The huber loss, a tensor with the same shape and data type as input.
 
 
     Examples:
 
     ..  code-block:: python
 
-        import paddle
+        import paddle.fluid as fluid
         import numpy as np
-        
+
         DATATYPE='float32'
         input_data = np.array([[1.],[2.],[3.],[4.]]).astype(DATATYPE)
         label_data = np.array([[3.],[3.],[4.],[4.]]).astype(DATATYPE)
-        
-        x = paddle.to_tensor(input_data)
-        y = paddle.to_tensor(label_data)
-        loss = paddle.nn.functional.huber_loss(x, y, delta=1.0)
-        
-        print(loss.numpy())  #[[1.5], [0.5], [0.5], [0. ]]
 
+        x = fluid.data(name='input', shape=[None, 1], dtype=DATATYPE)
+        y = fluid.data(name='label', shape=[None, 1], dtype=DATATYPE)
+        loss = fluid.layers.huber_loss(input=x, label=y, delta=1.0)
+
+        place = fluid.CPUPlace()
+        #place = fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        HuberLoss, = exe.run(feed={'input':input_data ,'label':label_data}, fetch_list=[loss.name])
+        print(HuberLoss)  #[[1.5], [0.5], [0.5], [0. ]], dtype=float32
     """
     helper = LayerHelper('huber_loss', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -1729,16 +1732,12 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     .. code-block:: python
 
         import paddle
-        import numpy as np
         
         DATATYPE = "float32"
-        anchor_data = np.random.rand(18, 6).astype(DATATYPE)
-        positive_data = np.random.rand(18, 6).astype(DATATYPE)
-        labels_data = np.random.rand(18).astype(DATATYPE)
-        
-        anchor = paddle.to_tensor(anchor_data)
-        positive = paddle.to_tensor(positive_data)
-        labels = paddle.to_tensor(labels_data)
+
+        anchor = paddle.rand(shape=(18, 6), dtype=DATATYPE)
+        positive = paddle.rand(shape=(18, 6), dtype=DATATYPE)
+        labels = paddle.rand(shape=(18,), dtype=DATATYPE)
         
         npair_loss = paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg = 0.002)
         print(npair_loss.numpy())
