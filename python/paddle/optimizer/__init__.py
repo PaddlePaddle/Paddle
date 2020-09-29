@@ -26,8 +26,7 @@ __all__ = [
 
 from ..fluid.optimizer import Momentum, Adagrad, Dpsgd, DecayedAdagrad, Ftrl,\
             AdagradOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, \
-            FtrlOptimizer, AdadeltaOptimizer, ModelAverage, \
-            ExponentialMovingAverage, LookaheadOptimizer
+            FtrlOptimizer, AdadeltaOptimizer, ExponentialMovingAverage
 
 from .optimizer import Optimizer
 from .adam import Adam
