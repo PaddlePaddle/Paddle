@@ -178,8 +178,6 @@ void set_constant(const platform::DeviceContext& context,
   } else if (is_gpu_place(tensor->place())) {
     tensor->place().apply_visitor(func);
 #endif
-  } else {
-    PADDLE_THROW("error place!");
   }
 }
 
