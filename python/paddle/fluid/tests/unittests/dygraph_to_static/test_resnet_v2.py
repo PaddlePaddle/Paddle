@@ -32,13 +32,13 @@ l2_decay = 1e-4
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
 epoch_num = 1
-place = paddle.CUDAPlace(0) if paddle.fluid.is_compiled_with_cuda() \
+place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
     else paddle.CPUPlace()
 MODEL_SAVE_PATH = "./resnet_v2.inference.model"
 DY_STATE_DICT_SAVE_PATH = "./resnet_v2.dygraph"
 program_translator = paddle.jit.ProgramTranslator()
 
-if paddle.fluid.is_compiled_with_cuda():
+if paddle.is_compiled_with_cuda():
     paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
@@ -46,7 +46,7 @@ def optimizer_setting(parameter_list=None):
     optimizer = paddle.optimizer.Momentum(
         learning_rate=base_lr,
         momentum=momentum_rate,
-        weight_decay=paddle.fluid.regularizer.L2Decay(l2_decay),
+        weight_decay=paddle.regularizer.L2Decay(l2_decay),
         parameters=parameter_list)
 
     return optimizer
@@ -149,7 +149,7 @@ class ResNet(paddle.nn.Layer):
 
         self.conv = ConvBNLayer(
             num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu')
-        self.pool2d_max = paddle.fluid.dygraph.nn.Pool2D(
+        self.pool2d_max = paddle.nn.Pool2D(
             pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
         self.bottleneck_block_list = []
@@ -167,7 +167,7 @@ class ResNet(paddle.nn.Layer):
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
-        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
+        self.pool2d_avg = paddle.nn.Pool2D(
             pool_size=7, pool_type='avg', global_pooling=True)
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
@@ -180,14 +180,14 @@ class ResNet(paddle.nn.Layer):
             weight_attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(-stdv, stdv)))
 
-    @paddle.fluid.dygraph.declarative
+    @paddle.jit.to_static
     def forward(self, inputs):
         y = self.conv(inputs)
         y = self.pool2d_max(y)
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = paddle.fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
+        y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         pred = self.out(y)
         pred = paddle.nn.functional.softmax(pred)
 
@@ -234,7 +234,7 @@ def train(to_static):
             img, label = data
 
             pred = resnet(img)
-            loss = paddle.fluid.layers.cross_entropy(input=pred, label=label)
+            loss = paddle.nn.functional.cross_entropy(input=pred, label=label)
             avg_loss = paddle.mean(x=loss)
             acc_top1 = paddle.metric.accuracy(input=pred, label=label, k=1)
             acc_top5 = paddle.metric.accuracy(input=pred, label=label, k=5)
@@ -255,7 +255,7 @@ def train(to_static):
                         total_acc1.numpy() / total_sample, total_acc5.numpy() / total_sample, end_time-start_time))
             if batch_id == 10:
                 if to_static:
-                    paddle.fluid.dygraph.jit.save(resnet, MODEL_SAVE_PATH)
+                    paddle.jit.save(resnet, MODEL_SAVE_PATH)
                 else:
                     paddle.fluid.dygraph.save_dygraph(resnet.state_dict(),
                                                       DY_STATE_DICT_SAVE_PATH)
@@ -302,7 +302,7 @@ def predict_static(data):
 
 def predict_dygraph_jit(data):
     paddle.disable_static(place)
-    resnet = paddle.fluid.dygraph.jit.load(MODEL_SAVE_PATH)
+    resnet = paddle.jit.load(MODEL_SAVE_PATH)
     resnet.eval()
 
     pred_res = resnet(data)
