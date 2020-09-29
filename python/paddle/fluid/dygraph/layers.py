@@ -73,7 +73,7 @@ class Layer(core.Layer):
         dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
-                Default: ``core.VarDesc.VarType.FP32``
+                Default: "float32"
     
     Returns:
         None
@@ -332,7 +332,7 @@ class Layer(core.Layer):
     def create_parameter(self,
                          shape,
                          attr=None,
-                         dtype="float32",
+                         dtype=None,
                          is_bias=False,
                          default_initializer=None):
         """Create parameters for this layer.
@@ -392,10 +392,11 @@ class Layer(core.Layer):
         return self._helper.create_parameter(temp_attr, shape, dtype, is_bias,
                                              default_initializer)
 
+    # TODO: Add more parameter list when we need them
     def create_variable(self,
                         name=None,
                         persistable=None,
-                        dtype="float32",
+                        dtype=None,
                         type=core.VarDesc.VarType.LOD_TENSOR):
         """Create Variable for this layer.
 
@@ -405,7 +406,7 @@ class Layer(core.Layer):
             dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
-                If set None, it will be ``core.VarDesc.VarType.FP32``. Default: None
+                If set None, it will be "float32". Default: None
             type(core.VarDesc.VarType, optional): type of the variable. No need to set this parameter. Default: ``core.VarDesc.VarType.LOD_TENSOR``
 
         Returns:
