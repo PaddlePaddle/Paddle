@@ -7084,7 +7084,7 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Tensor, which shape [1], data type is the same as `input` .
+        Tensor, which shape is [1], data type is the same as `input` .
 
     Example:
         .. code-block:: python
