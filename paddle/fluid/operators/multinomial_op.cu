@@ -35,8 +35,10 @@ __global__ void NormalizeProbability(T* norm_probs, const T* in_data,
 }
 
 template <typename T>
-__global__ void Cumsum(T* norm_probs_data, int64_t num_distributions,
-                       int64_t num_categories, T* cumulative_probs) {
+__global__ void GetCumulativeProbs(T* norm_probs_data,
+                                   int64_t num_distributions,
+                                   int64_t num_categories,
+                                   T* cumulative_probs) {
   for (int id = blockIdx.x; id < num_distributions; id += gridDim.x) {
     thrust::inclusive_scan(thrust::device,
                            norm_probs_data + id * num_categories,
@@ -60,33 +62,27 @@ struct RandomGeneratorCudaFunctor {
 };
 
 template <typename T>
-__device__ int binarySearchFunctor(T* cumdist, T* dist, int size, T val) {
+__device__ int binarySearchFunctor(T* cumulative_probs, T* norm_probs_data,
+                                   int num_categories, T rng_number) {
   int left = 0;
-  int right = size;
-  // cumdist[size - 1] = 0 => all zero prob dist
-  // CUDA_KERNEL_ASSERT(cumdist[size - 1] > static_cast<T>(0));
+  int right = num_categories;
 
   while (right - left > 0) {
     int mid = left + (right - left) / 2;
 
-    T midVal = cumdist[mid];
-    if (midVal < val) {
+    T temp_prob = cumulative_probs[mid];
+    if (temp_prob < rng_number) {
       left = mid + 1;
     } else {
       right = mid;
     }
   }
 
-  if (left == size) {
-    // No probability mass or precision problems; just return the
-    // first non-zero element by setting left to size-1 here,
-    // the code below will move it to the last non-zero probability
-    // this actually can happen when the random number is 1
-    // (github pytorch issue #4858).
-    left = size - 1;
+  if (left == num_categories) {
+    left = num_categories - 1;
   }
 
-  while (left >= 1 && dist[left] == 0) left--;
+  while (left >= 1 && norm_probs_data[left] == 0) left--;
 
   return left;
 }
@@ -96,36 +92,25 @@ __global__ void sampleMultinomialWithReplacement(
     T* rng_data, const int64_t num_samples, int64_t* out_data,
     const int64_t num_distributions, const int64_t num_categories,
     T* cumulative_probs, T* norm_probs_data) {
-  // At the moment, each warp computes one sample value in the binary
-  // search due to divergence. It seems possible to compute multiple
-  // values and limit divergence though later on.
-
-  // global index formula for 2D grid of 1D blocks
-  // int idx = blockIdx.y * gridDim.x * blockDim.x + blockIdx.x * blockDim.x +
-  // threadIdx.x;
-
-  // int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  // use binary search to get the selected category sample id.
+  // let cumulative_probs[id-1] < rng_data < cumulative_probs[id].
 
   int idx = threadIdx.x + blockIdx.x * blockDim.x +
             blockIdx.y * gridDim.x * blockDim.x;
 
-  for (int curDist = blockIdx.y; curDist < num_distributions;
-       curDist += gridDim.y) {
+  // for every distribution
+  for (int dist = blockIdx.y; dist < num_distributions; dist += gridDim.y) {
+    // for every sample
     for (int sample = blockIdx.x * blockDim.x + threadIdx.x;
          sample < num_samples; sample += blockDim.x * gridDim.x) {
-      // we are losing 3 out of 4 generated numbers but it's ok
-      // this kernel is not very efficient anyway
+      T rng_number = rng_data[sample + dist * num_samples];
 
-      // T uniform_random = dist(rng);
-      T uniform_random = rng_data[sample + curDist * num_samples];
+      // Find the bucket that a uniform random number lies in
+      int selected_category = binarySearchFunctor<T>(
+          cumulative_probs + dist * num_categories,
+          norm_probs_data + dist * num_categories, num_categories, rng_number);
 
-      // Find the bucket that a uniform sample lies in
-      int choice =
-          binarySearchFunctor<T>(cumulative_probs + curDist * num_categories,
-                                 norm_probs_data + curDist * num_categories,
-                                 num_categories, uniform_random);
-
-      out_data[sample + curDist * num_samples] = choice;
+      out_data[sample + dist * num_samples] = selected_category;
     }
   }
 }
@@ -149,9 +134,14 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
     const int64_t num_categories = in_dims[in_rank - 1];
     const int64_t num_distributions = in_rank > 1 ? in_dims[in_rank - 2] : 1;
 
+    // If replacement is False, it's not a replaceable sample. Every category
+    // can
+    // be used only once. So after every sample, probability of the distribution
+    // will change. The implementation can't be parallelizable. Thus, call CPU
+    // implementation ``MultinomialFunctor`` to sample the distribution.
     if (!replacement) {
-      int in_data_numel = x->numel();
-      int out_data_numel = out->numel();
+      int64_t in_data_numel = x->numel();
+      int64_t out_data_numel = out->numel();
 
       T* cpu_in_data = new T[in_data_numel];
       int64_t* cpu_out_data = new int64_t[out_data_numel];
@@ -169,71 +159,78 @@ class MultinomialOpKernel<platform::CUDADeviceContext, T>
       return;
     }
 
-    framework::Tensor sum_rows_t;
+    // Sum of input may not be 1. To get probability in range [0, 1], calculate
+    // sum of each row of input, and then use the sum to normalize the input.
+    // sum_row_data: sum of each row
+    framework::Tensor sum_rows_tensor;
     auto* sum_rows_data =
-        sum_rows_t.mutable_data<T>({num_distributions}, ctx.GetPlace());
+        sum_rows_tensor.mutable_data<T>({num_distributions}, ctx.GetPlace());
 
     auto& place = *ctx.template device_context<platform::CUDADeviceContext>()
                        .eigen_device();
 
     if (num_distributions == 1) {
       auto eigen_input = framework::EigenVector<T>::Flatten(*x);
-      auto eigen_sum_rows = framework::EigenVector<T>::From(sum_rows_t);
+      auto eigen_sum_rows = framework::EigenVector<T>::Flatten(sum_rows_tensor);
       eigen_sum_rows.device(place) =
           eigen_input.sum(Eigen::DSizes<int, 1>(1))
               .eval()
-              .reshape(Eigen::DSizes<int, 1>(sum_rows_t.dims()[0]));
+              .reshape(Eigen::DSizes<int, 1>(sum_rows_tensor.dims()[0]));
     } else {
       auto eigen_input = framework::EigenMatrix<T>::From(*x);
-      auto eigen_sum_rows = framework::EigenVector<T>::From(sum_rows_t);
+      auto eigen_sum_rows = framework::EigenVector<T>::Flatten(sum_rows_tensor);
       eigen_sum_rows.device(place) = eigen_input.sum(Eigen::DSizes<int, 1>(1));
     }
 
-    framework::Tensor norm_probs_t;
-    auto* norm_probs_data = norm_probs_t.mutable_data<T>(
+    // Normalize row of each distribution to get the probability in range [0,
+    // 1].
+    // norm_probs_data: probability of the distribution
+    framework::Tensor norm_probs_tensor;
+    auto* norm_probs_data = norm_probs_tensor.mutable_data<T>(
         {num_distributions, num_categories}, ctx.GetPlace());
 
-    dim3 block(num_categories < 512 ? num_categories : 512);
-    dim3 grid((num_categories - 1) / block.x + 1, num_distributions);
+    // number of threads in a block is min(num_categories, 512)
+    dim3 block_norm(num_categories < 512 ? num_categories : 512);
+    dim3 grid_norm((num_categories - 1) / block_norm.x + 1, num_distributions);
     NormalizeProbability<
-        T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
+        T><<<grid_norm, block_norm, 0, ctx.cuda_device_context().stream()>>>(
         norm_probs_data, in_data, sum_rows_data);
 
-    framework::Tensor cumulative_probs_t;
-    auto* cumulative_probs = cumulative_probs_t.mutable_data<T>(
+    // Get cumulative probability of each distribution. It's the same function
+    // of
+    // ``cumsum`` op.
+    framework::Tensor cumulative_probs_tensor;
+    auto* cumulative_probs = cumulative_probs_tensor.mutable_data<T>(
         {num_distributions, num_categories}, ctx.GetPlace());
-    dim3 block1(1);
-    dim3 grid1(num_distributions);
-    Cumsum<T><<<grid1, block1, 0, ctx.cuda_device_context().stream()>>>(
+    dim3 block_cumsum(1);
+    dim3 grid_cumsum(num_distributions);
+    GetCumulativeProbs<T><<<grid_cumsum, block_cumsum, 0,
+                            ctx.cuda_device_context().stream()>>>(
         norm_probs_data, num_distributions, num_categories, cumulative_probs);
 
-    VLOG(3) << "Print cumsum " << cumulative_probs << "\n";
+    // Generate random number for each sample.
+    std::random_device rd;
+    auto seed = rd();
 
-    if (replacement) {
-      dim3 block(128);
-      // int grid_y = 1;
-      dim3 grid((num_samples - 1) / block.x + 1, num_distributions);
+    framework::Tensor rng_data_tensor;
+    auto* rng_data = rng_data_tensor.mutable_data<T>(
+        {num_distributions, num_samples}, ctx.GetPlace());
 
-      std::random_device rd;
-      auto seed = rd();
+    thrust::counting_iterator<unsigned int> index_sequence_begin(0);
+    platform::Transform<platform::CUDADeviceContext> trans;
+    auto* context =
+        static_cast<const platform::CUDADeviceContext*>(&ctx.device_context());
+    trans(*context, index_sequence_begin,
+          index_sequence_begin + num_distributions * num_samples, rng_data,
+          RandomGeneratorCudaFunctor<T>(seed));
 
-      framework::Tensor rng_data_t;
-      auto* rng_data = rng_data_t.mutable_data<T>(
-          {num_distributions, num_samples}, ctx.GetPlace());
-
-      thrust::counting_iterator<unsigned int> index_sequence_begin(0);
-      platform::Transform<platform::CUDADeviceContext> trans;
-      auto* context = static_cast<const platform::CUDADeviceContext*>(
-          &ctx.device_context());
-      trans(*context, index_sequence_begin,
-            index_sequence_begin + num_distributions * num_samples, rng_data,
-            RandomGeneratorCudaFunctor<T>(seed));
-
-      sampleMultinomialWithReplacement<
-          T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-          rng_data, num_samples, out_data, num_distributions, num_categories,
-          cumulative_probs, norm_probs_data);
-    }
+    // Sample the multinomial distributions.
+    dim3 block_sample(128);
+    dim3 grid_sample((num_samples - 1) / block_sample.x + 1, num_distributions);
+    sampleMultinomialWithReplacement<T><<<grid_sample, block_sample, 0,
+                                          ctx.cuda_device_context().stream()>>>(
+        rng_data, num_samples, out_data, num_distributions, num_categories,
+        cumulative_probs, norm_probs_data);
   }
 };
 
