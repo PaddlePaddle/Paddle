@@ -106,6 +106,19 @@ class Layer(core.Layer):
 
         Returns:
             None
+
+        Example::
+            .. code-block:: python
+
+                import paddle
+                import numpy as np
+
+                x = paddle.randn([10, 1], 'float32')
+
+                linear = paddle.nn.Linear(1,1)
+                linear.train()  # the default mode is train
+                out = linear(x)
+
         """
         # global setting
         framework._dygraph_tracer().train_mode()
@@ -121,6 +134,29 @@ class Layer(core.Layer):
 
         Returns:
             None
+
+        Example::
+            .. code-block:: python
+
+                import paddle
+
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        self._dropout = paddle.nn.Dropout(p=0.5)
+
+                    def forward(self, input):
+                        temp = self._linear(input)
+                        temp = self._dropout(temp)
+                        return temp
+
+                x = paddle.randn([10, 1], 'float32')
+                mylayer = MyLayer()
+                mylayer.eval()  # set mylayer._dropout to eval mode
+                out = mylayer(x)
+                print(out)
+
         """
         # global setting
         framework._dygraph_tracer().eval_mode()
@@ -171,6 +207,23 @@ class Layer(core.Layer):
 
         Returns:
             str: full name of this layer.
+
+        Example::
+            .. code-block:: python
+
+                import paddle
+
+                class LinearNet(paddle.nn.Layer):
+                    def __init__(self):
+                        super(LinearNet, self).__init__(name_scope = "demo_linear_net")
+                        self._linear = paddle.nn.Linear(1, 1)
+
+                    def forward(self, x):
+                        return self._linear(x)
+
+                linear_net = LinearNet()
+                print(linear_net.full_name())   # demo_linear_net_0
+
         """
         return self._full_name
 
@@ -297,6 +350,41 @@ class Layer(core.Layer):
 
         Returns:
             :ref:`api_guide_Variable_en` : created parameter.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MyLinear(paddle.nn.Layer):
+                    def __init__(self,
+                                in_features,
+                                out_features):
+                        super(MyLinear, self).__init__()
+                        self.weight = self.create_parameter(
+                            shape=[in_features, out_features],
+                            is_bias=False)
+                        self.bias = self.create_parameter(
+                            shape=[out_features],
+                            is_bias=True)
+
+                    def forward(self, input):
+                        inputs = {'X': [input], 'Y': [self.weight]}
+                        attrs = {
+                            'transpose_X': False,
+                            'transpose_Y': False,
+                            'alpha': 1,
+                        }
+                        tmp = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
+                        paddle.fluid.default_main_program().current_block().append_op(
+                            type='matmul', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
+
+                        return tmp
+                x = paddle.randn([10, 1], 'float32')
+                mylinear = MyLinear(1,1)
+                out = mylinear(x)
+                print(out)
+
         """
         temp_attr = copy.deepcopy(attr)
         if isinstance(temp_attr, six.string_types) and temp_attr == "":
@@ -322,6 +410,41 @@ class Layer(core.Layer):
 
         Returns:
             :ref:`api_guide_Variable_en` : created Variable.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MyLinear(paddle.nn.Layer):
+                    def __init__(self,
+                                in_features,
+                                out_features):
+                        super(MyLinear, self).__init__()
+                        self.weight = self.create_parameter(
+                            shape=[in_features, out_features],
+                            is_bias=False)
+                        self.bias = self.create_parameter(
+                            shape=[out_features],
+                            is_bias=True)
+
+                    def forward(self, input):
+                        inputs = {'X': [input], 'Y': [self.weight]}
+                        attrs = {
+                            'transpose_X': False,
+                            'transpose_Y': False,
+                            'alpha': 1,
+                        }
+                        tmp = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
+                        paddle.fluid.default_main_program().current_block().append_op(
+                            type='matmul', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
+
+                        return tmp
+                x = paddle.randn([10, 1], 'float32')
+                mylinear = MyLinear(1,1)
+                out = mylinear(x)
+                print(out)
+
         """
         if name is not None:
             var_name = ".".join([self._full_name, name])
@@ -340,6 +463,15 @@ class Layer(core.Layer):
 
         Returns:
             list of :ref:`api_guide_Variable_en` : a list of Parameters.
+
+        Examples:
+            .. code-block:: python
+
+            import paddle
+
+            linear = paddle.nn.Linear(1,1)
+            print(linear.parameters())  # print linear_0.w_0 and linear_0.b_0
+
         """
         ret = [
             param
@@ -404,6 +536,27 @@ class Layer(core.Layer):
 
         Returns:
             list of Layer : a list of sub layers.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self._linear = paddle.nn.Linear(1, 1)
+                        self._dropout = paddle.nn.Dropout(p=0.5)
+
+                    def forward(self, input):
+                        temp = self._linear(input)
+                        temp = self._dropout(temp)
+                        return temp
+
+                x = paddle.randn([10, 1], 'float32')
+                mylayer = MyLayer()
+                print(mylayer.sublayers())  # [<paddle.nn.layer.common.Linear object at 0x7f44b58977d0>, <paddle.nn.layer.common.Dropout object at 0x7f44b58978f0>]
+
         """
         ret = [
             layer
@@ -571,6 +724,20 @@ class Layer(core.Layer):
 
         Returns:
             list of :ref:`api_guide_Variable_en` : a list of buffers.
+
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle
+
+                linear = paddle.nn.Linear(10, 3)
+                value = np.array([0]).astype("float32")
+                buffer = paddle.to_tensor(value)
+                linear.register_buffer("buf_name", buffer, persistable=True)
+
+                print(linear.buffers())     # == print([linear.buf_name])
+
         """
         ret = [
             buffer
@@ -710,6 +877,32 @@ class Layer(core.Layer):
             sublayer(Layer): an instance of Layer.
         Returns:
             Layer: the sublayer passed in.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class MySequential(paddle.nn.Layer):
+                    def __init__(self, *layers):
+                        super(MySequential, self).__init__()
+                        if len(layers) > 0 and isinstance(layers[0], tuple):
+                            for name, layer in layers:
+                                self.add_sublayer(name, layer)
+                        else:
+                            for idx, layer in enumerate(layers):
+                                self.add_sublayer(str(idx), layer)
+
+                    def forward(self, input):
+                        for layer in self._sub_layers.values():
+                            input = layer(input)
+                        return input
+
+                fc1 = paddle.nn.Linear(10, 3)
+                fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                model = MySequential(fc1, fc2)
+                for prefix, layer in model.named_sublayers():
+                    print(prefix, layer)
         """
         assert isinstance(sublayer, core.Layer)
 
@@ -726,6 +919,17 @@ class Layer(core.Layer):
             parameter(Parameter): an instance of Parameter.
         Returns:
             Parameter: the parameter passed in.
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                linear = paddle.nn.Linear(1, 1)
+                w_tmp = linear.create_parameter([1,1])
+                linear.add_parameter("w_tmp", w_tmp)
+                for name, param in linear.named_parameters():
+                    print(name, param)
+
         """
         if '_parameters' not in self.__dict__:
             raise RuntimeError(
