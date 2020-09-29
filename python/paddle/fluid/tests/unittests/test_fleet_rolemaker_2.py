@@ -36,11 +36,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
         from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
-        try:
-            import netifaces
-        except:
-            print("warning: no netifaces, skip test_pslib_2")
-            return
+
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
         os.environ["TRAINING_ROLE"] = "TRAINER"
@@ -87,7 +83,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role2._all_gather(1)
         role2._all_gather(1)
         role2._barrier_server()
-        role2.all_gather(1)
+        role2._all_gather(1)
         role3 = GeneralRoleMaker(path="./test_gloo_3")
         role3._worker_gather(1)
         role3._worker_gather(1)
@@ -163,10 +159,9 @@ class TestCloudRoleMaker2(unittest.TestCase):
             data = "1 1 1 1\n"
             f.write(data)
 
-        dataset = paddle.distributed.fleet.DatasetFactory().create_dataset(
-            "InMemoryDataset")
+        dataset = paddle.distributed.InMemoryDataset()
         dataset.set_filelist(["test_fleet_gloo_role_maker_1.txt"])
-        dataset.set_use_var([show, label])
+        dataset._set_use_var([show, label])
         dataset.load_into_memory()
         dataset.get_memory_data_size(fleet)
         dataset.get_shuffle_data_size(fleet)

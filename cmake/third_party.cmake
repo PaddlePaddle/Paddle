@@ -39,6 +39,7 @@ set(third_party_deps)
 #            REPOSITORY ${TARGET_REPOSITORY}
 #            TAG        ${TARGET_TAG}
 #            DIR        ${TARGET_SOURCE_DIR})
+
 FUNCTION(cache_third_party TARGET)
     SET(options "")
     SET(oneValueArgs URL REPOSITORY TAG DIR)
@@ -243,9 +244,10 @@ IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
 ENDIF()
 
 if(WITH_GPU)
-    include(external/cub)       # download cub
-    list(APPEND third_party_deps extern_cub)
-  
+    if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+        include(external/cub)       # download cub
+        list(APPEND third_party_deps extern_cub)
+    endif()
     set(CUDAERROR_URL  "http://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz" CACHE STRING "" FORCE)
     file_download_and_uncompress(${CUDAERROR_URL} "cudaerror") # download file cudaErrorMessage
 endif(WITH_GPU)
@@ -268,6 +270,10 @@ if(WITH_PSLIB)
     endif()
 endif(WITH_PSLIB)
 
+if(NOT WIN32 AND NOT APPLE)
+    include(external/gloo)
+    list(APPEND third_party_deps extern_gloo)
+endif()
 
 if(WITH_BOX_PS)
     include(external/box_ps)
@@ -275,10 +281,6 @@ if(WITH_BOX_PS)
 endif(WITH_BOX_PS)
 
 if(WITH_DISTRIBUTE)
-    if(WITH_GLOO)
-        include(external/gloo)
-        list(APPEND third_party_deps extern_gloo)
-    endif()
 
     if(WITH_GRPC)
         list(APPEND third_party_deps extern_grpc)

@@ -39,6 +39,11 @@ try:
         third_lib_path = current_path + os.sep + '..' + os.sep + 'libs'
         os.environ['path'] = third_lib_path + ';' + os.environ['path']
         sys.path.insert(0, third_lib_path)
+        # Note: from python3.8, PATH will not take effect
+        # https://github.com/python/cpython/pull/12302
+        # Use add_dll_directory to specify dll resolution path
+        if sys.version_info[:2] >= (3, 8):
+            os.add_dll_directory(third_lib_path)
 
 except ImportError as e:
     from .. import compat as cpt
@@ -258,6 +263,7 @@ if avx_supported():
         from .core_avx import _save_dygraph_dict
         from .core_avx import _load_dygraph_dict
         from .core_avx import _create_loaded_parameter
+        from .core_avx import _cuda_synchronize
         if sys.platform != 'win32':
             from .core_avx import _set_process_pids
             from .core_avx import _erase_process_pids
@@ -302,6 +308,7 @@ if load_noavx:
         from .core_noavx import _save_dygraph_dict
         from .core_noavx import _load_dygraph_dict
         from .core_noavx import _create_loaded_parameter
+        from .core_noavx import _cuda_synchronize
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
             from .core_noavx import _erase_process_pids

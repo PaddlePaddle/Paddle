@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
+
 #include <algorithm>
 #include <cstdlib>
 #include <map>
@@ -22,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
@@ -60,6 +62,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
+#include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
@@ -1660,6 +1663,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
+  m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
+    platform::DeviceContextPool::Instance().Get(place)->Wait();
+  });
 
   m.def("get_float_stats", []() {
     std::vector<paddle::platform::ExportedStatValue<float>> float_stats;
@@ -1974,27 +1980,34 @@ All parameter, weight, gradient are variables in Paddle.
     ExecutionStrategy allows the user to more preciously control how to run
     the program in ParallelExecutor by setting the property.
 
+    Returns:
+        ExecutionStrategy: An ExecutionStrategy object.
+
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-          y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-          y_predict = fluid.layers.fc(input=x, size=1, act=None)
+          import paddle
+          import paddle.static as static
+          import paddle.nn.functional as F
 
-          cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-          avg_loss = fluid.layers.mean(cost)
+          paddle.enable_static()
 
-          sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+          x = static.data(name='x', shape=[None, 13], dtype='float32')
+          y = static.data(name='y', shape=[None, 1], dtype='float32')
+          y_predict = static.nn.fc(input=x, size=1, act=None)
+
+          cost = F.square_error_cost(input=y_predict, label=y)
+          avg_loss = paddle.mean(cost)
+
+          sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
           sgd_optimizer.minimize(avg_loss)
 
-          exec_strategy = fluid.ExecutionStrategy()
+          exec_strategy = static.ExecutionStrategy()
           exec_strategy.num_threads = 4
 
-          train_exe = fluid.ParallelExecutor(use_cuda=False,
-                                             loss_name=avg_loss.name,
-                                             exec_strategy=exec_strategy)
-
+          train_exe = static.ParallelExecutor(use_cuda=False,
+                                              loss_name=avg_loss.name,
+                                              exec_strategy=exec_strategy)
         )DOC");
 
   exec_strategy.def(py::init())
@@ -2004,7 +2017,8 @@ All parameter, weight, gradient are variables in Paddle.
           [](ExecutionStrategy &self, size_t num_threads) {
             self.num_threads_ = num_threads;
           },
-          R"DOC(The type is INT, num_threads represents the size of thread pool that
+          R"DOC(
+            The type is INT, num_threads represents the size of thread pool that
             used to run the operators of the current program in ParallelExecutor.
             If :math:`num\_threads=1`, all the operators will execute one by one,
             but the order maybe difference between iterations.
@@ -2012,7 +2026,19 @@ All parameter, weight, gradient are variables in Paddle.
             device type and device count, for GPU, :math:`num\_threads=device\_count*4`, for CPU,
             :math:`num\_threads=CPU\_NUM*4`, the explanation of:math:`CPU\_NUM` is in ParallelExecutor.
             if it is not set, ParallelExecutor will get the cpu count by calling
-            `multiprocessing.cpu_count()`. Default 0.)DOC")
+            `multiprocessing.cpu_count()`. Default 0.
+
+            Examples:
+                .. code-block:: python
+
+                    import paddle
+                    import paddle.static as static
+
+                    paddle.enable_static()
+
+                    exec_strategy = static.ExecutionStrategy()
+                    exec_strategy.num_threads = 4
+            )DOC")
       .def_property(
           "use_cuda",
           [](const ExecutionStrategy &self) { return self.use_cuda_; },
@@ -2044,13 +2070,24 @@ All parameter, weight, gradient are variables in Paddle.
                 many iterations to clean up the temp variables which
                 is generated during execution. It may make the execution faster,
                 because the temp variable's shape maybe the same between two iterations.
-                Default 1.
+                Default 100.
 
-                NOTES:
-                    1. If you fetch data when calling the 'run', the ParallelExecutor
-                       will clean up the temp variables at the end of the current iteration.
-                    2. In some NLP model, it may cause the GPU memory is insufficient,
-                       in this case, you should reduce `num_iteration_per_drop_scope`.
+                .. note::
+                    1. If you fetch data when calling the 'run', the ParallelExecutor 
+                    will clean up the temp variables at the end of the current iteration. 
+                    2. In some NLP model, it may cause the GPU memory is insufficient, 
+                    in this case, you should reduce `num_iteration_per_drop_scope`.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        exec_strategy = static.ExecutionStrategy()
+                        exec_strategy.num_iteration_per_drop_scope = 10
               )DOC")
       .def_property(
           "num_iteration_per_run",
@@ -2061,7 +2098,18 @@ All parameter, weight, gradient are variables in Paddle.
             self.num_iteration_per_run_ = num_iteration_per_run;
           },
           R"DOC(This config that how many iteration the executor will run when
-                user call exe.run() in python
+                user call exe.run() in python。Default: 1.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        exec_strategy = static.ExecutionStrategy()
+                        exec_strategy.num_iteration_per_run = 10
               )DOC")
       .def_property(
           "use_thread_barrier",
@@ -2091,29 +2139,34 @@ All parameter, weight, gradient are variables in Paddle.
     BuildStrategy allows the user to more preciously control how to
     build the SSA Graph in ParallelExecutor by setting the property.
 
+    Returns:
+        BuildStrategy: An BuildStrategy object.
+
     Examples:
         .. code-block:: python
 
             import os
-            import numpy as np
-            import paddle.fluid as fluid
+            import paddle
+            import paddle.static as static
 
-            os.environ["CPU_NUM"] = '2'
-            places = fluid.cpu_places()
+            paddle.enable_static()
 
-            data = fluid.layers.data(name="x", shape=[1], dtype="float32")
-            hidden = fluid.layers.fc(input=data, size=10)
-            loss = fluid.layers.mean(hidden)
-            fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+            os.environ['CPU_NUM'] = str(2)
+            places = static.cpu_places()
 
-            build_strategy = fluid.BuildStrategy()
+            data = static.data(name="x", shape=[None, 1], dtype="float32")
+            hidden = static.nn.fc(input=data, size=10)
+            loss = paddle.mean(hidden)
+            paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+            build_strategy = static.BuildStrategy()
             build_strategy.enable_inplace = True
             build_strategy.memory_optimize = True
-            build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
-            program = fluid.compiler.CompiledProgram(fluid.default_main_program())
+            build_strategy.reduce_strategy = static.BuildStrategy.ReduceStrategy.Reduce
+            program = static.CompiledProgram(static.default_main_program())
             program = program.with_data_parallel(loss_name=loss.name,
-                                                 build_strategy=build_strategy,
-                                                 places=places)
+                                                  build_strategy=build_strategy,
+                                                  places=places)
 )DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
@@ -2148,9 +2201,13 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
-                        build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.reduce_strategy = static.BuildStrategy.ReduceStrategy.Reduce
                   )DOC")
       .def_property(
           "gradient_scale_strategy",
@@ -2172,50 +2229,51 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        import paddle.fluid.compiler as compiler
                         import numpy
                         import os
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
 
                         use_cuda = True
-                        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-                        exe = fluid.Executor(place)
+                        place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                        exe = static.Executor(place)
 
                         # NOTE: If you use CPU to run the program, you need
-                        # to specify the CPU_NUM, otherwise, fluid will use
+                        # to specify the CPU_NUM, otherwise, paddle will use
                         # all the number of the logic core as the CPU_NUM,
                         # in that case, the batch size of the input should be
                         # greater than CPU_NUM, if not, the process will be
                         # failed by an exception.
                         if not use_cuda:
                             os.environ['CPU_NUM'] = str(2)
-                            places = fluid.cpu_places()
+                            places = static.cpu_places()
                         else:
-                            places = places = fluid.cuda_places()
+                            places = static.cuda_places()
 
-                        data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-                        hidden = fluid.layers.fc(input=data, size=10)
-                        loss = fluid.layers.mean(hidden)
-                        fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+                        data = static.data(name='X', shape=[None, 1], dtype='float32')
+                        hidden = static.nn.fc(input=data, size=10)
+                        loss = paddle.mean(hidden)
+                        paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-                        fluid.default_startup_program().random_seed=1
-                        exe.run(fluid.default_startup_program())
+                        exe.run(static.default_startup_program())
 
-                        build_strategy = fluid.BuildStrategy()
+                        build_strategy = static.BuildStrategy()
                         build_strategy.gradient_scale_strategy = \
-                                 fluid.BuildStrategy.GradientScaleStrategy.Customized
-                        compiled_prog = compiler.CompiledProgram(
-                                 fluid.default_main_program()).with_data_parallel(
+                                  static.BuildStrategy.GradientScaleStrategy.Customized
+                        compiled_prog = static.CompiledProgram(
+                                  static.default_main_program()).with_data_parallel(
                                           loss_name=loss.name, build_strategy=build_strategy,
-                                          places = places)
+                                          places=places)
 
                         dev_count =  len(places)
                         x = numpy.random.random(size=(10, 1)).astype('float32')
                         loss_grad = numpy.ones((dev_count)).astype("float32") * 0.01
                         loss_grad_name = loss.name+"@GRAD"
                         loss_data = exe.run(compiled_prog,
-                                             feed={"X": x, loss_grad_name : loss_grad},
-                                             fetch_list=[loss.name, loss_grad_name])
+                                              feed={"X": x, loss_grad_name : loss_grad},
+                                              fetch_list=[loss.name, loss_grad_name])
                    )DOC")
       .def_property(
           "debug_graphviz_path",
@@ -2234,10 +2292,13 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
-                        build_strategy.debug_graphviz_path = "./graph"
+                        import paddle
+                        import paddle.static as static
 
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.debug_graphviz_path = "./graph"
                     )DOC")
       .def_property(
           "enable_sequential_execution",
@@ -2257,8 +2318,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.enable_sequential_execution = True
           )DOC")
       .def_property(
@@ -2279,8 +2344,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.remove_unnecessary_lock = True
           )DOC")
       .def_property(
@@ -2345,8 +2414,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.fuse_elewise_add_act_ops = True
                      )DOC")
       .def_property(
@@ -2366,8 +2439,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.fuse_bn_act_ops = True
                      )DOC")
       .def_property(
@@ -2388,8 +2465,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.enable_auto_fusion = True
                     )DOC")
       .def_property(
@@ -2413,8 +2494,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.fuse_relu_depthwise_conv = True
           )DOC")
       .def_property("fuse_broadcast_ops",
@@ -2439,8 +2524,12 @@ All parameter, weight, gradient are variables in Paddle.
                       Examples:
                           .. code-block:: python
 
-                              import paddle.fluid as fluid
-                              build_strategy = fluid.BuildStrategy()
+                              import paddle
+                              import paddle.static as static
+
+                              paddle.enable_static()
+
+                              build_strategy = static.BuildStrategy()
                               build_strategy.fuse_broadcast_ops = True
                     )DOC")
       .def_property("fuse_all_optimizer_ops",
@@ -2475,8 +2564,12 @@ All parameter, weight, gradient are variables in Paddle.
                 Examples:
                     .. code-block:: python
 
-                        import paddle.fluid as fluid
-                        build_strategy = fluid.BuildStrategy()
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
                         build_strategy.sync_batch_norm = True
                 )DOC")
       .def_property(
@@ -2506,7 +2599,20 @@ All parameter, weight, gradient are variables in Paddle.
                 Default None. None means framework would choose to use or not use 
                 this strategy automatically. Currently, None means that it is 
                 enabled when GC is disabled, and disabled when GC is enabled. 
-                True means enabling and False means disabling. Default is None.)DOC")
+                True means enabling and False means disabling. Default is None.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.memory_optimize = True
+                
+                )DOC")
       .def_property(
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
@@ -2527,6 +2633,10 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_inplace",
           [](const BuildStrategy &self) { return self.enable_inplace_; },
           [](BuildStrategy &self, bool b) { self.enable_inplace_ = b; })
+      .def_property(
+          "enable_addto",
+          [](const BuildStrategy &self) { return self.enable_addto_; },
+          [](BuildStrategy &self, bool b) { self.enable_addto_ = b; })
       .def_property(
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) {
@@ -2619,6 +2729,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGraph(&m);
   BindNode(&m);
   BindInferenceApi(&m);
+  BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
 #ifdef PADDLE_WITH_CRYPTO

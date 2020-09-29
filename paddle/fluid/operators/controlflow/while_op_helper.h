@@ -17,8 +17,16 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/variant.h"
+
+namespace paddle {
+namespace framework {
+class LoDTensor;
+class ProgramDesc;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {

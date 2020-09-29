@@ -13,14 +13,25 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
+
 #include <memory>
 #include <unordered_map>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle_test.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
 namespace details {
+
+struct VarHandle;
 
 struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
   std::vector<std::string> out_varnames_;
@@ -49,7 +60,8 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
       op_handle_ = new FusedBroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
 #else
-      PADDLE_THROW("CUDA is not supported.");
+      PADDLE_THROW(
+          platform::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
     } else {
 #if defined(PADDLE_WITH_NCCL)

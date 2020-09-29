@@ -38,11 +38,9 @@ from .clip import GradientClipByValue  #DEFINE_ALIAS
 # from .clip import set_gradient_clip        #DEFINE_ALIAS
 from .clip import clip  #DEFINE_ALIAS
 from .clip import clip_by_norm  #DEFINE_ALIAS
-from .control_flow import case  #DEFINE_ALIAS
 from .control_flow import cond  #DEFINE_ALIAS
 # from .control_flow import DynamicRNN        #DEFINE_ALIAS
 # from .control_flow import StaticRNN        #DEFINE_ALIAS
-from .control_flow import switch_case  #DEFINE_ALIAS
 from .control_flow import while_loop  #DEFINE_ALIAS
 # from .control_flow import rnn        #DEFINE_ALIAS
 # from .decode import BeamSearchDecoder        #DEFINE_ALIAS
@@ -89,7 +87,7 @@ from .layer.common import CosineSimilarity  #DEFINE_ALIAS
 from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
 from .layer.common import Flatten  #DEFINE_ALIAS
-from .layer.common import UpSample  #DEFINE_ALIAS
+from .layer.common import Upsample  #DEFINE_ALIAS
 from .layer.common import UpsamplingNearest2d  #DEFINE_ALIAS
 from .layer.common import UpsamplingBilinear2d  #DEFINE_ALIAS
 from .layer.common import Bilinear  #DEFINE_ALIAS

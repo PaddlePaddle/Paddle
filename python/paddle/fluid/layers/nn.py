@@ -3167,7 +3167,7 @@ def instance_norm(input,
 
     param_shape = [channel_num]
 
-    if param_attr and bias_attr:
+    if param_attr != False and bias_attr != False:
         # create parameter
         scale = helper.create_parameter(
             attr=helper.param_attr,
@@ -3190,7 +3190,7 @@ def instance_norm(input,
     instance_norm_out = helper.create_variable_for_type_inference(dtype)
 
     inputs = {"X": input}
-    if param_attr and bias_attr:
+    if param_attr != False and bias_attr != False:
         inputs["Scale"] = scale
         inputs["Bias"] = bias
 
@@ -4815,11 +4815,6 @@ def split(input, num_or_sections, dim=-1, name=None):
     Returns:
         list(Tensor): The list of segmented Tensors.
 
-    Raises:
-        TypeError: The data type of ``input`` must be one of bool, float16, float32, float64, int32, int64.
-        TypeError: ``num_or_sections`` is not int, list or tuple.
-        TypeError: ``dim`` is not int or Tensor. The data type of ``dim`` must be int32 or int64 when it's a Tensor.
-
     Example:
         .. code-block:: python
 
@@ -6103,23 +6098,20 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     Returns:
         Tensor: A reshaped Tensor with the same data type as ``x``. It is a new tensor variable if ``inplace`` is ``False``, otherwise it is ``x``. If ``act`` is None, return the reshaped tensor variable, otherwise return the activated tensor variable.
 
-    Raises:
-        TypeError: If actual_shape is neither Tensor nor None.
-        ValueError: If more than one elements of ``shape`` is -1.
-        ValueError: If the element of ``shape`` is 0, the corresponding dimension should be less than or equal to the dimension of ``x``.
-        ValueError: If the elements in ``shape`` is negative except -1.
 
     Examples:
         .. code-block:: python
-
+            
+            import paddle
             import paddle.fluid as fluid
-
+            paddle.enable_static()
+            
             # example 1:
             # attr shape is a list which doesn't contain Tensors.
             data_1 = fluid.data(
               name='data_1', shape=[2, 4, 6], dtype='float32')
             reshaped_1 = fluid.layers.reshape(
-              x=data_1, shape=[-1, 0, 3, 2], inplace=True)
+              x=data_1, shape=[-1, 0, 3, 2])
             # the shape of reshaped_1 is [2,4,3,2].
 
             # example 2:
@@ -6316,6 +6308,15 @@ def unsqueeze(input, axes, name=None):
 
     """
     if in_dygraph_mode():
+        if isinstance(axes, int):
+            axes = [axes]
+        elif isinstance(axes, Variable):
+            axes = axes.numpy().tolist()
+        elif isinstance(axes, (list, tuple)):
+            axes = [
+                item.numpy().item(0) if isinstance(item, Variable) else item
+                for item in axes
+            ]
         out, _ = core.ops.unsqueeze2(input, 'axes', axes)
         return out
 
@@ -6863,7 +6864,8 @@ def roi_pool(input,
              pooled_height=1,
              pooled_width=1,
              spatial_scale=1.0,
-             rois_lod=None):
+             rois_num=None,
+             name=None):
     """
     :alias_main: paddle.nn.functional.roi_pool
 	:alias: paddle.nn.functional.roi_pool,paddle.nn.functional.vision.roi_pool
@@ -6883,10 +6885,14 @@ def roi_pool(input,
     Args:
         input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W], where N is the batch size, C is the input channel, H is Height, W is weight. The data type is float32 or float64.
         rois (Variable): ROIs (Regions of Interest) to pool over. 2D-LoDTensor with the shape of [num_rois,4], the lod level is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates, and (x2, y2) is the bottom right coordinates.
-        rois_lod (Variable): The lod info of rois. Default: None
         pooled_height (int, optional): The pooled output height, data type is int32. Default: 1
         pooled_width (int, optional): The pooled output height, data type is int32. Default: 1
         spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
+        rois_num (Tensor): The number of RoIs in each image. Default: None
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
+
 
     Returns:
         Variable: The pooled feature, 4D-Tensor with the shape of [num_rois, C, pooled_height, pooled_width].
@@ -6906,11 +6912,11 @@ def roi_pool(input,
 
         input_data = np.array([i for i in range(1,17)]).reshape(1,1,4,4).astype(DATATYPE)
         roi_data =fluid.create_lod_tensor(np.array([[1., 1., 2., 2.], [1.5, 1.5, 3., 3.]]).astype(DATATYPE),[[2]], place)
-        rois_lod_data = np.array([0, 2])
+        rois_num_data = np.array([2]).astype('int32')
 
         x = fluid.data(name='input', shape=[None,1,4,4], dtype=DATATYPE)
         rois = fluid.data(name='roi', shape=[None,4], dtype=DATATYPE)
-        rois_lod = fluid.data(name='rois_lod', shape=[None], dtype='int64')
+        rois_num = fluid.data(name='rois_num', shape=[None], dtype='int32')
 
         pool_out = fluid.layers.roi_pool(
                 input=x,
@@ -6918,24 +6924,36 @@ def roi_pool(input,
                 pooled_height=1,
                 pooled_width=1,
                 spatial_scale=1.0,
-                rois_lod=rois_lod)
+                rois_num=rois_num)
 
         exe = fluid.Executor(place)
-        out, = exe.run(feed={'input':input_data ,'roi':roi_data, 'rois_lod': rois_lod_data}, fetch_list=[pool_out.name])
+        out, = exe.run(feed={'input':input_data ,'roi':roi_data, 'rois_num': rois_num_data}, fetch_list=[pool_out.name])
         print(out)   #array([[[[11.]]], [[[16.]]]], dtype=float32)
         print(np.array(out).shape)  # (2, 1, 1, 1)
     """
+    if in_dygraph_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        pool_out, argmaxes = core.ops.roi_pool(
+            input, rois, rois_num, "pooled_height", pooled_height,
+            "pooled_width", pooled_width, "spatial_scale", spatial_scale)
+        return pool_out, argmaxes
+
     check_variable_and_dtype(input, 'input', ['float32'], 'roi_pool')
     check_variable_and_dtype(rois, 'rois', ['float32'], 'roi_pool')
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
     argmaxes = helper.create_variable_for_type_inference(dtype='int32')
+
+    inputs = {
+        "X": input,
+        "ROIs": rois,
+    }
+    if rois_num is not None:
+        inputs['RoisNum'] = rois_num
     helper.append_op(
         type="roi_pool",
-        inputs={"X": input,
-                "ROIs": rois,
-                "RoisLod": rois_lod},
+        inputs=inputs,
         outputs={"Out": pool_out,
                  "Argmax": argmaxes},
         attrs={
@@ -6953,8 +6971,8 @@ def roi_align(input,
               pooled_width=1,
               spatial_scale=1.0,
               sampling_ratio=-1,
-              name=None,
-              rois_lod=None):
+              rois_num=None,
+              name=None):
     """
     :alias_main: paddle.nn.functional.roi_align
 	:alias: paddle.nn.functional.roi_align,paddle.nn.functional.vision.roi_align
@@ -6969,11 +6987,11 @@ def roi_align(input,
             data type is float32 or float64. Given as [[x1, y1, x2, y2], ...],
             (x1, y1) is the top left coordinates, and (x2, y2) is the bottom
             right coordinates.
-        rois_lod (Variable): The lod info of rois. Default: None
         pooled_height (int32, optional): ${pooled_height_comment} Default: 1
         pooled_width (int32, optional): ${pooled_width_comment} Default: 1
         spatial_scale (float32, optional): ${spatial_scale_comment} Default: 1.0
         sampling_ratio(int32, optional): ${sampling_ratio_comment} Default: -1
+        rois_num (Tensor): The number of RoIs in each image. Default: None
         name(str, optional): For detailed information, please refer
             to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
@@ -6992,26 +7010,38 @@ def roi_align(input,
                 name='data', shape=[None, 256, 32, 32], dtype='float32')
             rois = fluid.data(
                 name='rois', shape=[None, 4], dtype='float32')
-            rois_lod = fluid.data(name='rois_lod', shape=[None], dtype='int64')
+            rois_num = fluid.data(name='rois_num', shape=[None], dtype='int32')
             align_out = fluid.layers.roi_align(input=x,
                                                rois=rois,
                                                pooled_height=7,
                                                pooled_width=7,
                                                spatial_scale=0.5,
                                                sampling_ratio=-1,
-                                               rois_lod=rois_lod)
+                                               rois_num=rois_num)
     """
+    if in_dygraph_mode():
+        assert rois_num is not None, "rois_num should not be None in dygraph mode."
+        align_out = core.ops.roi_align(
+            input, rois, rois_num, "pooled_height", pooled_height,
+            "pooled_width", pooled_width, "spatial_scale", spatial_scale,
+            "sampling_ratio", sampling_ratio)
+        return align_out
+
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'roi_align')
     check_variable_and_dtype(rois, 'rois', ['float32', 'float64'], 'roi_align')
     helper = LayerHelper('roi_align', **locals())
     dtype = helper.input_dtype()
     align_out = helper.create_variable_for_type_inference(dtype)
+    inputs = {
+        "X": input,
+        "ROIs": rois,
+    }
+    if rois_num is not None:
+        inputs['RoisNum'] = rois_num
     helper.append_op(
         type="roi_align",
-        inputs={"X": input,
-                "ROIs": rois,
-                "RoisLod": rois_lod},
+        inputs=inputs,
         outputs={"Out": align_out},
         attrs={
             "pooled_height": pooled_height,
@@ -8256,10 +8286,6 @@ def gather(input, index, overwrite=True):
     Returns:
         output (Tensor): The output is a tensor with the same rank as input.
     
-    Raises:
-        TypeError: ``x`` must be a Tensor and the data type of ``x`` must to be one of float16, float32, float64, int32, int64, uint8.
-        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be int32 or int64.
-
     Examples:
 
         .. code-block:: python
@@ -8349,10 +8375,6 @@ def gather_nd(input, index, name=None):
 
     Returns:
         output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
-    
-    Raises:
-        TypeError: ``input`` must be a Tensor and the data type of ``input`` must be one of float32, float64, int32 and int64.
-        TypeError: ``index`` must be a Tensor and the data type of ``index`` must be one of int32 and int64.
 
     Examples:
 
@@ -9267,8 +9289,8 @@ def pad2d(input,
     than height-1. And the width dimension has the same condition.
 
     Parameters:
-        input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format, which is a 4-D Tensor with data type float32.
-        paddings (Variable | List[int32]): The padding size. If padding is a List, it must
+        input (Tensor): The input image with [N, C, H, W] format or [N, H, W, C] format, which is a 4-D Tensor with data type float32.
+        paddings (Tensor | List[int32]): The padding size. If padding is a List, it must
             contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
             Otherwise, it is a 1-D Tensor with shape [4]. Data type is int32.
             Default is [0, 0, 0, 0].
@@ -9284,10 +9306,7 @@ def pad2d(input,
         name (str, optional) : The default value is None.  Normally there is no need for
                     user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
-    Returns: a 4-D Tensor padded according to paddings and mode and data type is same as input.
-
-    Return Type: Variable
-
+    Returns: Tensor, a 4-D Tensor padded according to paddings and mode and data type is same as input.
 
     Examples:
         .. code-block:: text
@@ -9320,9 +9339,33 @@ def pad2d(input,
     Code Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-            result = fluid.layers.pad2d(input=data, paddings=[0, 1, 2, 3], mode='reflect')
+            import numpy as np
+            import paddle
+            import paddle.nn.functional as F
+
+            # example 1
+            x_shape = (1, 1, 3, 4)
+            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
+            tensor_x = paddle.to_tensor(x)
+            y = F.pad2d(tensor_x, paddings=[1, 2, 2, 1], pad_value=1, mode='constant')
+            print(y.numpy())
+            # [[[[ 1.  1.  1.  1.  1.  1.  1.]
+            #    [ 1.  1.  1.  2.  3.  4.  1.]
+            #    [ 1.  1.  5.  6.  7.  8.  1.]
+            #    [ 1.  1.  9. 10. 11. 12.  1.]
+            #    [ 1.  1.  1.  1.  1.  1.  1.]
+            #    [ 1.  1.  1.  1.  1.  1.  1.]]]]
+
+            # example 2
+            x_shape = (1, 1, 2, 3)
+            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
+            tensor_x = paddle.to_tensor(x)
+            y = F.pad2d(tensor_x, paddings=[1, 1, 1, 1], mode='reflect')
+            print(y.numpy())
+            # [[[[5. 4. 5. 6. 5.]
+            #    [2. 1. 2. 3. 2.]
+            #    [5. 4. 5. 6. 5.]
+            #    [2. 1. 2. 3. 2.]]]]
     """
     check_variable_and_dtype(
         input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -10018,15 +10061,16 @@ def stack(x, axis=0, name=None):
 
 
     Args:
-        x (Variable|list(Variable)): Input :code:`x` can be a single Tensor, a :code:`list` of Tensors.
-                                     If :code:`x` is a :code:`list`, the shapes of all these Tensors
+        x (list(Variable)|tuple(Variable)): Input :code:`x` can be a :code:`list` or :code:`tuple` of Tensors, the shapes of all these Tensors
                                      must be the same. Supposing input is N dims
                                      Tensors :math:`[d_0, d_1, ..., d_{n-1}]`, the output is N+1 dims
                                      Tensor :math:`[d_0, d_1, d_{axis-1}, len(x), d_{axis}, ..., d_{n-1}]`.
                                      Supported data types: float32, float64, int32, int64.
-        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is :math:`[-(R+1), R+1)`.
-                              R is the first tensor of inputs. If ``axis`` < 0, :math:`axis=axis+rank(x[0])+1`.
-                              The default value of axis is 0.
+        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
+                              where ``R`` is the number of dimensions of the first input tensor ``x[0]``. 
+                              If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
+    
 
     Returns:
         Variable: The stacked Tensor, has same data type with input Tensors. Output dim is :math:`rank(x[0])+1`.
@@ -10044,18 +10088,27 @@ def stack(x, axis=0, name=None):
 
             data = layers.stack([x1,x2], axis=1) # stack according to axis 1, data.shape=[None, 2, 1, 2]
 
-            # stack single Tensor
-            data = layers.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
 
     """
     axis = 0 if axis is None else axis
-    if not isinstance(x, list) and not isinstance(x, tuple):
-        x = [x]
 
     if in_dygraph_mode():
         return core.ops.stack(x, 'axis', axis)
 
+    if not isinstance(x, list) and not isinstance(x, tuple):
+        # NOTE:(zhiqiu) Only support Variable as input if the Variable is a LOD_TENSOR_ARRAY create by create_array, array_write, array_read, etc.
+        # In that case, Variable is array of tensors indeed.
+        if isinstance(x, Variable) and x.desc.type(
+        ) == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            x = [x]
+        else:
+            raise TypeError("The type of '%s' in %s must be %s, but received %s"
+                            % ('x', 'stack',
+                               'list[Tensor], tuple[Tensor] or TensorArray',
+                               type(x)))
+
     helper = LayerHelper('stack', **locals())
+
     out = helper.create_variable_for_type_inference(x[0].dtype)
     if x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
@@ -10600,7 +10653,7 @@ def gaussian_random(shape,
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        shape = utils._convert_shape_to_list(shape)
+        shape = utils.convert_shape_to_list(shape)
         return core.ops.gaussian_random('shape', shape, 'mean',
                                         float(mean), 'std',
                                         float(std), 'seed', seed, 'dtype',
@@ -10617,7 +10670,7 @@ def gaussian_random(shape,
         'dtype': dtype,
         'use_mkldnn': False
     }
-    utils._get_shape_tensor_inputs(
+    utils.get_shape_tensor_inputs(
         inputs=inputs,
         attrs=attrs,
         shape=shape,
@@ -10849,8 +10902,7 @@ def slice(input, axes, starts, ends):
                 result = [ [2, 3, 4], ] # result = data[0:1, 1:4]
     Args:
         input (Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
-        axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
-                            It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
+        axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to .
         starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
                 it should be integers or Tensors with shape [1]. If ``starts`` is an Variable, it should be an 1-D Tensor.
                 It represents starting indices of corresponding axis in ``axes``.
@@ -11200,7 +11252,7 @@ def shape(input):
                 input.shape = [3, 2]
 
     Args:
-        input (Variable): The input can be N-D Tensor or SelectedRows with data type float16, float32, float64, int32, int64.
+        input (Variable): The input can be N-D Tensor or SelectedRows with data type bool, float16, float32, float64, int32, int64.
                           If input variable is type of SelectedRows, returns the shape of it's inner tensor.
 
     Returns:
@@ -11224,8 +11276,8 @@ def shape(input):
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'shape')
+        input, 'input',
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'], 'shape')
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
@@ -12031,6 +12083,8 @@ for func in [
         elementwise_floordiv,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
+
+    # insert the c++ doc string on top of python doc string
     func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=[
@@ -12047,6 +12101,16 @@ for func in [
             "x_data_format", "y_data_format", "axis", "use_quantizer",
             "mkldnn_data_type", "Scale_x", "Scale_y", "Scale_out"
         }) + """\n""" + str(func.__doc__)
+
+    doc_list = func.__doc__.splitlines()
+
+    for idx, val in enumerate(doc_list):
+        if val.startswith("Warning: ") and val.endswith(
+                " instead."
+        ) and "and will be removed in future versions." in val:
+            doc_list.insert(0, doc_list.pop(idx))
+            func.__doc__ = "\n" + "\n".join(i for i in doc_list)
+            break
 
 for func in []:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
@@ -12153,13 +12217,10 @@ def logical_and(x, y, out=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             paddle.disable_static()
-            x_data = np.array([True], dtype=np.bool)
-            y_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.to_tensor(x_data)
-            y = paddle.to_tensor(y_data)
+            x = paddle.to_tensor([True])
+            y = paddle.to_tensor([True, False, True, False])
             res = paddle.logical_and(x, y)
             print(res.numpy()) # [True False True False]
     """
@@ -12272,11 +12333,9 @@ def logical_not(x, out=None, name=None):
     Examples:
         .. code-block:: python
             import paddle
-            import numpy as np
 
             paddle.disable_static()
-            x_data = np.array([True, False, True, False], dtype=np.bool)
-            x = paddle.to_variable(x_data)
+            x = paddle.to_tensor([True, False, True, False])
             res = paddle.logical_not(x)
             print(res.numpy()) # [False  True False  True]
     """
@@ -13120,16 +13179,20 @@ def add_position_encoding(input, alpha, beta, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import numpy as np
+          import paddle
+          import paddle.nn.functional as F
 
-          tensor = fluid.data(
-              name='tensor',
-              shape=[None, 64, 512],
-              dtype='float32')
-          position_tensor = fluid.layers.add_position_encoding(
-              input=tensor, alpha=1.0, beta=1.0)
+          tensor = np.random.randn(16, 32, 64) 
+          tensor = paddle.to_tensor(tensor)
+          position_tensor = F.add_position_encoding(
+                input=tensor, alpha=1.0, beta=1.0)
 
     """
+    if in_dygraph_mode():
+        return core.ops.add_position_encoding(input, "alpha", alpha, "beta",
+                                              beta)
+
     helper = LayerHelper('add_position_encoding', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              "add_position_encoding")
@@ -15094,7 +15157,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        shape = utils._convert_shape_to_list(shape)
+        shape = utils.convert_shape_to_list(shape)
         return core.ops.uniform_random('shape', shape, 'min',
                                        float(min), 'max',
                                        float(max), 'seed', seed, 'dtype', dtype)
@@ -15104,7 +15167,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
 
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
-    utils._get_shape_tensor_inputs(
+    utils.get_shape_tensor_inputs(
         inputs=inputs, attrs=attrs, shape=shape, op_type='uniform_random/rand')
 
     helper = LayerHelper("uniform_random", **locals())

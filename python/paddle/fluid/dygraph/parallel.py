@@ -61,60 +61,44 @@ def prepare_context(strategy=None):
 
 class ParallelEnv(object):
     """
-    **Notes**:
-        **The old class name was Env and will be deprecated. Please use new class name ParallelEnv.**
+    .. note::
+        This API is not recommended, if you need to get rank and world_size, 
+        it is recommended to use ``paddle.distributed.get_rank()`` and 
+        ``paddle.distributed.get_world_size()`` .
 
     This class is used to obtain the environment variables required for 
-    the parallel execution of dynamic graph model.
+    the parallel execution of ``paddle.nn.Layer`` in dynamic mode.
 
-    The dynamic graph parallel mode needs to be started using paddle.distributed.launch.
-    By default, the related environment variable is automatically configured by this module.
-
-    This class is generally used in with `fluid.dygraph.DataParallel` to configure dynamic graph models
-    to run in parallel.
+    The parallel execution in dynamic mode needs to be started using ``paddle.distributed.launch`` 
+    or ``paddle.distributed.spawn`` .
 
     Examples:
       .. code-block:: python
 
-        # This example needs to run with paddle.distributed.launch, The usage is:
-        #   python -m paddle.distributed.launch --selected_gpus=0,1 example.py
-        # And the content of `example.py` is the code of following example.
+        import paddle
+        import paddle.distributed as dist
 
-        import numpy as np
-        import paddle.fluid as fluid
-        import paddle.fluid.dygraph as dygraph
-        from paddle.fluid.optimizer import AdamOptimizer
-        from paddle.fluid.dygraph.nn import Linear
-        from paddle.fluid.dygraph.base import to_variable
+        def train():
+            # 1. initialize parallel environment
+            dist.init_parallel_env()
 
-        place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
-        with fluid.dygraph.guard(place=place):
+            # 2. get current ParallelEnv
+            parallel_env = dist.ParallelEnv()
+            print("rank: ", parallel_env.rank)
+            print("world_size: ", parallel_env.world_size)
 
-            # prepare the data parallel context
-            strategy=dygraph.prepare_context()
+            # print result in process 1:
+            # rank: 1
+            # world_size: 2
+            # print result in process 2:
+            # rank: 2
+            # world_size: 2
 
-            linear = Linear(1, 10, act="softmax")
-            adam = fluid.optimizer.AdamOptimizer()
-
-            # make the module become the data parallelism module
-            linear = dygraph.DataParallel(linear, strategy)
-
-            x_data = np.random.random(size=[10, 1]).astype(np.float32)
-            data = to_variable(x_data)
-
-            hidden = linear(data)
-            avg_loss = fluid.layers.mean(hidden)
-
-            # scale the loss according to the number of trainers.
-            avg_loss = linear.scale_loss(avg_loss)
-
-            avg_loss.backward()
-
-            # collect the gradients of trainers.
-            linear.apply_collective_grads()
-
-            adam.minimize(avg_loss)
-            linear.clear_gradients()
+        if __name__ == '__main__':
+            # 1. start by ``paddle.distributed.spawn`` (default)
+            dist.spawn(train, nprocs=2)
+            # 2. start by ``paddle.distributed.launch``
+            # train()
     """
 
     def __init__(self):
@@ -416,7 +400,7 @@ class DataParallel(layers.Layer):
                 g_var_shapes.append(g_var.shape)
                 flattened_vars.append(
                     nn.reshape(
-                        x=g_var, shape=[np.prod(g_var.shape)], inplace=True))
+                        x=g_var, shape=[np.prod(g_var.shape)]))
             coalesced_grad = nn.concat(flattened_vars)
             coalesced_grads_and_grad_vars.append(
                 [coalesced_grad, grad_vars, g_var_shapes])
@@ -587,12 +571,13 @@ class DataParallel(layers.Layer):
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix)
 
-    def set_dict(self,
-                 stat_dict,
-                 include_sublayers=True,
-                 use_structured_name=True):
+    @framework.deprecate_stat_dict
+    def set_state_dict(self,
+                       state_dict,
+                       include_sublayers=True,
+                       use_structured_name=True):
         '''
-        Set parameters of self._layers from stat_dict. All the parameters of self._layers will be reset by the tensor in the stat_dict
+        Set parameters of self._layers from state_dict. All the parameters of self._layers will be reset by the tensor in the state_dict
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters
@@ -605,62 +590,27 @@ class DataParallel(layers.Layer):
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    strategy=fluid.dygraph.prepare_context()
-                    emb = fluid.dygraph.Embedding([10, 10])
-                    emb = fluid.dygraph.DataParallel(emb, strategy)
+                import paddle   
 
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
-                    
-                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
+                paddle.disable_static()
 
-                    emb.set_dict( para_state_dict )
+                emb = paddle.nn.Embedding(10, 10)
+                emb = fluid.dygraph.DataParallel(emb, strategy)
+
+                state_dict = emb.state_dict()
+                paddle.save(state_dict, "paddle_dy.pdparams")
+
+                para_state_dict = paddle.load("paddle_dy.pdparams")
+
+                emb.set_state_dict(para_state_dict)
 
         '''
 
-        self._layers.set_dict(
-            stat_dict,
+        self._layers.set_state_dict(
+            state_dict,
             include_sublayers=include_sublayers,
             use_structured_name=use_structured_name)
 
-    def load_dict(self,
-                  stat_dict,
-                  include_sublayers=True,
-                  use_structured_name=True):
-        '''
-        Set parameters of self._layers from stat_dict. All the parameters of self._layers will be reset by the tensor in the stat_dict
-
-        This api will be Deprecated. Please use set_dict
-
-        Parameters:
-            state_dict(dict) : Dict contains all the parameters
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key.
-                                                  Default: True
-        Returns:
-            None
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                with fluid.dygraph.guard():
-                    strategy=fluid.dygraph.prepare_context()
-                    emb = fluid.dygraph.Embedding([10, 10])
-                    emb = fluid.dygraph.DataParallel(emb, strategy)
-
-                    state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
-                    
-                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
-
-                    emb.load_dict( para_state_dict )
-
-        '''
-
-        self._layers.load_dict(
-            stat_dict,
-            include_sublayers=include_sublayers,
-            use_structured_name=use_structured_name)
+    # [aliases] Compatible with old method names
+    set_dict = set_state_dict
+    load_dict = set_state_dict

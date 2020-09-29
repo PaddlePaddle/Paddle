@@ -36,14 +36,14 @@ class TestDirectory(unittest.TestCase):
     def test_new_directory(self):
         new_directory = [
             'paddle.enable_static', 'paddle.disable_static',
-            'paddle.in_dynamic_mode', 'paddle.to_variable', 'paddle.grad',
+            'paddle.in_dynamic_mode', 'paddle.to_tensor', 'paddle.grad',
             'paddle.no_grad', 'paddle.save', 'paddle.load',
             'paddle.static.save', 'paddle.static.load',
             'paddle.distributed.ParallelEnv',
             'paddle.distributed.prepare_context', 'paddle.DataParallel',
             'paddle.jit', 'paddle.jit.TracedLayer', 'paddle.jit.to_static',
             'paddle.jit.ProgramTranslator', 'paddle.jit.TranslatedLayer',
-            'paddle.jit.save', 'paddle.jit.load', 'paddle.jit.SaveLoadConfig',
+            'paddle.jit.save', 'paddle.jit.load', 'paddle.SaveLoadConfig',
             'paddle.NoamDecay', 'paddle.PiecewiseDecay',
             'paddle.NaturalExpDecay', 'paddle.ExponentialDecay',
             'paddle.InverseTimeDecay', 'paddle.PolynomialDecay',

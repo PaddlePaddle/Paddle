@@ -47,10 +47,10 @@ from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.fluid.executor import scope_guard, Executor
 from paddle.fluid.dygraph.layers import Layer
 from paddle.metric import Metric
-
 from paddle.static import InputSpec as Input
 
 from .callbacks import config_callbacks
+from .model_summary import summary
 
 __all__ = ['Model', ]
 
@@ -731,8 +731,8 @@ class DynamicGraphAdapter(object):
         if not self.model._optimizer or not optim_state:
             return
 
-        # If optimizer performs set_dict when state vars haven't been created,
-        # which would happen when set_dict before minimize, the state would be
+        # If optimizer performs set_state_dict when state vars haven't been created,
+        # which would happen when set_state_dict before minimize, the state would be
         # stored in optimizer._accumulators_holder and loaded lazily.
         # To contrive this when loading from static-graph saved states, extend
         # state dict to include keys named accoring to dygraph naming rules.
@@ -776,7 +776,13 @@ class DynamicGraphAdapter(object):
                                      accum_name + "_0")
                     converted_state[dy_state_name] = state_var
 
-        self.model._optimizer.set_dict(converted_state)
+        if not hasattr(self.model._optimizer, 'set_state_dict'):
+            warnings.warn(
+                "paddle.fluid.optimizer is deprecated in API 2.0, please use paddle.optimizer instead"
+            )
+            self.model._optimizer.set_dict(converted_state)
+        else:
+            self.model._optimizer.set_state_dict(converted_state)
 
 
 class Model(object):
@@ -786,15 +792,14 @@ class Model(object):
     switched by `paddle.disable_static()`. The usage is as follows.
     But note, the switching between dynamic and static should be before
     instantiating a Model. The input description, i.e, paddle.static.InputSpec,
-    must be required for static graph.
+    must be required.
 
     Args:
         network (paddle.nn.Layer): The network is an instance of
             paddle.nn.Layer.
         inputs (InputSpec|list|dict|None): `inputs`, entry points of network,
             could be a InputSpec instance, or lits of InputSpec instances,
-            or dict ({name: InputSpec}), or None. For static graph,
-            inputs must be set. For dynamic graph, it could be None.
+            or dict ({name: InputSpec}), and it couldn't be None.
         labels (InputSpec|list|None): `labels`, entry points of network,
             could be a InputSpec instnace or lits of InputSpec instances,
             or None. For static graph, if labels is required in loss,
@@ -809,10 +814,9 @@ class Model(object):
         from paddle.static import InputSpec
 
         device = paddle.set_device('cpu') # or 'gpu'
-        # if use static graph, do not set
-        paddle.disable_static(device)
 
         net = nn.Sequential(
+            nn.Flatten(1),
             nn.Linear(784, 200),
             nn.Tanh(),
             nn.Linear(200, 10))
@@ -828,7 +832,7 @@ class Model(object):
                       paddle.nn.CrossEntropyLoss(),
                       paddle.metric.Accuracy())
         
-        data = paddle.vision.datasets.MNIST(mode='train', chw_format=False)
+        data = paddle.vision.datasets.MNIST(mode='train')
         model.fit(data, epochs=2, batch_size=32, verbose=1)
     """
 
@@ -843,10 +847,10 @@ class Model(object):
         self._optimizer = None
         self._test_dataloader = None
 
-        if not in_dygraph_mode():
-            if not isinstance(inputs, (list, dict, Input)):
-                raise TypeError(
-                    "'inputs' must be list or dict in static graph mode")
+        if not isinstance(inputs, (list, dict, Input)):
+            raise TypeError(
+                "'inputs' must be list or dict in static graph mode")
+
         self._inputs = self._verify_spec(inputs, True)
         self._labels = self._verify_spec(labels)
 
@@ -881,7 +885,6 @@ class Model(object):
               from paddle.static import InputSpec
 
               device = paddle.set_device('cpu') # or 'gpu'
-              paddle.disable_static(device)
 
               net = nn.Sequential(
                   nn.Linear(784, 200),
@@ -926,7 +929,6 @@ class Model(object):
               from paddle.static import InputSpec
 
               device = paddle.set_device('cpu') # or 'gpu'
-              paddle.disable_static(device)
 
               net = nn.Sequential(
                   nn.Linear(784, 200),
@@ -966,9 +968,12 @@ class Model(object):
               import numpy as np
               import paddle
               import paddle.nn as nn
+              from paddle.static import InputSpec
 
               device = paddle.set_device('cpu') # or 'gpu'
-              paddle.disable_static(device)
+              
+              input = InputSpec([None, 784], 'float32', 'x')
+              label = InputSpec([None, 1], 'int64', 'label')
 
               net = nn.Sequential(
                   nn.Linear(784, 200),
@@ -976,7 +981,7 @@ class Model(object):
                   nn.Linear(200, 10),
                   nn.Softmax())
 
-              model = paddle.Model(net)
+              model = paddle.Model(net, input, label)
               model.prepare()
               data = np.random.random(size=(4,784)).astype(np.float32)
               out = model.test_batch([data])
@@ -998,11 +1003,7 @@ class Model(object):
         have no variable need to save (like SGD), the fill will not generated).
         This function will silently overwrite existing file at the target location.
 
-        If `training` is set to False, only inference model will be saved. It 
-        should be noted that before using `save`, you should run the model, and 
-        the shape of input you saved is as same as the input of its running.
-        `@paddle.jit.to_static` must be added on `forward` function of your layer 
-        in dynamic mode now and these will be optimized later.
+        If `training` is set to False, only inference model will be saved.
 
         Args:
             path (str): The file prefix to save model. The format is
@@ -1026,13 +1027,12 @@ class Model(object):
                     def __init__(self):
                         super(Mnist, self).__init__()
                         self.net = nn.Sequential(
+                            nn.Flatten(1),
                             nn.Linear(784, 200),
                             nn.Tanh(),
                             nn.Linear(200, 10),
                             nn.Softmax())
 
-                    # If save for inference in dygraph, need this
-                    @paddle.jit.to_static
                     def forward(self, x):
                         return self.net(x)
 
@@ -1040,14 +1040,14 @@ class Model(object):
                 device = paddle.set_device('cpu')
                 # if use static graph, do not set
                 paddle.disable_static(device) if dynamic else None
-                # inputs and labels are not required for dynamic graph.
+
                 input = InputSpec([None, 784], 'float32', 'x')
                 label = InputSpec([None, 1], 'int64', 'label')
                 model = paddle.Model(Mnist(), input, label)
                 optim = paddle.optimizer.SGD(learning_rate=1e-3,
                     parameters=model.parameters())
                 model.prepare(optim, paddle.nn.CrossEntropyLoss())
-                data = paddle.vision.datasets.MNIST(mode='train', chw_format=False)
+                data = paddle.vision.datasets.MNIST(mode='train')
                 model.fit(data, epochs=1, batch_size=32, verbose=0)
                 model.save('checkpoint/test')  # save for training
                 model.save('inference_model', False)  # save for inference
@@ -1094,15 +1094,18 @@ class Model(object):
             
               import paddle
               import paddle.nn as nn
-              
+              from paddle.static import InputSpec
+
               device = paddle.set_device('cpu')
-              paddle.disable_static(device)
+
+              input = InputSpec([None, 784], 'float32', 'x')
 
               model = paddle.Model(nn.Sequential(
                   nn.Linear(784, 200),
                   nn.Tanh(),
                   nn.Linear(200, 10),
-                  nn.Softmax()))
+                  nn.Softmax()), input)
+
               model.save('checkpoint/test')
               model.load('checkpoint/test')
         """
@@ -1167,13 +1170,15 @@ class Model(object):
 
               import paddle
               import paddle.nn as nn
+              from paddle.static import InputSpec
 
-              paddle.disable_static()
-
+              input = InputSpec([None, 784], 'float32', 'x')
+              
               model = paddle.Model(nn.Sequential(
                   nn.Linear(784, 200),
                   nn.Tanh(),
-                  nn.Linear(200, 10)))
+                  nn.Linear(200, 10)), input)
+
               params = model.parameters()
         """
         return self._adapter.parameters()
@@ -1315,7 +1320,7 @@ class Model(object):
               label = InputSpec([None, 1], 'int64', 'label')
            
               model = paddle.Model(
-                  paddle.vision.models.LeNet(classifier_activation=None),
+                  paddle.vision.models.LeNet(),
                   input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())
@@ -1352,7 +1357,7 @@ class Model(object):
               label = InputSpec([None, 1], 'int64', 'label')
            
               model = paddle.Model(
-                  paddle.vision.models.LeNet(classifier_activation=None), input, label)
+                  paddle.vision.models.LeNet(), input, label)
               optim = paddle.optimizer.Adam(
                   learning_rate=0.001, parameters=model.parameters())
               model.prepare(
@@ -1485,7 +1490,7 @@ class Model(object):
 
             # imperative mode
             paddle.disable_static()
-            model = paddle.Model(paddle.vision.models.LeNet())
+            model = paddle.Model(paddle.vision.models.LeNet(), input, label)
             model.prepare(metrics=paddle.metric.Accuracy())
             result = model.evaluate(val_dataset, batch_size=64)
             print(result)
@@ -1582,19 +1587,20 @@ class Model(object):
 
             test_dataset = MnistDataset(mode='test', return_label=False)
 
+            # imperative mode
+            input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
+            model = paddle.Model(paddle.vision.models.LeNet(), input)
+            model.prepare()
+            result = model.predict(test_dataset, batch_size=64)
+            print(len(result[0]), result[0][0].shape)
+
             # declarative mode
+            device = paddle.set_device('cpu')
+            paddle.enable_static()
             input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
             model = paddle.Model(paddle.vision.models.LeNet(), input)
             model.prepare()
 
-            result = model.predict(test_dataset, batch_size=64)
-            print(len(result[0]), result[0][0].shape)
-
-            # imperative mode
-            device = paddle.set_device('cpu')
-            paddle.disable_static(device)
-            model = paddle.Model(paddle.vision.models.LeNet())
-            model.prepare()
             result = model.predict(test_dataset, batch_size=64)
             print(len(result[0]), result[0][0].shape)
         """
@@ -1643,10 +1649,6 @@ class Model(object):
                               model_only=False):
         """
         Save inference model can be in static or dynamic mode.
-        It should be noted that before using `save_inference_model`, you should
-        run the model, and the shape you saved is as same as the input of its
-        running. `@paddle.jit.to_static` must be added on `forward` function of
-        your layer in dynamic mode now and these will be optimized later.
 
         Args:
             save_dir (str): The directory path to save the inference model.
@@ -1672,20 +1674,17 @@ class Model(object):
 
             return result_list
 
-        # TODO:
-        # 1. Make it Unnecessary to run model before calling `save_inference_model` for users in dygraph.
-        # 2. Save correct shape of input, now the interface stores the shape that the user sent to 
-        #    the inputs of the model in running.
-        # 3. Make it Unnecessary to add `@paddle.jit.to_static` for users in dynamic mode.
         if fluid.in_dygraph_mode():
             with fluid.framework._dygraph_guard(None):
                 layer = self.network
+                layer.forward = paddle.jit.to_static(
+                    layer.forward, input_spec=self._inputs)
 
                 # 1. input check
                 prog_translator = ProgramTranslator()
-                if not prog_translator.enable_declarative:
+                if not prog_translator.enable_to_static:
                     raise RuntimeError(
-                        "save_inference_model doesn't work when setting ProgramTranslator.enable=False."
+                        "save_inference_model doesn't work when setting ProgramTranslator.enable to False."
                     )
                 if not isinstance(layer, Layer):
                     raise TypeError(
@@ -1822,21 +1821,53 @@ class Model(object):
             return logs, outputs
         return logs
 
+    def summary(self, input_size=None, dtype=None):
+        """Prints a string summary of the network.
+
+        Args:
+            input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor. 
+                    if not set, input_size will get from ``self._inputs`` if network only have 
+                    one input, input_size can be tuple or InputSpec. if model have multiple 
+                    input, input_size must be a list which contain every input's shape. 
+                    Default: None.
+            dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
+
+        Returns:
+            Dict: a summary of the network including total params and total trainable params.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle
+              from paddle.static import InputSpec
+           
+              input = InputSpec([None, 1, 28, 28], 'float32', 'image')
+              label = InputSpec([None, 1], 'int64', 'label')
+           
+              model = paddle.Model(paddle.vision.LeNet(),
+                  input, label)
+              optim = paddle.optimizer.Adam(
+                  learning_rate=0.001, parameters=model.parameters())
+              model.prepare(
+                  optim,
+                  paddle.nn.CrossEntropyLoss())
+
+              params_info = model.summary()
+              print(params_info)
+
+        """
+        assert (input_size is not None or self._inputs is not None
+                ), "'input_size' or 'self._input' must be set"
+        if input_size is not None:
+            _input_size = input_size
+        else:
+            _input_size = self._inputs
+        return summary(self.network, _input_size, dtype)
+
     def _verify_spec(self, specs, is_input=False):
         out_specs = []
 
-        if specs is None:
-            # Note(Aurelius84): If not specific specs of `Input`, using argument names of `forward` function
-            # to generate `Input`. But how can we know the actual shape of each input tensor?
-            if is_input:
-                out_specs = [
-                    Input(
-                        name=n, shape=[None])
-                    for n in extract_args(self.network.forward) if n != 'self'
-                ]
-            else:
-                out_specs = to_list(specs)
-        elif isinstance(specs, dict):
+        if isinstance(specs, dict):
             assert is_input == False
             out_specs = [specs[n] \
                 for n in extract_args(self.network.forward) if n != 'self']
@@ -1848,8 +1879,8 @@ class Model(object):
                 assert isinstance(spec, Input)
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}.".
-                        format(i, spec))
+                        "Requires Input[{}].name != None, but receive `None` with {}."
+                        .format(i, spec))
 
         return out_specs
 
