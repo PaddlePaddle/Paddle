@@ -32,14 +32,16 @@ class LstmUnitOp : public framework::OperatorWithKernel {
     auto c_prev_dims = ctx->GetInputDim("C_prev");
 
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::InvalidArgument(
-                                            "Input(X)'s rank must be 2."));
+                                            "Input(X)'s rank must be 2. Received %d instead.", x_dims.size()));
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(x_dims[0], c_prev_dims[0],
                         platform::errors::InvalidArgument(
-                            "Batch size of inputs and states must be equal"));
+                            "Batch size of inputs and states must be equal, but received %d (inputs)"
+                            "vs %d (states).", x_dims[0], c_prev_dims[0]));
       PADDLE_ENFORCE_EQ(x_dims[1], c_prev_dims[1] * 4,
                         platform::errors::InvalidArgument(
-                            "Dimension of FC should equal to prev state * 4"));
+                            "Dimension of FC should equal to prev state * 4, but received %d (dimension of FC)"
+                            "vs %d (prev state * 4).", x_dims[1], c_prev_dims[1] * 4));
     }
 
     int b_size = c_prev_dims[0];  // batch size
