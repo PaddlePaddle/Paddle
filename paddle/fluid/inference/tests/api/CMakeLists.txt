@@ -132,9 +132,17 @@ if(NOT APPLE AND WITH_MKLML)
     # seq_pool1
     set(SEQ_POOL1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_pool")
     download_model_and_data(${SEQ_POOL1_INSTALL_DIR} "seq_pool1_model_.tar.gz" "seq_pool1_data.txt.tar.gz")
-    inference_analysis_api_test(test_analyzer_seq_pool1 ${SEQ_POOL1_INSTALL_DIR} analyzer_seq_pool1_tester.cc)
+    inference_analysis_api_test(test_analyzer_seq_pool1_compare_determine ${SEQ_POOL1_INSTALL_DIR} analyzer_seq_pool1_compare_determine_tester.cc)
+    inference_analysis_api_test(test_analyzer_seq_pool1 ${SEQ_POOL1_INSTALL_DIR} analyzer_seq_pool1_compare_tester.cc)
+    inference_analysis_api_test(test_analyzer_seq_pool1_fuse_compare_zero_copy ${SEQ_POOL1_INSTALL_DIR} analyzer_seq_pool1_fuse_compare_zero_copy_tester.cc)
+    inference_analysis_api_test(test_analyzer_seq_pool1_fuse_statis ${SEQ_POOL1_INSTALL_DIR} analyzer_seq_pool1_fuse_statis_tester.cc)
+    inference_analysis_api_test(test_analyzer_seq_pool1_profile ${SEQ_POOL1_INSTALL_DIR} analyzer_seq_pool1_profile_tester.cc)
     if(NOT WIN32)
-        set_tests_properties(test_analyzer_seq_pool1 PROPERTIES TIMEOUT 150)
+        set_tests_properties(test_analyzer_seq_pool1_compare_determine PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_analyzer_seq_pool1 PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_analyzer_seq_pool1_fuse_compare_zero_copy PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_analyzer_seq_pool1_fuse_statis PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_analyzer_seq_pool1_profile PROPERTIES TIMEOUT 120)
     endif()
 else()
     # TODO: fix this test on MACOS and OPENBLAS, the reason is that
@@ -198,6 +206,9 @@ inference_analysis_test(test_analyzer_ernie_large SRCS analyzer_ernie_tester.cc
 if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 150 LABELS "RUN_TYPE=NIGHTLY")
 endif()
+if (WIN32)
+    set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 200)
+endif()
 
 # text_classification
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
@@ -212,7 +223,15 @@ inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR} ana
 # transformer, the dataset only works on batch_size=8 now
 set(TRANSFORMER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/transformer")
 download_model_and_data(${TRANSFORMER_INSTALL_DIR} "temp/transformer_model.tar.gz" "temp/transformer_data.txt.tar.gz")
-inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_tester.cc 
+inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_compare_tester.cc 
+  EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+  ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 
+       --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
+inference_analysis_test(test_analyzer_transformer_fuse SRCS analyzer_transformer_fuse_tester.cc 
+  EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+  ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 
+       --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
+inference_analysis_test(test_analyzer_transformer_profile SRCS analyzer_transformer_profile_tester.cc 
   EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
   ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 
        --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
@@ -258,6 +277,10 @@ set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
 download_data(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
 inference_analysis_api_test_with_fake_data_run(test_analyzer_resnet50 ${IMG_CLASS_TEST_APP}
 	${RESNET50_MODEL_DIR} true)
+if (WIN32)
+    set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 200)
+endif()
+
 
 # mobilenet with depthwise_conv op
 set(MOBILENET_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv")

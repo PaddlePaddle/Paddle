@@ -107,7 +107,7 @@ class TestFleetBase(unittest.TestCase):
     def test_util(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        self.assertEqual(fleet.util(), None)
+        self.assertNotEqual(fleet.util, None)
 
     def test_barrier_worker(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
@@ -166,6 +166,8 @@ class TestFleetDygraph(unittest.TestCase):
         assert (lr == cur_lr)
         state_dict = adam.state_dict()
         adam.set_state_dict(state_dict)
+
+        final_strategy = fleet._final_strategy()
 
 
 class TestFleetBaseSingleRunCollective(unittest.TestCase):

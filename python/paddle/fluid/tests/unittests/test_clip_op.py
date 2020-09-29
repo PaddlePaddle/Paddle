@@ -168,9 +168,9 @@ class TestClipAPI(unittest.TestCase):
         paddle.disable_static(place)
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float32')
-        images = paddle.to_variable(data, dtype='float32')
-        v_min = paddle.to_variable(np.array([0.2], dtype=np.float32))
-        v_max = paddle.to_variable(np.array([0.8], dtype=np.float32))
+        images = paddle.to_tensor(data, dtype='float32')
+        v_min = paddle.to_tensor(np.array([0.2], dtype=np.float32))
+        v_max = paddle.to_tensor(np.array([0.8], dtype=np.float32))
 
         out_1 = paddle.clip(images, min=0.2, max=0.8)
         out_2 = paddle.clip(images, min=0.2, max=0.9)

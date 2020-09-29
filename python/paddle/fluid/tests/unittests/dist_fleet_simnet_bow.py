@@ -32,7 +32,6 @@ import os
 import signal
 from functools import reduce
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
-from paddle.distributed.fleet.base.util_factory import fleet_util
 
 paddle.enable_static()
 
@@ -198,7 +197,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
     def net(self, args, batch_size=4, lr=0.01):
         avg_cost, _, predict, self.reader = \
             train_network(batch_size=batch_size, is_distributed=False,
-                               is_sparse=True, is_self_contained_lr=False, is_pyreader=(args.reader == "pyreader"))
+                          is_sparse=True, is_self_contained_lr=False, is_pyreader=(args.reader == "pyreader"))
         self.avg_cost = avg_cost
         self.predict = predict
 
@@ -238,7 +237,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
                     loss_val = np.mean(loss_val)
                     message = "TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
                                                                       loss_val)
-                    fleet_util.print_on_rank(message, 0)
+                    fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start
             except fluid.core.EOFException:

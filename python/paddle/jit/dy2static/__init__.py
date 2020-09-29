@@ -12,8 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define functions to save & load a tensor  
-from ..fluid import save  #DEFINE_ALIAS
-from ..fluid.io import load  #DEFINE_ALIAS
+from __future__ import print_function
 
-__all__ = ['save', 'load']
+from . import convert_operators
+from .convert_operators import *
+
+from . import convert_call_func
+from .convert_call_func import *
+
+from . import variable_trans_func
+from .variable_trans_func import *
+
+__all__ = []
+__all__ += convert_operators.__all__
+__all__ += convert_call_func.__all__
+__all__ += variable_trans_func.__all__

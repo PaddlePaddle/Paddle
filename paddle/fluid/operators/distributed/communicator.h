@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <ThreadPool.h>
+#include <stdint.h>
 #include <atomic>
 #include <deque>
 #include <map>
@@ -26,8 +27,8 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -283,7 +284,7 @@ class AsyncCommunicator : public Communicator {
 
   void InitParams();
 
-  void MainThread();
+  virtual void MainThread();
 
   void Send(const std::vector<std::string> &var_names,
             const std::vector<std::string> &var_tables,
@@ -407,7 +408,7 @@ class GeoCommunicator : public AsyncCommunicator {
   void InitImpl(const RpcCtxMap &send_varname_to_ctx,
                 const RpcCtxMap &recv_varname_to_ctx,
                 Scope *recv_scope) override;
-
+  void MainThread() override;
   void InitEnvs() {
     min_send_grad_num_before_recv_ = 0;
 
@@ -425,9 +426,12 @@ class GeoCommunicator : public AsyncCommunicator {
             const std::vector<std::string> &var_tables,
             const framework::Scope &scope) override;
 
-  void SendByCommunicator(int batches) override;
+  void SendByCommunicator(int batches) { return; }
 
-  void SendSparse(const std::string &varname, int batches);
+  std::vector<int64_t> MergeSparseIds(const std::string &send_varname);
+
+  void SendSparse(const std::string &varname, int ep_idx,
+                  const std::vector<int64_t> &sparse_ids);
 
   void SendDense(const std::string &varname);
 
@@ -435,7 +439,7 @@ class GeoCommunicator : public AsyncCommunicator {
 
   void RecvByCommunicator() override;
 
-  void RecvSparse(const std::string &varname);
+  void RecvSparse(const std::string &varname, int ep_idx);
 
   void RecvDense(const std::string &varname);
 
@@ -458,11 +462,13 @@ class GeoCommunicator : public AsyncCommunicator {
   // parameter on pserver
   std::shared_ptr<Scope> pserver_scope_;
 
-  std::unordered_map<std::string,
-                     std::shared_ptr<BlockingQueue<std::vector<int64_t>>>>
-      send_ids_to_queue_;
-
+  int send_var_nums_ = 0;
   std::unordered_map<std::string, std::shared_ptr<SparseValue>> old_sparses_;
+
+  std::unordered_map<
+      std::string,
+      std::shared_ptr<BlockingQueue<std::shared_ptr<std::vector<int64_t>>>>>
+      sparse_id_queues_;
 };
 
 }  // namespace distributed

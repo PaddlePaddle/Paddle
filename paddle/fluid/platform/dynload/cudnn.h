@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <glog/logging.h>
-
 #include <cudnn.h>
+#include <glog/logging.h>
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 

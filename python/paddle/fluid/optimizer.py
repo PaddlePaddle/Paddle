@@ -19,8 +19,10 @@ import six
 import logging
 from collections import defaultdict
 
+import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+from paddle.fluid.dygraph.parallel import apply_collective_grads
 
 from . import framework
 from . import layers
@@ -40,7 +42,6 @@ from paddle.fluid.layers import tensor
 from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
-import paddle
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -182,23 +183,25 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import paddle   
+                import paddle
+                import paddle.fluid as fluid
 
                 paddle.disable_static()
 
-                emb = paddle.nn.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
 
                 state_dict = emb.state_dict()
-                paddle.save(state_dict, "paddle_dy")
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
-                adam = paddle.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
-                                                parameter_list=emb.parameters())
+                scheduler = paddle.optimizer.lr_scheduler.NoamLR(	
+                    d_model=0.01, warmup_steps=100, verbose=True)
+                adam = paddle.optimizer.Adam(
+                    learning_rate=scheduler,
+                    parameters=emb.parameters())
                 state_dict = adam.state_dict()
+                fluid.save_dygraph(state_dict, "paddle_dy")
 
-                para_state_dict, opti_state_dict = paddle.load("paddle_dy")
-
-                adam.set_state_dict(opti_state_dict)
-
+                para_state_dict, opti_state_dict = fluid.load_dygraph("paddle_dy")
         '''
         from paddle.optimizer.lr_scheduler import _LRScheduler
         if isinstance(self._learning_rate, _LRScheduler):
@@ -769,8 +772,14 @@ class Optimizer(object):
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
+            parameter_list = parameter_list if parameter_list \
+                else self._parameter_list
+
+            if paddle.distributed.get_world_size() > 1:
+                apply_collective_grads(parameter_list)
+
             params_grads = []
-            for param in self._parameter_list:
+            for param in parameter_list:
                 if not param.trainable:
                     continue
                 if param._grad_ivar() is not None:
@@ -937,6 +946,7 @@ class Optimizer(object):
 
         parameter_list = parameter_list if parameter_list \
             else self._parameter_list
+
         params_grads = self.backward(
             loss,
             startup_program=startup_program,

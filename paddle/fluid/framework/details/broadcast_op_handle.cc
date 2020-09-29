@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
+
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -31,10 +32,15 @@ void BroadcastOpHandle::RunImpl() {
   auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
   PADDLE_ENFORCE_EQ(in_var_handles.size(), 1UL,
-                    "The number of input should be one.");
-  PADDLE_ENFORCE_EQ(
-      out_var_handles.size(), places_.size(),
-      "The number of output should equal to the number of places.");
+                    platform::errors::PreconditionNotMet(
+                        "The number of inputs should be 1, but got %d.",
+                        in_var_handles.size()));
+  PADDLE_ENFORCE_EQ(out_var_handles.size(), places_.size(),
+                    platform::errors::PreconditionNotMet(
+                        "The number of outputs and the number of places should "
+                        "be equal, but got the number of outputs is %d and the "
+                        "number of places is %d.",
+                        out_var_handles.size(), places_.size()));
 
   VarHandle *in_var_handle = in_var_handles[0];
 
@@ -47,7 +53,9 @@ void BroadcastOpHandle::BroadcastOneVar(
     const std::vector<Scope *> &var_scopes) {
   auto *in_var =
       var_scopes.at(in_var_handle.scope_idx())->FindVar(in_var_handle.name());
-  PADDLE_ENFORCE_NOT_NULL(in_var);
+  PADDLE_ENFORCE_NOT_NULL(
+      in_var, platform::errors::NotFound("Variable %s is not found in scopes.",
+                                         in_var_handle.name()));
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
   if (UNLIKELY(!in_tensor.IsInitialized())) {
     VLOG(3) << "in var " << in_var_handle.name() << "not inited, return!";
@@ -103,7 +111,7 @@ void BroadcastOpHandle::BroadcastOneVar(
 
       broadcast_calls.emplace_back(
           [send_recv_buffer, numel, type, root_id, &nccl_ctx] {
-            PADDLE_ENFORCE(platform::dynload::ncclBcast(
+            PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclBcast(
                 send_recv_buffer, numel, static_cast<ncclDataType_t>(type),
                 root_id, nccl_ctx.comm_, nccl_ctx.stream()));
           });
@@ -131,7 +139,8 @@ void BroadcastOpHandle::BroadcastOneVar(
       nccl_ctxs_->DevCtx(p)->Wait();
     }
 #else
-    PADDLE_THROW("CUDA is not enabled.");
+    PADDLE_THROW(
+        platform::errors::PreconditionNotMet("Not compiled with NCLL."));
 #endif
   }
 }
@@ -154,10 +163,13 @@ void BroadcastOpHandle::InitOutputValue(
     auto t_out_p = out_var_handle->place();
     auto *out_var = var_scopes.at(out_var_handle->scope_idx())
                         ->FindVar(out_var_handle->name());
-    PADDLE_ENFORCE_NOT_NULL(out_var);
+    PADDLE_ENFORCE_NOT_NULL(out_var, platform::errors::NotFound(
+                                         "Variable %s is not found in scopes.",
+                                         out_var_handle->name()));
     if (is_gpu_place(in_tensor.place())) {
-      PADDLE_ENFORCE(platform::is_gpu_place(t_out_p),
-                     "Places of input and output must be all on GPU.");
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(t_out_p), true,
+                        platform::errors::PreconditionNotMet(
+                            "Places of input and output must be all on GPU."));
     } else {
       t_out_p = platform::CPUPlace();
     }

@@ -14,25 +14,30 @@
 
 #include "paddle/fluid/operators/distributed/parameter_send.h"
 #include <memory>
-#include <set>
-#include <string>
 #include <utility>
-#include <vector>
-
+#include "glog/logging.h"
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/tensor.h"
-
+#include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
-#include "paddle/fluid/operators/distributed/rpc_client.h"
-#include "paddle/fluid/operators/distributed/variable_response.h"
-#include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+class Tensor;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+class RPCClient;
 
 using LoDTensor = framework::LoDTensor;
 using LoDTensor = framework::LoDTensor;

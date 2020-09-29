@@ -175,9 +175,6 @@ def flip(x, axis, name=None):
     return out
 
 
-reverse = flip  #DEFINE_ALIAS
-
-
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
     """
     **Flatten op**
@@ -213,7 +210,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             Out.shape = (3 * 100 * 100 * 4)
 
     Args:
-        x (Variable): A tensor of number of dimentions >= axis. A tensor with data type float32,
+        x (Tensor): A tensor of number of dimentions >= axis. A tensor with data type float32,
                       float64, int8, int32, int64.
         start_axis (int): the start axis to flatten
         stop_axis (int): the stop axis to flatten
@@ -221,12 +218,12 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
                         Generally, no setting is required. Default: None.
 
     Returns:
-        Variable: A tensor with the contents of the input tensor, with input \
+        Tensor: A tensor with the contents of the input tensor, with input \
                   axes flattened by indicated start axis and end axis. \
                   A Tensor with data type same as input x.
 
     Raises:
-        ValueError: If x is not a Variable.
+        ValueError: If x is not a Tensor.
         ValueError: If start_axis or stop_axis is illegal.
 
     Examples:
@@ -234,20 +231,17 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            paddle.disable_static()
 
             image_shape=(2, 3, 4, 4)
-            x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3]).reshape(image_shape) / 100.
-            x = x.astype('float32')
             
-            img = paddle.to_tensor(x)
+            x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
+            img = paddle.reshape(x, image_shape)
+            
             out = paddle.flatten(img, start_axis=1, stop_axis=2)
             # out shape is [2, 12, 4]
     """
     if not (isinstance(x, Variable)):
-        raise ValueError("The input x should be a Variable")
+        raise ValueError("The input x should be a Tensor")
 
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
@@ -297,20 +291,18 @@ def roll(x, shifts, axis=None, name=None):
     the tensor will be flattened before rolling and then restored to the original shape.
 
     Args:
-        x (Variable): The x tensor variable as input.
+        x (Tensor): The x tensor variable as input.
         shifts (int|list|tuple): The number of places by which the elements
                            of the `x` tensor are shifted.
         axis (int|list|tuple|None): axis(axes) along which to roll.
 
     Returns:
-        Variable: A Tensor with same data type as `x`.
+        Tensor: A Tensor with same data type as `x`.
 
     Examples:
         .. code-block:: python
             import paddle
-            import paddle.fluid as fluid
 
-            paddle.disable_static()
             x = paddle.to_tensor([[1.0, 2.0, 3.0],
                                   [4.0, 5.0, 6.0],
                                   [7.0, 8.0, 9.0]])
@@ -363,7 +355,7 @@ def roll(x, shifts, axis=None, name=None):
         outputs={'Out': out},
         attrs={'axis': axis,
                'shifts': shifts})
-    out = layers.reshape(out, shape=origin_shape, inplace=True)
+    out = layers.reshape(out, shape=origin_shape)
     return out
 
 
@@ -1258,9 +1250,6 @@ broadcast_to = expand
 
 def reshape(x, shape, name=None):
     """
-    :alias_main: paddle.reshape
-	:alias: paddle.reshape,paddle.tensor.reshape,paddle.tensor.manipulation.reshape
-
     This operator changes the shape of ``x`` without changing its data.
 
     Some tricks exist when specifying the target shape.
@@ -1309,22 +1298,18 @@ def reshape(x, shape, name=None):
             import numpy as np
             import paddle
 
-            paddle.disable_static()
-
-            data = np.random.random([2, 4, 6]).astype("float32")
-            x = paddle.to_tensor(data)
-
-            positive_four = paddle.fill_constant([1], "int32", 4)
-
-            out_1 = paddle.reshape(x, [-1, 0, 3, 2])
-            # the shape of out_1 is [2,4,3,2].
-
-            out_2 = paddle.reshape(x, shape=[positive_four, 12])
+            x = paddle.rand([2, 4, 6], dtype="float32")
+            positive_four = paddle.full([1], 4, "int32")
+            out = paddle.reshape(x, [-1, 0, 3, 2])
+            print(out)
+            # the shape is [2,4,3,2].
+            out = paddle.reshape(x, shape=[positive_four, 12])
+            print(out)
             # the shape of out_2 is [4, 12].
-
             shape_tensor = paddle.to_tensor(np.array([8, 6]).astype("int32"))
-            out_3 = paddle.reshape(x, shape=shape_tensor)
-            # the shape of out_2 is [8, 6].
+            out = paddle.reshape(x, shape=shape_tensor)
+            print(out)
+            # the shape is [8, 6].
     """
     return paddle.fluid.layers.reshape(x=x, shape=shape, name=name)
 

@@ -931,33 +931,26 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
 
     Args:
-        input (Variable): The input Tensor/LoDTensor to be added to the final result.
-        x (Variable): The first input Tensor/LoDTensor for matrix multiplication.
-        y (Variable): The second input Tensor/LoDTensor for matrix multiplication.
+        input (Tensor): The input Tensor to be added to the final result.
+        x (Tensor): The first input Tensor for matrix multiplication.
+        y (Tensor): The second input Tensor for matrix multiplication.
         beta (float): Coefficient of $input$.
         alpha (float): Coefficient of $x*y$.
         name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of addmm op.
+        Tensor: The output Tensor of addmm op.
 
     Examples:
         ..  code-block:: python
-
-            import numpy as np
+            
             import paddle
 
-            data_x = np.ones((2, 2)).astype(np.float32)
-            data_y = np.ones((2, 2)).astype(np.float32)
-            data_input = np.ones((2, 2)).astype(np.float32)
+            x = paddle.ones([2,2])
+            y = paddle.ones([2,2])
+            input = paddle.ones([2,2])
 
-            paddle.disable_static()
-
-            x = paddle.to_tensor(data_x)
-            y = paddle.to_tensor(data_y)
-            input = paddle.to_tensor(data_input)
-
-            out = paddle.tensor.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
+            out = paddle.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
 
             print( out.numpy() )
             # [[10.5 10.5]
@@ -1483,8 +1476,7 @@ def clip(x, min=None, max=None, name=None):
 
 def trace(x, offset=0, axis1=0, axis2=1, name=None):
     """
-	:alias_main: paddle.trace
-	:alias: paddle.trace,paddle.tensor.trace,paddle.tensor.math.trace
+    **trace**
 
     This OP computes the sum along diagonals of the input tensor x.
 
@@ -1499,32 +1491,26 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
     - If offset = 0, it is the main diagonal.
     - If offset > 0, it is above the main diagonal.
     - If offset < 0, it is below the main diagonal.
+    - Note that if offset is out of input's shape indicated by axis1 and axis2, 0 will be returned.
 
     Args:
-        x(Variable): The input tensor x. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
+        x(Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
         offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
         axis1(int, optional): The first axis with respect to take diagonal. Default: 0.
         axis2(int, optional): The second axis with respect to take diagonal. Default: 1.
         name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
-        Variable: the output data type is the same as input data type.
+        Tensor: the output data type is the same as input data type.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            case1 = np.random.randn(2, 3).astype('float32')
-            case2 = np.random.randn(3, 10, 10).astype('float32')
-            case3 = np.random.randn(3, 10, 5, 10).astype('float32')
-
-            paddle.disable_static()
-
-            case1 = paddle.to_tensor(case1)
-            case2 = paddle.to_tensor(case2)
-            case3 = paddle.to_tensor(case3)
+            case1 = paddle.randn([2, 3])
+            case2 = paddle.randn([3, 10, 10])
+            case3 = paddle.randn([3, 10, 5, 10])
             data1 = paddle.trace(case1) # data1.shape = [1]
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
@@ -1558,6 +1544,9 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
         assert  axis1_ != axis2_,   \
                "axis1 and axis2 cannot be the same axis." \
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
+
+    if in_dygraph_mode():
+        return core.ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
     if not in_dygraph_mode():
         __check_input(input, offset, axis1, axis2)
@@ -1650,12 +1639,11 @@ def cumsum(x, axis=None, dtype=None, name=None):
         .. code-block:: python
             
             import paddle
-            from paddle import to_variable
             import numpy as np
 
             paddle.disable_static()
             data_np = np.arange(12).reshape(3, 4)
-            data = to_variable(data_np)
+            data = paddle.to_tensor(data_np)
 
             y = paddle.cumsum(data)
             print(y.numpy())

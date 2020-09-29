@@ -181,8 +181,8 @@ def get_gpus(gpus):
             cuda_visible_devices_list = cuda_visible_devices.split(',')
             for x in gpus.split(','):
                 assert x in cuda_visible_devices_list, "Can't find "\
-                "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
-                % (x, cuda_visible_devices)
+                    "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                    % (x, cuda_visible_devices)
             res_gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in gpus.split(',')
@@ -220,7 +220,7 @@ def launch_collective(args):
     gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
     global_envs["PADDLE_WITH_GLOO"] = "1"
-    global_envs["PADDLE_GLOO_RENDEZVOUS"] = "2"
+    global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
     global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
 
     procs = start_local_trainers(
@@ -333,7 +333,7 @@ def launch_ps(args):
     gloo_rendezvous_dir = tempfile.mkdtemp()
     # add gloo env
     current_env["PADDLE_WITH_GLOO"] = "1"
-    current_env["PADDLE_GLOO_RENDEZVOUS"] = "2"
+    current_env["PADDLE_GLOO_RENDEZVOUS"] = "3"
     current_env["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
 
     current_env.pop("http_proxy", None)
@@ -348,8 +348,7 @@ def launch_ps(args):
             "PADDLE_PORT": cur_server.endpoint.split(":")[1],
             "TRAINING_ROLE": "PSERVER",
             "PADDLE_TRAINERS_NUM": str(worker_num),
-            "POD_IP": cur_server.endpoint.split(":")[0],
-            "PADDLE_WITH_GLOO": "1"
+            "POD_IP": cur_server.endpoint.split(":")[0]
         }
         current_env.update(proc_env)
 
@@ -388,8 +387,7 @@ def launch_ps(args):
             "PADDLE_TRAINER_ENDPOINTS": worker_endpoints,
             "PADDLE_TRAINERS_NUM": str(worker_num),
             "TRAINING_ROLE": "TRAINER",
-            "PADDLE_TRAINER_ID": str(cur_worker.rank),
-            "PADDLE_WITH_GLOO": "1"
+            "PADDLE_TRAINER_ID": str(cur_worker.rank)
         }
         current_env.update(proc_env)
 
