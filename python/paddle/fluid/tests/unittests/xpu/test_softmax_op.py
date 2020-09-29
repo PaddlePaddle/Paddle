@@ -56,13 +56,13 @@ class TestXPUSoftmaxOp(OpTest):
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
-        self.attrs = {'axis': self.axis, }
+        self.attrs = {'axis': self.axis, 'use_xpu': True}
 
     def set_attrs(self):
         pass
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.XPUPlace(0), atol=1e-3)
+        self.check_output_with_place(paddle.XPUPlace(0), atol=0.01)
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -71,23 +71,9 @@ class TestXPUSoftmaxOp(OpTest):
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
-class TestXPUSoftmaxAxis0(TestXPUSoftmaxOp):
+class TestXPUSoftmaxAxis3(TestXPUSoftmaxOp):
     def set_attrs(self):
-        self.axis = 0
-
-
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
-class TestXPUSoftmaxAxis1(TestXPUSoftmaxOp):
-    def set_attrs(self):
-        self.axis = 1
-
-
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
-class TestXPUSoftmaxAxis2(TestXPUSoftmaxOp):
-    def set_attrs(self):
-        self.axis = 2
+        self.axis = 3
 
 
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),

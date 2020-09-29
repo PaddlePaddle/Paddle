@@ -14,9 +14,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/math/softmax.h"
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/softmax_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -32,6 +31,11 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
     auto* Out = context.Output<Tensor>("Out");
     const int rank = X->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    PADDLE_ENFORCE_EQ(axis == -1 || axis == rank - 1, true,
+                      platform::errors::InvalidArgument(
+                          "xpu softmax kernel only support last dimension of x "
+                          "(axis==-1 or axis==x_dims-1), but received axis: %d",
+                          axis));
 
     // allocate memory on device.
     Out->mutable_data<T>(context.GetPlace());
@@ -43,8 +47,11 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
     int r = xpu::softmax2d_forward(dev_ctx.x_context(), X->data<float>(),
                                    Out->data<float>(), n, d, d <= 2048);
     PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::Fatal("XPU kernel softmax2d_forward run failed!"));
+        r, XPU_SUCCESS,
+        platform::errors::External(
+            "XPU API return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            r));
   }
 };
 
@@ -57,6 +64,11 @@ class SoftmaxGradXPUKernel : public framework::OpKernel<T> {
     auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
     const int rank = dX->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    PADDLE_ENFORCE_EQ(axis == -1 || axis == rank - 1, true,
+                      platform::errors::InvalidArgument(
+                          "xpu softmax kernel only support last dimension of x "
+                          "(axis==-1 or axis==x_dims-1), but received axis: %d",
+                          axis));
 
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
@@ -69,8 +81,11 @@ class SoftmaxGradXPUKernel : public framework::OpKernel<T> {
         xpu::softmax2d_backward(dev_ctx.x_context(), Out->data<float>(),
                                 dOut->data<float>(), dX->data<float>(), n, d);
     PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::Fatal("XPU kernel softmax2d_backward run failed!"));
+        r, XPU_SUCCESS,
+        platform::errors::External(
+            "XPU API return wrong value[%d], please check whether "
+            "Baidu Kunlun Card is properly installed.",
+            r));
   }
 };
 
