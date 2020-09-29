@@ -28,7 +28,7 @@ namespace operators {
  */
 
 template <typename T>
-void MultinomialFunctor(T* out_data, const T* in_data,
+void MultinomialFunctor(int64_t* out_data, const T* in_data,
                         const int64_t num_samples, const bool replacement,
                         const int64_t num_categories,
                         const int64_t num_distributions) {

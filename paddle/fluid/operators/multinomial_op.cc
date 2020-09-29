@@ -76,7 +76,7 @@ class MultinomialOpKernel<platform::CPUDeviceContext, T>
     const bool replacement = ctx.Attr<bool>("replacement");
 
     auto *in_data = x->data<T>();
-    auto *out_data = out->mutable_data<T>(ctx.GetPlace());
+    int64_t *out_data = out->mutable_data<int64_t>(ctx.GetPlace());
 
     auto in_dims = x->dims();
     int64_t in_rank = in_dims.size();

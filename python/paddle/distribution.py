@@ -25,9 +25,11 @@ from .fluid.layers import control_flow
 from .fluid.layers import tensor
 from .fluid.layers import ops
 from .fluid.layers import nn
+from .fluid.layer_helper import LayerHelper
 from .fluid import core
 from .fluid.framework import in_dygraph_mode
 from .tensor.math import elementwise_mul, elementwise_div, elementwise_add, elementwise_sub
+from .tensor import arange, gather_nd, concat, multinomial
 import math
 import numpy as np
 import warnings
@@ -660,34 +662,45 @@ class Categorical(Distribution):
     * :math:`[x=i]` : it evaluates to 1 if :math:`x==i` , 0 otherwise.
 
     Args:
-        logits(list|numpy.ndarray|Variable): The logits input of categorical distribution. The data type is float32.
+        logits(list|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
 
     Examples:
         .. code-block:: python
 
           import numpy as np
-          from paddle.fluid import layers
-          from paddle.fluid.layers import Categorical
+          import paddle
+          from paddle.distribution import Categorical
 
-          a_logits_npdata = np.array([-0.602,-0.602], dtype="float32")
-          a_logits_tensor = layers.create_tensor(dtype="float32")
-          layers.assign(a_logits_npdata, a_logits_tensor)
+          paddle.disable_static()
 
-          b_logits_npdata = np.array([-0.102,-0.112], dtype="float32")
-          b_logits_tensor = layers.create_tensor(dtype="float32")
-          layers.assign(b_logits_npdata, b_logits_tensor)
-          
-          a = Categorical(a_logits_tensor)
-          b = Categorical(b_logits_tensor)
+          x = paddle.rand([6])
+          x.numpy()
+          # [0.32564053, 0.99334985, 0.99034804,
+          #  0.09053693, 0.30820143, 0.19095989]
+          y = paddle.rand([6])
+          y.numpy()
+          # [0.6365463 , 0.7278677 , 0.90260243, 
+          # 0.5226815 , 0.35837543, 0.13981032]
 
-          a.entropy()
-          # [0.6931472] with shape: [1]
+          cat = Categorical(x)
+          cat2 = Categorical(y)
 
-          b.entropy()
-          # [0.6931347] with shape: [1]
+          cat.sample([2,3])
+          # [[5, 1, 1],
+          # [0, 1, 2]]
 
-          a.kl_divergence(b)
-          # [1.2516975e-05] with shape: [1]
+          cat.entropy()
+          # [1.71887]
+
+          cat.kl_divergence(cat2)
+          # [0.0278455]
+
+          value = paddle.to_tensor([2,1,3])
+          cat.probs(value)
+          # [0.341613 0.342648 0.03123]
+
+          cat.log_prob(value)
+          # [-1.07408 -1.07105 -3.46638]
 
     """
 
@@ -714,23 +727,52 @@ class Categorical(Distribution):
             if self.dtype != convert_dtype(self.logits.dtype):
                 self.logits = tensor.cast(self.logits, dtype=self.dtype)
 
+    '''
+    def _get_prob(self):
+        """Calculate probability of Categorical distribution according to input logits.
+
+        Returns:
+          Tensor: A tensor represents the probability.
+        """
+        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
+        e_logits = ops.exp(logits)
+        z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
+        prob = e_logits / z
+        return prob
+    '''
+
     def sample(self, shape):
         """Generate samples of the specified shape.
 
         Args:
-          shape (list): 1D `int32`. Shape of the generated samples.
+          shape (list): Shape of the generated samples.
 
         Returns:
-          Tensor: A tensor with prepended dimensions shape.The data type is float32.
+          Tensor: A tensor with prepended dimensions shape.
 
         """
         name = self.name + '_sample'
+        if not in_dygraph_mode():
+            check_type(shape, 'shape', (list), 'sample')
+
         num_samples = np.prod(np.array(shape))
 
+        logits_shape = list(self.logits.shape)
+        if len(logits_shape) > 1:
+            sample_shape = shape + logits_shape[:-1]
+            logits = nn.reshape(self.logits,
+                                [np.prod(logits_shape[:-1]), logits_shape[-1]])
+        else:
+            sample_shape = shape
+            logits = self.logits
+
+        sample_index = multinomial(logits, num_samples, True)
+        return nn.reshape(sample_index, sample_shape, name=name)
+        """
         if in_dygraph_mode():
             sample_index = core.ops.multinomial(
-                self.logits, 'num_samples', num_samples, 'replacement', True)
-            return nn.reshape(sample_index, shape + [-1])
+                logits, 'num_samples', num_samples, 'replacement', True)
+            return nn.reshape(sample_index, sample_shape)
 
         check_type(shape, 'shape', (list), 'sample')
 
@@ -739,11 +781,12 @@ class Categorical(Distribution):
             dtype=convert_np_dtype_to_dtype_('int64'))
         helper.append_op(
             type='multinomial',
-            inputs={"X": self.logits},
+            inputs={"X": logits},
             outputs={'Out': out},
             attrs={'num_samples': num_samples,
                    'replacement': True})
-        return nn.reshape(out, shape + [-1], name=name)
+        return nn.reshape(out, sample_shape, name=name)
+        """
 
     def kl_divergence(self, other):
         """The KL-divergence between two Categorical distributions.
@@ -791,3 +834,55 @@ class Categorical(Distribution):
             prob * (logits - nn.log(z)), dim=-1, keep_dim=True, name=name)
 
         return entropy
+
+    def probs(self, value):
+        """Probabilities of the given category.
+
+        Args:
+          value (Tensor): The input tensor represents the selected category index.
+
+        Returns:
+          Tensor: probability.
+
+        """
+        name = self.name + '_probs'
+
+        dist_sum = nn.reduce_sum(self.logits, dim=-1, keep_dim=True)
+        prob = self.logits / dist_sum
+
+        shape = list(prob.shape)
+        value_shape = list(value.shape)
+        if len(shape) == 1:
+            num_value_in_one_dist = np.prod(value_shape)
+            index_value = nn.reshape(value, [num_value_in_one_dist, 1])
+            index = index_value
+        else:
+            num_dist = np.prod(shape[:-1])
+            num_value_in_one_dist = value_shape[-1]
+            prob = nn.reshape(prob, [num_dist, shape[-1]])
+            if len(value_shape) == 1:
+                value = nn.expand(value, [num_dist])
+                value_shape = shape[:-1] + value_shape
+            index_value = nn.reshape(value, [num_dist, -1, 1])
+            # assert(num_dist == np.prod(value_shape[:-1]), 'dist shape should be the same')
+
+            index_prefix = nn.unsqueeze(arange(num_dist), axes=-1)
+            index_prefix = nn.expand(index_prefix, [1, num_value_in_one_dist])
+            index_prefix = nn.unsqueeze(index_prefix, axes=-1)
+
+            index = concat([index_prefix, index_value], axis=-1)
+
+        select_prob = gather_nd(prob, index)
+        return nn.reshape(select_prob, value_shape, name=name)
+
+    def log_prob(self, value):
+        """Log probabilities of the given category.
+
+        Args:
+          value (Tensor): The input tensor represents the selected category index.
+
+        Returns:
+          Tensor: Log probability.
+
+        """
+        return nn.log(self.probs(value))
