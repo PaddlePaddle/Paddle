@@ -912,10 +912,14 @@ class Categorical(Distribution):
                     "shape of value {} must match shape of logits {}".format(
                         str(value_shape[:-1]), str(shape[:-1])))
 
-            index_prefix = nn.unsqueeze(arange(num_dist), axes=-1)
+            index_prefix = nn.unsqueeze(
+                arange(
+                    num_dist, dtype=index_value.dtype), axes=-1)
             index_prefix = nn.expand(index_prefix, [1, num_value_in_one_dist])
             index_prefix = nn.unsqueeze(index_prefix, axes=-1)
 
+            if index_value.dtype != index_prefix.dtype:
+                tensor.cast(index_prefix, dtype=index_value.dtype)
             index = concat([index_prefix, index_value], axis=-1)
 
         # value is the category index to search for the corresponding probability.
