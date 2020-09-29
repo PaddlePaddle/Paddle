@@ -880,7 +880,6 @@ class BeamSearchDecoder(Decoder):
             
             import paddle.fluid as fluid
             from paddle.fluid.layers import GRUCell, BeamSearchDecoder
-
             trg_embeder = lambda x: fluid.embedding(
                 x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
             output_layer = lambda x: layers.fc(x,
@@ -909,7 +908,7 @@ class BeamSearchDecoder(Decoder):
         Constructor of BeamSearchDecoder.
 
         Parameters:
-            cell(RNNCell): An instance of `RNNCell` or object with the same interface.
+            cell(RNNCellBase): An instance of `RNNCell` or object with the same interface.
             start_token(int): The start token id.
             end_token(int): The end token id.
             beam_size(int): The beam width used in beam search.
