@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device_memory_aligment.h"
 
 namespace paddle {
 namespace operators {
@@ -318,24 +319,20 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     }
 
     Tensor weight_grad;
-    T *weight_grad_data = nullptr;
     math::SetConstant<paddle::platform::CUDADeviceContext, T> zero;
+    weight_grad.mutable_data<T>({weight_numel}, ctx.GetPlace());
+    zero(dev_ctx, &weight_grad, static_cast<T>(0.0));
+    T *weight_grad_data = weight_grad.data<T>();
+
+    int offset = 0;
     for (size_t i = 0; i < weight_grad_list.size(); ++i) {
-      weight_grad_list[i]->mutable_data<T>(place);
-    }
-
-    bool grad_continuous =
-        is_continuous<T, std::vector<Tensor *>>(weight_grad_list);
-
-    if (!grad_continuous) {
-      weight_grad.mutable_data<T>({weight_numel}, ctx.GetPlace());
-      zero(dev_ctx, &weight_grad, static_cast<T>(0.0));
-      weight_grad_data = weight_grad.data<T>();
-    } else {
-      for (size_t i = 0; i < weight_grad_list.size(); ++i) {
-        zero(dev_ctx, weight_grad_list[i], static_cast<T>(0.0));
-      }
-      weight_grad_data = weight_grad_list[0]->data<T>();
+      size_t len = weight_grad_list[i]->numel();
+      auto dim = weight_grad_list[i]->dims();
+      weight_grad_list[i]
+          ->ShareDataWith(weight_grad.Slice(static_cast<int64_t>(offset),
+                                            static_cast<int64_t>(offset + len)))
+          .Resize(dim);
+      offset += len;
     }
 
     in_grad->mutable_data<T>(input_dims, ctx.GetPlace());
@@ -421,10 +418,6 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
           "cudnnRNNBackwardWeightsEx, but it only works when the version "
           "of cudnn is larger than 7.2.1"));
 #endif
-    }
-    if (!grad_continuous) {
-      weight_to_tensor_list<T>(place, stream, &weight_grad_list, weight_list,
-                               &weight_grad);
     }
   }
 };
